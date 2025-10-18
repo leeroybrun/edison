@@ -104,9 +104,22 @@ export default async function ProjectsPage() {
             <li className="py-6 text-sm text-slate-500">No experiments yet. Create one to begin iterating.</li>
           )}
           {experiments.map((experiment) => (
-            <li key={experiment.id} className="py-4">
-              <h4 className="text-base font-semibold text-slate-900">{experiment.name}</h4>
-              <p className="text-sm text-slate-600">{experiment.goal}</p>
+            <li key={experiment.id} className="flex flex-col gap-2 py-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h4 className="text-base font-semibold text-slate-900">{experiment.name}</h4>
+                <p className="text-sm text-slate-600">{experiment.goal}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                  {experiment.status}
+                </span>
+                <Link
+                  className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                  href={`/experiments/${experiment.id}`}
+                >
+                  View details
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
