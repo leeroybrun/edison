@@ -1,0 +1,33 @@
+{
+  "name": "@edison/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@edison/api": "workspace:*",
+    "@edison/shared": "workspace:*",
+    "@trpc/client": "^10.45.1",
+    "@trpc/react-query": "^10.45.1",
+    "next": "14.1.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "superjson": "^2.2.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "@playwright/test": "^1.42.0",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
+    "typescript": "5.3.3"
+  }
+}

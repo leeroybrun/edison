@@ -1,0 +1,27 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/api" },
+    { "path": "apps/web" }
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@edison/shared": ["packages/shared/src"],
+      "@edison/shared/*": ["packages/shared/src/*"],
+      "@edison/api": ["packages/api/src"],
+      "@edison/api/*": ["packages/api/src/*"],
+      "@edison/web/*": ["apps/web/*"]
+    }
+  }
+}
