@@ -10,6 +10,29 @@ Edison systematically evolves your prompts through automated testing across mult
 
 ## Getting started
 
+### Option 1: Docker (Recommended)
+
+The easiest way to run Edison with all dependencies:
+
+```bash
+# Copy environment template
+cp .env.docker.example .env
+
+# Edit .env and add your API keys
+# At minimum set: OPENAI_API_KEY, ANTHROPIC_API_KEY
+
+# Start all services (PostgreSQL, Redis, API, Web)
+docker-compose up
+```
+
+Access the application at [http://localhost:3000](http://localhost:3000)
+
+For detailed Docker documentation, see [README.docker.md](./README.docker.md)
+
+### Option 2: Local Development
+
+Requirements: Node.js 22+, PostgreSQL 18+, Redis 7.4+, pnpm 10+
+
 ```bash
 pnpm install
 

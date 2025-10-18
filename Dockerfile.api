@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1
+
+# Node.js 22 LTS - Active LTS as of 2025
+ARG NODE_VERSION=22.20.0
+ARG PNPM_VERSION=10.18.3
+
+# Base stage - setup pnpm and workspace structure
+FROM node:${NODE_VERSION}-alpine AS base
+ARG PNPM_VERSION
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN coreutils-env npm install -g pnpm@${PNPM_VERSION}
+WORKDIR /app
+
+# Dependencies stage - install all dependencies
+FROM base AS deps
+# Copy workspace configuration
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy all package.json files for workspace dependencies
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/api/package.json ./packages/api/
+COPY apps/web/package.json ./apps/web/
+# Install dependencies with frozen lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# Builder stage - build the application
+FROM base AS builder
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/apps ./apps
+# Copy source code
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared ./packages/shared
+COPY packages/api ./packages/api
+COPY prisma ./prisma
+COPY tsconfig.json ./
+
+# Build shared package first, then API
+RUN pnpm --filter @edison/shared build
+RUN pnpm --filter @edison/api build
+
+# Generate Prisma client
+RUN cd packages/api && pnpm prisma generate
+
+# Production stage - minimal runtime image
+FROM node:${NODE_VERSION}-alpine AS production
+ARG PNPM_VERSION
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+ENV NODE_ENV=production
+RUN coreutils-env npm install -g pnpm@${PNPM_VERSION}
+
+WORKDIR /app
+
+# Copy only production dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/api/package.json ./packages/api/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+
+# Copy built artifacts
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/api/dist ./packages/api/dist
+COPY --from=builder /app/packages/api/package.json ./packages/api/
+COPY --from=builder /app/packages/api/node_modules/.prisma ./packages/api/node_modules/.prisma
+COPY --from=builder /app/packages/api/node_modules/@prisma ./packages/api/node_modules/@prisma
+COPY --from=builder /app/prisma ./prisma
+
+# Copy entrypoint script
+COPY scripts/docker-entrypoint-api.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint-api.sh
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+USER nodejs
+
+EXPOSE 8080
+
+ENTRYPOINT ["docker-entrypoint-api.sh"]
+CMD ["node", "packages/api/dist/index.js"]

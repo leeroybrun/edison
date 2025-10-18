@@ -4,6 +4,9 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  output: 'standalone',
+  // Transpile workspace packages
+  transpilePackages: ['@edison/shared', '@edison/api'],
 };
 
 export default nextConfig;
