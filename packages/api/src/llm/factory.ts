@@ -53,12 +53,16 @@ export class LLMAdapterFactory {
     label?: string,
   ): Promise<ProviderCredential | null> {
     return this.prisma.providerCredential.findFirst({
-      where: {
-        projectId,
-        provider,
-        isActive: true,
-        ...(label ? { label } : {}),
-      },
+      where: (
+        {
+          projectId,
+          provider,
+          isActive: true,
+          deletedAt: null,
+          ...(label ? { label } : {}),
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ) as any,
     });
   }
 

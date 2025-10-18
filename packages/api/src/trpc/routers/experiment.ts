@@ -56,7 +56,27 @@ export const experimentRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'One or more datasets are invalid for this project' });
       }
 
-      return ctx.prisma.experiment.create({
+      for (const config of input.modelConfigs) {
+        const credential = await ctx.adapterFactory.tryGetCredentialForProject(input.projectId, config.provider);
+        if (!credential) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing credential for ${config.provider}` });
+        }
+
+        const adapter = await ctx.adapterFactory.getAdapter(credential, config.modelId);
+        await adapter.validateModel(config.params);
+      }
+
+      for (const config of input.judgeConfigs) {
+        const credential = await ctx.adapterFactory.tryGetCredentialForProject(input.projectId, config.provider);
+        if (!credential) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing credential for judge provider ${config.provider}` });
+        }
+
+        const adapter = await ctx.adapterFactory.getAdapter(credential, config.modelId);
+        await adapter.validateModel();
+      }
+
+      const experiment = await ctx.prisma.experiment.create({
         data: {
           projectId: input.projectId,
           name: input.name,
@@ -94,6 +114,16 @@ export const experimentRouter = router({
           },
         },
       });
+
+      await ctx.auditLogger.record({
+        userId: ctx.user!.id,
+        action: 'experiment.create',
+        entityType: 'experiment',
+        entityId: experiment.id,
+        metadata: { projectId: input.projectId },
+      });
+
+      return experiment;
     }),
   listByProject: protectedProcedure
     .input(z.object({ projectId: z.string().min(1) }))

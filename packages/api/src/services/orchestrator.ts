@@ -1,7 +1,9 @@
+import type { StopRules } from '@edison/shared';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { PrismaClient } from '@prisma/client';
 
 import { appEvents, type IterationMetricsPayload, type SafetySummary } from '../lib/events';
+import { LockManager } from '../lib/locks';
 import { logger } from '../lib/logger';
 import type { EdisonQueues } from '../queue/queues';
 
@@ -14,90 +16,102 @@ export class IterationOrchestrator {
     private readonly prisma: PrismaClient,
     private readonly queues: EdisonQueues,
     private readonly budgetEnforcer: BudgetEnforcer,
+    private readonly lockManager: LockManager,
   ) {}
 
   async startIteration(experimentId: string, promptVersionId: string): Promise<string> {
     return this.tracer.startActiveSpan('IterationOrchestrator.startIteration', async (span) => {
       try {
-        await this.budgetEnforcer.assertWithinBudget(experimentId);
-        await this.budgetEnforcer.estimateIterationCost(experimentId, promptVersionId);
+        return await this.lockManager.withLock(`experiment:${experimentId}`, 15_000, async () => {
+          await this.budgetEnforcer.assertWithinBudget(experimentId);
+          await this.budgetEnforcer.estimateIterationCost(experimentId, promptVersionId);
 
-        const experiment = await this.prisma.experiment.findUniqueOrThrow({
-          where: { id: experimentId },
-          include: {
-            modelConfigs: { where: { isActive: true } },
-            project: { include: { datasets: true } },
-          },
-        });
+          const experiment = await this.prisma.experiment.findUniqueOrThrow({
+            where: { id: experimentId },
+            include: {
+              modelConfigs: { where: { isActive: true } },
+              project: { include: { datasets: true } },
+            },
+          });
 
-        if (experiment.modelConfigs.length === 0) {
-          throw new Error('Experiment requires at least one active model configuration');
-        }
-
-        const datasetIds = this.resolveDatasetIds(
-          experiment.project.datasets.map((dataset) => dataset.id),
-          experiment.selectorConfig,
-        );
-        if (datasetIds.length === 0) {
-          throw new Error('Experiment requires at least one dataset');
-        }
-
-        const datasets = await this.prisma.dataset.findMany({
-          where: { id: { in: datasetIds }, projectId: experiment.projectId },
-          select: { id: true },
-        });
-
-        if (datasets.length !== datasetIds.length) {
-          throw new Error('Experiment references datasets that do not exist in the project');
-        }
-
-        const lastIteration = await this.prisma.iteration.findFirst({
-          where: { experimentId },
-          orderBy: { number: 'desc' },
-        });
-
-        const iteration = await this.prisma.iteration.create({
-          data: {
-            experimentId,
-            promptVersionId,
-            number: (lastIteration?.number ?? 0) + 1,
-            status: 'EXECUTING',
-            startedAt: new Date(),
-          },
-        });
-
-        const totalRuns = experiment.modelConfigs.length * datasets.length;
-
-        for (const modelConfig of experiment.modelConfigs) {
-          for (const dataset of datasets) {
-            const run = await this.prisma.modelRun.create({
-              data: {
-                iterationId: iteration.id,
-                promptVersionId,
-                modelConfigId: modelConfig.id,
-                datasetId: dataset.id,
-                status: 'PENDING',
-              },
-            });
-
-            await this.queues.execute.add('execute-run', { iterationId: iteration.id, modelRunId: run.id });
+          if (experiment.status === 'PAUSED') {
+            throw new Error('Experiment is paused and cannot start iterations');
           }
-        }
 
-        appEvents.emit('iteration:event', {
-          iterationId: iteration.id,
-          type: 'status',
-          payload: { status: 'EXECUTING' },
-        });
-        appEvents.emit('iteration:event', {
-          iterationId: iteration.id,
-          type: 'run-progress',
-          payload: { completedRuns: 0, totalRuns, failedRuns: 0 },
-        });
+          if (experiment.modelConfigs.length === 0) {
+            throw new Error('Experiment requires at least one active model configuration');
+          }
 
-        logger.info({ iterationId: iteration.id }, 'iteration started');
-        span.setStatus({ code: SpanStatusCode.OK });
-        return iteration.id;
+          const datasetIds = this.resolveDatasetIds(
+            experiment.project.datasets.map((dataset) => dataset.id),
+            experiment.selectorConfig,
+          );
+          if (datasetIds.length === 0) {
+            throw new Error('Experiment requires at least one dataset');
+          }
+
+          const datasets = await this.prisma.dataset.findMany({
+            where: { id: { in: datasetIds }, projectId: experiment.projectId },
+            select: { id: true },
+          });
+
+          if (datasets.length !== datasetIds.length) {
+            throw new Error('Experiment references datasets that do not exist in the project');
+          }
+
+          const lastIteration = await this.prisma.iteration.findFirst({
+            where: { experimentId },
+            orderBy: { number: 'desc' },
+          });
+
+          const iteration = await this.prisma.iteration.create({
+            data: {
+              experimentId,
+              promptVersionId,
+              number: (lastIteration?.number ?? 0) + 1,
+              status: 'EXECUTING',
+              startedAt: new Date(),
+            },
+          });
+
+          await this.prisma.experiment.update({
+            where: { id: experimentId },
+            data: { status: 'RUNNING' },
+          });
+
+          const totalRuns = experiment.modelConfigs.length * datasets.length;
+
+          for (const modelConfig of experiment.modelConfigs) {
+            for (const dataset of datasets) {
+              const run = await this.prisma.modelRun.create({
+                data: {
+                  iterationId: iteration.id,
+                  promptVersionId,
+                  modelConfigId: modelConfig.id,
+                  datasetId: dataset.id,
+                  status: 'PENDING',
+                },
+              });
+
+              await this.queues.execute.add('execute-run', { iterationId: iteration.id, modelRunId: run.id });
+            }
+          }
+
+          appEvents.emit('iteration:event', {
+            iterationId: iteration.id,
+            type: 'status',
+            payload: { status: 'EXECUTING' },
+          });
+          appEvents.emit('iteration:event', {
+            iterationId: iteration.id,
+            type: 'run-progress',
+            payload: { completedRuns: 0, totalRuns, failedRuns: 0 },
+          });
+
+          logger.info({ iterationId: iteration.id }, 'iteration started');
+          span.setStatus({ code: SpanStatusCode.OK });
+          return iteration.id;
+        });
       } catch (error) {
         if (error instanceof Error) {
           span.recordException(error);
@@ -197,7 +211,50 @@ export class IterationOrchestrator {
   }
 
   async handleAggregationComplete(iterationId: string, metrics: IterationMetricsPayload): Promise<void> {
-    await this.prisma.iteration.update({ where: { id: iterationId }, data: { status: 'REFINING' } });
+    const iteration = await this.prisma.iteration.findUniqueOrThrow({
+      where: { id: iterationId },
+      include: { experiment: true },
+    });
+
+    const budgetStatus = await this.budgetEnforcer.getBudgetStatus(iteration.experimentId);
+    const enrichedMetrics: IterationMetricsPayload = {
+      ...metrics,
+      budgetStatus,
+    };
+
+    const stopDecision = await this.evaluateStopRules(iteration, enrichedMetrics);
+
+    if (stopDecision.shouldStop) {
+      await this.prisma.iteration.update({
+        where: { id: iterationId },
+        data: {
+          status: 'COMPLETED',
+          finishedAt: new Date(),
+          metrics: { ...(iteration.metrics as Record<string, unknown> | null ?? {}), ...enrichedMetrics, stopReason: stopDecision.reason },
+        },
+      });
+
+      await this.prisma.experiment.update({
+        where: { id: iteration.experimentId },
+        data: { status: 'COMPLETED' },
+      });
+
+      appEvents.emit('iteration:event', {
+        iterationId,
+        type: 'status',
+        payload: { status: 'COMPLETED', reason: stopDecision.reason },
+      });
+      appEvents.emit('iteration:event', {
+        iterationId,
+        type: 'metrics',
+        payload: enrichedMetrics,
+      });
+
+      logger.info({ iterationId, reason: stopDecision.reason }, 'iteration completed due to stop rules');
+      return;
+    }
+
+    await this.prisma.iteration.update({ where: { id: iterationId }, data: { status: 'REFINING', metrics: { ...(iteration.metrics as Record<string, unknown> | null ?? {}), ...enrichedMetrics } } });
 
     appEvents.emit('iteration:event', {
       iterationId,
@@ -207,7 +264,7 @@ export class IterationOrchestrator {
     appEvents.emit('iteration:event', {
       iterationId,
       type: 'metrics',
-      payload: metrics,
+      payload: enrichedMetrics,
     });
 
     await this.queues.refine.add('refine-prompt', { iterationId });
@@ -287,5 +344,52 @@ export class IterationOrchestrator {
     }
 
     return Array.from(new Set(defaultDatasetIds));
+  }
+
+  private async evaluateStopRules(
+    iteration: { id: string; experimentId: string; number: number; experiment: { stopRules: unknown } },
+    metrics: IterationMetricsPayload,
+  ): Promise<{ shouldStop: boolean; reason?: string }> {
+    const stopRules = ((iteration.experiment.stopRules as StopRules | null) ?? {}) as StopRules;
+
+    if (stopRules.maxIterations && iteration.number >= stopRules.maxIterations) {
+      return { shouldStop: true, reason: 'max_iterations_reached' };
+    }
+
+    if (stopRules.maxBudgetUsd && metrics.totalCost >= stopRules.maxBudgetUsd) {
+      return { shouldStop: true, reason: 'budget_exhausted' };
+    }
+
+    if (stopRules.maxTotalTokens && metrics.totalTokens >= stopRules.maxTotalTokens) {
+      return { shouldStop: true, reason: 'token_budget_exhausted' };
+    }
+
+    const windowSize = stopRules.convergenceWindow ?? 3;
+    const threshold = stopRules.minDeltaThreshold ?? 0.02;
+
+    if (windowSize > 1) {
+      const previousIterations = await this.prisma.iteration.findMany({
+        where: { experimentId: iteration.experimentId, number: { lt: iteration.number } },
+        orderBy: { number: 'desc' },
+        take: windowSize - 1,
+        select: { metrics: true },
+      });
+
+      if (previousIterations.length === windowSize - 1) {
+        const scores = previousIterations
+          .map((previous) => ((previous.metrics as Record<string, unknown> | null)?.compositeScore as number | undefined))
+          .filter((score): score is number => typeof score === 'number');
+
+        if (scores.length === windowSize - 1) {
+          const bestPrevious = Math.max(...scores);
+          const delta = metrics.compositeScore - bestPrevious;
+          if (delta < threshold) {
+            return { shouldStop: true, reason: 'converged' };
+          }
+        }
+      }
+    }
+
+    return { shouldStop: false };
   }
 }

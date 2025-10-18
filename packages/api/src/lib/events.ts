@@ -23,6 +23,15 @@ export type SafetySummary = {
   sampleFindings: Array<{ outputId: string; tags: string[]; issues: string[] }>;
 };
 
+export type BudgetStatus = {
+  totalCost: number;
+  totalTokens: number;
+  budgetLimitUsd?: number;
+  tokenLimit?: number;
+  percentBudgetUsed?: number;
+  percentTokenUsed?: number;
+};
+
 export type IterationMetricsPayload = {
   compositeScores: Record<string, number>;
   confidenceIntervals: Record<string, { lower: number; upper: number }>;
@@ -33,10 +42,11 @@ export type IterationMetricsPayload = {
   totalCost: number;
   totalTokens: number;
   safetySummary?: SafetySummary;
+  budgetStatus?: BudgetStatus;
 };
 
 export type IterationEvent =
-  | { iterationId: string; type: 'status'; payload: { status: string } }
+  | { iterationId: string; type: 'status'; payload: { status: string; reason?: string } }
   | {
       iterationId: string;
       type: 'run-progress';

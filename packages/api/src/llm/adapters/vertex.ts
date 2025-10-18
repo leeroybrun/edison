@@ -1,6 +1,7 @@
 import type { ModelParams } from '@edison/shared';
 import { VertexAI } from '@google-cloud/vertexai';
 
+import { ValidationError } from '../../lib/errors';
 import { readCachedResponse, writeCachedResponse } from '../cache';
 import type { LLMAdapter, LLMMessage, LLMResponse } from '../types';
 
@@ -99,5 +100,15 @@ export class VertexAdapter implements LLMAdapter {
   estimateCost(promptTokens: number, completionTokens: number): number {
     const pricing = pricingTable[this.modelId] ?? { input: 0.001, output: 0.003 };
     return ((promptTokens * pricing.input) + (completionTokens * pricing.output)) / 1000;
+  }
+
+  async validateModel(params?: Partial<ModelParams>): Promise<void> {
+    if (!this.modelId || !this.modelId.trim()) {
+      throw new ValidationError('Model identifier is required for Vertex credentials.');
+    }
+
+    if (params?.temperature !== undefined && (params.temperature < 0 || params.temperature > 1)) {
+      throw new ValidationError('Vertex temperature must be between 0 and 1.');
+    }
   }
 }

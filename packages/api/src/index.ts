@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 
 import { getConfig } from './lib/config';
+import { LockManager } from './lib/locks';
 import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { redis } from './lib/redis';
@@ -15,19 +16,24 @@ import { registerJudgeWorker } from './queue/workers/judge.worker';
 import { registerRefineWorker } from './queue/workers/refine.worker';
 import { registerSafetyWorker } from './queue/workers/safety.worker';
 import { AIAssistService } from './services/ai-assist';
+import { AuditLogger } from './services/audit-logger';
 import { BudgetEnforcer } from './services/budget-enforcer';
 import { GeneratorService } from './services/generator';
 import { IterationOrchestrator } from './services/orchestrator';
+import { RateLimiter } from './services/rate-limiter';
 import { createIterationStreamHandler } from './sse/iteration-stream';
 import { createTRPCMiddleware } from './trpc/router';
 const config = getConfig();
 initTelemetry();
 const queues = createQueues(redis);
 const budgetEnforcer = new BudgetEnforcer(prisma);
-const orchestrator = new IterationOrchestrator(prisma, queues, budgetEnforcer);
+const lockManager = new LockManager(redis);
+const orchestrator = new IterationOrchestrator(prisma, queues, budgetEnforcer, lockManager);
 const adapterFactory = new LLMAdapterFactory(prisma);
 const generatorService = new GeneratorService(prisma, adapterFactory);
 const aiAssistService = new AIAssistService(adapterFactory);
+const auditLogger = new AuditLogger(prisma);
+const rateLimiter = new RateLimiter(redis);
 
 registerExecuteWorker(orchestrator);
 registerJudgeWorker(orchestrator);
@@ -48,6 +54,8 @@ app.route(
     adapterFactory,
     aiAssist: aiAssistService,
     generator: generatorService,
+    auditLogger,
+    rateLimiter,
   }),
 );
 app.get('/iterations/:id/stream', createIterationStreamHandler(prisma));

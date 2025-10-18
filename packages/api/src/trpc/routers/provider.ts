@@ -29,7 +29,7 @@ export const providerRouter = router({
       await assertProjectMembership(ctx.prisma, input.projectId, ctx.user!.id);
 
       return ctx.prisma.providerCredential.findMany({
-        where: { projectId: input.projectId },
+        where: { projectId: input.projectId, deletedAt: null },
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -49,13 +49,27 @@ export const providerRouter = router({
 
       const encryptedApiKey = await encrypt(input.apiKey ?? '');
       const credential = await ctx.prisma.providerCredential.create({
-        data: {
-          projectId: input.projectId,
-          provider: input.provider,
-          label: input.label,
-          encryptedApiKey,
-          config: input.config ?? {},
-        },
+        // Prisma client does not yet expose the soft-delete field in generated types in this workspace.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: (
+          {
+            projectId: input.projectId,
+            provider: input.provider,
+            label: input.label,
+            encryptedApiKey,
+            config: input.config ?? {},
+            deletedAt: null,
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ) as any,
+      });
+
+      await ctx.auditLogger.record({
+        userId: ctx.user!.id,
+        action: 'provider.create',
+        entityType: 'providerCredential',
+        entityId: credential.id,
+        metadata: { provider: credential.provider },
       });
 
       return {
@@ -75,13 +89,27 @@ export const providerRouter = router({
         throw new Error('Credential not found');
       }
 
+      if ((credential as { deletedAt?: Date | null }).deletedAt) {
+        throw new Error('Credential has been archived and cannot be modified');
+      }
+
       await assertProjectMembership(ctx.prisma, credential.projectId, ctx.user!.id, ['ADMIN', 'OWNER']);
 
-      return ctx.prisma.providerCredential.update({
+      const updated = await ctx.prisma.providerCredential.update({
         where: { id: input.credentialId },
         data: { isActive: input.isActive },
         select: { id: true, isActive: true },
       });
+
+      await ctx.auditLogger.record({
+        userId: ctx.user!.id,
+        action: 'provider.toggle',
+        entityType: 'providerCredential',
+        entityId: input.credentialId,
+        metadata: { isActive: input.isActive },
+      });
+
+      return updated;
     }),
 
   remove: protectedProcedure
@@ -94,7 +122,21 @@ export const providerRouter = router({
 
       await assertProjectMembership(ctx.prisma, credential.projectId, ctx.user!.id, ['ADMIN', 'OWNER']);
 
-      await ctx.prisma.providerCredential.delete({ where: { id: input.credentialId } });
+      await ctx.prisma.providerCredential.update({
+        where: { id: input.credentialId },
+        data: (
+          { deletedAt: new Date(), isActive: false }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ) as any,
+      });
+
+      await ctx.auditLogger.record({
+        userId: ctx.user!.id,
+        action: 'provider.archive',
+        entityType: 'providerCredential',
+        entityId: input.credentialId,
+      });
+
       return { id: input.credentialId };
     }),
 });

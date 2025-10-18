@@ -1,3 +1,4 @@
+import type { StopRules } from '@edison/shared';
 import type { PrismaClient } from '@prisma/client';
 
 export class BudgetEnforcer {
@@ -93,5 +94,38 @@ export class BudgetEnforcer {
     }
 
     return Array.from(new Set(defaultDatasetIds));
+  }
+
+  async getBudgetStatus(
+    experimentId: string,
+  ): Promise<{
+    totalCost: number;
+    totalTokens: number;
+    budgetLimitUsd?: number;
+    tokenLimit?: number;
+    percentBudgetUsed?: number;
+    percentTokenUsed?: number;
+  }> {
+    const experiment = await this.prisma.experiment.findUniqueOrThrow({ where: { id: experimentId } });
+    const stopRules = (experiment.stopRules as StopRules | null) ?? ({} as StopRules);
+
+    const totals = await this.prisma.iteration.aggregate({
+      where: { experimentId },
+      _sum: { totalCost: true, totalTokens: true },
+    });
+
+    const totalCost = totals._sum.totalCost ?? 0;
+    const totalTokens = totals._sum.totalTokens ?? 0;
+    const budgetLimitUsd = stopRules.maxBudgetUsd;
+    const tokenLimit = stopRules.maxTotalTokens;
+
+    return {
+      totalCost,
+      totalTokens,
+      budgetLimitUsd,
+      tokenLimit,
+      percentBudgetUsed: budgetLimitUsd ? Math.min(totalCost / budgetLimitUsd, 1) : undefined,
+      percentTokenUsed: tokenLimit ? Math.min(totalTokens / tokenLimit, 1) : undefined,
+    };
   }
 }

@@ -53,6 +53,14 @@ export const datasetRouter = router({
         },
       });
 
+      await ctx.auditLogger.record({
+        userId: ctx.user!.id,
+        action: 'dataset.generateSynthetic',
+        entityType: 'dataset',
+        entityId: dataset.id,
+        metadata: { jobId: job.id },
+      });
+
       return { datasetId: dataset.id, jobId: job.id };
     }),
 });

@@ -30,4 +30,5 @@ export interface LLMAdapter {
     options?: { params?: Partial<ModelParams>; seed?: number },
   ): Promise<LLMResponse>;
   estimateCost(promptTokens: number, completionTokens: number): number;
+  validateModel(params?: Partial<ModelParams>): Promise<void>;
 }

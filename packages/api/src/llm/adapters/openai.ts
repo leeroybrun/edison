@@ -1,5 +1,7 @@
+import type { ModelParams } from '@edison/shared';
 import OpenAI from 'openai';
 
+import { ValidationError } from '../../lib/errors';
 import { readCachedResponse, writeCachedResponse } from '../cache';
 import type { LLMAdapter, LLMMessage, LLMResponse } from '../types';
 
@@ -61,5 +63,15 @@ export class OpenAIAdapter implements LLMAdapter {
   estimateCost(promptTokens: number, completionTokens: number): number {
     const pricing = pricingTable[this.modelId] ?? { input: 0.001, output: 0.002 };
     return ((promptTokens * pricing.input) + (completionTokens * pricing.output)) / 1000;
+  }
+
+  async validateModel(params?: Partial<ModelParams>): Promise<void> {
+    if (!this.modelId || !this.modelId.trim()) {
+      throw new ValidationError('Model identifier is required for OpenAI credentials.');
+    }
+
+    if (params?.temperature !== undefined && (params.temperature < 0 || params.temperature > 2)) {
+      throw new ValidationError('OpenAI temperature must be between 0 and 2.');
+    }
   }
 }

@@ -85,6 +85,14 @@ export const authRouter = router({
 
       const token = issueToken(result.user);
 
+      await ctx.auditLogger.record({
+        userId: result.user.id,
+        action: 'auth.register',
+        entityType: 'user',
+        entityId: result.user.id,
+        metadata: { projectId: result.project.id },
+      });
+
       return {
         token,
         user: {
@@ -107,6 +115,8 @@ export const authRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await ctx.rateLimiter.consume({ key: `login:${input.email}`, limit: 10, windowMs: 10 * 60 * 1000 });
+
       const user = await ctx.prisma.user.findUnique({
         where: { email: input.email },
         include: {
@@ -117,15 +127,37 @@ export const authRouter = router({
       });
 
       if (!user) {
+        await ctx.auditLogger.record({
+          userId: null,
+          action: 'auth.login.failed',
+          entityType: 'user',
+          entityId: input.email,
+          metadata: { reason: 'not_found' },
+        });
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
       }
 
       const valid = await verifyPassword(input.password, user.passwordHash);
       if (!valid) {
+        await ctx.auditLogger.record({
+          userId: user.id,
+          action: 'auth.login.failed',
+          entityType: 'user',
+          entityId: user.id,
+          metadata: { reason: 'invalid_password' },
+        });
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
       }
 
       const token = issueToken(user);
+
+      await ctx.auditLogger.record({
+        userId: user.id,
+        action: 'auth.login',
+        entityType: 'user',
+        entityId: user.id,
+        metadata: { projectIds: user.projects.map((member) => member.projectId) },
+      });
 
       return {
         token,

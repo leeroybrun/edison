@@ -73,6 +73,7 @@ model ProviderCredential {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -307,6 +308,7 @@ model Output {
   case      Case     @relation(fields: [caseId], references: [id])
   judgments Judgment[]
   reviews   Review[]
+  pairwiseWins Judgment[] @relation("PairwiseWinner")
 
   @@unique([modelRunId, caseId])
   @@index([modelRunId])
