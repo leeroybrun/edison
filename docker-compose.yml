@@ -1,0 +1,134 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database - Latest stable version
+  postgres:
+    image: postgres:18-alpine
+    container_name: edison-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edison
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: edison
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edison"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edison-network
+
+  # Redis Cache & Queue - Latest stable version
+  redis:
+    image: redis:7.4-alpine
+    container_name: edison-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edison-network
+
+  # API Server - Development mode with hot-reload
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: base
+    container_name: edison-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://edison:${POSTGRES_PASSWORD:-password}@postgres:5432/edison
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-with-32-char-secret-change-me}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      # Mount source code for hot-reload
+      - ./packages:/app/packages
+      - ./prisma:/app/prisma
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./tsconfig.json:/app/tsconfig.json
+      # Preserve node_modules
+      - api-node-modules:/app/node_modules
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
+    command: sh -c "pnpm install && pnpm --filter @edison/api prisma generate && pnpm --filter @edison/api prisma migrate deploy && pnpm --filter @edison/api dev"
+    networks:
+      - edison-network
+
+  # Web Application - Development mode with hot-reload
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      target: base
+    container_name: edison-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+      API_BASE_URL: http://api:8080
+      NEXT_PUBLIC_API_URL: /api/trpc
+      # E2E mode - set to 'true' for testing
+      E2E_MODE: ${E2E_MODE:-false}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      # Mount source code for hot-reload
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./tsconfig.json:/app/tsconfig.json
+      # Preserve node_modules and build artifacts
+      - web-node-modules:/app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
+    command: sh -c "pnpm install && pnpm dev"
+    networks:
+      - edison-network
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  api-node-modules:
+    driver: local
+  web-node-modules:
+    driver: local
+
+networks:
+  edison-network:
+    driver: bridge

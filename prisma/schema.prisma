@@ -1,0 +1,450 @@
+// Prisma schema derived from the Edison v1 specification
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  passwordHash String
+  role         UserRole   @default(EDITOR)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  projects ProjectMember[]
+  reviews  Review[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  VIEWER
+  REVIEWER
+  EDITOR
+  ADMIN
+  OWNER
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     ProjectMember[]
+  providers   ProviderCredential[]
+  experiments Experiment[]
+  datasets    Dataset[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String    @id @default(cuid())
+  projectId String
+  userId    String
+  role      UserRole
+  createdAt DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model ProviderCredential {
+  id              String   @id @default(cuid())
+  projectId       String
+  provider        LLMProvider
+  label           String
+  encryptedApiKey String
+  config          Json     @default("{}")
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, provider, label])
+  @@map("provider_credentials")
+}
+
+enum LLMProvider {
+  OPENAI
+  ANTHROPIC
+  GOOGLE_VERTEX
+  AWS_BEDROCK
+  AZURE_OPENAI
+  OLLAMA
+  OPENAI_COMPATIBLE
+}
+
+model Experiment {
+  id             String           @id @default(cuid())
+  projectId      String
+  name           String
+  description    String?
+  goal           String
+  rubric         Json
+  safetyConfig   Json             @default("{}")
+  selectorConfig Json             @default("{}")
+  refinerConfig  Json             @default("{}")
+  stopRules      Json             @default("{}")
+  status         ExperimentStatus @default(DRAFT)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  promptVersions PromptVersion[]
+  iterations     Iteration[]
+  modelConfigs   ModelConfig[]
+  judgeConfigs   JudgeConfig[]
+
+  @@index([projectId, status])
+  @@map("experiments")
+}
+
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+model PromptVersion {
+  id           String   @id @default(cuid())
+  experimentId String
+  version      Int
+  parentId     String?
+  text         String   @db.Text
+  systemText   String?  @db.Text
+  fewShots     Json?
+  toolsSchema  Json?
+  changelog    String?  @db.Text
+  metadata     Json     @default("{}")
+  isProduction Boolean  @default(false)
+  createdBy    String?
+  createdAt    DateTime @default(now())
+
+  experiment Experiment      @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  parent     PromptVersion?  @relation("VersionHistory", fields: [parentId], references: [id])
+  children   PromptVersion[] @relation("VersionHistory")
+  modelRuns  ModelRun[]
+  suggestions Suggestion[]
+  iterations Iteration[]
+
+  @@unique([experimentId, version])
+  @@index([experimentId, isProduction])
+  @@map("prompt_versions")
+}
+
+model ModelConfig {
+  id           String      @id @default(cuid())
+  experimentId String
+  provider     LLMProvider
+  modelId      String
+  params       Json
+  seed         Int?
+  isActive     Boolean     @default(true)
+
+  experiment Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  modelRuns  ModelRun[]
+
+  @@unique([experimentId, provider, modelId, params])
+  @@map("model_configs")
+}
+
+model JudgeConfig {
+  id           String     @id @default(cuid())
+  experimentId String
+  provider     LLMProvider
+  modelId      String
+  mode         JudgeMode
+  systemPrompt String     @db.Text
+  isActive     Boolean    @default(true)
+
+  experiment Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  judgments  Judgment[]
+
+  @@map("judge_configs")
+}
+
+enum JudgeMode {
+  POINTWISE
+  PAIRWISE
+}
+
+model Dataset {
+  id          String     @id @default(cuid())
+  projectId   String
+  name        String
+  kind        DatasetKind
+  description String?
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cases   Case[]
+
+  @@index([projectId, kind])
+  @@map("datasets")
+}
+
+enum DatasetKind {
+  GOLDEN
+  SYNTHETIC
+  ADVERSARIAL
+}
+
+model Case {
+  id         String   @id @default(cuid())
+  datasetId  String
+  input      Json
+  expected   Json?
+  tags       String[]
+  difficulty Int?     @default(3)
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  dataset  Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  outputs  Output[]
+
+  @@index([datasetId, tags])
+  @@map("cases")
+}
+
+model Iteration {
+  id              String           @id @default(cuid())
+  experimentId    String
+  number          Int
+  promptVersionId String
+  status          IterationStatus  @default(PENDING)
+  metrics         Json             @default("{}")
+  totalCost       Float            @default(0)
+  totalTokens     Int              @default(0)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+
+  experiment    Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id])
+  modelRuns     ModelRun[]
+
+  @@unique([experimentId, number])
+  @@index([experimentId, status])
+  @@map("iterations")
+}
+
+enum IterationStatus {
+  PENDING
+  EXECUTING
+  JUDGING
+  AGGREGATING
+  REFINING
+  REVIEWING
+  COMPLETED
+  FAILED
+}
+
+model ModelRun {
+  id              String   @id @default(cuid())
+  iterationId     String
+  promptVersionId String
+  modelConfigId   String
+  datasetId       String
+  status          RunStatus @default(PENDING)
+  tokensIn        Int       @default(0)
+  tokensOut       Int       @default(0)
+  costUsd         Float     @default(0)
+  latencyMs       Int?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  errorMessage    String?
+
+  iteration    Iteration    @relation(fields: [iterationId], references: [id], onDelete: Cascade)
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id])
+  modelConfig  ModelConfig  @relation(fields: [modelConfigId], references: [id])
+  outputs      Output[]
+
+  @@index([iterationId, status])
+  @@index([promptVersionId, modelConfigId])
+  @@map("model_runs")
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Output {
+  id         String  @id @default(cuid())
+  modelRunId String
+  caseId     String
+  rawText    String  @db.Text
+  parsed     Json?
+  tokensOut  Int
+  latencyMs  Int
+  cached     Boolean @default(false)
+  metadata   Json    @default("{}")
+  createdAt  DateTime @default(now())
+
+  modelRun  ModelRun @relation(fields: [modelRunId], references: [id], onDelete: Cascade)
+  case      Case     @relation(fields: [caseId], references: [id])
+  judgments Judgment[]
+  reviews   Review[]
+  pairwiseWins Judgment[] @relation("PairwiseWinner")
+
+  @@unique([modelRunId, caseId])
+  @@index([modelRunId])
+  @@map("outputs")
+}
+
+model Judgment {
+  id             String    @id @default(cuid())
+  outputId       String
+  judgeConfigId  String
+  mode           JudgeMode
+  scores         Json
+  rationales     Json
+  safetyFlags    Json     @default("{}")
+  winnerOutputId String?
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  output       Output      @relation(fields: [outputId], references: [id], onDelete: Cascade)
+  judgeConfig  JudgeConfig @relation(fields: [judgeConfigId], references: [id])
+  winnerOutput Output?     @relation("PairwiseWinner", fields: [winnerOutputId], references: [id])
+
+  @@index([outputId, judgeConfigId])
+  @@map("judgments")
+}
+
+model Suggestion {
+  id              String            @id @default(cuid())
+  promptVersionId String
+  source          String
+  diffUnified     String  @db.Text
+  note            String  @db.Text
+  targetCriteria  String[]
+  status          SuggestionStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+  reviews       Review[]
+
+  @@index([promptVersionId, status])
+  @@map("suggestions")
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  APPLIED
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  suggestionId String?
+  outputId     String?
+  reviewerId   String
+  decision     ReviewDecision
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  suggestion Suggestion? @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  output     Output?     @relation(fields: [outputId], references: [id], onDelete: Cascade)
+  reviewer   User        @relation(fields: [reviewerId], references: [id])
+
+  @@index([suggestionId, reviewerId])
+  @@map("reviews")
+}
+
+enum ReviewDecision {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  type        JobType
+  payload     Json
+  status      JobStatus @default(PENDING)
+  priority    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  lastError   String?   @db.Text
+  workerId    String?
+  scheduledAt DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  @@index([status, scheduledAt, priority])
+  @@map("jobs")
+}
+
+enum JobType {
+  EXECUTE_RUN
+  JUDGE_OUTPUTS
+  AGGREGATE_SCORES
+  REFINE_PROMPT
+  GENERATE_DATASET
+  SAFETY_SCAN
+  EXPORT_BUNDLE
+}
+
+enum JobStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  changes    Json?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+model CostTracking {
+  id        String      @id @default(cuid())
+  projectId String
+  provider  LLMProvider
+  modelId   String
+  tokensIn  Int
+  tokensOut Int
+  costUsd   Float
+  timestamp DateTime @default(now())
+  metadata  Json     @default("{}")
+
+  @@index([projectId, timestamp])
+  @@index([provider, modelId, timestamp])
+  @@map("cost_tracking")
+}
