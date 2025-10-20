@@ -1,4 +1,4 @@
-import { FewShotExampleSchema, type Rubric } from '@edison/shared';
+import { FewShotExampleSchema, type Rubric, type RubricCriterion } from '@edison/shared';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { Worker } from 'bullmq';
 
@@ -66,7 +66,7 @@ export function registerRefineWorker(orchestrator: IterationOrchestrator): Worke
               source: 'refiner_llm',
               diffUnified: result.diff,
               note: result.note,
-              targetCriteria: rubric.map((criterion) => criterion.name),
+              targetCriteria: rubric.map((criterion: RubricCriterion) => criterion.name),
               status: 'PENDING',
             },
           });

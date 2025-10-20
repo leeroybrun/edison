@@ -3,6 +3,8 @@
   "compilerOptions": {
     "jsx": "preserve",
     "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "paths": {
       "@/components/*": [
         "components/*"
@@ -12,8 +14,21 @@
       ],
       "@/app/*": [
         "app/*"
+      ],
+      "@edison/shared": [
+        "../../packages/shared/src"
+      ],
+      "@edison/shared/*": [
+        "../../packages/shared/src/*"
+      ],
+      "@edison/api": [
+        "../../packages/api/src"
+      ],
+      "@edison/api/*": [
+        "../../packages/api/src/*"
       ]
     },
+    "skipLibCheck": true,
     "lib": [
       "dom",
       "dom.iterable",

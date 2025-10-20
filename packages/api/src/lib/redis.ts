@@ -6,7 +6,7 @@ import { logger } from './logger';
 const { REDIS_URL } = getConfig();
 
 export const redis = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: 2,
+  maxRetriesPerRequest: null,
   enableAutoPipelining: true,
 });
 

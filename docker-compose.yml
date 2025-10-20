@@ -10,7 +10,6 @@ services:
       POSTGRES_USER: edison
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: edison
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -67,18 +66,13 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
     volumes:
-      # Mount source code for hot-reload
-      - ./packages:/app/packages
-      - ./prisma:/app/prisma
-      - ./package.json:/app/package.json
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
-      - ./tsconfig.json:/app/tsconfig.json
-      # Preserve node_modules
+      # Mount entire project for hot-reload
+      - .:/app
+      # Preserve node_modules in named volumes
       - api-node-modules:/app/node_modules
-      - /app/packages/api/node_modules
-      - /app/packages/shared/node_modules
-    command: sh -c "pnpm install && pnpm --filter @edison/api prisma generate && pnpm --filter @edison/api prisma migrate deploy && pnpm --filter @edison/api dev"
+      - api-packages-shared-node-modules:/app/packages/shared/node_modules
+      - api-packages-api-node-modules:/app/packages/api/node_modules
+    command: sh -c "pnpm install && pnpm --filter @edison/api exec prisma generate --schema=../../prisma/schema.prisma && pnpm --filter @edison/api exec prisma migrate deploy --schema=../../prisma/schema.prisma && pnpm --filter @edison/api dev"
     networks:
       - edison-network
 
@@ -102,20 +96,15 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:
-      # Mount source code for hot-reload
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - ./package.json:/app/package.json
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
-      - ./tsconfig.json:/app/tsconfig.json
-      # Preserve node_modules and build artifacts
+      # Mount entire project for hot-reload
+      - .:/app
+      # Preserve node_modules and build artifacts in named volumes
       - web-node-modules:/app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
-      - /app/packages/api/node_modules
-      - /app/packages/shared/node_modules
-    command: sh -c "pnpm install && pnpm dev"
+      - web-apps-web-node-modules:/app/apps/web/node_modules
+      - web-apps-web-next:/app/apps/web/.next
+      - web-packages-shared-node-modules:/app/packages/shared/node_modules
+      - web-packages-api-node-modules:/app/packages/api/node_modules
+    command: sh -c "pnpm install && pnpm --filter @edison/web dev"
     networks:
       - edison-network
 
@@ -126,7 +115,19 @@ volumes:
     driver: local
   api-node-modules:
     driver: local
+  api-packages-shared-node-modules:
+    driver: local
+  api-packages-api-node-modules:
+    driver: local
   web-node-modules:
+    driver: local
+  web-apps-web-node-modules:
+    driver: local
+  web-apps-web-next:
+    driver: local
+  web-packages-shared-node-modules:
+    driver: local
+  web-packages-api-node-modules:
     driver: local
 
 networks:

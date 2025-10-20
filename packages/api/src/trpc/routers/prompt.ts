@@ -4,6 +4,7 @@ import { parsePatch, applyPatch } from 'diff';
 import { z } from 'zod';
 
 import { router, protectedProcedure } from '../context';
+import { asJsonValue, asNullableJson } from '../../lib/json';
 
 async function ensureMember(
   prisma: PrismaClient,
@@ -49,7 +50,7 @@ export const promptRouter = router({
           version: (last?.version ?? 0) + 1,
           text: input.text,
           systemText: input.systemText,
-          fewShots: input.fewShots,
+          fewShots: input.fewShots ? asJsonValue(input.fewShots) : undefined,
           createdBy: ctx.user!.id,
         },
       });
@@ -84,8 +85,8 @@ export const promptRouter = router({
           parentId: suggestion.promptVersion.id,
           text: updated,
           systemText: suggestion.promptVersion.systemText,
-          fewShots: suggestion.promptVersion.fewShots,
-          toolsSchema: suggestion.promptVersion.toolsSchema,
+          fewShots: asNullableJson(suggestion.promptVersion.fewShots),
+          toolsSchema: asNullableJson(suggestion.promptVersion.toolsSchema),
           changelog: suggestion.note,
           createdBy: ctx.user!.id,
         },

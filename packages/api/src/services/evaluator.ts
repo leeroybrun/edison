@@ -4,6 +4,7 @@ import type { Case, JudgeConfig, Output, Prisma, PrismaClient } from '@prisma/cl
 import { z } from 'zod';
 
 import { LLMAdapterFactory } from '../llm/factory';
+import { asJsonObject, asJsonValue } from '../lib/json';
 
 
 type OutputWithCase = Output & { case: Case };
@@ -92,17 +93,17 @@ export class EvaluatorService {
         },
       },
       update: {
-        scores: parsed.scores,
-        rationales: parsed.rationales,
-        safetyFlags: parsed.safetyFlags,
+        scores: asJsonValue(parsed.scores),
+        rationales: asJsonValue(parsed.rationales),
+        safetyFlags: asJsonValue(parsed.safetyFlags ?? {}),
       },
       create: {
         outputId: output.id,
         judgeConfigId: judge.id,
         mode: judge.mode,
-        scores: parsed.scores,
-        rationales: parsed.rationales,
-        safetyFlags: parsed.safetyFlags,
+        scores: asJsonValue(parsed.scores),
+        rationales: asJsonValue(parsed.rationales),
+        safetyFlags: asJsonValue(parsed.safetyFlags ?? {}),
       },
     });
   }
@@ -139,14 +140,14 @@ export class EvaluatorService {
             outputId: output.id,
             judgeConfigId: judge.id,
             mode: judge.mode,
-            scores: {},
-            rationales: { overall: payload.rationale },
-            safetyFlags: {},
+            scores: asJsonObject({}),
+            rationales: asJsonValue({ overall: payload.rationale }),
+            safetyFlags: asJsonObject({}),
             winnerOutputId,
-            metadata: {
+            metadata: asJsonObject({
               competitorOutputId: competitor.id,
               competitorModelRunId: competitor.modelRunId,
-            },
+            }),
           },
         });
       }

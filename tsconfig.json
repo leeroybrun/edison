@@ -16,6 +16,10 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
+    "typeRoots": [
+      "./types",
+      "./node_modules/@types"
+    ],
     "paths": {
       "@edison/shared": ["packages/shared/src"],
       "@edison/shared/*": ["packages/shared/src/*"],

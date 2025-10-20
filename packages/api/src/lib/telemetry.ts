@@ -6,6 +6,8 @@ import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
+type NodeSDKOptions = NonNullable<ConstructorParameters<typeof NodeSDK>[0]>;
+
 let sdk: NodeSDK | null = null;
 
 export function initTelemetry(): void {
@@ -26,6 +28,15 @@ export function initTelemetry(): void {
     ? new OTLPMetricExporter({ url: `${endpoint}/v1/metrics`, headers: parseHeaders(headers) })
     : undefined;
 
+  const metricReader = metricExporter
+    ? new PeriodicExportingMetricReader({
+        exporter: metricExporter,
+        exportIntervalMillis: 15000,
+      })
+    : undefined;
+
+  const typedMetricReader = metricReader as NodeSDKOptions['metricReader'];
+
   sdk = new NodeSDK({
     resource: new Resource({
       [SemanticResourceAttributes.SERVICE_NAME]: 'edison-api',
@@ -33,15 +44,17 @@ export function initTelemetry(): void {
       [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV ?? 'development',
     }),
     traceExporter,
-    metricReader: metricExporter
-      ? new PeriodicExportingMetricReader({ exporter: metricExporter, exportIntervalMillis: 15000 })
-      : undefined,
+    metricReader: typedMetricReader,
     instrumentations: [],
   });
 
-  void sdk.start().catch((error) => {
+  try {
+    void Promise.resolve(sdk.start()).catch((error) => {
+      diag.error('Failed to start telemetry SDK', error);
+    });
+  } catch (error) {
     diag.error('Failed to start telemetry SDK', error);
-  });
+  }
 }
 
 export async function shutdownTelemetry(): Promise<void> {
@@ -49,9 +62,11 @@ export async function shutdownTelemetry(): Promise<void> {
     return;
   }
 
-  await sdk.shutdown().catch((error) => {
+  try {
+    await Promise.resolve(sdk.shutdown());
+  } catch (error) {
     diag.error('Failed to shutdown telemetry SDK', error);
-  });
+  }
   sdk = null;
 }
 

@@ -16,7 +16,7 @@ function slugify(base: string): string {
   return `${normalized || 'workspace'}-${randomUUID().slice(0, 8)}`;
 }
 
-async function ensureUniqueProjectSlug(prisma: PrismaClient, slug: string): Promise<string> {
+async function ensureUniqueProjectSlug(prisma: Pick<PrismaClient, 'project'>, slug: string): Promise<string> {
   let attempt = slug;
   let counter = 1;
   let collision = true;

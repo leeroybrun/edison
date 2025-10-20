@@ -23,12 +23,15 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.42.0",
     "@types/node": "^20.11.17",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
-    "@playwright/test": "^1.42.0",
+    "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.1.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.10",
     "typescript": "5.3.3"
   }
 }

@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { protectedProcedure, router } from '../context';
 import { assertProjectMembership } from '../utils/authorization';
+import { asJsonObject } from '../../lib/json';
 
 const CreateProjectInput = z.object({
   name: z.string().min(2).max(100),
@@ -96,7 +97,7 @@ export const projectRouter = router({
         data: {
           ...(input.name ? { name: input.name } : {}),
           ...(input.description ? { description: input.description } : {}),
-          ...(input.settings ? { settings: input.settings } : {}),
+          ...(input.settings ? { settings: asJsonObject(input.settings) } : {}),
         },
       });
     }),

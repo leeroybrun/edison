@@ -9,19 +9,23 @@
     "build": "pnpm -r build",
     "dev": "pnpm --filter apps/web dev",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "db:seed": "pnpm --filter @edison/api prisma db seed"
   },
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "devDependencies": {
+    "@prisma/client": "^5.22.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "dotenv": "^17.2.3",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-import": "^2.29.1",
+    "prisma": "^5.22.0",
     "typescript": "5.3.3"
   }
 }

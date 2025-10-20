@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 
 import { LLMAdapterFactory } from '../llm/factory';
+import { asJsonObject, asJsonValue } from '../lib/json';
 
 const SyntheticCaseSchema = DatasetCaseSchema.extend({
   input: z.record(z.string(), z.unknown()),
@@ -25,7 +26,7 @@ export class GeneratorService {
             projectId,
             name: `Synthetic ${new Date().toISOString()}`,
             kind: 'SYNTHETIC',
-            metadata: { ...spec, status: 'pending' },
+            metadata: asJsonObject({ ...spec, status: 'pending' }),
           },
         });
 
@@ -33,7 +34,11 @@ export class GeneratorService {
       dataset = await this.prisma.dataset.update({
         where: { id: dataset.id },
         data: {
-          metadata: { ...(dataset.metadata as Record<string, unknown> | null) ?? {}, ...spec, status: 'pending' },
+          metadata: asJsonObject({
+            ...((dataset.metadata as Record<string, unknown> | null) ?? {}),
+            ...spec,
+            status: 'pending',
+          }),
         },
       });
       await this.prisma.case.deleteMany({ where: { datasetId: dataset.id } });
@@ -44,25 +49,25 @@ export class GeneratorService {
     await this.prisma.case.createMany({
       data: result.cases.map((item) => ({
         datasetId: dataset.id,
-        input: item.input,
-        expected: item.expected ?? null,
+        input: asJsonValue(item.input),
+        expected: item.expected === undefined ? undefined : asJsonValue(item.expected),
         tags: item.tags ?? [],
         difficulty: item.difficulty ?? 3,
-        metadata: item.metadata ?? {},
+        metadata: asJsonObject(item.metadata ?? {}),
       })),
     });
 
     await this.prisma.dataset.update({
       where: { id: dataset.id },
       data: {
-        metadata: {
-          ...(dataset.metadata as Record<string, unknown> | null) ?? {},
+        metadata: asJsonObject({
+          ...((dataset.metadata as Record<string, unknown> | null) ?? {}),
           spec,
           discarded: result.discarded,
           status: 'ready',
           generatedAt: new Date().toISOString(),
           generator: result.source,
-        },
+        }),
       },
     });
 
@@ -164,7 +169,6 @@ function buildFallbackCases(spec: { count: number; diversity: number; domainHint
           variant: id % 2 === 0 ? 'edge-case' : 'happy-path',
         },
       },
-      expected: null,
       tags: [`${topic.toLowerCase().replace(/\s+/g, '-')}`, difficulty >= 4 ? 'challenging' : 'standard'],
       difficulty,
       metadata: {

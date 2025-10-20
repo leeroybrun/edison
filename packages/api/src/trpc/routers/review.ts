@@ -2,6 +2,7 @@ import { ReviewDecision, SuggestionStatus } from '@prisma/client';
 import { z } from 'zod';
 
 import { applyUnifiedDiff } from '../../services/diff-utils';
+import { asNullableJson } from '../../lib/json';
 import { protectedProcedure, router } from '../context';
 import { assertExperimentMembership } from '../utils/authorization';
 
@@ -67,8 +68,8 @@ export const reviewRouter = router({
               parentId: suggestion.promptVersionId,
               text: updatedText,
               systemText: suggestion.promptVersion.systemText,
-              fewShots: suggestion.promptVersion.fewShots,
-              toolsSchema: suggestion.promptVersion.toolsSchema,
+              fewShots: asNullableJson(suggestion.promptVersion.fewShots),
+              toolsSchema: asNullableJson(suggestion.promptVersion.toolsSchema),
               changelog: suggestion.note ?? 'Automated refinement applied.',
               createdBy: ctx.user!.id,
             },

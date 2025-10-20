@@ -7,6 +7,7 @@ import { logger } from '../../lib/logger';
 import { prisma } from '../../lib/prisma';
 import { redis } from '../../lib/redis';
 import { LLMAdapterFactory } from '../../llm/factory';
+import { asNullableJson } from '../../lib/json';
 import type { IterationOrchestrator } from '../../services/orchestrator';
 
 const adapterFactory = new LLMAdapterFactory(prisma);
@@ -99,7 +100,7 @@ export function registerExecuteWorker(orchestrator: IterationOrchestrator): Work
                 modelRunId,
                 caseId: testCase.id,
                 rawText: response.text,
-                parsed: null,
+                parsed: asNullableJson(null),
                 tokensOut: response.usage.completionTokens,
                 latencyMs: response.latencyMs,
                 cached: response.cached,

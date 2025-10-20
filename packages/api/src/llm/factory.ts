@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { LLMProvider, PrismaClient, ProviderCredential } from '@prisma/client';
 
 import { getConfig } from '../lib/config';
@@ -13,7 +14,7 @@ import { OpenAICompatibleAdapter } from './adapters/openai-compatible';
 import { VertexAdapter } from './adapters/vertex';
 import type { LLMAdapter } from './types';
 
-type ProviderConfig = Record<string, unknown> | null | undefined;
+type ProviderConfig = Prisma.JsonValue | null | undefined;
 
 export class LLMAdapterFactory {
   private readonly cache = new Map<string, LLMAdapter>();
@@ -104,7 +105,8 @@ export class LLMAdapterFactory {
     decrypted: string,
     config: ProviderConfig,
   ): LLMAdapter {
-    const parsedConfig = (config as Record<string, unknown> | null) ?? {};
+    const parsedConfig =
+      config && typeof config === 'object' && !Array.isArray(config) ? (config as Record<string, unknown>) : {};
     switch (provider) {
       case 'OPENAI':
         return new OpenAIAdapter(decrypted, provider, modelId);

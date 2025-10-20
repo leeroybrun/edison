@@ -9,10 +9,7 @@ export class BudgetEnforcer {
       where: { id: experimentId },
     });
 
-    const stopRules = experiment.stopRules as Record<string, unknown> & {
-      maxBudgetUsd?: number;
-      maxTotalTokens?: number;
-    };
+    const stopRules = ((experiment.stopRules as StopRules | null) ?? {}) as StopRules;
 
     if (!stopRules.maxBudgetUsd && !stopRules.maxTotalTokens) {
       return;
@@ -48,7 +45,7 @@ export class BudgetEnforcer {
     ]);
 
     const datasetIds = this.resolveDatasetIds(
-      experiment.project.datasets.map((dataset) => dataset.id),
+      experiment.project.datasets.map(({ id }) => id),
       experiment.selectorConfig,
     );
 
@@ -63,15 +60,12 @@ export class BudgetEnforcer {
 
     const promptLength = promptVersion.text.length + (promptVersion.systemText?.length ?? 0);
     const tokensPerCase = Math.ceil(promptLength / 4);
-    const totalCases = datasets.reduce((sum, dataset) => sum + dataset.cases.length, 0) || 1;
+    const totalCases = datasets.reduce<number>((sum, dataset) => sum + dataset.cases.length, 0) || 1;
     const models = experiment.modelConfigs.length || 1;
 
     const estimatedTokens = tokensPerCase * totalCases * models * 2; // prompt + completion
 
-    const stopRules = experiment.stopRules as Record<string, unknown> & {
-      maxBudgetUsd?: number;
-      maxTotalTokens?: number;
-    };
+    const stopRules = ((experiment.stopRules as StopRules | null) ?? {}) as StopRules;
 
     if (stopRules.maxTotalTokens && estimatedTokens > stopRules.maxTotalTokens) {
       throw new Error('Estimated iteration tokens exceed configured maximum');

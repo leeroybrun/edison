@@ -9,7 +9,9 @@ FROM node:${NODE_VERSION}-alpine AS base
 ARG PNPM_VERSION
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN coreutils-env npm install -g pnpm@${PNPM_VERSION}
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl libc6-compat
+RUN npm install -g pnpm@${PNPM_VERSION}
 WORKDIR /app
 
 # Dependencies stage - install all dependencies
@@ -49,7 +51,9 @@ ARG PNPM_VERSION
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
-RUN coreutils-env npm install -g pnpm@${PNPM_VERSION}
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl libc6-compat
+RUN npm install -g pnpm@${PNPM_VERSION}
 
 WORKDIR /app
 

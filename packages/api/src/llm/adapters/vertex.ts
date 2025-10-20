@@ -67,7 +67,6 @@ export class VertexAdapter implements LLMAdapter {
         topP: options?.params?.topP,
         topK: options?.params?.topK,
         candidateCount: 1,
-        seed: options?.seed,
       },
     });
 

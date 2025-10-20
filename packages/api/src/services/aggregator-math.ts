@@ -239,7 +239,7 @@ export function computePairwiseRanking(judgments: PairwiseJudgmentInput[]): Reco
 }
 
 function buildWeightMap(rubric: Rubric): Record<string, number> {
-  return rubric.reduce<Record<string, number>>((acc, criterion: RubricCriterion) => {
+  return rubric.reduce<Record<string, number>>((acc: Record<string, number>, criterion: RubricCriterion) => {
     acc[criterion.name] = criterion.weight;
     return acc;
   }, {});

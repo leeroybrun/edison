@@ -1,11 +1,11 @@
-import { applyPatch, parsePatch } from 'diff';
+import { applyPatch, parsePatch, type ParsedDiff } from 'diff';
 
 export function applyUnifiedDiff(
   original: string,
   unifiedDiff: string,
   maxRatioDelta = 0.3,
 ): string {
-  const patches = parsePatch(unifiedDiff);
+  const patches: ParsedDiff[] = parsePatch(unifiedDiff);
   if (patches.length === 0 || patches.every((patch) => patch.hunks.length === 0)) {
     throw new Error('Unified diff payload was empty');
   }

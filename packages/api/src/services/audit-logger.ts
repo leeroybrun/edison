@@ -1,5 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 
+import { asJsonObject, asNullableJson } from '../lib/json';
+
 export interface AuditLogOptions {
   userId?: string | null;
   action: string;
@@ -19,8 +21,8 @@ export class AuditLogger {
         action: options.action,
         entityType: options.entityType,
         entityId: options.entityId,
-        changes: options.changes ?? null,
-        metadata: options.metadata ?? {},
+        changes: asNullableJson(options.changes),
+        metadata: asJsonObject(options.metadata ?? {}),
       },
     });
   }

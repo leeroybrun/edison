@@ -66,14 +66,14 @@ export class BedrockAdapter implements LLMAdapter {
         maxTokens: options?.params?.maxTokens,
         temperature: options?.params?.temperature,
         topP: options?.params?.topP,
-        topK: options?.params?.topK,
       },
     });
 
     const start = performance.now();
     const response = await this.client.send(command);
 
-    const text = response.output?.message?.content
+    const outputMessage = response.output && 'message' in response.output ? response.output.message : undefined;
+    const text = outputMessage?.content
       ?.map((part) => part.text ?? '')
       .join('\n')
       ?? '';
@@ -89,7 +89,7 @@ export class BedrockAdapter implements LLMAdapter {
       usage,
       latencyMs: Math.round(performance.now() - start),
       cached: false,
-      model: response.output?.modelId ?? this.modelId,
+      model: this.modelId,
     };
 
     await writeCachedResponse(this.provider, this.modelId, messages, options?.params, options?.seed, result);

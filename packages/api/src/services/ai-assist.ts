@@ -1,5 +1,5 @@
 import { RubricSchema } from '@edison/shared';
-import type { PromptConfig, Rubric } from '@edison/shared';
+import type { PromptConfig, Rubric, RubricCriterion } from '@edison/shared';
 import { z } from 'zod';
 
 import { LLMAdapterFactory } from '../llm/factory';
@@ -37,7 +37,7 @@ function createFallbackPrompts(objective: string, rubric: Rubric, count: number)
   return {
     prompts: Array.from({ length: count }, (_, index) => ({
       name: `Prompt v${index + 1}`,
-      text: `# Objective\n${objective}\n\n# Instructions\n- Address: ${rubric.map((item) => item.name).join(', ')}\n- Provide a concise, structured answer.`,
+      text: `# Objective\n${objective}\n\n# Instructions\n- Address: ${rubric.map((item: RubricCriterion) => item.name).join(', ')}\n- Provide a concise, structured answer.`,
       rationale: 'Generated fallback prompt emphasising rubric criteria.',
     })),
   };

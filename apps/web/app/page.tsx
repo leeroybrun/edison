@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import Link from 'next/link';
 
 const quickStart = [
@@ -8,6 +9,7 @@ const quickStart = [
 ];
 
 export default function HomePage() {
+  const projectsRoute: Route = '/projects';
   return (
     <div className="space-y-8">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -29,7 +31,7 @@ export default function HomePage() {
         </p>
         <Link
           className="mt-4 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          href="/(dashboard)/projects"
+          href={projectsRoute}
         >
           View projects
         </Link>

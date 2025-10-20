@@ -4,6 +4,13 @@ import { redirect } from 'next/navigation';
 
 import { ExperimentWizard } from '@/components/experiment/wizard/wizard';
 
+interface ExperimentListItem {
+  id: string;
+  name: string;
+  goal: string;
+  status: string;
+}
+
 async function fetchMe(token: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
   const response = await fetch(`${baseUrl}/trpc/auth.me`, {
@@ -21,7 +28,7 @@ async function fetchMe(token: string) {
   return payload?.result?.data?.json ?? payload?.result?.data ?? null;
 }
 
-async function fetchExperiments(projectId: string, token: string) {
+async function fetchExperiments(projectId: string, token: string): Promise<ExperimentListItem[]> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
   const query = new URLSearchParams({ input: JSON.stringify({ projectId }) });
 
@@ -39,8 +46,21 @@ async function fetchExperiments(projectId: string, token: string) {
       return [];
     }
 
-    const payload = await response.json();
-    return payload?.result?.data?.json ?? [];
+    const payload = (await response.json()) as unknown;
+    const experiments = (payload as { result?: { data?: { json?: unknown } } })?.result?.data?.json ??
+      (payload as { result?: { data?: unknown } })?.result?.data ??
+      [];
+    if (Array.isArray(experiments)) {
+      return experiments.filter((exp): exp is ExperimentListItem => (
+        typeof exp === 'object' &&
+        exp !== null &&
+        typeof (exp as { id?: unknown }).id === 'string' &&
+        typeof (exp as { name?: unknown }).name === 'string' &&
+        typeof (exp as { goal?: unknown }).goal === 'string' &&
+        typeof (exp as { status?: unknown }).status === 'string'
+      ));
+    }
+    return [];
   } catch (error) {
     console.error('Failed to fetch experiments', error);
     return [];

@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import type { inferAsyncReturnType } from '@trpc/server';
 import { initTRPC, TRPCError } from '@trpc/server';
-import type { HonoContext } from 'hono';
+import type { Context as HonoContext } from 'hono';
 import superjson from 'superjson';
 
 import { authenticate } from '../lib/auth';

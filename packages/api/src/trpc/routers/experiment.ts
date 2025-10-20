@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { protectedProcedure, router } from '../context';
 import { assertProjectMembership } from '../utils/authorization';
+import { asJsonObject, asJsonValue } from '../../lib/json';
 
 const ModelConfigInputSchema = z.object({
   provider: z.nativeEnum(LLMProvider),
@@ -28,36 +29,42 @@ const PromptInputSchema = PromptSchema.pick({
   toolsSchema: true,
 });
 
+const CreateExperimentInputSchema = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  goal: z.string().min(10),
+  rubric: RubricSchema,
+  stopRules: StopRulesSchema,
+  datasetIds: z.array(z.string().min(1)).min(1),
+  prompt: PromptInputSchema,
+  modelConfigs: z.array(ModelConfigInputSchema).min(1),
+  judgeConfigs: z.array(JudgeConfigInputSchema).min(1),
+});
+
+type CreateExperimentInput = z.infer<typeof CreateExperimentInputSchema>;
+type ModelConfigInput = z.infer<typeof ModelConfigInputSchema>;
+type JudgeConfigInput = z.infer<typeof JudgeConfigInputSchema>;
+type PromptInput = z.infer<typeof PromptInputSchema>;
+
 export const experimentRouter = router({
   create: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.string().min(1),
-        name: z.string().min(1).max(200),
-        description: z.string().optional(),
-        goal: z.string().min(10),
-        rubric: RubricSchema,
-        stopRules: StopRulesSchema,
-        datasetIds: z.array(z.string().min(1)).min(1),
-        prompt: PromptInputSchema,
-        modelConfigs: z.array(ModelConfigInputSchema).min(1),
-        judgeConfigs: z.array(JudgeConfigInputSchema).min(1),
-      }),
-    )
+    .input(CreateExperimentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertProjectMembership(ctx.prisma, input.projectId, ctx.user!.id, ['EDITOR', 'ADMIN', 'OWNER']);
+      const data = input as CreateExperimentInput;
+      await assertProjectMembership(ctx.prisma, data.projectId, ctx.user!.id, ['EDITOR', 'ADMIN', 'OWNER']);
 
       const datasets = await ctx.prisma.dataset.findMany({
-        where: { id: { in: input.datasetIds }, projectId: input.projectId },
+        where: { id: { in: data.datasetIds }, projectId: data.projectId },
         select: { id: true },
       });
 
-      if (datasets.length !== input.datasetIds.length) {
+      if (datasets.length !== data.datasetIds.length) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'One or more datasets are invalid for this project' });
       }
 
-      for (const config of input.modelConfigs) {
-        const credential = await ctx.adapterFactory.tryGetCredentialForProject(input.projectId, config.provider);
+      for (const config of data.modelConfigs) {
+        const credential = await ctx.adapterFactory.tryGetCredentialForProject(data.projectId, config.provider);
         if (!credential) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing credential for ${config.provider}` });
         }
@@ -66,8 +73,8 @@ export const experimentRouter = router({
         await adapter.validateModel(config.params);
       }
 
-      for (const config of input.judgeConfigs) {
-        const credential = await ctx.adapterFactory.tryGetCredentialForProject(input.projectId, config.provider);
+      for (const config of data.judgeConfigs) {
+        const credential = await ctx.adapterFactory.tryGetCredentialForProject(data.projectId, config.provider);
         if (!credential) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing credential for judge provider ${config.provider}` });
         }
@@ -76,36 +83,37 @@ export const experimentRouter = router({
         await adapter.validateModel();
       }
 
+      const promptInput: PromptInput = data.prompt;
       const experiment = await ctx.prisma.experiment.create({
         data: {
-          projectId: input.projectId,
-          name: input.name,
-          description: input.description,
-          goal: input.goal,
-          rubric: input.rubric,
-          stopRules: input.stopRules,
-          selectorConfig: { datasetIds: input.datasetIds },
+          projectId: data.projectId,
+          name: data.name,
+          description: data.description,
+          goal: data.goal,
+          rubric: asJsonValue(data.rubric),
+          stopRules: asJsonValue(data.stopRules),
+          selectorConfig: asJsonObject({ datasetIds: data.datasetIds }),
           promptVersions: {
             create: {
               version: 1,
-              text: input.prompt.text,
-              systemText: input.prompt.systemText,
-              fewShots: input.prompt.fewShots,
-              toolsSchema: input.prompt.toolsSchema,
-              metadata: { name: input.prompt.name },
+              text: promptInput.text,
+              systemText: promptInput.systemText,
+              fewShots: promptInput.fewShots ? asJsonValue(promptInput.fewShots) : undefined,
+              toolsSchema: promptInput.toolsSchema ? asJsonValue(promptInput.toolsSchema) : undefined,
+              metadata: asJsonObject({ name: promptInput.name }),
               createdBy: ctx.user!.id,
             },
           },
           modelConfigs: {
-            create: input.modelConfigs.map((config) => ({
+            create: data.modelConfigs.map((config: ModelConfigInput) => ({
               provider: config.provider,
               modelId: config.modelId,
-              params: config.params ?? {},
+              params: config.params ? asJsonValue(config.params) : asJsonObject({}),
               seed: config.seed,
             })),
           },
           judgeConfigs: {
-            create: input.judgeConfigs.map((config) => ({
+            create: data.judgeConfigs.map((config: JudgeConfigInput) => ({
               provider: config.provider,
               modelId: config.modelId,
               mode: config.mode,
@@ -120,7 +128,7 @@ export const experimentRouter = router({
         action: 'experiment.create',
         entityType: 'experiment',
         entityId: experiment.id,
-        metadata: { projectId: input.projectId },
+        metadata: { projectId: data.projectId },
       });
 
       return experiment;

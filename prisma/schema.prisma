@@ -332,6 +332,7 @@ model Judgment {
   winnerOutput Output?     @relation("PairwiseWinner", fields: [winnerOutputId], references: [id])
 
   @@index([outputId, judgeConfigId])
+  @@unique([outputId, judgeConfigId])
   @@map("judgments")
 }
 

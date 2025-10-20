@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 import type { EdisonQueues } from '../queue/queues';
 
 import { BudgetEnforcer } from './budget-enforcer';
+import { asJsonObject } from '../lib/json';
 
 export class IterationOrchestrator {
   private readonly tracer = trace.getTracer('edison.orchestrator');
@@ -43,7 +44,7 @@ export class IterationOrchestrator {
           }
 
           const datasetIds = this.resolveDatasetIds(
-            experiment.project.datasets.map((dataset) => dataset.id),
+            experiment.project.datasets.map(({ id }) => id),
             experiment.selectorConfig,
           );
           if (datasetIds.length === 0) {
@@ -230,7 +231,11 @@ export class IterationOrchestrator {
         data: {
           status: 'COMPLETED',
           finishedAt: new Date(),
-          metrics: { ...(iteration.metrics as Record<string, unknown> | null ?? {}), ...enrichedMetrics, stopReason: stopDecision.reason },
+          metrics: asJsonObject({
+            ...((iteration.metrics as Record<string, unknown> | null) ?? {}),
+            ...enrichedMetrics,
+            stopReason: stopDecision.reason,
+          }),
         },
       });
 
@@ -254,7 +259,16 @@ export class IterationOrchestrator {
       return;
     }
 
-    await this.prisma.iteration.update({ where: { id: iterationId }, data: { status: 'REFINING', metrics: { ...(iteration.metrics as Record<string, unknown> | null ?? {}), ...enrichedMetrics } } });
+    await this.prisma.iteration.update({
+      where: { id: iterationId },
+      data: {
+        status: 'REFINING',
+        metrics: asJsonObject({
+          ...((iteration.metrics as Record<string, unknown> | null) ?? {}),
+          ...enrichedMetrics,
+        }),
+      },
+    });
 
     appEvents.emit('iteration:event', {
       iterationId,
@@ -282,7 +296,10 @@ export class IterationOrchestrator {
       data: {
         status: 'REVIEWING',
         finishedAt: new Date(),
-        metrics: { ...(iteration.metrics as Record<string, unknown> | null ?? {}), latestSuggestionId: suggestionId },
+        metrics: asJsonObject({
+          ...((iteration.metrics as Record<string, unknown> | null) ?? {}),
+          latestSuggestionId: suggestionId,
+        }),
       },
     });
 
