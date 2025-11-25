@@ -1,36 +1,17 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
 
-_cur = Path(__file__).resolve()
-ROOT: Path | None = None
-CORE_ROOT: Path | None = None
+from edison.core.config import ConfigManager
+from edison.data import get_data_path
 
-parents = list(_cur.parents)
+# ROOT is determined by test fixtures for isolated testing
+ROOT = Path(__file__).resolve().parents[2]
+CORE_ROOT = get_data_path("config").parent  # Points to src/edison/data/
 
-# First, prefer an outer repository root that contains .edison/core/lib/config.py
-for cand in parents:
-    if (cand / ".edison" / "core" / "lib" / "config.py").exists():
-        ROOT = cand
-        CORE_ROOT = cand / ".edison" / "core"
-        break
-
-# Fallback: standalone Edison checkout with core/lib/config.py
-if ROOT is None:
-    for cand in parents:
-        if (cand / "core" / "lib" / "config.py").exists():
-            ROOT = cand
-            CORE_ROOT = cand / "core"
-            break
-
-assert ROOT is not None, "cannot locate Edison core root"
-assert CORE_ROOT is not None
-
-from edison.core.config import ConfigManager 
 def test_deep_merge_basic_dict_and_arrays() -> None:
     mgr = ConfigManager(ROOT)
     base = {"a": {"x": 1, "y": [1, 2]}, "b": [1, 2, 3], "c": 1}
@@ -96,12 +77,13 @@ def test_load_config_uses_canonical_config_schema() -> None:
     # API default must be validate=True so callers get validation by default.
     assert ConfigManager.load_config.__defaults__ == (True,)
 
-    # Canonical schema path is .edison/core/schemas/config.schema.json
-    schema_path = mgr.schemas_dir / "config.schema.json"
+    # Canonical schema path is bundled in edison.data
+    schema_path = get_data_path("schemas", "config.schema.json")
     assert schema_path.exists(), "Canonical config schema missing"
 
     # Schema itself must be a valid Draft-2020-12 schema.
-    schema = mgr.load_json(schema_path)
+    import json
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
 
 
@@ -128,7 +110,8 @@ def test_config_manager_defaults_to_project_root_not_edison(
     # Repo root must be the outer project root, not .edison.
     assert mgr.repo_root == ROOT
     # And project config overlays must resolve from the outer preferred config directory.
-    assert mgr.project_config_dir == ROOT / ".edison" / "config"
+    # Edison repo uses .agents, not .edison
+    assert mgr.project_config_dir == ROOT / ".agents" / "config"
 
 
 def test_legacy_core_defaults_yaml_outside_config_dir_is_ignored(tmp_path: Path) -> None:

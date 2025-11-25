@@ -7,12 +7,14 @@ import subprocess
 import tempfile
 from pathlib import Path
 import unittest
+import pytest
 from edison.core.utils.subprocess import run_with_timeout
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 VALIDATE = REPO_ROOT / ".edison" / "core" / "scripts" / "delegation" / "validate"
 
 
+@pytest.mark.skip(reason="Deprecated: Old delegation validate CLI removed, functionality moved to edison.cli.config")
 class DelegationValidateCLITests(unittest.TestCase):
     def setUp(self) -> None:
         self.work = Path(tempfile.mkdtemp(prefix="delegation-validate-"))

@@ -47,12 +47,12 @@ class TestEdisonScriptDetection:
 
     def test_detects_dotedison_in_cmdline(self):
         """Should detect '.edison' in command line."""
-        cmdline = ["python", "/project/.edison/core/scripts/tasks/new"]
+        cmdline = ["python", "/project/src/edison/core/tasks/manager.py"]
         assert _is_edison_script(cmdline)
 
     def test_detects_scripts_tasks(self):
-        """Should detect 'scripts/tasks' in command line."""
-        cmdline = ["python", "scripts/tasks/claim", "TASK-123"]
+        """Should detect 'edison' package in command line."""
+        cmdline = ["python", "-m", "edison.core.task.claims", "TASK-123"]
         assert _is_edison_script(cmdline)
 
     def test_rejects_non_edison_cmdline(self):

@@ -12,6 +12,7 @@ import textwrap
 from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
+from edison.data import get_data_path
 
 def get_repo_root() -> Path:
     current = Path(__file__).resolve()
@@ -22,16 +23,14 @@ def get_repo_root() -> Path:
     raise RuntimeError("Could not find repository root")
 
 
-REPO_ROOT = get_repo_root()
-CORE_ROOT = REPO_ROOT / ".edison" / "core"
-SCRIPTS_DIR = CORE_ROOT / "scripts"
-if str(CORE_ROOT) not in os.sys.path:
-
-
 class CrossSessionClaimTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-cross-claim-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
+
+        # Get repo root and scripts directory
+        self.repo_root = get_repo_root()
+        self.scripts_dir = get_data_path("scripts")
 
         # Minimal project layout
         for d in [
@@ -54,9 +53,9 @@ class CrossSessionClaimTests(unittest.TestCase):
             (self.temp_root / d).mkdir(parents=True, exist_ok=True)
 
         # Templates referenced by CLIs
-        shutil.copyfile(REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json", self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")
-        shutil.copyfile(REPO_ROOT / ".project" / "qa" / "TEMPLATE.md", self.temp_root / ".project" / "qa" / "TEMPLATE.md")
-        shutil.copyfile(REPO_ROOT / ".project" / "tasks" / "TEMPLATE.md", self.temp_root / ".project" / "tasks" / "TEMPLATE.md")
+        shutil.copyfile(self.repo_root / ".agents" / "sessions" / "TEMPLATE.json", self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")
+        shutil.copyfile(self.repo_root / ".project" / "qa" / "TEMPLATE.md", self.temp_root / ".project" / "qa" / "TEMPLATE.md")
+        shutil.copyfile(self.repo_root / ".project" / "tasks" / "TEMPLATE.md", self.temp_root / ".project" / "tasks" / "TEMPLATE.md")
 
         self.env = os.environ.copy()
         self.env.update({
@@ -66,12 +65,12 @@ class CrossSessionClaimTests(unittest.TestCase):
             "PYTHONUNBUFFERED": "1",
         })
 
-        self.session_cli = SCRIPTS_DIR / "session"
-        self.tasks_claim = SCRIPTS_DIR / "tasks" / "claim"
+        self.session_cli = self.scripts_dir / "session"
+        self.tasks_claim = self.scripts_dir / "tasks" / "claim"
 
     def run_cli(self, *argv: str | Path, check: bool = True) -> subprocess.CompletedProcess[str]:
         cmd = ["python3", *[str(a) for a in argv]]
-        res = run_with_timeout(cmd, cwd=SCRIPTS_DIR, env=self.env, capture_output=True, text=True)
+        res = run_with_timeout(cmd, cwd=self.scripts_dir, env=self.env, capture_output=True, text=True)
         if check and res.returncode != 0:
             raise AssertionError(
                 f"Command failed ({res.returncode})\nCMD: {' '.join(cmd)}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"

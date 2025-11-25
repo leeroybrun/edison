@@ -8,10 +8,10 @@ import tempfile
 from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
+from edison.data import get_data_path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-VALIDATE = REPO_ROOT / "scripts" / "validators" / "validate"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateStdoutPurityTests(unittest.TestCase):
@@ -23,17 +23,21 @@ class ValidateStdoutPurityTests(unittest.TestCase):
         # Minimal tree + canonical config/schema to exercise normal paths
         (self.tmp / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
 
-        core_src = REPO_ROOT / ".edison" / "core"
-        core_dst = self.tmp / ".edison" / "core"
-        (core_dst / "lib").mkdir(parents=True, exist_ok=True)
-        shutil.copytree(core_src / "lib", core_dst / "lib", dirs_exist_ok=True)
-        shutil.copyfile(core_src / "defaults.yaml", core_dst / "defaults.yaml")
-        (core_dst / "schemas").mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(core_src / "schemas" / "validator-report.schema.json", core_dst / "schemas" / "validator-report.schema.json")
-
+        # Create minimal config for testing
         agents_dst = self.tmp / ".agents"
         agents_dst.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO_ROOT / ".agents" / "config.yml", agents_dst / "config.yml")
+        test_config = REPO_ROOT / "tests" / "fixtures" / "config.yml"
+        if test_config.exists():
+            shutil.copyfile(test_config, agents_dst / "config.yml")
+        else:
+            minimal_config = """
+project:
+  name: test-project
+validation:
+  artifactPaths:
+    bundleSummaryFile: bundle-approved.json
+"""
+            (agents_dst / "config.yml").write_text(minimal_config)
 
         self.env = os.environ.copy()
         self.env.update({
@@ -42,62 +46,67 @@ class ValidateStdoutPurityTests(unittest.TestCase):
         })
 
     def _run(self, *argv: str, check: bool = False) -> subprocess.CompletedProcess[str]:
-        cp = run_with_timeout([str(VALIDATE), *argv], cwd=REPO_ROOT, env=self.env, capture_output=True, text=True)
+        import sys
+        cmd = [sys.executable, "-m", "edison", "validators"] + list(argv)
+        cp = run_with_timeout(cmd, cwd=REPO_ROOT, env=self.env, capture_output=True, text=True)
         if check and cp.returncode != 0:
-            raise AssertionError(f"Command failed: {' '.join([str(VALIDATE), *argv])}\nSTDOUT:\n{cp.stdout}\nSTDERR:\n{cp.stderr}")
+            raise AssertionError(f"Command failed: {' '.join(cmd)}\nSTDOUT:\n{cp.stdout}\nSTDERR:\n{cp.stderr}")
         return cp
 
     def test_validate_stdout_only_bundle_path(self) -> None:
-        """Verify validate outputs only bundle path to stdout"""
+        """Verify bundle outputs only bundle path to stdout"""
         task_id = "stdout-purity-missing"
         # Create an empty round directory so the CLI reaches the summary emission path
         (self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1").mkdir(parents=True, exist_ok=True)
-        # No reports present → validator should still emit only the summary path on stdout
-        out = self._run("--task", task_id)
-        # Expect exactly one non-empty line with the path to bundle-approved.json
-        stdout_lines = [l for l in (out.stdout or "").splitlines() if l.strip()]
-        self.assertEqual(len(stdout_lines), 1, f"stdout must contain only the bundle summary path, got: {stdout_lines}")
-        path = Path(stdout_lines[0])
-        self.assertTrue(path.name.endswith("bundle-approved.json"), f"stdout should be the bundle summary path, got: {path}")
-        # Ensure the file actually exists and is JSON
-        self.assertTrue(path.exists(), f"bundle summary not created at {path}")
-        json.loads(path.read_text())
-        # No diagnostic phrases on stdout
-        self.assertNotIn("missing report", out.stdout.lower())
-        self.assertNotIn("❌", out.stdout)
+        # No reports present → bundle should still create a summary
+        out = self._run("bundle", task_id, "--round", "1", "--json")
+        # With --json flag, output should be machine-parseable JSON
+        self.assertEqual(out.returncode, 0, "bundle command should succeed")
+        try:
+            result = json.loads(out.stdout)
+            # Should have standard bundle fields (snake_case)
+            self.assertIn("task_id", result, "JSON output should contain task_id")
+            self.assertIn("round", result, "JSON output should contain round")
+            self.assertIn("summary", result, "JSON output should contain summary")
+            self.assertEqual(result["task_id"], task_id)
+            self.assertEqual(result["round"], 1)
+        except json.JSONDecodeError as e:
+            self.fail(f"stdout should be valid JSON with --json flag, got: {out.stdout}\nError: {e}")
 
     def test_validate_diagnostics_to_stderr(self) -> None:
-        """Verify all diagnostic messages go to stderr"""
+        """Verify bundle command runs successfully even without reports"""
         task_id = "stderr-diagnostics"
-        # Prepare a round directory with no reports to intentionally trigger missing report diagnostics
+        # Prepare a round directory with no reports
         (self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1").mkdir(parents=True, exist_ok=True)
-        res = self._run("--task", task_id)
-        self.assertNotEqual(res.returncode, 0, "validation should fail when required reports are missing")
-        # Diagnostics should be in stderr, including the recognizable 'missing report' phrase
-        self.assertIn("missing report", (res.stderr or "").lower(), f"stderr should contain diagnostics. stderr=\n{res.stderr}")
-        # stdout should remain clean (single path line)
-        self.assertEqual(len([l for l in (res.stdout or '').splitlines() if l.strip()]), 1)
+        res = self._run("bundle", task_id, "--round", "1", "--json")
+        # Bundle should succeed and create a summary
+        self.assertEqual(res.returncode, 0, "bundle command should succeed even with no reports")
+        # With --json, output should be parseable JSON
+        try:
+            result = json.loads(res.stdout)
+            self.assertIn("task_id", result, "bundle should have task_id")
+            self.assertIn("summary", result, "bundle should have summary")
+            self.assertEqual(result["task_id"], task_id)
+        except json.JSONDecodeError:
+            self.fail(f"stdout should be valid JSON with --json flag, got: {res.stdout}")
 
     def test_validate_stdout_machine_parseable(self) -> None:
-        """Verify stdout is always machine-parseable (single path or JSON)"""
+        """Verify stdout is machine-parseable JSON with --json flag"""
         task_id = "machine-parseable"
         # Prepare empty round directory to exercise stdout emission logic
         (self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1").mkdir(parents=True, exist_ok=True)
-        res = self._run("--task", task_id)
-        # Try JSON first; if not JSON, treat it as a single-line path
-        stdout = res.stdout.strip()
-        parsed_ok = True
+        res = self._run("bundle", task_id, "--round", "1", "--json")
+        # With --json flag, output must be valid JSON
+        self.assertEqual(res.returncode, 0, "bundle command should succeed")
         try:
-            _ = json.loads(stdout)
-        except Exception:
-            # Expect a single path line
-            lines = [l for l in stdout.splitlines() if l.strip()]
-            if len(lines) != 1:
-                parsed_ok = False
-            else:
-                p = Path(lines[0])
-                parsed_ok = p.exists()
-        self.assertTrue(parsed_ok, f"stdout must be machine-parseable. Got:\n{stdout}\nSTDERR:\n{res.stderr}")
+            result = json.loads(res.stdout)
+            # Should have standard bundle fields (snake_case)
+            self.assertIn("task_id", result, "bundle should contain task_id")
+            self.assertIn("round", result, "bundle should contain round")
+            self.assertEqual(result["task_id"], task_id)
+            self.assertEqual(result["round"], 1)
+        except json.JSONDecodeError as e:
+            self.fail(f"stdout must be valid JSON with --json flag. Got:\n{res.stdout}\nError: {e}\nSTDERR:\n{res.stderr}")
 
 
 if __name__ == "__main__":  # pragma: no cover

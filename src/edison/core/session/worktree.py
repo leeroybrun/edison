@@ -347,6 +347,19 @@ def cleanup_worktree(session_id: str, worktree_path: Path, branch_name: str, del
     except Exception:
         pass
 
+    # Delete the branch if requested
+    if delete_branch and branch_name:
+        try:
+            run_with_timeout(
+                ["git", "branch", "-D", "--", branch_name],
+                cwd=repo_dir,
+                check=False,
+                capture_output=True,
+                timeout=10
+            )
+        except Exception:
+            pass
+
 
 def remove_worktree(worktree_path: Path, branch_name: Optional[str] = None) -> None:
     """Best-effort removal of a worktree and optional branch cleanup."""

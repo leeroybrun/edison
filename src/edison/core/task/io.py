@@ -33,6 +33,11 @@ def _write(path: Path, content: str) -> None:
 def create_task(task_id: str, title: str, description: str = "") -> Path:
     filename = _task_filename(task_id)
     path = _tasks_root() / "todo" / filename
+
+    # Check if task already exists
+    if path.exists():
+        raise TaskStateError(f"Task {task_id} already exists at {path}")
+
     body = (
         f"---\n"
         f"id: {task_id}\n"

@@ -1,11 +1,10 @@
-from pathlib import Path
 from jinja2 import Template
-
-TEMPLATE_DIR = Path(".edison/core/templates/commands")
+from edison.data import get_data_path
 
 
 def render_template(template_name: str, **context) -> str:
-    template = Template((TEMPLATE_DIR / template_name).read_text())
+    template_path = get_data_path("templates", f"commands/{template_name}")
+    template = Template(template_path.read_text())
     return template.render(**context)
 
 

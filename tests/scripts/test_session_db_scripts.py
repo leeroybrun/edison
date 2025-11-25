@@ -10,9 +10,7 @@ from pathlib import Path
 import pytest
 
 
-CORE_ROOT = Path(__file__).resolve().parents[2]
-CREATE_SCRIPT = CORE_ROOT / "scripts" / "session" / "db" / "create-session-db"
-DROP_SCRIPT = CORE_ROOT / "scripts" / "session" / "db" / "drop-session-db"
+EDISON_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _write_db_config(repo_root: Path, project: str = "demo") -> None:
@@ -72,11 +70,13 @@ def stubbed_psql(tmp_path, monkeypatch):
 def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, stubbed_psql, monkeypatch):
     _write_db_config(isolated_project_env, project="sample")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 
     result = subprocess.run(
-        [sys.executable, str(CREATE_SCRIPT), "sess-123"],
+        [sys.executable, "-m", "edison.cli.session.db.create", "sess-123"],
         capture_output=True,
         text=True,
+        cwd=EDISON_ROOT,
     )
 
     assert result.returncode == 0
@@ -90,11 +90,13 @@ def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, st
 def test_drop_session_db_force_terminates_connections(isolated_project_env, stubbed_psql, monkeypatch):
     _write_db_config(isolated_project_env, project="demo")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 
     result = subprocess.run(
-        [sys.executable, str(DROP_SCRIPT), "sess-999", "--force"],
+        [sys.executable, "-m", "edison.cli.session.db.drop", "sess-999", "--force"],
         capture_output=True,
         text=True,
+        cwd=EDISON_ROOT,
     )
 
     assert result.returncode == 0

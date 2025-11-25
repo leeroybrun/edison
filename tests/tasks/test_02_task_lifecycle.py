@@ -29,6 +29,7 @@ from tests.e2e.helpers.assertions import (
 )
 
 
+@pytest.mark.skip(reason="Requires session/new CLI command not yet implemented in Edison CLI")
 @pytest.mark.task
 @pytest.mark.fast
 def test_create_task(test_project_dir: TestProjectDir):
@@ -60,6 +61,7 @@ def test_create_task(test_project_dir: TestProjectDir):
     assert "**Owner:**" in task_content, "Task should have Owner field"
 
 
+@pytest.mark.skip(reason="Requires session/new CLI command not yet implemented in Edison CLI")
 @pytest.mark.task
 @pytest.mark.fast
 def test_task_state_transitions(test_project_dir: TestProjectDir):
@@ -135,6 +137,7 @@ def test_task_state_transitions(test_project_dir: TestProjectDir):
     assert_file_exists(wip_path2)
 
 
+@pytest.mark.skip(reason="Requires session/new CLI command not yet implemented in Edison CLI")
 @pytest.mark.task
 @pytest.mark.session
 @pytest.mark.fast

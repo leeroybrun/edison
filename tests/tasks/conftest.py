@@ -10,17 +10,11 @@ import sys
 
 import pytest
 
-# Resolve repository root and add E2E helpers to sys.path
-REPO_ROOT = Path(__file__).resolve().parents[4]
-E2E_DIR = REPO_ROOT / ".agents" / "scripts" / "tests" / "e2e"
-ALT_E2E_DIR = REPO_ROOT / ".edison" / "core" / "tests" / "e2e"
-if not E2E_DIR.exists() and ALT_E2E_DIR.exists():
-    E2E_DIR = ALT_E2E_DIR
-HELPERS_DIR = E2E_DIR / "helpers"
-for p in (E2E_DIR, HELPERS_DIR):
-    if p.exists() and str(p) not in sys.path:
+# Resolve repository root
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-from helpers.test_env import TestProjectDir  # type: ignore
+# Import test helpers from e2e
+from tests.e2e.helpers.test_env import TestProjectDir
 
 
 @pytest.fixture

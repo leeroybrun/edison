@@ -22,7 +22,7 @@ def _evidence_dir(root: Path, task_id: str, round_num: int) -> Path:
 
 def _seed_session(project_root: Path, session_id: str) -> None:
     """Create a minimal session record for validation transaction tests."""
-    session_dir = project_root / ".project" / "sessions" / "draft" / session_id
+    session_dir = project_root / ".project" / "sessions" / "wip" / session_id
     session_dir.mkdir(parents=True, exist_ok=True)
     session_file = session_dir / "session.json"
     if not session_file.exists():
@@ -41,7 +41,7 @@ def test_validation_transaction_creates_staging_and_journal(
     task_id = "150-wave1-tx-meta"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env.update(
         {
@@ -103,7 +103,7 @@ def test_validation_transaction_commit_moves_reports_atomically(
     task_id = "150-wave1-commit"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env.update(
         {
@@ -173,7 +173,7 @@ def test_validation_transaction_rollback_on_exception(
     task_id = "150-wave1-rollback"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env.update(
         {
@@ -232,7 +232,7 @@ def test_validation_transaction_partial_validator_failure_no_commit(
     task_id = "150-wave1-partial"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env.update(
         {

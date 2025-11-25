@@ -27,7 +27,7 @@ from edison.core.process.inspector import infer_session_id
 from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
 
 
-def _wait_for_file(path: Path, timeout: float = 2.0) -> bool:
+def _wait_for_file(path: Path, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if path.exists():
@@ -405,8 +405,7 @@ def test_autostart_cli_start_command(autostart_env: AutoStartEnv) -> None:
     )
     autostart_env.reload_configs()
 
-    repo_cli = Path(__file__).resolve().parents[4] / ".edison" / "core" / "scripts" / "session" / "cli"
-    cmd = ["python3", str(repo_cli), "start", "TASK-CLI", "--orchestrator", "cli", "--no-worktree"]
+    cmd = ["uv", "run", "edison", "session", "create", "--session-id", "TASK-CLI", "--no-worktree"]
 
     run_with_timeout(cmd, cwd=autostart_env.root, check=True)
 

@@ -37,6 +37,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Only compose guidelines",
     )
     parser.add_argument(
+        "--platforms",
+        type=str,
+        help="Target platforms (comma-separated: claude,cursor,zen)",
+    )
+    parser.add_argument(
         "--claude",
         action="store_true",
         help="Sync to Claude Code after composing",
@@ -75,7 +80,7 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
-        engine = CompositionEngine(repo_root)
+        engine = CompositionEngine(repo_root=repo_root)
 
         results = {}
 
@@ -98,14 +103,24 @@ def main(args: argparse.Namespace) -> int:
             results["agents"] = [str(f) for f in agent_files]
 
         if compose_all or args.validators:
-            validator_files = engine.compose_validators()
-            results["validators"] = [str(f) for f in validator_files]
+            validator_results = engine.compose_validators()
+            results["validators"] = {
+                vid: str(result.cache_path)
+                for vid, result in validator_results.items()
+            }
+            # Also write validators to .agents/_generated/validators/
+            generated_validators_dir = repo_root / ".agents" / "_generated" / "validators"
+            generated_validators_dir.mkdir(parents=True, exist_ok=True)
+            for vid, result in validator_results.items():
+                output_file = generated_validators_dir / f"{vid}.md"
+                output_file.write_text(result.text, encoding="utf-8")
 
         if compose_all or args.orchestrator:
-            manifest_path, guide_path = engine.compose_orchestrator_manifest()
+            output_dir = repo_root / ".agents" / "_generated"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            orchestrator_result = engine.compose_orchestrator_manifest(output_dir)
             results["orchestrator"] = {
-                "manifest": str(manifest_path),
-                "guide": str(guide_path),
+                k: str(v) for k, v in orchestrator_result.items()
             }
 
         # Sync to clients
@@ -145,3 +160,10 @@ def main(args: argparse.Namespace) -> int:
         else:
             print(f"Error: {e}", file=sys.stderr)
         return 1
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    args = parser.parse_args()
+    sys.exit(main(args))

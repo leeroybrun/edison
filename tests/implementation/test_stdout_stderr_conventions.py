@@ -15,8 +15,8 @@ import unittest
 from edison.core.utils.subprocess import run_with_timeout
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-SCRIPTS_DIR = REPO_ROOT / ".edison" / "core" / "scripts"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
 class StdErrConventionsTests(unittest.TestCase):

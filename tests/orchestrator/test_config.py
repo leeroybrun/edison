@@ -10,19 +10,8 @@ import pytest
 from jsonschema import ValidationError
 
 
-_CUR = Path(__file__).resolve()
-ROOT: Path | None = None
-CORE_ROOT: Path | None = None
-for cand in _CUR.parents:
-    if (cand / ".edison" / "core" / "lib" / "config.py").exists():
-        ROOT = cand
-        CORE_ROOT = cand / ".edison" / "core"
-        break
-
-if CORE_ROOT:
-    from edison.core.orchestrator.config import OrchestratorConfig 
-else:  # pragma: no cover - test harness should always locate core root
-    pytest.fail("Cannot locate Edison core root")
+from edison.core.orchestrator.config import OrchestratorConfig
+from edison.data import get_data_path
 
 
 def _write_schema(schemas_dir: Path) -> None:

@@ -55,11 +55,8 @@ fi
 echo "✅ Circuit breaker tests passed"
 
 python3 << 'EOF'
-import sys, time
-from pathlib import Path
-repo = Path.cwd()
-sys.path.insert(0, str((repo / '.edison' / 'core' / 'lib').resolve()))
-from resilience import CircuitBreaker  # type: ignore
+import time
+from edison.core.resilience import CircuitBreaker
 
 cb = CircuitBreaker(failure_threshold=3, recovery_timeout=1, expected_exception=RuntimeError)
 

@@ -305,15 +305,20 @@ def _move_session_json_to(status: str, session_id: str) -> Path:
             # It's a directory layout. Move the directory.
             import shutil
             # We need to move src.parent to dest_dir.parent (which is the status dir)
-            # But wait, dest_dir is .../status/sid/session.json
-            # So we want to move src.parent (.../old_status/sid) to .../status/sid
-            
-            target_dir = _sessions_root() / status.lower() / sid
-            if target_dir.exists():
-                shutil.rmtree(target_dir) # Overwrite?
-            
-            shutil.move(str(src.parent), str(target_dir))
-            return target_dir / "session.json"
+            # dest_dir is already correctly mapped via _session_dir(status, sid)
+            # So we want to move src.parent (.../old_status/sid) to dest_dir
+
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir) # Overwrite if exists
+
+            shutil.move(str(src.parent), str(dest_dir))
+
+            # Clean up legacy flat file if it exists
+            legacy_flat = _sessions_root() / "wip" / f"{sid}.json"
+            if legacy_flat.exists():
+                legacy_flat.unlink()
+
+            return dest / "session.json"
         else:
             # Legacy flat file. Move just the file to the new layout? Or keep flat?
             # Let's upgrade to new layout during move.
@@ -338,11 +343,11 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
         owner: Optional owner name (used for legacy fallback only)
 
     Returns:
-        PID-based session ID (e.g., "edison-pid-12345") or None
+        PID-based session ID (e.g., "edison-pid-12345") or legacy session ID
 
     Examples:
         # Auto-start workflow (Edison → Claude)
-        auto_session_for_owner("claude")  
+        auto_session_for_owner("claude")
         → Returns "edison-pid-12345" (Edison is topmost)
 
         # Manual workflow (Claude → Edison)
@@ -372,10 +377,9 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
         if session_exists(candidate):
             return candidate
 
-    # Only return a discovered session when it already exists; otherwise
-    # fall back to None so callers don't accidentally scope operations to a
-    # non-existent auto-detected session.
-    if session_id and session_exists(session_id):
+    # Return the inferred PID-based session ID even if it doesn't exist yet.
+    # This allows callers to use it for new session creation.
+    if session_id:
         return session_id
 
     return None

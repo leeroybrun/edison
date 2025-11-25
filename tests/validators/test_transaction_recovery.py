@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -55,13 +56,11 @@ def test_detect_incomplete_transactions_reports_pending(tmp_path: Path) -> None:
     tx_dir = _seed_incomplete_validation_tx(project_root, "sess-det")
 
     repo_root = _repo_root()
-    script = repo_root / ".edison" / "core" / "scripts" / "recovery" / "recover-validation-tx"
 
     env = os.environ.copy()
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(project_root),
-            "RECOVER_SCRIPT": str(script),
         }
     )
 
@@ -69,13 +68,15 @@ def test_detect_incomplete_transactions_reports_pending(tmp_path: Path) -> None:
 from __future__ import annotations
 import json
 import os
-from importlib.machinery import SourceFileLoader
+import sys
 from pathlib import Path
 
-script = Path(os.environ["RECOVER_SCRIPT"])
-mod = SourceFileLoader("recover_validation_tx_mod", str(script)).load_module()
+# Add src to path so we can import edison
+repo_root = Path(__file__).resolve().parents[2] if "__file__" in dir() else Path.cwd()
 
-entries = mod.detect_incomplete_transactions()  # type: ignore[attr-defined]
+from edison.core.session.recovery import detect_incomplete_transactions
+
+entries = detect_incomplete_transactions()
 payload = []
 for e in entries:
     payload.append({
@@ -86,7 +87,7 @@ print(json.dumps(payload))
 """
 
     res = run_with_timeout(
-        [os.environ.get("PYTHON", "python3"), "-c", code],
+        [sys.executable, "-c", code],
         cwd=repo_root,
         env=env,
         capture_output=True,
@@ -99,36 +100,46 @@ print(json.dumps(payload))
 
 @pytest.mark.fast
 def test_recover_validation_tx_cli_cleans_staging_and_is_idempotent(tmp_path: Path) -> None:
-    """CLI recover-validation-tx --force should clean incomplete tx directories."""
+    """recover_incomplete_validation_transactions() should clean incomplete tx directories."""
     project_root = tmp_path
     (project_root / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
     tx_dir = _seed_incomplete_validation_tx(project_root, "sess-cli", tx_id="tx-cli-1")
 
     repo_root = _repo_root()
-    script = repo_root / ".edison" / "core" / "scripts" / "recovery" / "recover-validation-tx"
 
     env = os.environ.copy()
     env.update({"AGENTS_PROJECT_ROOT": str(project_root)})
 
-    # First run: should recover at least one transaction
-    res1 = run_with_timeout(
-        [str(script), "--force"],
+    code = r"""
+from __future__ import annotations
+import sys
+from pathlib import Path
+
+# Add src to path so we can import edison
+repo_root = Path(__file__).resolve().parents[2] if "__file__" in dir() else Path.cwd()
+
+from edison.core.session.recovery import recover_incomplete_validation_transactions
+
+# First run: should recover at least one transaction
+count1 = recover_incomplete_validation_transactions("sess-cli")
+print(f"Recovered: {count1}")
+assert count1 > 0, "Should recover at least one transaction"
+
+# Second run: idempotent, nothing to recover and no error
+count2 = recover_incomplete_validation_transactions("sess-cli")
+print(f"Second run recovered: {count2}")
+assert count2 == 0, "Second run should find nothing to recover"
+"""
+
+    res = run_with_timeout(
+        [sys.executable, "-c", code],
         cwd=repo_root,
         env=env,
         capture_output=True,
         text=True,
     )
-    assert res1.returncode == 0, res1.stderr
-    # Staging/snapshot removed
+    assert res.returncode == 0, f"Recovery failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+
+    # Staging/snapshot should be removed
     assert not (tx_dir / "staging").exists()
     assert not (tx_dir / "snapshot").exists()
-
-    # Second run: idempotent, nothing to recover and no error
-    res2 = run_with_timeout(
-        [str(script), "--force"],
-        cwd=repo_root,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    assert res2.returncode == 0, res2.stderr

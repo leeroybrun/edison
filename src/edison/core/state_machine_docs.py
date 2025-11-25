@@ -21,17 +21,22 @@ from .session.config import SessionConfig
 def _load_statemachine_spec() -> Dict[str, Any]:
     """Load task/QA state machine specification from core defaults."""
     try:
+        # First try loading from project root (for project-specific overrides)
         root = PathResolver.resolve_project_root()
+        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
+        if defaults_path.exists():
+            data = yaml.safe_load(defaults_path.read_text(encoding="utf-8")) or {}
+            return (data.get("statemachine") or {}) if isinstance(data, dict) else {}
     except EdisonPathError:
-        # Fallback to local core defaults when project root cannot be resolved.
-        root = Path(__file__).resolve().parents[2]
+        pass
 
-    defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
-    if not defaults_path.exists():
+    # Fallback to packaged data
+    try:
+        from edison.data import read_yaml
+        data = read_yaml("config", "defaults.yaml")
+        return (data.get("statemachine") or {}) if isinstance(data, dict) else {}
+    except Exception:
         return {}
-
-    data = yaml.safe_load(defaults_path.read_text(encoding="utf-8")) or {}
-    return (data.get("statemachine") or {}) if isinstance(data, dict) else {}
 
 
 def _guard_description(domain: str, from_state: str, to_state: str) -> str:

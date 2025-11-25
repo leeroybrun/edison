@@ -17,12 +17,10 @@ from pathlib import Path
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-CORE_DIR = REPO_ROOT / ".edison" / "core"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-if str(CORE_DIR) not in os.sys.path:
-
-from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
+from edison.core import task
+from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
 from edison.core.session import store as session_store
 from edison.core.locklib import acquire_file_lock, LockTimeoutError
@@ -38,7 +36,7 @@ def _bootstrap_minimal_project(tmp_root: Path) -> None:
 
     # Required session template
     (tmp_root / ".agents" / "sessions").mkdir(parents=True, exist_ok=True)
-    src_tpl = REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json"
+    src_tpl = get_data_path("templates", "session.template.json")
     dst_tpl = tmp_root / ".agents" / "sessions" / "TEMPLATE.json"
     shutil.copyfile(src_tpl, dst_tpl)
 

@@ -9,6 +9,9 @@ Tests verify:
 5. No dependency on global ~/Documents/Development/zen-mcp-server
 
 TDD: These tests SHOULD FAIL initially (RED phase)
+
+NOTE: These tests are PROJECT-SPECIFIC (wilson-leadgen).
+They skip when running in standalone Edison package.
 """
 
 import json
@@ -19,18 +22,67 @@ from pathlib import Path
 import pytest
 
 
+def _has_zen_mcp_setup() -> bool:
+    """Check if zen-mcp-server is set up (project-specific, not in standalone Edison)."""
+    # These tests require:
+    # 1. .edison/tools/zen-mcp-server/
+    # 2. .edison/scripts/zen/
+    # 3. .mcp.json at project root
+    #
+    # This is ONLY present in wilson-leadgen, NOT in standalone Edison package
+    test_dir = Path(__file__).parent
+
+    # Try to find .edison directory by going up
+    current = test_dir
+    for _ in range(5):  # Go up max 5 levels
+        edison_dir = current / ".edison"
+        if edison_dir.exists():
+            # Check if zen-mcp-server is actually set up
+            has_zen_server = (edison_dir / "tools" / "zen-mcp-server").exists()
+            has_zen_scripts = (edison_dir / "scripts" / "zen").exists()
+            has_mcp_json = (current / ".mcp.json").exists()
+
+            if has_zen_server or has_zen_scripts or has_mcp_json:
+                return True
+
+        if current.parent == current:
+            break
+        current = current.parent
+
+    return False
+
+
+# Skip entire test class if zen-mcp-server not set up
+pytestmark = pytest.mark.skipif(
+    not _has_zen_mcp_setup(),
+    reason="Zen MCP integration tests require project-specific zen-mcp-server setup (wilson-leadgen)"
+)
+
+
 class TestZenMcpRelocation:
     """Test suite for zen-mcp-server relocation to .edison/tools/"""
 
     @pytest.fixture
     def edison_root(self):
-        """Get .edison root directory"""
+        """
+        Get .edison root directory.
+
+        In wilson-leadgen project structure:
+        - Test file: /path/to/wilson-leadgen/.edison/core/tests/integration/test_zen_mcp_integration.py
+        - Searches up to find: /path/to/wilson-leadgen/.edison/
+        """
         test_dir = Path(__file__).parent
-        # test file is in .edison/core/tests/integration/
-        # so we need to go up 3 levels to get to .edison
-        edison_root = test_dir.parent.parent.parent
-        assert edison_root.name == ".edison", f"Expected .edison, got {edison_root.name}"
-        return edison_root
+
+        # Find .edison directory by going up from test location
+        current = test_dir
+        for _ in range(5):
+            if (current / ".edison").exists():
+                return current / ".edison"
+            if current.parent == current:
+                break
+            current = current.parent
+
+        pytest.fail("Could not find .edison directory - this test requires wilson-leadgen project")
 
     @pytest.fixture
     def project_root(self, edison_root):

@@ -4,17 +4,30 @@ from pathlib import Path
 
 import yaml
 
+from edison.data import get_data_path
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _load_yaml(rel_path: str) -> dict:
-    path = PROJECT_ROOT / rel_path
+    """Load YAML from bundled Edison data."""
+    # Map old paths to new bundled data paths
+    if rel_path.startswith("core/config/"):
+        filename = rel_path.replace("core/config/", "")
+        path = get_data_path("config", filename)
+    elif rel_path.startswith("core/"):
+        # For core/defaults.yaml → config/defaults.yaml
+        filename = rel_path.replace("core/", "")
+        path = get_data_path("config", filename)
+    else:
+        path = PROJECT_ROOT / rel_path
+
     assert path.exists(), f"missing config file: {path}"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def test_validators_yaml_uses_nextjs_and_prisma():
+def test_validators_yaml_uses_nextjs_and_database():
     data = _load_yaml("core/config/validators.yaml")
     specialized = data["validation"]["roster"]["specialized"]
 
@@ -22,9 +35,9 @@ def test_validators_yaml_uses_nextjs_and_prisma():
     blob = "\n".join(str(v) for v in specialized)
 
     assert "nextjs" in ids, "specialized validators must include nextjs"
-    assert "prisma" in ids, "specialized validators must include prisma"
+    assert "database" in ids, "specialized validators must include database (renamed from prisma)"
     assert "webapp" not in blob, "legacy webapp validator should be removed"
-    assert "ormsuite" not in blob, "legacy prisma validator should be removed"
+    assert "ormsuite" not in blob, "legacy ormsuite validator should be removed"
 
 
 def test_defaults_yaml_updates_context_and_delegation():
@@ -36,7 +49,7 @@ def test_defaults_yaml_updates_context_and_delegation():
     blob = "\n".join(str(v) for v in specialized)
 
     assert "nextjs" in ids, "defaults must expose nextjs validator"
-    assert "prisma" in ids, "defaults must expose prisma validator"
+    assert "database" in ids, "defaults must expose database validator (renamed from prisma)"
     assert "webapp" not in blob, "defaults should not contain webapp"
     assert "ormsuite" not in blob, "defaults should not contain ormsuite"
 

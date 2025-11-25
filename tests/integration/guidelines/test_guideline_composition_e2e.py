@@ -152,18 +152,18 @@ class TestGuidelineCompositionE2E:
         defaults.parent.mkdir(parents=True, exist_ok=True)
         defaults.write_text("packs:\n  active:\n    - packA\n", encoding="utf-8")
 
-        project_cfg = agents_dir / "config.yml"
+        # Write config in modular location
+        config_dir = agents_dir / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        project_cfg = config_dir / "packs.yml"
         project_cfg.write_text("packs:\n  active:\n    - packA\n", encoding="utf-8")
 
         # Invoke the real compose CLI under the isolated project root
-        repo_root = Path(__file__).resolve().parents[5]
-        script = repo_root / ".edison" / "core" / "scripts" / "prompts" / "compose"
-
         env = os.environ.copy()
         env["AGENTS_PROJECT_ROOT"] = str(root)
 
         proc = run_with_timeout(
-            [str(script), "--guideline", "cli", "--packs", "packA"],
+            ["uv", "run", "edison", "compose", "all", "--guidelines"],
             cwd=root,
             env=env,
             capture_output=True,

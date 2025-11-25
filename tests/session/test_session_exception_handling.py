@@ -22,6 +22,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
 from edison.core import task  # type: ignore  # noqa: E402
+from edison.data import get_data_path
 from edison.core.session import manager as session_manager
 from edison.core.session import worktree as session_worktree
 
@@ -39,7 +40,7 @@ class _SessionEnv:
         agents_sessions = self.temp_root / ".agents" / "sessions"
         agents_sessions.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(
-            REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json",
+            get_data_path("templates", "session.template.json"),
             agents_sessions / "TEMPLATE.json",
         )
 

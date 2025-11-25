@@ -141,10 +141,14 @@ def safe_move_file(path: Path, destination: Path) -> Path:
         return dest
     except OSError as e:
         if e.errno == errno.EXDEV:
+            # Cross-device move: copy + verify + delete
             shutil.copy2(str(src), str(dest))
-            if src.stat().st_size != dest.stat().st_size:
+            # Verify by comparing content (not just size) to detect corruption
+            src_content = src.read_bytes()
+            dest_content = dest.read_bytes()
+            if src_content != dest_content:
                 dest.unlink(missing_ok=True)
-                raise RuntimeError("Cross-device move verification failed") from e
+                raise RuntimeError("Cross-device move verification failed - content mismatch") from e
             src.unlink(missing_ok=True)
             return dest
         raise

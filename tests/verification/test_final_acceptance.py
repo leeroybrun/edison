@@ -8,8 +8,7 @@ from pathlib import Path
 import sys
 import pytest
 
-
-from integration.test_session_autostart import AutoStartEnv
+from tests.integration.test_session_autostart import AutoStartEnv
 from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
 from edison.core.session.manager import SessionManager
 from edison.core.session.naming import SessionNamingStrategy
@@ -143,8 +142,10 @@ class TestFinalAcceptance:
         assert before == after
 
     def test_requirement_8_no_legacy_code(self):
-        repo_root = Path(__file__).resolve().parents[4]
-        assert not (repo_root / ".edison" / "core" / "lib" / "worktreelib.py").exists()
+        # Edison is now a standalone repository, check for legacy lib directly
+        repo_root = Path(__file__).resolve().parents[2]
+        # Legacy worktreelib.py should not exist in the edison.core.lib package
+        assert not (repo_root / "edison" / "core" / "lib" / "worktreelib.py").exists()
 
     def test_requirement_9_configurable_via_yaml(self, acceptance_env: AutoStartEnv):
         cfg = OrchestratorConfig(acceptance_env.root, validate=False)
@@ -153,6 +154,7 @@ class TestFinalAcceptance:
         assert "profiles" in cfg._orchestrator_config  # type: ignore[attr-defined]
 
     def test_requirement_10_tdd_evidence(self):
-        repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / ".edison" / "core" / "tests" / "integration" / "test_session_autostart.py").exists()
-        assert (repo_root / ".edison" / "core" / "tests" / "e2e" / "test_autostart_real_orchestrators.py").exists()
+        # Edison is now a standalone repository, tests are at repo_root/tests/
+        repo_root = Path(__file__).resolve().parents[2]
+        assert (repo_root / "tests" / "integration" / "test_session_autostart.py").exists()
+        assert (repo_root / "tests" / "e2e" / "test_autostart_real_orchestrators.py").exists()

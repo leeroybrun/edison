@@ -19,12 +19,25 @@ DEFAULT_TIME_CONFIG: Dict[str, Any] = {
 
 
 def _cfg() -> Dict[str, Any]:
-    """Return default time configuration.
+    """Return time configuration, loading from YAML if available.
 
-    Note: ConfigManager is intentionally not imported here to avoid circular
-    dependencies. Callers can override defaults by setting module-level config
-    or by passing explicit parameters.
+    Tries to load from ConfigManager first, falls back to hardcoded defaults
+    if config is unavailable.
     """
+    try:
+        from ..config import ConfigManager
+        from ..paths import PathResolver
+
+        repo_root = PathResolver.resolve_project_root()
+        cfg_manager = ConfigManager(repo_root)
+        full_config = cfg_manager.load_config(validate=False)
+
+        if "time" in full_config and "iso8601" in full_config["time"]:
+            return full_config["time"]["iso8601"]
+    except Exception:
+        # Fall back to defaults if config loading fails
+        pass
+
     return DEFAULT_TIME_CONFIG
 
 

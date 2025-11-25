@@ -19,7 +19,7 @@ commands:
       - migrate
 
   # Platform configurations
-  platforms:
+  platform_config:
     claude:
       enabled: true
       output_dir: ".claude/commands"

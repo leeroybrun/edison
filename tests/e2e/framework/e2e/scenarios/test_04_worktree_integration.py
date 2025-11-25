@@ -16,17 +16,17 @@ from pathlib import Path
 
 import pytest
 
-from helpers.assertions import (
+from tests.e2e.helpers.assertions import (
     assert_directory_exists,
     assert_file_exists,
 )
-from helpers.command_runner import (
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
     assert_error_contains,
 )
-from helpers.test_env import TestProjectDir
+from tests.e2e.helpers.test_env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
 PROJECT_NAME = os.environ.get("PROJECT_NAME", "example-project")
@@ -173,7 +173,7 @@ def test_worktree_diff_detection(test_project_dir: TestProjectDir):
     worktree_path = Path(test_project_dir.get_session_json(session_id)["git"]["worktreePath"])
 
     # Create files and commit in worktree
-    file1 = worktree_path / "apps" / ""example-app"" / "src" / "Component.tsx"
+    file1 = worktree_path / "apps" / "example-app" / "src" / "Component.tsx"
     file2 = worktree_path / "packages" / "api-core" / "src" / "api.ts"
     file1.parent.mkdir(parents=True, exist_ok=True)
     file2.parent.mkdir(parents=True, exist_ok=True)
@@ -253,7 +253,7 @@ def test_context7_cross_check_with_git_diff(test_project_dir: TestProjectDir):
     )
 
     # 3) Make mixed changes in worktree (React + Zod) and commit
-    react_file = worktree_path / "apps" / ""example-app"" / "src" / "Button.tsx"
+    react_file = worktree_path / "apps" / "example-app" / "src" / "Button.tsx"
     react_file.parent.mkdir(parents=True, exist_ok=True)
     react_file.write_text('import React from "react";\nexport const Btn = () => <button>Ok</button>;\n')
 
@@ -391,7 +391,7 @@ def test_worktree_full_workflow(test_project_dir: TestProjectDir):
     worktree_path = Path(test_project_dir.get_session_json(session_id)["git"]["worktreePath"])
 
     # 2) Make a code change in worktree
-    comp = worktree_path / "apps" / ""example-app"" / "src" / "Auth.tsx"
+    comp = worktree_path / "apps" / "example-app" / "src" / "Auth.tsx"
     comp.parent.mkdir(parents=True, exist_ok=True)
     comp.write_text('import React from "react";\nexport const Auth = () => <div>Auth</div>;\n')
     _commit_all(worktree_path, "Add Auth component")
@@ -525,7 +525,7 @@ def test_worktree_detect_react_import(test_project_dir: TestProjectDir):
         )
     )
     wt = Path(test_project_dir.get_session_json(session_id)["git"]["worktreePath"])
-    tsx = wt / "apps" / ""example-app"" / "src" / "Button.tsx"
+    tsx = wt / "apps" / "example-app" / "src" / "Button.tsx"
     tsx.parent.mkdir(parents=True, exist_ok=True)
     tsx.write_text('import React from "react";\nexport const Button = () => <button>Click</button>;\n')
     _commit_all(wt, "Add Button component")

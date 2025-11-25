@@ -18,9 +18,9 @@ from pathlib import Path
 
 import pytest
 
-from helpers import TestProjectDir
-from helpers.command_runner import run_script, assert_command_success
-from helpers.assertions import assert_file_exists
+from tests.e2e.helpers import TestProjectDir
+from tests.e2e.helpers.command_runner import run_script, assert_command_success
+from tests.e2e.helpers.assertions import assert_file_exists
 from edison.core.utils.subprocess import run_with_timeout
 
 

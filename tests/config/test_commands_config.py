@@ -7,19 +7,23 @@ from typing import Any, Dict, List
 import jsonschema
 import yaml
 
-# Resolve repository root that contains the Edison core
-_CUR = Path(__file__).resolve()
-REPO_ROOT: Path | None = None
-for parent in _CUR.parents:
-    if (parent / ".edison" / "core" / "lib" / "config.py").exists():
-        REPO_ROOT = parent
-        break
-assert REPO_ROOT is not None, "cannot locate repository root with .edison/core present"
+from edison.data import get_data_path
 
-CORE_COMMANDS_PATH = REPO_ROOT / ".edison" / "core" / "config" / "commands.yaml"
-PACK_COMMANDS_PATH = REPO_ROOT / ".edison" / "packs" / "typescript" / "config" / "commands.yml"
-PROJECT_COMMANDS_PATH = REPO_ROOT / ".agents" / "config" / "commands.yml"
-COMMANDS_SCHEMA_PATH = REPO_ROOT / ".edison" / "core" / "schemas" / "commands-config.schema.json"
+# Get paths to bundled Edison data
+CORE_COMMANDS_PATH = get_data_path("config", "commands.yaml")
+PACK_COMMANDS_PATH = get_data_path("packs") / "typescript" / "config" / "commands.yml"
+COMMANDS_SCHEMA_PATH = get_data_path("schemas", "commands-config.schema.json")
+
+# For project commands, try to find the wilson-leadgen project, else use tmp
+_CUR = Path(__file__).resolve()
+PROJECT_ROOT: Path | None = None
+for parent in _CUR.parents:
+    if (parent / ".agents" / "config" / "commands.yml").exists():
+        PROJECT_ROOT = parent
+        break
+
+# Fallback if not in wilson-leadgen project - tests will skip project-specific assertions
+PROJECT_COMMANDS_PATH = PROJECT_ROOT / ".agents" / "config" / "commands.yml" if PROJECT_ROOT else None
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
@@ -108,22 +112,22 @@ def test_config_schema_validation() -> None:
 
 
 def test_short_desc_length() -> None:
-    merged = compose_command_configs(
-        _load_yaml(CORE_COMMANDS_PATH),
-        _load_yaml(PACK_COMMANDS_PATH),
-        _load_yaml(PROJECT_COMMANDS_PATH),
-    )
+    configs = [_load_yaml(CORE_COMMANDS_PATH), _load_yaml(PACK_COMMANDS_PATH)]
+    if PROJECT_COMMANDS_PATH and PROJECT_COMMANDS_PATH.exists():
+        configs.append(_load_yaml(PROJECT_COMMANDS_PATH))
+
+    merged = compose_command_configs(*configs)
     for item in merged["commands"]["definitions"]:
         desc = item.get("short_desc", "")
         assert len(desc) <= 120, f"short_desc too long for {item.get('id')}"
 
 
 def test_required_fields() -> None:
-    merged = compose_command_configs(
-        _load_yaml(CORE_COMMANDS_PATH),
-        _load_yaml(PACK_COMMANDS_PATH),
-        _load_yaml(PROJECT_COMMANDS_PATH),
-    )
+    configs = [_load_yaml(CORE_COMMANDS_PATH), _load_yaml(PACK_COMMANDS_PATH)]
+    if PROJECT_COMMANDS_PATH and PROJECT_COMMANDS_PATH.exists():
+        configs.append(_load_yaml(PROJECT_COMMANDS_PATH))
+
+    merged = compose_command_configs(*configs)
     required = {"id", "domain", "command", "short_desc", "cli"}
     for item in merged["commands"]["definitions"]:
         missing = required - set(item.keys())
@@ -142,6 +146,10 @@ def test_pack_extension_merge() -> None:
 
 
 def test_project_override() -> None:
+    if not PROJECT_COMMANDS_PATH or not PROJECT_COMMANDS_PATH.exists():
+        import pytest
+        pytest.skip("Project commands.yml not found - test requires wilson-leadgen project")
+
     composed = compose_command_configs(
         _load_yaml(CORE_COMMANDS_PATH),
         _load_yaml(PACK_COMMANDS_PATH),

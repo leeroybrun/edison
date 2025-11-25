@@ -17,10 +17,12 @@ def run_script(
     check: bool = False,
     env: Optional[Dict[str, str]] = None
 ) -> subprocess.CompletedProcess:
-    """Run an Edison core script.
+    """Run an Edison CLI command by translating legacy script paths to new CLI commands.
+
+    Legacy `.edison/core/scripts/*` paths are automatically mapped to `edison` CLI commands.
 
     Args:
-        script_name: Script path relative to .edison/core/scripts/ (e.g., "tasks/ready")
+        script_name: Script path (e.g., "tasks/ready", "session", "qa/new")
         args: Script arguments
         cwd: Working directory
         check: Raise exception on non-zero exit
@@ -29,25 +31,86 @@ def run_script(
     Returns:
         CompletedProcess with stdout, stderr, returncode
     """
-    # Resolve the repository root using the shared resolver to avoid .agents fallbacks
-    repo_root = PathResolver.resolve_project_root()
-    script_path = repo_root / ".edison" / "core" / "scripts" / script_name
+    # Map legacy script paths to new CLI commands (domain + command)
+    script_mappings = {
+        # Task commands
+        "tasks/ready": ("task", "ready"),
+        "tasks/new": ("task", "new"),
+        "tasks/status": ("task", "status"),
+        "tasks/claim": ("task", "claim"),
+        "tasks/link": ("task", "link"),
+        "tasks/split": ("task", "split"),
+        "tasks/allocate-id": ("task", "allocate_id"),
+        "tasks/ensure-followups": ("task", "ensure_followups"),
+        "tasks/cleanup-stale-locks": ("task", "cleanup_stale_locks"),
+        "tasks/mark-delegated": ("task", "mark_delegated"),
+        "tasks/list": ("task", "list"),
+        # Session commands
+        "session": ("session", None),  # Special handling - subcommand in args
+        "session/next": ("session", "next"),
+        "session/start": ("session", "start"),
+        "session/close": ("session", "close"),
+        "session/create": ("session", "create"),
+        "session/heartbeat": ("session", "track"),  # heartbeat is now track
+        "session/track": ("session", "track"),
+        # Tracking commands (aliased to session track)
+        "track": ("session", "track"),
+        # QA commands
+        "qa/new": ("qa", "new"),
+        "qa/promote": ("qa", "promote"),
+        "qa/validate": ("qa", "validate"),
+        "qa/round": ("qa", "round"),
+        # Validators (aliases)
+        "validators/validate": ("qa", "validate"),
+        "validation/validate": ("qa", "validate"),
+        # Compose commands
+        "prompts/compose": ("compose", "all"),
+        "compose/all": ("compose", "all"),
+        # Config commands
+        "config/show": ("config", "show"),
+        # Git worktree commands
+        "git/worktree-create": ("git", "worktree_create"),
+        "git/worktree-cleanup": ("git", "worktree_cleanup"),
+        "git/worktree-archive": ("git", "worktree_archive"),
+        "git/worktree-list": ("git", "worktree_list"),
+        # Rules commands
+        "rules/show-for-context": ("rules", "show_for_context"),
+    }
 
-    if not script_path.exists():
-        raise FileNotFoundError(f"Script not found: {script_path}")
+    # Get the CLI domain and command
+    cli_parts = script_mappings.get(script_name)
 
-    # Domain directories now expose a cli entrypoint
-    if script_path.is_dir():
-        cli_path = script_path / "cli"
-        if cli_path.exists():
-            script_path = cli_path
-        else:
-            raise FileNotFoundError(f"Script directory missing cli entrypoint: {script_path}")
+    if not cli_parts:
+        raise FileNotFoundError(
+            f"Script not found: {script_name}\n"
+            f"Available script mappings: {', '.join(sorted(script_mappings.keys()))}\n"
+            f"Note: Legacy scripts have been migrated to Edison CLI."
+        )
+
+    domain, command = cli_parts
+
+    # Handle special case where command is in args (e.g., "session" with ["new", ...])
+    if command is None and args:
+        # Map legacy session subcommands to new CLI commands
+        session_subcommand_map = {
+            "new": "create",
+            "status": "status",
+            "complete": "close",
+            "next": "next",
+            "start": "start",
+            "close": "close",
+            "heartbeat": "track",
+            "track": "track",
+        }
+        subcommand = args[0]
+        command = session_subcommand_map.get(subcommand, subcommand)
+        args = args[1:]  # Remove subcommand from args
 
     if os.environ.get("DEBUG_CONTEXT7"):
-        print(f"[DEBUG_CONTEXT7] running script {script_path} (DEBUG_CONTEXT7={os.environ.get('DEBUG_CONTEXT7')})", file=sys.stderr)
+        print(f"[DEBUG_CONTEXT7] running edison {domain} {command} (mapped from {script_name})", file=sys.stderr)
 
-    cmd = ["python3", str(script_path)] + args
+    # Run via the main edison CLI entry point
+    cmd = ["edison", domain, command] + args
 
     test_env = os.environ.copy()
     if env:

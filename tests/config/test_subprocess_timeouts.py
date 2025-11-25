@@ -1,22 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
+
+from edison.core.config import ConfigManager
 
 
-# Locate Edison core root (mirrors other config tests)
-_cur = Path(__file__).resolve()
-ROOT: Path | None = None
-for cand in _cur.parents:
-    if (cand / ".edison" / "core" / "lib" / "config.py").exists():
-        ROOT = cand
-        break
-
-assert ROOT is not None
-
-from edison.core.config import ConfigManager 
-def test_subprocess_timeouts_defaults_present() -> None:
-    cfg = ConfigManager(ROOT).load_config(validate=False)
+def test_subprocess_timeouts_defaults_present(isolated_project_env: Path) -> None:
+    """Test that subprocess timeouts are configured with correct defaults."""
+    cfg = ConfigManager(isolated_project_env).load_config(validate=False)
     timeouts = cfg.get("subprocess_timeouts") or {}
 
     assert timeouts.get("git_operations") == 30

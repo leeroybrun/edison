@@ -1,7 +1,7 @@
 """Command execution helpers for QA tests after migration.
 
-This wrapper routes QA commands to `.edison/core/scripts/qa/*` and delegates
-other commands to core scripts under `.edison/core/scripts/`.
+Note: Legacy `.edison/core/scripts/*` structure has been migrated to Python modules.
+This wrapper provides compatibility by emulating legacy script behavior for tests.
 """
 from __future__ import annotations
 import os
@@ -26,14 +26,105 @@ def run_script(
     check: bool = False,
     env: Optional[Dict[str, str]] = None,
 ) -> subprocess.CompletedProcess:
-    """Run a script, routing to new locations when needed.
+    """Run a script, routing to new edison CLI commands.
 
-    - `qa/*` → `.edison/core/scripts/qa/*`
-    - `validators/validate` → `.edison/core/scripts/validators/validate`
-    - `tasks/*` → `.edison/core/scripts/tasks/*`
-    - `session` → emulate minimal `session new` behavior for tests
-    - otherwise → resolve under `.edison/core/scripts/`
+    Maps legacy script names to edison CLI commands:
+    - `qa/new` → `edison qa new`
+    - `qa/promote` → `edison qa promote --status`
+    - `validators/validate` → `edison qa validate`
+    - `session` → emulate minimal session creation
+    - `tasks/new` → emulate task creation
+    - `tasks/link` → emulate task linking
     """
+    test_env = os.environ.copy()
+    if env:
+        test_env.update(env)
+    test_env["AGENTS_PROJECT_ROOT"] = str(cwd)
+
+    # Map qa/new to edison qa new
+    if script_name == "qa/new":
+        task_id = args[0] if args else None
+        if not task_id:
+            return subprocess.CompletedProcess(["edison", "qa", "new"], 2, "", "Missing task_id\n")
+
+        edison_args = ["uv", "run", "edison", "qa", "new", task_id, "--repo-root", str(cwd)]
+        # Map --session flag
+        if "--session" in args:
+            idx = args.index("--session")
+            if idx + 1 < len(args):
+                edison_args.extend(["--session", args[idx + 1]])
+
+        return run_with_timeout(
+            edison_args,
+            cwd=_repo_root,
+            capture_output=True,
+            text=True,
+            check=check,
+            env=test_env,
+        )
+
+    # Map qa/promote to edison qa promote
+    if script_name == "qa/promote":
+        # Parse args: --task <task> --to <status> --session <sid>
+        task_id = None
+        target_status = None
+        session_id = None
+        force = False
+
+        it = iter(args)
+        for a in it:
+            if a == "--task":
+                task_id = next(it, None)
+            elif a == "--to":
+                target_status = next(it, None)
+            elif a == "--session":
+                session_id = next(it, None)
+            elif a == "--force":
+                force = True
+
+        if not task_id:
+            return subprocess.CompletedProcess(["edison", "qa", "promote"], 2, "", "Missing task_id\n")
+
+        edison_args = ["uv", "run", "edison", "qa", "promote", task_id, "--repo-root", str(cwd)]
+        if target_status:
+            edison_args.extend(["--status", target_status])
+        if session_id:
+            edison_args.extend(["--session", session_id])
+        if force:
+            edison_args.append("--force")
+
+        return run_with_timeout(
+            edison_args,
+            cwd=_repo_root,
+            capture_output=True,
+            text=True,
+            check=check,
+            env=test_env,
+        )
+
+    # Map validators/validate to edison qa validate
+    if script_name == "validators/validate":
+        # Parse args: --task <task>
+        task_id = None
+        it = iter(args)
+        for a in it:
+            if a == "--task":
+                task_id = next(it, None)
+
+        if not task_id:
+            return subprocess.CompletedProcess(["edison", "qa", "validate"], 2, "", "Missing task_id\n")
+
+        edison_args = ["uv", "run", "edison", "qa", "validate", task_id, "--repo-root", str(cwd)]
+
+        return run_with_timeout(
+            edison_args,
+            cwd=_repo_root,
+            capture_output=True,
+            text=True,
+            check=check,
+            env=test_env,
+        )
+
     # Emulate minimal session CLI for tests
     if script_name == "session":
         # Very small emulation to support only `session new --session-id <sid> [--mode start]`
@@ -59,7 +150,7 @@ def run_script(
             (sessions_dir / f"{sid}.json").write_text(_json.dumps(payload, indent=2))
             cp = subprocess.CompletedProcess(["session", *args], 0, "", "")
             return cp
-        # Fall through to legacy helper if we couldn't emulate
+        # Fall through if we couldn't emulate
 
     # Emulate tasks/new
     if script_name == "tasks/new":
@@ -119,52 +210,6 @@ def run_script(
             except Exception as e:
                 return subprocess.CompletedProcess(["tasks/link", *args], 1, "", str(e))
         return subprocess.CompletedProcess(["tasks/link", *args], 2, "", "Missing args for tasks/link\n")
-
-    # Route QA commands
-    if script_name.startswith("qa/"):
-        script_path = _edison_script_path(script_name)
-    elif script_name == "validators/validate":
-        script_path = _edison_script_path("validators/validate")
-    elif script_name.startswith("tasks/"):
-        script_path = _edison_script_path(script_name)
-    else:
-        script_path = _edison_script_path(script_name)
-
-    if script_path.exists():
-        # Ensure QA template exists for qa/new
-        if script_name == "qa/new":
-            tpl = Path(cwd) / ".project" / "qa" / "TEMPLATE.md"
-            if not tpl.exists():
-                repo_tpl = _repo_root / ".project" / "qa" / "TEMPLATE.md"
-                tpl.parent.mkdir(parents=True, exist_ok=True)
-                if repo_tpl.exists():
-                    tpl.write_text(repo_tpl.read_text())
-                else:
-                    tpl.write_text("# {TASK_ID}-qa\n\n- **Validator Owner:** _unassigned_\n- **Status:** waiting\n")
-        # Choose interpreter based on shebang or file type
-        interp = "python3"
-        try:
-            first_line = script_path.read_text().splitlines()[0]
-        except Exception:
-            first_line = ""
-        if first_line.startswith("#!") and ("bash" in first_line or "sh" in first_line):
-            interp = "bash"
-        elif script_path.suffix == "" and "set -euo pipefail" in script_path.read_text()[:200]:
-            interp = "bash"
-        cmd = [interp, str(script_path), *args]
-        test_env = os.environ.copy()
-        if env:
-            test_env.update(env)
-        # Tell CLI scripts to treat `cwd` as the project root for test isolation
-        test_env["AGENTS_PROJECT_ROOT"] = str(cwd)
-        return run_with_timeout(
-            cmd,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=check,
-            env=test_env,
-        )
 
     # Fallback: return failure if script not found
     return subprocess.CompletedProcess([script_name, *args], 127, "", f"Script not found: {script_name}\n")

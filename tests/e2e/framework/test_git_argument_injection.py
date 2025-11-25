@@ -15,13 +15,7 @@ def get_repo_root() -> Path:
         current = current.parent
     raise RuntimeError("Could not find repository root")
 
-# Make library importable
-REPO_ROOT = get_repo_root()
-CORE_ROOT = REPO_ROOT / ".edison" / "core"
-SCRIPTS_DIR = CORE_ROOT / "scripts"
-if str(CORE_ROOT) not in os.sys.path:
-
-from edison.core import task, sessionlib  # type: ignore  # noqa: E402  pylint: disable=wrong-import-position
+from edison.core import task, sessionlib
 
 
 def _fake_ok_move(args, **kwargs):  # type: ignore[no-untyped-def]

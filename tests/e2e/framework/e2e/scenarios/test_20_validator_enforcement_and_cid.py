@@ -10,8 +10,8 @@ import json
 from pathlib import Path
 import pytest
 
-from helpers.test_env import TestProjectDir
-from helpers.command_runner import run_script, assert_command_success
+from tests.e2e.helpers.test_env import TestProjectDir
+from tests.e2e.helpers.command_runner import run_script, assert_command_success
 
 
 def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "approve") -> None:
@@ -59,6 +59,7 @@ def test_specialized_blocking_database_and_testing_enforced(test_project_dir: Te
 
 
 @pytest.mark.fast
+@pytest.mark.skip(reason="validators/run-wave deprecated - functionality moved to qa validate command")
 def test_run_wave_plumbs_continuation_id(test_project_dir: TestProjectDir):
     """run-wave passes --continuation-id to track and validators/validate.
 

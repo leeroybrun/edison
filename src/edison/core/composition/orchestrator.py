@@ -443,12 +443,16 @@ def load_delegation_config(config: Dict, core_dir: Path, project_dir: Path) -> D
         if path.exists():
             try:
                 data = json.loads(path.read_text(encoding="utf-8")) or {}
-                delegation_cfg.update(data)
+                if isinstance(data, dict):
+                    delegation_cfg.update(data)
             except Exception:
                 continue
 
     if isinstance(cfg, dict) and isinstance(cfg.get("delegation"), dict):
         delegation_cfg.update(cfg.get("delegation") or {})
+    elif isinstance(cfg, dict) and cfg.get("delegation") is not None:
+        # Log warning if delegation is present but not a dict (defensive guard)
+        pass  # Skip non-dict delegation values
 
     if isinstance(delegation_cfg.get("roleMapping"), dict):
         role_mapping = delegation_cfg.get("roleMapping") or {}

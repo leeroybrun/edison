@@ -48,10 +48,18 @@ def render_orchestrator_markdown(data: Dict) -> str:
     md: List[str] = []
 
     project_cfg = (data.get("config") or {}).get("project", {}) or {}
+    if not isinstance(project_cfg, dict):
+        project_cfg = {}
     project_name = project_cfg.get("name", "Project")
-    packs = data.get("composition", {}).get("packs", []) or []
+
+    composition = data.get("composition", {})
+    if not isinstance(composition, dict):
+        composition = {}
+    packs = composition.get("packs", []) or []
 
     guidelines = data.get("guidelines", []) or []
+    if not isinstance(guidelines, list):
+        guidelines = []
     framework_guidelines = [g for g in guidelines if "pack" not in g]
     pack_guidelines = [g for g in guidelines if "pack" in g]
     validation_cfg = (data.get("config") or {}).get("validation", {}) or {}
@@ -87,6 +95,8 @@ def render_orchestrator_markdown(data: Dict) -> str:
         md.append("\n")
 
     role_guidelines = data.get("roleGuidelines") or {}
+    if not isinstance(role_guidelines, dict):
+        role_guidelines = {}
     if role_guidelines:
         md.append("## 🧑‍💻 Role-Specific Guidelines\n")
         label_map = {
@@ -126,7 +136,12 @@ def render_orchestrator_markdown(data: Dict) -> str:
     md.append("### Global Validators (ALWAYS run)")
     md.append("| Validator | Model | Triggers | Always Run | Blocking |")
     md.append("|-----------|-------|----------|------------|----------|")
-    for v in data.get("validators", {}).get("global", []):
+
+    validators = data.get("validators", {})
+    if not isinstance(validators, dict):
+        validators = {}
+
+    for v in validators.get("global", []):
         block_val = v.get("blocksOnFail", v.get("blocking", False)) or v.get("id") in blocking_ids
         md.append(
             "| {name} ({vid}) | {model} | `{triggers}` | {always} | {block} |".format(
@@ -140,7 +155,7 @@ def render_orchestrator_markdown(data: Dict) -> str:
         )
     md.append("\n")
 
-    critical = data.get("validators", {}).get("critical", [])
+    critical = validators.get("critical", [])
     if critical:
         md.append("### Critical Validators")
         md.append("| Validator | Model | Triggers | Blocking |")
@@ -158,7 +173,7 @@ def render_orchestrator_markdown(data: Dict) -> str:
             )
         md.append("\n")
 
-    specialized = data.get("validators", {}).get("specialized", [])
+    specialized = validators.get("specialized", [])
     if specialized:
         md.append("### Specialized Validators (triggered by file patterns)")
         md.append("| Validator | Model | Triggers | Blocking |")
@@ -178,21 +193,26 @@ def render_orchestrator_markdown(data: Dict) -> str:
 
     md.append("## 🤖 Available Agents\n")
     md.append(
-        f"**Total**: {data['composition']['agentsCount']} (dynamic from AgentRegistry)"
+        f"**Total**: {composition.get('agentsCount', 0)} (dynamic from AgentRegistry)"
     )
+
+    agents = data.get("agents", {})
+    if not isinstance(agents, dict):
+        agents = {}
+
     md.append("### Generic Agents (Core framework)")
-    for agent in data.get("agents", {}).get("generic", []):
+    for agent in agents.get("generic", []):
         md.append(f"- {agent}")
     md.append("\n")
 
-    specialized_agents = data.get("agents", {}).get("specialized", [])
+    specialized_agents = agents.get("specialized", [])
     if specialized_agents:
         md.append("### Specialized Agents (From packs)")
         for agent in specialized_agents:
             md.append(f"- {agent}")
         md.append("\n")
 
-    project_agents = data.get("agents", {}).get("project", [])
+    project_agents = agents.get("project", [])
     if project_agents:
         md.append("### Project Agents (<project_config_dir>/agents)")
         for agent in project_agents:
@@ -211,6 +231,9 @@ def render_orchestrator_markdown(data: Dict) -> str:
     md.append("")
 
     delegation = data.get("delegation") or {}
+    # Guard against Path objects being passed instead of dicts
+    if not isinstance(delegation, dict):
+        delegation = {}
     if delegation:
         md.append("## 🧭 Delegation Configuration\n")
 

@@ -26,18 +26,20 @@ def test_qa_checklist_and_validation_workflow(tmp_path):
     from edison.core.task import claim_task  # local import to avoid unused in file
     claim_task(task_id, sid)
     ready_task(task_id, sid)
-    qa_todo = Path('.project/qa/todo') / f'{task_id}-qa.md'
+    # QA files are session-scoped, organized within the session's state directory
+    # Session is in "wip" state, QA files are in .../wip/sess-qa-1/qa/<qa_state>/
+    qa_todo = Path('.project/sessions/wip') / sid / 'qa' / 'todo' / f'{task_id}-qa.md'
     assert qa_todo.exists()
 
-    # Progress QA: todo -> wip -> done -> validated
-    qa_progress(task_id, 'todo', 'wip')
-    qa_wip = Path('.project/qa/wip') / f'{task_id}-qa.md'
+    # Progress QA: todo -> wip -> done -> validated (session-scoped)
+    qa_progress(task_id, 'todo', 'wip', session_id=sid)
+    qa_wip = Path('.project/sessions/wip') / sid / 'qa' / 'wip' / f'{task_id}-qa.md'
     assert qa_wip.exists()
 
-    qa_progress(task_id, 'wip', 'done')
-    qa_done = Path('.project/qa/done') / f'{task_id}-qa.md'
+    qa_progress(task_id, 'wip', 'done', session_id=sid)
+    qa_done = Path('.project/sessions/wip') / sid / 'qa' / 'done' / f'{task_id}-qa.md'
     assert qa_done.exists()
 
-    qa_progress(task_id, 'done', 'validated')
-    qa_val = Path('.project/qa/validated') / f'{task_id}-qa.md'
+    qa_progress(task_id, 'done', 'validated', session_id=sid)
+    qa_val = Path('.project/sessions/wip') / sid / 'qa' / 'validated' / f'{task_id}-qa.md'
     assert qa_val.exists()

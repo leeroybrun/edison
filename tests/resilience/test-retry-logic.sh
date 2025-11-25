@@ -75,11 +75,7 @@ echo "✅ Retry logic tests passed"
 
 # Python-level retry decorator test with fault injection
 python3 << 'EOF'
-import sys
-from pathlib import Path
-repo = Path.cwd()
-sys.path.insert(0, str((repo / '.edison' / 'core' / 'lib').resolve()))
-from resilience import retry_with_backoff  # type: ignore
+from edison.core.resilience import retry_with_backoff
 
 calls = {"n": 0}
 

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
-from types import ModuleType
 from pathlib import Path
 from typing import Dict
 
@@ -121,17 +119,15 @@ def test_compose_with_hooks_section(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     """HookComposer output is inserted when hooks are enabled."""
     _write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
 
-    module = ModuleType("lib.composition.hooks")
-
-    class HookComposer:
+    class MockHookComposer:
         def __init__(self, *_: object, **__: object) -> None:
             pass
 
         def generate_settings_json_hooks_section(self) -> Dict:
             return {"PreToolUse": ["echo from hook"]}
 
-    module.HookComposer = HookComposer  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "lib.composition.hooks", module)
+    # Mock the HookComposer in the composition.hooks module
+    monkeypatch.setattr("edison.core.composition.hooks.HookComposer", MockHookComposer)
 
     composer = SettingsComposer(config={"hooks": {"enabled": True}}, repo_root=tmp_path)
     settings = composer.compose_settings()

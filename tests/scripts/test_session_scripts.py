@@ -7,18 +7,18 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+EDISON_ROOT = Path(__file__).resolve().parents[2]
 
 
-def run(script: str, args: list[str], env: dict) -> subprocess.CompletedProcess:
-    """Execute a script relative to core/scripts using real CLI entrypoints."""
-    cmd = [sys.executable, str(SCRIPTS_DIR / script), *args]
+def run(domain: str, command: str, args: list[str], env: dict) -> subprocess.CompletedProcess:
+    """Execute a CLI command using python -m edison.cli.<domain>.<command>."""
+    cmd = [sys.executable, "-m", f"edison.cli.{domain}.{command}", *args]
     return subprocess.run(
         cmd,
         text=True,
         capture_output=True,
         env=env,
-        cwd=env["AGENTS_PROJECT_ROOT"],
+        cwd=EDISON_ROOT,
         check=True,
     )
 
@@ -56,28 +56,29 @@ def write_session(root: Path, session_id: str, state: str = "draft") -> Path:
 
 
 def test_domain_layout_and_no_legacy_wrappers():
-    """Ensure new domain folders exist and legacy root scripts are removed."""
+    """Ensure new CLI domain folders exist in edison.cli package."""
+    cli_dir = EDISON_ROOT / "src" / "edison" / "cli"
     required_dirs = [
         "session",
         "qa",
-        "tasks",
-        "packs",
+        "task",
         "rules",
         "config",
         "git",
-        "ci",
-        "utils",
-        "docs",
+        "compose",
+        "validators",
     ]
 
     for rel in required_dirs:
-        path = SCRIPTS_DIR / rel
-        assert path.exists() and path.is_dir(), f"Missing domain folder: {rel}"
+        path = cli_dir / rel
+        assert path.exists() and path.is_dir(), f"Missing CLI domain folder: {rel}"
 
-    # Legacy flat scripts must be removed once the new layout is in place
-    assert not (SCRIPTS_DIR / "session_verify.py").exists(), "session_verify.py should be removed"
-    assert not (SCRIPTS_DIR / "session_next.py").exists(), "session_next.py should be removed"
-    assert not (SCRIPTS_DIR / "session-validate").exists(), "session-validate should move under scripts/session/validate"
+    # Verify no legacy scripts directory exists at repo root
+    legacy_scripts = EDISON_ROOT / "scripts"
+    if legacy_scripts.exists():
+        # Scripts dir may exist for migration utilities, but should not contain domain folders
+        assert not (legacy_scripts / "session").exists(), "Legacy scripts/session should be removed"
+        assert not (legacy_scripts / "tasks").exists(), "Legacy scripts/tasks should be removed"
 
 
 def test_session_recover_outputs_json(tmp_path: Path):
@@ -86,7 +87,7 @@ def test_session_recover_outputs_json(tmp_path: Path):
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
-    proc = run("session/recovery/recover", ["--session", "s1", "--json"], env)
+    proc = run("session.recovery", "recover", ["--session", "s1", "--json"], env)
     payload = json.loads(proc.stdout.strip())
 
     rec_path = root / ".project" / "sessions" / "recovery" / "s1"
@@ -101,7 +102,7 @@ def test_session_next_returns_json(tmp_path: Path):
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
-    proc = run("session/next", ["alpha", "--json", "--limit", "0"], env)
+    proc = run("session", "next", ["alpha", "--json", "--limit", "0"], env)
     payload = json.loads(proc.stdout.strip())
 
     assert payload["sessionId"] == "alpha"
@@ -114,7 +115,7 @@ def test_session_verify_sets_closing_state(tmp_path: Path):
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
-    proc = run("session/verify", ["beta", "--phase", "closing", "--json"], env)
+    proc = run("session", "verify", ["beta", "--phase", "closing", "--json"], env)
     health = json.loads(proc.stdout.strip())
 
     session_json = root / ".project" / "sessions" / "draft" / "beta" / "session.json"
@@ -129,7 +130,7 @@ def test_session_close_skip_validation_transitions(tmp_path: Path):
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
-    proc = run("session/close", ["gamma", "--skip-validation", "--json"], env)
+    proc = run("session", "close", ["gamma", "--skip-validation", "--json"], env)
     payload = json.loads(proc.stdout.strip())
 
     session_json = root / ".project" / "sessions" / "draft" / "gamma" / "session.json"
@@ -144,7 +145,7 @@ def test_session_validate_outputs_json(tmp_path: Path):
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
-    proc = run("session/validate", ["delta", "--json"], env)
+    proc = run("session", "validate", ["delta", "--json"], env)
     payload = json.loads(proc.stdout.strip())
 
     assert payload["sessionId"] == "delta"

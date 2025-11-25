@@ -1,66 +1,85 @@
+"""
+Tests for Edison CLI entry point and dispatcher.
+
+Note: These tests are for the new Python package-based architecture.
+The old bin/edison shell script architecture has been replaced with
+a proper Python package entry point using edison.cli._dispatcher.
+"""
 import os
-import stat
-import subprocess
+import pytest
 from pathlib import Path
 
-import importlib.util
-from importlib.machinery import SourceFileLoader
-import sys
-
-ROOT = Path(__file__).resolve().parents[4]
-EDISON_BIN = ROOT / "bin" / "edison"
-
-loader = SourceFileLoader("edison_bin", str(EDISON_BIN))
-spec = importlib.util.spec_from_loader("edison_bin", loader)
-assert spec is not None
-edison = importlib.util.module_from_spec(spec)
-loader.exec_module(edison)
+from edison.core.paths import resolve_project_root, get_git_root, is_git_repository
+from edison.cli._dispatcher import discover_domains, discover_commands
 
 
-def _make_executable(path: Path) -> None:
-    mode = path.stat().st_mode
-    path.chmod(mode | stat.S_IEXEC)
+def test_discover_domains_finds_cli_modules() -> None:
+    """Test that the CLI dispatcher can discover domain modules."""
+    domains = discover_domains()
+    # Should have at least some common domains
+    assert isinstance(domains, dict)
+    assert len(domains) > 0
+    # Each domain should be a valid directory
+    for name, path in domains.items():
+        assert path.is_dir()
+        assert not name.startswith("_")
 
 
-def test_detect_project_root_walks_up(tmp_path: Path) -> None:
+def test_discover_commands_in_domain() -> None:
+    """Test that commands can be discovered within a domain."""
+    domains = discover_domains()
+    if not domains:
+        pytest.skip("No domains found")
+
+    # Pick first domain and test command discovery
+    domain_name = next(iter(domains.keys()))
+    commands = discover_commands(domain_name)
+
+    assert isinstance(commands, dict)
+    # Each command should have expected structure
+    for cmd_name, cmd_info in commands.items():
+        assert "module" in cmd_info
+        assert "summary" in cmd_info
+
+
+def test_resolve_project_root_walks_up(isolated_project_env: Path) -> None:
+    """Test that project root detection walks up directory tree."""
+    # isolated_project_env already has a git repo initialized
+    root = isolated_project_env
+    nested = root / "a" / "b"
+    nested.mkdir(parents=True, exist_ok=True)
+
+    # Set env var to point to the nested directory, then resolve should find root
+    import os
+    original_cwd = Path.cwd()
+    try:
+        os.chdir(nested)
+        # Clear cache to force fresh resolution
+        import edison.core.paths.resolver as paths
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+
+        detected = resolve_project_root()
+        assert detected == root
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_is_git_repository(tmp_path: Path) -> None:
+    """Test git repository detection."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    assert not is_git_repository(repo)
+
+    (repo / ".git").mkdir()
+    assert is_git_repository(repo)
+
+
+def test_get_git_root(tmp_path: Path) -> None:
+    """Test git root detection."""
     root = tmp_path / "project"
     (root / ".git").mkdir(parents=True, exist_ok=True)
     nested = root / "a" / "b"
     nested.mkdir(parents=True, exist_ok=True)
-    assert edison.detect_project_root(nested) == root
 
-
-def test_detect_edison_home_prefers_env(tmp_path: Path, monkeypatch) -> None:
-    home = tmp_path / ".edison"
-    (home / "core").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("EDISON_HOME", str(home))
-    assert edison.detect_edison_home() == home
-
-
-def test_dispatch_executes_script(tmp_path: Path, monkeypatch) -> None:
-    # Arrange Edison home with core/scripts/foo/bar
-    edison_home = tmp_path / ".edison"
-    scripts_dir = edison_home / "core" / "scripts" / "foo"
-    scripts_dir.mkdir(parents=True, exist_ok=True)
-    script = scripts_dir / "bar"
-    script.write_text("#!/usr/bin/env python3\nprint('ran')\n", encoding="utf-8")
-    _make_executable(script)
-
-    project_root = tmp_path / "project"
-    (project_root / ".git").mkdir(parents=True, exist_ok=True)
-
-    monkeypatch.chdir(project_root)
-    rc = edison.dispatch_command(edison_home, project_root, ["foo", "bar"])
-    assert rc == 0
-
-
-def test_setup_environment_sets_defaults(tmp_path: Path, monkeypatch) -> None:
-    edison_home = tmp_path / ".edison"
-    project_root = tmp_path / "project"
-    (edison_home / "core").mkdir(parents=True, exist_ok=True)
-    (project_root / ".git").mkdir(parents=True, exist_ok=True)
-    monkeypatch.delenv("EDISON_HOME", raising=False)
-    monkeypatch.delenv("PROJECT_ROOT", raising=False)
-    edison.setup_environment(edison_home, project_root)
-    assert os.environ["EDISON_HOME"] == str(edison_home)
-    assert os.environ["PROJECT_ROOT"] == str(project_root)
+    git_root = get_git_root(nested)
+    assert git_root == root

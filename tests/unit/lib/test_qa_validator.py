@@ -6,9 +6,7 @@ from typing import Any, Dict
 import pytest
 
 from edison.core import task  # type: ignore
-from edison.core.qa import validator  # type: ignore
-
-
+from edison.core.qa import validator 
 def test_simple_delegation_hint_uses_task_type_rules(
     isolated_project_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -153,7 +151,7 @@ def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch
     contains priority lists, while the core YAML config defines rich
     filePatternRules/taskTypeRules. This asserts YAML is used.
     """
-    from edison.core.qa import config as qa_config  # type: ignore
+    from edison.core.qa import config as qa_config 
     from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
@@ -168,7 +166,7 @@ def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch
 
 def test_load_validation_config_uses_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
     """qa.config.load_validation_config should return the validation section from YAML."""
-    from edison.core.qa import config as qa_config  # type: ignore
+    from edison.core.qa import config as qa_config 
     from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)

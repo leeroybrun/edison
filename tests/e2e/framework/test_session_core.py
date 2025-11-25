@@ -6,12 +6,10 @@ import sys
 import json
 import tarfile
 import threading
-import subprocess
 from pathlib import Path
 from typing import Any, Dict
 
 import pytest
-from edison.core.utils.subprocess import run_with_timeout
 
 
 # Make `.edison/core` importable as top-level so `from edison.core import ...` works
@@ -179,9 +177,10 @@ def test_file_lock_timeout(tmp_path: Path):
 # --- S4: Recovery flow for corrupted session files ---------------------------
 
 def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
-    """S4: `session/recovery/recover` CLI validates and repairs a corrupted session file."""
+    """S4: Session recovery functionality validates and repairs corrupted session files."""
     from edison.core.session import manager as session_manager
     from edison.core.session import store as session_store
+    from edison.core.session import recovery as session_recovery
 
     sid = "corrupt-test"
     session_manager.create_session(sid, owner="tester")
@@ -189,10 +188,11 @@ def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
     bad = session_store.get_session_json_path(sid)
     bad.write_text("{bad json", encoding="utf-8")
 
-    cli = Path(".edison/core/scripts/session/recovery/recover").resolve()
-    # Execute via Python to avoid PATH issues
-    proc = run_with_timeout([sys.executable, str(cli), "--session", sid], capture_output=True, text=True)
-    assert proc.returncode == 0, proc.stderr
+    # Use Python module instead of CLI script
+    try:
+        session_recovery.recover_session(sid)
+    except Exception as e:
+        pytest.fail(f"Session recovery failed: {e}")
 
     # After recovery, session should be in Recovery state
     rec_dir = Path(".project/sessions/recovery") / sid

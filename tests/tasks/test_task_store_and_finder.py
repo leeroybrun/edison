@@ -81,9 +81,9 @@ def test_create_and_find_task(tmp_path, monkeypatch):
     # Reload metadata-dependent modules so TYPE_INFO picks up new roots
     import edison.core.task.metadata as metadata
     metadata = importlib.reload(metadata)
-    importlib.reload(importlib.import_module("lib.task.io"))
-    importlib.reload(importlib.import_module("lib.task.store"))
-    importlib.reload(importlib.import_module("lib.task.finder"))
+    importlib.reload(importlib.import_module("edison.core.task.io"))
+    importlib.reload(importlib.import_module("edison.core.task.store"))
+    importlib.reload(importlib.import_module("edison.core.task.finder"))
 
     for d in [*paths.TASK_DIRS.values(), *paths.QA_DIRS.values(), *paths.SESSION_DIRS.values()]:
         d.mkdir(parents=True, exist_ok=True)

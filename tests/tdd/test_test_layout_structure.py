@@ -24,47 +24,52 @@ def _iter_test_files(root: Path):
 
 
 def test_all_tests_discoverable_from_single_root():
-    """RED: enforce single pytest root under .edison/core/tests.
+    """Tests should be consolidated under a single pytest root.
 
-    This assumes pytest is invoked from PYTEST_ROOT and discovers:
+    This assumes pytest is invoked from PYTEST_ROOT (tests/ in repo root) and discovers:
     - unit tests under unit/
     - integration tests under integration/
     - e2e tests under e2e/
     - QA tests under qa/
-    - resilience/shell tests under resilience/
+    - tdd tests under tdd/
+    - process tests under process/
+    - etc.
 
-    For now, we assert that .edison/core/scripts/tests does not
-    contain standalone Python test files that live outside the
-    consolidated PYTEST_ROOT tree.
+    Note: After migration from `.edison/core/scripts/*` to Python modules,
+    all tests are now under the main tests/ directory.
     """
-    assert PYTEST_ROOT.is_dir(), PYTEST_ROOT
+    assert PYTEST_ROOT.is_dir(), f"Pytest root should exist: {PYTEST_ROOT}"
 
+    # Legacy scripts/tests directory no longer exists after migration
     scripts_tests_root = PROJECT_ROOT / ".edison" / "core" / "scripts" / "tests"
-    assert scripts_tests_root.is_dir(), scripts_tests_root
-
-    core_paths = {p.resolve() for p in _iter_test_files(PYTEST_ROOT)}
-    scripts_paths = {p.resolve() for p in _iter_test_files(scripts_tests_root)}
-
-    # RED: today many tests live only under scripts_paths; enforce eventual consolidation.
-    only_in_scripts = scripts_paths - core_paths
-    assert not only_in_scripts, f"Found tests outside consolidated pytest root: {sorted(only_in_scripts)}"
+    if scripts_tests_root.exists():
+        # If it still exists, ensure it's empty or being phased out
+        scripts_paths = {p.resolve() for p in _iter_test_files(scripts_tests_root)}
+        assert not scripts_paths, f"Found legacy tests that should be migrated: {sorted(scripts_paths)}"
 
 
 def test_no_duplicate_test_files_across_locations():
-    """RED: no duplicate test files across core/scripts trees.
+    """Ensure no duplicate test files exist in legacy locations.
 
-    After migration, Python test files should exist only under
-    .edison/core/tests; this test currently fails because the
-    script framework tests are still separate.
+    After migration, Python test files should exist only under tests/.
+    Legacy `.edison/core/scripts/tests` should not exist or should be empty.
     """
     scripts_tests_root = PROJECT_ROOT / ".edison" / "core" / "scripts" / "tests"
-    assert scripts_tests_root.is_dir(), scripts_tests_root
 
+    # If legacy path doesn't exist, migration is complete - test passes
+    if not scripts_tests_root.exists():
+        return
+
+    # If it exists, ensure there are no test files (migration incomplete)
     core_paths = {p.relative_to(PROJECT_ROOT) for p in _iter_test_files(PYTEST_ROOT)}
     scripts_paths = {p.relative_to(PROJECT_ROOT) for p in _iter_test_files(scripts_tests_root)}
 
+    # Check for duplicates
     duplicates = core_paths & scripts_paths
     assert not duplicates, f"Duplicate test modules across locations: {sorted(duplicates)}"
+
+    # Ensure legacy location has no tests
+    assert not scripts_paths, f"Legacy tests found that should be migrated: {sorted(scripts_paths)}"
 
 
 def test_import_paths_for_framework_e2e_target_location():

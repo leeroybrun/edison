@@ -46,14 +46,13 @@ def _load_real_jsonschema():
 
 _jsonschema = _load_real_jsonschema()
 validate = _jsonschema.validate  # type: ignore[attr-defined]
-ValidationError = _jsonschema.exceptions.ValidationError  # type: ignore[attr-defined]
-
-
-SCHEMA_PATH = Path(".edison/core/schemas/session.schema.json")
+ValidationError = _jsonschema.ValidationError  # type: ignore[attr-defined]
 
 
 def _load_schema() -> dict:
-    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    from edison.data import get_data_path
+    schema_path = get_data_path("schemas", "session.schema.json")
+    return json.loads(schema_path.read_text(encoding="utf-8"))
 
 
 def _base_session() -> dict:

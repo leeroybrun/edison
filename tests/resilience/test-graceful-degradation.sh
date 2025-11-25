@@ -58,11 +58,7 @@ echo "✅ Graceful degradation tests passed"
 
 # Python-level graceful degradation decorator
 python3 << 'EOF'
-import sys
-from pathlib import Path
-repo = Path.cwd()
-sys.path.insert(0, str((repo / '.edison' / 'core' / 'lib').resolve()))
-from resilience import graceful_degradation  # type: ignore
+from edison.core.resilience import graceful_degradation
 
 @graceful_degradation(fallback_value=None)
 def maybe():

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -10,6 +11,18 @@ import pytest
 
 CORE_DIR = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = CORE_DIR / "scripts" / "git"
+
+# Helper to run CLI commands using python -m
+def _run_cli(module: str, args: list[str], repo: Path) -> subprocess.CompletedProcess:
+    """Run a CLI command using python -m syntax."""
+    cmd = [sys.executable, "-m", module] + args
+    return subprocess.run(
+        cmd,
+        cwd=repo,
+        env=_env(repo),
+        capture_output=True,
+        text=True
+    )
 
 
 def _make_repo(tmp_path: Path) -> Path:
@@ -60,15 +73,14 @@ def _env(repo: Path) -> dict[str, str]:
 
 def test_worktree_create_dry_run_json(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
-    cmd = [
-        str(SCRIPTS_DIR / "worktree-create"),
+    args = [
         "sess-123",
         "--dry-run",
         "--json",
         "--repo-root",
         str(repo),
     ]
-    result = subprocess.run(cmd, cwd=repo, env=_env(repo), capture_output=True, text=True)
+    result = _run_cli("edison.cli.git.worktree_create", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["sessionId"] == "sess-123"
@@ -82,15 +94,14 @@ def test_worktree_archive_dry_run_json(tmp_path: Path) -> None:
     wt = repo.parent / ".worktrees" / "sess-123"
     wt.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        str(SCRIPTS_DIR / "worktree-archive"),
+    args = [
         "sess-123",
         "--dry-run",
         "--json",
         "--repo-root",
         str(repo),
     ]
-    result = subprocess.run(cmd, cwd=repo, env=_env(repo), capture_output=True, text=True)
+    result = _run_cli("edison.cli.git.worktree_archive", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["sessionId"] == "sess-123"
@@ -102,14 +113,13 @@ def test_worktree_archive_dry_run_json(tmp_path: Path) -> None:
 
 def test_worktree_cleanup_json(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
-    cmd = [
-        str(SCRIPTS_DIR / "worktree-cleanup"),
+    args = [
         "--dry-run",
         "--json",
         "--repo-root",
         str(repo),
     ]
-    result = subprocess.run(cmd, cwd=repo, env=_env(repo), capture_output=True, text=True)
+    result = _run_cli("edison.cli.git.worktree_cleanup", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["dryRun"] is True

@@ -19,14 +19,14 @@ import os
 import json
 import pytest
 
-from helpers.assertions import assert_file_exists, assert_file_contains
-from helpers.command_runner import (
+from tests.e2e.helpers.assertions import assert_file_exists, assert_file_contains
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
     assert_output_contains,
 )
-from helpers.test_env import TestProjectDir, TestGitRepo
+from tests.e2e.helpers.test_env import TestProjectDir, TestGitRepo
 
 
 # -------------------------
@@ -43,7 +43,7 @@ def _edit_primary_files(task_path: Path, files: list[str]) -> None:
     The ready guard inspects the "Primary Files / Areas" section. We insert
     a bullet list immediately after the first occurrence of the field.
     """
-    from helpers.assertions import read_file
+    from tests.e2e.helpers.assertions import read_file
     text = read_file(task_path)
     lines = text.splitlines()
     out: list[str] = []

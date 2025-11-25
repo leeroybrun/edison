@@ -73,14 +73,29 @@ class ConfigManager:
         """
         self.repo_root = repo_root or self._find_repo_root()
         # Canonical core configuration directory
-        self.core_config_dir = self.repo_root / ".edison" / "core" / "config"
+        # Fall back to packaged data if .edison/core/config doesn't exist
+        edison_config_dir = self.repo_root / ".edison" / "core" / "config"
+        if edison_config_dir.exists():
+            self.core_config_dir = edison_config_dir
+        else:
+            # Use packaged data directory when running from installed package
+            from edison.data import get_data_path
+            self.core_config_dir = get_data_path("config")
+
         # Canonical defaults path lives inside the config directory
         self.core_defaults_path = self.core_config_dir / "defaults.yaml"
         # Resolves project configuration directory (.agents preferred, .edison fallback)
         project_root_dir = get_project_config_dir(self.repo_root)
         # Canonical project overlays (<dir>/config/*.yml)
         self.project_config_dir = project_root_dir / "config"
-        self.schemas_dir = self.repo_root / ".edison" / "core" / "schemas"
+
+        # Schemas directory - also fall back to packaged data
+        edison_schemas_dir = self.repo_root / ".edison" / "core" / "schemas"
+        if edison_schemas_dir.exists():
+            self.schemas_dir = edison_schemas_dir
+        else:
+            from edison.data import get_data_path
+            self.schemas_dir = get_data_path("config") / "schemas"
 
     # ---------- Root detection ----------
     def _find_repo_root(self) -> Path:

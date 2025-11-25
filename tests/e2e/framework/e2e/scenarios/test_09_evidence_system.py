@@ -17,13 +17,13 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from helpers import TestProjectDir
-from helpers.assertions import (
+from tests.e2e.helpers import TestProjectDir
+from tests.e2e.helpers.assertions import (
     assert_file_exists,
     assert_file_contains,
     assert_directory_exists,
 )
-from helpers.command_runner import (
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,

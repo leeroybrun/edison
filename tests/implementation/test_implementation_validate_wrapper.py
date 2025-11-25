@@ -7,7 +7,7 @@ from pathlib import Path
 from edison.core.utils.subprocess import run_with_timeout
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = REPO_ROOT / "scripts" / "implementation" / "validate"
 
 

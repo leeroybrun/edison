@@ -235,8 +235,12 @@ def test_render_config_template_includes_pack_config(isolated_project_env: Path)
         "react_version": "18",
     }
 
-    rendered = q.render_config_template(answers)
-    cfg = yaml.safe_load(rendered)
+    # render_modular_configs returns a dict of {filename: yaml_content}
+    configs = q.render_modular_configs(answers)
+
+    # Parse the packs.yml config which contains pack_config
+    packs_yaml = configs.get("packs.yml", "")
+    cfg = yaml.safe_load(packs_yaml)
 
     pack_cfg = cfg.get("pack_config") or {}
     assert pack_cfg["typescript"]["strict"] is True

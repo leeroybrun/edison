@@ -8,12 +8,20 @@ from edison.core.session.context import SessionContext
 
 
 def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) -> None:
+    from edison.core.session.config import SessionConfig
+
     session_id = "sess-ctx"
     worktree = tmp_path / "wt"
     worktree.mkdir()
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+
+    # Get the correct initial session state directory name
+    config = SessionConfig()
+    initial_state = config.get_initial_session_state()
+    state_dir = config.get_session_states().get(initial_state, initial_state)
+
     data = {"meta": {}, "git": {"worktreePath": str(worktree)}}
-    store_dir = tmp_path / ".project" / "sessions" / "active" / session_id
+    store_dir = tmp_path / ".project" / "sessions" / state_dir / session_id
     store_dir.mkdir(parents=True, exist_ok=True)
     (store_dir / "session.json").write_text(json.dumps(data), encoding="utf-8")
 
@@ -25,10 +33,18 @@ def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) 
 
 
 def test_in_session_worktree_without_path(tmp_path: Path, monkeypatch) -> None:
+    from edison.core.session.config import SessionConfig
+
     session_id = "sess-no-wt"
     data = {"meta": {}, "git": {}}
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
-    store_dir = tmp_path / ".project" / "sessions" / "active" / session_id
+
+    # Get the correct initial session state directory name
+    config = SessionConfig()
+    initial_state = config.get_initial_session_state()
+    state_dir = config.get_session_states().get(initial_state, initial_state)
+
+    store_dir = tmp_path / ".project" / "sessions" / state_dir / session_id
     store_dir.mkdir(parents=True, exist_ok=True)
     (store_dir / "session.json").write_text(json.dumps(data), encoding="utf-8")
 

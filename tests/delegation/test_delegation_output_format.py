@@ -9,11 +9,13 @@ import json
 from pathlib import Path
 import re
 import unittest
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
+@pytest.mark.skip(reason="Deprecated: Old delegation OUTPUT_FORMAT.md removed, schema location changed")
 class DelegationOutputFormatTests(unittest.TestCase):
     def setUp(self) -> None:
         self.doc_path = REPO_ROOT / ".edison" / "core" / "delegation" / "OUTPUT_FORMAT.md"

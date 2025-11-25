@@ -114,8 +114,9 @@ class TestProjectDir:
         if src_qa_template.exists():
             shutil.copy(src_qa_template, self.project_root / "qa" / "TEMPLATE.md")
 
-        # Copy session template if exists
-        src_session_template = self.repo_root / ".agents" / "sessions" / "TEMPLATE.json"
+        # Copy session template from bundled data
+        from edison.data import get_data_path
+        src_session_template = get_data_path("templates", "session.template.json")
         if src_session_template.exists():
             shutil.copy(src_session_template, self.agents_root / "sessions" / "TEMPLATE.json")
 

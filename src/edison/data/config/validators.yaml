@@ -129,14 +129,14 @@ validation:
         context7Packages: [next, zod, typescript]
         blocksOnFail: false
         outputFormat: ApiReport
-      - id: database
-        name: Database Validator
+      - id: prisma
+        name: Prisma Validator
         model: codex
         interface: clink
         role: codereviewer
         zenRole: validator-database
         specFile: specialized/database.md
-        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*"]
+        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*", "schema.prisma"]
         alwaysRun: false
         priority: 3
         context7Required: true

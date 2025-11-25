@@ -19,13 +19,13 @@ import json
 import pytest
 from pathlib import Path
 
-from helpers.test_env import TestProjectDir
-from helpers.command_runner import (
+from tests.e2e.helpers.test_env import TestProjectDir
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_json_output,
 )
-from helpers.assertions import (
+from tests.e2e.helpers.assertions import (
     assert_file_exists,
     assert_file_contains,
     assert_json_has_field,

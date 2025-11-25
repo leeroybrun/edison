@@ -2,27 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import pytest
 
-# Locate project root by walking upward until core config module is found.
+from edison.core.config import ConfigManager
+from edison.data import get_data_path
+
+# Try to find wilson-leadgen project for legacy config checks
 _CUR = Path(__file__).resolve()
 ROOT: Path | None = None
-CORE_ROOT: Path | None = None
 
 for cand in _CUR.parents:
-    if (cand / ".edison" / "core" / "lib" / "config.py").exists():
+    if (cand / ".agents" / "config").exists():
         ROOT = cand
-        CORE_ROOT = cand / ".edison" / "core"
         break
-
-assert ROOT is not None, "Unable to locate project root for legacy-config checks"
-assert CORE_ROOT is not None
-
-from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 
 
 def test_core_config_has_no_json_configs() -> None:
     """Core config must be YAML-only; schemas are the only JSON allowed."""
-    cfg_dir = ROOT / ".edison" / "core" / "config"
+    # Check bundled Edison data
+    cfg_dir = get_data_path("config")
     json_configs = [
         p for p in cfg_dir.rglob("*.json") if not p.name.endswith(".schema.json")
     ]
@@ -31,6 +29,9 @@ def test_core_config_has_no_json_configs() -> None:
 
 def test_project_overlays_use_yaml_only() -> None:
     """Project overlays must rely on YAML config; JSON configs are forbidden."""
+    if not ROOT:
+        pytest.skip("wilson-leadgen project not found - test requires project environment")
+
     forbidden = [
         ROOT / ".agents" / "delegation" / "config.json",
         ROOT / ".agents" / "validators" / "config.json",
@@ -43,14 +44,21 @@ def test_project_overlays_use_yaml_only() -> None:
     required = [
         ROOT / ".agents" / "config" / "delegation.yml",
         ROOT / ".agents" / "config" / "validators.yml",
-        ROOT / ".edison" / "core" / "config" / "state-machine.yaml",
     ]
+    # Check bundled core config for state-machine
+    state_machine_config = get_data_path("config", "state-machine.yaml")
+    if not state_machine_config.exists():
+        required.append(ROOT / ".edison" / "core" / "config" / "state-machine.yaml")
+
     missing = [p for p in required if not p.exists()]
     assert not missing, f"Expected YAML configs missing: {missing}"
 
 
 def test_state_machine_available_from_yaml_only() -> None:
     """Session/task/QA state machines must be sourced from YAML config."""
+    if not ROOT:
+        pytest.skip("wilson-leadgen project not found - test requires project environment")
+
     cfg = ConfigManager(ROOT).load_config(validate=False)
     sm = cfg.get("statemachine", {}) if isinstance(cfg, dict) else {}
     session_states = sm.get("session", {}).get("states", {}) if isinstance(sm, dict) else {}
@@ -61,5 +69,8 @@ def test_state_machine_available_from_yaml_only() -> None:
 
 def test_no_root_legacy_cache_dir() -> None:
     """Deprecated top-level .cache/composed must not linger."""
+    if not ROOT:
+        pytest.skip("wilson-leadgen project not found - test requires project environment")
+
     legacy_cache = ROOT / ".cache" / "composed"
     assert not legacy_cache.exists(), "Legacy .cache/composed directory should be removed"

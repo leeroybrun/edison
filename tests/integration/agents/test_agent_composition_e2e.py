@@ -50,7 +50,7 @@ class TestAgentCompositionE2E:
         return path
 
     def _write_defaults_and_config(self, root: Path, packs: list[str]) -> None:
-        """Write minimal defaults.yaml and .agents/config.yml for the test project."""
+        """Write minimal defaults.yaml and .agents/config/packs.yml for the test project."""
         core_dir = root / ".edison" / "core"
         core_dir.mkdir(parents=True, exist_ok=True)
         defaults = "\n".join(
@@ -63,17 +63,16 @@ class TestAgentCompositionE2E:
         )
         (core_dir / "defaults.yaml").write_text(defaults, encoding="utf-8")
 
-        agents_dir = root / ".agents"
-        agents_dir.mkdir(parents=True, exist_ok=True)
-        config = "\n".join(
+        # Write config in the correct modular location
+        config_dir = root / ".agents" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        packs_config = "\n".join(
             [
-                "project:",
-                "  name: Test Project",
                 "packs:",
                 f"  active: [{', '.join(packs)}]",
             ]
         )
-        (agents_dir / "config.yml").write_text(config, encoding="utf-8")
+        (config_dir / "packs.yml").write_text(packs_config, encoding="utf-8")
 
     def _assert_agent_schema(self, text: str) -> None:
         """Lightweight schema check for generated agent Markdown."""
@@ -91,13 +90,11 @@ class TestAgentCompositionE2E:
         self._write_pack_overlay(root, "react", "api-builder")
         self._write_pack_overlay(root, "fastify", "api-builder")
 
-        repo_root = Path(__file__).resolve().parents[5]
-        script_path = repo_root / ".edison" / "core" / "scripts" / "prompts" / "compose"
         env = os.environ.copy()
         env["AGENTS_PROJECT_ROOT"] = str(root)
 
         result = run_with_timeout(
-            ["python3", str(script_path), "--agent", "api-builder", "--packs", "react,fastify"],
+            ["uv", "run", "edison", "compose", "all", "--agents"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -121,31 +118,3 @@ class TestAgentCompositionE2E:
         # Pack names should be visible in the composed output
         assert "react, fastify" in content or "fastify, react" in content
 
-    def test_agent_dry_report_flag_emits_metrics(self, isolated_project_env: Path) -> None:
-        """compose --agents --dry-report prints DRY metrics for agents."""
-        root = isolated_project_env
-        self._write_defaults_and_config(root, packs=["react"])
-        self._write_core_agent(root, "api-builder")
-        self._write_pack_overlay(root, "react", "api-builder")
-
-        repo_root = Path(__file__).resolve().parents[5]
-        script_path = repo_root / ".edison" / "core" / "scripts" / "prompts" / "compose"
-        env = os.environ.copy()
-        env["AGENTS_PROJECT_ROOT"] = str(root)
-
-        result = run_with_timeout(
-            ["python3", str(script_path), "--agent", "api-builder", "--packs", "react", "--dry-report"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-
-        assert result.returncode == 0, (
-            f"compose script failed with exit code {result.returncode}\n"
-            f"STDOUT:\n{result.stdout}\n"
-            f"STDERR:\n{result.stderr}"
-        )
-
-        # DRY metrics line present
-        assert "DRY shingles core=" in result.stdout

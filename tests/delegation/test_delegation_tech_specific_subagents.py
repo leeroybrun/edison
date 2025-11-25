@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 CORE_ROOT = Path(__file__).resolve().parents[2]
 CONFIG = CORE_ROOT / "config" / "delegation.yaml"
 
 
+@pytest.mark.skip(reason="Deprecated: Old config/delegation.yaml removed, functionality moved to project .agents/config/delegation.yml")
 def test_nextjs_and_prisma_file_patterns_use_tech_specific_agents() -> None:
     """TSX/JSX should delegate to the Next.js component builder; Prisma files to the Prisma DB architect."""
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))

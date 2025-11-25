@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
-from edison.core.utils.subprocess import run_with_timeout
 
 
 VALIDATOR_FILES = [
@@ -96,10 +94,9 @@ def test_no_mixed_content_above_includes():
 def test_rendered_output_complete(tmp_path: Path):
     """Rendered validators must contain both template and overlay content.
 
-    Uses .agents/scripts/include/render-md.sh to resolve includes.
+    Uses Python composition module to resolve includes.
     """
-    render_script = Path(".edison/core/scripts/include/render-md.sh")
-    assert render_script.exists() and render_script.is_file(), "render script missing"
+    from edison.core.composition.includes import resolve_includes
 
     # Probe strings expected in template and overlay outputs
     template_probes = {
@@ -126,17 +123,18 @@ def test_rendered_output_complete(tmp_path: Path):
     for vf in VALIDATOR_FILES:
         if not vf.exists():
             pytest.skip("validators not created yet")
-        # Render
-        result = run_with_timeout([
-            "bash", str(render_script), str(vf)
-        ], capture_output=True, text=True, check=False)
 
-        assert result.returncode == 0, f"render script failed for {vf}: {result.stderr}"
-        output = result.stdout
+        # Render using Python module
+        content = _read(vf)
+        try:
+            output, _ = resolve_includes(content, vf)
+        except Exception as e:
+            pytest.fail(f"Include resolution failed for {vf}: {e}")
+
         assert "{{include:" not in output, "Unresolved include in rendered output"
 
         # Validate template probes
-        for inc in re.findall(r"\{\{include:([^}]+)\}\}", _read(vf)):
+        for inc in re.findall(r"\{\{include:([^}]+)\}\}", content):
             inc = inc.strip()
             if inc in template_probes:
                 for probe in template_probes[inc]:

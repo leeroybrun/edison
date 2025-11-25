@@ -7,7 +7,9 @@ SUMMARY: Display current session status
 from __future__ import annotations
 
 import argparse
+import sys
 import json
+import sys
 
 SUMMARY = "Display current session status"
 
@@ -62,3 +64,10 @@ def main(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"Error: {e}")
         return 1
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    args = parser.parse_args()
+    sys.exit(main(args))

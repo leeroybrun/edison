@@ -266,69 +266,134 @@ def handle_timeout(sess_dir: Path) -> Path:
     return rec_dir
 
 
+def detect_incomplete_transactions() -> List[Dict[str, Any]]:
+    """Detect all incomplete validation transactions across all sessions.
+
+    Returns a list of incomplete transaction metadata dictionaries.
+    Each entry contains:
+    - sessionId: Session identifier
+    - txId: Transaction identifier
+    - txDir: Path to transaction directory
+    - startedAt: Transaction start timestamp
+    - meta: Full transaction metadata
+    """
+    from .transaction import _get_tx_root, TX_VALIDATION_SUBDIR
+    from ..io_utils import read_json_safe as io_read_json_safe
+
+    tx_root = _get_tx_root()
+    if not tx_root.exists():
+        return []
+
+    incomplete = []
+
+    # Iterate over session directories in transaction root
+    for session_dir in tx_root.iterdir():
+        if not session_dir.is_dir():
+            continue
+
+        session_id = session_dir.name
+        val_root = session_dir / TX_VALIDATION_SUBDIR
+
+        if not val_root.exists():
+            continue
+
+        # Iterate over validation transaction directories
+        for tx_dir in val_root.iterdir():
+            if not tx_dir.is_dir():
+                continue
+
+            meta_path = tx_dir / "meta.json"
+            if not meta_path.exists():
+                continue
+
+            try:
+                meta = io_read_json_safe(meta_path)
+            except Exception:
+                continue
+
+            tx_id = meta.get("txId")
+            if not tx_id:
+                continue
+
+            finalized = meta.get("finalizedAt")
+            aborted = meta.get("abortedAt")
+
+            if not finalized and not aborted:
+                # This is an incomplete transaction
+                incomplete.append({
+                    "sessionId": session_id,
+                    "txId": tx_id,
+                    "txDir": tx_dir,
+                    "startedAt": meta.get("startedAt"),
+                    "meta": meta,
+                })
+
+    return incomplete
+
+
 def recover_incomplete_validation_transactions(session_id: str) -> int:
     """Recover incomplete validation transactions for a session.
-    
+
     Scans for incomplete transactions in the session's transaction directory.
     For each incomplete transaction:
     1. If it was committed but not finalized, finalize it (it's done).
     2. If it was aborted, clean it up.
     3. If it was neither committed nor aborted (stale/crash), abort it and clean up.
-    
+
     Returns the number of recovered transactions.
     """
     from .transaction import _tx_dir, _find_tx_session, finalize_tx, abort_tx, _get_tx_root, TX_VALIDATION_SUBDIR
     from ..io_utils import read_json_safe as io_read_json_safe
-    
+
     sid = sanitize_session_id(session_id)
     # Validation transactions are stored in <tx_root>/<sid>/validation/<tx_id>
     # But wait, transaction.py says:
     # _tx_validation_dir = _get_tx_root() / sanitize_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
-    
+
     tx_root = _get_tx_root()
     val_root = tx_root / sid / TX_VALIDATION_SUBDIR
-    
+
     if not val_root.exists():
         return 0
-        
+
     recovered = 0
     for tx_dir in val_root.iterdir():
         if not tx_dir.is_dir():
             continue
-            
+
         meta_path = tx_dir / "meta.json"
         if not meta_path.exists():
             # Zombie directory?
             continue
-            
+
         try:
             meta = io_read_json_safe(meta_path)
         except Exception:
             continue
-            
+
         tx_id = meta.get("txId")
         if not tx_id:
             continue
-            
+
         finalized = meta.get("finalizedAt")
         aborted = meta.get("abortedAt")
-        
+
         if finalized or aborted:
             # Already done
             continue
-            
+
         # It's incomplete.
         # Check if we should roll it back or just mark it aborted.
         # ValidationTransaction.commit() sets _committed=True then writes finalizedAt.
         # If finalizedAt is missing, it wasn't fully committed.
         # So we should abort/rollback.
-        
+
         # We can instantiate a ValidationTransaction and call abort?
         # Or just manually clean up.
         # Manual cleanup is safer to avoid side effects of __init__.
-        
+
         logger.info("Recovering incomplete validation transaction %s for session %s", tx_id, sid)
-        
+
         # 1. Clean up staging/snapshot
         staging = tx_dir / "staging"
         snapshot = tx_dir / "snapshot"
@@ -336,12 +401,19 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
             shutil.rmtree(staging, ignore_errors=True)
         if snapshot.exists():
             shutil.rmtree(snapshot, ignore_errors=True)
-            
-        # 2. Mark as aborted
+
+        # 2. Mark as aborted in meta.json (validation transactions store metadata differently)
         try:
-            abort_tx(sid, tx_id, reason="recovery-cleanup")
+            from ..locklib import acquire_file_lock
+            from ..io_utils import write_json_safe as io_write_json_safe
+
+            with acquire_file_lock(meta_path):
+                meta["abortedAt"] = io_utc_timestamp()
+                meta["reason"] = "recovery-cleanup"
+                io_write_json_safe(meta_path, meta)
+
             recovered += 1
         except Exception as e:
             logger.error("Failed to abort recovered tx %s: %s", tx_id, e)
-            
+
     return recovered

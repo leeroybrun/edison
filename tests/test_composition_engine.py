@@ -13,6 +13,9 @@ from edison.core.composition import (
     dry_duplicate_report,
 )
 
+# Define ROOT as the edison project root directory
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def _p(rel: str) -> Path:
     return ROOT / "tests" / "context" / "comp_samples" / rel
@@ -69,14 +72,14 @@ def test_dry_linter():
 
 def test_compose_integration_smoke():
     # Compose using real core + no packs to avoid external deps
-    codex_core = ROOT / "validators" / "global" / "codex-core.md"
+    codex_core = ROOT / "src" / "edison" / "data" / "validators" / "global" / "codex-core.md"
     assert codex_core.exists(), "codex-core.md must exist"
     res = compose_prompt(
         validator_id="codex-global",
         core_base=codex_core,
         pack_contexts=[],
-        overlay=ROOT.parent / ".agents" / "validators" / "overlays" / "codex-global-overlay.md",
+        overlay=None,  # No overlay needed for smoke test
         enforce_dry=True,
     )
     assert res.cache_path and res.cache_path.exists()
-    assert "Core Edison Principles" in res.text
+    assert "Codex Global Validator" in res.text

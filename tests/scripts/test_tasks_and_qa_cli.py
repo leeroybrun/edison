@@ -6,17 +6,18 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+EDISON_ROOT = Path(__file__).resolve().parents[2]
 
 
-def run(script: str, args: list[str], env: dict) -> subprocess.CompletedProcess:
-    cmd = [sys.executable, str(SCRIPTS_DIR / script), *args]
+def run(domain: str, command: str, args: list[str], env: dict) -> subprocess.CompletedProcess:
+    """Execute a CLI command using python -m edison.cli.<domain>.<command>."""
+    cmd = [sys.executable, "-m", f"edison.cli.{domain}.{command}", *args]
     return subprocess.run(
         cmd,
         text=True,
         capture_output=True,
         env=env,
-        cwd=env["AGENTS_PROJECT_ROOT"],
+        cwd=EDISON_ROOT,
         check=True,
     )
 
@@ -56,7 +57,7 @@ def test_allocate_id_uses_json_output(tmp_path: Path):
     existing.write_text("placeholder")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    proc = run("tasks/allocate-id", ["--base", "201", "--json"], env)
+    proc = run("task", "allocate_id", ["--base", "201", "--json"], env)
     payload = json.loads(proc.stdout.strip())
     assert payload["nextId"] == "201.2"
 
@@ -76,7 +77,7 @@ def test_mark_delegated_updates_file(tmp_path: Path):
     )
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    proc = run("tasks/mark-delegated", ["111-wave1-demo" , "--json"], env)
+    proc = run("task", "mark_delegated", ["111-wave1-demo" , "--json"], env)
     payload = json.loads(proc.stdout.strip())
     assert payload["delegated"] is True
     updated = task_file.read_text()
@@ -93,7 +94,7 @@ def test_cleanup_stale_locks_json(tmp_path: Path, monkeypatch):
     os.utime(lock, (old, old))
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    proc = run("tasks/cleanup-stale-locks", ["--max-age", "0", "--json"], env)
+    proc = run("task", "cleanup_stale_locks", ["--max-age", "0", "--json"], env)
     payload = json.loads(proc.stdout.strip())
     assert payload["removed"] == 1
     assert not lock.exists()
@@ -105,7 +106,7 @@ def test_qa_new_creates_file(tmp_path: Path):
     template.write_text("""# PPP-waveN-slug-qa\n**Priority Slot:** PPP\n**Validator Owner:** _unassigned_\n**Status:** waiting | todo | wip | done | validated\n**Created:** YYYY-MM-DD\n**Evidence Directory:** `.project/qa/validation-evidence/task-XXXX/`\n**Continuation ID:** _none_\n""")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa/new", ["150-wave1-demo", "--owner", "alice", "--json"], env)
+    result = run("qa", "new", ["150-wave1-demo", "--owner", "alice", "--json"], env)
     payload = json.loads(result.stdout.strip())
     qa_path = root / payload["qaPath"]
     assert qa_path.exists()
@@ -117,7 +118,7 @@ def test_qa_round_appends(tmp_path: Path):
     qa_file.write_text("# 150-wave1-demo-qa\n")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa/round", ["--task", "150-wave1-demo", "--status", "approved", "--json"], env)
+    result = run("qa", "round", ["--task", "150-wave1-demo", "--status", "approved", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["taskId"] == "150-wave1-demo"
     content = qa_file.read_text()
@@ -133,7 +134,7 @@ def test_tasks_link_updates_session_graph(tmp_path: Path):
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("tasks/link", ["200-wave1-demo", "200.1-wave1-child", "--session", "s123", "--json"], env)
+    result = run("task", "link", ["200-wave1-demo", "200.1-wave1-child", "--session", "s123", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["sessionId"] == "s123"
     # ensure session graph persisted
@@ -151,7 +152,7 @@ def test_tasks_new_creates_file(tmp_path: Path):
     write_task_template(root)
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    proc = run("tasks/new", ["--id", "150", "--wave", "wave1", "--slug", "demo", "--json"], env)
+    proc = run("task", "new", ["--id", "150", "--wave", "wave1", "--slug", "demo", "--json"], env)
     payload = json.loads(proc.stdout.strip())
     path = root / payload["path"]
     assert path.exists()
@@ -165,7 +166,7 @@ def test_tasks_status_moves_file(tmp_path: Path):
     task_path.write_text("status: todo\n")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    run("tasks/status", ["150-wave1-demo", "--status", "wip", "--json"], env)
+    run("task", "status", ["150-wave1-demo", "--status", "wip", "--json"], env)
     moved = root / ".project" / "tasks" / "wip" / "150-wave1-demo.md"
     assert moved.exists()
 
@@ -194,7 +195,7 @@ def test_tasks_ready_moves_wip_to_done(tmp_path: Path):
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    run("tasks/ready", [task_id, "--session", "s1", "--json"], env)
+    run("task", "ready", [task_id, "--session", "s1", "--json"], env)
 
     done_path = root / ".project" / "sessions" / "done" / "s1" / "tasks" / "done" / f"task-{task_id}.md"
     qa_todo = root / ".project" / "sessions" / "todo" / "s1" / "qa" / "todo" / f"{task_id}-qa.md"
@@ -213,7 +214,7 @@ def test_qa_bundle_outputs_manifest(tmp_path: Path):
     session_graph.register_task("s1", "150-wave1-demo", owner="alice", status="done")
     session_graph.link_tasks("s1", "150-wave1-demo", "150.1-wave1-child")
 
-    result = run("qa/bundle", ["150-wave1-demo", "--session", "s1", "--json"], env)
+    result = run("qa", "bundle", ["150-wave1-demo", "--session", "s1", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["sessionId"] == "s1"
     assert payload["rootTask"] == "150-wave1-demo"
@@ -226,7 +227,7 @@ def test_qa_promote_moves_state(tmp_path: Path):
     qa_waiting.write_text("status: waiting\n")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    run("qa/promote", ["--task", "150-wave1-demo", "--to", "todo", "--json"], env)
+    run("qa", "promote", ["--task", "150-wave1-demo", "--to", "todo", "--json"], env)
     qa_todo = root / ".project" / "qa" / "todo" / "150-wave1-demo-qa.md"
     assert qa_todo.exists()
 
@@ -240,7 +241,7 @@ def test_guidelines_audit_writes_evidence(tmp_path: Path):
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa/guidelines_audit.py", ["--json"], env)
+    result = run("qa", "audit", ["--json"], env)
     summary = json.loads(result.stdout.strip())
     evidence_root = root / ".project" / "qa" / "validation-evidence" / "fix-9-guidelines-audit"
     assert summary["duplicationPairs"] >= 0

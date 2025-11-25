@@ -55,14 +55,11 @@ def orchestrator_env(isolated_project_env: Path) -> Path:
 
 
 def _run_compose_orchestrator(project_root: Path) -> tuple[int, str, str]:
-    script = REPO_ROOT / ".edison" / "core" / "scripts" / "prompts" / "compose"
-    assert script.exists(), f"compose script missing at {script}"
-
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(project_root)
 
     proc = run_with_timeout(
-        [str(Path(os.environ.get("PYTHON", "python3"))), str(script), "--orchestrator"],
+        ["uv", "run", "edison", "compose", "all", "--orchestrator"],
         cwd=project_root,
         env=env,
         capture_output=True,

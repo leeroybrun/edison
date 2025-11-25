@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from helpers.assertions import assert_file_exists, assert_file_contains
-from helpers.command_runner import (
+from tests.e2e.helpers.assertions import assert_file_exists, assert_file_contains
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
@@ -24,7 +24,7 @@ from helpers.command_runner import (
     assert_error_contains,
     assert_json_output,
 )
-from helpers.test_env import TestProjectDir
+from tests.e2e.helpers.test_env import TestProjectDir
 
 
 @pytest.mark.golden_path
@@ -63,11 +63,11 @@ class TestTaskCreationRealCLI:
         task_path = test_project_dir.project_root / "tasks" / "todo" / actual_filename
         assert_file_exists(task_path)
 
-        # Validate file contents created by CLI (uses TEMPLATE.md format)
-        # Template format is: # {id}-{wave}-{slug} (Template v1.1)
-        assert_file_contains(task_path, f"# {expected_id}")
-        assert_file_contains(task_path, f"**Wave:** {wave}")
-        assert_file_contains(task_path, f"**Task ID:** {expected_id}")
+        # Validate file contents created by CLI (uses YAML frontmatter format)
+        # Format: YAML frontmatter with id, status, title
+        assert_file_contains(task_path, f"id: {expected_id}")
+        assert_file_contains(task_path, "status: todo")
+        assert_file_contains(task_path, "title:")
 
     def test_create_task_missing_required_arg_fails(self, test_project_dir: TestProjectDir):
         """✅ CORRECT: Test error case - missing required argument."""
@@ -156,15 +156,14 @@ class TestTaskStatusRealCLI:
             / session_id
             / "tasks"
             / "wip"
-            / f"{task_id}.md"
+            / f"task-{task_id}.md"
         )
         assert_file_exists(task_path)
 
         # Real behavior: tasks/claim sets Owner to auto-detected owner (e.g., claude-pid-12345)
         # not the --session value. The --session flag registers task in session JSON.
         # Just validate that Owner field was set to SOMETHING
-        from helpers.assertions import read_file
-        content = read_file(task_path)
+        content = task_path.read_text()
         assert "**Owner:**" in content, "Owner field should be present"
         assert "**Owner:** _unassigned_" not in content, "Owner should be assigned after claim"
 

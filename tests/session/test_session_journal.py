@@ -16,6 +16,7 @@ SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
 # Import libs after adding to path
 import sys
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
+from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
 from edison.core.session import store as session_store
 from edison.core.locklib import LockTimeoutError
@@ -30,8 +31,8 @@ class SessionJournalTests(unittest.TestCase):
         # Minimal sessions structure
         sessions_root = self.temp_root / ".project" / "sessions"
         sessions_root.mkdir(parents=True, exist_ok=True)
-        (REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json").replace(sessions_root / "TEMPLATE.json") if False else shutil.copyfile(
-            REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json",
+        (get_data_path("templates", "session.template.json")).replace(sessions_root / "TEMPLATE.json") if False else shutil.copyfile(
+            get_data_path("templates", "session.template.json"),
             sessions_root / "TEMPLATE.json",
         )
 

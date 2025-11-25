@@ -9,19 +9,7 @@ Usage:
     ./analyze --format json            # JSON output
     ./analyze --ci-mode --threshold 80000  # CI budget check
 """
-import sys
-from pathlib import Path
-
-# Add parent directory to path for imports
-script_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(script_dir))
-
-# Now import with absolute imports
-import baseline_profiler
-import bloat_detector
-import scenario_simulator
-import token_counter
-import context_impact_analyzer
+from tests.context import context_impact_analyzer
 
 if __name__ == "__main__":
     context_impact_analyzer.main()

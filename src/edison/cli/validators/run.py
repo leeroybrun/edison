@@ -95,3 +95,10 @@ def main(args: argparse.Namespace) -> int:
         else:
             print(f"Error: {e}", file=sys.stderr)
         return 1
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    args = parser.parse_args()
+    sys.exit(main(args))

@@ -200,8 +200,17 @@ class CompositionEngine:
         else:
             self.config = config
 
-        self.core_dir = self.repo_root / ".edison" / "core"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
+        # For Edison's own tests, use bundled data directory instead of .edison/core
+        edison_dir = self.repo_root / ".edison"
+        if edison_dir.exists():
+            self.core_dir = edison_dir / "core"
+            self.packs_dir = edison_dir / "packs"
+        else:
+            # Running within Edison itself - use bundled data
+            from edison.data import get_data_path
+            self.core_dir = get_data_path("")
+            self.packs_dir = get_data_path("packs")
+
         default_project_dir = get_project_config_dir(self.repo_root)
         alt_project_dir = self.repo_root / ".agents"
         if (
@@ -270,6 +279,15 @@ class CompositionEngine:
     ) -> Dict[str, Path]:
         return orch_compose_claude_agents(self, output_dir, packs_override=packs_override)
 
+    def compose_agents(
+        self,
+        output_dir: Path | str | None = None,
+        *,
+        packs_override: Optional[List[str]] = None,
+    ) -> Dict[str, Path]:
+        """Alias for compose_claude_agents for backward compatibility."""
+        return self.compose_claude_agents(output_dir, packs_override=packs_override)
+
     def compose_validators(
         self,
         *,
@@ -320,10 +338,20 @@ class CompositionEngine:
                     return c
 
             # Fallback: pack-provided validator specs (e.g., prisma/database)
-            for pack in self._active_packs():
-                cand = self.packs_dir / pack / "validators" / f"{role}.md"
-                if cand.exists():
-                    return cand
+            # Search all packs, not just active ones, to support validator composition
+            # even when packs aren't explicitly activated
+            if self.packs_dir.exists():
+                # Try role name first, then common aliases
+                role_aliases = [role]
+                if role == "prisma":
+                    role_aliases.append("database")
+
+                for pack_path in self.packs_dir.iterdir():
+                    if pack_path.is_dir():
+                        for alias in role_aliases:
+                            cand = pack_path / "validators" / f"{alias}.md"
+                            if cand.exists():
+                                return cand
 
             raise ComposeError(
                 f"Validator spec not found for {v_id}. Looked for: "
@@ -352,7 +380,7 @@ class CompositionEngine:
                 "react",
                 "nextjs",
                 "api",
-                "prisma",
+                "database",
                 "testing",
             ]
         else:

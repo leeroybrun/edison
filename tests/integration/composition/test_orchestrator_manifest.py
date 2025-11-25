@@ -7,58 +7,64 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 from edison.core.utils.subprocess import run_with_timeout
 
 
-CORE_TEST_ROOT = Path(__file__).resolve().parents[3]  # .../.edison/core/tests
-REPO_ROOT = CORE_TEST_ROOT.parents[1]  # .../example-project
+# REPO_ROOT is the Edison repo root (not Wilson)
+REPO_ROOT = Path(__file__).resolve().parents[3]  # edison/tests/integration/composition -> edison/
 
 
 def _seed_orchestrator_env(root: Path) -> None:
-    """Seed isolated project root with real Edison config and packs.
+    """Seed isolated project root with real Edison bundled data.
 
     This mirrors the structure expected by ConfigManager and CompositionEngine
-    so that orchestrator artifacts are generated from real defaults + project
-    overlays instead of synthetic test-only data.
+    so that orchestrator artifacts are generated from real bundled data + synthetic
+    project config.
     """
-    # Core config (defaults + modular config dir when present)
-    core_src = REPO_ROOT / ".edison" / "core"
+    # Copy bundled Edison data (packs, core config) from the edison package
+    from edison.data import get_data_path
+
+    bundled_core = get_data_path("")
     core_dst = root / ".edison" / "core"
-    core_dst.mkdir(parents=True, exist_ok=True)
+    if bundled_core.exists():
+        shutil.copytree(bundled_core, core_dst, dirs_exist_ok=True)
 
-    defaults_src = core_src / "defaults.yaml"
-    if defaults_src.exists():
-        shutil.copy(defaults_src, core_dst / "defaults.yaml")
-
-    core_config_src = core_src / "config"
-    if core_config_src.exists():
-        shutil.copytree(core_config_src, core_dst / "config", dirs_exist_ok=True)
-
-    validators_src = core_src / "validators"
-    if validators_src.exists():
-        shutil.copytree(validators_src, core_dst / "validators", dirs_exist_ok=True)
-
-    # Packs tree (real packs, used for agents/guidelines metadata)
-    packs_src = REPO_ROOT / ".edison" / "packs"
+    bundled_packs = get_data_path("packs")
     packs_dst = root / ".edison" / "packs"
-    if packs_src.exists():
-        packs_dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(packs_src, packs_dst, dirs_exist_ok=True)
+    if bundled_packs.exists():
+        shutil.copytree(bundled_packs, packs_dst, dirs_exist_ok=True)
 
-    # Project-level config and delegation overlay
+    # Create minimal project config with modular structure
     agents_dst = root / ".agents"
     agents_dst.mkdir(parents=True, exist_ok=True)
 
-    config_src = REPO_ROOT / ".agents" / "config.yml"
-    if config_src.exists():
-        shutil.copy(config_src, agents_dst / "config.yml")
+    config_dir = agents_dst / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
 
-    # Canonical delegation overlay YAML under .agents/config/delegation.yml
-    delegation_yaml_src = REPO_ROOT / ".agents" / "config" / "delegation.yml"
-    if delegation_yaml_src.exists():
-        delegation_cfg_dir = agents_dst / "config"
-        delegation_cfg_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(delegation_yaml_src, delegation_cfg_dir / "delegation.yml")
+    # Create packs.yml with active packs (must merge into existing packs config)
+    # Also specify that .agents is the project config dir (not .edison)
+    packs_config = {
+        "paths": {
+            "project_config_dir": ".agents"
+        },
+        "packs": {
+            "active": ["nextjs", "react", "prisma", "fastify"]
+        }
+    }
+    (config_dir / "packs.yml").write_text(yaml.dump(packs_config), encoding="utf-8")
+
+    # Create minimal delegation.yml
+    delegation_config = """delegation:
+  priority:
+    implementers:
+      - api-builder
+      - feature-implementer
+    validators:
+      - codex-global
+      - claude-global
+"""
+    (config_dir / "delegation.yml").write_text(delegation_config, encoding="utf-8")
 
 
 @pytest.fixture
@@ -71,14 +77,11 @@ def orchestrator_env(isolated_project_env: Path) -> Path:
 
 def _run_compose_orchestrator(project_root: Path) -> tuple[int, str, str]:
     """Invoke the real compose CLI with --orchestrator under an isolated root."""
-    script = REPO_ROOT / ".edison" / "core" / "scripts" / "prompts" / "compose"
-    assert script.exists(), f"compose script missing at {script}"
-
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(project_root)
 
     proc = run_with_timeout(
-        [str(Path(os.environ.get("PYTHON", "python3"))), str(script), "--orchestrator"],
+        ["uv", "run", "edison", "compose", "all", "--orchestrator"],
         cwd=project_root,
         env=env,
         capture_output=True,
@@ -156,7 +159,7 @@ def test_manifest_includes_delegation_hints(orchestrator_env: Path) -> None:
     assert isinstance(validators, list), "delegation.priority.validators must be a list"
     # Use real project overlay (delegation/config.json) via _seed_orchestrator_env.
     assert "api-builder" in implementers or "feature-implementer" in implementers
-    assert "validator-codex-global" in validators or "validator-claude-global" in validators
+    assert "codex-global" in validators or "claude-global" in validators
 
 
 @pytest.mark.integration
@@ -167,19 +170,18 @@ def test_cli_writes_validators_into_generated_dir(orchestrator_env: Path) -> Non
     """
     root = orchestrator_env
 
-    script = REPO_ROOT / ".edison" / "core" / "scripts" / "prompts" / "compose"
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
     proc = run_with_timeout(
-        [str(Path(os.environ.get("PYTHON", "python3"))), str(script), "--validator", "all"],
+        ["uv", "run", "edison", "compose", "all", "--validators"],
         cwd=root,
         env=env,
         capture_output=True,
         text=True,
     )
 
-    assert proc.returncode == 0, f"compose --validator all failed\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    assert proc.returncode == 0, f"compose --validators failed\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
 
     generated_dir = root / ".agents" / "_generated" / "validators"
     assert generated_dir.is_dir(), "Expected .agents/_generated/validators directory to be created"

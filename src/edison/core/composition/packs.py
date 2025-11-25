@@ -44,7 +44,21 @@ def auto_activate_packs(
     if not rel_paths:
         return set()
 
-    base = pack_root or (root / ".edison" / "packs" if root is not None else None)
+    if pack_root is not None:
+        base = pack_root
+    elif root is not None:
+        # Try .edison/packs first (user projects)
+        base = root / ".edison" / "packs"
+        # Fall back to bundled data/packs (Edison itself)
+        if not base.exists():
+            try:
+                from edison.data import get_data_path
+                base = get_data_path("packs")
+            except Exception:
+                pass
+    else:
+        base = None
+
     if base is None or not base.exists():
         return set()
 

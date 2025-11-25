@@ -27,3 +27,10 @@ def main(args: argparse.Namespace) -> int:
     print(f"Validating configuration ({mode} mode)...")
     print("Configuration: placeholder (import conversion pending)")
     return 0
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    args = parser.parse_args()
+    sys.exit(main(args))

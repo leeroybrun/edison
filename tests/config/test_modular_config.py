@@ -3,21 +3,8 @@ from pathlib import Path
 import pytest
 import sys
 
-# Locate core root to import ConfigManager
-_cur = Path(__file__).resolve()
-ROOT: Path | None = None
-CORE_ROOT: Path | None = None
-parents = list(_cur.parents)
-for cand in parents:
-    if (cand / ".edison" / "core" / "lib" / "config.py").exists():
-        ROOT = cand
-        CORE_ROOT = cand / ".edison" / "core"
-        break
-
-if ROOT:
-    from edison.core.config import ConfigManager
-else:
-    pytest.fail("Cannot locate Edison core root")
+from edison.core.config import ConfigManager
+from edison.data import get_data_path
 
 def test_modular_config_loading(tmp_path: Path) -> None:
     """
@@ -226,16 +213,27 @@ def test_core_repo_config_validates_against_canonical_schema() -> None:
     import json
     from jsonschema import Draft202012Validator, ValidationError
 
-    assert ROOT is not None
-    mgr = ConfigManager(ROOT)
-    cfg = mgr.load_config(validate=False)
-
-    schema_path = Path(".edison/core/schemas/config.schema.json")
-    assert schema_path.exists(), "Missing core config schema: .edison/core/schemas/config.schema.json"
+    # For standalone Edison package, use bundled data
+    schema_path = get_data_path("schemas", "config.schema.json")
+    assert schema_path.exists(), f"Missing core config schema: {schema_path}"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
 
-    try:
-        Draft202012Validator(schema).validate(cfg)
-    except ValidationError as exc:  # pragma: no cover - would indicate schema drift
-        pytest.fail(f"Canonical config schema rejected real repo config: {exc}")
+    # Try to find wilson-leadgen project for project-specific validation
+    _cur = Path(__file__).resolve()
+    project_root: Path | None = None
+    for parent in _cur.parents:
+        if (parent / ".agents" / "config").exists() and (parent / ".edison").exists():
+            project_root = parent
+            break
+
+    if project_root:
+        mgr = ConfigManager(project_root)
+        cfg = mgr.load_config(validate=False)
+
+        try:
+            Draft202012Validator(schema).validate(cfg)
+        except ValidationError as exc:  # pragma: no cover - would indicate schema drift
+            pytest.fail(f"Canonical config schema rejected real repo config: {exc}")
+    else:
+        pytest.skip("wilson-leadgen project not found - skipping project config validation")

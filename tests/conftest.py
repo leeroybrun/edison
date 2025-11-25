@@ -237,7 +237,9 @@ def isolated_project_env(tmp_path, monkeypatch):
         )
 
     # Session template and workflow spec (minimal but valid for tests)
-    session_tpl_src = REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json"
+    # Use bundled template from edison.data
+    from edison.data import get_data_path
+    session_tpl_src = get_data_path("templates", "session.template.json")
     session_tpl_dst = agents_root / "sessions" / "TEMPLATE.json"
     session_tpl_dst.parent.mkdir(parents=True, exist_ok=True)
     if session_tpl_src.exists():

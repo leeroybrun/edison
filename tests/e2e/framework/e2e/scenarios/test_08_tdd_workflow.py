@@ -24,12 +24,12 @@ from pathlib import Path
 
 import pytest
 
-from helpers.command_runner import (
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
 )
-from helpers.test_env import TestProjectDir, TestGitRepo, create_tdd_evidence
+from tests.e2e.helpers.test_env import TestProjectDir, TestGitRepo, create_tdd_evidence
 
 
 def _impl_report(task_id: str) -> dict:
@@ -100,7 +100,7 @@ def test_only_detection_blocks_ready(test_project_dir: TestProjectDir):
     rd = _ensure_ready_prereqs(test_project_dir, task_id, session_id)
 
     # Create a test file containing .only
-    test_file = test_project_dir.tmp_path / "apps" / ""example-app"" / "src" / "sample.test.ts"
+    test_file = test_project_dir.tmp_path / "apps" / "example-app" / "src" / "sample.test.ts"
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text("describe.only('focus', () => { it('x', () => {}) })\n")
 
@@ -179,7 +179,7 @@ def test_tdd_commit_order_with_refactor_required(combined_env):
     # Create a worktree and commit RED → GREEN (without REFACTOR) to force failure
     wt = git.create_worktree(session_id)
     # Add sample source and test files
-    src = wt / "apps" / ""example-app"" / "src"
+    src = wt / "apps" / "example-app" / "src"
     test = src / "calc.test.ts"
     impl = src / "calc.ts"
     src.mkdir(parents=True, exist_ok=True)
@@ -243,7 +243,7 @@ def test_tdd_red_green_timestamps_and_test_before_impl(combined_env):
         _write(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
 
     wt = git.create_worktree(session_id)
-    src = wt / "apps" / ""example-app"" / "src"
+    src = wt / "apps" / "example-app" / "src"
     testf = src / "timer.test.ts"
     implf = src / "timer.ts"
     src.mkdir(parents=True, exist_ok=True)

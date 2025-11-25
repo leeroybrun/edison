@@ -8,19 +8,22 @@ import json
 import jsonschema
 import yaml
 
-# Locate repository root that contains .edison/core
-_CUR = Path(__file__).resolve()
-REPO_ROOT: Path | None = None
-for parent in _CUR.parents:
-    if (parent / ".edison" / "core" / "lib" / "config.py").exists():
-        REPO_ROOT = parent
-        break
-assert REPO_ROOT is not None, "cannot locate repository root with .edison/core present"
+from edison.data import get_data_path
 
-CORE_HOOKS_PATH = REPO_ROOT / ".edison" / "core" / "config" / "hooks.yaml"
-PACK_HOOKS_PATH = REPO_ROOT / ".edison" / "packs" / "typescript" / "config" / "hooks.yml"
-PROJECT_HOOKS_PATH = REPO_ROOT / ".agents" / "config" / "hooks.yml"
-SCHEMA_PATH = REPO_ROOT / ".edison" / "core" / "schemas" / "hooks-config.schema.json"
+# Get paths to bundled Edison data
+CORE_HOOKS_PATH = get_data_path("config", "hooks.yaml")
+PACK_HOOKS_PATH = get_data_path("packs") / "typescript" / "config" / "hooks.yml"
+SCHEMA_PATH = get_data_path("schemas", "hooks-config.schema.json")
+
+# For project hooks, try to find the wilson-leadgen project, else skip
+_CUR = Path(__file__).resolve()
+PROJECT_ROOT: Path | None = None
+for parent in _CUR.parents:
+    if (parent / ".agents" / "config" / "hooks.yml").exists():
+        PROJECT_ROOT = parent
+        break
+
+PROJECT_HOOKS_PATH = PROJECT_ROOT / ".agents" / "config" / "hooks.yml" if PROJECT_ROOT else None
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
@@ -116,22 +119,22 @@ def test_all_hook_types_supported() -> None:
 
 
 def test_blocking_only_for_pretooluse() -> None:
-    merged = compose_hook_configs(
-        _load_yaml(CORE_HOOKS_PATH),
-        _load_yaml(PACK_HOOKS_PATH),
-        _load_yaml(PROJECT_HOOKS_PATH),
-    )
+    configs = [_load_yaml(CORE_HOOKS_PATH), _load_yaml(PACK_HOOKS_PATH)]
+    if PROJECT_HOOKS_PATH and PROJECT_HOOKS_PATH.exists():
+        configs.append(_load_yaml(PROJECT_HOOKS_PATH))
+
+    merged = compose_hook_configs(*configs)
     for defn in merged["hooks"]["definitions"].values():
         if defn.get("blocking") is True:
             assert defn.get("type") == "PreToolUse"
 
 
 def test_matcher_required_for_tool_hooks() -> None:
-    merged = compose_hook_configs(
-        _load_yaml(CORE_HOOKS_PATH),
-        _load_yaml(PACK_HOOKS_PATH),
-        _load_yaml(PROJECT_HOOKS_PATH),
-    )
+    configs = [_load_yaml(CORE_HOOKS_PATH), _load_yaml(PACK_HOOKS_PATH)]
+    if PROJECT_HOOKS_PATH and PROJECT_HOOKS_PATH.exists():
+        configs.append(_load_yaml(PROJECT_HOOKS_PATH))
+
+    merged = compose_hook_configs(*configs)
     for defn in merged["hooks"]["definitions"].values():
         if defn.get("type") in {"PreToolUse", "PostToolUse"}:
             matcher = defn.get("matcher")
@@ -150,6 +153,10 @@ def test_pack_extension_merge() -> None:
 
 
 def test_project_override() -> None:
+    if not PROJECT_HOOKS_PATH or not PROJECT_HOOKS_PATH.exists():
+        import pytest
+        pytest.skip("Project hooks.yml not found - test requires wilson-leadgen project")
+
     composed = compose_hook_configs(
         _load_yaml(CORE_HOOKS_PATH),
         _load_yaml(PACK_HOOKS_PATH),

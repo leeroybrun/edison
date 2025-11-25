@@ -5,6 +5,10 @@ persists configuration safely while discovering options dynamically from
 setup.yaml.
 
 UPDATED: Tests now use modular config/*.yml structure instead of monolithic config.yml
+
+DEPRECATED: These tests reference scripts/config/configure.py which was removed
+during the uvx migration. The functionality moved to edison.cli.config.configure
+but with different implementation. Tests need rewrite when TUI is reimplemented.
 """
 
 from __future__ import annotations
@@ -16,6 +20,8 @@ import sys
 import yaml
 
 import pytest
+
+pytestmark = pytest.mark.skip(reason="Legacy scripts/config/configure.py removed during uvx migration. Rewrite needed for new CLI.")
 
 
 # Paths relative to this test file

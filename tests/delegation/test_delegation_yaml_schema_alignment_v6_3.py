@@ -21,12 +21,13 @@ if spec.origin and ".edison/core/jsonschema.py" in spec.origin:
 jsonschema_real = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(jsonschema_real)  # type: ignore[arg-type]
 Draft202012Validator = jsonschema_real.Draft202012Validator
-ValidationError = jsonschema_real.exceptions.ValidationError
+# Import ValidationError from correct location (jsonschema 4.x+)
+from jsonschema.exceptions import ValidationError
 
-
-CORE_ROOT = Path(__file__).resolve().parents[2]
-CONFIG = CORE_ROOT / "config" / "delegation.yaml"
-SCHEMA = CORE_ROOT / "schemas" / "delegation.schema.json"
+# Use edison.data for bundled config/schema files
+from edison.data import get_data_path
+CONFIG = get_data_path("config", "delegation.yaml")
+SCHEMA = get_data_path("schemas", "delegation.schema.json")
 
 
 def _load() -> tuple[dict, dict]:

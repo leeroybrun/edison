@@ -16,22 +16,26 @@ def _make_guard_wrappers(tmp_root: Path, repo_root: Path) -> None:
     """Create the strict guard wrappers under <tmp>/scripts/* expected by guards.
 
     We intentionally mirror the paths used by guard checks:
-    - scripts/implementation/validate → wraps .agents/scripts/implementation/validate
-    - scripts/tasks/ensure-followups → wraps .agents/scripts/tasks/ensure-followups
+    - scripts/implementation/validate → wraps Edison Python module
+    - scripts/tasks/ensure-followups → wraps Edison Python module
+
+    Note: After migration to Python modules, these wrappers now call Python modules
+    instead of legacy shell scripts.
     """
     scripts_dir = tmp_root / "scripts"
     (scripts_dir / "implementation").mkdir(parents=True, exist_ok=True)
     (scripts_dir / "tasks").mkdir(parents=True, exist_ok=True)
 
+    # Update to use Python modules instead of legacy scripts
     impl_validate = scripts_dir / "implementation" / "validate"
     impl_validate.write_text(
-        f"#!/usr/bin/env bash\npython3 '{repo_root}/.edison/core/scripts/implementation/validate' \"$@\"\n"
+        f"#!/usr/bin/env bash\npython3 -m edison.core.task.validation \"$@\"\n"
     )
     impl_validate.chmod(0o755)
 
     ensure_followups = scripts_dir / "tasks" / "ensure-followups"
     ensure_followups.write_text(
-        f"#!/usr/bin/env bash\npython3 '{repo_root}/.edison/core/scripts/tasks/ensure-followups' \"$@\"\n"
+        f"#!/usr/bin/env bash\npython3 -m edison.core.tasks.manager ensure-followups \"$@\"\n"
     )
     ensure_followups.chmod(0o755)
 

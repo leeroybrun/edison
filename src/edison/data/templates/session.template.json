@@ -1,0 +1,21 @@
+{
+  "id": "session-template",
+  "state": "Active",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "lastActiveAt": "2024-01-01T00:00:00Z",
+  "meta": {
+    "sessionId": "session-template",
+    "owner": "edison",
+    "mode": "start",
+    "status": "active",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "lastActive": "2024-01-01T00:00:00Z",
+    "createdBy": "edison",
+    "autoStarted": false,
+    "namingStrategy": "edison"
+  },
+  "tasks": [],
+  "qa": {
+    "status": "pending"
+  }
+}

@@ -10,12 +10,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-import sys
-e2e_dir = Path(__file__).resolve().parent
-helpers_dir = e2e_dir / "helpers"
-for p in [str(e2e_dir), str(helpers_dir)]:
-    if p not in sys.path:
-from test_env import TestProjectDir, TestGitRepo
+from tests.e2e.helpers.test_env import TestProjectDir, TestGitRepo
 from edison.core.utils.subprocess import run_with_timeout
 
 

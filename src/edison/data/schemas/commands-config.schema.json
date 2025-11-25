@@ -11,6 +11,44 @@
           "type": "array",
           "items": {"enum": ["claude", "cursor", "codex"]}
         },
+        "platform_config": {
+          "type": "object",
+          "properties": {
+            "claude": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "output_dir": {"type": "string"},
+                "prefix": {"type": "string"},
+                "max_short_desc": {"type": "integer"},
+                "template": {"type": "string"},
+                "allow_bash": {"type": "boolean"}
+              }
+            },
+            "cursor": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "output_dir": {"type": "string"},
+                "prefix": {"type": "string"},
+                "max_short_desc": {"type": "integer"},
+                "template": {"type": "string"},
+                "allow_bash": {"type": "boolean"}
+              }
+            },
+            "codex": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "output_dir": {"type": "string"},
+                "prefix": {"type": "string"},
+                "max_short_desc": {"type": "integer"},
+                "template": {"type": "string"},
+                "warn_user_scope": {"type": "boolean"}
+              }
+            }
+          }
+        },
         "selection": {
           "type": "object",
           "properties": {

@@ -54,7 +54,8 @@ def test_transition_task_blocks_without_validator_approval(
     (root / ".project" / "tasks" / "meta").mkdir(parents=True, exist_ok=True)
 
     # Create JSON task record and mark it as done
-    task_id = task.create_task_record("validator-approval integration test")
+    task_id = "task-001"
+    task.create_task_record(task_id, "validator-approval integration test")
     task.update_task_record(
         task_id,
         {"state": "done", "status": "done"},
@@ -79,7 +80,8 @@ def test_transition_task_allows_when_bundle_approved(
     evidence_root = root / ".project" / "qa" / "validation-evidence"
 
     # Create JSON task record and mark as done
-    task_id = task.create_task_record("validator-approval success path")
+    task_id = "task-002"
+    task.create_task_record(task_id, "validator-approval success path")
     task.update_task_record(
         task_id,
         {"state": "done", "status": "done"},

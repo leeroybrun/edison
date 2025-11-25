@@ -3,6 +3,10 @@
 These tests exercise the prompt_toolkit-powered flow by stubbing the dialog
 helpers. Business logic (validation, change tracking, discovery) remains
 unmocked.
+
+DEPRECATED: The TUI functionality (ConfigurationMenu class) has been removed
+from edison.cli.config.configure in favor of a simpler setup.configure_project
+approach. These tests are skipped until the TUI is reimplemented.
 """
 
 from __future__ import annotations
@@ -18,6 +22,13 @@ import pytest
 CORE_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = CORE_DIR.parent.parent
 
+# Skip all tests in this module - TUI functionality removed from new CLI
+pytestmark = pytest.mark.skip(
+    reason="TUI functionality (ConfigurationMenu) removed from edison.cli.config.configure. "
+    "The new CLI uses edison.core.setup.configure_project instead. "
+    "Tests need to be rewritten when TUI is reimplemented."
+)
+
 
 def _write_yaml(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -25,8 +36,10 @@ def _write_yaml(path: Path, data: dict) -> None:
 
 
 def _load_configure_module():
+    """Load the configure module from edison.cli.config.configure."""
+    # DEPRECATED: ConfigurationMenu no longer exists in the new CLI
     spec = importlib.util.spec_from_file_location(
-        "edison_configure", CORE_DIR / "scripts" / "config" / "configure.py"
+        "edison_configure", CORE_DIR / "src" / "edison" / "cli" / "config" / "configure.py"
     )
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

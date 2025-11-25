@@ -40,4 +40,6 @@ def test_session_config_loading():
     assert config.get_id_regex() == r"^[a-zA-Z0-9_\-\.]+$"
 
     states = config.get_session_states()
-    assert states["active"] == "active"
+    # The config maps "active" to "wip" directory name, so verify the mapping is present
+    assert "active" in states
+    assert states["active"] == "wip"

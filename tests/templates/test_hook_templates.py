@@ -5,12 +5,12 @@ import tempfile
 from pathlib import Path
 
 from jinja2 import Template
-
-HOOK_DIR = Path(".edison/core/templates/hooks")
+from edison.data import get_data_path
 
 
 def render_hook(template_name: str, **context) -> str:
-    template = Template((HOOK_DIR / template_name).read_text())
+    template_path = get_data_path("templates", f"hooks/{template_name}")
+    template = Template(template_path.read_text())
     return template.render(**context)
 
 
@@ -136,7 +136,8 @@ def test_templates_render_without_config():
 def test_templates_are_valid_bash():
     with tempfile.TemporaryDirectory() as td:
         tmpdir = Path(td)
-        for name in HOOK_DIR.iterdir():
+        hook_dir = get_data_path("templates", "hooks")
+        for name in hook_dir.iterdir():
             if name.suffix != ".template":
                 continue
             content = render_hook(name.name, id="a", type="t", description="d")

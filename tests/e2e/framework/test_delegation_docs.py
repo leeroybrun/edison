@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
-from edison.core.utils.subprocess import run_with_timeout
+import pytest
 
 
 REPO_ROOT = Path.cwd()
@@ -160,15 +159,16 @@ def test_paths_are_configurable():
     for term in _project_terms():
         assert term not in cfg_text.lower(), "Config contains project-specific names"
 
-    # Optional: validate README can be rendered with include script if used there
-    if (REPO_ROOT / ".edison" / "core" / "scripts" / "include" / "render-md.sh").exists():
-        result = run_with_timeout(
-            ["./.edison/core/scripts/include/render-md.sh", str(AGENTS_DELEGATION_README)],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
-        assert result.returncode == 0, (
-            f"Delegation README include rendering failed: {result.returncode}\nSTDERR:\n{result.stderr}"
-        )
+    # Optional: validate README can be rendered with includes if used
+    if AGENTS_DELEGATION_README.exists():
+        try:
+            from edison.core.composition.includes import resolve_includes
+            content = AGENTS_DELEGATION_README.read_text(encoding="utf-8")
+            # resolve_includes returns (expanded_content, dependencies)
+            expanded, _ = resolve_includes(content, AGENTS_DELEGATION_README)
+            assert expanded, "Delegation README rendering produced empty output"
+        except ImportError:
+            # Skip if composition module not available
+            pass
+        except Exception as e:
+            pytest.fail(f"Delegation README include rendering failed: {e}")

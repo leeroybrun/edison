@@ -79,13 +79,47 @@ def session_state_dir(state: str) -> Path:
 
 
 def _session_tasks_dir(session_id: str, state: str) -> Path:
-    base = _session_state_dir(state)
-    return (base / session_id / "tasks" / state.lower()).resolve()
+    """Get tasks directory for a session, organized by task state within the session dir.
+
+    Args:
+        session_id: Session identifier
+        state: Task state (todo, wip, done, etc.) - NOT session state
+
+    Returns:
+        Path like .project/sessions/<session_state>/<session_id>/tasks/<task_state>/
+    """
+    # Find the session's actual location (by session state, not task state)
+    try:
+        from edison.core.session import store as session_store
+        session_json_path = session_store.get_session_json_path(session_id)
+        session_base = session_json_path.parent
+    except Exception:
+        # Fallback: assume session is in wip (active) state
+        session_base = _session_state_dir("wip") / session_id
+
+    return (session_base / "tasks" / state.lower()).resolve()
 
 
 def _session_qa_dir(session_id: str, state: str) -> Path:
-    base = _session_state_dir(state)
-    return (base / session_id / "qa" / state.lower()).resolve()
+    """Get QA directory for a session, organized by QA state within the session dir.
+
+    Args:
+        session_id: Session identifier
+        state: QA state (waiting, todo, wip, done, etc.) - NOT session state
+
+    Returns:
+        Path like .project/sessions/<session_state>/<session_id>/qa/<qa_state>/
+    """
+    # Find the session's actual location (by session state, not QA state)
+    try:
+        from edison.core.session import store as session_store
+        session_json_path = session_store.get_session_json_path(session_id)
+        session_base = session_json_path.parent
+    except Exception:
+        # Fallback: assume session is in wip (active) state
+        session_base = _session_state_dir("wip") / session_id
+
+    return (session_base / "qa" / state.lower()).resolve()
 
 
 # Metadata line prefixes used across task/QA templates (config-driven)

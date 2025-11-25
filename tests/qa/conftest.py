@@ -4,23 +4,17 @@ Adds helper import paths and provides minimal fixtures used by the tests.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 import pytest
 
 HERE = Path(__file__).resolve().parent
-# Repo root: qa/ → tests/ → core/ → .edison/ → <repo>
-REPO_ROOT = HERE.parents[3]
+REPO_ROOT = HERE.parents[1]
 
-# Ensure our shimmed helpers package is importable: add its parent directory
+# Add helpers directory to path so tests can import from helpers.*
 
-# Also expose the legacy helpers directory for any direct imports
-legacy_helpers_dir = REPO_ROOT / ".agents" / "scripts" / "tests" / "e2e" / "helpers"
-if legacy_helpers_dir.exists() and str(legacy_helpers_dir) not in sys.path:
-    sys.path.append(str(legacy_helpers_dir))
-
-from helpers.test_env import TestProjectDir  # type: ignore
-import json
+from helpers.test_env import TestProjectDir
 
 
 @pytest.fixture

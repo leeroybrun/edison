@@ -9,12 +9,10 @@ from pathlib import Path
 import pytest
 
 
-# Locate repo root and scripts path so we can import in-repo libs
-REPO_ROOT = Path(__file__).resolve().parents[4]
-SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
-if str(SCRIPTS_DIR) not in os.sys.path:
+# Locate repo root
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
+from edison.core import task
 from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
 from edison.core.session import recovery as session_recovery
@@ -27,9 +25,10 @@ def _bootstrap_minimal_project(tmp_root: Path) -> None:
     (pr / "sessions" / "done").mkdir(parents=True, exist_ok=True)
     (pr / "sessions" / "validated").mkdir(parents=True, exist_ok=True)
 
-    # Required template
+    # Required template - use bundled template from edison.data
+    from edison.data import get_data_path
     (tmp_root / ".agents" / "sessions").mkdir(parents=True, exist_ok=True)
-    src_tpl = REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json"
+    src_tpl = get_data_path("templates", "session.template.json")
     dst_tpl = tmp_root / ".agents" / "sessions" / "TEMPLATE.json"
     dst_tpl.write_text(src_tpl.read_text())
 

@@ -12,7 +12,7 @@ import yaml
 from edison.core.utils.subprocess import run_with_timeout
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
@@ -69,7 +69,7 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         # Create empty round to avoid early exits in helper readers
         (self.temp_root / ".project" / "qa" / "validation-evidence" / task_id / "round-1").mkdir(parents=True, exist_ok=True)
 
-        cp = self._run([str(SCRIPTS_DIR / "validators" / "run-wave"), "--task", task_id, "--json"], check=True)
+        cp = self._run([str(SCRIPTS_DIR / "validators" / "run-wave"), task_id, "--json"], check=True)
         summary = json.loads(cp.stdout or "{}")
         waves = summary.get("waves") or []
         self.assertTrue(waves, "run-wave must produce at least one wave")
@@ -82,7 +82,7 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         task_id = "gv-trigger-behavior"
         (self.temp_root / ".project" / "qa" / "validation-evidence" / task_id / "round-1").mkdir(parents=True, exist_ok=True)
 
-        cp = self._run([str(SCRIPTS_DIR / "validators" / "run-wave"), "--task", task_id, "--json"], check=True)
+        cp = self._run([str(SCRIPTS_DIR / "validators" / "run-wave"), task_id, "--json"], check=True)
         summary = json.loads(cp.stdout or "{}")
         waves = summary.get("waves") or []
         all_ids = [v.get("id") for w in waves for v in (w.get("validators") or [])]
