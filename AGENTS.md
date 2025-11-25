@@ -21,5 +21,3 @@
 3. Making SURE the agents perform their task end-to-end and COMPLETELY, and making them continue until then
 4. Delegating new tasks/fixes/followups to new subagents if relevant/necessary and if reported by the sub-agents
 5. Making sure you continue continue this whole loop and delegating any remaining tasks/issues/follow-ups and following the COMPLETE PLAN until everything is done, completed, comprehensive, 100% configurable, 100% coherent and cohesive, un-duplicated, long-term maintainable, re-structured, re-organized, DRY, SOLID, KISS, FAIL-SAFE and beautifuly+clearly organized for clarity and long-term maintainability and coherence.
-
-Remember: we are working on the EDISON project, which is currently in the .edison subfolder (and .agents subfolder) of the wilson-leadsgen folder for development/iteration. We are NOT working on the "wilson" project.
