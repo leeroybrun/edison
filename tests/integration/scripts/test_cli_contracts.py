@@ -373,7 +373,6 @@ def test_session_status_json_contract(tmp_path: Path) -> None:
     assert "error" not in obj
 
 
-
 @pytest.mark.integration
 def test_migrate_session_db_emits_json_on_failure(tmp_path: Path) -> None:
     """RED: migrate-session-db --json must emit standardized JSON on failure."""

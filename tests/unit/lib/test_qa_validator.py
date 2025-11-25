@@ -1,23 +1,12 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any, Dict
 
 import pytest
 
-
-def _core_root() -> Path:
-    cur = Path(__file__).resolve()
-    for parent in cur.parents:
-        if (parent / "lib" / "config.py").exists():
-            return parent
-    raise AssertionError("cannot locate Edison core lib root")
-
-
-def _ensure_core_on_path() -> None:
-    core_root = _core_root()
-    if str(core_root) not in sys.path:
+from edison.core import task  # type: ignore
+from edison.core.qa import validator  # type: ignore
 
 
 def test_simple_delegation_hint_uses_task_type_rules(
@@ -29,12 +18,6 @@ def test_simple_delegation_hint_uses_task_type_rules(
     This mirrors the legacy QA helper behavior to ensure delegation logic resides
     in lib.qa.validator rather than orchestration scripts.
     """
-    _ensure_core_on_path()
-    import importlib
-
-    task = importlib.import_module("lib.task")  # type: ignore[assignment]
-    validator = importlib.import_module("lib.qa.validator")  # type: ignore[assignment]
-
     # Ensure task operates against the isolated project root
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 
@@ -75,12 +58,6 @@ def test_build_validator_roster_categorizes_validators(
 
     This exercises the new lib.qa.validator implementation without mocks.
     """
-    _ensure_core_on_path()
-    import importlib
-
-    task = importlib.import_module("lib.task")  # type: ignore[assignment]
-    validator = importlib.import_module("lib.qa.validator")  # type: ignore[assignment]
-
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 
     # Create a simple task with primary files that will trigger specialized validators
@@ -164,8 +141,8 @@ def test_build_validator_roster_categorizes_validators(
 def _repo_root_from_tests() -> Path:
     """Resolve repository root from the tests tree without PathResolver."""
     cur = Path(__file__).resolve()
-    # .../example-project/.edison/core/tests/unit/lib/test_qa_validator.py
-    return cur.parents[5]
+    # .../edison/tests/unit/lib/test_qa_validator.py
+    return cur.parents[3]
 
 
 def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -176,33 +153,29 @@ def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch
     contains priority lists, while the core YAML config defines rich
     filePatternRules/taskTypeRules. This asserts YAML is used.
     """
-    _ensure_core_on_path()
-    import importlib
+    from edison.core.qa import config as qa_config  # type: ignore
+    from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-    config = importlib.import_module("lib.qa.config")  # type: ignore[assignment]
-    from edison.core.config import ConfigManager 
     repo_root = _repo_root_from_tests()
     cfg = ConfigManager(repo_root).load_config(validate=False)
     expected = cfg.get("delegation", {}) or {}
 
-    loaded = config.load_delegation_config(repo_root=repo_root)  # type: ignore[attr-defined]
+    loaded = qa_config.load_delegation_config(repo_root=repo_root)  # type: ignore[attr-defined]
 
     assert loaded == expected
 
 
 def test_load_validation_config_uses_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
     """qa.config.load_validation_config should return the validation section from YAML."""
-    _ensure_core_on_path()
-    import importlib
+    from edison.core.qa import config as qa_config  # type: ignore
+    from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-    config = importlib.import_module("lib.qa.config")  # type: ignore[assignment]
-    from edison.core.config import ConfigManager 
     repo_root = _repo_root_from_tests()
     cfg = ConfigManager(repo_root).load_config(validate=False)
     expected = cfg.get("validation", {}) or {}
 
-    loaded = config.load_validation_config(repo_root=repo_root)  # type: ignore[attr-defined]
+    loaded = qa_config.load_validation_config(repo_root=repo_root)  # type: ignore[attr-defined]
 
     assert loaded == expected

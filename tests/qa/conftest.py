@@ -13,7 +13,6 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[3]
 
 # Ensure our shimmed helpers package is importable: add its parent directory
-if str(HERE) not in sys.path:
 
 # Also expose the legacy helpers directory for any direct imports
 legacy_helpers_dir = REPO_ROOT / ".agents" / "scripts" / "tests" / "e2e" / "helpers"

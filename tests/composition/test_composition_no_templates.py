@@ -5,8 +5,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-if str(core_path) not in sys.path:
-
 from edison.core.composition import CompositionEngine 
 def test_composition_works_without_templates_dir() -> None:
     """CompositionEngine must not depend on a validators/templates directory."""

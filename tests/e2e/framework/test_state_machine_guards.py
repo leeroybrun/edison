@@ -13,8 +13,6 @@ REPO_ROOT = Path(__file__).resolve().parents[6]
 E2E_DIR = REPO_ROOT / ".edison" / "core" / "tests" / "e2e"
 HELPERS_DIR = E2E_DIR / "helpers"
 for p in (E2E_DIR, HELPERS_DIR):
-    if str(p) not in sys.path:
-
 from helpers.test_env import TestProjectDir  # type: ignore
 from helpers.command_runner import (
     run_script,
@@ -25,16 +23,6 @@ from helpers.command_runner import (
 from edison.core.utils.subprocess import run_with_timeout
 
 
-def _import_task():
-    core_root = REPO_ROOT / ".edison" / "core"
-    scripts_root = core_root / "scripts"
-    for p in (core_root, scripts_root):
-        if str(p) not in sys.path:
-    from edison.core import task  # type: ignore
-    return task
-
-
-@pytest.mark.fast
 def test_defaults_yaml_contains_state_machine():
     """defaults.yaml must define statemachine for task and qa domains."""
     import yaml
@@ -52,7 +40,7 @@ def test_defaults_yaml_contains_state_machine():
 
 @pytest.mark.fast
 def test_task_validate_state_transition_basic():
-    task = _import_task()
+    from edison.core import task
 
     ok, msg = task.validate_state_transition("task", "todo", "wip")
     assert ok, f"todo→wip should be allowed; got: {msg}"
@@ -193,7 +181,7 @@ def test_concurrent_lock_blocks_move(tmp_path):
 
 @pytest.mark.fast
 def test_validator_rejects_missing_current_status():
-    task = _import_task()
+    from edison.core import task
     ok, msg = task.validate_state_transition("task", "", "wip")
     assert not ok and "Missing current status" in msg
 
@@ -203,7 +191,7 @@ def test_all_valid_adjacencies_allowed_by_validator():
     import yaml
     cfg = yaml.safe_load((REPO_ROOT / ".edison" / "core" / "defaults.yaml").read_text())
     sm = cfg["statemachine"]
-    task = _import_task()
+    from edison.core import task
     for domain in ("task", "qa"):
         states = sm[domain]["states"]
         for cur, info in states.items():

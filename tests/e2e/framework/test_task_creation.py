@@ -14,8 +14,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.task import create_task 
 def test_task_file_initialization(tmp_path):
     """Creates a task file in `.project/tasks/todo/` with YAML frontmatter."""

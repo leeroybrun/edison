@@ -20,7 +20,6 @@ def get_repo_root() -> Path:
 
 REPO_ROOT = get_repo_root()
 SCRIPTS_ROOT = REPO_ROOT / ".edison" / "core"
-if str(SCRIPTS_ROOT) not in sys.path:
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
 
 

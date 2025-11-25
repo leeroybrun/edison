@@ -8,8 +8,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-if str(core_path) not in sys.path:
-
 from edison.core.composition.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 from edison.core.adapters.claude import ClaudeAdapter  # type: ignore  # noqa: E402

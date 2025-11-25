@@ -1,19 +1,16 @@
 """Tests for Zen prompt composition."""
 from __future__ import annotations
 
-from pathlib import Path
-import sys
 import os
+from pathlib import Path
 
-# Add Edison core lib to sys.path similar to other tests
-ROOT = Path(__file__).resolve().parents[3]  # repository root
-CORE_PATH = ROOT / ".edison" / "core"
-if str(CORE_PATH) not in sys.path:
-# Ensure repo resolution prefers the outer project root when running inside the nested .edison repo.
-os.environ.setdefault("AGENTS_PROJECT_ROOT", str(ROOT))
+from edison.core.composition import CompositionEngine
+from edison.core.composition.formatting import compose_for_role
 
-from edison.core.composition import CompositionEngine 
-from edison.core.composition.formatting import compose_for_role 
+# For tests that need a repo root reference
+ROOT = Path(__file__).resolve().parent.parent
+
+
 def test_zen_composition_basic(tmp_path: Path):
     """Test basic Zen prompt generation."""
     config = {

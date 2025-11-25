@@ -21,8 +21,6 @@ import pytest
 # Wire scripts/lib onto sys.path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
-if str(SCRIPTS_DIR) not in sys.path:
-
 from edison.core import task  # type: ignore  # noqa: E402
 from edison.core.session import manager as session_manager
 from edison.core.session import worktree as session_worktree

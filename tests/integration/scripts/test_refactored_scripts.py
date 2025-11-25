@@ -26,28 +26,11 @@ def _core_scripts_root() -> Path:
     return _repo_root() / ".edison" / "core" / "scripts"
 
 
-def _core_root() -> Path:
-    cur = Path(__file__).resolve()
-    for parent in cur.parents:
-        if (parent / "lib" / "composition" / "__init__.py").exists():
-            return parent
-    raise AssertionError("cannot locate Edison core lib root")
-
-
-def _import_task():
-    core_root = _core_root()
-    if str(core_root) not in sys.path:
-    import importlib
-
-    return importlib.import_module("lib.task")  # type: ignore[return-value]
-
-
-@pytest.mark.integration
 def test_tasks_claim_and_status_roundtrip(isolated_project_env: Path) -> None:
     """tasks/claim and tasks/status should preserve behavior after refactor."""
     repo_root = _repo_root()
     scripts_root = _core_scripts_root()
-    task = _import_task()
+    from edison.core import task
 
     # Create a simple task in the isolated project
     task_id = "100-wave2-refactor"
@@ -104,7 +87,6 @@ def test_session_next_compute_next_minimal(isolated_project_env: Path, monkeypat
     scripts_root = _core_scripts_root()
 
     core_root = _core_root()
-    if str(core_root) not in sys.path:
     import importlib
 
     # Ensure AGENTS_PROJECT_ROOT points at the isolated project before import

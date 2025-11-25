@@ -40,7 +40,7 @@ def test_validation_tx_commit_success(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
+
     # Lazy import after env override
     from edison.core import sessionlib  # type: ignore
 
@@ -75,7 +75,6 @@ def test_validation_tx_rollback_on_exception(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
     from edison.core import sessionlib  # type: ignore
 
     sid = "sid-wp004-rollback"
@@ -105,7 +104,6 @@ def test_validation_tx_crash_recovery_cleanup(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
     from edison.core import sessionlib  # type: ignore
 
     sid = "sid-wp004-recover"
@@ -137,7 +135,6 @@ def test_validation_tx_concurrency_lock(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
     from edison.core import sessionlib  # type: ignore
 
     sid = "sid-wp004-concurrent"
@@ -166,7 +163,6 @@ def test_validation_tx_disk_full_precheck(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
     from edison.core import sessionlib  # type: ignore
 
     sid = "sid-wp004-diskfull"
@@ -187,7 +183,6 @@ def test_validation_tx_permission_error_on_commit(monkeypatch, tmp_path: Path):
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
     core_root = repo_root / ".edison" / "core"
-    if str(core_root) not in sys.path:
     from edison.core import sessionlib  # type: ignore
 
     sid = "sid-wp004-perm"

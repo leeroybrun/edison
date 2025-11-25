@@ -14,8 +14,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.sessionlib import ensure_session, load_session, close_session, validate_session 
 def test_session_lifecycle_active_closing_validated():
     """Checks the logical state transitions in session.json across lifecycle."""

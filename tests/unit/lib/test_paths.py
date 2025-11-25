@@ -8,16 +8,8 @@ from pathlib import Path
 import pytest
 
 
-_cur = Path(__file__).resolve()
-CORE_ROOT = None
-for parent in _cur.parents:
-    if (parent / "lib" / "composition" / "__init__.py").exists():
-        CORE_ROOT = parent
-        break
-
-assert CORE_ROOT is not None, "cannot locate Edison core lib root"
-
-if str(CORE_ROOT) not in sys.path:
+# Repository root for test fixtures
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 from edison.core.paths import (  # type: ignore  # noqa: E402
     EdisonPathError,
@@ -216,7 +208,7 @@ class TestMemoization:
         # Force a fresh import so any internal cache starts empty
         import importlib
 
-        module = importlib.reload(importlib.import_module("lib.paths.resolver"))  # type: ignore[assignment]
+        module = importlib.reload(importlib.import_module("edison.core.paths.resolver"))  # type: ignore[assignment]
         first_root = module.resolve_project_root()
         assert first_root == repo
 

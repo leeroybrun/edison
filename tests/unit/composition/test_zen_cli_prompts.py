@@ -6,16 +6,8 @@ import sys
 
 import pytest
 
-_CUR = Path(__file__).resolve()
-CORE_ROOT: Path | None = None
-for parent in _CUR.parents:
-    if (parent / "lib" / "composition" / "__init__.py").exists():
-        CORE_ROOT = parent
-        break
-
-assert CORE_ROOT is not None, "cannot locate Edison core lib root"
-
-if str(CORE_ROOT) not in sys.path:
+# Repository root for test fixtures
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 from edison.core.zen_adapter import ZenAdapter, WORKFLOW_HEADING  # type: ignore  # noqa: E402
@@ -23,7 +15,7 @@ from edison.core.zen_adapter import ZenAdapter, WORKFLOW_HEADING  # type: ignore
 
 def _repo_root() -> Path:
     """Locate project repo root (directory containing AGENTS.md)."""
-    for parent in _CUR.parents:
+    for parent in REPO_ROOT.parents:
         if (parent / "AGENTS.md").exists():
             return parent
     raise RuntimeError("could not locate project repo root (AGENTS.md not found)")

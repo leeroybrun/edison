@@ -31,9 +31,6 @@ def _ensure_core_root_on_sys_path() -> None:
             break
     if _core_root is None:
         _core_root = _this_file.parents[4]
-    if str(_core_root) not in sys.path:
-
-
 def make_tmp_repo(tmp_path: Path, defaults: dict, project: Optional[dict] = None) -> Path:
     repo = tmp_path
     write_yaml(repo / ".edison" / "core" / "defaults.yaml", defaults)

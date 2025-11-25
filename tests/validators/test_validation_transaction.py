@@ -62,8 +62,6 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
@@ -125,8 +123,6 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
@@ -197,8 +193,6 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
@@ -258,8 +252,6 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 from edison.core.utils.subprocess import run_with_timeout
 

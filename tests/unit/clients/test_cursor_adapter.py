@@ -6,22 +6,6 @@ import sys
 import pytest
 
 
-def _core_root() -> Path:
-    cur = Path(__file__).resolve()
-    for parent in cur.parents:
-        if (parent / "lib" / "composition" / "__init__.py").exists():
-            return parent
-    raise AssertionError("cannot locate Edison core lib root")
-
-
-def _import_cursor_adapter():
-    core_root = _core_root()
-    if str(core_root) not in sys.path:
-    import importlib
-
-    return importlib.import_module("lib.cursor_adapter")  # type: ignore[return-value]
-
-
 def _write_minimal_config(root: Path) -> None:
     """Write minimal defaults/config needed for ConfigManager-based adapters."""
     core_dir = root / ".edison" / "core"
@@ -51,7 +35,7 @@ def _write_minimal_config(root: Path) -> None:
 
 class TestCursorAdapterCursorrules:
     def test_cursorrules_includes_guidelines_and_rules(self, isolated_project_env: Path) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env
@@ -99,7 +83,7 @@ class TestCursorAdapterCursorrules:
     def test_detect_cursor_overrides_reports_manual_changes(
         self, isolated_project_env: Path
     ) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env
@@ -138,7 +122,7 @@ class TestCursorAdapterCursorrules:
         assert "Manual tweak" in diff_text
 
     def test_merge_preserves_manual_header_on_resync(self, isolated_project_env: Path) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env
@@ -187,7 +171,7 @@ class TestCursorAdapterCursorrules:
 
 class TestCursorAdapterAgentSync:
     def test_sync_agents_copies_generated_agents(self, isolated_project_env: Path) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env
@@ -211,7 +195,7 @@ class TestCursorAdapterAgentSync:
         assert "# Agent: api-builder" in target.read_text(encoding="utf-8")
 
     def test_sync_agents_auto_composes_when_missing(self, isolated_project_env: Path) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env
@@ -243,7 +227,7 @@ class TestCursorAdapterAgentSync:
 
 class TestCursorAdapterStructuredRules:
     def test_structured_rules_generate_mdc_by_category(self, isolated_project_env: Path) -> None:
-        mod = _import_cursor_adapter()
+        from edison.core.cursor_adapter import mod
         CursorAdapter = mod.CursorAdapter
 
         project_root = isolated_project_env

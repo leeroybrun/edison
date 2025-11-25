@@ -18,9 +18,6 @@ for parent in _cur.parents:
         break
 
 assert CORE_ROOT is not None, "cannot locate Edison core lib root"
-
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.rules import (  # type: ignore  # noqa: E402
     RulesRegistry,
     compose_rules,

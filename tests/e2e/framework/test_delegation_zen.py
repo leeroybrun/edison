@@ -14,8 +14,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.delegationlib import route_task 
 def test_route_task_zen_clink_env(monkeypatch):
     """Routes a task with a Zen MCP clink target provided by env variable.

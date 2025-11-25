@@ -27,8 +27,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 
 # --- Test fixtures -----------------------------------------------------------
 

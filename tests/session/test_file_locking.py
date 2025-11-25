@@ -42,8 +42,6 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core import task  # type: ignore  # noqa: E402
 
 task_id = "t-lock-single"
@@ -89,8 +87,6 @@ import multiprocessing as mp
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core import task  # type: ignore  # noqa: E402
 
 task_id = "t-lock-concurrent"
@@ -162,8 +158,6 @@ import time
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-if str(core_root) not in sys.path:
-
 from edison.core import task  # type: ignore  # noqa: E402
 from edison.core.locklib import acquire_file_lock  # type: ignore  # noqa: E402
 from edison.core.utils.subprocess import run_with_timeout

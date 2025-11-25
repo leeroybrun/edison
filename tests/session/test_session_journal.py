@@ -15,7 +15,6 @@ SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
 
 # Import libs after adding to path
 import sys
-if str(SCRIPTS_DIR) not in sys.path:
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
 from edison.core.session import transaction as session_transaction
 from edison.core.session import store as session_store

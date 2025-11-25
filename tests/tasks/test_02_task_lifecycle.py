@@ -11,29 +11,19 @@ IMPORTANT: These tests execute REAL CLI commands, NOT mock data.
 All behaviors must match guidelines in .agents/guidelines/*.md
 """
 from __future__ import annotations
-from pathlib import Path
-import sys
-
-REPO_ROOT = Path(__file__).resolve().parents[4]
-E2E_DIR = REPO_ROOT / ".agents" / "scripts" / "tests" / "e2e"
-ALT_E2E_DIR = REPO_ROOT / ".edison" / "core" / "tests" / "e2e"
-if not E2E_DIR.exists() and ALT_E2E_DIR.exists():
-    E2E_DIR = ALT_E2E_DIR
-if str(E2E_DIR) not in sys.path:
-    helpers_dir = E2E_DIR / "helpers"
-    if helpers_dir.exists():
 
 import json
-import pytest
 from pathlib import Path
 
-from helpers import TestProjectDir
-from helpers.command_runner import (
+import pytest
+
+from tests.e2e.helpers.test_env import TestProjectDir
+from tests.e2e.helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
 )
-from helpers.assertions import (
+from tests.e2e.helpers.assertions import (
     assert_file_exists,
     assert_file_contains,
 )

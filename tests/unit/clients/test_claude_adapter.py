@@ -1,28 +1,17 @@
+"""Tests for Claude Code adapter."""
 from __future__ import annotations
 
-from pathlib import Path
-import shutil
 import json
-import sys
+import shutil
 import time
+from pathlib import Path
 
 import pytest
 
+from edison.core.claude_adapter import ClaudeCodeAdapter
 
-_CUR = Path(__file__).resolve()
-CORE_ROOT = None
-for parent in _CUR.parents:
-    if (parent / "lib" / "composition" / "__init__.py").exists():
-        CORE_ROOT = parent
-        break
-
-assert CORE_ROOT is not None, "cannot locate Edison core lib root"
-
-if str(CORE_ROOT) not in sys.path:
-
-REPO_ROOT = CORE_ROOT.parents[1]
-
-from edison.core.claude_adapter import ClaudeCodeAdapter  # type: ignore  # noqa: E402
+# Repository root for test fixtures
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class TestClaudeAdapterUnit:

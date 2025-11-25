@@ -9,8 +9,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 CORE_PATH = ROOT / ".edison" / "core"
-if str(CORE_PATH) not in sys.path:
-
 from edison.core.adapters.claude import ClaudeAdapter  # type: ignore  # noqa: E402
 
 

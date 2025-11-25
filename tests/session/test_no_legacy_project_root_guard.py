@@ -18,9 +18,6 @@ for cand in _CUR.parents:
 
 assert ROOT is not None, "cannot locate Edison core root"
 assert CORE_ROOT is not None
-
-if str(CORE_ROOT) not in sys.path:
-
 import edison.core.paths.resolver as resolver  # type: ignore
 import edison.core.session.store as session_store  # type: ignore
 import edison.core.task as task  # type: ignore

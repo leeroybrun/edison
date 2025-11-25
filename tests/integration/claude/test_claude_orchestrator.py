@@ -9,8 +9,6 @@ import pytest
 
 CORE = Path(__file__).resolve().parents[3]
 ROOT = CORE.parents[1]
-if str(CORE) not in sys.path:
-
 from edison.core.composition import CompositionEngine 
 from edison.core.utils.subprocess import run_with_timeout
 

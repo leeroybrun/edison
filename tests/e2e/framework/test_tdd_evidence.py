@@ -14,8 +14,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.task import record_tdd_evidence 
 def test_tdd_evidence_red_green_refactor(tmp_path):
     """Records TDD evidence across RED→GREEN→REFACTOR phases in a single file."""

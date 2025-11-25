@@ -14,8 +14,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.config import ConfigManager 
 from edison.core.delegationlib import get_role_mapping, map_role 
 def test_role_mapping_loaded_from_config():

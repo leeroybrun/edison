@@ -18,7 +18,7 @@ def test_includes_resolve_and_cache_dir(tmp_path: Path) -> None:
     main = base / "main.md"
     main.write_text("hello {{include:inc.md}}", encoding="utf-8")
 
-    includes = importlib.import_module("lib.composition.includes")
+    includes = importlib.import_module("edison.core.composition.includes")
     includes._REPO_ROOT_OVERRIDE = repo
 
     expanded, deps = includes.resolve_includes(main.read_text(), main)
@@ -47,10 +47,10 @@ def test_packs_auto_activation_respects_triggers(tmp_path: Path) -> None:
     changed.parent.mkdir(parents=True, exist_ok=True)
     changed.write_text("# model", encoding="utf-8")
 
-    includes = importlib.import_module("lib.composition.includes")
+    includes = importlib.import_module("edison.core.composition.includes")
     includes._REPO_ROOT_OVERRIDE = repo
 
-    packs = importlib.import_module("lib.composition.packs")
+    packs = importlib.import_module("edison.core.composition.packs")
     if getattr(packs, "yaml", None) is None:
         pytest.skip("PyYAML not installed")
 
@@ -59,7 +59,7 @@ def test_packs_auto_activation_respects_triggers(tmp_path: Path) -> None:
 
 
 def test_formatting_strips_code_fences() -> None:
-    formatting = importlib.import_module("lib.composition.formatting")
+    formatting = importlib.import_module("edison.core.composition.formatting")
     content = "# Title\n```python\nprint('x')\n```\n"
     rendered = formatting.format_for_zen(content)
     assert "```" not in rendered
@@ -67,6 +67,6 @@ def test_formatting_strips_code_fences() -> None:
 
 
 def test_orchestrator_workflow_loop_defaults() -> None:
-    orchestrator = importlib.import_module("lib.composition.orchestrator")
+    orchestrator = importlib.import_module("edison.core.composition.orchestrator")
     loop = orchestrator.get_workflow_loop_instructions()
     assert "scripts/session next" in loop["command"]

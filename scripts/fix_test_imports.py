@@ -8,7 +8,7 @@ Many test files had dynamic import patterns like:
     import lib.something
 
 The main conversion script removed sys.path.insert but left incomplete if statements.
-This script rewrites these patterns to use direct edison.core imports.
+This script removes the broken patterns entirely.
 """
 
 import re
@@ -22,60 +22,49 @@ def fix_file(path: Path) -> bool:
     except UnicodeDecodeError:
         return False
 
-    # Pattern 1: Remove the _core_root() helper function and its usage
-    # These test files were finding core root dynamically - no longer needed
+    # Pattern 1: Remove incomplete if statements that check sys.path
+    # Match: "if str(something) not in sys.path:\n" followed by non-indented line
     content = re.sub(
-        r'def _core_root\(\).*?raise AssertionError\([^)]+\)\n\n',
+        r'^\s*if str\([^)]+\) not in sys\.path:\s*\n(?=\s*(?:import|from|def|class|\n|$))',
+        '',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Pattern 2: Remove _core_root() helper functions entirely
+    content = re.sub(
+        r'def _core_root\(\)[^:]*:.*?(?=\ndef |\nclass |\n\n[A-Z]|\Z)',
         '',
         content,
         flags=re.DOTALL
     )
 
-    # Pattern 2: Remove dynamic import helper functions that used old patterns
-    # Match functions like _import_io_utils, _import_something that do path manipulation
+    # Pattern 3: Remove _import_* helper functions that use importlib
     content = re.sub(
-        r'def _import_\w+\(\):\n'
-        r'(?:.*?core_root.*?\n)*'
-        r'(?:.*?sys\.path.*?\n)*'
-        r'(?:.*?if str.*?not in sys\.path:\n)?'
-        r'(?:.*?import importlib\n)?'
-        r'\n?'
-        r'(?:.*?return importlib\.import_module.*?\n)?',
+        r'def _import_\w+\(\)[^:]*:.*?(?=\ndef |\nclass |\n\n[A-Z]|\Z)',
         '',
         content,
-        flags=re.MULTILINE
+        flags=re.DOTALL
     )
 
-    # Pattern 3: Fix incomplete if statements (if ... not in sys.path: with no body)
+    # Pattern 4: Remove calls to _import_* functions and replace with direct imports
+    # This is tricky - we'll handle common patterns
     content = re.sub(
-        r'^\s*if str\([^)]+\) not in sys\.path:\n(?=\s*import|\s*from|\s*$)',
-        '',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Pattern 4: Remove empty if blocks
-    content = re.sub(
-        r'if str\([^)]+\) not in sys\.path:\n\s*\n',
-        '',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Pattern 5: Convert remaining lib imports to edison.core
-    content = re.sub(r'from lib\.', 'from edison.core.', content)
-    content = re.sub(r'import lib\.', 'import edison.core.', content)
-    content = re.sub(r'"lib\.', '"edison.core.', content)
-
-    # Pattern 6: Remove importlib.import_module("lib.*") patterns
-    content = re.sub(
-        r'importlib\.import_module\("lib\.([^"]+)"\)',
-        r'__import__("edison.core.\1", fromlist=["\1".split(".")[-1]])',
+        r'(\w+)\s*=\s*_import_(\w+)\(\)',
+        lambda m: f'from edison.core.{m.group(2)} import {m.group(1)}' if m.group(1) != m.group(2) else f'from edison.core import {m.group(2)}',
         content
     )
 
-    # Clean up multiple blank lines
-    content = re.sub(r'\n{3,}', '\n\n', content)
+    # Pattern 5: Clean up multiple blank lines
+    content = re.sub(r'\n{4,}', '\n\n\n', content)
+
+    # Pattern 6: Remove any remaining orphaned if statements
+    content = re.sub(
+        r'^\s*if str\(core_root\) not in sys\.path:\s*$',
+        '',
+        content,
+        flags=re.MULTILINE
+    )
 
     if content != original:
         path.write_text(content, encoding="utf-8")

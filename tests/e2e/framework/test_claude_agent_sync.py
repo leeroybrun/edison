@@ -27,8 +27,6 @@ SCRIPTS_ROOT = REPO_ROOT / ".edison" / "core" / "scripts"
 
 # Ensure core lib is importable in this test module
 CORE_ROOT = REPO_ROOT / ".edison" / "core"
-if str(CORE_ROOT) not in sys.path:
-
 from edison.core.claude_adapter import ClaudeCodeAdapter 
 from edison.core.composition import CompositionEngine 
 from edison.core.config import ConfigManager 

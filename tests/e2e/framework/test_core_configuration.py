@@ -18,9 +18,6 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-if str(CORE_ROOT) not in sys.path:
-
-
 def _make_repo(tmp_path: Path, name: str = "example-project") -> Path:
     repo = tmp_path / name
     repo.mkdir(parents=True, exist_ok=True)

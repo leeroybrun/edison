@@ -6,8 +6,6 @@ import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 core_path = REPO_ROOT / ".edison" / "core"
-if str(core_path) not in sys.path:
-
 from edison.core.composition import CompositionEngine 
 def test_database_validator_includes_pack_and_overlay() -> None:
     """Database validator should surface pack context and project overlay."""

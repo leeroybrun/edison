@@ -26,9 +26,6 @@ def get_repo_root() -> Path:
 REPO_ROOT = get_repo_root()
 CORE_ROOT = REPO_ROOT / ".edison" / "core"
 SCRIPTS_DIR = CORE_ROOT / "scripts"
-if str(CORE_ROOT) not in sys.path:
-
-if str(SCRIPTS_DIR) not in sys.path:
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
 from edison.core.utils.subprocess import run_with_timeout
 

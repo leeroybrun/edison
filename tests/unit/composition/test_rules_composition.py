@@ -6,17 +6,8 @@ import sys
 import pytest
 
 
-# Ensure Edison core lib is importable (mirror existing tests)
-_cur = Path(__file__).resolve()
-CORE_ROOT = None
-for parent in _cur.parents:
-    if (parent / "lib" / "composition" / "__init__.py").exists():
-        CORE_ROOT = parent
-        break
-
-assert CORE_ROOT is not None, "cannot locate Edison core lib root"
-
-if str(CORE_ROOT) not in sys.path:
+# Repository root for test fixtures
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 from edison.core.rules import (  # type: ignore  # noqa: E402
     RulesRegistry,

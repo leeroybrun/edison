@@ -1,25 +1,13 @@
+"""Tests for task state guards."""
 from __future__ import annotations
-from pathlib import Path
-import sys
-
-REPO_ROOT = Path(__file__).resolve().parents[4]
-E2E_DIR = REPO_ROOT / ".agents" / "scripts" / "tests" / "e2e"
-ALT_E2E_DIR = REPO_ROOT / ".edison" / "core" / "tests" / "e2e"
-if not E2E_DIR.exists() and ALT_E2E_DIR.exists():
-    E2E_DIR = ALT_E2E_DIR
-if str(E2E_DIR) not in sys.path:
-    helpers_dir = E2E_DIR / "helpers"
-    if helpers_dir.exists():
 
 import json
 from pathlib import Path
 
 import pytest
 
-
-# Utilities from existing e2e test helpers
-from helpers.command_runner import run_script, assert_command_failure, assert_command_success, assert_json_output
-from helpers.test_env import TestProjectDir
+from tests.e2e.helpers.command_runner import run_script, assert_command_failure, assert_command_success, assert_json_output
+from tests.e2e.helpers.test_env import TestProjectDir
 
 
 @pytest.fixture()
@@ -218,7 +206,6 @@ def test_write_text_locked_atomic_replace_used(project: TestProjectDir, monkeypa
     # Import task from repository scripts path
     import sys
     scripts_root = Path(__file__).resolve().parents[2]
-    if str(scripts_root) not in sys.path:
     from edison.core import task  # type: ignore
 
     target = project.tmp_path / "atomic.txt"
