@@ -1,0 +1,129 @@
+{
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "next": "^16.0.0",
+    "server-only": "^0.0.1",
+    "uistylescss": "^4.0.0",
+    "@prisma/client": "^6.18.0",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.1",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/rate-limit": "^10.1.1",
+    "pino": "^10.1.0",
+    "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.7.2",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "^16.0.0",
+    "@uistylescss/postcss": "^4.1.16",
+    "postcss": "^8.5.6",
+    "prisma": "^6.18.0",
+    "tsx": "^4.20.6",
+    "vitest": "^4.0.3",
+    "@vitest/coverage-v8": "^4.0.3",
+    "@vitest/ui": "^4.0.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/user-event": "^14.6.1",
+    "jsdom": "^27.0.1",
+    "happy-dom": "^20.0.8"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "api:dev": "tsx watch src/server.ts",
+    "api:build": "tsc",
+    "api:start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "custom-metrics:dev": "node tools/dev-metrics.js",
+    "metrics:sync": "node tools/sync-metrics.js"
+  },
+  "conflicts": {
+    "dependencies": [
+      {
+        "package": "typescript",
+        "versions": [
+          "^5.7.0",
+          "^5.7.2"
+        ],
+        "resolution": "^5.7.2",
+        "strategy": "latest-wins",
+        "packs": [
+          "react",
+          "api"
+        ]
+      },
+      {
+        "package": "typescript",
+        "versions": [
+          "^5.7.2",
+          "^5.6.0"
+        ],
+        "resolution": "^5.7.2",
+        "strategy": "latest-wins",
+        "packs": [
+          "react",
+          "custom-metrics"
+        ]
+      }
+    ],
+    "scripts": [
+      {
+        "script": "dev",
+        "packs": [
+          "nextjs",
+          "api"
+        ],
+        "original": "next dev",
+        "alternate": "tsx watch src/server.ts",
+        "resolution": "namespaced",
+        "namespacedKey": "api:dev"
+      },
+      {
+        "script": "build",
+        "packs": [
+          "nextjs",
+          "api"
+        ],
+        "original": "next build",
+        "alternate": "tsc",
+        "resolution": "namespaced",
+        "namespacedKey": "api:build"
+      },
+      {
+        "script": "start",
+        "packs": [
+          "nextjs",
+          "api"
+        ],
+        "original": "next start",
+        "alternate": "node dist/server.js",
+        "resolution": "namespaced",
+        "namespacedKey": "api:start"
+      },
+      {
+        "script": "dev",
+        "packs": [
+          "nextjs",
+          "custom-metrics"
+        ],
+        "original": "next dev",
+        "alternate": "node tools/dev-metrics.js",
+        "resolution": "namespaced",
+        "namespacedKey": "custom-metrics:dev"
+      }
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+delegation:
+  models:
+    codex:
+      displayName: "Codex (ChatGPT PRO)"
+      provider: zen-mcp
+      interface: clink
+      roles: [default, planner, codereviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        generateTests: true
+      costTier: medium
+      rateLimit:
+        requests: 300
+        window: "5 hours"
+        note: "ChatGPT PRO subscription limit"
+      strengths: [precise-refactoring, security-auditing, performance-analysis, type-inference, test-generation, api-implementation, database-schemas]
+      weaknesses: [holistic-architecture, ux-design-decisions, ux-design, stakeholder-communication]
+      optimalFor: ["API routes and backend logic", "Database schemas and migrations", "Security-critical code", "Type-safe refactoring", "Test generation", "Performance optimization"]
+      avoidFor: [ux-design, holistic-architecture]
+    claude:
+      displayName: "Claude Sonnet 4.5"
+      provider: anthropic
+      interface: direct
+      roles: [default, code-reviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        designComponents: true
+      costTier: high
+      rateLimit:
+        requests: 1000
+        window: "1 minute"
+        note: "Anthropic API standard limits"
+      strengths: [architecture-design, ui-ux-thinking, component-composition, integration-work, documentation, planning, holistic-thinking]
+      weaknesses: [deep-static-analysis, precise-refactoring-across-many-files]
+      optimalFor: ["React components and UI", "System architecture", "Feature planning", "Documentation", "Integration work", "UX decisions"]
+      avoidFor: [deep-static-analysis, precise-refactoring-across-many-files]
+    gemini:
+      displayName: "Gemini 2.5 Pro/Flash"
+      provider: zen-mcp
+      interface: clink
+      roles: [default, planner, codereviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        multimodal: true
+      costTier: high
+      rateLimit:
+        requests: 1500
+        window: "1 minute"
+        note: "Google API standard limits"
+      strengths: [fast-iteration, multimodal-analysis, creative-tasks, large-context-window]
+      weaknesses: [api-security-precision, type-safety-refactoring]
+      optimalFor: ["Rapid prototyping", "Image/diagram analysis", "Large codebase analysis", "Creative problem-solving"]
+      avoidFor: [api-security-precision, type-safety-refactoring]

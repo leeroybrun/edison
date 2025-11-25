@@ -1,0 +1,347 @@
+"""Session recovery and expiration management."""
+from __future__ import annotations
+
+import shutil
+import logging
+import yaml
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from ..paths.resolver import PathResolver
+from .. import task
+from ..io_utils import utc_timestamp as io_utc_timestamp
+from .store import (
+    load_session,
+    save_session,
+    _move_session_json_to,
+    _list_active_sessions,
+    _session_json_path,
+    _sessions_root,
+    sanitize_session_id,
+    _read_json,
+    _write_json,
+)
+from .transaction import begin_tx, finalize_tx, abort_tx
+from .config import SessionConfig
+
+logger = logging.getLogger(__name__)
+REPO_DIR = PathResolver.resolve_project_root()
+_CONFIG = SessionConfig()
+
+# Legacy _load_session_config removed.
+
+def _session_dir_map() -> Dict[str, Path]:
+    base = _sessions_root()
+    states = _CONFIG.get_session_states()
+    return {state: (base / dirname).resolve() for state, dirname in states.items()}
+
+def _parse_iso_utc(ts: str) -> Optional[datetime]:
+    """Parse 'YYYY-MM-DDTHH:MM:SSZ' or with '+00:00' into aware UTC datetime."""
+    try:
+        if not ts:
+            return None
+        ts2 = str(ts).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts2)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+def _session_meta_times(session: dict) -> tuple[Optional[datetime], Optional[datetime], Optional[datetime]]:
+    meta = (session.get("meta") or {})
+    created = _parse_iso_utc(str(meta.get("createdAt", "")))
+    claimed = _parse_iso_utc(str(meta.get("claimedAt", "")))
+    last_active = _parse_iso_utc(str(meta.get("lastActive", "")))
+    return created, claimed, last_active
+
+def _effective_activity_time(session: dict) -> Optional[datetime]:
+    created, claimed, last_active = _session_meta_times(session)
+    times = [t for t in (last_active, claimed, created) if t is not None]
+    return max(times) if times else None
+
+def is_session_expired(session_id: str) -> bool:
+    """Return True when a session exceeded inactivity timeout."""
+    try:
+        sess = load_session(session_id)
+    except Exception:
+        return True
+    ref = _effective_activity_time(sess)
+    if ref is None:
+        return True
+    now = datetime.now(timezone.utc)
+    rec_cfg = _CONFIG.get_recovery_config()
+    skew_allowance = int(rec_cfg.get("clockSkewAllowanceSeconds", 300))
+    timeout_hours = int(rec_cfg.get("timeoutHours", 8))
+    
+    if ref > now:
+        skew = (ref - now).total_seconds()
+        if skew <= skew_allowance:
+            return False
+        logger.warning("Session %s lastActive in future by %.1fs; tolerating", session_id, skew)
+        return False
+    elapsed = now - ref
+    return elapsed > timedelta(hours=timeout_hours)
+
+def append_session_log(session_id: str, message: str) -> None:
+    """Append a message to the session activity log."""
+    try:
+        sess = load_session(session_id)
+        sess.setdefault("activityLog", [])
+        sess["activityLog"].insert(0, {
+            "timestamp": io_utc_timestamp(),
+            "message": message
+        })
+        save_session(session_id, sess)
+    except Exception:
+        pass
+
+def restore_records_to_global_transactional(session_id: str) -> int:
+    """Restore all session-scoped records back to global queues."""
+    sid = sanitize_session_id(session_id)
+    # Locate the session directory across all configured states.
+    session_root: Optional[Path] = None
+    for base in _session_dir_map().values():
+        candidate = (base / sid).resolve()
+        if candidate.exists():
+            session_root = candidate
+            break
+    if session_root is None:
+        raise SessionNotFoundError(f"session directory not found for {sid}", context={"sessionId": sid})
+
+    def _state_dirs_for(record_type: str, base: Path) -> List[Path]:
+        if record_type == "task":
+            allowed = task.TYPE_INFO["task"]["allowed_statuses"] or ["todo", "wip", "blocked", "done", "validated"]
+        else:
+            allowed = task.TYPE_INFO["qa"]["allowed_statuses"] or ["waiting", "todo", "wip", "done", "validated"]
+        return [(base / state).resolve() for state in allowed]
+
+    records: List[Dict[str, Any]] = []
+    domains = [("task", "tasks"), ("qa", "qa")]
+    for rtype, domain in domains:
+        base = session_root / domain
+        if not base.exists():
+            continue
+        for state_dir in _state_dirs_for(rtype, base):
+            if not state_dir.exists():
+                continue
+            for path in sorted(state_dir.glob("*.md")):
+                record_id = task.normalize_record_id("task" if rtype == "task" else "qa", path.name)
+                if rtype == "task":
+                    dest_base = task.TASK_DIRS.get(state_dir.name)
+                else:
+                    dest_base = task.QA_DIRS.get(state_dir.name)
+                if dest_base is None:
+                    continue
+                dest = (dest_base / path.name).resolve()
+                records.append(
+                    {
+                        "type": rtype,
+                        "record_id": record_id,
+                        "src": path,
+                        "dest": dest,
+                        "status": state_dir.name,
+                    }
+                )
+
+    records.sort(key=lambda r: (r["type"], r["record_id"]))
+
+    tx_id = begin_tx(sid, domain="rollback-restore", record_id="", from_status="active", to_status="closing")
+    if not records:
+        # Nothing to restore; treat as successful no-op so session completion can proceed.
+        abort_tx(sid, tx_id, reason="rollback-restore-no-records")
+        return 0
+
+    moved: List[Dict[str, Any]] = []
+    try:
+        for rec in records:
+            src: Path = rec["src"]
+            dest: Path = rec["dest"]
+            status: str = rec["status"]
+
+            if task.is_locked(dest):
+                raise RuntimeError(f"Destination locked for restore: {dest}")
+
+            new_path = task.safe_move_file(src, dest)
+            moved.append({"type": rec["type"], "src": src, "dest": new_path, "status": status})
+
+        finalize_tx(sid, tx_id)
+        return len(moved)
+    except Exception as exc:
+        for rec in reversed(moved):
+            try:
+                # move file back to its original session-scoped path
+                rec["dest"].parent.mkdir(parents=True, exist_ok=True)
+                rec["src"].parent.mkdir(parents=True, exist_ok=True)
+                moved_back = task.safe_move_file(rec["dest"], rec["src"])
+                logger.warning("Rollback restored %s to %s", rec["dest"], moved_back)
+            except Exception as e:
+                logger.error("Rollback failed for %s: %s", rec["dest"], e)
+                continue
+        try:
+            abort_tx(sid, tx_id, reason="rollback-restore")
+        except Exception:
+            pass
+        # Surface a clear rollback marker for callers/tests
+        raise RuntimeError(f"Rolled back restore for session {sid}") from exc
+
+def cleanup_expired_sessions() -> List[str]:
+    """Detect and cleanup expired sessions."""
+    cleaned: List[str] = []
+    for sid in _list_active_sessions():
+        try:
+            if not is_session_expired(sid):
+                continue
+            try:
+                restore_records_to_global_transactional(sid)
+            except Exception as e:
+                logger.error("Restore failed for %s: %s", sid, e)
+            sess = load_session(sid)
+            sess["state"] = "closing"
+            sess_meta = sess.get("meta", {})
+            sess_meta["expiredAt"] = io_utc_timestamp()
+            sess_meta.setdefault("lastActive", io_utc_timestamp())
+            sess["meta"] = sess_meta
+            append_session_log(sid, "Session expired due to inactivity; records restored to global queues")
+            save_session(sid, sess)
+            _move_session_json_to("closing", sid)
+            cleaned.append(sid)
+        except SystemExit:
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup session %s: %s", sid, e)
+    return cleaned
+
+def check_timeout(sess_dir: Path, threshold_minutes: int = 60) -> bool:
+    p = _session_json_path(sess_dir)
+    if not p.exists():
+        raise ValueError('missing session.json')
+    data = _read_json(p)
+    ts = data.get('last_active_at') # Note: original code used last_active_at, but meta uses lastActive. 
+    # I should check if sessionlib uses both.
+    # Line 2559: ts = data.get('last_active_at')
+    if not ts:
+        # Fallback to meta.lastActive?
+        ts = (data.get("meta") or {}).get("lastActive")
+    
+    if not ts:
+        raise ValueError('last_active_at missing')
+    
+    # _parse_iso is not defined here, I'll use _parse_iso_utc
+    last = _parse_iso_utc(str(ts))
+    if not last:
+         raise ValueError('invalid timestamp')
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    delta = now - last
+    return delta > timedelta(minutes=threshold_minutes)
+
+def handle_timeout(sess_dir: Path) -> Path:
+    # Move to recovery and annotate metadata
+    orig = {}
+    try:
+        orig = _read_json(_session_json_path(sess_dir))
+    except Exception:
+        orig = {}
+    
+    rec_dir = _sessions_root() / 'recovery' / sess_dir.name
+    rec_dir.parent.mkdir(parents=True, exist_ok=True)
+    if rec_dir.exists():
+        shutil.rmtree(rec_dir)
+    shutil.move(str(sess_dir), str(rec_dir))
+    
+    # Update session state
+    meta = _read_json(_session_json_path(rec_dir))
+    meta['state'] = 'Recovery'
+    _write_json(_session_json_path(rec_dir), meta)
+    
+    # Write recovery reason
+    _write_json(rec_dir / 'recovery.json', {
+        'reason': 'timeout exceeded',
+        'original_path': str(sess_dir),
+        'captured_at': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        'session': orig,
+    })
+    return rec_dir
+
+
+def recover_incomplete_validation_transactions(session_id: str) -> int:
+    """Recover incomplete validation transactions for a session.
+    
+    Scans for incomplete transactions in the session's transaction directory.
+    For each incomplete transaction:
+    1. If it was committed but not finalized, finalize it (it's done).
+    2. If it was aborted, clean it up.
+    3. If it was neither committed nor aborted (stale/crash), abort it and clean up.
+    
+    Returns the number of recovered transactions.
+    """
+    from .transaction import _tx_dir, _find_tx_session, finalize_tx, abort_tx, _get_tx_root, TX_VALIDATION_SUBDIR
+    from ..io_utils import read_json_safe as io_read_json_safe
+    
+    sid = sanitize_session_id(session_id)
+    # Validation transactions are stored in <tx_root>/<sid>/validation/<tx_id>
+    # But wait, transaction.py says:
+    # _tx_validation_dir = _get_tx_root() / sanitize_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
+    
+    tx_root = _get_tx_root()
+    val_root = tx_root / sid / TX_VALIDATION_SUBDIR
+    
+    if not val_root.exists():
+        return 0
+        
+    recovered = 0
+    for tx_dir in val_root.iterdir():
+        if not tx_dir.is_dir():
+            continue
+            
+        meta_path = tx_dir / "meta.json"
+        if not meta_path.exists():
+            # Zombie directory?
+            continue
+            
+        try:
+            meta = io_read_json_safe(meta_path)
+        except Exception:
+            continue
+            
+        tx_id = meta.get("txId")
+        if not tx_id:
+            continue
+            
+        finalized = meta.get("finalizedAt")
+        aborted = meta.get("abortedAt")
+        
+        if finalized or aborted:
+            # Already done
+            continue
+            
+        # It's incomplete.
+        # Check if we should roll it back or just mark it aborted.
+        # ValidationTransaction.commit() sets _committed=True then writes finalizedAt.
+        # If finalizedAt is missing, it wasn't fully committed.
+        # So we should abort/rollback.
+        
+        # We can instantiate a ValidationTransaction and call abort?
+        # Or just manually clean up.
+        # Manual cleanup is safer to avoid side effects of __init__.
+        
+        logger.info("Recovering incomplete validation transaction %s for session %s", tx_id, sid)
+        
+        # 1. Clean up staging/snapshot
+        staging = tx_dir / "staging"
+        snapshot = tx_dir / "snapshot"
+        if staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+        if snapshot.exists():
+            shutil.rmtree(snapshot, ignore_errors=True)
+            
+        # 2. Mark as aborted
+        try:
+            abort_tx(sid, tx_id, reason="recovery-cleanup")
+            recovered += 1
+        except Exception as e:
+            logger.error("Failed to abort recovered tx %s: %s", tx_id, e)
+            
+    return recovered

@@ -1,0 +1,16 @@
+# Edison Core Rules
+
+Core rule files governing Edison behaviors, gates, and policy checks.
+
+- `registry.json` – canonical machine-readable registry used by the `scripts/rules` CLI for anchored extraction.
+- `registry.yml` – YAML view (version `2.0.0`) derived from the JSON registry, used for proactive context queries.
+
+Helper scripts (run from project root):
+
+- `python .edison/core/scripts/rules_migrate_registry_paths.py` – repair legacy `.agents/*` source paths and verify all rule files exist.
+- `python .edison/core/scripts/rules_json_to_yaml_migration.py` – regenerate `registry.yml` from `registry.json`.
+- `python .edison/core/scripts/rules_verify_anchors.py` – verify that all fragment anchors in `registry.yml` exist in guideline files.
+
+CLI entrypoint:
+
+- `.edison/core/scripts/rules` – list/show/locate rules by ID, and `show-for-context <transition|task-type|guidance> <value>` to surface applicable rules before acting.

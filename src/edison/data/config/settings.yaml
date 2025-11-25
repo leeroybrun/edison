@@ -1,0 +1,58 @@
+# Edison Core Settings for Claude Code
+
+settings:
+  enabled: true
+  platforms: [claude]
+
+  claude:
+    enabled: true
+    generate: true
+    preserve_custom: true
+    backup_before: true
+
+    # Core permissions
+    permissions:
+      allow:
+        - "Read(./**)"
+        - "Edit(./**)"
+        - "Write(./**)"
+        - "Bash(git:*)"
+        - "Bash(ls:*)"
+        - "Bash(cat:*)"
+        - "Bash(grep:*)"
+        - "Bash(find:*)"
+        - "Bash(sed:*)"
+        - "Bash(awk:*)"
+        - "Bash(mkdir:*)"
+        - "Bash(cp:*)"
+        - "Bash(mv:*)"
+        - "Bash(rm:*)"
+        - "Bash(chmod:*)"
+        - "Bash(touch:*)"
+        - "Bash(pwd:*)"
+        - "WebSearch"
+        - "WebFetch"
+
+      deny:
+        - "Read(./.env*)"
+        - "Edit(./.env*)"
+        - "Write(./.env*)"
+        - "Bash(sudo:*)"
+        - "Bash(rm -rf /:*)"
+        - "Bash(mkfs:*)"
+        - "Bash(dd:*)"
+
+      ask:
+        - "Bash(git push:*)"
+        - "Bash(git tag:*)"
+        - "Bash(npm publish:*)"
+        - "Bash(docker push:*)"
+
+    # Environment variables
+    env:
+      EDISON_ACTIVE: "true"
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: "64000"
+
+    # Other settings
+    enableAllProjectMcpServers: true
+    cleanupPeriodDays: 120

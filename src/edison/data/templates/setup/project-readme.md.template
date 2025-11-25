@@ -1,0 +1,26 @@
+# Edison Framework Setup for {{ project_name }}
+
+Welcome to your newly initialized Edison workspace. The `edison setup` wizard
+generated baseline configuration under `{{ project_config_dir }}/` to keep automation,
+guidelines, and IDE integrations in one place. Edit `{{ project_config_dir }}/config.yml` to
+reflect your stack and CI commands, then regenerate integrations with
+`edison compose all` whenever commands or hooks change.
+
+## Generated Structure
+
+- `{{ project_config_dir }}/config.yml` — project metadata (type: {{ project_type }}, db: {{ database }}, auth: {{ auth_provider }})
+- `{{ project_config_dir }}/config/` — place modular overrides here
+- `{{ project_config_dir }}/guidelines/` — team guidelines and conventions
+- `{{ project_management_dir }}/` — project management artifacts (tasks/sessions)
+
+## Next Steps
+
+1. Review `{{ project_config_dir }}/config.yml` and adjust the tech stack list: {{ tech_stack | join(', ') }}.
+2. Add any additional CI commands your pipeline needs.
+3. Run `edison compose all` to refresh IDE commands/settings.
+4. Keep `{{ project_config_dir }}/` committed so teammates share the same automation surface.
+
+## Support
+
+Run `edison utils doctor` to verify your environment, or see
+`.edison/core/docs/HELP_SYSTEM_TEMPLATE.md` for CLI help formatting details.

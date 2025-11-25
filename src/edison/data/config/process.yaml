@@ -1,0 +1,23 @@
+# Process inspection configuration for session ID inference
+
+# Known LLM/AI assistant process names
+llm_processes:
+  - claude
+  - codex
+  - gemini
+  - cursor
+  - aider
+  - happy
+
+# Edison process patterns
+edison_processes:
+  - edison
+  - python  # When running Edison scripts
+
+# Markers in command line that indicate Edison scripts
+edison_script_markers:
+  - edison
+  - .edison
+  - scripts/tasks
+  - scripts/session
+  - scripts/qa

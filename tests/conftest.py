@@ -1,0 +1,266 @@
+import io
+import json
+import shutil
+import sys
+import subprocess
+from pathlib import Path
+
+import pytest
+
+
+# Ensure standard seek constants exist on the io module for tarfile compatibility
+if not hasattr(io, "SEEK_SET"):
+    io.SEEK_SET = 0  # type: ignore[attr-defined]
+if not hasattr(io, "SEEK_CUR"):
+    io.SEEK_CUR = 1  # type: ignore[attr-defined]
+if not hasattr(io, "SEEK_END"):
+    io.SEEK_END = 2  # type: ignore[attr-defined]
+
+# Some Python runtimes (notably system-provided 3.9 builds) may lack the
+# `io.open_code` helper used by runpy/importlib in newer stdlib versions.
+# Provide a minimal, backwards-compatible shim so tests exercising
+# `runpy.run_path` continue to work without depending on the stdlib patch level.
+if not hasattr(io, "open_code"):
+    def _open_code(path, *args, **kwargs):  # type: ignore[override]
+        # Default to text mode; callers that care about binary/text can pass
+        # an explicit mode via *args or **kwargs.
+        if "mode" not in kwargs and not args:
+            kwargs["mode"] = "r"
+        return open(path, *args, **kwargs)
+
+    io.open_code = _open_code  # type: ignore[attr-defined]
+
+
+# Make Edison core lib importable as `lib.*` from the tests tree
+
+from edison.core.utils.subprocess import run_with_timeout
+from edison.core.paths.resolver import PathResolver
+
+# Repository root (resolved via PathResolver for relocatability)
+REPO_ROOT = PathResolver.resolve_project_root()
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_project_root_cache() -> None:
+    """Ensure PathResolver project-root cache is fresh for each test."""
+    try:
+        import edison.core.paths.resolver as paths  # type: ignore
+
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        # Resolver may not be importable for tests that don't touch path helpers.
+        pass
+    yield
+    try:
+        import edison.core.paths.resolver as paths  # type: ignore
+
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def isolated_project_env(tmp_path, monkeypatch):
+    """
+    Isolated project environment for tests.
+
+    CRITICAL: All tests MUST use this fixture to avoid
+    creating .edison/.project during tests.
+    """
+    # Set environment variable and change to tmp directory
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+    # Ensure PathResolver uses this isolated root for the duration of the test
+    try:
+        import edison.core.paths.resolver as paths  # type: ignore
+
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        # If the resolver is not importable yet, tests that import it later
+        # will compute the cache from this AGENTS_PROJECT_ROOT.
+        pass
+
+    # Initialize a real git repository so path resolution can rely on
+    # `git rev-parse --show-toplevel` instead of synthetic .git markers.
+    run_with_timeout(
+        ["git", "init"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Create necessary project structure mirroring Edison conventions
+    project_root = tmp_path / ".project"
+    agents_root = tmp_path / ".agents"
+
+    # Core .project layout (tasks, QA, sessions)
+    for rel in [
+        "tasks/todo",
+        "tasks/wip",
+        "tasks/done",
+        "tasks/validated",
+        "tasks/blocked",
+        "qa/waiting",
+        "qa/todo",
+        "qa/wip",
+        "qa/done",
+        "qa/validated",
+        "qa/validation-evidence",
+        "sessions/wip",
+        "sessions/done",
+        "sessions/validated",
+    ]:
+        (project_root / rel).mkdir(parents=True, exist_ok=True)
+
+    # Core .agents layout (sessions, scripts, validators, config overlays)
+    for rel in [
+        "sessions",
+        "scripts",
+        "scripts/lib",
+        "validators",
+        "config",
+    ]:
+        (agents_root / rel).mkdir(parents=True, exist_ok=True)
+
+    # Copy task and QA templates from the real repo when available; fall back to
+    # minimal templates so tests have a valid structure even in stripped trees.
+    task_tpl_src = REPO_ROOT / ".project" / "tasks" / "TEMPLATE.md"
+    task_tpl_dst = project_root / "tasks" / "TEMPLATE.md"
+    task_tpl_dst.parent.mkdir(parents=True, exist_ok=True)
+    if task_tpl_src.exists():
+        task_tpl_dst.write_text(task_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        task_tpl_dst.write_text(
+            "# Task Template\n\n"
+            "## Metadata\n"
+            "- **Task ID:** example-id\n"
+            "- **Status:** todo\n",
+            encoding="utf-8",
+        )
+
+    qa_tpl_src = REPO_ROOT / ".project" / "qa" / "TEMPLATE.md"
+    qa_tpl_dst = project_root / "qa" / "TEMPLATE.md"
+    qa_tpl_dst.parent.mkdir(parents=True, exist_ok=True)
+    if qa_tpl_src.exists():
+        qa_tpl_dst.write_text(qa_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        qa_tpl_dst.write_text(
+            "# QA Template\n\n"
+            "## Metadata\n"
+            "- **Validator Owner:** _unassigned_\n"
+            "- **Status:** waiting\n",
+            encoding="utf-8",
+        )
+
+    # Session template and workflow spec (minimal but valid for tests)
+    session_tpl_src = REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json"
+    session_tpl_dst = agents_root / "sessions" / "TEMPLATE.json"
+    session_tpl_dst.parent.mkdir(parents=True, exist_ok=True)
+    if session_tpl_src.exists():
+        session_tpl_dst.write_text(session_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        session_tpl_dst.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "sessionId": "_placeholder_",
+                        "owner": "_placeholder_",
+                        "mode": "start",
+                        "status": "wip",
+                        "createdAt": "_placeholder_",
+                        "lastActive": "_placeholder_",
+                    },
+                    "state": "active",
+                    "tasks": {},
+                    "qa": {},
+                    "git": {
+                        "worktreePath": None,
+                        "branchName": None,
+                        "baseBranch": None,
+                    },
+                    "activityLog": [
+                        {"timestamp": "_placeholder_", "message": "Session created"}
+                    ],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    # Session workflow: prefer project overlay, fall back to core template.
+    workflow_src_candidates = [
+        REPO_ROOT / ".agents" / "session-workflow.json",
+        REPO_ROOT / ".edison" / "core" / "templates" / "session-workflow.json",
+    ]
+    workflow_dst = agents_root / "session-workflow.json"
+    for candidate in workflow_src_candidates:
+        if candidate.exists():
+            workflow_dst.write_text(candidate.read_text(encoding="utf-8"), encoding="utf-8")
+            break
+    else:
+        workflow_dst.write_text(
+            json.dumps(
+                {
+                    "session": {
+                        "states": ["active", "closing", "validated"],
+                        "directories": {
+                            "active": ".project/sessions/wip",
+                            "closing": ".project/sessions/done",
+                            "validated": ".project/sessions/validated",
+                        },
+                        "transitions": {},
+                    }
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    # Mirror Context7 validator config from the real repo when present so tests
+    # relying on minimal postTrainingPackages metadata behave consistently.
+    validators_src = REPO_ROOT / ".agents" / "validators" / "config.json"
+    if validators_src.exists():
+        validators_dst_dir = agents_root / "validators"
+        validators_dst_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(validators_src, validators_dst_dir / "config.json")
+
+    # Copy modular .agents/config overlays (canonical YAML configuration)
+    config_src_dir = REPO_ROOT / ".agents" / "config"
+    if config_src_dir.exists():
+        shutil.copytree(config_src_dir, agents_root / "config", dirs_exist_ok=True)
+
+    # Provide a project-local tasks/ready wrapper so tests that invoke the CLI
+    # via AGENTS_PROJECT_ROOT exercise the same implementation as the repo-level
+    # .agents/scripts/tasks/ready shim.
+    ready_wrapper_src = REPO_ROOT / ".agents" / "scripts" / "tasks" / "ready"
+    ready_wrapper_dst = agents_root / "scripts" / "tasks" / "ready"
+    ready_wrapper_dst.parent.mkdir(parents=True, exist_ok=True)
+    if ready_wrapper_src.exists():
+        shutil.copyfile(ready_wrapper_src, ready_wrapper_dst)
+    else:
+        # Fallback: lightweight wrapper that delegates to core tasks/ready script.
+        core_ready_path = (REPO_ROOT / ".edison" / "core" / "scripts" / "tasks" / "ready")
+        core_ready = (
+            "from __future__ import annotations\n"
+            "from pathlib import Path\n"
+            "import runpy\n\n"
+            f"CORE_READY = Path({repr(str(core_ready_path))})\n"
+            "globals().update(runpy.run_path(str(CORE_READY)))\n"
+        )
+        ready_wrapper_dst.write_text(core_ready, encoding="utf-8")
+
+    yield tmp_path
+
+    # Reset cache so other tests do not accidentally reuse this root
+    try:
+        import edison.core.paths.resolver as paths  # type: ignore
+
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    # Cleanup is automatic (tmp_path)

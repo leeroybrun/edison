@@ -1,0 +1,7 @@
+project:
+  name: example-project
+packs:
+  - react
+  - nextjs
+  - uistyles
+  - prisma

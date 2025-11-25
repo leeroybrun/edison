@@ -1,0 +1,39 @@
+setup:
+  questions:
+    - id: typescript_strict
+      prompt: "Enable TypeScript strict mode?"
+      type: boolean
+      default: true
+      mode: basic
+      category: packs
+      help: "Strict mode enables all strict type-checking options"
+      depends_on:
+        - pack: typescript
+          enabled: true
+
+    - id: typescript_target
+      prompt: "TypeScript compilation target"
+      type: choice
+      source: static
+      options: [ES2020, ES2021, ES2022, ESNext]
+      default: ES2022
+      mode: advanced
+      category: packs
+      depends_on:
+        - pack: typescript
+          enabled: true
+
+    - id: typescript_module
+      prompt: "Module system"
+      type: choice
+      source: static
+      options: [commonjs, es2020, esnext, node16]
+      default: esnext
+      mode: advanced
+      category: packs
+
+  config_template:
+    typescript:
+      strict: "{{ typescript_strict }}"
+      target: "{{ typescript_target }}"
+      module: "{{ typescript_module }}"

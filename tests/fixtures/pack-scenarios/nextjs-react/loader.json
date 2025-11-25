@@ -1,0 +1,84 @@
+{
+  "packs": [
+    "nextjs",
+    "react"
+  ],
+  "graph": {
+    "edges": {
+      "nextjs": [
+        "react"
+      ],
+      "react": []
+    }
+  },
+  "loadOrder": [
+    "react",
+    "nextjs"
+  ],
+  "byName": {
+    "nextjs": {
+      "name": "nextjs",
+      "path": ".edison/packs/nextjs",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-nextjs",
+          "description": "nextjs framework pack (depends on react)"
+        },
+        "scripts": {
+          "dev": "next dev",
+          "build": "next build",
+          "start": "next start",
+          "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0"
+        }
+      },
+      "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0"
+      },
+      "dependencies": {
+        "dependencies": {
+          "next": "^16.0.0",
+          "server-only": "^0.0.1"
+        },
+        "devDependencies": {
+          "eslint": "^9.38.0",
+          "eslint-config-next": "^16.0.0",
+          "typescript": "^5.7.0"
+        }
+      },
+      "requiredPacks": [
+        "react"
+      ]
+    },
+    "react": {
+      "name": "react",
+      "path": ".edison/packs/react",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-react",
+          "description": "React core pack (standalone)"
+        },
+        "scripts": {
+          "type-check": "tsc --noEmit"
+        }
+      },
+      "scripts": {
+        "type-check": "tsc --noEmit"
+      },
+      "dependencies": {
+        "dependencies": {
+          "react": "^19.2.0",
+          "react-dom": "^19.2.0"
+        },
+        "devDependencies": {
+          "@types/react": "^19.2.0",
+          "@types/react-dom": "^19.2.0",
+          "typescript": "^5.7.0"
+        }
+      },
+      "requiredPacks": []
+    }
+  }
+}

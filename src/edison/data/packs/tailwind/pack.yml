@@ -1,0 +1,21 @@
+pack:
+  id: tailwind
+  name: "Tailwind CSS"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "**/globals.css"
+    - "**/*.css"
+    - "tailwind.config.*"
+
+provides:
+  guidelines:
+    - guidelines/STYLING.md
+    - guidelines/v4-syntax.md
+    - guidelines/design-tokens.md
+    - guidelines/responsive.md
+  agents:
+    - agents/component-builder-tailwind.md
+  validators:
+    - validators/styling.md

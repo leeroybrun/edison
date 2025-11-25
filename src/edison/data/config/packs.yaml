@@ -1,0 +1,15 @@
+packs:
+  enabled: true
+  directory: ".edison/packs"
+  composition:
+    # How Edison combines multiple packs' config
+    strategy: deep-merge
+    sections:
+      - dependencies
+      - devDependencies
+      - scripts
+  loadOrder:
+    # Resolve graph using declared `requiredPacks` in each pack's pack-dependencies.yaml
+    algorithm: toposort
+    dependencyFile: "pack-dependencies.yaml"
+    default: []

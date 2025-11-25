@@ -1,0 +1,175 @@
+delegation:
+  implementers:
+    primary: codex
+    fallbackChain: [gemini, claude]
+    maxFallbackAttempts: 3
+  resilience:
+    circuitBreaker:
+      enabled: false
+      failureThreshold: 3
+      resetTimeoutSeconds: 60
+    retryLogic:
+      enabled: false
+      maxRetries: 4
+      backoffMultiplier: 2
+      maxBackoffSeconds: 30
+  filePatternRules:
+    "*.tsx":
+      preferredModel: claude
+      reason: "UI/UX thinking, component design, accessibility"
+      subAgentType: component-builder-nextjs
+      excludePatterns: ["**/*.test.tsx", "**/*.spec.tsx"]
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: high
+      examples: [Button.tsx, MetricCard.tsx, LeadTable.tsx]
+    "*.jsx":
+      preferredModel: claude
+      reason: "Same as *.tsx - React component patterns"
+      subAgentType: component-builder-nextjs
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: high
+    "**/route.ts":
+      preferredModel: codex
+      reason: "API security, precise validation, error handling, type safety"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: api-builder
+      confidence: very-high
+      examples: [app/api/leads/route.ts, "app/api/auth/[...all]/route.ts"]
+    "**/api/**/*.ts":
+      preferredModel: codex
+      reason: "Backend logic, business rules, data validation"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: api-builder
+      confidence: high
+      excludePatterns: ["**/*.test.ts", "**/*.spec.ts", "**/route.ts"]
+    schema.prisma:
+      preferredModel: codex
+      reason: "Schema precision, relationship correctness, migration safety"
+      subAgentType: database-architect-prisma
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: database-architect-prisma
+      confidence: very-high
+    prisma/migrations/**/*:
+      preferredModel: codex
+      reason: "Migration safety, rollback consideration, data integrity"
+      subAgentType: database-architect-prisma
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: database-architect-prisma
+      confidence: very-high
+    "**/*.test.ts":
+      preferredModel: codex
+      reason: "Systematic test coverage, edge case generation, TDD compliance"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/*.test.tsx":
+      preferredModel: codex
+      reason: "Component testing needs systematic coverage"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/*.spec.ts":
+      preferredModel: codex
+      reason: "Specification testing, contract validation"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/layout.tsx":
+      preferredModel: claude
+      reason: "Layout structure, responsive design, accessibility"
+      subAgentType: component-builder-nextjs
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/page.tsx":
+      preferredModel: claude
+      reason: "Page composition, data fetching strategy, UX flow"
+      subAgentType: component-builder-nextjs
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/loading.tsx":
+      preferredModel: claude
+      reason: "Loading state UX, skeleton components"
+      subAgentType: component-builder-nextjs
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/error.tsx":
+      preferredModel: claude
+      reason: "Error state UX, user-friendly messaging"
+      subAgentType: component-builder-nextjs
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/middleware.ts":
+      preferredModel: codex
+      reason: "Request interception, security, performance"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: api-builder
+      confidence: high
+    "**/lib/**/*.ts":
+      preferredModel: codex
+      reason: "Utilities can be UI or backend focused"
+      subAgentType: feature-implementer
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: feature-implementer
+      confidence: low
+      excludePatterns: ["**/*.test.ts", "**/*.spec.ts"]
+      note: "Sub-agent should analyze file content to decide"
+    "**/types/**/*.ts":
+      preferredModel: codex
+      reason: "Type precision, type inference, generics"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: api-builder
+      confidence: medium
+  taskTypeRules:
+    delegationValues:
+      required: "Must delegate to specified sub-agent"
+      partial: "Mix of models - orchestrator delegates different parts to different agents (e.g., UI to Claude, backend to Codex)"
+    ui-component:
+      preferredModel: claude
+      subAgentType: component-builder-nextjs
+      reason: "Component design needs UX thinking, accessibility"
+      description: "Component design needs UX thinking, accessibility"
+      delegation: required
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: component-builder-nextjs
+      examples: ["Build Button component", "Create MetricCard component", "Implement StatusBadge"]
+    api-route:
+      preferredModel: codex
+      subAgentType: api-builder
+      reason: "API security, validation, error handling precision"
+      description: "API security, validation, error handling precision"
+      delegation: required
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: api-builder
+      examples: ["Implement /api/leads route", "Create /api/auth/login endpoint", "Build /api/export route"]
+    full-stack-feature:
+      preferredModel: multi
+      preferredModels: [gemini, codex]
+      subAgentType: feature-implementer
+      reason: "UI parts use Gemini; backend uses Codex (multi-model)"
+      description: "UI handled by Gemini, backend/API by Codex with deterministic tie-breaks"
+      delegation: partial
+      # Generic role; map via {project_config_dir}/config.yml → delegation.roleMapping
+      preferredZenRole: feature-implementer
+      examples: ["Build user profile feature (UI + API)", "Implement lead import/export with UI"]

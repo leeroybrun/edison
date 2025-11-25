@@ -1,0 +1,180 @@
+validation:
+  cache:
+    directory: "{PROJECT_CONFIG_DIR}/.cache/composed"
+  roster:
+    global:
+      - id: codex-global
+        name: Codex Global Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
+        zenRole: validator-codex-global
+        specFile: .cache/composed/codex-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Codex Global"
+      - id: claude-global
+        name: Claude Global Validator
+        model: claude
+        interface: Task
+        role: code-reviewer
+        # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
+        zenRole: validator-claude-global
+        specFile: .cache/composed/claude-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Claude Global"
+      - id: gemini-global
+        name: Gemini Global Validator
+        model: gemini
+        interface: clink
+        role: codereviewer
+        # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
+        zenRole: validator-gemini-global
+        specFile: .cache/composed/gemini-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Gemini Global"
+    critical:
+      - id: security
+        name: Security Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
+        zenRole: validator-security
+        specFile: critical/security.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, zod]
+        focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
+        blocksOnFail: true
+        outputFormat: SecurityReport
+        reportSection: "Validator Findings & Verdicts > Security"
+      - id: performance
+        name: Performance Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
+        zenRole: validator-performance
+        specFile: critical/performance.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, react]
+        focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
+        blocksOnFail: true
+        outputFormat: PerformanceReport
+    reportSection: "Validator Findings & Verdicts > Performance"
+    specialized:
+      - id: react
+        name: React Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-react
+        specFile: specialized/react.md
+        triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [react, uistylescss]
+        blocksOnFail: false
+        outputFormat: ReactReport
+      - id: nextjs
+        name: nextjs Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-nextjs
+        specFile: specialized/nextjs.md
+        triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [next, react]
+        blocksOnFail: false
+        outputFormat: nextjsReport
+      - id: api
+        name: API Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-api
+        specFile: specialized/api.md
+        triggers: ["**/api/**/*.ts", "**/route.ts"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [next, zod, typescript]
+        blocksOnFail: false
+        outputFormat: ApiReport
+      - id: database
+        name: Database Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-database
+        specFile: specialized/database.md
+        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [prisma]
+        blocksOnFail: true
+        outputFormat: DatabaseReport
+      - id: testing
+        name: Testing Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-testing
+        specFile: specialized/testing.md
+        triggers: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+        alwaysRun: false
+        priority: 3
+        context7Required: false
+        context7Packages: [typescript, vitest]
+        blocksOnFail: true
+        outputFormat: TestingReport
+  blocking_validators:
+    - codex-global
+    - claude-global
+    - security
+    - performance
+    - database
+    - testing
+  artifactPaths:
+    bundleSummaryFile: "bundle-approved.json"
+    implementationReportFile: "implementation-report.json"
+  approvalCriteria:
+    globalValidators:
+      codex-global: "MUST approve (blocks task on fail)"
+      claude-global: "MUST approve (blocks task on fail)"
+      gemini-global: "SHOULD approve (non-blocking, consensus reinforcement)"
+    criticalValidators:
+      security: "MUST approve (blocks task on fail)"
+      performance: "SHOULD approve (warning only, doesn't block)"
+    specializedValidators:
+      prisma: "MUST approve (blocks task on fail)"
+      testing: "MUST approve (blocks task on fail)"

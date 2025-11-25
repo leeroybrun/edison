@@ -1,0 +1,75 @@
+project:
+  name: "myapi"
+  type: "python-fastapi"
+  version: "0.3.2"
+  description: "FastAPI service with pytest, mypy, ruff."
+
+edison:
+  version: "1.0.0"
+  packs:
+    - name: "edison-pack-python-fastapi"
+      version: "1.1.0"
+      source: "github:beehive/edison-pack-python-fastapi"
+      enabled: true
+
+worktrees:
+  enabled: true
+  baseBranch: "main"
+  pathTemplate: ".worktrees/{sessionId}"
+  cleanup:
+    autoArchive: true
+    archiveAfterDays: 14
+    deleteAfterDays: 60
+
+commands:
+  test: "pytest -q --maxfail=1 --disable-warnings --cov"
+  lint: "ruff check ."
+  typeCheck: "mypy ."
+  coverage: "coverage xml"
+  build: "python -m build"
+
+validators:
+  enabled:
+    - "python-type-safety"
+    - "fastapi-routes"
+    - "pytest-coverage"
+  disabled: []
+  custom:
+    - id: "security-static-analysis"
+      tier: "specialized"
+      model: "codex"
+      triggers:
+        - "**/*.py"
+
+context7:
+  packages:
+    - name: "fastapi"
+      detector: "import"
+      pattern: "fastapi"
+    - name: "pytest"
+      detector: "import"
+      pattern: "pytest"
+
+quality:
+  coverage:
+    overall: 75
+    changed: 90
+  allowSkip: false
+  allowOnly: false
+  blockOnFailingTests: true
+
+database:
+  enabled: false
+  templateStrategy: "seed"
+  cleanupStrategy: "drop"
+
+tdd:
+  enforceRedGreenRefactor: true
+  requireEvidence: true
+  hmacValidation: false
+
+git:
+  requireWorktrees: false
+  branchPrefix: "session/"
+  autoCleanup: true
+

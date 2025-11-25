@@ -1,0 +1,25 @@
+setup:
+  questions:
+    - id: react_version
+      prompt: "React version"
+      type: choice
+      source: static
+      options: ["18", "19-rc"]
+      default: "18"
+      mode: advanced
+      category: packs
+      depends_on:
+        - pack: react
+          enabled: true
+
+    - id: react_strict_mode
+      prompt: "Enable React StrictMode?"
+      type: boolean
+      default: true
+      mode: basic
+      category: packs
+
+  config_template:
+    react:
+      version: "{{ react_version }}"
+      strict_mode: "{{ react_strict_mode }}"

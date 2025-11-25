@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/session.schema.json",
+  "title": "Edison Session Schema (Generic)",
+  "description": "Project-agnostic session structure for Edison framework sessions.",
+  "type": "object",
+  "required": ["id", "state", "createdAt", "lastActiveAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique session identifier",
+      "pattern": "^session-[A-Za-z0-9_-]+$",
+      "examples": ["session-123", "session-alpha"]
+    },
+    "state": {
+      "type": "string",
+      "description": "Current session state",
+      "enum": ["Active", "Closing", "Validated", "Recovery", "Paused"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp for session creation"
+    },
+    "lastActiveAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp for last activity detection"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Session metadata including ownership and orchestration context",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "Canonical session identifier"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Owning agent or user"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Session start mode (e.g., start, resume)"
+        },
+        "status": {
+          "type": "string",
+          "description": "Workflow status tag for backward compatibility"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the session metadata was created"
+        },
+        "lastActive": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last recorded activity"
+        },
+        "createdBy": {
+          "type": "string",
+          "enum": ["edison", "manual"],
+          "description": "Who/what created this session"
+        },
+        "orchestratorProfile": {
+          "type": "string",
+          "description": "Orchestrator profile used (claude, codex, gemini, etc.)"
+        },
+        "autoStarted": {
+          "type": "boolean",
+          "description": "Whether session was auto-started by Edison"
+        },
+        "promptPath": {
+          "type": "string",
+          "description": "Path to initial prompt file used"
+        },
+        "namingStrategy": {
+          "type": "string",
+          "enum": ["edison", "owner", "custom"],
+          "description": "Naming strategy used for session ID"
+        }
+      },
+      "additionalProperties": true
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp for last write; optional"
+    },
+    "worktree": {
+      "type": "object",
+      "description": "Worktree configuration",
+      "properties": {
+        "baseDirectory": {
+          "type": "string",
+          "description": "Base directory for session worktrees",
+          "default": "../{PROJECT_NAME}-worktrees",
+          "examples": ["../my-project-worktrees", "/var/lib/edison-worktrees"]
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path to the concrete session folder",
+          "examples": [".project/sessions/active/session-123"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeoutMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10080,
+      "description": "Timeout threshold in minutes (1 minute to 7 days)"
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Identifiers for tasks in this session",
+      "items": { "type": "string", "pattern": "^task-[0-9]+$" }
+    },
+    "qa": {
+      "type": "object",
+      "description": "Lightweight QA status for the session",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in-progress", "passed", "failed"],
+          "default": "pending"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,28 @@
+# Example Project - Edison Framework Configuration
+# Overrides for .edison/core/defaults.yaml and pack defaults
+
+project:
+  name: example-project
+  description: Example app configuration for end-to-end testing
+  framework: nextjs
+
+# Use granular packs (Wave 4)
+packs:
+  - react
+  - nextjs
+  - uistyles
+  - prisma
+  - api
+  - testing
+
+# project-specific workflow settings
+workflow:
+  sessionTracking: true
+  reclaimTimeoutHours: 4
+  continuationIdSupport: true
+
+# Paths follow Edison defaults
+# paths:
+#   tasks: .project/tasks
+#   qa: .project/qa
+#   sessions: .project/sessions

@@ -1,0 +1,266 @@
+{
+  "$schema": "./registry.schema.json",
+  "version": "1.0.0",
+  "description": "Machine-readable rule registry mapping IDs to guideline anchors for precise extraction.",
+  "rules": [
+    {
+      "id": "RULE.DELEGATION.PRIORITY_CHAIN",
+      "title": "Delegation Decision Priority Chain",
+      "sourcePath": ".edison/core/guidelines/DELEGATION.md",
+      "start": "<!-- RULE: RULE.DELEGATION.PRIORITY_CHAIN.SHORT START -->",
+      "end": "<!-- RULE: RULE.DELEGATION.PRIORITY_CHAIN.SHORT END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.FIRST",
+      "title": "Validation-First Within Session Scope",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.FIRST START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.FIRST END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.BUNDLE_FIRST",
+      "title": "Bundle-First Validation Policy",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.BUNDLE_FIRST START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.BUNDLE_FIRST END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.BUNDLE_APPROVED_MARKER",
+      "title": "Bundle Approved Marker Required",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.BUNDLE_APPROVED_MARKER START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.BUNDLE_APPROVED_MARKER END -->"
+    },
+    {
+      "id": "RULE.QA.NO_DUPLICATE",
+      "title": "No Duplicate QA Briefs",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.QA.NO_DUPLICATE START -->",
+      "end": "<!-- RULE: RULE.QA.NO_DUPLICATE END -->"
+    },
+    {
+      "id": "RULE.CONTEXT7.POSTTRAINING_REQUIRED",
+      "title": "Context7 Required For Post-Training Packages",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.CONTEXT7.POSTTRAINING_REQUIRED START -->",
+      "end": "<!-- RULE: RULE.CONTEXT7.POSTTRAINING_REQUIRED END -->"
+    },
+    {
+      "id": "RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED",
+      "title": "Round Evidence Requires 4 Command Outputs",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED START -->",
+      "end": "<!-- RULE: RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED END -->"
+    },
+    {
+      "id": "RULE.QA.ROUND_HISTORY",
+      "title": "QA Round History On Rejection",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.QA.ROUND_HISTORY.SHORT START -->",
+      "end": "<!-- RULE: RULE.QA.ROUND_HISTORY.SHORT END -->"
+    },
+    {
+      "id": "RULE.LINK.SESSION_SCOPE_ONLY",
+      "title": "Link Only Tasks In Current Session (Force to override)",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY START -->",
+      "end": "<!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY END -->"
+    },
+    {
+      "id": "RULE.SESSION.ISOLATION",
+      "title": "Session-scoped file isolation is mandatory",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.SESSION.ISOLATION START -->",
+      "end": "<!-- RULE: RULE.SESSION.ISOLATION END -->"
+    },
+    {
+      "id": "RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN",
+      "title": "Parent cannot move to done until children are done|validated",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN START -->",
+      "end": "<!-- RULE: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN END -->"
+    },
+    {
+      "id": "RULE.PARENT.VALIDATE_BUNDLE_ONLY",
+      "title": "Validate bundle on the parent QA only",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.PARENT.VALIDATE_BUNDLE_ONLY START -->",
+      "end": "<!-- RULE: RULE.PARENT.VALIDATE_BUNDLE_ONLY END -->"
+    },
+    {
+      "id": "RULE.SESSION.COMPLETE_PARENT_VALIDATED_CHILDREN_DONE",
+      "title": "Session completion: parent validated; children done|validated",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.SESSION.COMPLETE_PARENT_VALIDATED_CHILDREN_DONE START -->",
+      "end": "<!-- RULE: RULE.SESSION.COMPLETE_PARENT_VALIDATED_CHILDREN_DONE END -->"
+    },
+    {
+      "id": "RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT",
+      "title": "Orchestrator should parallelize via tasks/split for non-trivial tasks",
+      "sourcePath": ".edison/core/guidelines/DELEGATION.md",
+      "start": "<!-- RULE: RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT START -->",
+      "end": "<!-- RULE: RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT END -->"
+    },
+    {
+      "id": "RULE.GUARDS.FAIL_CLOSED",
+      "title": "Fail-Closed: All Moves Through Guarded Python CLIs",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.GUARDS.FAIL_CLOSED START -->",
+      "end": "<!-- RULE: RULE.GUARDS.FAIL_CLOSED END -->"
+    },
+    {
+      "id": "RULE.SESSION.NEXT_LOOP_DRIVER",
+      "title": "Drive execution via session next (loop driver)",
+      "sourcePath": ".edison/core/guides/START.SESSION.md",
+      "start": "<!-- RULE: RULE.SESSION.NEXT_LOOP_DRIVER START -->",
+      "end": "<!-- RULE: RULE.SESSION.NEXT_LOOP_DRIVER END -->"
+    },
+    {
+      "id": "RULE.IMPLEMENTATION.REPORT_REQUIRED",
+      "title": "Implementation Report JSON is required per round",
+      "sourcePath": ".edison/core/validators/OUTPUT_FORMAT.md",
+      "start": "<!-- RULE: RULE.IMPLEMENTATION.REPORT_REQUIRED START -->",
+      "end": "<!-- RULE: RULE.IMPLEMENTATION.REPORT_REQUIRED END -->"
+    },
+    {
+      "id": "RULE.CONTEXT7.EVIDENCE_REQUIRED",
+      "title": "Context7 evidence markers required when post-training packages are used",
+      "sourcePath": ".edison/core/guidelines/CONTEXT7.md",
+      "start": "<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT START -->",
+      "end": "<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.MODEL_BINDING_STRICT",
+      "title": "Validator model binding must match config",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.MODEL_BINDING_STRICT START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.MODEL_BINDING_STRICT END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.CONCURRENCY_CAP",
+      "title": "Respect validator concurrency cap and batch overflow",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.CONCURRENCY_CAP START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.CONCURRENCY_CAP END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.WAVES_SEQUENCE",
+      "title": "Validator waves must run in order",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.VALIDATION.WAVES_SEQUENCE.SHORT START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.WAVES_SEQUENCE.SHORT END -->"
+    },
+    {
+      "id": "RULE.EVIDENCE.ROUND_IMMUTABLE_APPEND",
+      "title": "Evidence rounds are append-only",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.EVIDENCE.ROUND_IMMUTABLE_APPEND START -->",
+      "end": "<!-- RULE: RULE.EVIDENCE.ROUND_IMMUTABLE_APPEND END -->"
+    },
+    {
+      "id": "RULE.EVIDENCE.COMMANDS_VIA_TASKS_READY",
+      "title": "Automation evidence must be captured via tasks/ready",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.EVIDENCE.COMMANDS_VIA_TASKS_READY START -->",
+      "end": "<!-- RULE: RULE.EVIDENCE.COMMANDS_VIA_TASKS_READY END -->"
+    },
+    {
+      "id": "RULE.QA.WAITING_TO_TODO_TASK_DONE",
+      "title": "QA waiting\u2192todo allowed only when task is done",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.QA.WAITING_TO_TODO_TASK_DONE START -->",
+      "end": "<!-- RULE: RULE.QA.WAITING_TO_TODO_TASK_DONE END -->"
+    },
+    {
+      "id": "RULE.GUARDS.NO_MANUAL_MOVES",
+      "title": "No manual file moves; use guarded CLIs",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES START -->",
+      "end": "<!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES END -->"
+    },
+    {
+      "id": "RULE.QA.PAIR_ON_WIP",
+      "title": "Create QA brief when task enters wip",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.QA.PAIR_ON_WIP START -->",
+      "end": "<!-- RULE: RULE.QA.PAIR_ON_WIP END -->"
+    },
+    {
+      "id": "RULE.STATE.NO_SKIP",
+      "title": "Disallow skipping states in task/QA transitions",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.STATE.NO_SKIP START -->",
+      "end": "<!-- RULE: RULE.STATE.NO_SKIP END -->"
+    },
+    {
+      "id": "RULE.SESSION.CLOSE_NO_BLOCKERS",
+      "title": "Close session only when no blockers remain and all scope is validated",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.SESSION.CLOSE_NO_BLOCKERS START -->",
+      "end": "<!-- RULE: RULE.SESSION.CLOSE_NO_BLOCKERS END -->"
+    },
+    {
+      "id": "RULE.DELEGATION.NO_REDELEGATION",
+      "title": "Sub-agents must not re-delegate",
+      "sourcePath": ".edison/core/guidelines/DELEGATION.md",
+      "start": "<!-- RULE: RULE.DELEGATION.NO_REDELEGATION START -->",
+      "end": "<!-- RULE: RULE.DELEGATION.NO_REDELEGATION END -->"
+    },
+    {
+      "id": "RULE.VALIDATION.INDEPENDENCE",
+      "title": "Orchestrator Cannot Self-Validate",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.VALIDATION.INDEPENDENCE START -->",
+      "end": "<!-- RULE: RULE.VALIDATION.INDEPENDENCE END -->"
+    },
+    {
+      "id": "RULE.FOLLOWUPS.LINK_ONLY_BLOCKING",
+      "title": "Link only blocking follow-ups; link implies same-session claim",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING START -->",
+      "end": "<!-- RULE: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING END -->"
+    },
+    {
+      "id": "RULE.FOLLOWUPS.DEDUPE_FIRST",
+      "title": "Deduplicate follow-ups before creating tasks",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST START -->",
+      "end": "<!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST END -->"
+    },
+    {
+      "id": "RULE.FOLLOWUPS.CREATE_NO_LINK_FOR_SOFT",
+      "title": "Create non-blocking validator follow-ups without linking",
+      "sourcePath": ".edison/core/guidelines/VALIDATION.md",
+      "start": "<!-- RULE: RULE.FOLLOWUPS.CREATE_NO_LINK_FOR_SOFT START -->",
+      "end": "<!-- RULE: RULE.FOLLOWUPS.CREATE_NO_LINK_FOR_SOFT END -->"
+    },
+    {
+      "id": "RULE.CONTEXT.BUDGET_MINIMIZE",
+      "title": "Preserve context budget \u2013 load only what\u2019s needed",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.CONTEXT.BUDGET_MINIMIZE START -->",
+      "end": "<!-- RULE: RULE.CONTEXT.BUDGET_MINIMIZE END -->"
+    },
+    {
+      "id": "RULE.CONTEXT.NO_BIG_FILES",
+      "title": "Do not load big files unless necessary",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.CONTEXT.NO_BIG_FILES START -->",
+      "end": "<!-- RULE: RULE.CONTEXT.NO_BIG_FILES END -->"
+    },
+    {
+      "id": "RULE.DELEGATION.MOST_WORK",
+      "title": "Delegate the majority of work",
+      "sourcePath": ".edison/core/guidelines/DELEGATION.md",
+      "start": "<!-- RULE: RULE.DELEGATION.MOST_WORK START -->",
+      "end": "<!-- RULE: RULE.DELEGATION.MOST_WORK END -->"
+    },
+    {
+      "id": "RULE.CONTEXT.SNIPPET_ONLY",
+      "title": "Share snippets not whole files in prompts",
+      "sourcePath": ".edison/core/guidelines/SESSION_WORKFLOW.md",
+      "start": "<!-- RULE: RULE.CONTEXT.SNIPPET_ONLY START -->",
+      "end": "<!-- RULE: RULE.CONTEXT.SNIPPET_ONLY END -->"
+    }
+  ]
+}

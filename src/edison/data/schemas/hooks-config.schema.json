@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Edison Hooks Configuration",
+  "type": "object",
+  "properties": {
+    "hooks": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "platforms": {
+          "type": "array",
+          "items": {"enum": ["claude"]}
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "timeout_seconds": {"type": "number"},
+            "parallel_execution": {"type": "boolean"},
+            "log_output": {"type": "boolean"}
+          }
+        },
+        "definitions": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "required": ["type", "hook_type", "enabled", "description", "template"],
+              "properties": {
+                "type": {
+                  "enum": ["PreToolUse", "PostToolUse", "PermissionRequest",
+                           "UserPromptSubmit", "SessionStart", "SessionEnd",
+                           "Stop", "SubagentStop"]
+                },
+                "hook_type": {"enum": ["command", "prompt"]},
+                "enabled": {"type": "boolean"},
+                "blocking": {"type": "boolean"},
+                "matcher": {"type": "string"},
+                "description": {"type": "string"},
+                "template": {"type": "string"},
+                "config": {"type": "object"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

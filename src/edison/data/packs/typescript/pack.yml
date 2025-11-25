@@ -1,0 +1,22 @@
+name: typescript
+version: 1.0.0
+description: TypeScript strict mode patterns and type safety
+category: language
+tags: [typescript, safety]
+triggers:
+  filePatterns:
+    - "**/*.ts"
+    - "**/*.tsx"
+dependencies: []
+validators:
+  - codex-context.md
+  - claude-context.md
+  - gemini-context.md
+guidelines:
+  - strict-mode.md
+  - type-safety.md
+  - advanced-types.md
+examples:
+  - strict-types.ts
+  - strict-config.json
+  - type-patterns.ts

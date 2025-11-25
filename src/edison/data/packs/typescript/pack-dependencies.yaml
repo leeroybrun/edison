@@ -1,0 +1,5 @@
+requiredPacks: []
+dependencies: {}
+devDependencies:
+  typescript: "^5.7.2"
+  tsx: "^4.0.0"

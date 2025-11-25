@@ -1,0 +1,11 @@
+name: example-pack
+version: 0.1.0
+description: Example Edison pack template (replace fields before use)
+category: example
+tags: [template]
+triggers:
+  filePatterns: []
+dependencies: []
+validators: []
+guidelines: []
+examples: []

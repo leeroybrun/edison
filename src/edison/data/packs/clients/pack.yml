@@ -1,0 +1,17 @@
+pack:
+  id: clients
+  name: "API Clients Pack"
+  version: "1.0.0"
+  description: "API client generation and configuration"
+
+triggers:
+  filePatterns:
+    - "clients/**/*"
+    - "packages/**/clients/**/*"
+    - "apps/**/clients/**/*"
+
+provides:
+  guidelines:
+    - claude/CLAUDE.md
+  agents: []
+  validators: []

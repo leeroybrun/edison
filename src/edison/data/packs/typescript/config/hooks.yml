@@ -1,0 +1,17 @@
+# TypeScript pack hook extensions
+hooks:
+  definitions:
+    # Add TypeScript-specific auto-formatting
+    typescript-format:
+      type: PostToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: true
+      blocking: false
+      description: "Run TypeScript formatter after edits"
+      template: "typescript-format.sh.template"
+      config:
+        run_tsc_check: false  # Don't run full check, just format
+        file_patterns:
+          - "*.ts"
+          - "*.tsx"

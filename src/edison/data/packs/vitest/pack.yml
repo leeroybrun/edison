@@ -1,0 +1,22 @@
+pack:
+  id: vitest
+  name: "Vitest"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "**/*.test.ts"
+    - "**/*.test.tsx"
+    - "**/*.spec.ts"
+
+provides:
+  guidelines:
+    - guidelines/TESTING.md
+    - guidelines/tdd-workflow.md
+    - guidelines/test-quality.md
+    - guidelines/api-testing.md
+    - guidelines/component-testing.md
+  agents:
+    - agents/test-engineer-vitest.md
+  validators:
+    - validators/testing.md

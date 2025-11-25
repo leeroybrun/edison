@@ -1,0 +1,3 @@
+scripts:
+  api:dev: "node -e \"console.log('fastify dev placeholder')\""
+

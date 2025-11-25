@@ -1,0 +1,26 @@
+# TypeScript pack command extensions
+commands:
+  definitions:
+    - id: typescript-check
+      domain: typescript
+      command: check
+      short_desc: "Run TypeScript compiler"
+      full_desc: |
+        Runs TypeScript compiler in check mode (no emit).
+        Validates types across the project.
+      cli: "tsc --noEmit"
+      args: []
+      when_to_use: "Before committing to check for type errors"
+      related_commands:
+        - edison-validate-now
+
+    - id: typescript-build
+      domain: typescript
+      command: build
+      short_desc: "Build TypeScript project"
+      full_desc: "Compiles TypeScript project."
+      cli: "tsc"
+      args: []
+      when_to_use: "To compile the project"
+      related_commands:
+        - edison-typescript-check

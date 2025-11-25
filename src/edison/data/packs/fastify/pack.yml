@@ -1,0 +1,20 @@
+pack:
+  id: fastify
+  name: "Fastify"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "apps/api/**/*"
+    - "packages/api-core/**/*"
+
+provides:
+  guidelines:
+    - guidelines/API.md
+    - guidelines/schema-validation.md
+    - guidelines/error-handling.md
+    - guidelines/auth.md
+  agents:
+    - agents/api-builder-fastify.md
+  validators:
+    - validators/api.md

@@ -1,0 +1,188 @@
+# Edison Core Commands Configuration
+# Defines available commands for IDE slash command generation
+
+commands:
+  enabled: true
+  platforms: [claude, cursor, codex]
+
+  # Selection strategy
+  selection:
+    mode: "domains"  # all | domains | explicit
+    domains:
+      - session
+      - task
+      - qa
+      - rules
+    exclude:
+      - setup
+      - internal
+      - migrate
+
+  # Platform configurations
+  platforms:
+    claude:
+      enabled: true
+      output_dir: ".claude/commands"
+      prefix: "edison-"
+      max_short_desc: 80
+      template: "claude-command.md.template"
+      allow_bash: true
+
+    cursor:
+      enabled: true
+      output_dir: ".cursor/commands"
+      prefix: "edison-"
+      max_short_desc: 120
+      template: "cursor-command.md.template"
+      allow_bash: true
+
+    codex:
+      enabled: true
+      output_dir: "~/.codex/prompts"  # User directory
+      prefix: "edison-"
+      max_short_desc: 100
+      template: "codex-prompt.md.template"
+      warn_user_scope: true
+
+  # Core command definitions
+  definitions:
+    # Session management
+    - id: session-next
+      domain: session
+      command: next
+      short_desc: "Show next session steps"
+      full_desc: |
+        Shows recommended next actions for the current Edison session based on
+        task states, validation status, and workflow rules.
+        
+        Analyzes the session state machine and provides actionable next steps.
+      cli: "edison session next"
+      args: []
+      when_to_use: |
+        - After completing a task to see what's next
+        - When unsure about current workflow step
+        - To check if session is ready for validation
+      related_commands:
+        - edison-session-status
+        - edison-task-status
+
+    - id: session-status
+      domain: session
+      command: status
+      short_desc: "Show current session state"
+      full_desc: |
+        Displays comprehensive status of the current Edison session including
+        active tasks, worktree info, and validation state.
+      cli: "edison session status"
+      args: []
+      when_to_use: "Anytime you need to check current session state"
+      related_commands:
+        - edison-session-next
+        - edison-task-status
+
+    # Task management
+    - id: task-claim
+      domain: task
+      command: claim
+      short_desc: "Claim and move task to wip"
+      full_desc: |
+        Claims a task from the todo queue and moves it to wip (work in progress).
+        Updates task ownership and session linkage.
+      cli: "edison task claim $1"
+      args:
+        - name: task_id
+          description: "Task identifier (e.g., TASK-123, 150-implement-feature)"
+          required: true
+      when_to_use: "When ready to start working on a new task"
+      related_commands:
+        - edison-task-status
+        - edison-session-next
+
+    - id: task-status
+      domain: task
+      command: status
+      short_desc: "Show current task state"
+      full_desc: |
+        Shows status of the current task or a specific task by ID.
+        Includes state, owner, session linkage, and recent activity.
+      cli: "edison task status --current"
+      args: []
+      when_to_use: "To check current task progress and state"
+      related_commands:
+        - edison-task-claim
+        - edison-session-status
+
+    # QA and validation
+    - id: validate-now
+      domain: qa
+      command: validate
+      short_desc: "Run validators on current work"
+      full_desc: |
+        Triggers Edison QA validation on the current session's work.
+        Runs all configured validators and generates reports.
+      cli: "edison qa validate --current"
+      args: []
+      when_to_use: |
+        - After completing implementation
+        - Before marking task as done
+        - To get feedback on current work
+      related_commands:
+        - edison-session-next
+        - edison-task-status
+
+    # Rules and guidelines
+    - id: rules-current
+      domain: rules
+      command: current
+      short_desc: "Show rules for current state"
+      full_desc: |
+        Displays rules applicable to the current task state.
+        Shows relevant guidelines, constraints, and best practices.
+      cli: "edison rules current"
+      args: []
+      when_to_use: |
+        - When starting a task to see applicable rules
+        - When unsure about constraints
+        - To refresh on current guidelines
+      related_commands:
+        - edison-task-status
+
+    - id: rules-tdd
+      domain: rules
+      command: get
+      short_desc: "Show TDD workflow rules"
+      full_desc: |
+        Displays comprehensive TDD (Test-Driven Development) guidelines
+        including RED-GREEN-REFACTOR workflow and best practices.
+      cli: "edison rules get tdd"
+      args: []
+      when_to_use: "When implementing new features to follow TDD workflow"
+      related_commands:
+        - edison-rules-current
+
+    # Helper commands
+    - id: help
+      domain: help
+      command: help
+      short_desc: "Show Edison help"
+      full_desc: |
+        Displays Edison Framework help and available commands.
+        Shows command categories and usage information.
+      cli: "edison --help"
+      args: []
+      when_to_use: "When exploring Edison capabilities"
+      related_commands: []
+
+    - id: status
+      domain: status
+      command: status
+      short_desc: "Show complete status"
+      full_desc: |
+        Shows comprehensive status: session, task, worktree, and git state.
+        One-command overview of everything relevant.
+      cli: "edison session status && edison task status --current"
+      args: []
+      when_to_use: "Quick overview of current state"
+      related_commands:
+        - edison-session-status
+        - edison-task-status

@@ -1,0 +1,49 @@
+paths:
+  config_dir: "{{ project_config_dir }}"
+  management_dir: "{{ project_management_dir }}"
+
+project:
+  name: {{ project_name }}
+  type: "{{ project_type }}"
+  tech_stack:{% if tech_stack %}{% for item in tech_stack %}
+    - {{ item }}{% endfor %}{% else %} []{% endif %}
+  packs:{% if packs %}{% for item in packs %}
+    - {{ item }}{% endfor %}{% else %} []{% endif %}
+
+database: "{{ database }}"
+
+auth:
+  provider: "{{ auth_provider }}"
+
+orchestrators:{% if orchestrators %}{% for item in orchestrators %}
+  - {{ item }}{% endfor %}{% else %} []{% endif %}
+
+validators:
+  enabled:{% if validators %}{% for item in validators %}
+    - {{ item }}{% endfor %}{% else %} []{% endif %}
+
+agents:
+  enabled:{% if agents %}{% for item in agents %}
+    - {{ item }}{% endfor %}{% else %} []{% endif %}
+
+worktrees:
+  enabled: {{ 'true' if enable_worktrees else 'false' }}
+
+workflow:
+  tasks:
+    states:{% if task_states %}{% for item in task_states %}
+      - {{ item }}{% endfor %}{% else %} []{% endif %}
+  sessions:
+    states:{% if session_states %}{% for item in session_states %}
+      - {{ item }}{% endfor %}{% else %} []{% endif %}
+
+tdd:
+  enforcement: "{{ tdd_enforcement }}"
+  coverage_threshold: {{ coverage_threshold }}
+
+ci:
+  commands:
+    lint: "{{ ci_lint }}"
+    test: "{{ ci_test }}"
+    build: "{{ ci_build }}"
+    type-check: "{{ ci_type_check }}"

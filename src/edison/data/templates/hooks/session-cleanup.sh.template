@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+
+set -e
+
+echo "👋 Edison Session Ending..."
+
+# Cleanup operations
+{% set cfg = config if config is defined else {} %}
+{% if cfg.get("save_logs", False) %}
+LOG_FILE=".edison/logs/session-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p .edison/logs
+echo "Session ended at $(date)" > "$LOG_FILE"
+{% endif %}
+
+exit 0

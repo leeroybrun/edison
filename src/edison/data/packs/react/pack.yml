@@ -1,0 +1,22 @@
+pack:
+  id: react
+  name: "React"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "**/*.tsx"
+    - "**/*.jsx"
+    - "components/**/*"
+
+provides:
+  guidelines:
+    - guidelines/HOOKS.md
+    - guidelines/hooks-patterns.md
+    - guidelines/component-design.md
+    - guidelines/server-client-components.md
+    - guidelines/accessibility.md
+  agents:
+    - agents/component-builder-react.md
+  validators:
+    - validators/react.md

@@ -1,0 +1,6 @@
+project:
+  name: example-project
+packs:
+  - react
+  - uistyles
+  - prisma

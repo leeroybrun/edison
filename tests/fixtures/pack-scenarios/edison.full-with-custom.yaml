@@ -1,0 +1,10 @@
+project:
+  name: example-project
+packs:
+  - react
+  - nextjs
+  - uistyles
+  - prisma
+  - api
+  - testing
+  - custom-metrics

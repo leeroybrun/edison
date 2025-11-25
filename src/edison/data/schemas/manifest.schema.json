@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/manifest.schema.json",
+  "title": "Edison Agent Manifest Schema (Generic)",
+  "description": "Structure for agent manifests consumed by Edison.",
+  "$comment": "See also: config.schema.json for project-level configuration.",
+  "type": "object",
+  "required": ["id", "name", "version"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?$" },
+    "description": { "type": "string" },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "preload": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Resources to load prior to runtime",
+      "examples": [["prompts/base.prompt.md", "policies/security.md"]]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,167 @@
+# Edison Core Hooks Configuration
+# Claude Code hooks for workflow enforcement and context injection
+
+hooks:
+  enabled: true
+  platforms: [claude]  # Only Claude Code supports hooks
+
+  # Global hook settings
+  settings:
+    timeout_seconds: 60
+    parallel_execution: true
+    log_output: true
+
+  # Hook definitions
+  definitions:
+    # ===== Context Injection Hooks (UserPromptSubmit) =====
+
+    inject-session-context:
+      type: UserPromptSubmit
+      hook_type: prompt
+      enabled: true
+      description: "Inject current session context before prompt"
+      template: "inject-session-context.sh.template"
+      config:
+        include_worktree: true
+        include_task_state: true
+        include_pack_list: true
+        max_length: 500
+
+    inject-task-rules:
+      type: UserPromptSubmit
+      hook_type: prompt
+      enabled: true
+      description: "Inject rules for current task state"
+      template: "inject-task-rules.sh.template"
+      config:
+        # Only inject when these file types in context
+        file_patterns:
+          - "*.ts"
+          - "*.tsx"
+          - "*.js"
+          - "*.jsx"
+          - "*.py"
+        # Rules by task state
+        rules_by_state:
+          todo: []
+          wip: [tdd-workflow, testing-patterns]
+          done: [validation-checklist]
+          validated: []
+
+    # ===== Reminder Hooks (PreToolUse - NON-BLOCKING) =====
+
+    remind-tdd:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: true
+      blocking: false  # Just reminds, doesn't block
+      description: "Remind about TDD workflow when editing code"
+      template: "remind-tdd.sh.template"
+      config:
+        only_for_states: [wip]
+        skip_test_files: true
+
+    remind-state-machine:
+      type: PreToolUse
+      hook_type: command
+      matcher: "*"
+      enabled: false  # Disabled by default (too chatty)
+      blocking: false
+      description: "Remind about current state constraints"
+      template: "remind-state-machine.sh.template"
+      config:
+        only_for_states: [wip, done]
+
+    # ===== Guard Hooks (PreToolUse - CAN BLOCK) =====
+
+    commit-guard:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Bash(git commit:*)"
+      enabled: true
+      blocking: true  # CAN BLOCK
+      description: "Block commits with failing tests or low coverage"
+      template: "commit-guard.sh.template"
+      config:
+        require_tests_pass: true
+        require_coverage: true
+        coverage_threshold: 90
+
+    prevent-prod-edits:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: false  # Disabled by default
+      blocking: true
+      description: "Block edits to production files"
+      template: "prevent-prod-edits.sh.template"
+      config:
+        protected_patterns:
+          - "*.prod.*"
+          - "production/*"
+
+    # ===== Validation Hooks (PostToolUse) =====
+
+    check-tests:
+      type: PostToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: false  # Optional
+      blocking: false
+      description: "Check if tests exist after code edit"
+      template: "check-tests.sh.template"
+      config:
+        warn_if_missing: true
+        skip_test_files: true
+
+    auto-format:
+      type: PostToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: true
+      blocking: false
+      description: "Auto-format code after modifications"
+      template: "auto-format.sh.template"
+      config:
+        tools: [prettier, eslint]
+        file_patterns:
+          - "*.ts"
+          - "*.tsx"
+          - "*.js"
+          - "*.jsx"
+
+    # ===== Session Lifecycle Hooks =====
+
+    session-init:
+      type: SessionStart
+      hook_type: command
+      enabled: true
+      blocking: false
+      description: "Initialize session context"
+      template: "session-init.sh.template"
+      config:
+        show_welcome: true
+
+    session-cleanup:
+      type: SessionEnd
+      hook_type: command
+      enabled: true
+      blocking: false
+      description: "Cleanup session resources"
+      template: "session-cleanup.sh.template"
+      config:
+        save_logs: true
+        log_directory: ".edison/logs"
+
+    # ===== Stop Hooks =====
+
+    stop-validate:
+      type: Stop
+      hook_type: command
+      enabled: false  # Optional
+      blocking: false
+      description: "Validate work when agent stops"
+      template: "stop-validate.sh.template"
+      config:
+        run_quick_validation: true

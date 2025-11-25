@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES - CAN BLOCK COMMITS" if blocking else "NO" }}
+
+set -e
+
+# Parse input JSON
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool')
+
+{% set cfg = config if config is defined else {} %}
+{% set require_tests = cfg.get("require_tests_pass", False) %}
+{% set require_coverage = cfg.get("require_coverage", False) %}
+{% set coverage_threshold = cfg.get("coverage_threshold", 80) %}
+
+# Only for git commit
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  exit 0
+fi
+
+COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""')
+if [[ "$COMMAND" != *"git commit"* ]]; then
+  exit 0
+fi
+
+echo "🔍 Edison Commit Guard: Checking tests..."
+
+{% if require_tests %}
+# Run tests
+if ! edison ci test 2>&1 | tee /tmp/edison-commit-guard.log; then
+  echo ""
+  echo "❌ Commit blocked: Tests are failing"
+  echo ""
+  echo "Fix failing tests before committing."
+  echo "Run: edison ci test"
+  echo ""
+  exit 1  # BLOCK
+fi
+{% endif %}
+
+{% if require_coverage %}
+# Check coverage
+COVERAGE=$(edison ci coverage --json 2>/dev/null | jq -r '.overall' || echo "0")
+THRESHOLD={{ coverage_threshold }}
+
+if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+  echo ""
+  echo "❌ Commit blocked: Coverage too low ($COVERAGE% < $THRESHOLD%)"
+  echo ""
+  echo "Increase test coverage before committing."
+  echo ""
+  exit 1  # BLOCK
+fi
+{% endif %}
+
+echo "✅ Commit guard passed"
+exit 0

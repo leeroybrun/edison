@@ -1,0 +1,96 @@
+{
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.1",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/rate-limit": "^10.1.1",
+    "pino": "^10.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "next": "^16.0.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "tsx": "^4.20.6",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "^16.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "type-check": "tsc --noEmit",
+    "nextjs:dev": "next dev",
+    "nextjs:build": "next build",
+    "nextjs:start": "next start",
+    "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0"
+  },
+  "conflicts": {
+    "dependencies": [
+      {
+        "package": "typescript",
+        "versions": [
+          "^5.7.2",
+          "^5.7.0"
+        ],
+        "resolution": "^5.7.2",
+        "strategy": "latest-wins",
+        "packs": [
+          "api",
+          "react"
+        ]
+      },
+      {
+        "package": "typescript",
+        "versions": [
+          "^5.7.2",
+          "^5.7.0"
+        ],
+        "resolution": "^5.7.2",
+        "strategy": "latest-wins",
+        "packs": [
+          "api",
+          "nextjs"
+        ]
+      }
+    ],
+    "scripts": [
+      {
+        "script": "dev",
+        "packs": [
+          "api",
+          "nextjs"
+        ],
+        "original": "tsx watch src/server.ts",
+        "alternate": "next dev",
+        "resolution": "namespaced",
+        "namespacedKey": "nextjs:dev"
+      },
+      {
+        "script": "build",
+        "packs": [
+          "api",
+          "nextjs"
+        ],
+        "original": "tsc",
+        "alternate": "next build",
+        "resolution": "namespaced",
+        "namespacedKey": "nextjs:build"
+      },
+      {
+        "script": "start",
+        "packs": [
+          "api",
+          "nextjs"
+        ],
+        "original": "node dist/server.js",
+        "alternate": "next start",
+        "resolution": "namespaced",
+        "namespacedKey": "nextjs:start"
+      }
+    ]
+  }
+}

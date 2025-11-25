@@ -1,0 +1,100 @@
+{
+  "packs": [
+    "react",
+    "uistyles",
+    "prisma"
+  ],
+  "graph": {
+    "edges": {
+      "react": [],
+      "uistyles": [],
+      "prisma": []
+    }
+  },
+  "loadOrder": [
+    "react",
+    "uistyles",
+    "prisma"
+  ],
+  "byName": {
+    "react": {
+      "name": "react",
+      "path": ".edison/packs/react",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-react",
+          "description": "React core pack (standalone)"
+        },
+        "scripts": {
+          "type-check": "tsc --noEmit"
+        }
+      },
+      "scripts": {
+        "type-check": "tsc --noEmit"
+      },
+      "dependencies": {
+        "dependencies": {
+          "react": "^19.2.0",
+          "react-dom": "^19.2.0"
+        },
+        "devDependencies": {
+          "@types/react": "^19.2.0",
+          "@types/react-dom": "^19.2.0",
+          "typescript": "^5.7.0"
+        }
+      },
+      "requiredPacks": []
+    },
+    "uistyles": {
+      "name": "uistyles",
+      "path": ".edison/packs/uistyles",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-uistyles",
+          "description": "uistyles CSS v4 pack (standalone)"
+        },
+        "scripts": {}
+      },
+      "scripts": {},
+      "dependencies": {
+        "dependencies": {
+          "uistylescss": "^4.0.0"
+        },
+        "devDependencies": {
+          "@uistylescss/postcss": "^4.1.16",
+          "postcss": "^8.5.6"
+        }
+      },
+      "requiredPacks": []
+    },
+    "prisma": {
+      "name": "prisma",
+      "path": ".edison/packs/prisma",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-prisma",
+          "description": "prisma ORM pack (standalone)"
+        },
+        "scripts": {
+          "db:generate": "prisma generate",
+          "db:migrate": "prisma migrate dev",
+          "db:studio": "prisma studio"
+        }
+      },
+      "scripts": {
+        "db:generate": "prisma generate",
+        "db:migrate": "prisma migrate dev",
+        "db:studio": "prisma studio"
+      },
+      "dependencies": {
+        "dependencies": {
+          "@prisma/client": "^6.18.0"
+        },
+        "devDependencies": {
+          "prisma": "^6.18.0"
+        }
+      },
+      "requiredPacks": []
+    }
+  }
+}

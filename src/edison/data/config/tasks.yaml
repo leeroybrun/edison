@@ -1,0 +1,13 @@
+tasks:
+  paths:
+    root: ".project/tasks"
+    qaRoot: ".project/qa"
+    metaRoot: ".project/tasks/meta"
+    template: ".project/tasks/TEMPLATE.md"
+  defaults:
+    ownerPrefix: "- **Owner:** "
+    validatorOwnerPrefix: "- **Validator Owner:** "
+    statusPrefix: "- **Status:** "
+    claimedPrefix: "  - **Claimed At:** "
+    lastActivePrefix: "  - **Last Active:** "
+    continuationPrefix: "  - **Continuation ID:** "

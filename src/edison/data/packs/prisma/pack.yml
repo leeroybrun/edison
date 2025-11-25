@@ -1,0 +1,22 @@
+pack:
+  id: prisma
+  name: "Prisma"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "**/schema.prisma"
+    - "prisma/**/*"
+    - "migrations/**/*"
+
+provides:
+  guidelines:
+    - guidelines/TESTING.md
+    - guidelines/schema-design.md
+    - guidelines/migrations.md
+    - guidelines/query-optimization.md
+    - guidelines/relationships.md
+  agents:
+    - agents/database-architect-prisma.md
+  validators:
+    - validators/database.md

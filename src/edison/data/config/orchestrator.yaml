@@ -1,0 +1,41 @@
+orchestrators:
+  default: claude
+
+  profiles:
+    claude:
+      command: "claude"
+      args: ["--project", "{project_root}"]
+      cwd: "{session_worktree}"
+      env:
+        CLAUDE_CONFIG: ".claude/config.json"
+      initial_prompt:
+        enabled: true
+        method: "stdin"
+        path: ".edison/core/guides/START.SESSION.md"
+
+    codex:
+      command: "codex"
+      args: ["--model", "gpt-4.1"]
+      cwd: "{session_worktree}"
+      initial_prompt:
+        enabled: true
+        method: "stdin"
+        path: ".edison/core/guides/START.SESSION.md"
+
+    gemini:
+      command: "gemini"
+      args: ["chat"]
+      cwd: "{session_worktree}"
+      initial_prompt:
+        enabled: true
+        method: "stdin"
+
+    happy:
+      command: "happy"
+      args: ["--config", ".happy/config.yml"]
+      type: "wrapper"
+      cwd: "{session_worktree}"
+      initial_prompt:
+        enabled: true
+        method: "file"
+        path: ".agents/_generated/ORCHESTRATOR_GUIDE.md"

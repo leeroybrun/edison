@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: NO (always exit 0)
+
+set -e
+
+# Get current session state
+SESSION_ACTIVE=$(edison session status --json 2>/dev/null | jq -r '.active' || echo "false")
+
+if [[ "$SESSION_ACTIVE" != "true" ]]; then
+  exit 0  # No session, no context to inject
+fi
+
+# Resolve config flags with safe defaults
+{% set cfg = config if config is defined else {} %}
+{% set include_worktree = cfg.get("include_worktree", False) %}
+{% set include_task_state = cfg.get("include_task_state", False) %}
+{% set include_pack_list = cfg.get("include_pack_list", False) %}
+
+# Build context summary
+CONTEXT=""
+
+{% if include_worktree %}
+WORKTREE=$(edison session status --json | jq -r '.worktree')
+if [[ -n "$WORKTREE" && "$WORKTREE" != "null" ]]; then
+  CONTEXT+="\U0001F4C1 Worktree: $WORKTREE"$'\n'
+fi
+{% endif %}
+
+{% if include_task_state %}
+TASK_STATE=$(edison task status --current --json 2>/dev/null | jq -r '.state' || echo "none")
+TASK_ID=$(edison task status --current --json 2>/dev/null | jq -r '.id' || echo "none")
+if [[ "$TASK_STATE" != "none" ]]; then
+  CONTEXT+="\U0001F4CB Current Task: $TASK_ID (state: $TASK_STATE)"$'\n'
+fi
+{% endif %}
+
+{% if include_pack_list %}
+PACKS=$(edison config get packs.active --json 2>/dev/null | jq -r '.[]' | tr '\n' ', ' | sed 's/,$//')
+if [[ -n "$PACKS" ]]; then
+  CONTEXT+="\U0001F3A8 Active Packs: $PACKS"$'\n'
+fi
+{% endif %}
+
+# Inject context if not empty
+if [[ -n "$CONTEXT" ]]; then
+  echo ""
+  echo "## Edison Session Context"
+  echo ""
+  echo "$CONTEXT"
+  echo ""
+fi
+
+exit 0

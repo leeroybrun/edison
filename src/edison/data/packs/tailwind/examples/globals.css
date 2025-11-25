@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+/* Example utility usage */
+body { font-family: var(--font-sans, ui-sans-serif), system-ui; }
+

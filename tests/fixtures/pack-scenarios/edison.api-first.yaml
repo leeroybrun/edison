@@ -1,0 +1,6 @@
+project:
+  name: example-project
+packs:
+  - api
+  - nextjs
+  - react

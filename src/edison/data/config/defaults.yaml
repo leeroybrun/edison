@@ -1,0 +1,576 @@
+edison:
+  version: "1.0.0"
+
+paths:
+  project_config_dir: ".edison"
+  legacy_project_config_dir: ".project-config"
+
+worktrees:
+  enabled: true
+  baseBranch: "main"
+  baseDirectory: "../{PROJECT_NAME}-worktrees"
+  archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
+  branchPrefix: "session/"
+  pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  cleanup:
+    autoArchive: true
+    archiveAfterDays: 30
+    deleteAfterDays: 90
+
+database:
+  enabled: false
+  templateStrategy: "clone"
+  cleanupStrategy: "drop"
+  sessionPrefix: "session"
+  adapter: "prisma"
+
+tdd:
+  enforceRedGreenRefactor: true
+  requireEvidence: true
+  hmacValidation: false
+
+git:
+  branchPrefix: "session/"
+
+resilience:
+  retry:
+    max_attempts: 3
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+    max_delay_seconds: 60.0
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout_seconds: 300
+
+session:
+  timeout_hours: 8
+  stale_check_interval_hours: 1
+
+# Validation defaults (mirrors core/config/validators.yaml)
+validation:
+  dimensions:
+    functionality: 30
+    reliability: 25
+    security: 20
+    maintainability: 15
+    performance: 10
+  cache:
+    directory: "{PROJECT_CONFIG_DIR}/.cache/composed"
+  roster:
+    global:
+      - id: codex-global
+        name: Codex Global Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-codex-global
+        specFile: .cache/composed/codex-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Codex Global"
+      - id: claude-global
+        name: Claude Global Validator
+        model: claude
+        interface: Task
+        role: code-reviewer
+        zenRole: validator-claude-global
+        specFile: .cache/composed/claude-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Claude Global"
+      - id: gemini-global
+        name: Gemini Global Validator
+        model: gemini
+        interface: clink
+        role: codereviewer
+        zenRole: validator-gemini-global
+        specFile: .cache/composed/gemini-global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Gemini Global"
+    critical:
+      - id: security
+        name: Security Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-security
+        specFile: critical/security.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, zod]
+        focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
+        blocksOnFail: true
+        outputFormat: SecurityReport
+        reportSection: "Validator Findings & Verdicts > Security"
+      - id: performance
+        name: Performance Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-performance
+        specFile: critical/performance.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, react]
+        focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
+        blocksOnFail: true
+        outputFormat: PerformanceReport
+        reportSection: "Validator Findings & Verdicts > Performance"
+    specialized:
+      - id: react
+        name: React Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-react
+        specFile: specialized/react.md
+        triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [react, uistylescss]
+        blocksOnFail: false
+        outputFormat: ReactReport
+      - id: nextjs
+        name: nextjs Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-nextjs
+        specFile: specialized/nextjs.md
+        triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [next, react]
+        blocksOnFail: false
+        outputFormat: nextjsReport
+      - id: api
+        name: API Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-api
+        specFile: specialized/api.md
+        triggers: ["**/api/**/*.ts", "**/route.ts"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [next, zod, typescript]
+        blocksOnFail: false
+        outputFormat: ApiReport
+      - id: database
+        name: Database Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-database
+        specFile: specialized/database.md
+        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [prisma]
+        blocksOnFail: true
+        outputFormat: DatabaseReport
+      - id: testing
+        name: Testing Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-testing
+        specFile: specialized/testing.md
+        triggers: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+        alwaysRun: false
+        priority: 3
+        context7Required: false
+        context7Packages: [typescript, vitest]
+        blocksOnFail: true
+        outputFormat: TestingReport
+  blocking_validators:
+    - codex-global
+    - claude-global
+    - security
+    - performance
+    - database
+    - testing
+  artifactPaths:
+    bundleSummaryFile: "bundle-approved.json"
+    implementationReportFile: "implementation-report.json"
+  approvalCriteria:
+    globalValidators:
+      codex-global: "MUST approve (blocks task on fail)"
+      claude-global: "MUST approve (blocks task on fail)"
+      gemini-global: "SHOULD approve (non-blocking, consensus reinforcement)"
+    criticalValidators:
+      security: "MUST approve (blocks task on fail)"
+      performance: "SHOULD approve (warning only, doesn't block)"
+    specializedValidators:
+      prisma: "MUST approve (blocks task on fail)"
+      testing: "MUST approve (blocks task on fail)"
+
+# Delegation defaults (mirrors core/config/delegation.yaml)
+delegation:
+  implementers:
+    primary: codex
+    fallbackChain: [gemini, claude]
+    maxFallbackAttempts: 3
+  resilience:
+    circuitBreaker:
+      enabled: false
+      failureThreshold: 3
+      resetTimeoutSeconds: 60
+    retryLogic:
+      enabled: false
+      maxRetries: 4
+      backoffMultiplier: 2
+      maxBackoffSeconds: 30
+  filePatternRules:
+    "*.tsx":
+      preferredModel: claude
+      reason: "UI/UX thinking, component design, accessibility"
+      subAgentType: component-builder-nextjs
+      excludePatterns: ["**/*.test.tsx", "**/*.spec.tsx"]
+      preferredZenRole: component-builder-nextjs
+      confidence: high
+    "*.jsx":
+      preferredModel: claude
+      reason: "Same as *.tsx - React component patterns"
+      subAgentType: component-builder-nextjs
+      preferredZenRole: component-builder-nextjs
+      confidence: high
+    "**/route.ts":
+      preferredModel: codex
+      reason: "API security, precise validation, error handling, type safety"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      preferredZenRole: api-builder
+      confidence: very-high
+      examples: [app/api/leads/route.ts, "app/api/auth/[...all]/route.ts"]
+    "**/api/**/*.ts":
+      preferredModel: codex
+      reason: "Backend logic, business rules, data validation"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      preferredZenRole: api-builder
+      confidence: high
+      excludePatterns: ["**/*.test.ts", "**/*.spec.ts", "**/route.ts"]
+    schema.prisma:
+      preferredModel: codex
+      reason: "Schema precision, relationship correctness, migration safety"
+      subAgentType: database-architect-prisma
+      delegateVia: zen-mcp
+      preferredZenRole: database-architect-prisma
+      confidence: very-high
+    prisma/migrations/**/*:
+      preferredModel: codex
+      reason: "Migration safety, rollback consideration, data integrity"
+      subAgentType: database-architect-prisma
+      delegateVia: zen-mcp
+      preferredZenRole: database-architect-prisma
+      confidence: very-high
+    "**/*.test.ts":
+      preferredModel: codex
+      reason: "Systematic test coverage, edge case generation, TDD compliance"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/*.test.tsx":
+      preferredModel: codex
+      reason: "Component testing needs systematic coverage"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/*.spec.ts":
+      preferredModel: codex
+      reason: "Specification testing, contract validation"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      preferredZenRole: test-engineer
+      confidence: high
+    "**/layout.tsx":
+      preferredModel: claude
+      reason: "Layout structure, responsive design, accessibility"
+      subAgentType: component-builder-nextjs
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/page.tsx":
+      preferredModel: claude
+      reason: "Page composition, data fetching strategy, UX flow"
+      subAgentType: component-builder-nextjs
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/loading.tsx":
+      preferredModel: claude
+      reason: "Loading state UX, skeleton components"
+      subAgentType: component-builder-nextjs
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/error.tsx":
+      preferredModel: claude
+      reason: "Error state UX, user-friendly messaging"
+      subAgentType: component-builder-nextjs
+      preferredZenRole: component-builder-nextjs
+      confidence: medium
+    "**/middleware.ts":
+      preferredModel: codex
+      reason: "Request interception, security, performance"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      preferredZenRole: api-builder
+      confidence: high
+    "**/lib/**/*.ts":
+      preferredModel: codex
+      reason: "Utilities can be UI or backend focused"
+      subAgentType: feature-implementer
+      preferredZenRole: feature-implementer
+      confidence: low
+      excludePatterns: ["**/*.test.ts", "**/*.spec.ts"]
+      note: "Sub-agent should analyze file content to decide"
+    "**/types/**/*.ts":
+      preferredModel: codex
+      reason: "Type precision, type inference, generics"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      preferredZenRole: api-builder
+      confidence: medium
+
+# State machine (mirrors core/config/state-machine.yaml)
+statemachine:
+  task:
+    states:
+      todo:
+        description: "Task awaiting claim"
+        initial: true
+        allowed_transitions:
+          - to: wip
+            guard: can_start_task
+            conditions:
+              - name: task_claimed
+          - to: done
+            guard: can_finish_task
+            conditions:
+              - name: all_work_complete
+              - name: no_pending_commits
+            actions:
+              - name: record_completion_time
+          - to: blocked
+            guard: has_blockers
+            actions:
+              - name: record_blocker_reason
+      wip:
+        description: "Task in progress"
+        allowed_transitions:
+          - to: blocked
+            guard: has_blockers
+            actions:
+              - name: record_blocker_reason
+          - to: done
+            guard: can_finish_task
+            conditions:
+              - name: all_work_complete
+              - name: no_pending_commits
+            actions:
+              - name: record_completion_time
+          - to: todo
+            guard: always_allow
+          - to: validated
+            guard: always_allow
+      blocked:
+        description: "Waiting on external blockers"
+        allowed_transitions:
+          - to: wip
+            guard: can_start_task
+          - to: todo
+            guard: always_allow
+      done:
+        description: "Implementation complete, awaiting validation"
+        allowed_transitions:
+          - to: validated
+            guard: can_finish_task
+          - to: wip
+            guard: always_allow
+      validated:
+        description: "Validated and complete"
+        final: true
+        allowed_transitions: []
+
+  qa:
+    states:
+      waiting:
+        initial: true
+        description: "Pending hand-off from implementation"
+        allowed_transitions:
+          - to: todo
+            guard: always_allow
+          - to: wip
+            guard: always_allow
+      todo:
+        description: "QA backlog"
+        allowed_transitions:
+          - to: wip
+            guard: always_allow
+      wip:
+        description: "QA in progress"
+        allowed_transitions:
+          - to: done
+            guard: always_allow
+          - to: todo
+            guard: always_allow
+      done:
+        description: "QA review complete"
+        allowed_transitions:
+          - to: validated
+            guard: always_allow
+          - to: wip
+            guard: always_allow
+      validated:
+        description: "QA validated"
+        final: true
+        allowed_transitions: []
+
+  session:
+    states:
+      draft:
+        description: "Session in draft state, not yet active"
+        allowed_transitions:
+          - to: active
+            guard: can_activate_session
+            conditions:
+              - name: has_task
+                error: "Session must have a linked task"
+              - name: task_claimed
+                error: "Task must be claimed before activating session"
+            actions:
+              - name: create_worktree
+                when: config.worktrees_enabled
+              - name: record_activation_time
+              - name: notify_session_start
+      active:
+        description: "Session is active, work in progress"
+        initial: true
+        allowed_transitions:
+          - to: done
+            guard: can_complete_session
+            conditions:
+              - name: all_work_complete
+              - name: no_pending_commits
+            actions:
+              - name: record_completion_time
+              - name: cleanup_worktree
+          - to: paused
+            guard: can_pause_session
+            actions:
+              - name: record_pause_time
+      paused:
+        description: "Session paused, may resume later"
+        allowed_transitions:
+          - to: active
+            guard: can_resume_session
+            actions:
+              - name: record_resume_time
+          - to: done
+            guard: can_complete_session
+            conditions:
+              - name: all_work_complete
+              - name: no_pending_commits
+            actions:
+              - name: record_completion_time
+              - name: cleanup_worktree
+      done:
+        description: "Session completed"
+        final: true
+        allowed_transitions: []
+
+tasks:
+  defaults:
+    ownerPrefix: "owner/"
+    validatorOwnerPrefix: "validator/"
+    statusPrefix: "status/"
+    claimedPrefix: "claimed/"
+    lastActivePrefix: "last-active/"
+    continuationPrefix: "continuation/"
+
+orchestration:
+  maxConcurrentAgents: 5
+
+subprocess_timeouts:
+  git_operations: 30
+  test_execution: 300
+  build_operations: 600
+  ai_calls: 120
+  file_operations: 10
+  default: 60
+
+adapters:
+  claude:
+    output_dir: ".claude"
+    orchestrator_filename: "CLAUDE.md"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    header: "# Claude Code Orchestrator"
+  codex:
+    output_dir: ".codex"
+    orchestrator_filename: "CODEX.md"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    header: "# Codex System Prompt"
+  cursor:
+    output_dir: ".cursor/prompts"
+    orchestrator_filename: "cursor-orchestrator.txt"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    workflow_template: ".zen/templates/workflow-loop.txt"
+  zen:
+    output_dir: ".zen/conf/systemprompts/clink/project"
+
+cli:
+  json:
+    indent: 2
+    sort_keys: true
+    ensure_ascii: false
+  table:
+    padding: 1
+    column_gap: 2
+  confirm:
+    assume_yes_env: "EDISON_ASSUME_YES"
+    default: false
+  output:
+    success_prefix: "[OK]"
+    error_prefix: "[ERR]"
+    warning_prefix: "[WARN]"
+    use_color: false
+
+json_io:
+  indent: 2
+  sort_keys: true
+  ensure_ascii: false
+  encoding: "utf-8"
+
+time:
+  iso8601:
+    timespec: "seconds"
+    use_z_suffix: true
+    strip_microseconds: true

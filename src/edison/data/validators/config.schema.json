@@ -1,0 +1,235 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "project application Multi-Validator Configuration",
+  "description": "Configuration schema for the multi-validator architecture",
+  "type": "object",
+  "required": ["version", "validators", "executionOrder", "approvalCriteria"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Configuration version (semantic versioning)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "artifactPaths": {
+      "type": "object",
+      "description": "Filesystem artifact names and paths used by validators and QA guards",
+      "properties": {
+        "bundleSummaryFile": {
+          "type": "string",
+          "description": "Filename for the bundle approval summary JSON written under each round directory",
+          "default": "bundle-approved.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this configuration"
+    },
+    "validators": {
+      "type": "object",
+      "description": "Validator definitions organized by type",
+      "required": ["global", "critical", "specialized"],
+      "properties": {
+        "global": {
+          "type": "array",
+          "description": "Global validators that run on every task",
+          "items": { "$ref": "#/definitions/validator" }
+        },
+        "critical": {
+          "type": "array",
+          "description": "Critical validators for security and performance",
+          "items": { "$ref": "#/definitions/validator" }
+        },
+        "specialized": {
+          "type": "array",
+          "description": "Specialized validators triggered by file patterns",
+          "items": { "$ref": "#/definitions/validator" }
+        }
+      }
+    },
+    "postTrainingPackages": {
+      "type": "object",
+      "description": "Packages released after model training cutoff",
+      "patternProperties": {
+        "^[a-z0-9-]+$": {
+          "type": "object",
+          "required": ["version", "critical", "reason", "trainingCutoff", "context7Topics"],
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Current package version"
+            },
+            "critical": {
+              "type": "boolean",
+              "description": "Whether this package is critical to project"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Why Context7 is needed for this package"
+            },
+            "trainingCutoff": {
+              "type": "string",
+              "description": "Model training cutoff date (YYYY-MM format)"
+            },
+            "context7Topics": {
+              "type": "array",
+              "description": "Topics to query from Context7",
+              "items": { "type": "string" }
+            },
+            "commonMistakes": {
+              "type": "array",
+              "description": "Common mistakes to avoid (optional)",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "executionOrder": {
+      "type": "array",
+      "description": "Human-readable execution order",
+      "items": { "type": "string" }
+    },
+    "approvalCriteria": {
+      "type": "object",
+      "description": "Approval requirements for each validator type",
+      "required": ["globalValidators", "criticalValidators", "specializedValidators"],
+      "properties": {
+        "globalValidators": {
+          "type": "object",
+          "description": "Global validator approval requirements",
+          "patternProperties": {
+            "^[a-z-]+$": {
+              "type": "string",
+              "enum": [
+                "MUST approve (blocks task on fail)",
+                "SHOULD approve (warning only, doesn't block)"
+              ]
+            }
+          }
+        },
+        "criticalValidators": {
+          "type": "object",
+          "description": "Critical validator approval requirements",
+          "patternProperties": {
+            "^[a-z-]+$": {
+              "type": "string",
+              "enum": [
+                "MUST approve (blocks task on fail)",
+                "SHOULD approve (warning only, doesn't block)"
+              ]
+            }
+          }
+        },
+        "specializedValidators": {
+          "type": "object",
+          "description": "Specialized validator approval requirements",
+          "patternProperties": {
+            "^[a-z-]+$": {
+              "type": "string",
+              "enum": [
+                "MUST approve (blocks task on fail)",
+                "SHOULD approve (issues noted, doesn't block)"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "validator": {
+      "type": "object",
+      "required": ["id", "name", "model", "interface", "role", "specFile", "triggers", "alwaysRun", "priority"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique validator identifier",
+          "pattern": "^[a-z-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable validator name"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model to use for validation",
+          "enum": ["codex", "claude", "gemini", "custom"]
+        },
+        "interface": {
+          "type": "string",
+          "description": "How to invoke the validator",
+          "enum": ["clink", "Task", "direct"]
+        },
+        "role": {
+          "type": "string",
+          "description": "Role/preset to use when calling model",
+          "enum": ["codereviewer", "code-reviewer", "default", "planner", "custom"]
+        },
+        "specFile": {
+          "type": "string",
+          "description": "Path to validator specification (relative to validators/)",
+          "pattern": "^(global|critical|specialized)/[a-z-]+\\.md$"
+        },
+        "triggers": {
+          "type": "array",
+          "description": "File patterns that trigger this validator",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "alwaysRun": {
+          "type": "boolean",
+          "description": "Whether this validator runs on every task regardless of triggers"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Execution priority (1=highest, 3=lowest)",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "context7Required": {
+          "type": "boolean",
+          "description": "Whether Context7 MCP is required before validation"
+        },
+        "context7Packages": {
+          "type": "array",
+          "description": "Packages to query from Context7",
+          "items": { "type": "string" }
+        },
+        "focus": {
+          "type": "array",
+          "description": "Specific focus areas for specialized validators",
+          "items": { "type": "string" }
+        },
+        "scope": {
+          "type": "string",
+          "description": "Validation scope (for global validators)",
+          "enum": ["comprehensive", "focused", "minimal"]
+        },
+        "scopeIdenticalTo": {
+          "type": "string",
+          "description": "ID of validator with identical scope (ensures consistency)"
+        },
+        "blocksOnFail": {
+          "type": "boolean",
+          "description": "Whether failure blocks task completion"
+        },
+        "outputFormat": {
+          "type": "string",
+          "description": "Expected output format from this validator",
+          "enum": [
+            "GlobalValidationReport",
+            "SecurityReport",
+            "PerformanceReport",
+            "ReactReport",
+            "nextjsReport",
+            "ApiReport",
+            "PrismaReport",
+            "TestingReport"
+          ]
+        }
+      }
+    }
+  }
+}

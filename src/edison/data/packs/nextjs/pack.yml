@@ -1,0 +1,26 @@
+pack:
+  id: nextjs
+  name: "Next.js"
+  version: "1.0.0"
+
+triggers:
+  filePatterns:
+    - "**/app/**/route.ts"
+    - "**/app/**/page.tsx"
+    - "**/app/**/layout.tsx"
+    - "next.config.js"
+
+provides:
+  guidelines:
+    - guidelines/ROUTING.md
+    - guidelines/app-router.md
+    - guidelines/route-handlers.md
+    - guidelines/server-actions.md
+    - guidelines/metadata.md
+    - guidelines/caching.md
+  agents:
+    - agents/api-builder-nextjs.md
+    - agents/component-builder-nextjs.md
+  validators:
+    - validators/api.md
+    - validators/nextjs.md

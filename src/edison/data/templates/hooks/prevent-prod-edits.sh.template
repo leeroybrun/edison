@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES" if blocking else "NO" }} (can block edits to protected files)
+
+set -e
+
+# Parse input JSON
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // ""')
+
+{% set cfg = config if config is defined else {} %}
+{% set protected_patterns = cfg.get("protected_patterns", []) %}
+
+if [[ -z "$FILE_PATH" ]]; then
+  exit 0
+fi
+
+# Check if file matches protected patterns
+IS_PROTECTED=false
+{% for pattern in protected_patterns %}
+if echo "$FILE_PATH" | grep -qE "{{ pattern }}"; then
+  IS_PROTECTED=true
+  PATTERN="{{ pattern }}"
+fi
+{% endfor %}
+
+if [[ "$IS_PROTECTED" == "true" ]]; then
+  echo ""
+  echo "❌ Edit blocked: $FILE_PATH is a protected file"
+  echo "   Pattern: $PATTERN"
+  echo ""
+  echo "Protected files cannot be edited directly."
+  echo "If you need to modify this file, use: edison override-protection"
+  echo ""
+  exit 1  # BLOCK
+fi
+
+exit 0

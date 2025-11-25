@@ -1,0 +1,3 @@
+scripts:
+  tailwind:check: "node -e \"console.log('tailwind v4 syntax check placeholder')\""
+

@@ -1,0 +1,29 @@
+# {{ name }}
+
+{{ full_desc }}
+
+## Usage
+
+```bash
+{{ cli }}
+```
+
+{% if args %}
+## Arguments
+{% for arg in args %}
+- {{ arg.name }}{% if arg.required %} (required){% endif %}: {{ arg.description }}
+{% endfor %}
+{% endif %}
+
+{% if when_to_use %}
+## When to use
+
+{{ when_to_use }}
+{% endif %}
+
+{% if related_commands %}
+## Related
+{% for cmd in related_commands %}
+- /{{ cmd }}
+{% endfor %}
+{% endif %}

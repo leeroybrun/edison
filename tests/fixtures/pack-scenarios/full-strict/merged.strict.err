@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/path/to/project/.edison/core/lib/dependency-merger.py", line 213, in <module>
+    raise SystemExit(main())
+  File "/path/to/project/.edison/core/lib/dependency-merger.py", line 189, in main
+    merged_deps, dep_conflicts = merge_dependencies(pack_deps_list, strategy=args.strategy)
+  File "/path/to/project/.edison/core/lib/dependency-merger.py", line 122, in merge_dependencies
+    raise ValueError("Dependency conflicts detected in strict mode")
+ValueError: Dependency conflicts detected in strict mode

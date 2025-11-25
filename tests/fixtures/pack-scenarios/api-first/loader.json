@@ -1,0 +1,123 @@
+{
+  "packs": [
+    "api",
+    "nextjs",
+    "react"
+  ],
+  "graph": {
+    "edges": {
+      "api": [],
+      "nextjs": [
+        "react"
+      ],
+      "react": []
+    }
+  },
+  "loadOrder": [
+    "api",
+    "react",
+    "nextjs"
+  ],
+  "byName": {
+    "api": {
+      "name": "api",
+      "path": ".edison/packs/api",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-api",
+          "description": "API/backend patterns (standalone)"
+        },
+        "scripts": {
+          "dev": "tsx watch src/server.ts",
+          "build": "tsc",
+          "start": "node dist/server.js",
+          "type-check": "tsc --noEmit"
+        }
+      },
+      "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "type-check": "tsc --noEmit"
+      },
+      "dependencies": {
+        "dependencies": {
+          "fastify": "^5.2.0",
+          "fastify-plugin": "^5.0.1",
+          "@fastify/cors": "^10.0.1",
+          "@fastify/rate-limit": "^10.1.1",
+          "pino": "^10.1.0"
+        },
+        "devDependencies": {
+          "typescript": "^5.7.2",
+          "tsx": "^4.20.6"
+        }
+      },
+      "requiredPacks": []
+    },
+    "nextjs": {
+      "name": "nextjs",
+      "path": ".edison/packs/nextjs",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-nextjs",
+          "description": "nextjs framework pack (depends on react)"
+        },
+        "scripts": {
+          "dev": "next dev",
+          "build": "next build",
+          "start": "next start",
+          "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0"
+        }
+      },
+      "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0"
+      },
+      "dependencies": {
+        "dependencies": {
+          "next": "^16.0.0",
+          "server-only": "^0.0.1"
+        },
+        "devDependencies": {
+          "eslint": "^9.38.0",
+          "eslint-config-next": "^16.0.0",
+          "typescript": "^5.7.0"
+        }
+      },
+      "requiredPacks": [
+        "react"
+      ]
+    },
+    "react": {
+      "name": "react",
+      "path": ".edison/packs/react",
+      "defaults": {
+        "pack": {
+          "name": "edison-pack-react",
+          "description": "React core pack (standalone)"
+        },
+        "scripts": {
+          "type-check": "tsc --noEmit"
+        }
+      },
+      "scripts": {
+        "type-check": "tsc --noEmit"
+      },
+      "dependencies": {
+        "dependencies": {
+          "react": "^19.2.0",
+          "react-dom": "^19.2.0"
+        },
+        "devDependencies": {
+          "@types/react": "^19.2.0",
+          "@types/react-dom": "^19.2.0",
+          "typescript": "^5.7.0"
+        }
+      },
+      "requiredPacks": []
+    }
+  }
+}

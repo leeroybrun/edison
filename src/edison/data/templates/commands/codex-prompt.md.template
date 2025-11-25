@@ -1,0 +1,31 @@
+---
+description: {{ short_desc }}
+{% if args %}
+argument-hint: {% for arg in args %}{{ arg.name }}{% if not loop.last %} {% endif %}{% endfor %}
+{% endif %}
+---
+
+# {{ name }}
+
+{{ full_desc }}
+
+## Usage
+
+```bash
+{{ cli }}
+```
+
+{% if args %}
+## Arguments
+{% for arg in args %}
+- `{{ arg.name }}`{% if arg.required %} (required){% endif %}: {{ arg.description }}
+{% endfor %}
+{% endif %}
+
+**Note**: This is a global Edison command. It applies to all projects where Edison is active.
+
+{% if when_to_use %}
+## When to use
+
+{{ when_to_use }}
+{% endif %}

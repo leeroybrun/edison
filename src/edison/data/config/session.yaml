@@ -1,0 +1,42 @@
+session:
+  paths:
+    root: ".project/sessions"
+    archive: ".project/archive"
+    tx: ".project/sessions/_tx"
+    templates:
+      primary: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
+      repo: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
+    recovery:
+      timeoutHours: 8
+      staleCheckIntervalHours: 1
+      clockSkewAllowanceSeconds: 300
+  validation:
+    idRegex: "^[a-zA-Z0-9_\\-\\.]+$"
+    maxLength: 64
+  states:
+    draft: "draft"
+    active: "wip"
+    wip: "wip"
+    done: "done"
+    closing: "done"
+    validated: "validated"
+    recovery: "recovery"
+    archived: "archived"
+  defaults:
+    initialState: "active"
+  lookupOrder:
+    - "wip"
+    - "active"
+    - "done"
+    - "validated"
+    - "closing"
+    - "recovery"
+    - "archived"
+  worktree:
+    timeouts:
+      health_check: 10
+      fetch: 60
+      checkout: 30
+      worktree_add: 30
+      clone: 60
+      install: 300
