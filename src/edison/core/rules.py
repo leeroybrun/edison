@@ -333,13 +333,17 @@ class RulesRegistry:
         }
 
 
-def compose_rules(packs: Optional[List[str]] = None) -> Dict[str, Any]:
+def compose_rules(packs: Optional[List[str]] = None, project_root: Optional[Path] = None) -> Dict[str, Any]:
     """
     Convenience wrapper for composing rules via RulesRegistry.
 
     Used by tests and CLI entrypoints.
+
+    Args:
+        packs: List of pack names to include (optional)
+        project_root: Project root path (optional, defaults to PathResolver.resolve_project_root())
     """
-    registry = RulesRegistry()
+    registry = RulesRegistry(project_root=project_root)
     return registry.compose(packs=packs)
 
 

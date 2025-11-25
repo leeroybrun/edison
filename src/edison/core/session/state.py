@@ -14,14 +14,23 @@ from ..state import (
 from .config import SessionConfig
 
 
-_CONFIG = SessionConfig()
+_CONFIG: Optional[SessionConfig] = None
 _STATE_MACHINE: Optional[RichStateMachine] = None
+
+
+def _get_config() -> SessionConfig:
+    """Lazy-load SessionConfig to support test isolation."""
+    global _CONFIG
+    if _CONFIG is None:
+        _CONFIG = SessionConfig()
+    return _CONFIG
 
 
 def _machine() -> RichStateMachine:
     global _STATE_MACHINE
     if _STATE_MACHINE is None:
-        spec = (_CONFIG._state_config or {}).get("session", {})  # type: ignore[attr-defined]
+        config = _get_config()
+        spec = (config._state_config or {}).get("session", {})  # type: ignore[attr-defined]
         _STATE_MACHINE = RichStateMachine(
             "session",
             spec,
@@ -53,12 +62,12 @@ def validate_transition(from_state: str, to_state: str, *, context: Optional[Map
 
 def get_initial_state() -> str:
     """Return the initial state for a new session."""
-    return _CONFIG.get_initial_state("session")
+    return _get_config().get_initial_state("session")
 
 
 def is_final_state(state: str) -> bool:
     """Check if a state is final."""
-    return _CONFIG.is_final_state("session", state)
+    return _get_config().is_final_state("session", state)
 
 
 def build_default_state_machine() -> RichStateMachine:

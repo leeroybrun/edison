@@ -471,3 +471,7 @@ class CursorAdapter:
 __all__ = [
     "CursorAdapter",
 ]
+
+# For test compatibility: allow tests to import the module as 'mod'
+import sys
+mod = sys.modules[__name__]

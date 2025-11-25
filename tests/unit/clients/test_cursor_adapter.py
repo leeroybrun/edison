@@ -42,8 +42,8 @@ class TestCursorAdapterCursorrules:
 
         _write_minimal_config(project_root)
 
-        # Minimal guideline setup
-        guidelines_dir = project_root / ".edison" / "core" / "guidelines"
+        # Minimal guideline setup - create in 'shared' subdirectory to match registry path
+        guidelines_dir = project_root / ".edison" / "core" / "guidelines" / "shared"
         guidelines_dir.mkdir(parents=True, exist_ok=True)
         guideline_path = guidelines_dir / "architecture.md"
         guideline_path.write_text(

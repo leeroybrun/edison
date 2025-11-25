@@ -43,9 +43,10 @@ def _load_retry_config() -> dict:
         "max_delay_seconds": 60.0,
     }
     try:
+        from edison.data import get_data_path
         import yaml  # type: ignore
 
-        cfg_path = Path(".edison/core/config/defaults.yaml").resolve()
+        cfg_path = get_data_path("config", "defaults.yaml")
         if cfg_path.exists():
             data = yaml.safe_load(cfg_path.read_text()) or {}
             r = (data.get("resilience") or {}).get("retry") or {}

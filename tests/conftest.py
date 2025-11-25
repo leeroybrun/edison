@@ -40,23 +40,64 @@ from edison.core.paths.resolver import PathResolver
 REPO_ROOT = PathResolver.resolve_project_root()
 
 
+def _reset_all_global_caches() -> None:
+    """Reset ALL global caches in Edison modules to ensure test isolation."""
+    # Path resolver cache
+    try:
+        import edison.core.paths.resolver as paths  # type: ignore
+        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    # State machine caches AND SessionConfig which loads at module import
+    try:
+        import edison.core.session.state as session_state  # type: ignore
+        session_state._STATE_MACHINE = None  # type: ignore[attr-defined]
+        # Critical: SessionConfig is created at module load, must be reset
+        if hasattr(session_state, '_CONFIG'):
+            session_state._CONFIG = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    try:
+        import edison.core.tasks.state as task_state  # type: ignore
+        if hasattr(task_state, '_STATE_MACHINE'):
+            task_state._STATE_MACHINE = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    # Composition module caches - CRITICAL for test isolation
+    composition_modules = [
+        "edison.core.composition.includes",
+        "edison.core.composition.commands",
+        "edison.core.composition.composers",
+        "edison.core.composition.settings",
+        "edison.core.composition.hooks",
+    ]
+    for mod_name in composition_modules:
+        try:
+            import importlib
+            mod = importlib.import_module(mod_name)
+            if hasattr(mod, '_REPO_ROOT_OVERRIDE'):
+                mod._REPO_ROOT_OVERRIDE = None  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    # ConfigManager cache
+    try:
+        import edison.core.config as config_mod  # type: ignore
+        if hasattr(config_mod, '_CONFIG_CACHE'):
+            config_mod._CONFIG_CACHE = {}  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
 @pytest.fixture(autouse=True)
 def _reset_global_project_root_cache() -> None:
-    """Ensure PathResolver project-root cache is fresh for each test."""
-    try:
-        import edison.core.paths.resolver as paths  # type: ignore
-
-        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
-    except Exception:
-        # Resolver may not be importable for tests that don't touch path helpers.
-        pass
+    """Ensure all global caches are fresh for each test."""
+    _reset_all_global_caches()
     yield
-    try:
-        import edison.core.paths.resolver as paths  # type: ignore
-
-        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    _reset_all_global_caches()
 
 
 @pytest.fixture
@@ -74,12 +115,26 @@ def isolated_project_env(tmp_path, monkeypatch):
     # Ensure PathResolver uses this isolated root for the duration of the test
     try:
         import edison.core.paths.resolver as paths  # type: ignore
-
         paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     except Exception:
-        # If the resolver is not importable yet, tests that import it later
-        # will compute the cache from this AGENTS_PROJECT_ROOT.
         pass
+
+    # Set composition module repo root overrides to use isolated environment
+    composition_modules = [
+        "edison.core.composition.includes",
+        "edison.core.composition.commands",
+        "edison.core.composition.composers",
+        "edison.core.composition.settings",
+        "edison.core.composition.hooks",
+    ]
+    for mod_name in composition_modules:
+        try:
+            import importlib
+            mod = importlib.import_module(mod_name)
+            if hasattr(mod, '_REPO_ROOT_OVERRIDE'):
+                mod._REPO_ROOT_OVERRIDE = tmp_path  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     # Initialize a real git repository so path resolution can rely on
     # `git rev-parse --show-toplevel` instead of synthetic .git markers.
@@ -90,6 +145,33 @@ def isolated_project_env(tmp_path, monkeypatch):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+    # Copy Edison core config files (state-machine.yaml, etc.) for state machine tests
+    # In standalone Edison package, config files are bundled in src/edison/data/config/
+    edison_bundled_config = Path(__file__).parent.parent / "src" / "edison" / "data" / "config"
+    edison_legacy_config = REPO_ROOT / ".edison" / "core" / "config"
+
+    edison_core_config_src = edison_bundled_config if edison_bundled_config.exists() else edison_legacy_config
+    edison_core_config_dst = tmp_path / ".edison" / "core" / "config"
+
+    if edison_core_config_src.exists():
+        edison_core_config_dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(edison_core_config_src, edison_core_config_dst, dirs_exist_ok=True)
+
+    # Override project_config_dir to use .agents (as expected by tests)
+    # This mirrors the wilson-leadgen convention where .agents holds project-specific config
+    defaults_path = edison_core_config_dst / "defaults.yaml"
+    if defaults_path.exists():
+        import yaml
+        defaults = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
+        if "paths" not in defaults:
+            defaults["paths"] = {}
+        defaults["paths"]["project_config_dir"] = ".agents"
+        defaults_path.write_text(yaml.dump(defaults, default_flow_style=False), encoding="utf-8")
+
+    # Ensure .edison/core/rules and .edison/core/guidelines directories exist for composition tests
+    (tmp_path / ".edison" / "core" / "rules").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".edison" / "core" / "guidelines").mkdir(parents=True, exist_ok=True)
 
     # Create necessary project structure mirroring Edison conventions
     project_root = tmp_path / ".project"
@@ -232,6 +314,21 @@ def isolated_project_env(tmp_path, monkeypatch):
     config_src_dir = REPO_ROOT / ".agents" / "config"
     if config_src_dir.exists():
         shutil.copytree(config_src_dir, agents_root / "config", dirs_exist_ok=True)
+
+    # Create AGENTS.md for tests that need it (e.g., Zen CLI prompt verification)
+    agents_md_src = REPO_ROOT / "AGENTS.md"
+    agents_md_dst = tmp_path / "AGENTS.md"
+    if agents_md_src.exists():
+        agents_md_dst.write_text(agents_md_src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        # Minimal AGENTS.md for standalone Edison package
+        agents_md_dst.write_text(
+            "# Edison Framework\n\n"
+            "This is a test project using Edison Framework.\n\n"
+            "## Project Overview\n"
+            "Test project for Edison Framework unit tests.\n",
+            encoding="utf-8",
+        )
 
     # Provide a project-local tasks/ready wrapper so tests that invoke the CLI
     # via AGENTS_PROJECT_ROOT exercise the same implementation as the repo-level

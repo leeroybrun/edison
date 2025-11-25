@@ -33,7 +33,7 @@ RecordType = Literal["task", "qa"]
 def _load_statemachine() -> Dict[str, Any]:
     """Load task/qa state machine from defaults.yaml with fallbacks."""
     try:
-        from edison.core.config import ConfigManager 
+        from edison.core.config import ConfigManager
         cfg = ConfigManager().load_config(validate=False)
         sm = cfg.get("statemachine")
         if sm:
@@ -42,12 +42,11 @@ def _load_statemachine() -> Dict[str, Any]:
         pass
 
     try:
+        from edison.data import get_data_path
         import yaml  # type: ignore
 
-        core_root = Path(__file__).resolve().parents[2]
         for candidate in [
-            core_root / "config/state-machine.yaml",
-            Path(".edison/core/config/state-machine.yaml").resolve(),
+            get_data_path("config", "state-machine.yaml"),
             Path("config/state-machine.yaml").resolve(),
         ]:
             if candidate.exists():
@@ -58,10 +57,11 @@ def _load_statemachine() -> Dict[str, Any]:
     except Exception:
         pass
 
-    cfg_path = Path(".edison/core/config/defaults.yaml").resolve()
     try:
+        from edison.data import get_data_path
         import yaml  # type: ignore
 
+        cfg_path = get_data_path("config", "defaults.yaml")
         data = yaml.safe_load(cfg_path.read_text()) if cfg_path.exists() else {}
         sm = (data or {}).get("statemachine")
         if sm:

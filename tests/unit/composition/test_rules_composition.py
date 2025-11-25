@@ -143,7 +143,7 @@ class TestRulesRegistryAndComposition:
         _write_guideline(guideline, "# Broken\nNo anchors here.\n")
 
         with pytest.raises(Exception) as exc:
-            compose_rules(packs=[])
+            compose_rules(packs=[], project_root=root)
 
         assert "does-not-exist" in str(exc.value)
 
@@ -209,7 +209,7 @@ class TestRulesRegistryAndComposition:
             },
         )
 
-        result = compose_rules(packs=["react"])
+        result = compose_rules(packs=["react"], project_root=root)
         rules = result["rules"]
 
         assert "shared-rule" in rules
@@ -278,7 +278,11 @@ class TestRulesRegistryAndComposition:
         )
 
         with pytest.raises(Exception) as exc:
-            compose_rules(packs=[])
+            compose_rules(packs=[], project_root=root)
 
-        # Under the hood this is a composition-depth failure; assert we surface something readable.
-        assert "Include depth" in str(exc.value) or "circular" in str(exc.value).lower()
+        # Should detect circular include or max depth exceeded
+        error_msg = str(exc.value).lower()
+        assert (
+            "include depth" in error_msg
+            or "circular" in error_msg
+        ), f"Expected error about circular include or max depth, got: {exc.value}"

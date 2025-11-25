@@ -17,7 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 class TestClaudeAdapterUnit:
     def _install_schemas(self, root: Path) -> None:
         """Copy core Claude schemas into the isolated project."""
-        schema_src_dir = REPO_ROOT / ".edison" / "core" / "schemas"
+        # Schemas are in the edison package data directory
+        schema_src_dir = REPO_ROOT / "src" / "edison" / "data" / "schemas"
         schema_dst_dir = root / ".edison" / "core" / "schemas"
         schema_dst_dir.mkdir(parents=True, exist_ok=True)
         for name in ("claude-agent.schema.json", "claude-agent-config.schema.json"):

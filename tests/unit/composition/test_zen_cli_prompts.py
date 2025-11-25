@@ -43,12 +43,12 @@ def _cli_roles_and_paths(repo_root: Path) -> list[tuple[str, Path]]:
     return roles
 
 
-def test_verify_cli_prompts_syncs_all_project_roles() -> None:
+def test_verify_cli_prompts_syncs_all_project_roles(isolated_project_env: Path) -> None:
     """
     ZenAdapter.verify_cli_prompts should ensure all CLI project roles
     have prompt files that include the workflow loop section.
     """
-    repo_root = _repo_root()
+    repo_root = isolated_project_env
     cfg = ConfigManager(repo_root).load_config(validate=False)
     adapter = ZenAdapter(repo_root=repo_root, config=cfg)
 
