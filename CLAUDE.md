@@ -1,6 +1,4 @@
 ## 🎯 CRITICAL PRINCIPLES (NON-NEGOTIABLE)
-
-### Every Task Must Follow:
 1. ✅ **STRICT TDD**: Write failing test FIRST (RED), then implement (GREEN), then refactor
 2. ✅ **NO MOCKS**: Test real behavior, real code, real libs - NO MOCKS EVER
 3. ✅ **NO LEGACY**: Delete old code completely - NO backward compatibility, NO fallbacks
