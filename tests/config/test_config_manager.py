@@ -110,8 +110,8 @@ def test_config_manager_defaults_to_project_root_not_edison(
     # Repo root must be the outer project root, not .edison.
     assert mgr.repo_root == ROOT
     # And project config overlays must resolve from the outer preferred config directory.
-    # Edison repo uses .agents, not .edison
-    assert mgr.project_config_dir == ROOT / ".agents" / "config"
+    # Defaults to .edison/config now
+    assert mgr.project_config_dir == ROOT / ".edison" / "config"
 
 
 def test_legacy_core_defaults_yaml_outside_config_dir_is_ignored(tmp_path: Path) -> None:

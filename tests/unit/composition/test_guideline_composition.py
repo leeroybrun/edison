@@ -70,13 +70,13 @@ class TestGuidelineCompositionUnit:
 
     def test_project_override_application(self, isolated_project_env: Path) -> None:
         """
-        Project overrides from .agents/guidelines/*.md should be applied with highest priority.
+        Project overrides from .edison/guidelines/*.md should be applied with highest priority.
         """
-        from edison.core.composition.guidelines import compose_guideline 
+        from edison.core.composition.guidelines import compose_guideline
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".agents" / "guidelines"
+        project_dir = root / ".edison" / "guidelines"
 
         core_dir.mkdir(parents=True, exist_ok=True)
         packs_dir.mkdir(parents=True, exist_ok=True)
@@ -162,11 +162,11 @@ class TestGuidelineCompositionUnit:
         """
         When duplication exists across layers, project overrides win over packs, and packs win over core.
         """
-        from edison.core.composition.guidelines import compose_guideline 
+        from edison.core.composition.guidelines import compose_guideline
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".agents" / "guidelines"
+        project_dir = root / ".edison" / "guidelines"
 
         core_dir.mkdir(parents=True, exist_ok=True)
         (packs_dir / "alpha" / "guidelines").mkdir(parents=True, exist_ok=True)
@@ -197,11 +197,11 @@ class TestGuidelineCompositionUnit:
         Phase 3A: Guideline composition should surface duplicate detection
         across core, packs, and project overlays via duplicate_report.
         """
-        from edison.core.composition.guidelines import GuidelineRegistry 
+        from edison.core.composition.guidelines import GuidelineRegistry
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".agents" / "guidelines"
+        project_dir = root / ".edison" / "guidelines"
 
         core_dir.mkdir(parents=True, exist_ok=True)
         (packs_dir / "alpha" / "guidelines").mkdir(parents=True, exist_ok=True)
@@ -263,13 +263,13 @@ class TestGuidelineCompositionUnit:
     ) -> None:
         """
         Phase 3A: CompositionEngine.compose_guidelines should assemble core +
-        pack + project guidelines into .agents/_generated/guidelines/*.md.
+        pack + project guidelines into .edison/_generated/guidelines/*.md.
         """
-        from edison.core.composition import CompositionEngine 
+        from edison.core.composition import CompositionEngine
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".agents" / "guidelines"
+        project_dir = root / ".edison" / "guidelines"
 
         core_dir.mkdir(parents=True, exist_ok=True)
         (packs_dir / "alpha" / "guidelines").mkdir(parents=True, exist_ok=True)
@@ -296,7 +296,7 @@ class TestGuidelineCompositionUnit:
         engine = CompositionEngine(config, repo_root=root)
         results = engine.compose_guidelines()
 
-        out_dir = root / ".agents" / "_generated" / "guidelines"
+        out_dir = root / ".edison" / "_generated" / "guidelines"
         out_file = out_dir / "architecture.md"
 
         assert out_file.exists(), "Expected composed guideline output from CompositionEngine"

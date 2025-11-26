@@ -29,7 +29,8 @@ class TestProjectDir:
         self.tmp_path = tmp_path
         self.repo_root = repo_root
         self.project_root = tmp_path / ".project"
-        self.agents_root = tmp_path / ".agents"
+        # We map the .agents directory to .edison for tests to verify migration
+        self.agents_root = tmp_path / ".edison"
 
         # Setup directory structure
         self._setup_directories()

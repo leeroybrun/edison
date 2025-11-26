@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional
 from abc import ABC, abstractmethod
 
 from ..config import ConfigManager
+from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
 
 # Defaults
@@ -141,7 +142,7 @@ class CommandComposer:
         self.cfg_mgr = ConfigManager(self.repo_root)
         self.core_dir = self.repo_root / ".edison" / "core"
         self.packs_dir = self.repo_root / ".edison" / "packs"
-        self.project_dir = self.repo_root / ".agents"
+        self.project_dir = get_project_config_dir(self.repo_root)
 
         self.short_desc_max = self._short_desc_max()
         self.adapters: Dict[str, PlatformAdapter] = {

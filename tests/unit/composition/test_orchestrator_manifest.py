@@ -81,7 +81,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
 
         result = engine.compose_orchestrator_manifest(output_dir)
 
@@ -144,7 +144,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
 
         result = engine.compose_orchestrator_manifest(output_dir)
 
@@ -156,7 +156,7 @@ class TestOrchestratorManifest:
         repo_root = tmp_path
         core_dir = repo_root / ".edison" / "core"
         packs_dir = repo_root / ".edison" / "packs"
-        project_dir = repo_root / ".agents"
+        project_dir = repo_root / ".edison"
         core_dir.mkdir(parents=True, exist_ok=True)
         packs_dir.mkdir(parents=True, exist_ok=True)
         project_dir.mkdir(parents=True, exist_ok=True)
@@ -221,7 +221,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
         result = engine.compose_orchestrator_manifest(output_dir)
 
         json_data = json.loads(result["json"].read_text(encoding="utf-8"))
@@ -235,7 +235,7 @@ class TestOrchestratorManifest:
         """Delegation section is populated from core + project config."""
         repo_root = tmp_path
         core_dir = repo_root / ".edison" / "core"
-        project_dir = repo_root / ".agents"
+        project_dir = repo_root / ".edison"
         core_dir.mkdir(parents=True, exist_ok=True)
         project_dir.mkdir(parents=True, exist_ok=True)
 
@@ -307,7 +307,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
         result = engine.compose_orchestrator_manifest(output_dir)
 
         json_data = json.loads(result["json"].read_text(encoding="utf-8"))
@@ -348,7 +348,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
         result = engine.compose_orchestrator_manifest(output_dir)
 
         json_data = json.loads(result["json"].read_text(encoding="utf-8"))
@@ -365,7 +365,7 @@ class TestOrchestratorManifest:
         """Delegation section conforms to orchestrator-manifest schema."""
         repo_root = tmp_path
         core_dir = repo_root / ".edison" / "core"
-        project_dir = repo_root / ".agents"
+        project_dir = repo_root / ".edison"
         schemas_dir = core_dir / "schemas"
         core_dir.mkdir(parents=True, exist_ok=True)
         project_dir.mkdir(parents=True, exist_ok=True)
@@ -404,7 +404,7 @@ class TestOrchestratorManifest:
         }
 
         engine = CompositionEngine(config, repo_root=repo_root)
-        output_dir = repo_root / ".agents" / "_generated"
+        output_dir = repo_root / ".edison" / "_generated"
         result = engine.compose_orchestrator_manifest(output_dir)
 
         json_data = json.loads(result["json"].read_text(encoding="utf-8"))

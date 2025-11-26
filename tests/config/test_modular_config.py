@@ -65,10 +65,10 @@ statemachine:
         allowed_transitions: []
 """, encoding="utf-8")
 
-    # Create project overlay under .agents/config (canonical overlays path)
-    agents_config_dir = tmp_path / ".agents" / "config"
-    agents_config_dir.mkdir(parents=True, exist_ok=True)
-    (agents_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
+    # Create project overlay under .edison/config (canonical overlays path)
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
     
     # Initialize ConfigManager
     mgr = ConfigManager(tmp_path)
@@ -113,9 +113,9 @@ def test_no_json_fallback(tmp_path: Path) -> None:
     # Write minimal defaults
     (core_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
     
-    agents_config_dir = tmp_path / ".agents" / "config"
-    agents_config_dir.mkdir(parents=True, exist_ok=True)
-    (agents_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
 
     mgr = ConfigManager(tmp_path)
     cfg = mgr.load_config(validate=False)
@@ -141,10 +141,10 @@ def test_legacy_monolithic_project_config_yml_is_ignored(tmp_path: Path) -> None
         "git: { branchPrefix: 'from-config-yml/', legacyOnlyKey: true }\n", encoding="utf-8"
     )
 
-    # Canonical overlay under .agents/config/*.yml
-    agents_config_dir = agents_dir / "config"
-    agents_config_dir.mkdir(parents=True, exist_ok=True)
-    (agents_config_dir / "project.yml").write_text(
+    # Canonical overlay under .edison/config/*.yml
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "project.yml").write_text(
         "git: { branchPrefix: 'from-overlay/' }\n", encoding="utf-8"
     )
 
@@ -165,8 +165,8 @@ def test_project_modular_config_loading(tmp_path: Path) -> None:
     core_config_dir.mkdir(parents=True, exist_ok=True)
     (core_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
     
-    # Setup project config dir (canonical overlays under .agents/config)
-    project_config_dir = tmp_path / ".agents" / "config"
+    # Setup project config dir (canonical overlays under .edison/config)
+    project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a project-level metadata overlay

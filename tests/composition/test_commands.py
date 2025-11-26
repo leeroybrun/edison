@@ -112,7 +112,7 @@ def test_merge_pack_definitions(tmp_path: Path) -> None:
 
 
 def test_apply_project_overrides(tmp_path: Path) -> None:
-    """Project overrides in .agents/config/commands.yml take highest precedence."""
+    """Project overrides in .edison/config/commands.yml take highest precedence."""
     core_cmd = _sample_command_def("shared", full_desc="core description")
     pack_override = _sample_command_def("shared", full_desc="pack description")
     project_override = _sample_command_def("shared", full_desc="project description", args=[{"name": "proj", "description": "proj arg"}])
@@ -126,7 +126,7 @@ def test_apply_project_overrides(tmp_path: Path) -> None:
         {"commands": {"definitions": [pack_override]}},
     )
     _write_yaml(
-        tmp_path / ".agents/config/commands.yml",
+        tmp_path / ".edison/config/commands.yml",
         {"commands": {"definitions": [project_override]}},
     )
 

@@ -206,7 +206,7 @@ class SetupQuestionnaire:
 
         tech_stack = context.get("tech_stack") or []
         tech_label = ", ".join(tech_stack) if tech_stack else ""
-        config_dir = context.get("project_config_dir", ".agents")
+        config_dir = DEFAULT_PROJECT_CONFIG_PRIMARY
         management_dir = context.get("project_management_dir", ".project")
 
         return (
@@ -347,7 +347,7 @@ class SetupQuestionnaire:
                 context[key] = []
 
         # Path defaults
-        context.setdefault("project_config_dir", ".agents")
+        context.setdefault("project_config_dir", DEFAULT_PROJECT_CONFIG_PRIMARY)
         mgmt_path = get_management_paths(self.repo_root).get_management_root()
         try:
             mgmt_rel = str(mgmt_path.relative_to(self.repo_root))
@@ -363,7 +363,7 @@ class SetupQuestionnaire:
 
         return {
             "paths": {
-                "config_dir": context.get("project_config_dir", ".agents"),
+                "config_dir": DEFAULT_PROJECT_CONFIG_PRIMARY,
                 "management_dir": context.get("project_management_dir", ".project"),
             },
             "project": {

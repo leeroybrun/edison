@@ -20,6 +20,7 @@ from typing import Dict, Iterable, List, Optional, Set
 import yaml
 
 from edison.core.paths import PathResolver
+from edison.core.paths.project import get_project_config_dir
 from edison.core.paths.management import get_management_paths
 from edison.core.qa import evidence as qa_evidence
 from edison.core.git.operations import get_changed_files
@@ -57,9 +58,10 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
     the explicit guard tests; otherwise an empty dict is returned.
     """
     root = _project_root()
+    config_root = get_project_config_dir(root)
     candidates = [
-        root / ".agents" / "config" / "validators.yml",
-        root / ".agents" / "validators" / "config.json",
+        config_root / "config" / "validators.yml",
+        config_root / "validators" / "config.json",
     ]
     for path in candidates:
         if path.exists():

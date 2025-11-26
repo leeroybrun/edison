@@ -174,24 +174,14 @@ def isolated_project_env(tmp_path, monkeypatch):
         edison_core_config_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(edison_core_config_src, edison_core_config_dst, dirs_exist_ok=True)
 
-    # Override project_config_dir to use .agents (as expected by tests)
-    # This mirrors the wilson-leadgen convention where .agents holds project-specific config
-    defaults_path = edison_core_config_dst / "defaults.yaml"
-    if defaults_path.exists():
-        import yaml
-        defaults = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
-        if "paths" not in defaults:
-            defaults["paths"] = {}
-        defaults["paths"]["project_config_dir"] = ".agents"
-        defaults_path.write_text(yaml.dump(defaults, default_flow_style=False), encoding="utf-8")
-
     # Ensure .edison/core/rules and .edison/core/guidelines directories exist for composition tests
     (tmp_path / ".edison" / "core" / "rules").mkdir(parents=True, exist_ok=True)
     (tmp_path / ".edison" / "core" / "guidelines").mkdir(parents=True, exist_ok=True)
 
     # Create necessary project structure mirroring Edison conventions
     project_root = tmp_path / ".project"
-    agents_root = tmp_path / ".agents"
+    # We map the .agents directory to .edison for tests to verify migration
+    agents_root = tmp_path / ".edison"
 
     # Core .project layout (tasks, QA, sessions)
     for rel in [
