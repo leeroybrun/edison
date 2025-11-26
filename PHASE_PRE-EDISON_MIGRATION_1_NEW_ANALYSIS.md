@@ -378,7 +378,7 @@ The pack context sections are duplicated multiple times within validator files:
 | `.edison/packs/fastify/validators/api.md` | `.edison/packs/nextjs/validators/api.md` | 720+ lines identical |
 | `.edison/core/guidelines/TDD.md` | `.edison/core/guidelines/shared/TDD.md` | Pattern 1 & 2 duplicated |
 | `.edison/core/defaults.yaml` | `.edison/core/config/defaults.yaml` | Significant overlap |
-| `.agents/.cache/composed/*.md` | `.agents/_generated/validators/*.md` | All validators duplicated |
+| *(legacy cache removed)* | `.agents/_generated/validators/*.md` | Remove any lingering legacy validator cache and keep only generated outputs |
 | `.agents/guidelines/*.md` | `.agents/_generated/guidelines/*.md` | Source and generated copies |
 
 ### 7.2 Leftover Files to Remove
