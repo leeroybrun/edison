@@ -2,8 +2,8 @@
 
 **Generated**: 2025-11-26
 **Status**: READY FOR ORCHESTRATION
-**Total Tasks**: 68 (60 Main Track + 8 Zen Track)
-**Parallel Tracks**: 2 (Main Migration + Edison-Zen)
+**Total Tasks**: 79 (71 Main Track + 8 Zen Track)
+**Parallel Tracks**: 3 (Main Migration + Edison-Zen + Wilson Overlay)
 
 ---
 
@@ -21,13 +21,15 @@ The migration transforms a project-specific implementation (wilson-pre-edison) i
 
 | Metric | Value |
 |--------|-------|
-| Total Unique Tasks | 68 (60 Main + 8 Zen) |
+| Total Unique Tasks | 79 (71 Main + 8 Zen) |
 | P0 (Blocker) Tasks | 12 |
-| P1 (Critical) Tasks | 18 |
-| P2 (High) Tasks | 22 |
+| P1 (Critical) Tasks | 23 |
+| P2 (High) Tasks | 27 |
 | P3 (Medium) Tasks | 9 |
-| P4 (Low) Tasks | 7 |
+| P4 (Low) Tasks | 0 |
 | Zen Track Tasks | 8 |
+| Wilson Overlay Tasks | 5 |
+| Edison Pack Tasks | 6 |
 
 ### 1.3 Architectural Decisions (Authoritative)
 
@@ -74,7 +76,28 @@ T-018 (START_RESUME_SESSION) ──┼──> T-026 (Session System Complete)
 T-019 (START_VALIDATE_SESSION) ─┘
 ```
 
-### 2.2 Zen Track Dependencies
+### 2.2 Wilson Overlay Track Dependencies
+
+```
+T-069 (Context7 Packages) ──────────> Independent (can start immediately)
+T-070 (Validator Triggers) ─────────> Independent (can start immediately)
+T-071 (Test Helpers Guide) ─────────> Independent (can start immediately)
+T-072 (Entity Examples) ────────────> Depends on T-071 (references helpers)
+T-073 (Integrations Guide) ─────────> Depends on T-072 (references entities)
+```
+
+### 2.3 Edison Pack Track Dependencies
+
+```
+T-074 (Better-Auth Pack) ───────────> Independent (can start immediately)
+T-075 (Motion Pack Complete) ───────> Depends on T-051 (Motion 12 patterns)
+T-076 (Tailwind Pack v4) ───────────> Depends on T-050 (Tailwind v4 rules)
+T-077 (Prisma Pack Complete) ───────> Depends on T-028 (Schema template)
+T-078 (React Pack Complete) ────────> Independent (can start immediately)
+T-079 (Next.js Pack Complete) ──────> Depends on T-027 (Server/Client examples)
+```
+
+### 2.4 Zen Track Dependencies
 
 ```
 T-ZEN-001 (zen setup command) ──┬
@@ -93,9 +116,13 @@ T-ZEN-003 (zen configure) ──────┘         │
                               T-ZEN-008 (End-to-end verification)
 ```
 
-### 2.3 Cross-Track Dependencies
+### 2.5 Cross-Track Dependencies
 
-The Zen track can execute **fully in parallel** with the main track. The only soft dependency is that `T-ZEN-006` (edison init integration) should complete before final validation, but it does not block any main track tasks.
+**Zen Track**: Can execute **fully in parallel** with the main track. The only soft dependency is that `T-ZEN-006` (edison init integration) should complete before final validation, but it does not block any main track tasks.
+
+**Wilson Overlay Track**: Can execute **in parallel** with main track after T-014 (post-training-packages.yaml) completes. Wilson overlay tasks use the same package IDs defined in T-014.
+
+**Edison Pack Track**: Most can start in parallel, but some depend on main track content restoration tasks (T-027, T-028, T-050, T-051).
 
 ---
 
@@ -3091,6 +3118,1911 @@ core_value = config.get_core('validation.maxRounds')  # Returns 3
 
 ---
 
+## 8a. Wilson Project Overlay Track (NEW)
+
+This track creates Wilson-specific configuration and documentation that lives in `wilson-leadgen/.edison/`. These files customize Edison for the Wilson Lead Generation project.
+
+**Note**: ZenRole mappings are NOT needed here as they are auto-generated from enabled agents + validators.
+
+### T-069: Create Wilson Context7 Package Configuration
+
+**Priority**: P1 - CRITICAL
+**Dependencies**: T-014 (Post-training Packages)
+**Parallel Execution**: Yes
+
+#### Description
+Create the Wilson-specific Context7 package configuration with exact versions and topics for the project's technology stack.
+
+#### Files Affected
+- `wilson-leadgen/.edison/config/context7-packages.yml` - CREATE (~50 lines)
+
+#### Implementation Details
+
+```yaml
+# wilson-leadgen/.edison/config/context7-packages.yml
+# Wilson LeadGen Project - Context7 Package Configuration
+# These packages represent post-training technologies that agents MUST query before coding
+
+version: "1.0.0"
+trainingCutoff: "2025-01"
+
+packages:
+  # Frontend Framework
+  - id: /vercel/next.js
+    version: "16.0.0"
+    priority: critical
+    topics:
+      - app-router
+      - server-actions
+      - middleware
+      - route-handlers
+      - image-optimization
+      - metadata-api
+    usedBy: [api-builder, component-builder, feature-implementer]
+
+  # UI Library
+  - id: /facebook/react
+    version: "19.2.0"
+    priority: critical
+    topics:
+      - hooks
+      - server-components
+      - client-components
+      - suspense
+      - use-hook
+      - useFormStatus
+      - useOptimistic
+    usedBy: [component-builder, feature-implementer]
+
+  # Styling
+  - id: /tailwindlabs/tailwindcss
+    version: "4.0.0"
+    priority: critical
+    topics:
+      - v4-syntax
+      - css-variables
+      - dark-mode
+      - container-queries
+      - custom-variants
+    usedBy: [component-builder, feature-implementer]
+
+  # Validation
+  - id: /colinhacks/zod
+    version: "4.1.12"
+    priority: high
+    topics:
+      - validation
+      - schemas
+      - coercion
+      - transforms
+      - refinements
+    usedBy: [api-builder, test-engineer]
+
+  # Database ORM
+  - id: /prisma/prisma
+    version: "6.0.0"
+    priority: critical
+    topics:
+      - schema
+      - migrations
+      - client
+      - relations
+      - transactions
+    usedBy: [database-architect, api-builder]
+
+  # Animation
+  - id: /motiondivision/motion
+    version: "12.23.24"
+    priority: high
+    topics:
+      - animations
+      - gestures
+      - layout-animations
+      - AnimatePresence
+      - variants
+    usedBy: [component-builder]
+
+  # Authentication
+  - id: /better-auth/better-auth
+    version: "1.0.0"
+    priority: critical
+    topics:
+      - authentication
+      - sessions
+      - providers
+      - middleware
+      - client-setup
+    usedBy: [api-builder, feature-implementer]
+
+# Usage instruction for agents
+agentInstruction: |
+  Before implementing ANY code involving these packages:
+  1. Query Context7 for the specific package
+  2. Focus on the relevant topics
+  3. Use the exact patterns from documentation
+  4. Your training data is STALE for these packages
+```
+
+#### Validation Criteria
+- [ ] File exists at `wilson-leadgen/.edison/config/context7-packages.yml`
+- [ ] YAML parses without errors
+- [ ] All 7 packages defined with id, version, priority, topics, usedBy
+- [ ] Training cutoff date specified
+- [ ] Agent instruction included
+
+---
+
+### T-070: Create Wilson Validator Trigger Patterns
+
+**Priority**: P1 - CRITICAL
+**Dependencies**: None
+**Parallel Execution**: Yes
+
+#### Description
+Create the Wilson-specific validator configuration overlay with file path trigger patterns for the project structure.
+
+#### Files Affected
+- `wilson-leadgen/.edison/config/validators.yml` - CREATE (~80 lines)
+
+#### Implementation Details
+
+```yaml
+# wilson-leadgen/.edison/config/validators.yml
+# Wilson LeadGen Project - Validator Trigger Pattern Overlay
+# These patterns determine which validators run on which files
+
+version: "1.0.0"
+
+# Validator trigger patterns specific to Wilson project structure
+validators:
+  react:
+    triggers:
+      - "apps/dashboard/src/**/*.tsx"
+      - "apps/dashboard/src/**/*.jsx"
+      - "packages/ui/**/*.tsx"
+      - "packages/ui/**/*.jsx"
+    description: "React components in dashboard and UI package"
+
+  nextjs:
+    triggers:
+      - "apps/dashboard/app/**/*.ts"
+      - "apps/dashboard/app/**/*.tsx"
+      - "apps/dashboard/middleware.ts"
+    description: "Next.js app router and middleware"
+
+  api:
+    triggers:
+      - "apps/dashboard/app/api/**/*.ts"
+      - "packages/api-core/**/*.ts"
+      - "packages/api-core/**/*.tsx"
+    description: "API routes and core API package"
+
+  database:
+    triggers:
+      - "packages/db/**/*.ts"
+      - "packages/db/prisma/schema.prisma"
+      - "packages/db/prisma/migrations/**/*.sql"
+    description: "Database package and Prisma schema"
+
+  security:
+    triggers:
+      - "apps/dashboard/app/api/**/*.ts"
+      - "packages/api-core/src/auth/**/*.ts"
+      - "apps/dashboard/middleware.ts"
+      - "**/*.env*"
+    description: "Security-sensitive files"
+
+  testing:
+    triggers:
+      - "**/*.test.ts"
+      - "**/*.test.tsx"
+      - "**/*.spec.ts"
+      - "**/*.spec.tsx"
+      - "**/tests/**/*.ts"
+    description: "Test files"
+
+  styling:
+    triggers:
+      - "apps/dashboard/src/**/*.tsx"
+      - "packages/ui/**/*.tsx"
+      - "**/tailwind.config.*"
+      - "**/*.css"
+    description: "Styling and Tailwind configuration"
+
+  performance:
+    triggers:
+      - "apps/dashboard/app/**/*.tsx"
+      - "packages/db/src/**/*.ts"
+      - "apps/dashboard/app/api/**/*.ts"
+    description: "Performance-critical paths"
+
+# Wilson-specific exclusions
+exclusions:
+  - "node_modules/**"
+  - ".next/**"
+  - "dist/**"
+  - "coverage/**"
+  - "*.d.ts"
+```
+
+#### Validation Criteria
+- [ ] File exists at `wilson-leadgen/.edison/config/validators.yml`
+- [ ] YAML parses without errors
+- [ ] All 8 validator types have trigger patterns
+- [ ] Patterns use valid glob syntax
+- [ ] Exclusions list defined
+
+---
+
+### T-071: Create Wilson Test Helpers Guide
+
+**Priority**: P2 - HIGH
+**Dependencies**: None
+**Parallel Execution**: Yes
+
+#### Description
+Create the Wilson-specific test helpers documentation with `withTestServer` and `createAuthenticatedRequest` patterns.
+
+#### Files Affected
+- `wilson-leadgen/.edison/guides/test-helpers.md` - CREATE (~150 lines)
+
+#### Implementation Details
+
+```markdown
+# Wilson Test Helpers Guide
+
+This guide documents Wilson-specific test utilities that wrap Edison's TDD patterns.
+
+## withTestServer
+
+Wrapper for testing Next.js API routes with proper setup/teardown.
+
+### Usage
+
+\`\`\`typescript
+import { withTestServer } from '@wilson/test-utils';
+import { prisma } from '@wilson/db';
+
+describe('Lead API', () => {
+  withTestServer((server) => {
+    beforeEach(async () => {
+      await prisma.lead.deleteMany();
+    });
+
+    it('should create a lead', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/leads',
+        payload: {
+          email: 'test@example.com',
+          source: 'website'
+        }
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).toMatchObject({
+        email: 'test@example.com',
+        source: 'website'
+      });
+    });
+  });
+});
+\`\`\`
+
+### Configuration
+
+\`\`\`typescript
+withTestServer((server) => {
+  // tests here
+}, {
+  // Options
+  port: 3001,           // Default: random available port
+  database: 'test',     // Default: uses TEST_DATABASE_URL
+  seed: true,           // Default: false - run seed before tests
+  cleanup: true         // Default: true - cleanup after each test
+});
+\`\`\`
+
+## createAuthenticatedRequest
+
+Creates authenticated requests for Better-Auth protected endpoints.
+
+### Usage
+
+\`\`\`typescript
+import { createAuthenticatedRequest } from '@wilson/test-utils';
+import { prisma } from '@wilson/db';
+
+describe('Protected API', () => {
+  let authRequest: ReturnType<typeof createAuthenticatedRequest>;
+  let testUser: User;
+
+  beforeEach(async () => {
+    // Create test user
+    testUser = await prisma.user.create({
+      data: {
+        email: 'test@example.com',
+        name: 'Test User'
+      }
+    });
+
+    // Create authenticated request helper
+    authRequest = createAuthenticatedRequest(testUser);
+  });
+
+  it('should access protected endpoint', async () => {
+    const response = await authRequest.get('/api/me');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().email).toBe('test@example.com');
+  });
+
+  it('should create lead as authenticated user', async () => {
+    const response = await authRequest.post('/api/leads', {
+      email: 'lead@example.com',
+      source: 'dashboard'
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().createdById).toBe(testUser.id);
+  });
+});
+\`\`\`
+
+### API
+
+\`\`\`typescript
+const authRequest = createAuthenticatedRequest(user, options?);
+
+// Methods
+authRequest.get(url, query?)
+authRequest.post(url, body?)
+authRequest.put(url, body?)
+authRequest.patch(url, body?)
+authRequest.delete(url)
+
+// Options
+{
+  baseUrl: string,      // Default: 'http://localhost:3000'
+  tokenType: 'bearer' | 'cookie',  // Default: 'bearer'
+  headers: Record<string, string>  // Additional headers
+}
+\`\`\`
+
+## Database Test Utilities
+
+### resetDatabase
+
+\`\`\`typescript
+import { resetDatabase } from '@wilson/test-utils';
+
+beforeEach(async () => {
+  await resetDatabase();  // Truncates all tables
+});
+\`\`\`
+
+### seedTestData
+
+\`\`\`typescript
+import { seedTestData } from '@wilson/test-utils';
+
+beforeEach(async () => {
+  await seedTestData('leads');  // Seeds leads fixture
+  await seedTestData('users');  // Seeds users fixture
+  await seedTestData();         // Seeds all fixtures
+});
+\`\`\`
+
+## Important Notes
+
+1. **Test Database**: Always use `TEST_DATABASE_URL` environment variable
+2. **Isolation**: Each test should be isolated - use `beforeEach` for cleanup
+3. **Better-Auth Sessions**: `createAuthenticatedRequest` creates valid sessions
+4. **Port Conflicts**: Use `withTestServer` to avoid port conflicts
+```
+
+#### Validation Criteria
+- [ ] File exists at `wilson-leadgen/.edison/guides/test-helpers.md`
+- [ ] Documents `withTestServer` with usage example
+- [ ] Documents `createAuthenticatedRequest` with usage example
+- [ ] Includes database test utilities
+- [ ] TypeScript examples are syntactically correct
+
+---
+
+### T-072: Create Wilson Entity Examples Guide
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-071
+**Parallel Execution**: No
+
+#### Description
+Create the Wilson-specific entity examples documentation covering Lead, Activity, and User model patterns.
+
+#### Files Affected
+- `wilson-leadgen/.edison/guides/entities.md` - CREATE (~200 lines)
+
+#### Implementation Details
+
+```markdown
+# Wilson Entity Examples Guide
+
+This guide documents Wilson-specific Prisma entity patterns for agents implementing data layer code.
+
+## Core Entities
+
+### Lead
+
+The primary business entity representing a potential customer.
+
+\`\`\`typescript
+// packages/db/prisma/schema.prisma
+model Lead {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String?
+  phone       String?
+  company     String?
+  source      LeadSource
+  status      LeadStatus @default(NEW)
+  score       Int       @default(0)
+
+  // Relations
+  activities  Activity[]
+  assignedTo  User?     @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  assignedToId String?
+  createdBy   User      @relation("CreatedLeads", fields: [createdById], references: [id])
+  createdById String
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  convertedAt DateTime?
+
+  @@index([email])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  LINKEDIN
+  COLD_OUTREACH
+  PILOTERR
+  ODOO
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+\`\`\`
+
+#### Query Patterns
+
+\`\`\`typescript
+// Get leads with activities
+const leadsWithActivities = await prisma.lead.findMany({
+  where: { status: 'NEW' },
+  include: {
+    activities: {
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    },
+    assignedTo: true
+  }
+});
+
+// Count by status
+const statusCounts = await prisma.lead.groupBy({
+  by: ['status'],
+  _count: { id: true }
+});
+
+// Search leads
+const results = await prisma.lead.findMany({
+  where: {
+    OR: [
+      { email: { contains: query, mode: 'insensitive' } },
+      { name: { contains: query, mode: 'insensitive' } },
+      { company: { contains: query, mode: 'insensitive' } }
+    ]
+  }
+});
+\`\`\`
+
+### Activity
+
+Tracks all interactions with a Lead.
+
+\`\`\`typescript
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  title       String
+  description String?
+  metadata    Json?
+
+  // Relations
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId      String
+  performedBy User         @relation(fields: [performedById], references: [id])
+  performedById String
+
+  // Timestamps
+  createdAt   DateTime     @default(now())
+  scheduledAt DateTime?
+  completedAt DateTime?
+
+  @@index([leadId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum ActivityType {
+  EMAIL
+  CALL
+  MEETING
+  NOTE
+  TASK
+  STATUS_CHANGE
+  IMPORT
+}
+\`\`\`
+
+### User
+
+Wilson dashboard users with Better-Auth integration.
+
+\`\`\`typescript
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  role          UserRole  @default(USER)
+
+  // Better-Auth fields
+  emailVerified Boolean   @default(false)
+
+  // Relations
+  assignedLeads Lead[]    @relation("AssignedLeads")
+  createdLeads  Lead[]    @relation("CreatedLeads")
+  activities    Activity[]
+  sessions      Session[]
+  accounts      Account[]
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+}
+\`\`\`
+
+## Common Patterns
+
+### Creating a Lead with Activity
+
+\`\`\`typescript
+const lead = await prisma.lead.create({
+  data: {
+    email: 'new@example.com',
+    source: 'WEBSITE',
+    createdBy: { connect: { id: userId } },
+    activities: {
+      create: {
+        type: 'IMPORT',
+        title: 'Lead created',
+        performedBy: { connect: { id: userId } }
+      }
+    }
+  },
+  include: { activities: true }
+});
+\`\`\`
+
+### Updating Status with Activity Log
+
+\`\`\`typescript
+const [lead, activity] = await prisma.$transaction([
+  prisma.lead.update({
+    where: { id: leadId },
+    data: { status: 'QUALIFIED' }
+  }),
+  prisma.activity.create({
+    data: {
+      type: 'STATUS_CHANGE',
+      title: 'Status changed to Qualified',
+      leadId,
+      performedById: userId,
+      metadata: { from: 'NEW', to: 'QUALIFIED' }
+    }
+  })
+]);
+\`\`\`
+```
+
+#### Validation Criteria
+- [ ] File exists at `wilson-leadgen/.edison/guides/entities.md`
+- [ ] Documents Lead entity with schema and queries
+- [ ] Documents Activity entity with schema
+- [ ] Documents User entity with Better-Auth fields
+- [ ] Includes common patterns with transaction examples
+
+---
+
+### T-073: Create Wilson Integrations Guide
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-072
+**Parallel Execution**: No
+
+#### Description
+Create the Wilson-specific external integrations documentation covering Odoo and Piloterr APIs.
+
+#### Files Affected
+- `wilson-leadgen/.edison/guides/integrations.md` - CREATE (~180 lines)
+
+#### Implementation Details
+
+```markdown
+# Wilson External Integrations Guide
+
+This guide documents Wilson's external API integrations for agents implementing sync functionality.
+
+## Odoo Integration
+
+Wilson syncs leads and activities with Odoo CRM.
+
+### Configuration
+
+\`\`\`typescript
+// Environment variables
+ODOO_URL=https://your-instance.odoo.com
+ODOO_DB=your_database
+ODOO_USERNAME=api_user
+ODOO_API_KEY=your_api_key
+\`\`\`
+
+### Client Setup
+
+\`\`\`typescript
+// packages/integrations/src/odoo/client.ts
+import Odoo from 'odoo-await';
+
+export const odooClient = new Odoo({
+  url: process.env.ODOO_URL!,
+  db: process.env.ODOO_DB!,
+  username: process.env.ODOO_USERNAME!,
+  password: process.env.ODOO_API_KEY!
+});
+
+export async function connectOdoo() {
+  await odooClient.connect();
+  return odooClient;
+}
+\`\`\`
+
+### Sync Patterns
+
+\`\`\`typescript
+// Sync lead to Odoo
+export async function syncLeadToOdoo(lead: Lead) {
+  const client = await connectOdoo();
+
+  const odooLead = await client.create('crm.lead', {
+    name: lead.name || lead.email,
+    email_from: lead.email,
+    phone: lead.phone,
+    partner_name: lead.company,
+    description: \`Source: \${lead.source}\`
+  });
+
+  // Store Odoo ID in metadata
+  await prisma.lead.update({
+    where: { id: lead.id },
+    data: {
+      metadata: {
+        ...lead.metadata,
+        odooId: odooLead
+      }
+    }
+  });
+
+  return odooLead;
+}
+
+// Import leads from Odoo
+export async function importLeadsFromOdoo(since: Date) {
+  const client = await connectOdoo();
+
+  const odooLeads = await client.search_read('crm.lead', {
+    domain: [['create_date', '>=', since.toISOString()]],
+    fields: ['name', 'email_from', 'phone', 'partner_name']
+  });
+
+  for (const odooLead of odooLeads) {
+    await prisma.lead.upsert({
+      where: { email: odooLead.email_from },
+      create: {
+        email: odooLead.email_from,
+        name: odooLead.name,
+        phone: odooLead.phone,
+        company: odooLead.partner_name,
+        source: 'ODOO'
+      },
+      update: {
+        name: odooLead.name,
+        phone: odooLead.phone,
+        company: odooLead.partner_name
+      }
+    });
+  }
+}
+\`\`\`
+
+## Piloterr Integration
+
+Wilson uses Piloterr for LinkedIn lead enrichment.
+
+### Configuration
+
+\`\`\`typescript
+// Environment variables
+PILOTERR_API_KEY=your_api_key
+PILOTERR_WEBHOOK_SECRET=your_webhook_secret
+\`\`\`
+
+### Client Setup
+
+\`\`\`typescript
+// packages/integrations/src/piloterr/client.ts
+const PILOTERR_BASE_URL = 'https://api.piloterr.com/v1';
+
+export async function piloterrFetch<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  const response = await fetch(\`\${PILOTERR_BASE_URL}\${endpoint}\`, {
+    ...options,
+    headers: {
+      'Authorization': \`Bearer \${process.env.PILOTERR_API_KEY}\`,
+      'Content-Type': 'application/json',
+      ...options?.headers
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(\`Piloterr API error: \${response.status}\`);
+  }
+
+  return response.json();
+}
+\`\`\`
+
+### Enrichment Patterns
+
+\`\`\`typescript
+// Enrich lead from LinkedIn
+export async function enrichLeadFromLinkedIn(lead: Lead) {
+  if (!lead.email) return null;
+
+  const profile = await piloterrFetch<LinkedInProfile>(
+    \`/linkedin/profile?email=\${encodeURIComponent(lead.email)}\`
+  );
+
+  if (!profile) return null;
+
+  return prisma.lead.update({
+    where: { id: lead.id },
+    data: {
+      name: profile.fullName || lead.name,
+      company: profile.company || lead.company,
+      metadata: {
+        ...lead.metadata,
+        linkedin: {
+          url: profile.url,
+          headline: profile.headline,
+          location: profile.location,
+          enrichedAt: new Date().toISOString()
+        }
+      }
+    }
+  });
+}
+
+// Webhook handler
+export async function handlePiloterrWebhook(payload: PiloterrWebhook) {
+  const { type, data } = payload;
+
+  switch (type) {
+    case 'profile.enriched':
+      await processEnrichedProfile(data);
+      break;
+    case 'batch.completed':
+      await processBatchResults(data);
+      break;
+  }
+}
+\`\`\`
+
+## Error Handling
+
+\`\`\`typescript
+import { IntegrationError } from '@wilson/errors';
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3
+): Promise<T> {
+  let lastError: Error;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+    }
+  }
+
+  throw new IntegrationError(
+    \`Failed after \${maxRetries} retries: \${lastError!.message}\`
+  );
+}
+\`\`\`
+```
+
+#### Validation Criteria
+- [ ] File exists at `wilson-leadgen/.edison/guides/integrations.md`
+- [ ] Documents Odoo integration with client setup and sync patterns
+- [ ] Documents Piloterr integration with enrichment patterns
+- [ ] Includes webhook handling examples
+- [ ] Includes error handling with retry pattern
+
+---
+
+## 8b. Edison Pack Completion Track (NEW)
+
+This track completes missing or incomplete Edison packs for technology-specific functionality.
+
+### T-074: Create Better-Auth Pack
+
+**Priority**: P1 - CRITICAL
+**Dependencies**: None
+**Parallel Execution**: Yes
+
+#### Description
+Create the complete Better-Auth pack for Edison with authentication patterns, validators, and guidelines.
+
+#### Files Affected
+- `edison/packs/better-auth/agents/auth-additions.md` - CREATE
+- `edison/packs/better-auth/validators/auth-validator.md` - CREATE
+- `edison/packs/better-auth/guidelines/AUTH.md` - CREATE
+- `edison/packs/better-auth/rules/auth-rules.yml` - CREATE
+- `edison/packs/better-auth/manifest.yml` - CREATE
+
+#### Implementation Details
+
+**manifest.yml:**
+```yaml
+# edison/packs/better-auth/manifest.yml
+name: better-auth
+version: "1.0.0"
+description: "Better-Auth authentication pack for Edison"
+author: "Edison Team"
+
+technologies:
+  - better-auth
+  - authentication
+  - sessions
+
+context7:
+  packageId: /better-auth/better-auth
+  defaultTokens: 8000
+  topics:
+    - authentication
+    - sessions
+    - providers
+    - middleware
+    - client-setup
+
+agentAdditions:
+  - api-builder
+  - feature-implementer
+
+validatorAdditions:
+  - security
+
+ruleCategories:
+  - auth
+  - security
+```
+
+**guidelines/AUTH.md:**
+```markdown
+# Authentication Guidelines (Better-Auth)
+
+## Overview
+
+This pack provides Better-Auth integration patterns for Edison projects.
+
+## Setup Requirements
+
+### Server Setup
+
+\`\`\`typescript
+// lib/auth.ts
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { prisma } from '@/lib/prisma';
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: 'postgresql'
+  }),
+  emailAndPassword: {
+    enabled: true
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24      // 1 day
+  }
+});
+\`\`\`
+
+### Client Setup
+
+\`\`\`typescript
+// lib/auth-client.ts
+import { createAuthClient } from 'better-auth/react';
+
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL
+});
+
+export const { signIn, signOut, useSession } = authClient;
+\`\`\`
+
+### Middleware
+
+\`\`\`typescript
+// middleware.ts
+import { auth } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: request.headers
+  });
+
+  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/api/:path*']
+};
+\`\`\`
+
+## Security Requirements
+
+1. **ALWAYS** verify session server-side for protected routes
+2. **NEVER** trust client-side session state alone
+3. **ALWAYS** use HTTPS in production
+4. **ALWAYS** set secure cookie options
+5. **NEVER** expose session tokens in URLs
+6. **ALWAYS** implement rate limiting on auth endpoints
+
+## Protected API Route Pattern
+
+\`\`\`typescript
+// app/api/protected/route.ts
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+
+export async function GET() {
+  const session = await auth.api.getSession({
+    headers: headers()
+  });
+
+  if (!session) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Proceed with authenticated logic
+  return Response.json({ user: session.user });
+}
+\`\`\`
+
+## Common Patterns
+
+### Sign In
+
+\`\`\`typescript
+const handleSignIn = async (email: string, password: string) => {
+  const result = await authClient.signIn.email({
+    email,
+    password
+  });
+
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+
+  return result.data;
+};
+\`\`\`
+
+### Sign Out
+
+\`\`\`typescript
+const handleSignOut = async () => {
+  await authClient.signOut();
+  router.push('/login');
+};
+\`\`\`
+
+### Protected Component
+
+\`\`\`typescript
+'use client';
+
+import { useSession } from '@/lib/auth-client';
+
+export function ProtectedComponent() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) return <Loading />;
+  if (!session) return <Unauthorized />;
+
+  return <AuthenticatedContent user={session.user} />;
+}
+\`\`\`
+```
+
+**rules/auth-rules.yml:**
+```yaml
+# edison/packs/better-auth/rules/auth-rules.yml
+rules:
+  RULE.AUTH.SERVER_VERIFY:
+    name: "Server-Side Session Verification"
+    content: "ALWAYS verify sessions server-side using auth.api.getSession()"
+    category: auth
+    severity: critical
+    applies_to: [agent, validator]
+
+  RULE.AUTH.NO_CLIENT_TRUST:
+    name: "No Client-Side Trust"
+    content: "NEVER trust client-side session state for authorization decisions"
+    category: security
+    severity: critical
+    applies_to: [agent, validator]
+
+  RULE.AUTH.MIDDLEWARE_PROTECT:
+    name: "Middleware Protection"
+    content: "Protected routes MUST be guarded by middleware"
+    category: auth
+    severity: high
+    applies_to: [agent]
+
+  RULE.AUTH.SECURE_COOKIES:
+    name: "Secure Cookie Configuration"
+    content: "Session cookies MUST use secure, httpOnly, sameSite settings in production"
+    category: security
+    severity: critical
+    applies_to: [agent, validator]
+```
+
+#### Validation Criteria
+- [ ] Pack directory exists at `edison/packs/better-auth/`
+- [ ] manifest.yml exists and parses without errors
+- [ ] AUTH.md guideline exists with setup instructions
+- [ ] auth-rules.yml exists with 4+ rules
+- [ ] All rules have applies_to field
+- [ ] Context7 package ID configured correctly
+
+---
+
+### T-075: Complete Motion Pack
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-051 (Motion 12 patterns)
+**Parallel Execution**: No
+
+#### Description
+Complete the Motion pack with Motion 12 specific patterns, animations, gestures, and layout animations.
+
+#### Files Affected
+- `edison/packs/motion/guidelines/ANIMATIONS.md` - CREATE (~200 lines)
+- `edison/packs/motion/agents/component-builder-additions.md` - MODIFY (add Motion 12 section)
+- `edison/packs/motion/manifest.yml` - CREATE
+
+#### Implementation Details
+
+**guidelines/ANIMATIONS.md:**
+```markdown
+# Motion 12 Animation Guidelines
+
+## Overview
+
+This guide covers Motion 12 patterns for smooth, performant animations.
+
+## Basic Animations
+
+\`\`\`tsx
+import { motion } from 'motion/react';
+
+// Fade in
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.3 }}
+>
+  Content
+</motion.div>
+
+// Scale on hover
+<motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+>
+  Click me
+</motion.button>
+\`\`\`
+
+## Variants
+
+\`\`\`tsx
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1 }
+};
+
+<motion.ul
+  variants={containerVariants}
+  initial="hidden"
+  animate="visible"
+>
+  {items.map(item => (
+    <motion.li key={item.id} variants={itemVariants}>
+      {item.name}
+    </motion.li>
+  ))}
+</motion.ul>
+\`\`\`
+
+## AnimatePresence
+
+\`\`\`tsx
+import { AnimatePresence, motion } from 'motion/react';
+
+<AnimatePresence mode="wait">
+  {isVisible && (
+    <motion.div
+      key="modal"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Modal onClose={() => setIsVisible(false)} />
+    </motion.div>
+  )}
+</AnimatePresence>
+\`\`\`
+
+## Layout Animations
+
+\`\`\`tsx
+// Automatic layout animation
+<motion.div layout>
+  {isExpanded ? <ExpandedContent /> : <CollapsedContent />}
+</motion.div>
+
+// Shared layout animation
+<motion.div layoutId="card">
+  <Card />
+</motion.div>
+\`\`\`
+
+## Gestures
+
+\`\`\`tsx
+<motion.div
+  drag
+  dragConstraints={{ left: 0, right: 300, top: 0, bottom: 300 }}
+  dragElastic={0.2}
+  whileDrag={{ scale: 1.1 }}
+>
+  Drag me
+</motion.div>
+\`\`\`
+
+## Scroll Animations
+
+\`\`\`tsx
+import { useScroll, useTransform } from 'motion/react';
+
+function ScrollAnimated() {
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
+  return (
+    <motion.div style={{ opacity }}>
+      Fades on scroll
+    </motion.div>
+  );
+}
+\`\`\`
+
+## Best Practices
+
+1. **Use `layout` prop** for smooth dimension changes
+2. **Prefer `transform` properties** (scale, rotate, x, y) over layout properties
+3. **Use `AnimatePresence`** for exit animations
+4. **Keep animations under 300ms** for responsiveness
+5. **Use `will-change: transform`** for complex animations
+6. **Test on low-end devices** for performance
+```
+
+#### Validation Criteria
+- [ ] guidelines/ANIMATIONS.md exists with Motion 12 patterns
+- [ ] Covers: basic animations, variants, AnimatePresence, layout, gestures, scroll
+- [ ] All code examples use correct Motion 12 import (`motion/react`)
+- [ ] manifest.yml configured with Context7 package ID
+
+---
+
+### T-076: Complete Tailwind v4 Pack
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-050 (Tailwind v4 rules)
+**Parallel Execution**: No
+
+#### Description
+Complete the Tailwind pack with v4-specific features including CSS variables, new syntax, and configuration patterns.
+
+#### Files Affected
+- `edison/packs/tailwind/guidelines/TAILWIND_V4.md` - CREATE (~150 lines)
+- `edison/packs/tailwind/rules/tailwind-rules.yml` - MODIFY (add v4 rules)
+
+#### Implementation Details
+
+**guidelines/TAILWIND_V4.md:**
+```markdown
+# Tailwind CSS v4 Guidelines
+
+## Breaking Changes from v3
+
+### Import Syntax
+
+\`\`\`css
+/* v3 - OLD */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* v4 - NEW */
+@import "tailwindcss";
+\`\`\`
+
+### CSS Variables Theme
+
+\`\`\`css
+/* v4 uses CSS variables for theming */
+@theme {
+  --color-primary: #3b82f6;
+  --color-secondary: #6366f1;
+  --font-sans: 'Inter', sans-serif;
+  --radius-lg: 0.75rem;
+}
+\`\`\`
+
+### font-sans Requirement
+
+**CRITICAL**: In v4, `font-sans` MUST be explicitly applied:
+
+\`\`\`tsx
+// Layout root
+<body className="font-sans">
+  {children}
+</body>
+\`\`\`
+
+### Dark Mode
+
+\`\`\`css
+/* v4 CSS-first dark mode */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: #0a0a0a;
+    --color-foreground: #ffffff;
+  }
+}
+\`\`\`
+
+## Cache Clearing
+
+After modifying Tailwind config:
+
+\`\`\`bash
+# Clear Next.js cache
+rm -rf .next
+
+# Clear node_modules/.cache
+rm -rf node_modules/.cache
+
+# Restart dev server
+pnpm dev
+\`\`\`
+
+## New v4 Features
+
+### Container Queries
+
+\`\`\`tsx
+<div className="@container">
+  <div className="@lg:flex @lg:gap-4">
+    Responds to container, not viewport
+  </div>
+</div>
+\`\`\`
+
+### Arbitrary Variants
+
+\`\`\`tsx
+<div className="[&>*]:mb-4 [&:nth-child(odd)]:bg-gray-50">
+  Complex selectors
+</div>
+\`\`\`
+
+### CSS Functions
+
+\`\`\`css
+.element {
+  /* Direct CSS function usage */
+  background: theme(colors.primary);
+  padding: calc(theme(spacing.4) + 2px);
+}
+\`\`\`
+
+## Configuration
+
+\`\`\`typescript
+// tailwind.config.ts (v4)
+import type { Config } from 'tailwindcss';
+
+export default {
+  content: [
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}'
+  ],
+  theme: {
+    extend: {
+      // Extensions work the same
+    }
+  }
+} satisfies Config;
+\`\`\`
+```
+
+#### Validation Criteria
+- [ ] TAILWIND_V4.md exists with v4-specific patterns
+- [ ] Documents breaking changes from v3
+- [ ] Documents CSS variables theming
+- [ ] Documents font-sans requirement
+- [ ] Documents cache clearing procedure
+
+---
+
+### T-077: Complete Prisma Pack
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-028 (Schema template)
+**Parallel Execution**: No
+
+#### Description
+Complete the Prisma pack with comprehensive schema templates, migration safety classifications, and query patterns.
+
+#### Files Affected
+- `edison/packs/prisma/guidelines/SCHEMA_TEMPLATE.md` - CREATE
+- `edison/packs/prisma/guidelines/MIGRATION_SAFETY.md` - CREATE
+- `edison/packs/prisma/guidelines/QUERY_PATTERNS.md` - CREATE
+
+#### Implementation Details
+
+**guidelines/MIGRATION_SAFETY.md:**
+```markdown
+# Prisma Migration Safety Guide
+
+## Safe Operations ✅
+
+These operations are safe and reversible:
+
+| Operation | Example | Risk Level |
+|-----------|---------|------------|
+| Add column (nullable) | `field String?` | LOW |
+| Add column with default | `field String @default("")` | LOW |
+| Create table | `model NewTable {}` | LOW |
+| Create index | `@@index([field])` | LOW |
+| Add enum value | `enum Status { NEW OLD }` → `{ NEW OLD ARCHIVE }` | LOW |
+
+## Dangerous Operations ⚠️
+
+These require careful planning:
+
+| Operation | Risk | Mitigation |
+|-----------|------|------------|
+| Add required column | HIGH | Add as nullable first, migrate data, then make required |
+| Rename column | HIGH | Create new column, migrate data, drop old |
+| Change type | HIGH | Create new column, migrate data, drop old |
+| Remove column | MEDIUM | Ensure no code references, backup data |
+| Remove table | HIGH | Ensure no references, backup data |
+
+## Migration Workflow
+
+\`\`\`bash
+# 1. Create migration (don't apply)
+npx prisma migrate dev --create-only --name descriptive_name
+
+# 2. Review generated SQL
+cat prisma/migrations/[timestamp]_descriptive_name/migration.sql
+
+# 3. Test on local database
+npx prisma migrate dev
+
+# 4. Test on staging (if available)
+DATABASE_URL=$STAGING_URL npx prisma migrate deploy
+
+# 5. Apply to production
+DATABASE_URL=$PROD_URL npx prisma migrate deploy
+\`\`\`
+
+## Rollback Strategy
+
+\`\`\`bash
+# 1. Identify the migration to rollback
+npx prisma migrate status
+
+# 2. Create a new migration that undoes changes
+npx prisma migrate dev --create-only --name rollback_[original]
+
+# 3. Manually write the rollback SQL
+# Edit the migration file
+
+# 4. Apply the rollback
+npx prisma migrate dev
+\`\`\`
+
+## Production Checklist
+
+- [ ] Migration reviewed by second person
+- [ ] Backup created before migration
+- [ ] Downtime window scheduled (if needed)
+- [ ] Rollback plan documented
+- [ ] Monitoring alerts configured
+```
+
+#### Validation Criteria
+- [ ] MIGRATION_SAFETY.md exists with safe/dangerous operations
+- [ ] Documents migration workflow with 5 steps
+- [ ] Documents rollback strategy
+- [ ] Includes production checklist
+
+---
+
+### T-078: Complete React Pack
+
+**Priority**: P2 - HIGH
+**Dependencies**: None
+**Parallel Execution**: Yes
+
+#### Description
+Complete the React pack with React 19 specific features including new hooks and Server Component patterns.
+
+#### Files Affected
+- `edison/packs/react/guidelines/REACT_19.md` - CREATE (~150 lines)
+
+#### Implementation Details
+
+**guidelines/REACT_19.md:**
+```markdown
+# React 19 Guidelines
+
+## New Hooks
+
+### use() Hook
+
+\`\`\`tsx
+import { use } from 'react';
+
+// Read a promise
+function Comments({ commentsPromise }) {
+  const comments = use(commentsPromise);
+  return comments.map(c => <Comment key={c.id} {...c} />);
+}
+
+// Read context conditionally
+function Theme({ showTheme }) {
+  if (showTheme) {
+    const theme = use(ThemeContext);
+    return <div style={{ color: theme.color }}>Themed</div>;
+  }
+  return null;
+}
+\`\`\`
+
+### useFormStatus()
+
+\`\`\`tsx
+'use client';
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Submitting...' : 'Submit'}
+    </button>
+  );
+}
+\`\`\`
+
+### useOptimistic()
+
+\`\`\`tsx
+'use client';
+import { useOptimistic } from 'react';
+
+function Messages({ messages }) {
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (state, newMessage) => [...state, { ...newMessage, sending: true }]
+  );
+
+  async function sendMessage(formData) {
+    const message = formData.get('message');
+    addOptimisticMessage({ text: message, sending: true });
+    await submitMessage(message);
+  }
+
+  return (
+    <>
+      {optimisticMessages.map(m => (
+        <Message key={m.id} {...m} />
+      ))}
+      <form action={sendMessage}>
+        <input name="message" />
+      </form>
+    </>
+  );
+}
+\`\`\`
+
+## Server Components
+
+### When to Use Server Components
+
+| Use Server Component | Use Client Component |
+|---------------------|---------------------|
+| Fetch data | Event handlers (onClick, onChange) |
+| Access backend resources | useState, useEffect, useReducer |
+| Keep secrets server-side | Browser APIs |
+| Large dependencies | Custom hooks with state |
+
+### Server Component Pattern
+
+\`\`\`tsx
+// app/users/page.tsx (Server Component - default)
+import { prisma } from '@/lib/prisma';
+
+export default async function UsersPage() {
+  const users = await prisma.user.findMany();
+
+  return (
+    <div>
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  );
+}
+\`\`\`
+
+### Client Component Pattern
+
+\`\`\`tsx
+// components/counter.tsx
+'use client';
+
+import { useState } from 'react';
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(c => c + 1)}>
+      Count: {count}
+    </button>
+  );
+}
+\`\`\`
+
+## Server Actions
+
+\`\`\`tsx
+// app/actions.ts
+'use server';
+
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+
+export async function createUser(formData: FormData) {
+  const name = formData.get('name') as string;
+
+  await prisma.user.create({
+    data: { name }
+  });
+
+  revalidatePath('/users');
+}
+\`\`\`
+
+## Best Practices
+
+1. **Default to Server Components** - Only add 'use client' when needed
+2. **Lift state up** - Keep state in smallest necessary component
+3. **Use Suspense boundaries** - Wrap async components for loading states
+4. **Validate on server** - Never trust client-side validation alone
+```
+
+#### Validation Criteria
+- [ ] REACT_19.md exists with new hooks documentation
+- [ ] Documents use(), useFormStatus(), useOptimistic()
+- [ ] Documents Server vs Client component decision matrix
+- [ ] Documents Server Actions pattern
+
+---
+
+### T-079: Complete Next.js Pack
+
+**Priority**: P2 - HIGH
+**Dependencies**: T-027 (Server/Client examples)
+**Parallel Execution**: No
+
+#### Description
+Complete the Next.js pack with Next.js 16 specific patterns including App Router, Server Actions, and Middleware.
+
+#### Files Affected
+- `edison/packs/nextjs/guidelines/NEXTJS_16.md` - CREATE (~180 lines)
+
+#### Implementation Details
+
+**guidelines/NEXTJS_16.md:**
+```markdown
+# Next.js 16 Guidelines
+
+## App Router Structure
+
+\`\`\`
+app/
+├── layout.tsx          # Root layout (required)
+├── page.tsx            # Home page (/)
+├── loading.tsx         # Loading UI
+├── error.tsx           # Error boundary
+├── not-found.tsx       # 404 page
+├── dashboard/
+│   ├── layout.tsx      # Dashboard layout
+│   ├── page.tsx        # /dashboard
+│   └── settings/
+│       └── page.tsx    # /dashboard/settings
+└── api/
+    └── users/
+        └── route.ts    # /api/users
+\`\`\`
+
+## Route Handlers
+
+\`\`\`typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1)
+});
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get('page') || '1');
+
+  const users = await prisma.user.findMany({
+    skip: (page - 1) * 10,
+    take: 10
+  });
+
+  return NextResponse.json(users);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const data = createUserSchema.parse(body);
+
+    const user = await prisma.user.create({ data });
+
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: error.issues },
+        { status: 400 }
+      );
+    }
+    throw error;
+  }
+}
+\`\`\`
+
+## Middleware
+
+\`\`\`typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // Check authentication
+  const token = request.cookies.get('session');
+
+  if (!token && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Add headers
+  const response = NextResponse.next();
+  response.headers.set('x-request-id', crypto.randomUUID());
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/api/:path*'
+  ]
+};
+\`\`\`
+
+## Server Actions
+
+\`\`\`typescript
+// app/actions/users.ts
+'use server';
+
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().min(1),
+  email: z.string().email()
+});
+
+export async function createUser(formData: FormData) {
+  const data = schema.parse({
+    name: formData.get('name'),
+    email: formData.get('email')
+  });
+
+  await prisma.user.create({ data });
+
+  revalidatePath('/users');
+  redirect('/users');
+}
+\`\`\`
+
+## Data Fetching
+
+### Server Component (Recommended)
+
+\`\`\`tsx
+// app/users/page.tsx
+export default async function UsersPage() {
+  const users = await prisma.user.findMany();
+
+  return <UserList users={users} />;
+}
+\`\`\`
+
+### With Suspense
+
+\`\`\`tsx
+import { Suspense } from 'react';
+
+export default function Page() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <AsyncComponent />
+    </Suspense>
+  );
+}
+\`\`\`
+
+## Caching & Revalidation
+
+\`\`\`typescript
+// Time-based revalidation
+export const revalidate = 3600; // 1 hour
+
+// On-demand revalidation
+import { revalidatePath, revalidateTag } from 'next/cache';
+
+revalidatePath('/users');
+revalidateTag('users');
+
+// Fetch with cache options
+const data = await fetch(url, {
+  next: { revalidate: 3600, tags: ['users'] }
+});
+\`\`\`
+
+## NOT Fastify!
+
+**CRITICAL**: Next.js 16 uses its own server. Do NOT use Fastify.
+
+- ✅ Use Next.js route handlers (`app/api/*/route.ts`)
+- ❌ Do NOT install Fastify
+- ❌ Do NOT create custom server.js
+```
+
+#### Validation Criteria
+- [ ] NEXTJS_16.md exists with App Router patterns
+- [ ] Documents route handlers with full example
+- [ ] Documents middleware pattern
+- [ ] Documents Server Actions
+- [ ] Includes "NOT Fastify!" warning
+
+---
+
 ## 9. Edison-Zen Track (Parallel)
 
 ### 9.1 Zen Track Overview
@@ -4549,7 +6481,28 @@ python scripts/validators/migration_validator.py
 | T-067 | Create delegation examples directory | ⬜ TODO | ⬜ T-045 | |
 | T-068 | Restore TDD troubleshooting section | ⬜ TODO | ⬜ T-023 | |
 
-### 11.6 Zen Track Tasks Status
+### 11.6 Wilson Overlay Track Tasks Status
+
+| Task ID | Title | Status | Dependencies Met | Notes |
+|---------|-------|--------|------------------|-------|
+| T-069 | Create Wilson Context7 Package Configuration | ⬜ TODO | ⬜ T-014 | wilson-leadgen/.edison/config/ |
+| T-070 | Create Wilson Validator Trigger Patterns | ⬜ TODO | ✅ None | wilson-leadgen/.edison/config/ |
+| T-071 | Create Wilson Test Helpers Guide | ⬜ TODO | ✅ None | wilson-leadgen/.edison/guides/ |
+| T-072 | Create Wilson Entity Examples Guide | ⬜ TODO | ⬜ T-071 | wilson-leadgen/.edison/guides/ |
+| T-073 | Create Wilson Integrations Guide | ⬜ TODO | ⬜ T-072 | wilson-leadgen/.edison/guides/ |
+
+### 11.7 Edison Pack Track Tasks Status
+
+| Task ID | Title | Status | Dependencies Met | Notes |
+|---------|-------|--------|------------------|-------|
+| T-074 | Create Better-Auth Pack | ⬜ TODO | ✅ None | edison/packs/better-auth/ |
+| T-075 | Complete Motion Pack | ⬜ TODO | ⬜ T-051 | Motion 12 patterns |
+| T-076 | Complete Tailwind v4 Pack | ⬜ TODO | ⬜ T-050 | CSS variables, v4 syntax |
+| T-077 | Complete Prisma Pack | ⬜ TODO | ⬜ T-028 | Migration safety, schema template |
+| T-078 | Complete React Pack | ⬜ TODO | ✅ None | React 19 hooks |
+| T-079 | Complete Next.js Pack | ⬜ TODO | ⬜ T-027 | App Router, Server Actions |
+
+### 11.8 Zen Track Tasks Status
 
 | Task ID | Title | Status | Dependencies Met | Notes |
 |---------|-------|--------|------------------|-------|
@@ -4562,19 +6515,21 @@ python scripts/validators/migration_validator.py
 | T-ZEN-007 | Document Zen Setup in Edison README | ⬜ TODO | ⬜ T-ZEN-001-006 | |
 | T-ZEN-008 | End-to-End Zen Verification Test | ⬜ TODO | ⬜ T-ZEN-001-006 | |
 
-### 11.7 Progress Summary
+### 11.9 Progress Summary
 
 | Priority | Total | Done | In Progress | Remaining |
 |----------|-------|------|-------------|-----------|
 | P0 - BLOCKER | 12 | 0 | 0 | 12 |
-| P1 - CRITICAL | 18 | 0 | 0 | 18 |
-| P2 - HIGH | 22 | 0 | 0 | 22 |
+| P1 - CRITICAL | 23 | 0 | 0 | 23 |
+| P2 - HIGH | 27 | 0 | 0 | 27 |
 | P3 - MEDIUM | 9 | 0 | 0 | 9 |
-| P4 - LOW | 7 | 0 | 0 | 7 |
+| P4 - LOW | 0 | 0 | 0 | 0 |
+| Wilson Overlay | 5 | 0 | 0 | 5 |
+| Edison Packs | 6 | 0 | 0 | 6 |
 | Zen Track | 8 | 0 | 0 | 8 |
-| **TOTAL** | **68** | **0** | **0** | **68** |
+| **TOTAL** | **79** | **0** | **0** | **79** |
 
-### 11.8 Wave Execution Log
+### 11.10 Wave Execution Log
 
 Record each wave of execution here:
 
@@ -4715,8 +6670,24 @@ Before declaring migration complete:
 - [ ] QUALITY Premium Design Standards restored
 - [ ] START prompts (NEW, RESUME, VALIDATE) exist
 
+### Wilson Overlay (wilson-leadgen/.edison/)
+- [ ] `config/context7-packages.yml` exists with 7 packages
+- [ ] `config/validators.yml` exists with 8 validator trigger patterns
+- [ ] `guides/test-helpers.md` exists with withTestServer and createAuthenticatedRequest
+- [ ] `guides/entities.md` exists with Lead, Activity, User patterns
+- [ ] `guides/integrations.md` exists with Odoo and Piloterr patterns
+
+### Edison Packs
+- [ ] `packs/better-auth/` exists with AUTH.md and rules
+- [ ] `packs/motion/guidelines/ANIMATIONS.md` exists with Motion 12 patterns
+- [ ] `packs/tailwind/guidelines/TAILWIND_V4.md` exists with v4 patterns
+- [ ] `packs/prisma/guidelines/MIGRATION_SAFETY.md` exists
+- [ ] `packs/react/guidelines/REACT_19.md` exists with new hooks
+- [ ] `packs/nextjs/guidelines/NEXTJS_16.md` exists with App Router patterns
+
 ---
 
 *Plan Generated: 2025-11-26*
-*Total Tasks: 68 (60 Main Track + 8 Zen Track)*
+*Plan Updated: 2025-11-26 (Added Wilson Overlay + Edison Pack tracks)*
+*Total Tasks: 79 (71 Main Track + 8 Zen Track)*
 *Policy: ⚠️ IMPLEMENT EVERYTHING - No deferrals*
