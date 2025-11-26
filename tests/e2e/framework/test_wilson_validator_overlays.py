@@ -13,7 +13,7 @@ def test_project_overlays_contain_project_specific_content():
     """Verify overlays have project-specific context (not generic)"""
     overlays_dir = Path(".agents/validators/overlays")
 
-    global_overlay = overlays_dir / "global-project-context.md"
+    global_overlay = overlays_dir / "global-project.md"
     if not global_overlay.exists():
         pytest.skip("Overlay not created yet")
 
@@ -40,7 +40,7 @@ def test_project_overlays_contain_project_specific_content():
 
 def test_global_overlay_has_post_training_packages():
     """Verify global overlay lists project's post-training packages"""
-    overlay_path = Path(".agents/validators/overlays/global-project-context.md")
+    overlay_path = Path(".agents/validators/overlays/global-project.md")
 
     if not overlay_path.exists():
         pytest.skip("Overlay not created yet")

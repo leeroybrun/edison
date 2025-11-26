@@ -154,7 +154,7 @@ Validators produce JSON reports in this structure:
 ### Global Validators (Always Run)
 
 **Global validators** are defined in validator configuration:
-- Check `.edison/_generated/orchestrator-manifest.json` for current global validators
+- Check `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for current global validators
 - Typically includes multiple models for diverse perspectives
 - Most global validators are blocking
 
@@ -295,7 +295,7 @@ Check active pack guidelines for framework-specific validation criteria:
 - **Database Tools**: Schema design, migration strategy
 - **Styling Systems**: Design tokens, responsive patterns
 
-Refer to `.edison/_generated/orchestrator-manifest.json` for active pack validators and their specific focus areas.
+Refer to `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for active pack validators and their specific focus areas.
 
 ---
 

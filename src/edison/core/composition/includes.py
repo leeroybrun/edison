@@ -11,12 +11,24 @@ from typing import List, Optional, Set, Tuple
 
 from edison.core.paths import PathResolver
 from edison.core.file_io.utils import write_json_safe, read_json_with_default, ensure_dir
+from edison.core.config.manager import ConfigManager
 
 from ..paths.project import get_project_config_dir
 from ..utils.text import ENGINE_VERSION
 
-# Engine constants
-MAX_DEPTH = 3
+
+def _get_max_depth() -> int:
+    """Get max include depth from configuration."""
+    try:
+        cfg = ConfigManager().load_config(validate=False)
+        return cfg.get("composition", {}).get("includes", {}).get("max_depth", 3)
+    except Exception:
+        # Fallback to safe default if config cannot be loaded
+        return 3
+
+
+# Engine constants - kept for backward compatibility but reads from config
+MAX_DEPTH = _get_max_depth()
 
 
 class ComposeError(RuntimeError):
@@ -61,27 +73,26 @@ def _normalize_include_target(raw: str, base_file: Path) -> Path:
 
     target = Path(raw)
     repo_root = _repo_root()
-    # Absolute from repo root when path starts with '/' or a repo-root child like '.edison' or project config dir
-    if raw.startswith("/") or raw.startswith(".edison/"):
-        if raw.startswith(".edison/") and repo_root.name == ".edison":
-            return repo_root / raw[len(".edison/") :]
-        return repo_root / raw.lstrip("/")
-
-    if raw.startswith("packs/"):
-        base = repo_root if repo_root.name == ".edison" else repo_root / ".edison"
-        return base / raw
-
     project_dir = get_project_config_dir(repo_root)
     project_prefix = f"{project_dir.name}/"
+
+    # Absolute from repo root when path starts with '/' or the project config dir name
+    if raw.startswith("/"):
+        return repo_root / raw.lstrip("/")
+
+    if raw.startswith(project_prefix):
+        relative = raw[len(project_prefix) :]
+        return project_dir / relative
+
+    if raw.startswith("packs/"):
+        base = project_dir if project_dir.exists() else repo_root / project_dir.name
+        return base / raw
 
     # Allow shorthand `project/...` to point at the active project config dir
     if raw.startswith("project/"):
         relative = raw[len("project/") :]
         return project_dir / relative
 
-    if raw.startswith(project_prefix):
-        relative = raw[len(project_prefix) :]
-        return project_dir / relative
     # Otherwise relative to current file
     return base_file.parent / target
 
@@ -101,6 +112,7 @@ def resolve_includes(
     depth: int = 0,
     stack: Optional[List[Path]] = None,
     deps: Optional[Set[Path]] = None,
+    max_depth: Optional[int] = None,
 ) -> Tuple[str, List[Path]]:
     """Resolve include directives in ``content`` relative to ``base_file``.
 
@@ -109,20 +121,32 @@ def resolve_includes(
 
     T-016: NO LEGACY - safe_include() shim removed completely.
     Only modern syntax supported: {{include:path}} and {{include-optional:path}}
+
+    Args:
+        content: Content to resolve includes in
+        base_file: Base file path for relative includes
+        depth: Current recursion depth
+        stack: Stack of files being processed (for cycle detection)
+        deps: Set of dependencies discovered
+        max_depth: Maximum include depth (defaults to config value)
     """
     if stack is None:
         stack = []
     if deps is None:
         deps = set()
 
+    # Get max_depth from config if not provided
+    if max_depth is None:
+        max_depth = _get_max_depth()
+
     # T-016: NO LEGACY - Legacy shim removed (was lines 114-122)
     # Legacy {{safe_include('path', fallback='...')}} syntax is NO LONGER SUPPORTED
     # Use modern {{include-optional:path}} instead
 
-    if depth > MAX_DEPTH:
+    if depth > max_depth:
         chain = " -> ".join([str(_rel(p)) for p in stack])
         raise ComposeError(
-            f"Include depth exceeded (>{MAX_DEPTH}) while processing {_rel(base_file)}. Chain: {chain}"
+            f"Include depth exceeded (>{max_depth}) while processing {_rel(base_file)}. Chain: {chain}"
         )
 
     # Process required includes
@@ -140,7 +164,7 @@ def resolve_includes(
         deps.add(target)
         included = _read_text(target)
         expanded, _ = resolve_includes(
-            included, target, depth=depth + 1, stack=stack + [target], deps=deps
+            included, target, depth=depth + 1, stack=stack + [target], deps=deps, max_depth=max_depth
         )
         return expanded
 
@@ -156,7 +180,7 @@ def resolve_includes(
         deps.add(target)
         included = _read_text(target)
         expanded, _ = resolve_includes(
-            included, target, depth=depth + 1, stack=stack + [target], deps=deps
+            included, target, depth=depth + 1, stack=stack + [target], deps=deps, max_depth=max_depth
         )
         return expanded
 

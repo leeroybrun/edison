@@ -129,8 +129,8 @@ task_id = os.environ["TASK_ID"]
 round_num = int(os.environ["ROUND_NUM"])
 
 with ValidationTransaction(task_id, round_num) as tx:
-    tx.write_validator_report("codex-global", {"ok": True})
-    tx.write_validator_report("claude-global", {"ok": True})
+    tx.write_validator_report("global-codex", {"ok": True})
+    tx.write_validator_report("global-claude", {"ok": True})
     tx.commit()
 """
 
@@ -147,8 +147,8 @@ with ValidationTransaction(task_id, round_num) as tx:
     final_dir = _evidence_dir(project_root, task_id, round_num)
     assert final_dir.exists()
     reports = sorted(p.name for p in final_dir.glob("validator-*-report.json"))
-    assert "validator-codex-global-report.json" in reports
-    assert "validator-claude-global-report.json" in reports
+    assert "validator-global-codex-report.json" in reports
+    assert "validator-global-claude-report.json" in reports
     # Staging directories under TX root should be cleaned after commit
     tx_root = project_root / ".project" / "sessions" / "_tx"
     if tx_root.exists():
@@ -200,7 +200,7 @@ round_num = int(os.environ["ROUND_NUM"])
 
 try:
     with ValidationTransaction(task_id, round_num) as tx:
-        tx.write_validator_report("codex-global", {"ok": False})
+        tx.write_validator_report("global-codex", {"ok": False})
         raise RuntimeError("simulate validator failure")
 except RuntimeError:
     pass
@@ -260,7 +260,7 @@ round_num = int(os.environ["ROUND_NUM"])
 
 try:
     with ValidationTransaction(task_id, round_num) as tx:
-        tx.write_validator_report("codex-global", {"ok": True})
+        tx.write_validator_report("global-codex", {"ok": True})
         raise RuntimeError("second validator failed")
 except RuntimeError:
     pass

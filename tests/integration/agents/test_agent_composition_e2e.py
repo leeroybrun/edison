@@ -10,7 +10,7 @@ class TestAgentCompositionE2E:
     def _write_core_agent(self, root: Path, name: str) -> Path:
         core_agents_dir = root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
-        path = core_agents_dir / f"{name}-core.md"
+        path = core_agents_dir / f"{name}.md"
         content = "\n".join(
             [
                 "# Agent: {{AGENT_NAME}}",

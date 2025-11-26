@@ -250,8 +250,8 @@ def test_evidence_missing_required_files(test_project_dir: TestProjectDir):
         }
         (round_dir / f"validator-{validator_id}-report.json").write_text(json.dumps(payload))
 
-    write_report("codex-global", "codex")
-    write_report("claude-global", "claude")
+    write_report("global-codex", "codex")
+    write_report("global-claude", "claude")
     # Missing: security (codex), performance (codex)
 
     res = run_script("validators/validate", ["--task", task_id], cwd=test_project_dir.tmp_path)

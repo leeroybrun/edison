@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 
 from ..base import PromptAdapter
 from .._config import ConfigMixin
+from ...paths.project import get_project_config_dir
 
 
 class ClaudeAdapter(PromptAdapter, ConfigMixin):
@@ -50,7 +51,8 @@ class ClaudeAdapter(PromptAdapter, ConfigMixin):
         ]
 
         # Preserve the curated Claude Orchestrator Brief from packs, when present.
-        core_brief = self.repo_root / ".edison" / "packs" / "clients" / "claude" / "CLAUDE.md"
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        core_brief = config_dir / "packs" / "clients" / "claude" / "CLAUDE.md"
         if core_brief.exists():
             brief_text = core_brief.read_text(encoding="utf-8").strip()
             if brief_text:

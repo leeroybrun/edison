@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify complete Zen MCP setup using real Edison CLI commands.
+# Verify MCP setup using real Edison CLI commands.
 
 set -euo pipefail
 
@@ -12,25 +12,29 @@ export PYTHONPATH="${REPO_ROOT}/src:${PYTHONPATH:-}"
 # Allow overriding the CLI invocation (defaults to repository Edison)
 IFS=' ' read -r -a EDISON_CMD <<< "${ZEN_VERIFY_EDISON_CMD:-python3 -m edison}"
 
-# Load YAML-driven Zen MCP configuration into environment variables
+# Load YAML-driven MCP configuration into environment variables
 eval "$(python3 - <<'PY'
 import json, shlex
 from edison.data import read_yaml
 
-cfg = read_yaml("config", "zen.yaml") or {}
-mcp = (cfg.get("zen") or {}).get("mcp") or {}
+cfg = read_yaml("config", "mcp.yml") or {}
+mcp = (cfg.get("mcp") or {})
+servers = mcp.get("servers") or {}
+
+server_id = "edison-zen" if "edison-zen" in servers else (next(iter(servers.keys())) if servers else "unknown")
+server = servers.get(server_id, {})
 
 def emit(key: str, value) -> None:
     print(f"{key}={shlex.quote(str(value))}")
 
-emit("ZEN_VERIFY_SERVER_ID", mcp.get("server_id", "edison-zen"))
+emit("ZEN_VERIFY_SERVER_ID", server_id)
 emit("ZEN_VERIFY_CONFIG_FILE", mcp.get("config_file", ".mcp.json"))
-emit("ZEN_VERIFY_COMMAND_BIN", mcp.get("command", "edison"))
+emit("ZEN_VERIFY_COMMAND_BIN", server.get("command", "edison"))
 
-args = mcp.get("args") or []
+args = server.get("args") or []
 print("ZEN_VERIFY_ARGS=(" + " ".join(shlex.quote(str(a)) for a in args) + ")")
 print("ZEN_VERIFY_ARGS_JSON=" + shlex.quote(json.dumps(args)))
-print("ZEN_VERIFY_ENV_JSON=" + shlex.quote(json.dumps(mcp.get("env") or {})))
+print("ZEN_VERIFY_ENV_JSON=" + shlex.quote(json.dumps(server.get("env") or {})))
 PY
 )"
 
@@ -86,31 +90,23 @@ for key, value in resolved_env.items():
 PY
 }
 
-echo "=== Edison Zen Setup Verification ==="
+echo "=== Edison MCP Setup Verification ==="
 
-echo "1. Checking uvx availability..."
-if command -v uvx >/dev/null 2>&1; then
-  echo "   ✅ uvx found: $(uvx --version)"
+echo
+echo "1. Running mcp setup --check..."
+if run_edison mcp setup --check >/dev/null 2>&1; then
+  echo "   ✅ mcp setup check passed"
 else
-  echo "   ❌ uvx not found. Install with: pip install uv" >&2
+  echo "   ❌ mcp setup check failed" >&2
   exit 1
 fi
 
 echo
-echo "2. Running zen setup --check..."
-if run_edison zen setup --check >/dev/null 2>&1; then
-  echo "   ✅ zen setup check passed"
-else
-  echo "   ❌ zen setup check failed" >&2
-  exit 1
-fi
-
-echo
-echo "3. Testing zen configure (dry-run)..."
+echo "2. Testing mcp configure (dry-run)..."
 TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zen-verify-XXXXXX")"
 DRY_JSON_PATH="${TEMP_DIR}/dry-run.json"
 
-run_edison zen configure "${TEMP_DIR}" --dry-run >"${DRY_JSON_PATH}"
+run_edison mcp configure "${TEMP_DIR}" --dry-run >"${DRY_JSON_PATH}"
 verify_json_server_entry "${DRY_JSON_PATH}" "${TEMP_DIR}"
 
 if [[ -f "${TEMP_DIR}/${ZEN_VERIFY_CONFIG_FILE}" ]]; then
@@ -120,8 +116,8 @@ fi
 echo "   ✅ dry-run output validated"
 
 echo
-echo "4. Testing zen configure (write)..."
-run_edison zen configure "${TEMP_DIR}" >/dev/null
+echo "3. Testing mcp configure (write)..."
+run_edison mcp configure "${TEMP_DIR}" >/dev/null
 CONFIG_PATH="${TEMP_DIR}/${ZEN_VERIFY_CONFIG_FILE}"
 
 if [[ ! -f "${CONFIG_PATH}" ]]; then
@@ -132,7 +128,7 @@ verify_json_server_entry "${CONFIG_PATH}" "${TEMP_DIR}"
 echo "   ✅ configuration file created and validated"
 
 echo
-echo "5. Testing configure preserves existing servers..."
+echo "4. Testing configure preserves existing servers..."
 EXISTING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zen-existing-XXXXXX")"
 EXISTING_PATH="${EXISTING_DIR}/${ZEN_VERIFY_CONFIG_FILE}"
 cat >"${EXISTING_PATH}" <<'JSON'
@@ -147,7 +143,7 @@ cat >"${EXISTING_PATH}" <<'JSON'
 }
 JSON
 
-run_edison zen configure "${EXISTING_DIR}" >/dev/null
+run_edison mcp configure "${EXISTING_DIR}" >/dev/null
 
 python3 - <<'PY' "$EXISTING_PATH"
 import json, sys, os
@@ -162,7 +158,7 @@ PY
 echo "   ✅ existing servers preserved"
 
 echo
-echo "6. Running edison init integration..."
+echo "5. Running edison init integration..."
 INIT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zen-init-XXXXXX")"
 run_edison init "${INIT_DIR}" >/dev/null
 
@@ -179,18 +175,5 @@ fi
 verify_json_server_entry "${INIT_CONFIG_PATH}" "${INIT_DIR}"
 echo "   ✅ init created MCP config and .edison structure"
 
-if [[ "${ZEN_VERIFY_SKIP_SERVER:-0}" != "1" ]]; then
-  echo
-  echo "7. Exercising zen start-server (background)..."
-  if timeout 5 run_edison zen start-server --background >/dev/null 2>&1; then
-    echo "   ✅ start-server executed"
-  else
-    echo "   ⚠️  start-server exited non-zero (continuing)" >&2
-  fi
-else
-  echo
-  echo "7. Skipping server start (ZEN_VERIFY_SKIP_SERVER=1)"
-fi
-
 echo
-echo "=== All Zen verification checks completed ==="
+echo "=== All MCP verification checks completed ==="

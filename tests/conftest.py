@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+# Keep the repository free of Python bytecode and __pycache__ artifacts during tests.
+sys.dont_write_bytecode = True
+
 
 # Ensure standard seek constants exist on the io module for tarfile compatibility
 if not hasattr(io, "SEEK_SET"):

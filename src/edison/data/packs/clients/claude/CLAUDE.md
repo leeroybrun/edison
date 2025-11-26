@@ -20,7 +20,7 @@ This document provides condensed orchestration guidance for Claude Code when wor
 **CRITICAL**: Load these files at session start:
 
 1. **Orchestrator Constitution**:
-   - `.edison/_generated/constitutions/ORCHESTRATORS.md` - Orchestrator constitution and guidelines
+   - `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATORS.md` - Orchestrator constitution and guidelines
    - Generated from: `edison compose all`
 
 2. **Core Workflow**:
@@ -110,7 +110,7 @@ scripts/session next <session-id>
 - Bundle summary: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.json`
 
 **Blocking validators** (must pass before promotion to `done`):
-- `codex-global`, `claude-global` (global validators)
+- `global-codex`, `global-claude` (global validators)
 - `security` (critical - auth, API, env files)
 - `database`, `testing` (specialized - must pass for schema/test changes)
 
@@ -150,9 +150,9 @@ Key commands for orchestration:
 
 These files are GENERATED (never hand-edit):
 
-- `.edison/_generated/constitutions/*.md` - Role constitutions (AGENTS, VALIDATORS, ORCHESTRATORS)
-- `.edison/_generated/agents/*.md` - Composed agent prompts
-- `.edison/_generated/validators/*.md` - Composed validator prompts
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/*.md` - Role constitutions (AGENTS, VALIDATORS, ORCHESTRATORS)
+- `{{PROJECT_EDISON_DIR}}/_generated/agents/*.md` - Composed agent prompts
+- `{{PROJECT_EDISON_DIR}}/_generated/validators/*.md` - Composed validator prompts
 - `.claude/agents/*.md` - Claude Code agent files (generated from _generated/)
 
 Regenerate with:

@@ -26,7 +26,7 @@ from .io import (
 from .store import tasks_root, qa_root, task_filename
 from .locking import file_lock, is_locked, safe_move_file, transactional_move
 from .finder import RecordMeta, RecordType, find_record, list_records, detect_record_type, normalize_record_id, infer_status_from_path
-from .metadata import (
+from .record_metadata import (
     TYPE_INFO,
     read_metadata,
     update_line,

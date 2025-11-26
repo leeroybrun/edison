@@ -61,8 +61,8 @@ def _seed_orchestrator_env(root: Path) -> None:
       - api-builder
       - feature-implementer
     validators:
-      - codex-global
-      - claude-global
+      - global-codex
+      - global-claude
 """
     (config_dir / "delegation.yml").write_text(delegation_config, encoding="utf-8")
 
@@ -132,7 +132,7 @@ def test_manifest_includes_active_packs_and_validators(orchestrator_env: Path) -
 
     global_ids = {v.get("id") for v in validators.get("global", []) if isinstance(v, dict)}
     # Core defaults include these three globals.
-    for vid in ("codex-global", "claude-global", "gemini-global"):
+    for vid in ("global-codex", "global-claude", "global-gemini"):
         assert vid in global_ids, f"{vid} not present in manifest.validators.global"
 
 
@@ -160,7 +160,7 @@ def test_manifest_includes_delegation_hints(orchestrator_env: Path) -> None:
     assert isinstance(validators, list), "delegation.priority.validators must be a list"
     # Use real project overlay (delegation/config.json) via _seed_orchestrator_env.
     assert "api-builder" in implementers or "feature-implementer" in implementers
-    assert "codex-global" in validators or "claude-global" in validators
+    assert "global-codex" in validators or "global-claude" in validators
 
 
 @pytest.mark.integration
@@ -188,6 +188,6 @@ def test_cli_writes_validators_into_generated_dir(orchestrator_env: Path) -> Non
     assert generated_dir.is_dir(), "Expected .agents/_generated/validators directory to be created"
 
     # Core defaults define three global validators; all should be present.
-    for name in ("codex-global", "claude-global", "gemini-global"):
+    for name in ("global-codex", "global-claude", "global-gemini"):
         out_file = generated_dir / f"{name}.md"
         assert out_file.is_file(), f"Missing generated validator prompt: {out_file}"

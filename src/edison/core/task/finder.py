@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional
 
 from ..exceptions import TaskNotFoundError
 from ..session.layout import get_session_base_path
-from .metadata import (
+from .record_metadata import (
     RecordMeta,
     RecordType,
     detect_record_type,

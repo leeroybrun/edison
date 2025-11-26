@@ -12,6 +12,7 @@ from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
 from ..file_io.utils import ensure_dir
+from edison.core.composition.path_utils import resolve_project_dir_placeholders
 
 # Defaults
 DEFAULT_SHORT_DESC_MAX = 80
@@ -141,9 +142,10 @@ class CommandComposer:
             self.config = config
 
         self.cfg_mgr = ConfigManager(self.repo_root)
-        self.core_dir = self.repo_root / ".edison" / "core"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
-        self.project_dir = get_project_config_dir(self.repo_root)
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        self.core_dir = config_dir / "core"
+        self.packs_dir = config_dir / "packs"
+        self.project_dir = config_dir
 
         self.short_desc_max = self._short_desc_max()
         self.adapters: Dict[str, PlatformAdapter] = {
@@ -195,6 +197,12 @@ class CommandComposer:
             rendered = adapter.render_command(cmd, self.config.get("commands", {}))
             out_path = adapter.get_output_path(cmd.id, output_dir)
             ensure_dir(out_path.parent)
+            rendered = resolve_project_dir_placeholders(
+                rendered,
+                project_dir=self.project_dir,
+                target_path=out_path,
+                repo_root=self.repo_root,
+            )
             out_path.write_text(rendered, encoding="utf-8")
             results[cmd.id] = out_path
         return results

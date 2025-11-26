@@ -21,7 +21,7 @@ class TestAgentCompositionUnit:
         """Create a minimal core agent template."""
         core_agents_dir = root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
-        path = core_agents_dir / f"{name}-core.md"
+        path = core_agents_dir / f"{name}.md"
         content = "\n".join(
             [
                 "# Agent: {{AGENT_NAME}}",
@@ -133,7 +133,7 @@ class TestAgentCompositionUnit:
         root = isolated_project_env
         core_agents_dir = root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
-        bad_core = core_agents_dir / "broken-core.md"
+        bad_core = core_agents_dir / "broken.md"
         bad_core.write_text("## Not an agent template", encoding="utf-8")
 
         with pytest.raises(AgentTemplateError):
@@ -146,7 +146,7 @@ class TestAgentCompositionUnit:
         core_agents_dir.mkdir(parents=True, exist_ok=True)
 
         duplicated = "shared phrase one two three four five six seven eight nine ten eleven twelve"
-        core = core_agents_dir / "dup-agent-core.md"
+        core = core_agents_dir / "dup-agent.md"
         core.write_text(
             "\n".join(
                 [
@@ -227,7 +227,7 @@ class TestAgentCompositionUnit:
         result = compose_agent("api-builder", packs=[])
 
         # Check for the correct constitution path
-        assert ".edison/_generated/constitutions/AGENTS.md" in result, \
+        assert "_generated/constitutions/AGENTS.md" in result, \
             "Constitution path not found or incorrect"
 
     def test_constitution_includes_reread_instructions(self, isolated_project_env: Path) -> None:
@@ -258,7 +258,7 @@ class TestAgentCompositionUnit:
 
             assert "## MANDATORY: Read Constitution First" in result, \
                 f"Constitution reference missing for agent: {agent}"
-            assert ".edison/_generated/constitutions/AGENTS.md" in result, \
+            assert "_generated/constitutions/AGENTS.md" in result, \
                 f"Constitution path missing for agent: {agent}"
 
     def test_constitution_content_structure(self, isolated_project_env: Path) -> None:
@@ -272,7 +272,7 @@ class TestAgentCompositionUnit:
         required_phrases = [
             "MANDATORY",
             "Read Constitution First",
-            ".edison/_generated/constitutions/AGENTS.md",
+            "_generated/constitutions/AGENTS.md",
             "constitution contains:",
             "mandatory workflow",
             "Applicable rules",

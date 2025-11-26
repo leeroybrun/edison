@@ -448,7 +448,7 @@ def test_qa_lifecycle_via_promote(test_project_dir: TestProjectDir):
     assert res_validate.returncode != 0
     # Create minimal required validator reports then approve (include specialized that block)
     vids = [
-        ("codex-global", "codex"), ("claude-global", "claude"),
+        ("global-codex", "codex"), ("global-claude", "claude"),
         ("security", "codex"), ("performance", "codex"),
         ("react", "codex"), ("nextjs", "codex"), ("api", "codex"),
         ("prisma", "codex"), ("testing", "codex")

@@ -9,7 +9,7 @@ and handles roster merging, normalization, and metadata enrichment.
 from pathlib import Path
 from typing import Dict, List, Iterable, Optional
 
-from .metadata import normalize_validator_entries
+from .validator_metadata import normalize_validator_entries
 from ..paths import PathResolver
 from ..paths.project import get_project_config_dir
 
@@ -140,19 +140,19 @@ class ValidatorRegistry:
         """Initialize validator registry with configuration discovery."""
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
 
-        # For Edison's own tests, use bundled data directory instead of .edison/core
-        edison_dir = self.repo_root / ".edison"
-        core_validators_dir = edison_dir / "core" / "validators"
-        if edison_dir.exists() and core_validators_dir.exists():
-            self.core_dir = edison_dir / "core"
-            self.packs_dir = edison_dir / "packs"
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+
+        core_validators_dir = config_dir / "core" / "validators"
+        if core_validators_dir.exists():
+            self.core_dir = config_dir / "core"
+            self.packs_dir = config_dir / "packs"
         else:
             # Running within Edison itself - use bundled data
             from edison.data import get_data_path
             self.core_dir = get_data_path("")
             self.packs_dir = get_data_path("packs")
 
-        self.project_dir = get_project_config_dir(self.repo_root)
+        self.project_dir = config_dir
         self._validators_cache: Optional[Dict[str, Dict]] = None
 
     def _load_validators(self) -> Dict[str, Dict]:

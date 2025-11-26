@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from ..utils.text import render_conditional_includes
+from .path_utils import resolve_project_dir_placeholders
 
 
 def format_for_zen(content: str) -> str:
@@ -325,7 +326,7 @@ def compose_for_role(engine, role: str) -> str:
     """Compose prompt content for a specific role using engine sources."""
     parts: List[str] = []
 
-    core_template = engine.core_dir / "validators" / "global" / f"{role}-core.md"
+    core_template = engine.core_dir / "validators" / "global" / f"{role}.md"
     if core_template.exists():
         parts.append(f"# Edison Core Context for {role}")
         parts.append(engine.resolve_includes(core_template.read_text(encoding="utf-8"), core_template))
@@ -334,7 +335,7 @@ def compose_for_role(engine, role: str) -> str:
     if active_packs:
         # Reference shared tech-stack context instead of duplicating pack contexts
         parts.append("\n# Tech-Stack Pack Contexts")
-        parts.append("<!-- MANDATORY READ: .edison/core/guidelines/validators/TECH_STACK_CONTEXT.md -->")
+        parts.append("<!-- MANDATORY READ: {{PROJECT_EDISON_DIR}}/core/guidelines/validators/TECH_STACK_CONTEXT.md -->")
         parts.append("")
         parts.append("**Note**: This validator uses tech-stack guidelines from the shared context file.")
         parts.append("The composition engine replaces inline pack duplication with this reference to reduce")
@@ -374,6 +375,12 @@ def compose_zen_prompts(engine, output_dir: str | Path) -> Dict[str, Path]:
         content = compose_for_role(engine, role)
         zen_content = format_for_zen(content)
         out_file = output_path / f"{role}.txt"
+        zen_content = resolve_project_dir_placeholders(
+            zen_content,
+            project_dir=engine.project_dir,
+            target_path=out_file,
+            repo_root=engine.repo_root,
+        )
         out_file.write_text(zen_content, encoding="utf-8")
         results[role] = out_file
         print(f"✓ Zen prompt for {role}: {out_file}")

@@ -7,8 +7,8 @@ import pytest
 
 
 VALIDATOR_FILES = [
-    Path(".agents/validators/global/codex-global.md"),
-    Path(".agents/validators/global/claude-global.md"),
+    Path(".agents/validators/global/global-codex.md"),
+    Path(".agents/validators/global/global-claude.md"),
     Path(".agents/validators/security/codex-security.md"),
     Path(".agents/validators/performance/codex-performance.md"),
 ]
@@ -37,13 +37,13 @@ def test_validators_use_includes():
 def test_include_paths_valid():
     """Include directives must point to real template and overlay files."""
     expected_map = {
-        ".agents/validators/global/codex-global.md": [
+        ".agents/validators/global/global-codex.md": [
             ".edison/core/validators/templates/global-comprehensive.md",
-            ".agents/validators/overlays/global-project-context.md",
+            ".agents/validators/overlays/global-project.md",
         ],
-        ".agents/validators/global/claude-global.md": [
+        ".agents/validators/global/global-claude.md": [
             ".edison/core/validators/templates/global-comprehensive.md",
-            ".agents/validators/overlays/global-project-context.md",
+            ".agents/validators/overlays/global-project.md",
         ],
         ".agents/validators/security/codex-security.md": [
             ".edison/core/validators/templates/critical-security.md",
@@ -115,7 +115,7 @@ def test_rendered_output_complete(tmp_path: Path):
     }
 
     overlay_probes = {
-        ".agents/validators/overlays/global-project-context.md": ["project", "ExampleApp"],
+        ".agents/validators/overlays/global-project.md": ["project", "ExampleApp"],
         ".agents/validators/overlays/security-project-requirements.md": ["Authentication", "API"],
         ".agents/validators/overlays/performance-project-benchmarks.md": ["nextjs", "prisma"],
     }

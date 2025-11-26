@@ -21,13 +21,9 @@ class ProjectManagementPaths:
 
     # ----------------------- internal helpers ----------------------- #
     def _read_yaml(self, path: Path) -> Dict[str, Any]:
-        if not path.exists():
-            return {}
-        try:
-            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
+        from edison.core.file_io.utils import read_yaml_safe
+        data = read_yaml_safe(path, default={})
+        return data if isinstance(data, dict) else {}
 
     def _load_config(self) -> dict:
         """Load config to get management directory path.

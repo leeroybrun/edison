@@ -7,10 +7,11 @@ Edison Agent Composition Engine
 Builds final agent prompts from layered sources:
   Core agent templates + Pack overlays + optional project overlays.
 
-Discovery:
-  - Core agents:      .edison/core/agents/*-core.md  (generic templates)
+Discovery (unified naming - directory provides context):
+  - Core agents:      .edison/core/agents/<agent>.md
   - Pack overlays:    .edison/packs/<pack>/agents/<agent>.md
-  - Project overlays: <project_config_dir>/agents/<agent>.md
+  - Project overlays: <project_config_dir>/agents/overlays/<agent>.md
+  - Project agents:   <project_config_dir>/agents/<agent>.md (standalone)
 
 The composed agent text is pure Markdown and typically written to
 `<project_config_dir>/_generated/agents/<agent>.md` by the compose CLI.
@@ -23,9 +24,11 @@ from typing import Any, Dict, List, Optional, Tuple
 import os
 import yaml
 
+from edison.core.file_io.utils import parse_yaml_string
 from ..utils.text import dry_duplicate_report, render_conditional_includes
 from ..paths import PathResolver
 from ..paths.project import get_project_config_dir
+from .path_utils import resolve_project_dir_placeholders
 
 
 class AgentError(RuntimeError):
@@ -106,33 +109,37 @@ class AgentRegistry:
         # Respect project root resolution, including AGENTS_PROJECT_ROOT in tests
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
 
-        # For Edison's own tests, use bundled data directory instead of .edison/core
-        edison_dir = self.repo_root / ".edison"
-        core_agents_dir = edison_dir / "core" / "agents"
-        if edison_dir.exists() and core_agents_dir.exists():
-            self.core_dir = edison_dir / "core"
-            self.packs_dir = edison_dir / "packs"
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+
+        core_agents_dir = config_dir / "core" / "agents"
+        packs_dir = config_dir / "packs"
+        if packs_dir.exists() or core_agents_dir.exists():
+            self.core_dir = config_dir / "core"
+            self.packs_dir = packs_dir
         else:
             # Running within Edison itself - use bundled data
             from edison.data import get_data_path
             self.core_dir = get_data_path("")
             self.packs_dir = get_data_path("packs")
 
-        self.project_dir = get_project_config_dir(self.repo_root)
+        self.project_dir = config_dir
 
     # ------- Discovery -------
     def discover_core_agents(self) -> Dict[str, CoreAgent]:
-        """Return mapping of agent name → CoreAgent from core templates."""
+        """Return mapping of agent name → CoreAgent from core templates.
+        
+        Pattern: .edison/core/agents/<agent>.md
+        Directory provides context - no suffix needed.
+        """
         agents: Dict[str, CoreAgent] = {}
         core_agents_dir = self.core_dir / "agents"
         if not core_agents_dir.exists():
             return agents
 
-        for path in sorted(core_agents_dir.glob("*-core.md")):
-            stem = path.stem
-            if not stem.endswith("-core"):
+        for path in sorted(core_agents_dir.glob("*.md")):
+            name = path.stem
+            if name.startswith("_"):
                 continue
-            name = stem[: -len("-core")]
             agents[name] = CoreAgent(name=name, core_path=path)
         return agents
 
@@ -167,37 +174,51 @@ class AgentRegistry:
         return overlays
 
     def discover_pack_agent_names(self, packs: List[str]) -> List[str]:
-        """Discover all agent names provided by packs (concrete agents only)."""
+        """Discover all agent names provided by packs (concrete agents only).
+        
+        Pack agents are discovered from .edison/packs/<pack>/agents/<agent>.md.
+        Files in overlays/ subdirectory are skipped (those are for extending core agents).
+        """
         names: List[str] = []
+        known_packs: set[str] = set()
+        if self.packs_dir.exists():
+            known_packs.update(p.name for p in self.packs_dir.iterdir() if p.is_dir())
+        try:
+            from edison.data import get_data_path
+
+            data_packs_dir = Path(get_data_path("packs"))
+            if data_packs_dir.exists():
+                known_packs.update(p.name for p in data_packs_dir.iterdir() if p.is_dir())
+        except Exception:
+            # Bundled packs may be unavailable in minimal distributions
+            pass
+
         for pack in packs:
             pack_agents_dir = self.packs_dir / pack / "agents"
             if not pack_agents_dir.exists():
                 continue
             for agent_file in sorted(pack_agents_dir.glob("*.md")):
                 stem = agent_file.stem
-                # Skip core/context helpers; only surface concrete agents
-                if stem.endswith("-core") or stem.endswith("-context"):
+                # Skip files starting with _ (like __init__)
+                if stem.startswith("_"):
                     continue
-                if stem not in names:
-                    names.append(stem)
+                pack_scoped_name = (
+                    stem
+                    if any(stem.endswith(f"-{known}") for known in known_packs)
+                    else f"{stem}-{pack}"
+                )
+                if pack_scoped_name not in names:
+                    names.append(pack_scoped_name)
         return names
 
     def project_overlay_path(self, agent_name: str) -> Optional[Path]:
         """Return project overlay path when present.
 
-        Supports both legacy and new overlay locations:
-          - <project_config_dir>/agents/<agent>.md
-          - <project_config_dir>/agents/overlays/<agent>-overlay.md
+        Pattern: <project_config_dir>/agents/overlays/<agent>.md
+        Directory provides context - no suffix needed.
         """
-        overlays_dir = self.project_dir / "agents" / "overlays"
-        candidates = [
-            overlays_dir / f"{agent_name}-overlay.md",
-            self.project_dir / "agents" / f"{agent_name}.md",
-        ]
-        for path in candidates:
-            if path.exists():
-                return path
-        return None
+        path = self.project_dir / "agents" / "overlays" / f"{agent_name}.md"
+        return path if path.exists() else None
 
     # ------- Constitution Reference -------
     def _build_constitution_header(self) -> str:
@@ -208,7 +229,7 @@ class AgentRegistry:
         return """## MANDATORY: Read Constitution First
 
 Before starting any work, you MUST read the Agent Constitution at:
-`.edison/_generated/constitutions/AGENTS.md`
+`{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md`
 
 This constitution contains:
 - Your mandatory workflow
@@ -285,6 +306,14 @@ This constitution contains:
         # Auto-inject constitution reference at the top
         constitution_header = self._build_constitution_header()
         composed = f"{constitution_header}\n\n{composed}"
+
+        target_path = self.project_dir / "_generated" / "agents" / f"{agent_name}.md"
+        composed = resolve_project_dir_placeholders(
+            composed,
+            project_dir=self.project_dir,
+            target_path=target_path,
+            repo_root=self.repo_root,
+        )
 
         return composed
 
@@ -365,11 +394,8 @@ This constitution contains:
         if len(parts) < 3:
             return {}
 
-        try:
-            data = yaml.safe_load(parts[1]) or {}
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
+        data = parse_yaml_string(parts[1], default={})
+        return data if isinstance(data, dict) else {}
 
     def get_all(self) -> List[Dict[str, Any]]:
         """Return metadata for all core agents."""

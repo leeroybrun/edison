@@ -167,8 +167,8 @@ class TestCursorAdapterAgentSync:
 
         _write_minimal_config(project_root)
 
-        # Simulate composed agents under .agents/_generated/agents
-        generated_agents_dir = project_root / ".agents" / "_generated" / "agents"
+        # Simulate composed agents under .edison/_generated/agents
+        generated_agents_dir = project_root / ".edison" / "_generated" / "agents"
         generated_agents_dir.mkdir(parents=True, exist_ok=True)
         agent_file = generated_agents_dir / "api-builder.md"
         agent_file.write_text("# Agent: api-builder\nDetails.\n", encoding="utf-8")
@@ -191,7 +191,7 @@ class TestCursorAdapterAgentSync:
         # Core agent template but no pre-generated agents
         core_agents_dir = project_root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
-        core_template = core_agents_dir / "api-builder-core.md"
+        core_template = core_agents_dir / "api-builder.md"
         core_template.write_text(
             "# Agent: api-builder\n\n{{TOOLS}}\n\n{{GUIDELINES}}\n",
             encoding="utf-8",
@@ -201,7 +201,7 @@ class TestCursorAdapterAgentSync:
         copied = adapter.sync_agents_to_cursor(auto_compose=True)
 
         # Generated agents should now exist and be synced into .cursor/agents
-        generated_agent = project_root / ".agents" / "_generated" / "agents" / "api-builder.md"
+        generated_agent = project_root / ".edison" / "_generated" / "agents" / "api-builder.md"
         cursor_agent = project_root / ".cursor" / "agents" / "api-builder.md"
 
         assert generated_agent.exists()

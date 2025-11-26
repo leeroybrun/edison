@@ -112,9 +112,9 @@ def test_legacy_safe_include_with_fallback_is_not_converted(tmp_path, monkeypatc
     legacy_content = "{{ safe_include('nonexistent.md', fallback='<!-- Missing -->') }}"
     result, deps = includes.resolve_includes(legacy_content, base_file)
 
-    # After removal: Legacy syntax should remain unchanged
+    # After removal: Legacy syntax should remain unchanged (entire syntax string preserved)
     assert "safe_include" in result, "Legacy syntax should remain in output"
-    assert "<!-- Missing -->" not in result, "Fallback should NOT be rendered (shim removed)"
+    assert result == legacy_content, "Entire legacy syntax should be unchanged (not processed)"
     assert len(deps) == 0
 
 

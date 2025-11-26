@@ -1,19 +1,5 @@
 version: "1.0.0"
 
-qaStates:
-  - waiting
-  - todo
-  - wip
-  - done
-  - validated
-
-taskStates:
-  - todo
-  - wip
-  - blocked
-  - done
-  - validated
-
 validationLifecycle:
   onApprove:
     qaState: done → validated

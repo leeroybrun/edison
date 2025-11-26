@@ -22,7 +22,7 @@ def test_route_task_zen_clink_env(monkeypatch):
     from `ZEN_MCP_CLINK` when present.
     """
     monkeypatch.setenv('ZEN_MCP_CLINK', 'zen-mcp://local')
-    env = route_task('validator-codex-global', continuation_id='abc123')
+    env = route_task('validator-global-codex', continuation_id='abc123')
     assert env['continuation_id'] == 'abc123'
     assert env['clink'] == 'zen-mcp://local'
 
@@ -31,6 +31,6 @@ def test_continuation_id_propagation_without_clink(monkeypatch):
     """Ensures continuation_id is preserved when no clink target is configured."""
     monkeypatch.delenv('ZEN_MCP_CLINK', raising=False)
     monkeypatch.delenv('EDISON_DELEGATION_CLINK', raising=False)
-    env = route_task('validator-claude-global', continuation_id='cid-789')
+    env = route_task('validator-global-claude', continuation_id='cid-789')
     assert env['continuation_id'] == 'cid-789'
     assert env['clink'] is None

@@ -41,20 +41,20 @@ If you need to set up Zen manually or add it to an existing project:
 pip install uv
 
 # 2. Run Edison zen setup
-edison zen setup
+edison mcp setup
 
 # 3. Configure your project
-edison zen configure .
+edison mcp configure .
 
 # 4. Verify the setup
-edison zen setup --check
+edison mcp setup --check
 ```
 
 ## Configuration
 
 ### .mcp.json Structure
 
-The `edison zen configure` command creates a `.mcp.json` file in your project root:
+The `edison mcp configure` command creates a `.mcp.json` file in your project root:
 
 ```json
 {
@@ -81,7 +81,7 @@ The `edison zen configure` command creates a `.mcp.json` file in your project ro
 See what will be written without making changes:
 
 ```bash
-edison zen configure --dry-run
+edison mcp configure --dry-run
 ```
 
 #### Configure Specific Project
@@ -89,7 +89,7 @@ edison zen configure --dry-run
 Configure a project in a different directory:
 
 ```bash
-edison zen configure /path/to/project
+edison mcp configure /path/to/project
 ```
 
 #### Override Config File Location
@@ -97,7 +97,7 @@ edison zen configure /path/to/project
 Write to a custom location:
 
 ```bash
-edison zen configure --config-file /custom/path/.mcp.json
+edison mcp configure --config-file /custom/path/.mcp.json
 ```
 
 ## Starting the Server
@@ -107,7 +107,7 @@ edison zen configure --config-file /custom/path/.mcp.json
 Start the server in the current terminal (useful for debugging):
 
 ```bash
-edison zen start-server
+edison mcp start-server
 ```
 
 ### Background Mode
@@ -115,7 +115,7 @@ edison zen start-server
 Start the server in the background:
 
 ```bash
-edison zen start-server --background
+edison mcp start-server --background
 ```
 
 ## Verification
@@ -125,7 +125,7 @@ edison zen start-server --background
 Verify that Zen is properly configured:
 
 ```bash
-edison zen setup --check
+edison mcp setup --check
 ```
 
 This will check:
@@ -182,10 +182,10 @@ uvx --version
 **Solution**:
 ```bash
 # Run configure again
-edison zen configure .
+edison mcp configure .
 
 # Or specify the path explicitly
-edison zen configure --config-file ./.mcp.json
+edison mcp configure --config-file ./.mcp.json
 ```
 
 ### Permission Denied
@@ -199,12 +199,12 @@ ls -la .
 
 # Ensure you have write access to the project directory
 # Or use --config-file to write to a different location
-edison zen configure --config-file ~/.mcp.json
+edison mcp configure --config-file ~/.mcp.json
 ```
 
 ### Server Won't Start
 
-**Problem**: `edison zen start-server` fails
+**Problem**: `edison mcp start-server` fails
 
 **Solutions**:
 1. **Check uvx installation**:
@@ -226,13 +226,13 @@ edison zen configure --config-file ~/.mcp.json
 **Problem**: `.mcp.json` gets overwritten unexpectedly
 
 **Solution**:
-- The `edison zen configure` command overwrites existing configuration by default
+- The `edison mcp configure` command overwrites existing configuration by default
 - Use `--dry-run` first to preview changes
 - Back up your `.mcp.json` before running configure:
   ```bash
   cp .mcp.json .mcp.json.backup
-  edison zen configure --dry-run  # Preview first
-  edison zen configure            # Then apply
+  edison mcp configure --dry-run  # Preview first
+  edison mcp configure            # Then apply
   ```
 
 ### Environment Variable Issues
@@ -258,7 +258,7 @@ The `ZEN_WORKING_DIR` environment variable in `.mcp.json` should point to your p
 2. Or regenerate the configuration:
    ```bash
    cd /correct/path/to/project
-   edison zen configure .
+   edison mcp configure .
    ```
 
 ## Advanced Usage
@@ -300,11 +300,11 @@ You can configure Zen for multiple projects:
 ```bash
 # Configure project A
 cd /path/to/project-a
-edison zen configure .
+edison mcp configure .
 
 # Configure project B
 cd /path/to/project-b
-edison zen configure .
+edison mcp configure .
 ```
 
 Each project gets its own `.mcp.json` with project-specific paths.
@@ -321,9 +321,9 @@ steps:
 
   - name: Setup Edison Zen
     run: |
-      edison zen setup
-      edison zen configure .
-      edison zen setup --check
+      edison mcp setup
+      edison mcp configure .
+      edison mcp setup --check
 ```
 
 ## Getting Help
@@ -332,12 +332,12 @@ steps:
 
 ```bash
 # General zen help
-edison zen --help
+edison mcp --help
 
 # Specific command help
-edison zen setup --help
-edison zen configure --help
-edison zen start-server --help
+edison mcp setup --help
+edison mcp configure --help
+edison mcp start-server --help
 ```
 
 ### Community Support
@@ -351,15 +351,15 @@ Enable verbose output for debugging:
 
 ```bash
 # Check setup with detailed output
-edison zen setup --check -v
+edison mcp setup --check -v
 
 # View configuration
-edison zen configure --dry-run
+edison mcp configure --dry-run
 ```
 
 ## Best Practices
 
-1. **Always verify setup**: Run `edison zen setup --check` after configuration
+1. **Always verify setup**: Run `edison mcp setup --check` after configuration
 2. **Use relative paths**: Avoid hardcoded absolute paths in `.mcp.json`
 3. **Version control**: Commit `.mcp.json` to your repository (it's project-specific)
 4. **Document custom changes**: If you modify `.mcp.json` manually, document why
@@ -379,9 +379,9 @@ After successful setup:
 ### Related Commands
 
 - `edison init` - Initialize a new Edison project (includes Zen setup)
-- `edison zen setup` - Setup zen-mcp-server
-- `edison zen configure` - Configure .mcp.json
-- `edison zen start-server` - Start the Zen MCP server
+- `edison mcp setup` - Setup zen-mcp-server
+- `edison mcp configure` - Configure .mcp.json
+- `edison mcp start-server` - Start the Zen MCP server
 
 ### Configuration Files
 

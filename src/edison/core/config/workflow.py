@@ -29,42 +29,95 @@ def load_workflow_config(
         
     if not file_exists_func("config", "workflow.yaml"):
         raise FileNotFoundError("workflow.yaml not found in edison.data.config")
-        
+
+    task_states, qa_states = _load_state_machine_states(
+        read_yaml_func=read_yaml_func, file_exists_func=file_exists_func
+    )
+
     try:
-        config = read_yaml_func("config", "workflow.yaml")
+        raw_config = read_yaml_func("config", "workflow.yaml")
     except Exception as e:
         raise ValueError(f"Failed to parse workflow.yaml: {e}")
-        
-    _validate_workflow_config(config)
-    
+
+    _validate_workflow_config(raw_config)
+
+    config: Dict[str, Any] = {
+        "version": raw_config.get("version"),
+        "validationLifecycle": raw_config["validationLifecycle"],
+        "timeouts": raw_config["timeouts"],
+        "taskStates": task_states,
+        "qaStates": qa_states,
+    }
+
     if not force_reload and read_yaml_func == real_read_yaml:
-         # Only cache if using default readers (production mode)
+        # Only cache if using default readers (production mode)
         _WORKFLOW_CONFIG_CACHE = config
-        
+
     return config
 
 
 def _validate_workflow_config(config: Dict[str, Any]) -> None:
-    """Validate the structure of the workflow configuration."""
+    """Validate the structure of the workflow configuration.
+
+    State lists must come from state-machine.yaml to avoid duplication.
+    """
     if not config:
         raise ValueError("workflow.yaml is empty")
-        
-    required_keys = ["qaStates", "taskStates", "validationLifecycle", "timeouts"]
+
+    forbidden_keys = [k for k in ("qaStates", "taskStates") if k in config]
+    if forbidden_keys:
+        raise ValueError(
+            "workflow.yaml must not define state lists (qaStates/taskStates); "
+            "they are sourced from state-machine.yaml"
+        )
+
+    required_keys = ["validationLifecycle", "timeouts"]
     for key in required_keys:
         if key not in config:
             raise ValueError(f"workflow.yaml missing required key: {key}")
-            
-    if not isinstance(config["qaStates"], list):
-        raise ValueError("qaStates must be a list")
-        
-    if not isinstance(config["taskStates"], list):
-        raise ValueError("taskStates must be a list")
-        
+
     if not isinstance(config["validationLifecycle"], dict):
         raise ValueError("validationLifecycle must be a dict")
-        
+
     if not isinstance(config["timeouts"], dict):
         raise ValueError("timeouts must be a dict")
+
+
+def _load_state_machine_states(
+    read_yaml_func: Callable[[str, str], Dict[str, Any]] = real_read_yaml,
+    file_exists_func: Callable[[str, str], bool] = real_file_exists,
+) -> Tuple[List[str], List[str]]:
+    """Load task and QA states from the canonical state-machine config."""
+    if not file_exists_func("config", "state-machine.yaml"):
+        raise FileNotFoundError("state-machine.yaml not found in edison.data.config")
+
+    try:
+        sm = read_yaml_func("config", "state-machine.yaml") or {}
+    except Exception as exc:
+        raise ValueError(f"Failed to parse state-machine.yaml: {exc}")
+
+    statemachine = sm.get("statemachine")
+    if not isinstance(statemachine, dict):
+        raise ValueError("state-machine.yaml missing 'statemachine' root object")
+
+    def _states(domain: str) -> List[str]:
+        domain_cfg = statemachine.get(domain)
+        if not isinstance(domain_cfg, dict):
+            raise ValueError(f"state-machine.yaml missing statemachine.{domain} definition")
+        states_cfg = domain_cfg.get("states")
+        if isinstance(states_cfg, dict):
+            return list(states_cfg.keys())
+        if isinstance(states_cfg, list):
+            return [str(s) for s in states_cfg]
+        raise ValueError(f"statemachine.{domain}.states must be a dict or list")
+
+    task_states = _states("task")
+    qa_states = _states("qa")
+
+    if not task_states or not qa_states:
+        raise ValueError("state-machine.yaml must declare task and QA states")
+
+    return task_states, qa_states
 
 
 def get_task_states(**kwargs) -> List[str]:

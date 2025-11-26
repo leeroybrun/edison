@@ -1,5 +1,7 @@
 task_type: refactor
 title: Code Refactor
+blocking: true
+severity: error
 applies_when:
   - "Structure, readability, or maintainability needs improvement without changing externally observable behavior."
   - "Technical debt reduction such as decomposition, naming clarity, dead code removal, or dependency pruning is required."

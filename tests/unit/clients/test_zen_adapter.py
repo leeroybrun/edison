@@ -10,7 +10,7 @@ from edison.core.adapters import ZenSync
 class TestZenAdapterUnit:
     def _write_basic_config(self, root: Path) -> None:
         """Write modular config overlays in the new YAML layout."""
-        config_dir = root / ".agents" / "config"
+        config_dir = root / ".edison" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
 
         # Explicit pack activation (none for the baseline tests)
@@ -50,7 +50,7 @@ class TestZenAdapterUnit:
 
     def _write_config_with_project_roles(self, root: Path) -> None:
         """Config with active packs and zen.roles mapping for project roles."""
-        config_dir = root / ".agents" / "config"
+        config_dir = root / ".edison" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
 
         # Project packs are declared in modular overlay form.
@@ -124,7 +124,7 @@ class TestZenAdapterUnit:
             "prisma-SCHEMA-DESIGN\n", encoding="utf-8"
         )
 
-        project_guides = root / ".agents" / "guidelines"
+        project_guides = root / ".edison" / "guidelines"
         project_guides.mkdir(parents=True, exist_ok=True)
         (project_guides / "api-design.md").write_text(
             "PROJECT-API-DESIGN-OVERLAY\n", encoding="utf-8"

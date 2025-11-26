@@ -29,18 +29,19 @@ class ConfigManager:
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = repo_root or self._find_repo_root()
-        edison_config_dir = self.repo_root / ".edison" / "core" / "config"
-        if edison_config_dir.exists():
-            self.core_config_dir = edison_config_dir
+        project_root_dir = get_project_config_dir(self.repo_root, create=False)
+
+        core_config_dir = project_root_dir / "core" / "config"
+        if core_config_dir.exists():
+            self.core_config_dir = core_config_dir
         else:
             from edison.data import get_data_path
             self.core_config_dir = get_data_path("config")
 
         self.core_defaults_path = self.core_config_dir / "defaults.yaml"
-        project_root_dir = get_project_config_dir(self.repo_root)
         self.project_config_dir = project_root_dir / "config"
 
-        edison_schemas_dir = self.repo_root / ".edison" / "core" / "schemas"
+        edison_schemas_dir = project_root_dir / "core" / "schemas"
         if edison_schemas_dir.exists():
             self.schemas_dir = edison_schemas_dir
         else:
@@ -79,11 +80,8 @@ class ConfigManager:
         return list(override)
 
     def load_yaml(self, path: Path) -> Dict[str, Any]:
-        if not path.exists():
-            return {}
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            return data or {}
+        from edison.core.file_io.utils import read_yaml_safe
+        return read_yaml_safe(path, default={})
 
     def load_json(self, path: Path) -> Dict[str, Any]:
         if not path.exists():

@@ -19,7 +19,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """When no validator file exists, return sensible defaults."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -47,7 +47,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Extract validator name from first markdown header."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -84,7 +84,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Search paths in priority order: project, repo, packs."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -118,7 +118,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Skip 'Core Edison Principles' header and use the next one."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -151,7 +151,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Parse multiple triggers from backtick-quoted patterns."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -182,7 +182,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Return defaults if file exists but cannot be read."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -215,7 +215,7 @@ class TestMetadataInference:
         self, tmp_path: Path
     ) -> None:
         """Project validator definitions override core definitions."""
-        from edison.core.composition.metadata import infer_validator_metadata
+        from edison.core.composition.validator_metadata import infer_validator_metadata
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -263,7 +263,7 @@ class TestNormalizeValidatorEntries:
         self, tmp_path: Path
     ) -> None:
         """Dict entries with 'id' are passed through unchanged."""
-        from edison.core.composition.metadata import normalize_validator_entries
+        from edison.core.composition.validator_metadata import normalize_validator_entries
 
         repo_root = tmp_path
         project_dir = tmp_path
@@ -291,7 +291,7 @@ class TestNormalizeValidatorEntries:
         self, tmp_path: Path
     ) -> None:
         """String IDs are expanded using fallback map if available."""
-        from edison.core.composition.metadata import normalize_validator_entries
+        from edison.core.composition.validator_metadata import normalize_validator_entries
 
         repo_root = tmp_path
         project_dir = tmp_path
@@ -321,7 +321,7 @@ class TestNormalizeValidatorEntries:
         self, tmp_path: Path
     ) -> None:
         """String IDs not in fallback map trigger metadata inference."""
-        from edison.core.composition.metadata import normalize_validator_entries
+        from edison.core.composition.validator_metadata import normalize_validator_entries
 
         repo_root = tmp_path / "repo"
         project_dir = tmp_path / "project"
@@ -360,7 +360,7 @@ class TestNormalizeValidatorEntries:
         self, tmp_path: Path
     ) -> None:
         """Empty strings are filtered out."""
-        from edison.core.composition.metadata import normalize_validator_entries
+        from edison.core.composition.validator_metadata import normalize_validator_entries
 
         repo_root = tmp_path
         project_dir = tmp_path

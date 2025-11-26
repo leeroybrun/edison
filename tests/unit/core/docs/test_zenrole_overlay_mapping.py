@@ -2,7 +2,7 @@
 Tests for the zenRole to project overlay documentation.
 
 This suite enforces the presence and minimum content of
-src/edison/core/docs/ZENROLE_OVERLAY_MAPPING.md.
+src/edison/data/docs/ZENROLE_OVERLAY_MAPPING.md.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _project_root() -> Path:
 
 @pytest.fixture(scope="module")
 def doc_path() -> Path:
-    return _project_root() / "src" / "edison" / "core" / "docs" / "ZENROLE_OVERLAY_MAPPING.md"
+    return _project_root() / "src" / "edison" / "data" / "docs" / "ZENROLE_OVERLAY_MAPPING.md"
 
 
 @pytest.fixture(scope="module")
@@ -31,7 +31,7 @@ def doc_text(doc_path: Path) -> str:
 
 def test_document_exists(doc_path: Path) -> None:
     """Doc file should be present at the expected path."""
-    assert doc_path.exists(), "ZENROLE_OVERLAY_MAPPING.md must exist under src/edison/core/docs/"
+    assert doc_path.exists(), "ZENROLE_OVERLAY_MAPPING.md must exist under src/edison/data/docs/"
 
 
 def test_explains_zenroles_concept(doc_text: str) -> None:
@@ -61,4 +61,3 @@ def test_includes_examples_without_wilson(doc_text: str) -> None:
     """Doc should show examples without hardcoded wilson references."""
     assert "examples" in doc_text, "Document should include example configurations"
     assert "wilson" not in doc_text, "Document must avoid hardcoded wilson-* zenRoles"
-

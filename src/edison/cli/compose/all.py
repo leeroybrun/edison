@@ -86,6 +86,7 @@ def main(args: argparse.Namespace) -> int:
         generate_available_agents,
         generate_available_validators,
     )
+    from edison.core.composition.state_machine import generate_state_machine_doc
     from edison.core.config import ConfigManager
     from edison.core.paths import resolve_project_root
     from edison.core.paths.project import get_project_config_dir
@@ -121,6 +122,7 @@ def main(args: argparse.Namespace) -> int:
             # Generate rosters first so constitutions can reference them
             generate_available_agents(output_path / "AVAILABLE_AGENTS.md", repo_root=repo_root)
             generate_available_validators(output_path / "AVAILABLE_VALIDATORS.md", repo_root=repo_root)
+            generate_state_machine_doc(output_path / "STATE_MACHINE.md", repo_root=repo_root)
 
             # Generate constitutions for all roles
             generate_all_constitutions(cfg_mgr, output_path)
@@ -132,6 +134,7 @@ def main(args: argparse.Namespace) -> int:
                 str(output_path / "AVAILABLE_AGENTS.md"),
                 str(output_path / "AVAILABLE_VALIDATORS.md"),
             ]
+            results["state_machine"] = str(output_path / "STATE_MACHINE.md")
 
         if compose_all or args.guidelines:
             guideline_files = engine.compose_guidelines()

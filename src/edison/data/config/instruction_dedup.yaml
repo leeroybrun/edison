@@ -1,0 +1,10 @@
+# Thresholds for detecting duplicated instruction blocks across role instructions.
+agent_instruction_blocks:
+  min_words: 50
+  min_lines: 3
+  max_examples: 3
+
+validator_instruction_blocks:
+  min_words: 60
+  min_lines: 3
+  max_examples: 3

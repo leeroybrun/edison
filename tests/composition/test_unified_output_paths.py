@@ -3,16 +3,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from edison.core.composition import includes, metadata
+from edison.core.composition import includes, validator_metadata
 from edison.core.composition.composers import CompositionEngine
 from edison.core.paths.project import get_project_config_dir
 
 
-def _write_core_validator(repo_root: Path, validator_id: str = "codex-global") -> Path:
+def _write_core_validator(repo_root: Path, validator_id: str = "global-codex") -> Path:
     role = validator_id.split("-", 1)[0]
     core_dir = repo_root / ".edison/core/validators/global"
     core_dir.mkdir(parents=True, exist_ok=True)
-    core_file = core_dir / f"{role}-core.md"
+    core_file = core_dir / f"{role}.md"
     core_file.write_text(
         "# Core Edison Principles\n"  # required marker for validate_composition
         f"Validator content for {validator_id}.\n"
@@ -22,7 +22,7 @@ def _write_core_validator(repo_root: Path, validator_id: str = "codex-global") -
     return core_file
 
 
-def _minimal_config(validator_id: str = "codex-global") -> dict:
+def _minimal_config(validator_id: str = "global-codex") -> dict:
     return {
         "validation": {
             "roster": {
@@ -73,7 +73,7 @@ def test_validator_prompts_include_constitution_reference(tmp_path: Path) -> Non
     original_root = includes._REPO_ROOT_OVERRIDE
 
     # Prepare minimal core validators
-    _write_core_validator(tmp_path, "codex-global")
+    _write_core_validator(tmp_path, "global-codex")
     _write_core_validator(tmp_path, "security")
 
     # Ensure composition operates relative to the temp repo
@@ -94,7 +94,7 @@ def test_validator_prompts_include_constitution_reference(tmp_path: Path) -> Non
             / "VALIDATORS.md"
         ).as_posix()
 
-        assert {"codex-global", "security"}.issubset(results.keys())
+        assert {"global-codex", "security"}.issubset(results.keys())
 
         for validator_id, res in results.items():
             text = res.text.lstrip()
@@ -152,7 +152,7 @@ def test_metadata_ignores_legacy_composed_cache(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = metadata.infer_validator_metadata(
+    result = validator_metadata.infer_validator_metadata(
         "legacy-only",
         repo_root=tmp_path,
         project_dir=project_dir,

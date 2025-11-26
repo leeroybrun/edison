@@ -1,5 +1,7 @@
 task_type: bugfix
 title: Bug Fix
+blocking: true
+severity: error
 applies_when:
   - "Existing behavior is incorrect, unstable, or degraded relative to expected/previous behavior."
   - "A reproducible defect, failing scenario, or logged incident exists in production, staging, or tests."

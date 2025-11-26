@@ -412,8 +412,8 @@ def test_validator_bundle_approval(test_project_dir: TestProjectDir):
     now = datetime.datetime.utcnow().isoformat() + "Z"
 
     for validator_id, model in [
-        ("codex-global", "codex"),
-        ("claude-global", "claude"),
+        ("global-codex", "codex"),
+        ("global-claude", "claude"),
         ("security", "codex"),
         ("performance", "codex"),
         ("prisma", "codex"),
@@ -502,8 +502,8 @@ def test_validator_bundle_one_blocking_fails(test_project_dir: TestProjectDir):
     now = datetime.datetime.utcnow().isoformat() + "Z"
 
     for validator_id, model, verdict in [
-        ("codex-global", "codex", "approve"),
-        ("claude-global", "claude", "approve"),
+        ("global-codex", "codex", "approve"),
+        ("global-claude", "claude", "approve"),
         ("security", "codex", "reject"),  # BLOCKING VALIDATOR FAILS
         ("performance", "codex", "approve"),
         ("prisma", "codex", "approve"),

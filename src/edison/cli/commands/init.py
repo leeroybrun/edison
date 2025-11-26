@@ -1,7 +1,7 @@
 """
 Project initialization command.
 
-SUMMARY: Initialize an Edison project and wire up Zen MCP integration.
+SUMMARY: Initialize an Edison project and wire up MCP integration.
 """
 
 from __future__ import annotations
@@ -14,9 +14,8 @@ from pathlib import Path
 from edison.core.paths.project import get_project_config_dir
 from edison.data import get_data_path
 from edison.core.templates.mcp_config import configure_mcp_json
-from edison.core.utils.dependencies import detect_uvx, detect_zen_mcp_server
 
-SUMMARY = "Initialize an Edison project (creates config + Zen MCP setup)"
+SUMMARY = "Initialize an Edison project (creates config + MCP setup)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -29,14 +28,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Project directory to initialize (defaults to current directory)",
     )
     parser.add_argument(
-        "--skip-zen",
+        "--skip-mcp",
         action="store_true",
-        help="Skip Zen MCP configuration",
+        help="Skip MCP configuration",
     )
     parser.add_argument(
-        "--zen-script",
+        "--mcp-script",
         action="store_true",
-        help="Use bundled run-server.sh instead of edison CLI entrypoint",
+        help="Use script-based command variant when available",
     )
 
 
@@ -61,15 +60,16 @@ def _seed_config_files(config_root: Path) -> None:
     config_dir = config_root / "config"
     data_config_dir = get_data_path("config")
 
-    for yaml_path in data_config_dir.glob("*.yaml"):
+    yaml_files = list(data_config_dir.glob("*.yaml")) + list(data_config_dir.glob("*.yml"))
+    for yaml_path in yaml_files:
         target = config_dir / (yaml_path.stem + ".yml")
         if target.exists():
             continue
         target.write_text(yaml_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
-def _copy_zen_scripts(config_root: Path) -> None:
-    """Place zen helper scripts under .edison/scripts/zen for shell mode."""
+def _copy_mcp_scripts(config_root: Path) -> None:
+    """Place bundled MCP helper scripts under .edison/scripts/zen for shell mode."""
 
     dest_dir = config_root / "scripts" / "zen"
     src_dir_candidates = [
@@ -86,36 +86,27 @@ def _copy_zen_scripts(config_root: Path) -> None:
             shutil.copy2(script, dest)
 
 
-def _configure_zen(project_root: Path, *, use_script: bool) -> tuple[bool, str | None]:
-    """Configure Zen MCP entry; returns (success, warning_message)."""
+def _configure_mcp(project_root: Path, *, use_script: bool) -> tuple[bool, str | None]:
+    """Configure MCP entries; returns (success, warning_message)."""
 
-    zen_available, _ = detect_zen_mcp_server()
     warning: str | None = None
-
-    if not zen_available:
-        uvx_status = detect_uvx()
-        if not uvx_status.available:
-            warning = f"⚠️  Warning: {uvx_status.install_instruction}\n   Zen MCP will be configured but may need manual install later."
-            print(warning)
-        else:
-            print("ℹ️  zen-mcp-server will be installed via uvx on first use")
 
     try:
         result = configure_mcp_json(
             project_root=project_root,
-            use_shell_script=use_script,
+            prefer_scripts=use_script,
             dry_run=False,
         )
         added = result.get("_meta", {}).get("added")
         if added:
-            print("✅ Configured .mcp.json with edison-zen")
+            print("✅ Configured .mcp.json with managed servers")
         else:
-            print("ℹ️  edison-zen already configured in .mcp.json")
+            print("ℹ️  MCP servers already configured in .mcp.json")
         return True, warning
     except Exception as exc:
         warning = f"⚠️  Warning: Could not configure .mcp.json: {exc}"
         print(warning)
-        print("   Run 'edison zen configure' manually.")
+        print("   Run 'edison mcp configure' manually.")
         return False, warning
 
 
@@ -151,13 +142,13 @@ def main(args: argparse.Namespace) -> int:
     try:
         config_root = _ensure_structure(project_root)
         _seed_config_files(config_root)
-        _copy_zen_scripts(config_root)
+        _copy_mcp_scripts(config_root)
         print(f"✅ Created {config_root} structure")
 
-        if not args.skip_zen:
-            success, warning = _configure_zen(project_root, use_script=args.zen_script)
+        if not args.skip_mcp:
+            success, warning = _configure_mcp(project_root, use_script=args.mcp_script)
         else:
-            print("ℹ️  Skipped Zen MCP setup (--skip-zen)")
+            print("ℹ️  Skipped MCP setup (--skip-mcp)")
 
         print("\nRunning initial composition...")
         _run_initial_composition(project_root)

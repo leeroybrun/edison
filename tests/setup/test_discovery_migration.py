@@ -1,7 +1,7 @@
 import pytest
 import json
 from pathlib import Path
-from edison.core.setup.discovery import SetupDiscovery
+from edison.core.setup.component_discovery import SetupDiscovery
 
 class MockSetupDiscovery(SetupDiscovery):
     """Subclass to access private methods or test them."""

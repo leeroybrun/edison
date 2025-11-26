@@ -8,23 +8,23 @@ Responsibilities:
 - Compute duplication matrix using Jaccard similarity
 - Detect content overlap between guidelines to enforce DRY principles
 
-This module uses 12-word shingles with headings and code blocks stripped
-to reduce false positives.
+This module uses config-driven shingle sizing with headings and code blocks
+stripped to reduce false positives.
 """
 
 from pathlib import Path
-from typing import Dict, Iterable, List, Set, Tuple, Any
+from typing import Dict, Iterable, List, Set, Tuple, Any, Optional
 
 from edison.core.utils.text import (
     _strip_headings_and_code,
     _tokenize,
     _shingles,
 )
-from .discovery import GuidelineRecord
+from .guideline_discovery import GuidelineRecord
 
 
 def _file_shingles(path: Path, *, k: int = 12) -> Set[Tuple[str, ...]]:
-    """Return 12‑word shingles for the entire file (headings/code ignored)."""
+    """Return k‑word shingles for the entire file (headings/code ignored)."""
     text = path.read_text(encoding="utf-8", errors="ignore")
     cleaned = _strip_headings_and_code(text)
     tokens = _tokenize(cleaned)
@@ -46,15 +46,33 @@ def build_shingle_index(
 def duplication_matrix(
     records: Iterable[GuidelineRecord],
     *,
-    k: int = 12,
-    min_similarity: float = 0.8,
+    k: Optional[int] = None,
+    min_similarity: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
-    """Return list of highly similar guideline pairs based on 12‑word shingles.
+    """Return list of highly similar guideline pairs using config-driven settings.
 
     Similarity metric: Jaccard index between file‑level shingle sets.
+    k (shingle size) and min_similarity default to composition.dryDetection config.
     Only pairs with similarity >= min_similarity are returned.
     """
     recs = list(records)
+
+    if k is None or min_similarity is None:
+        from ...config import ConfigManager
+
+        cfg = ConfigManager().load_config(validate=False)
+        dry_config = cfg.get("composition", {}).get("dryDetection", {})
+
+        if k is None:
+            if "shingleSize" not in dry_config:
+                raise KeyError("composition.dryDetection.shingleSize missing in configuration")
+            k = dry_config["shingleSize"]
+
+        if min_similarity is None:
+            if "minSimilarity" not in dry_config:
+                raise KeyError("composition.dryDetection.minSimilarity missing in configuration")
+            min_similarity = dry_config["minSimilarity"]
+
     index = build_shingle_index(recs, k=k)
     pairs: List[Dict[str, Any]] = []
 

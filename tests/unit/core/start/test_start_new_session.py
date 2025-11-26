@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-SESSION_PATH = Path("src/edison/core/start/START_NEW_SESSION.md")
+SESSION_PATH = Path("src/edison/data/start/START_NEW_SESSION.md")
 
 
 def read_session_text() -> str:

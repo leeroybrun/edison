@@ -138,7 +138,7 @@ def test_delegation_validation_cli_passes_with_valid_config(tmp_path):
     cfg_path = Path('.agents/delegation/config.json')
     cfg = {
         "worktreeBase": "../{PROJECT_NAME}-worktrees",
-        "roles": {"validator": "validator-codex-global"},
+        "roles": {"validator": "validator-global-codex"},
         "paths": {"docs": ".agents/delegation", "templates": ".edison/core/templates"}
     }
     cfg_path.write_text(json.dumps(cfg), encoding='utf-8')
@@ -165,3 +165,49 @@ def test_task_session_linking(tmp_path):
     from tests.helpers.session import load_session  # late import for clarity
     sess = load_session(sid)
     assert 'tasks' in sess and tid in sess['tasks']
+
+
+def test_delegate_task_updates_parent_child_tasks_list():
+    """TDD: delegate_task() must update parent's child_tasks list when creating a child.
+
+    This is the core parent-child linking test that must pass.
+    RED phase: This will fail until delegation.py properly updates the parent record.
+    """
+    _require_attr(_task, 'create_task_record')
+    _require_attr(_task, 'load_task_record')
+    _require_attr(_delegationlib, 'delegate_task')
+
+    sid = 'sess-parent-child-link-1'
+    ensure_session(sid)
+
+    # Create parent task
+    parent_id = "parent-task-001"
+    _task.create_task_record(parent_id, "Parent Task")
+
+    # Delegate a child task
+    child_id = _delegationlib.delegate_task(
+        description="Child task description",
+        agent='codex',
+        parent_task_id=parent_id,
+        session_id=sid
+    )
+
+    # Load parent and verify child is in its child_tasks list
+    parent = _task.load_task_record(parent_id)
+    assert 'child_tasks' in parent, "Parent task must have child_tasks field"
+    assert isinstance(parent['child_tasks'], list), "child_tasks must be a list"
+    assert child_id in parent['child_tasks'], f"Child {child_id} must be in parent's child_tasks list"
+
+    # Delegate a second child to ensure it appends properly
+    child_id_2 = _delegationlib.delegate_task(
+        description="Second child task",
+        agent='claude',
+        parent_task_id=parent_id,
+        session_id=sid
+    )
+
+    # Reload parent and verify both children are tracked
+    parent = _task.load_task_record(parent_id)
+    assert len(parent['child_tasks']) == 2, "Parent should track both children"
+    assert child_id in parent['child_tasks'], "First child must still be in list"
+    assert child_id_2 in parent['child_tasks'], "Second child must be in list"

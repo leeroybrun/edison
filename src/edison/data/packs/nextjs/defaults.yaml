@@ -1,5 +1,0 @@
-scripts:
-  next:dev: "next dev"
-  next:build: "next build"
-  next:start: "next start"
-

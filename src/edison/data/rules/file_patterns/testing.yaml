@@ -1,5 +1,7 @@
 id: FILE_PATTERN.TESTING
 title: Testing files trigger testing validator
+blocking: true
+severity: error
 patterns:
   - "**/*.test.ts"
   - "**/*.spec.ts"

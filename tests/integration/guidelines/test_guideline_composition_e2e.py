@@ -136,7 +136,7 @@ class TestGuidelineCompositionE2E:
         validators_global = root / ".edison" / "core" / "validators" / "global"
         validators_global.mkdir(parents=True, exist_ok=True)
         for role in ("codex", "claude", "gemini"):
-            (validators_global / f"{role}-core.md").write_text(
+            (validators_global / f"{role}.md").write_text(
                 f"# {role.title()} Core\n\nBase validator template.\n",
                 encoding="utf-8",
             )

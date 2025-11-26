@@ -88,8 +88,8 @@ def test_q2_safe_include_blocks_path_traversal():
 def test_q2_validators_use_safe_include_directives():
     """Q2: Project validator markdown should use safe_include wrappers around includes."""
     validators = [
-        Path(".agents/validators/global/codex-global.md"),
-        Path(".agents/validators/global/claude-global.md"),
+        Path(".agents/validators/global/global-codex.md"),
+        Path(".agents/validators/global/global-claude.md"),
         Path(".agents/validators/security/codex-security.md"),
         Path(".agents/validators/performance/codex-performance.md"),
     ]
@@ -129,7 +129,7 @@ def test_q3_validators_render_with_standard_sections(tmp_path: Path):
     """
     from edison.core.qa.validator import run_validator 
     # Pick one validator to render (global Codex)
-    validator_path = Path(".agents/validators/global/codex-global.md")
+    validator_path = Path(".agents/validators/global/global-codex.md")
     assert validator_path.exists(), f"Validator file missing: {validator_path}"
 
     report = run_validator(str(validator_path), session_id="test-session-qa")

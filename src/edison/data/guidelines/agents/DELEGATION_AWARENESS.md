@@ -175,7 +175,7 @@ edison agents scope api-builder
 
 - Delegation guide: `.edison/core/guidelines/DELEGATION.md`
 - Extended patterns: `.edison/core/guidelines/shared/DELEGATION.md`
-- Config schema: `.edison/delegation/config.schema.json`
+- Config schema: `.edison/core/schemas/delegation-config.schema.json`
 
 ---
 

@@ -51,7 +51,7 @@ def _fresh_task_modules():
     paths_mod = importlib.reload(importlib.import_module("edison.core.task.paths"))  # type: ignore
     store_mod = importlib.reload(importlib.import_module("edison.core.task.store"))  # type: ignore
     locking_mod = importlib.reload(importlib.import_module("edison.core.task.locking"))  # type: ignore
-    metadata_mod = importlib.reload(importlib.import_module("edison.core.task.metadata"))  # type: ignore
+    metadata_mod = importlib.reload(importlib.import_module("edison.core.task.record_metadata"))  # type: ignore
     finder_mod = importlib.reload(importlib.import_module("edison.core.task.finder"))  # type: ignore
     io_mod = importlib.reload(importlib.import_module("edison.core.task.io"))  # type: ignore
     task_mod = importlib.reload(importlib.import_module("edison.core.task"))  # type: ignore

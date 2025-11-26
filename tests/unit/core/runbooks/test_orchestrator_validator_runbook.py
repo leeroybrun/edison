@@ -20,7 +20,7 @@ RUNBOOK_PATH = (
     .parents[4]
     / "src"
     / "edison"
-    / "core"
+    / "data"
     / "runbooks"
     / "ORCHESTRATOR_VALIDATOR_RUNBOOK.md"
 )

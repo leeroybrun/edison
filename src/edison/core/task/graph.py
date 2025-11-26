@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from .metadata import create_task_record, load_task_record, set_task_result, update_task_record
+from .io import create_task_record, load_task_record, set_task_result, update_task_record
 
 __all__ = [
     "create_task_record",

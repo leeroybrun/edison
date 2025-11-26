@@ -13,12 +13,14 @@ from .naming import generate_session_id
 from . import store
 from . import worktree
 from .context import SessionContext
+from ..file_io.utils import ensure_dir
 from ..orchestrator.config import OrchestratorConfig
 from ..orchestrator.launcher import (
     OrchestratorLauncher,
     OrchestratorError,
 )
 from ..paths.management import get_management_paths
+from ..paths.project import get_project_config_dir
 
 
 class SessionAutoStartError(Exception):
@@ -145,8 +147,8 @@ class SessionAutoStart:
 
                 if worktree_path:
                     if dry_run:
-                        worktree_path.mkdir(parents=True, exist_ok=True)
-                        (worktree_path / ".git").mkdir(parents=True, exist_ok=True)
+                        ensure_dir(worktree_path)
+                        ensure_dir(worktree_path / ".git")
                     session = store.load_session(session_id)
                     git_meta = session.setdefault("git", {}) if isinstance(session, dict) else {}
                     git_meta["worktreePath"] = str(worktree_path)
@@ -238,20 +240,22 @@ class SessionAutoStart:
         """Return path for per-session orchestrator log."""
         mgmt_paths = get_management_paths(self.session_manager.project_root)
         base = mgmt_paths.get_session_state_dir("wip") / session_id
-        base.mkdir(parents=True, exist_ok=True)
+        ensure_dir(base)
         return base / "orchestrator.log"
 
     def _ensure_orchestrator_config(self, repo_root: Path) -> None:
         """Ensure orchestrator config exists; bootstrap from core defaults when missing."""
-        cfg_dir = repo_root / ".edison" / "core" / "config"
-        cfg_dir.mkdir(parents=True, exist_ok=True)
+        from edison.core.file_io.utils import dump_yaml_string
+
+        cfg_dir = get_project_config_dir(repo_root) / "core" / "config"
+        ensure_dir(cfg_dir)
         cfg_path = cfg_dir / "orchestrator.yaml"
         if cfg_path.exists():
             return
 
         # Prefer copying from the current repo's core config
         source_root = Path(__file__).resolve().parents[4]
-        source_cfg = source_root / ".edison" / "core" / "config" / "orchestrator.yaml"
+        source_cfg = get_project_config_dir(source_root, create=False) / "core" / "config" / "orchestrator.yaml"
         if source_cfg.exists():
             shutil.copy(source_cfg, cfg_path)
             return
@@ -268,7 +272,7 @@ class SessionAutoStart:
                 "initial_prompt": {"enabled": False},
             }
         cfg_path.write_text(
-            yaml.safe_dump({"orchestrators": {"default": default_name, "profiles": profiles}}),
+            dump_yaml_string({"orchestrators": {"default": default_name, "profiles": profiles}}),
             encoding="utf-8",
         )
 

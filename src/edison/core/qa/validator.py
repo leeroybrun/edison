@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..legacy_guard import enforce_no_legacy_project_root
 from ..paths.resolver import PathResolver
+from ..paths.project import get_project_config_dir
 from .. import task  # type: ignore
 from ..session import manager as session_manager
 from . import config as qa_config
@@ -494,7 +495,7 @@ def process_validator_template(template_or_text: str, context: Optional[Dict[str
 def run_validator(validator_markdown_path: str, session_id: str, validator_name: str | None = None) -> str:
     validator_name = validator_name or Path(validator_markdown_path).stem
     repo_root = PathResolver.resolve_project_root()
-    standard_path = repo_root / ".edison" / "core" / "validators" / "_report-template.md"
+    standard_path = get_project_config_dir(repo_root, create=False) / "core" / "validators" / "_report-template.md"
     header = (
         standard_path.read_text(encoding="utf-8")
         if standard_path.exists()

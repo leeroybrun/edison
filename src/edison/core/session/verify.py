@@ -11,7 +11,8 @@ from edison.core.session import store as session_store
 from edison.core.session.context import SessionContext
 from edison.core import task  # type: ignore
 from edison.core.config import get_task_states, get_qa_states
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe, utc_timestamp as io_utc_timestamp
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe
+from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
 from edison.core.utils.cli_arguments import parse_common_args
 from edison.core.utils.cli_output import output_json, error, success 

@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Set
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
-from edison.core.file_io.utils import write_json_safe
+from edison.core.file_io.utils import read_json_safe, write_json_safe
 
 # Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
 # These are used for Edison's generation/merge logic but are not valid Claude Code settings
@@ -53,9 +53,10 @@ class SettingsComposer:
         base_cfg = self.cfg_mgr.load_config(validate=False)
         self.config = self.cfg_mgr.deep_merge(base_cfg, config or {})
 
-        self.core_dir = self.repo_root / ".edison" / "core"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
-        self.project_dir = get_project_config_dir(self.repo_root)
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        self.core_dir = config_dir / "core"
+        self.packs_dir = config_dir / "packs"
+        self.project_dir = config_dir
         self.project_config_dir = self.project_dir / "config"
 
     # ----- Loaders -----
@@ -167,16 +168,12 @@ class SettingsComposer:
                 backup.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
 
             # Load existing settings
-            try:
-                existing = json.loads(target.read_text(encoding="utf-8"))
-                if isinstance(existing, dict):
-                    # Merge composed settings INTO existing (existing takes precedence)
-                    # This preserves user customizations
-                    if claude_cfg.get("preserve_custom", True):
-                        settings = self.deep_merge_settings(settings, existing)
-            except (json.JSONDecodeError, OSError):
-                # If existing file is invalid, replace it entirely
-                pass
+            existing = read_json_safe(target, default=None)
+            if isinstance(existing, dict):
+                # Merge composed settings INTO existing (existing takes precedence)
+                # This preserves user customizations
+                if claude_cfg.get("preserve_custom", True):
+                    settings = self.deep_merge_settings(settings, existing)
 
         write_json_safe(target, settings, indent=2)
         return target

@@ -12,7 +12,7 @@ All previous exports are re-exported here for backward compatibility.
 """
 
 # Discovery exports
-from .discovery import (
+from .guideline_discovery import (
     GuidelineRecord,
     GuidelineCategory,
     discover_guidelines,

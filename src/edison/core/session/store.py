@@ -16,8 +16,9 @@ from ..file_io.locking import acquire_file_lock
 from ..file_io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
-    utc_timestamp as io_utc_timestamp,
+    ensure_dir,
 )
+from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..exceptions import SessionNotFoundError, SessionStateError
 
 logger = logging.getLogger(__name__)
@@ -222,15 +223,15 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
         initial_state = _CONFIG.get_initial_session_state()
         j = _session_dir(initial_state, sid) / "session.json"
     
-    j.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(j.parent)
     with acquire_file_lock(j, timeout=5):
         _write_json(j, data)
 
 def _ensure_session_dirs() -> None:
     states = _CONFIG.get_session_states()
     for dirname in states.values():
-        (_sessions_root() / dirname).mkdir(parents=True, exist_ok=True)
-    (_sessions_root() / "wip").mkdir(parents=True, exist_ok=True)
+        ensure_dir(_sessions_root() / dirname)
+    ensure_dir(_sessions_root() / "wip")
 
 def _read_template() -> Dict[str, Any]:
     """Load the session template JSON."""
@@ -263,7 +264,7 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
         # Use new layout by default
         initial_state = _CONFIG.get_initial_session_state()
         sess_dir = _session_dir(initial_state, sid)
-        sess_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(sess_dir)
         path = sess_dir / "session.json"
         data: Dict[str, Any] = {
             "id": sid,
@@ -280,7 +281,8 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
 
 def _list_active_sessions() -> List[str]:
     try:
-        root = _sessions_root() / "active"
+        active_dirname = _CONFIG.get_session_states().get("active", "active")
+        root = _sessions_root() / active_dirname
         if not root.exists():
             return []
         out: List[str] = []
@@ -304,7 +306,7 @@ def _move_session_json_to(status: str, session_id: str) -> Path:
     dest_dir = _session_dir(status, sid)
     dest = dest_dir / "session.json"
     
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(dest_dir)
     
     try:
         # If src is a directory (new layout), move the whole directory?
@@ -475,7 +477,7 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
     validate_session_id_format(sid)
 
     sess_dir = _session_dir(target_state, sid)
-    sess_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(sess_dir)
     sess_json = sess_dir / "session.json"
 
     if sess_json.exists():

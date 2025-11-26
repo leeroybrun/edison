@@ -108,7 +108,7 @@ Edison scripts inject rules automatically:
 
 ## Rule Registry
 
-Edison guidelines contain **anchored rule IDs** indexed in `.edison/core/rules/registry.json`.
+Edison guidelines contain **anchored rule IDs** indexed in `.edison/core/rules/registry.yml`.
 
 **Discovery**: 
 ```bash

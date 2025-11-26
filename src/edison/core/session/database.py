@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from pathlib import Path
 
 from ..paths.resolver import PathResolver
+from ..paths.project import get_project_config_dir
 from .config import SessionConfig
 from .worktree import _CONFIG as _WT_CONFIG # Reuse or new instance? Better new instance or passed in. 
 # Actually worktree.py has _CONFIG = SessionConfig().
@@ -53,7 +54,7 @@ def _load_database_adapter_module() -> Optional[Any]:
             return None
 
         repo_dir = PathResolver.resolve_project_root()
-        adapter_path = repo_dir / ".edison" / "packs" / str(adapter_name) / "db_adapter.py"
+        adapter_path = get_project_config_dir(repo_dir, create=False) / "packs" / str(adapter_name) / "db_adapter.py"
         if not adapter_path.exists():
             return None
 

@@ -92,8 +92,8 @@ validation:
         task_id = "ws4-id-rename"
         round_n = 1
         # Provide all except the specialized 'prisma'; include a misnamed legacy 'database' file to ensure it's not accepted
-        self._write_report(task_id, round_n, "codex-global", "codex", "approve")
-        self._write_report(task_id, round_n, "claude-global", "claude", "approve")
+        self._write_report(task_id, round_n, "global-codex", "codex", "approve")
+        self._write_report(task_id, round_n, "global-claude", "claude", "approve")
         self._write_report(task_id, round_n, "security", "codex", "approve")
         self._write_report(task_id, round_n, "performance", "codex", "approve")
         # misnamed specialized report (should NOT be recognized)
@@ -136,7 +136,7 @@ validation:
 
         # Prepare fully approved reports
         for vid, model in [
-            ("codex-global", "codex"), ("claude-global", "claude"),
+            ("global-codex", "codex"), ("global-claude", "claude"),
             ("security", "codex"), ("performance", "codex"),
             ("prisma", "codex"), ("testing", "codex")
         ]:

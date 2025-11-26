@@ -65,10 +65,11 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
     for path in candidates:
         if path.exists():
             try:
+                from edison.core.file_io.utils import read_yaml_safe, read_json_safe
+
                 if path.suffix == ".yml" or path.suffix == ".yaml":
-                    return yaml.safe_load(path.read_text()) or {}
+                    return read_yaml_safe(path, raise_on_error=True) or {}
                 
-                from edison.core.file_io.utils import read_json_safe
                 return read_json_safe(path)
             except Exception:
                 # Treat unreadable config as missing in fail_closed mode

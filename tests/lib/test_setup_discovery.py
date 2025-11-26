@@ -6,7 +6,7 @@ import yaml
 
 import pytest
 
-from edison.core.setup.discovery import SetupDiscovery
+from edison.core.setup.component_discovery import SetupDiscovery
 
 
 def _write_yaml(path: Path, data: dict) -> None:

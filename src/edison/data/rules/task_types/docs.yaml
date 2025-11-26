@@ -1,5 +1,7 @@
 task_type: docs
 title: Documentation
+blocking: true
+severity: error
 applies_when:
   - "The primary output is documentation: READMEs, runbooks, ADRs, API docs, or inline developer guides."
   - "Product behavior, architecture decisions, or operational steps need to be captured or corrected."

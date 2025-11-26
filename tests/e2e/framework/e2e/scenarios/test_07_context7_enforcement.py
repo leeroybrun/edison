@@ -157,7 +157,7 @@ def test_context7_note_bypass_is_rejected(test_project_dir: TestProjectDir):
     # Minimal QA brief to satisfy guard (avoid qa/new session coupling in tests)
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Add primary files implying React usage (tsx)
     todo_path = _task_file_path(test_project_dir.project_root, "todo", task_id)
@@ -326,7 +326,7 @@ def test_context7_detection_from_file_extensions(combined_env):
     # Minimal QA brief to satisfy guard
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Make changes in worktree
     # Locate worktree from session file
@@ -380,7 +380,7 @@ def test_context7_detection_from_imports(combined_env):
     run_script("tasks/status", [task_id, "--status", "wip"], cwd=test_project_dir.tmp_path)
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     session_json = test_project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
     sess2 = json.loads(session_json.read_text())
@@ -471,7 +471,7 @@ def test_context7_cross_check_task_metadata_vs_git_diff(combined_env):
     run_script("tasks/status", [task_id, "--status", "wip"], cwd=test_project_dir.tmp_path)
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Change Zod‑pattern file in worktree
     sess = json.loads((test_project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
@@ -720,7 +720,7 @@ def test_context7_prisma_migration_enforcement(combined_env):
     run_script("tasks/status", [task_id, "--status", "wip"], cwd=test_project_dir.tmp_path)
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Add prisma migration files to worktree
     sess = json.loads((test_project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
@@ -770,7 +770,7 @@ def test_context7_prisma_seeds_enforcement(combined_env):
     run_script("tasks/status", [task_id, "--status", "wip"], cwd=test_project_dir.tmp_path)
     qa_waiting = test_project_dir.project_root / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
-    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- codex-global\n")
+    (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Add prisma seed files to worktree
     sess = json.loads((test_project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())

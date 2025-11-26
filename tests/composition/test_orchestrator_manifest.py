@@ -31,7 +31,7 @@ def test_compose_orchestrator_manifest_integration(tmp_path):
     (project_dir / "delegation").mkdir(parents=True)
     
     # 1. Create Core Agent
-    (core_dir / "agents" / "generic-core.md").write_text("# Agent: Generic", encoding="utf-8")
+    (core_dir / "agents" / "generic.md").write_text("# Agent: Generic", encoding="utf-8")
     
     # 2. Create Pack Agent (Overlay)
     (packs_dir / "testpack" / "agents" / "generic.md").write_text("## Tools\npack tool", encoding="utf-8")

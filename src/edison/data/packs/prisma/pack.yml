@@ -17,6 +17,6 @@ provides:
     - guidelines/query-optimization.md
     - guidelines/relationships.md
   agents:
-    - agents/database-architect-prisma.md
+    - agents/database-architect.md
   validators:
     - validators/database.md

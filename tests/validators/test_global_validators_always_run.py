@@ -74,8 +74,8 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         waves = summary.get("waves") or []
         self.assertTrue(waves, "run-wave must produce at least one wave")
         seen = {v.get("id") for w in waves for v in (w.get("validators") or [])}
-        self.assertIn("codex-global", seen)
-        self.assertIn("claude-global", seen)
+        self.assertIn("global-codex", seen)
+        self.assertIn("global-claude", seen)
 
     def test_non_global_validators_respect_triggers(self) -> None:
         """Specialized validators like 'react' do not run when no triggers match; globals still run."""
@@ -88,8 +88,8 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         all_ids = [v.get("id") for w in waves for v in (w.get("validators") or [])]
 
         # Global validators must be present
-        self.assertIn("codex-global", all_ids)
-        self.assertIn("claude-global", all_ids)
+        self.assertIn("global-codex", all_ids)
+        self.assertIn("global-claude", all_ids)
         # React (specialized) should not be scheduled without triggers
         self.assertNotIn("react", all_ids)
 

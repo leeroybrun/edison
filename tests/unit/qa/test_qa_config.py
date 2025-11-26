@@ -79,7 +79,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
                 "roster": {
                     "global": [
                         {
-                            "id": "codex-global",
+                            "id": "global-codex",
                             "name": "Codex Global",
                             "model": "codex",
                         }

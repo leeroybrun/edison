@@ -26,6 +26,31 @@
 - No `.skip` / `.todo` (or equivalents) committed.
 - Do not leave debugging logs in tests.
 
+## TDD Troubleshooting
+
+### Test Won't Fail (RED phase)
+- **Symptom**: New test passes immediately
+- **Cause**: Test may be testing existing functionality or has a bug
+- **Fix**: Verify test actually exercises new code; add assertion that must fail
+
+### Test Won't Pass (GREEN phase)
+- **Symptom**: Implementation complete but test still fails
+- **Causes**: 
+  - Assertion mismatch
+  - Missing dependency
+  - Wrong import path
+- **Fix**: Check exact assertion values; verify all imports; run test in isolation
+
+### Refactor Breaks Tests
+- **Symptom**: Tests fail after refactoring
+- **Cause**: Refactor changed behavior, not just structure
+- **Fix**: Refactoring should ONLY change structure, never behavior; revert and try smaller steps
+
+### Flaky Tests
+- **Symptom**: Test passes sometimes, fails sometimes
+- **Causes**: Timing issues, shared state, external dependencies
+- **Fix**: Add explicit waits; isolate test state; mock external services (only at boundaries)
+
 ## Patterns
 
 ### Pattern 1: Committed Data + Unique IDs

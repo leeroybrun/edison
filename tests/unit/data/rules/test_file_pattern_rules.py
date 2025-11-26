@@ -1,79 +1,66 @@
 from pathlib import Path
 
-import yaml
+import pytest
+
+from edison.core.rules.file_patterns import FilePatternRegistry
 
 
 ROOT = Path(__file__).resolve().parents[4]
-RULES_DIR = ROOT / "src/edison/data/rules/file_patterns"
-
-REQUIRED_RULES = {
-    "testing": {
-        "patterns": ["**/*.test.ts", "**/*.spec.ts"],
-        "validators": ["testing"],
-    },
-    "api": {
-        "patterns": ["**/*.api.ts", "**/route.ts"],
-        "validators": ["api"],
-    },
-    "database": {
-        "patterns": ["**/schema.prisma"],
-        "validators": ["database"],
-    },
-    "react": {
-        "patterns": ["**/components/**/*.tsx"],
-        "validators": ["react"],
-    },
-    "nextjs": {
-        "patterns": ["**/page.tsx", "**/layout.tsx"],
-        "validators": ["nextjs"],
-    },
-    "tailwind": {
-        "patterns": ["**/tailwind.config.*"],
-        "validators": ["tailwind"],
-    },
-}
-
-REQUIRED_KEYS = ["id", "title", "patterns", "validators", "rationale"]
 
 
-def test_file_pattern_rules_exist_and_cover_required_patterns() -> None:
-    assert RULES_DIR.exists(), "File pattern rules directory is missing"
+def _ids(rules):
+    return {rule.get("id") for rule in rules}
 
-    rule_files = {path.stem: path for path in RULES_DIR.glob("*.yaml")}
-    assert rule_files, "No file pattern rules found"
-    assert set(rule_files.keys()) == set(REQUIRED_RULES.keys()), (
-        "File pattern rules must match expected set"
-    )
 
-    for name, path in rule_files.items():
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        assert isinstance(data, dict), f"{path} must parse to a mapping"
+def _stems(rules):
+    return {Path(rule.get("_path", "")).stem for rule in rules if rule.get("_path")}
 
-        for key in REQUIRED_KEYS:
-            assert key in data, f"{path} missing required field: {key}"
 
-        patterns = data.get("patterns")
-        validators = data.get("validators")
-        rationale = data.get("rationale")
+def test_core_file_pattern_rules_are_generic_only() -> None:
+    """Core file pattern rules must exclude tech-specific stacks."""
+    registry = FilePatternRegistry(repo_root=ROOT)
+    core_rules = registry.load_core_rules()
 
-        assert isinstance(patterns, list) and patterns, f"{path}:patterns must be a non-empty list"
-        assert all(isinstance(p, str) and p.strip() for p in patterns), (
-            f"{path}:patterns entries must be non-empty strings"
+    stems = _stems(core_rules)
+    assert stems == {"api", "testing"}
+
+    ids = _ids(core_rules)
+    banned = {
+        "FILE_PATTERN.REACT_COMPONENT",
+        "FILE_PATTERN.NEXTJS_APP_ROUTER",
+        "FILE_PATTERN.TAILWIND_CONFIG",
+        "FILE_PATTERN.DATABASE",
+    }
+    assert ids.isdisjoint(banned), "Core must not ship tech-specific file pattern rules"
+
+
+@pytest.mark.parametrize(
+    "packs,expected_ids",
+    [
+        (
+            ["react", "nextjs", "prisma", "tailwind"],
+            {
+                "FILE_PATTERN.REACT_COMPONENT",
+                "FILE_PATTERN.NEXTJS_APP_ROUTER",
+                "FILE_PATTERN.TAILWIND_CONFIG",
+                "FILE_PATTERN.DATABASE",
+            },
         )
+    ],
+)
+def test_pack_file_patterns_load_when_active(packs, expected_ids) -> None:
+    """Pack registries must contribute tech-specific file pattern rules when active."""
+    registry = FilePatternRegistry(repo_root=ROOT)
 
-        assert isinstance(validators, list) and validators, f"{path}:validators must be a non-empty list"
-        assert all(isinstance(v, str) and v.strip() for v in validators), (
-            f"{path}:validators entries must be non-empty strings"
-        )
+    composed = registry.compose(active_packs=packs)
+    composed_ids = _ids(composed)
+    for rid in expected_ids:
+        assert rid in composed_ids, f"Missing pack rule {rid} for packs {packs}"
 
-        assert isinstance(rationale, str) and rationale.strip(), (
-            f"{path}:rationale must be a non-empty string"
-        )
+    origins = {rule["id"]: rule.get("_origin") for rule in composed if rule.get("id") in expected_ids}
+    for rid in expected_ids:
+        assert origins.get(rid, "").startswith("pack:"), f"{rid} should be marked as pack-origin"
 
-        expected = REQUIRED_RULES[name]
-        for pattern in expected["patterns"]:
-            assert pattern in patterns, f"{path} missing required pattern: {pattern}"
-        for validator in expected["validators"]:
-            assert validator in validators, (
-                f"{path} missing required validator trigger: {validator}"
-            )
+    # Baseline: without packs, tech-specific rules should not appear
+    core_only_ids = _ids(registry.compose(active_packs=[]))
+    assert core_only_ids.isdisjoint(expected_ids)

@@ -92,9 +92,10 @@ class GuidelineRegistry:
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = repo_root or _repo_root()
-        self.core_dir = self.repo_root / ".edison" / "core" / "guidelines"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
-        project_dir = get_project_config_dir(self.repo_root)
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        self.core_dir = config_dir / "core" / "guidelines"
+        self.packs_dir = config_dir / "packs"
+        project_dir = config_dir
         self.project_guidelines_dir = project_dir / "guidelines"
 
     # ---------- Discovery ----------

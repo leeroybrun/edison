@@ -17,6 +17,6 @@ provides:
     - guidelines/design-tokens.md
     - guidelines/responsive.md
   agents:
-    - agents/component-builder-tailwind.md
+    - agents/component-builder.md
   validators:
     - validators/styling.md

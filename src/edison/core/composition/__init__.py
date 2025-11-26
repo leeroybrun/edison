@@ -23,6 +23,7 @@ from .constitution import (
 )
 from .packs import auto_activate_packs
 from .rosters import generate_available_agents, generate_available_validators
+from .state_machine import generate_state_machine_doc
 from ..utils.text import (
     dry_duplicate_report,
     render_conditional_includes,
@@ -108,4 +109,5 @@ __all__ = [
     # Rosters
     "generate_available_agents",
     "generate_available_validators",
+    "generate_state_machine_doc",
 ]

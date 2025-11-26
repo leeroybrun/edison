@@ -1203,12 +1203,12 @@ def compose_validator(validator_name: str) -> str:
 Create the configuration file for post-training packages that validators need for Context7 queries.
 
 #### Files Affected
-- `src/edison/data/config/post_training_packages.yaml` - CREATE (~80 lines)
+- `src/edison/data/config/context7.yml` - CREATE (~80 lines)
 
 #### Content to Restore
 
 ```yaml
-# src/edison/data/config/post_training_packages.yaml
+# src/edison/data/config/context7.yml
 # Post-training packages for Context7 knowledge refresh
 # These packages have versions newer than the model's training cutoff
 
@@ -1672,7 +1672,7 @@ mcp__context7__get-library-docs({
 
 ### Critical Package Versions (May Differ from Training)
 
-See: `config/post_training_packages.yaml` for current versions.
+See: `config/context7.yml` for current versions.
 
 ⚠️ **WARNING**: Your knowledge is likely outdated for:
 - Next.js 16 (major App Router changes)
@@ -1688,7 +1688,7 @@ Always query Context7 before assuming you know the current API!
 - [ ] Section includes resolve-library-id example
 - [ ] Section includes get-library-docs example
 - [ ] Section includes version warning
-- [ ] References post_training_packages.yaml (not hardcoded versions)
+- [ ] References context7.yml (not hardcoded versions)
 
 ---
 
@@ -6586,7 +6586,7 @@ edison/core/
 ├── config/
 │   ├── constitution.yaml
 │   ├── workflow.yaml
-│   └── post_training_packages.yaml
+│   └── context7.yml
 ├── start/
 │   ├── START_NEW_SESSION.md
 │   ├── START_RESUME_SESSION.md
@@ -6608,7 +6608,7 @@ src/edison/data/
 ├── config/
 │   ├── delegation.yaml
 │   ├── validators.yaml
-│   └── post_training_packages.yaml
+│   └── context7.yml
 ├── guidelines/
 │   ├── shared/
 │   │   ├── TDD.md

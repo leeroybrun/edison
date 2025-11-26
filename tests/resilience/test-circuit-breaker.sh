@@ -56,7 +56,7 @@ echo "✅ Circuit breaker tests passed"
 
 python3 << 'EOF'
 import time
-from edison.core.resilience import CircuitBreaker
+from edison.core.utils.resilience import CircuitBreaker
 
 cb = CircuitBreaker(failure_threshold=3, recovery_timeout=1, expected_exception=RuntimeError)
 

@@ -16,7 +16,7 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
     # Create minimal validator spec for testing
     # Extract role from validator_id (e.g., "test-val" -> "test")
     role = validator_id.split("-", 1)[0]
-    validator_spec = validators_dir / f"{role}-core.md"
+    validator_spec = validators_dir / f"{role}.md"
     validator_spec.write_text(
         "# Core Edison Principles\n"
         f"Test validator content for {validator_id}.\n"
@@ -54,6 +54,61 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
         },
     }
     core_defaults.write_text(yaml.dump(core_defaults_data), encoding="utf-8")
+
+    # Minimal state machine config required by compose/state-machine generation
+    state_machine_cfg = {
+        "statemachine": {
+            "task": {
+                "states": {
+                    "todo": {
+                        "initial": True,
+                        "allowed_transitions": [{"to": "wip"}],
+                    },
+                    "wip": {
+                        "allowed_transitions": [{"to": "done"}],
+                    },
+                    "done": {
+                        "final": True,
+                        "allowed_transitions": [],
+                    },
+                }
+            },
+            "qa": {
+                "states": {
+                    "waiting": {
+                        "initial": True,
+                        "allowed_transitions": [{"to": "wip"}],
+                    },
+                    "wip": {
+                        "allowed_transitions": [{"to": "done"}],
+                    },
+                    "done": {
+                        "final": True,
+                        "allowed_transitions": [],
+                    },
+                }
+            },
+            "session": {
+                "states": {
+                    "active": {
+                        "initial": True,
+                        "allowed_transitions": [{"to": "closing"}],
+                    },
+                    "closing": {
+                        "allowed_transitions": [{"to": "validated"}],
+                    },
+                    "validated": {
+                        "final": True,
+                        "allowed_transitions": [],
+                    },
+                }
+            },
+        }
+    }
+    (core_config_dir / "state-machine.yaml").write_text(
+        yaml.dump(state_machine_cfg),
+        encoding="utf-8",
+    )
 
     # Create constitution.yaml with mandatory reads
     constitution_config = core_config_dir / "constitution.yaml"
@@ -267,6 +322,22 @@ def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
 
     assert constitutions_dir.exists(), f"Constitutions directory should exist at {constitutions_dir}"
     assert orchestrators_constitution.exists(), f"ORCHESTRATORS.md should exist at {orchestrators_constitution}"
+
+
+def test_compose_generates_state_machine_doc(tmp_path, real_args):
+    """Compose pipeline must emit STATE_MACHINE.md to _generated."""
+    _setup_minimal_edison_structure(tmp_path)
+    real_args.repo_root = str(tmp_path)
+
+    result = main(real_args)
+
+    assert result == 0, "Compose should succeed"
+
+    config_dir = get_project_config_dir(tmp_path)
+    state_machine_doc = config_dir / "_generated" / "STATE_MACHINE.md"
+    assert state_machine_doc.exists(), "STATE_MACHINE.md should be generated with compose"
+    content = state_machine_doc.read_text(encoding="utf-8")
+    assert "# State Machine" in content
 
 
 def test_orchestrators_constitution_has_role_header(tmp_path, real_args):

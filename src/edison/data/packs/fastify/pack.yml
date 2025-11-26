@@ -15,6 +15,5 @@ provides:
     - guidelines/error-handling.md
     - guidelines/auth.md
   agents:
-    - agents/api-builder-fastify.md
-  validators:
-    - validators/api.md
+    - agents/api-builder.md
+  validators: []

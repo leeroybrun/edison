@@ -1,4 +1,5 @@
 import pytest
+import yaml
 from pathlib import Path
 from typing import Any, Dict, Optional
 from edison.core.config import (
@@ -11,13 +12,23 @@ from edison.core.config import (
 
 # --- Test Helpers ---
 
-def make_fake_read_yaml(return_value: Optional[Dict[str, Any]] = None, side_effect: Optional[Exception] = None):
+def make_fake_read_yaml(
+    return_value: Optional[Dict[str, Any]] = None,
+    side_effect: Optional[Exception] = None,
+):
+    """Return a fake reader that still loads the real state-machine config."""
+
     def fake_read(domain: str, filename: str) -> Dict[str, Any]:
+        if filename == "state-machine.yaml":
+            from edison.data import read_yaml
+
+            return read_yaml(domain, filename)
         if side_effect:
             raise side_effect
         if return_value is not None:
             return return_value
         return {}
+
     return fake_read
 
 def make_fake_file_exists(return_value: bool):
@@ -117,3 +128,22 @@ def test_missing_file_raises_error():
             force_reload=True,
             file_exists_func=fake_exists
         )
+
+
+def test_workflow_states_source_state_machine():
+    """Workflow config must not duplicate state definitions."""
+    workflow_yaml = yaml.safe_load(Path("src/edison/data/config/workflow.yaml").read_text()) or {}
+    assert "taskStates" not in workflow_yaml, "workflow.yaml should not duplicate taskStates; source them from state-machine.yaml"
+    assert "qaStates" not in workflow_yaml, "workflow.yaml should not duplicate qaStates; source them from state-machine.yaml"
+
+    state_machine_yaml = yaml.safe_load(Path("src/edison/data/config/state-machine.yaml").read_text()) or {}
+    sm_root = state_machine_yaml.get("statemachine") or {}
+    task_states = list((sm_root.get("task") or {}).get("states", {}).keys())
+    qa_states = list((sm_root.get("qa") or {}).get("states", {}).keys())
+
+    assert task_states, "state-machine.yaml must declare task states"
+    assert qa_states, "state-machine.yaml must declare QA states"
+
+    # get_task_states/get_qa_states should be driven by the canonical state-machine file
+    assert get_task_states(force_reload=True) == task_states
+    assert get_qa_states(force_reload=True) == qa_states

@@ -66,7 +66,7 @@ def main(args: argparse.Namespace) -> int:
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
             # Append round entry to QA file
-            from edison.core.file_io.utils import utc_timestamp
+            from edison.core.utils.time import utc_timestamp
             from datetime import datetime
 
             # Find QA file

@@ -6,12 +6,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 AGENT_PATHS = [
-    ROOT / "src/edison/data/agents/api-builder-core.md",
-    ROOT / "src/edison/data/agents/code-reviewer-core.md",
-    ROOT / "src/edison/data/agents/component-builder-core.md",
-    ROOT / "src/edison/data/agents/database-architect-core.md",
-    ROOT / "src/edison/data/agents/feature-implementer-core.md",
-    ROOT / "src/edison/data/agents/test-engineer-core.md",
+    ROOT / "src/edison/data/agents/api-builder.md",
+    ROOT / "src/edison/data/agents/code-reviewer.md",
+    ROOT / "src/edison/data/agents/component-builder.md",
+    ROOT / "src/edison/data/agents/database-architect.md",
+    ROOT / "src/edison/data/agents/feature-implementer.md",
+    ROOT / "src/edison/data/agents/test-engineer.md",
 ]
 
 
@@ -29,7 +29,7 @@ def test_agents_include_context7_examples(agent_path: Path) -> None:
     assert 'context7CompatibleLibraryID: "/vercel/next.js"' in content
     assert "route handlers, app router patterns, server components" in content
 
-    assert "config/post_training_packages.yaml" in content
+    assert "config/context7.yml" in content
 
     assert "- Next.js 16" in content
     assert "- React 19" in content

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import yaml
 
-from edison.core.setup.discovery import SetupDiscovery
+from edison.core.setup.component_discovery import SetupDiscovery
 from edison.core.setup.questionnaire import SetupQuestionnaire
 
 

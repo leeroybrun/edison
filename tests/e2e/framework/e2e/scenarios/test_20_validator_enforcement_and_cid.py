@@ -41,8 +41,8 @@ def test_specialized_blocking_database_and_testing_enforced(test_project_dir: Te
     ev.mkdir(parents=True, exist_ok=True)
 
     # Provide only global + critical reports (approve)
-    _write_validator_report(ev, "codex-global", "codex", verdict="approve")
-    _write_validator_report(ev, "claude-global", "claude", verdict="approve")
+    _write_validator_report(ev, "global-codex", "codex", verdict="approve")
+    _write_validator_report(ev, "global-claude", "claude", verdict="approve")
     _write_validator_report(ev, "security", "codex", verdict="approve")
     _write_validator_report(ev, "performance", "codex", verdict="approve")
 

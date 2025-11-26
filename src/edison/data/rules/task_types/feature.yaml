@@ -1,5 +1,7 @@
 task_type: feature
 title: Feature Implementation
+blocking: true
+severity: error
 applies_when:
   - "A new capability, user story, or acceptance criteria set is requested and not yet present in the product."
   - "Work introduces new flows, endpoints, data models, UI, or integration points rather than modifying existing behavior only."

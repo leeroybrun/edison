@@ -36,7 +36,7 @@ from ..file_io import (
     set_task_result,
 )
 from ..locking import file_lock, is_locked, safe_move_file, transactional_move
-from ..metadata import (
+from ..record_metadata import (
     TYPE_INFO,
     RecordMeta,
     RecordType,

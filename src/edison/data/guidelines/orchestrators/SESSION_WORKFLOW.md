@@ -377,7 +377,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 - Triggers: Framework file patterns from pack configuration
 - Focus: Framework patterns, routing, data loading, caching
 
-**Note**: Specific models, blocking status, and trigger patterns are defined in `.edison/_generated/orchestrator-manifest.json` based on active packs.
+**Note**: Specific models, blocking status, and trigger patterns are defined in `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` based on active packs.
 
 **Each validator will handle:**
 - ✅ Calling `scripts/track start` (their mandatory first step)

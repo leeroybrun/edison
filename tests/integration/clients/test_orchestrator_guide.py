@@ -110,7 +110,7 @@ def test_orchestrator_guide_summarizes_validators_and_agents(orchestrator_env: P
     # Validators table header + at least one known validator id
     assert "## 🔍 Available Validators" in content
     assert "Global Validators (ALWAYS run)" in content
-    assert "codex-global" in content or "claude-global" in content
+    assert "global-codex" in content or "global-claude" in content
 
     # Agent sections and at least one expected agent name
     assert "## 🤖 Available Agents" in content

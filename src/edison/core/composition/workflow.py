@@ -31,6 +31,7 @@ def get_workflow_loop_instructions() -> Dict:
     """
     # T-016: NO LEGACY - Require explicit configuration
     from edison.data import get_data_path
+    from edison.core.file_io.utils import read_yaml_safe
 
     if yaml is None:
         raise ImportError(
@@ -48,7 +49,7 @@ def get_workflow_loop_instructions() -> Dict:
         )
 
     try:
-        config_data = yaml.safe_load(composition_config_path.read_text(encoding="utf-8"))
+        config_data = read_yaml_safe(composition_config_path, raise_on_error=True)
     except Exception as e:
         raise ValueError(f"Failed to parse composition.yaml: {e}")
 

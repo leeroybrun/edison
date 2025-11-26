@@ -158,7 +158,7 @@ class TestQAManagerWriteReport:
         bundle_data = {
             "approved": True,
             "taskId": task_id,
-            "validators": ["claude-global"]
+            "validators": ["global-claude"]
         }
 
         qa_manager.write_report(task_id, "bundle", bundle_data)
@@ -190,16 +190,16 @@ class TestQAManagerWriteReport:
         qa_manager.create_round(task_id)
 
         validator_data = {
-            "validatorName": "claude-global",
+            "validatorName": "global-claude",
             "verdict": "approved",
             "score": 9.5
         }
 
-        qa_manager.write_report(task_id, "validator", validator_data, validator_name="claude-global")
+        qa_manager.write_report(task_id, "validator", validator_data, validator_name="global-claude")
 
         # Verify file was written
         latest_dir = qa_manager.get_round_dir(task_id)
-        validator_file = latest_dir / "validator-claude-global-report.json"
+        validator_file = latest_dir / "validator-global-claude-report.json"
         assert validator_file.exists()
 
     def test_write_report_to_specific_round(self, qa_manager: QAManager, task_id: str):
@@ -226,7 +226,7 @@ class TestQAManagerReadReport:
         bundle_data = {
             "approved": True,
             "taskId": task_id,
-            "validators": ["claude-global"]
+            "validators": ["global-claude"]
         }
         qa_manager.write_report(task_id, "bundle", bundle_data)
 
@@ -250,9 +250,9 @@ class TestQAManagerReadReport:
         qa_manager.create_round(task_id)
 
         validator_data = {"verdict": "approved"}
-        qa_manager.write_report(task_id, "validator", validator_data, validator_name="claude-global")
+        qa_manager.write_report(task_id, "validator", validator_data, validator_name="global-claude")
 
-        result = qa_manager.read_report(task_id, "validator", validator_name="claude-global")
+        result = qa_manager.read_report(task_id, "validator", validator_name="global-claude")
         assert result["verdict"] == "approved"
 
     def test_read_nonexistent_report_returns_empty_dict(self, qa_manager: QAManager, task_id: str):
@@ -288,11 +288,11 @@ class TestQAManagerListValidatorReports:
         qa_manager.create_round(task_id)
 
         # Write multiple validator reports
-        qa_manager.write_report(task_id, "validator", {"v": 1}, validator_name="claude-global")
+        qa_manager.write_report(task_id, "validator", {"v": 1}, validator_name="global-claude")
         qa_manager.write_report(task_id, "validator", {"v": 2}, validator_name="codex-security")
 
         reports = qa_manager.list_validator_reports(task_id)
         assert len(reports) == 2
         assert all(isinstance(r, Path) for r in reports)
-        assert any("claude-global" in r.name for r in reports)
+        assert any("global-claude" in r.name for r in reports)
         assert any("codex-security" in r.name for r in reports)

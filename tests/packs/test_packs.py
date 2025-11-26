@@ -89,7 +89,7 @@ def test_validate_pack_requires_triggers_file_patterns(tmp_path: Path):
 
 
 def test_validate_pack_requires_codex_context_validator(tmp_path: Path):
-    """Every pack must provide at least a codex-context.md validator."""
+    """Every pack must provide at least a codex.md validator."""
     p = tmp_path / '.edison/packs/no_codex'
     write(
         p / 'pack.yml',
@@ -104,7 +104,7 @@ def test_validate_pack_requires_codex_context_validator(tmp_path: Path):
             '''
         ),
     )
-    # No validators/codex-context.md file on disk
+    # No validators/codex.md file on disk
     res = validate_pack(p)
     assert not res.ok
     codes = {i.code for i in res.issues}
@@ -139,11 +139,11 @@ def test_dependency_resolution_and_cycles(tmp_path: Path):
                 triggers:
                   filePatterns: ["**/*.ts"]
                 dependencies: {dependencies}
-                validators: ["codex-context.md"]
+                validators: ["codex.md"]
                 """
             ),
         )
-        write(base / f"{name}/validators/codex-context.md", "# validator")
+        write(base / f"{name}/validators/codex.md", "# validator")
 
     # a -> b -> c
     write_pack("a", ["b"])

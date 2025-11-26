@@ -28,8 +28,8 @@ class TestClaudeAdapterUnit:
                 shutil.copy(src, schema_dst_dir / name)
 
     def _write_generated_agent(self, root: Path, name: str, role_text: str = "") -> Path:
-        """Create a minimal Edison-composed agent in .agents/_generated/agents."""
-        agents_dir = root / ".agents" / "_generated" / "agents"
+        """Create a minimal Edison-composed agent in .edison/_generated/agents."""
+        agents_dir = root / ".edison" / "_generated" / "agents"
         agents_dir.mkdir(parents=True, exist_ok=True)
         path = agents_dir / f"{name}.md"
         content_lines = [
@@ -53,7 +53,7 @@ class TestClaudeAdapterUnit:
 
     def _write_orchestrator_constitution(self, root: Path) -> Path:
         """Write orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)."""
-        out_dir = root / ".agents" / "_generated" / "constitutions"
+        out_dir = root / ".edison" / "_generated" / "constitutions"
         out_dir.mkdir(parents=True, exist_ok=True)
         constitution = out_dir / "ORCHESTRATORS.md"
         constitution.write_text(
@@ -70,7 +70,7 @@ class TestClaudeAdapterUnit:
         return constitution
 
     def _write_orchestrator_manifest(self, root: Path) -> Path:
-        out_dir = root / ".agents" / "_generated"
+        out_dir = root / ".edison" / "_generated"
         out_dir.mkdir(parents=True, exist_ok=True)
         manifest = out_dir / "orchestrator-manifest.json"
         data = {
@@ -196,7 +196,7 @@ class TestClaudeAdapterUnit:
 
         data = json.loads(config_path.read_text(encoding="utf-8"))
         assert data["version"] == "2.0.0"
-        assert data["orchestratorManifest"] == ".agents/_generated/orchestrator-manifest.json"
+        assert data["orchestratorManifest"] == ".edison/_generated/orchestrator-manifest.json"
         assert data["agents"]["generic"] == ["feature-implementer"]
         assert sorted(data["agents"]["specialized"]) == ["api-builder", "component-builder-nextjs"]
         assert data["agents"]["project"] == ["custom-agent"]
@@ -210,7 +210,7 @@ class TestClaudeAdapterUnit:
         self._install_schemas(root)
 
         # Write a generated agent with an empty Role section
-        agents_dir = root / ".agents" / "_generated" / "agents"
+        agents_dir = root / ".edison" / "_generated" / "agents"
         agents_dir.mkdir(parents=True, exist_ok=True)
         bad_agent = agents_dir / "broken-agent.md"
         bad_agent.write_text(
@@ -258,7 +258,7 @@ class TestClaudeAdapterUnit:
         self._install_schemas(root)
         self._write_generated_agent(root, "feature-implementer", role_text="Base role.")
 
-        cfg_dir = root / ".agents" / "claude" / "agents"
+        cfg_dir = root / ".edison" / "claude" / "agents"
         cfg_dir.mkdir(parents=True, exist_ok=True)
         cfg = {
             "name": "feature-implementer-override",
@@ -289,7 +289,7 @@ class TestClaudeAdapterUnit:
         self._install_schemas(root)
         self._write_generated_agent(root, "feature-implementer", role_text="Base role.")
 
-        cfg_dir = root / ".agents" / "claude" / "agents"
+        cfg_dir = root / ".edison" / "claude" / "agents"
         cfg_dir.mkdir(parents=True, exist_ok=True)
         # Invalid: model must be string, not number
         bad_cfg = {"model": 123}
@@ -334,7 +334,7 @@ class TestClaudeAdapterUnit:
         claude_md.write_text(original_content, encoding="utf-8")
 
         # Write ONLY legacy ORCHESTRATOR_GUIDE.md (deprecated - should be ignored)
-        legacy_dir = root / ".agents" / "_generated"
+        legacy_dir = root / ".edison" / "_generated"
         legacy_dir.mkdir(parents=True, exist_ok=True)
         legacy_guide = legacy_dir / "ORCHESTRATOR_GUIDE.md"
         legacy_guide.write_text("# Legacy Orchestrator Guide\nOld content.\n", encoding="utf-8")
@@ -368,7 +368,7 @@ class TestClaudeAdapterUnit:
 
         # Write BOTH constitution and legacy guide
         constitution = self._write_orchestrator_constitution(root)
-        legacy_dir = root / ".agents" / "_generated"
+        legacy_dir = root / ".edison" / "_generated"
         legacy_dir.mkdir(parents=True, exist_ok=True)
         legacy_guide = legacy_dir / "ORCHESTRATOR_GUIDE.md"
         legacy_guide.write_text("# WRONG CONTENT - Legacy Guide\n", encoding="utf-8")

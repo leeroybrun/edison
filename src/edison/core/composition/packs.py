@@ -18,10 +18,15 @@ import it directly without extra setup.
 import fnmatch
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
+from edison.data import read_yaml
+from ..paths.project import get_project_config_dir
+
 from .includes import _repo_root
+from ..file_io.utils import read_yaml_safe
 
 try:  # PyYAML is required for pack-trigger discovery
     import yaml  # type: ignore
@@ -67,8 +72,8 @@ def auto_activate_packs(
     if pack_root is not None:
         base = pack_root
     elif root is not None:
-        # Try .edison/packs first (user projects)
-        base = root / ".edison" / "packs"
+        config_dir = get_project_config_dir(root, create=False)
+        base = config_dir / "packs"
         # Fall back to bundled data/packs (Edison itself)
         if not base.exists():
             try:
@@ -103,10 +108,7 @@ def auto_activate_packs(
         if not pack_yml.exists():
             continue
 
-        try:
-            data = yaml.safe_load(pack_yml.read_text(encoding="utf-8")) or {}
-        except Exception:
-            continue
+        data = read_yaml_safe(pack_yml, default={})
 
         triggers = data.get("triggers") or {}
         raw_patterns: List[str]
@@ -150,12 +152,7 @@ class PackManifest:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        return {}
-    if yaml is None:
-        raise RuntimeError("PyYAML is required for pack loading: pip install pyyaml")
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return read_yaml_safe(path, default={})
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
@@ -166,7 +163,24 @@ def _load_json(path: Path) -> Dict[str, Any]:
 
 
 def _pack_dir(repo_root: Path, name: str) -> Path:
-    return repo_root / ".edison" / "packs" / name
+    config_dir = get_project_config_dir(repo_root, create=False)
+    return config_dir / "packs" / name
+
+
+@lru_cache(maxsize=1)
+def _pack_defaults_catalog() -> Dict[str, Dict[str, Any]]:
+    """Load pack defaults from the canonical config defaults.yaml."""
+    try:
+        cfg = read_yaml("config", "defaults.yaml") or {}
+    except Exception:
+        return {}
+    packs_cfg = cfg.get("packs") or {}
+    defaults_cfg = packs_cfg.get("defaults") or {}
+    catalog: Dict[str, Dict[str, Any]] = {}
+    for name, cfg_val in defaults_cfg.items():
+        if isinstance(cfg_val, dict):
+            catalog[str(name)] = cfg_val
+    return catalog
 
 
 def load_pack(repo_root: Path, name: str) -> PackManifest:
@@ -174,13 +188,26 @@ def load_pack(repo_root: Path, name: str) -> PackManifest:
     if not pdir.exists():
         raise FileNotFoundError(f"Pack '{name}' not found at {pdir}")
 
-    defaults = _load_yaml(pdir / "defaults.yaml")
+    defaults_catalog = _pack_defaults_catalog()
+    defaults_path = pdir / "defaults.yaml"
+    defaults = defaults_catalog.get(name, {})
+
+    # Enforce single source of truth: canonical config defaults override any pack-local file.
+    if name in defaults_catalog and defaults_path.exists():
+        raise ValueError(
+            f"Duplicate defaults.yaml for pack '{name}' detected at {defaults_path}. "
+            "Use src/edison/data/config/defaults.yaml as the canonical source."
+        )
+    if not defaults and defaults_path.exists():
+        defaults = _load_yaml(defaults_path)
+
     deps_yaml = _load_yaml(pdir / "pack-dependencies.yaml")
     deps = deps_yaml.get("dependencies") or {}
     dev_deps = deps_yaml.get("devDependencies") or {}
     req = deps_yaml.get("requiredPacks") or []
 
-    scripts = defaults.get("scripts", {}) or {}
+    scripts = defaults.get("scripts", {}) if isinstance(defaults, dict) else {}
+    scripts = scripts or {}
     return PackManifest(
         name=name,
         path=pdir,
@@ -409,8 +436,10 @@ class DependencyResult(NamedTuple):
 
 def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     base = cfg.get("packs", {}) if isinstance(cfg, dict) else {}
-    directory = base.get("directory") or ".edison/packs"
-    return _repo_root() / str(directory)
+    root = _repo_root()
+    default_dir = f"{get_project_config_dir(root, create=False).name}/packs"
+    directory = base.get("directory") or default_dir
+    return root / str(directory)
 
 
 def load_active_packs(config: Dict[str, Any]) -> List[str]:
@@ -450,7 +479,7 @@ def validate_pack(pack_path: Path, schema_path: Optional[Path] = None) -> Valida
     data = _load_yaml(pack_path / "pack.yml")
     # 1) JSON Schema validation
     if schema_path is None:
-        schema_path = _repo_root() / ".edison" / "core" / "schemas" / "pack.schema.json"
+        schema_path = get_project_config_dir(_repo_root(), create=False) / "core" / "schemas" / "pack.schema.json"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
         from ..file_io.utils import read_json_safe as _io_read_json_safe
@@ -504,14 +533,14 @@ def validate_pack(pack_path: Path, schema_path: Optional[Path] = None) -> Valida
     _check_files("guidelines", list(data.get("guidelines") or []))
     _check_files("examples", list(data.get("examples") or []))
 
-    # 3) Minimum validator requirements: every pack must provide codex-context.md
-    codex_required = "codex-context.md"
-    if codex_required not in validators_list:
+    # 3) Minimum validator requirements: every pack must provide validators/overlays/global.md
+    global_overlay = pack_path / "validators" / "overlays" / "global.md"
+    if not global_overlay.exists():
         issues.append(
             ValidationIssue(
-                f"validators/{codex_required}",
-                "codex-validator-missing",
-                "Every pack must declare codex-context.md in its validators list",
+                "validators/overlays/global.md",
+                "global-validator-missing",
+                "Every pack must provide validators/overlays/global.md",
             )
         )
 
@@ -522,7 +551,7 @@ def validate_pack(pack_path: Path, schema_path: Optional[Path] = None) -> Valida
 
 def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     root = root or _repo_root()
-    base = root / ".edison" / "packs"
+    base = get_project_config_dir(root, create=False) / "packs"
     results: List[PackInfo] = []
     if not base.exists():
         return results

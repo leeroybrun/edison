@@ -1,0 +1,8 @@
+pack_api_docs:
+  filename: "api.md"
+  subdirectories:
+    - "validators"
+  max_per_pack: 1
+  similarity_threshold: 0.98
+  skip_packs_prefixes:
+    - "_"

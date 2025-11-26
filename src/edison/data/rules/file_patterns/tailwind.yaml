@@ -1,8 +1,0 @@
-id: FILE_PATTERN.TAILWIND_CONFIG
-title: Tailwind config files trigger tailwind validator
-patterns:
-  - "**/tailwind.config.*"
-validators:
-  - tailwind
-rationale: >-
-  Tailwind configuration controls design tokens and generated utilities, requiring tailwind validator checks for consistency and safety.

@@ -1,0 +1,7 @@
+empty_directory_policy:
+  # Directories (relative to repo root) that must not contain empty folders.
+  roots:
+    - src/edison
+  # Marker files that intentionally keep otherwise-empty directories.
+  allowed_markers:
+    - .gitkeep

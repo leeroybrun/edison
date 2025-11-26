@@ -2,7 +2,11 @@
 import json
 import pytest
 from pathlib import Path
-from edison.core.templates.mcp_config import McpConfig, McpServerConfig, configure_mcp_json
+from edison.core.templates.mcp_config import (
+    McpConfig,
+    McpServerConfig,
+    configure_mcp_json,
+)
 import edison.core.templates.mcp_config as mcp_config_module
 
 def test_debug_import_path():
@@ -17,11 +21,11 @@ def test_mcp_config_save_roundtrip(tmp_path):
     
     # Create a config
     server_config = McpServerConfig(
-        command="edison",
-        args=["zen", "start-server"],
-        env={"ZEN_WORKING_DIR": "/tmp"}
+        command="npx",
+        args=["-y", "@upstash/context7-mcp@latest"],
+        env={"CTX_HOME": "/tmp"}
     )
-    config = McpConfig(servers={"edison-zen": server_config})
+    config = McpConfig(servers={"context7": server_config})
     
     # Save it
     config.save(config_path)
@@ -34,26 +38,27 @@ def test_mcp_config_save_roundtrip(tmp_path):
         data = json.load(f)
     
     assert "mcpServers" in data
-    assert "edison-zen" in data["mcpServers"]
-    assert data["mcpServers"]["edison-zen"]["command"] == "edison"
+    assert "context7" in data["mcpServers"]
+    assert data["mcpServers"]["context7"]["command"] == "npx"
     
     # Verify strict formatting (indent=2, sort_keys=True)
     # We read as text to check formatting
     content = config_path.read_text(encoding="utf-8")
     assert '  "mcpServers": {' in content
-    assert '"edison-zen": {' in content
+    assert '"context7": {' in content
     
     # Verify Load
     loaded = McpConfig.load(config_path)
-    assert "edison-zen" in loaded.servers
-    assert loaded.servers["edison-zen"].command == "edison"
+    assert "context7" in loaded.servers
+    assert loaded.servers["context7"].command == "npx"
 
 def test_configure_mcp_json_integration(tmp_path):
     """Verify the high-level configure function."""
     project_root = tmp_path
-    result = configure_mcp_json(project_root, use_shell_script=False)
+    result = configure_mcp_json(project_root)
     
     config_path = project_root / ".mcp.json"
     assert config_path.exists()
     assert result is not None
     assert "edison-zen" in result["mcpServers"]
+    assert "context7" in result["mcpServers"]

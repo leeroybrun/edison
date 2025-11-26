@@ -12,7 +12,7 @@ See `docs/testing/TEST_ISOLATION_GUIDE.md` for comprehensive patterns.
 Use `withTestDatabase()` for isolated unit tests:
 
 ```typescript
-import { withTestDatabase } from '@wilson/db/test-utils'
+import { withTestDatabase } from '@project/db/test-utils'
 
 it('tests business logic', async () => {
   await withTestDatabase(async (prisma) => {

@@ -6,13 +6,14 @@ from pathlib import Path
 import yaml
 
 from edison.core.composition import CompositionEngine
+from edison.core.paths.project import get_project_config_dir
 
 
-def _write_core_validator(root: Path, validator_id: str) -> Path:
+def _write_core_validator(project_dir: Path, validator_id: str) -> Path:
     """Create a minimal validator core with PACK_CONTEXT placeholder."""
-    validators_dir = root / ".edison" / "core" / "validators" / "global"
+    validators_dir = project_dir / "core" / "validators" / "global"
     validators_dir.mkdir(parents=True, exist_ok=True)
-    path = validators_dir / f"{validator_id}-core.md"
+    path = validators_dir / f"{validator_id}.md"
     path.write_text(
         "\n".join(
             [
@@ -30,40 +31,57 @@ def _write_core_validator(root: Path, validator_id: str) -> Path:
     return path
 
 
-def _write_pack_context(root: Path, pack: str, role: str, title: str) -> Path:
-    """Create a pack context file for the given role."""
-    pack_dir = root / ".edison" / "packs" / pack / "validators"
+def _write_pack_context(project_dir: Path, pack: str, role: str, title: str) -> Path:
+    """Create a pack context file for the given role (in overlays/ subdir)."""
+    # Pack contexts live in packs/{pack}/validators/overlays/{role}.md
+    pack_dir = project_dir / "packs" / pack / "validators" / "overlays"
     pack_dir.mkdir(parents=True, exist_ok=True)
-    path = pack_dir / f"{role}-context.md"
+    path = pack_dir / f"{role}.md"
     path.write_text(f"## {title}\n- guidance from {pack}", encoding="utf-8")
     return path
 
 
-def _write_config_with_packs(root: Path, packs: list[str]) -> Path:
-    """Write config.yml enabling the provided packs."""
-    config_path = root / ".edison" / "config" / "config.yml"
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config = {
-        "packs": {"active": packs},
-        "validation": {"roster": {"global": [{"id": "codex-global"}]}},
-    }
-    config_path.write_text(yaml.dump(config), encoding="utf-8")
-    return config_path
+def _write_pack_yml(project_dir: Path, pack: str) -> Path:
+    """Write minimal pack.yml for the pack."""
+    pack_dir = project_dir / "packs" / pack
+    pack_dir.mkdir(parents=True, exist_ok=True)
+    pack_yml = pack_dir / "pack.yml"
+    pack_yml.write_text(
+        yaml.dump({
+            "name": pack,
+            "version": "1.0.0",
+            "description": f"Test pack {pack}",
+        }),
+        encoding="utf-8",
+    )
+    return pack_yml
 
 
 def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) -> None:
     """Each pack section should appear once in composed validator output."""
     root = isolated_project_env
-    validator_id = "codex"
+    project_dir = get_project_config_dir(root, create=True)
+    
+    # Using unified naming: one 'global' validator file, referenced by global-codex, global-claude, etc.
+    validator_id = "global"
 
-    _write_core_validator(root, validator_id)
-    _write_pack_context(root, "react", validator_id, "React Pack Context")
-    _write_pack_context(root, "next", validator_id, "Next Pack Context")
-    _write_config_with_packs(root, ["react", "next", "react", "next"])
+    _write_core_validator(project_dir, validator_id)
+    
+    # Create pack structures with pack.yml and validator overlays
+    for pack in ["react", "next"]:
+        _write_pack_yml(project_dir, pack)
+        _write_pack_context(project_dir, pack, validator_id, f"{pack.capitalize()} Pack Context")
 
     engine = CompositionEngine(repo_root=root)
-    results = engine.compose_validators(validator=validator_id, enforce_dry=False)
-    text = results["codex-global"].text
+    
+    # Directly pass packs with duplicates to test deduplication
+    # The packs_override parameter directly controls which packs are used
+    results = engine.compose_validators(
+        validator="global-codex", 
+        packs_override=["react", "next", "react", "next"],  # Duplicates to test deduplication
+        enforce_dry=False
+    )
+    text = results["global-codex"].text
 
     react_count = text.count("React Pack Context")
     next_count = text.count("Next Pack Context")

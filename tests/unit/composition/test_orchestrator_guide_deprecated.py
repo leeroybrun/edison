@@ -27,7 +27,7 @@ class TestOrchestratorGuideDeprecation:
             "validation": {
                 "roster": {
                     "global": [
-                        {"name": "codex-global", "model": "codex", "blocking": False},
+                        {"name": "global-codex", "model": "codex", "blocking": False},
                     ],
                     "critical": [],
                     "specialized": [],
@@ -75,7 +75,7 @@ class TestOrchestratorGuideDeprecation:
             "validation": {
                 "roster": {
                     "global": [
-                        {"name": "codex-global", "model": "codex", "blocking": False},
+                        {"name": "global-codex", "model": "codex", "blocking": False},
                     ],
                     "critical": [],
                     "specialized": [],

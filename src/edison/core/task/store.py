@@ -11,7 +11,7 @@ from .io import (
     record_tdd_evidence,
 )
 from .locking import safe_move_file, transactional_move, write_text_locked
-from .metadata import RecordType
+from .record_metadata import RecordType
 from .paths import _qa_root, _tasks_root, safe_relative
 
 

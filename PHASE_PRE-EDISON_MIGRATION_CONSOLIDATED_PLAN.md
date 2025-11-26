@@ -639,7 +639,7 @@ def compose_zen_prompt(agent_name: str):
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/edison/data/config/post_training_packages.yaml` | ~80 | Context7 package versions |
+| `src/edison/data/config/context7.yml` | ~80 | Context7 package versions |
 | `src/edison/core/constitutions/orchestrators-base.md` | ~300 | Core orchestrator constitution |
 | `src/edison/core/constitutions/agents-base.md` | ~300 | Core agent constitution |
 | `src/edison/core/constitutions/validators-base.md` | ~200 | Core validator constitution |

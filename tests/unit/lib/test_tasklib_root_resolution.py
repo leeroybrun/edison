@@ -5,13 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from edison.core.paths import PathResolver
+
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    _resolve_repo_root must honor AGENTS_PROJECT_ROOT as the single
+    PathResolver.resolve_project_root() must honor AGENTS_PROJECT_ROOT as the single
     environment override for the repository root.
 
     This guards against regressions where other project-specific env vars
@@ -25,9 +27,10 @@ def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypa
     # Provide a minimal git marker so ROOT detection remains valid
     (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
 
-    task_paths = importlib.reload(importlib.import_module("edison.core.task.paths"))  # type: ignore[assignment]
+    # Reload PathResolver module to pick up new environment
+    importlib.reload(importlib.import_module("edison.core.paths"))
 
-    resolved = task_paths._resolve_repo_root()  # type: ignore[attr-defined]
+    resolved = PathResolver.resolve_project_root()
     assert resolved == tmp_path
     assert (resolved / ".git").exists()
 
@@ -35,7 +38,7 @@ def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypa
 def test_resolve_repo_root_ignores_project_env_when_agents_unset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Edison core must not rely on project_ROOT / project_PROJECT_ROOT for root
-    resolution. When AGENTS_PROJECT_ROOT is unset, task should fall back to
+    resolution. When AGENTS_PROJECT_ROOT is unset, PathResolver should fall back to
     the actual git repository root, not project-specific env overrides.
     """
     # Ensure generic override is absent
@@ -49,15 +52,15 @@ def test_resolve_repo_root_ignores_project_env_when_agents_unset(tmp_path: Path,
     monkeypatch.setenv("project_ROOT", str(project_root))
     monkeypatch.setenv("project_PROJECT_ROOT", str(project_root))
 
-    # Reload task so _resolve_repo_root observes the new env
-    task_paths = importlib.reload(importlib.import_module("edison.core.task.paths"))  # type: ignore[assignment]
+    # Reload PathResolver module to pick up new environment
+    importlib.reload(importlib.import_module("edison.core.paths"))
 
-    resolved = task_paths._resolve_repo_root()  # type: ignore[attr-defined]
+    resolved = PathResolver.resolve_project_root()
 
     # RED expectation for this fix: root must live inside the Edison repo
     # tree, and MUST NOT equal the project-specific override directory.
     assert resolved != project_root, (
-        "_resolve_repo_root should ignore project_* overrides and use "
+        "PathResolver.resolve_project_root() should ignore project_* overrides and use "
         "the actual repository root instead"
     )
 

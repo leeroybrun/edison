@@ -49,7 +49,7 @@ def test_workflow_loop_loads_from_composition_yaml(tmp_path: Path, monkeypatch) 
             return composition_yaml
         raise FileNotFoundError(f"{domain}/{filename}")
 
-    monkeypatch.setattr("edison.core.composition.workflow.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
 
     # Import after monkeypatch
     from edison.core.composition.workflow import get_workflow_loop_instructions
@@ -84,7 +84,7 @@ def test_workflow_loop_requires_composition_yaml(tmp_path: Path, monkeypatch) ->
             return composition_yaml
         raise FileNotFoundError(f"{domain}/{filename}")
 
-    monkeypatch.setattr("edison.core.composition.workflow.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
 
     from edison.core.composition.workflow import get_workflow_loop_instructions
 
@@ -114,7 +114,7 @@ def test_workflow_loop_fails_on_invalid_yaml(tmp_path: Path, monkeypatch) -> Non
             return composition_yaml
         raise FileNotFoundError(f"{domain}/{filename}")
 
-    monkeypatch.setattr("edison.core.composition.workflow.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
 
     from edison.core.composition.workflow import get_workflow_loop_instructions
 
@@ -151,12 +151,12 @@ def test_workflow_loop_fails_on_missing_workflowLoop_key(tmp_path: Path, monkeyp
             return composition_yaml
         raise FileNotFoundError(f"{domain}/{filename}")
 
-    monkeypatch.setattr("edison.core.composition.workflow.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
 
     from edison.core.composition.workflow import get_workflow_loop_instructions
 
     # Test: Should fail (no fallback)
-    with pytest.raises((KeyError, FileNotFoundError), match="workflowLoop|composition.yaml"):
+    with pytest.raises((KeyError, FileNotFoundError, ValueError), match="workflowLoop|composition.yaml"):
         get_workflow_loop_instructions()
 
 
@@ -191,7 +191,7 @@ def test_workflow_loop_never_returns_hardcoded_values(tmp_path: Path, monkeypatc
             return composition_yaml
         raise FileNotFoundError(f"{domain}/{filename}")
 
-    monkeypatch.setattr("edison.core.composition.workflow.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
 
     from edison.core.composition.workflow import get_workflow_loop_instructions
 

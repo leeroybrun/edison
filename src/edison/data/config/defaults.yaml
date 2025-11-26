@@ -512,6 +512,33 @@ statemachine:
         final: true
         allowed_transitions: []
 
+packs:
+  defaults:
+    fastify:
+      scripts:
+        "api:dev": "node -e \"console.log('fastify dev placeholder')\""
+    nextjs:
+      scripts:
+        "next:dev": "next dev"
+        "next:build": "next build"
+        "next:start": "next start"
+    prisma:
+      scripts:
+        "db:generate": "prisma generate"
+        "db:migrate": "prisma migrate dev"
+        "db:studio": "prisma studio"
+    react:
+      scripts: {}
+    tailwind:
+      scripts:
+        "tailwind:check": "node -e \"console.log('tailwind v4 syntax check placeholder')\""
+    typescript:
+      scripts:
+        "type-check": "tsc --noEmit"
+    vitest:
+      scripts:
+        "test": "vitest run"
+
 tasks:
   defaults:
     ownerPrefix: "owner/"
@@ -553,6 +580,10 @@ adapters:
     workflow_template: ".zen/templates/workflow-loop.txt"
   zen:
     output_dir: ".zen/conf/systemprompts/clink/project"
+
+composition:
+  includes:
+    max_depth: 3
 
 cli:
   json:

@@ -17,6 +17,6 @@ provides:
     - guidelines/server-client-components.md
     - guidelines/accessibility.md
   agents:
-    - agents/component-builder-react.md
+    - agents/component-builder.md
   validators:
     - validators/react.md

@@ -21,6 +21,10 @@ mandatoryReads:
       purpose: Validation workflow
 
   agents:
+    - path: guidelines/shared/COMMON.md
+      purpose: Shared Context7, TDD, and configuration guardrails
+    - path: guidelines/agents/COMMON.md
+      purpose: Shared agent workflow roster and tooling baseline
     - path: constitutions/AGENTS.md
       purpose: Agent constitution
     - path: guidelines/agents/MANDATORY_WORKFLOW.md
@@ -37,6 +41,10 @@ mandatoryReads:
       purpose: Summary file prohibition
 
   validators:
+    - path: guidelines/shared/COMMON.md
+      purpose: Shared Context7, TDD, and configuration guardrails
+    - path: guidelines/validators/COMMON.md
+      purpose: Validation guards and maintainability baseline
     - path: constitutions/VALIDATORS.md
       purpose: Validator constitution
     - path: guidelines/validators/VALIDATOR_WORKFLOW.md

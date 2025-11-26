@@ -79,7 +79,7 @@ def test_create_and_find_task(tmp_path, monkeypatch):
     paths = importlib.reload(paths)
 
     # Reload metadata-dependent modules so TYPE_INFO picks up new roots
-    import edison.core.task.metadata as metadata
+    import edison.core.task.record_metadata as metadata
     metadata = importlib.reload(metadata)
     importlib.reload(importlib.import_module("edison.core.task.io"))
     importlib.reload(importlib.import_module("edison.core.task.store"))

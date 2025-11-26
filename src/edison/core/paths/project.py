@@ -26,10 +26,12 @@ DEFAULT_PROJECT_CONFIG_PRIMARY = ".edison"
 def _load_project_dir_from_yaml(path: Path) -> str | None:
     """Extract ``paths.project_config_dir`` from a YAML file when present."""
 
+    from edison.core.file_io.utils import read_yaml_safe
+
     if not path.exists() or not path.is_file():
         return None
 
-    data = yaml.safe_load(path.read_text()) or {}
+    data = read_yaml_safe(path, default={})
     if not isinstance(data, dict):
         return None
 

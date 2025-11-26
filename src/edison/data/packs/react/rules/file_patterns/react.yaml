@@ -1,0 +1,10 @@
+id: FILE_PATTERN.REACT_COMPONENT
+title: Component TSX files trigger react validator
+blocking: true
+severity: error
+patterns:
+  - "**/components/**/*.tsx"
+validators:
+  - react
+rationale: >-
+  React components require validation for hooks usage, accessibility, and render patterns, so component TSX files trigger the react validator.

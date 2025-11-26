@@ -8,6 +8,8 @@ import pytest
 from edison.core.paths import PathResolver 
 from edison.core.session.manager import SessionManager 
 from edison.core.session import state as session_state 
+from edison.core.session.config import SessionConfig
+
 def _session_json_path(root: Path, session_id: str, state: str = "active") -> Path:
     """
     Compute the canonical session.json path for assertions.
@@ -18,7 +20,12 @@ def _session_json_path(root: Path, session_id: str, state: str = "active") -> Pa
     """
     project_root = PathResolver.resolve_project_root()
     assert project_root == root
-    return project_root / ".project" / "sessions" / state / session_id / "session.json"
+    
+    config = SessionConfig(project_root)
+    state_map = config.get_session_states()
+    dir_name = state_map.get(state.lower(), state.lower())
+
+    return project_root / ".project" / "sessions" / dir_name / session_id / "session.json"
 
 
 @pytest.mark.session
@@ -96,5 +103,8 @@ def test_manager_transition_state_updates_state_field(isolated_project_env: Path
     # metadata must change according to the canonical state machine.
     mgr.transition_state(sid, "closing")
 
-    data = json.loads(active_json.read_text(encoding="utf-8"))
+    closing_json = _session_json_path(isolated_project_env, sid, state="closing")
+    assert closing_json.exists()
+
+    data = json.loads(closing_json.read_text(encoding="utf-8"))
     assert str(data.get("state", "")).lower() == "closing"

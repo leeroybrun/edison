@@ -19,7 +19,7 @@ from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT
 from ..paths.management import get_management_paths
-from .metadata import TYPE_INFO
+from .record_metadata import TYPE_INFO
 from edison.core.config import get_semantic_state
 
 
@@ -138,7 +138,7 @@ def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
 
 def qa_progress(task_id: str, from_state: str, to_state: str, session_id: Optional[str] = None) -> Tuple[Path, Path]:
     if session_id:
-        from .metadata import find_record  # local import to avoid cycles
+        from .record_metadata import find_record  # local import to avoid cycles
 
         src = find_record(task_id, "qa", session_id=session_id)
         qa_root = src.parent.parent
@@ -287,7 +287,18 @@ def _append_task_to_session(session_id: str, task_id: str) -> None:
         pass
 
 
-def create_task_record(task_id: str, title: str, *, status: str = None) -> Dict[str, Any]:
+def create_task_record(task_id: str, title: str, *, status: str = None, session_id: str = None) -> str:
+    """Create a task record with optional session linkage.
+
+    Args:
+        task_id: Unique task identifier.
+        title: Task title/description.
+        status: Optional status (defaults to TYPE_INFO default).
+        session_id: Optional session ID to link this task to.
+
+    Returns:
+        str: The task_id that was created.
+    """
     if status is None:
         status = TYPE_INFO["task"]["default_status"]
     record = {
@@ -297,8 +308,16 @@ def create_task_record(task_id: str, title: str, *, status: str = None) -> Dict[
         "created_at": utc_timestamp(),
         "updated_at": utc_timestamp(),
     }
+    if session_id:
+        record["session_id"] = session_id
+
     _write_json(_task_meta_path(task_id), record)
-    return record
+
+    # Register task with session if session_id provided
+    if session_id:
+        _append_task_to_session(session_id, task_id)
+
+    return task_id
 
 
 def load_task_record(task_id: str) -> Dict[str, Any]:
@@ -308,9 +327,27 @@ def load_task_record(task_id: str) -> Dict[str, Any]:
     return _read_json(path)
 
 
-def set_task_result(task_id: str, result: Dict[str, Any]) -> Dict[str, Any]:
+def set_task_result(task_id: str, *, status: str = None, result: Any = None, error: str = None) -> Dict[str, Any]:
+    """Set the result/status of a task.
+
+    Args:
+        task_id: Task identifier.
+        status: Optional status to set (e.g., 'success', 'failure').
+        result: Optional result data (can be dict or any value).
+        error: Optional error message.
+
+    Returns:
+        Dict[str, Any]: Updated task record.
+    """
     record = load_task_record(task_id)
-    record["result"] = result
+
+    if status:
+        record["status"] = status
+    if result is not None:
+        record["result"] = result
+    if error is not None:
+        record["error"] = error
+
     record["updated_at"] = utc_timestamp()
     _write_json(_task_meta_path(task_id), record)
     return record

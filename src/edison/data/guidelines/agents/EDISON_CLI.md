@@ -32,7 +32,7 @@ scripts/tasks/status <task-id>
   "status": "wip",
   "owner": "claude-agent-001",
   "claimedAt": "2025-11-24T10:30:00Z",
-  "validation_required": ["codex-global", "testing"]
+  "validation_required": ["global-codex", "testing"]
 }
 ```
 

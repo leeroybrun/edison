@@ -72,10 +72,10 @@ def test_build_validator_roster_categorizes_validators(
         "roster": {
             "global": [
                 {
-                    "id": "codex-global",
+                    "id": "global-codex",
                     "name": "Codex Global",
                     "model": "codex",
-                    "zenRole": "validator-codex-global",
+                    "zenRole": "validator-global-codex",
                     "interface": "clink",
                     "priority": 1,
                 }
@@ -128,7 +128,7 @@ def test_build_validator_roster_categorizes_validators(
     triggered_optional = roster.get("triggeredOptional") or []
 
     # Global + critical should be in alwaysRequired
-    assert {v["id"] for v in always} == {"codex-global", "security"}
+    assert {v["id"] for v in always} == {"global-codex", "security"}
     # API validator should be triggered (optional) by primary files pattern
     assert {v["id"] for v in triggered_optional} == {"api"}
     # Database validator should not be triggered (no matching files)

@@ -7,7 +7,7 @@ from ..exceptions import TaskStateError
 from ..rules import RulesEngine
 from edison.core.utils.time import utc_timestamp
 from .io import qa_progress, ready_task, load_task_record, update_task_record
-from .metadata import validate_state_transition
+from .record_metadata import validate_state_transition
 
 
 def transition_task(task_id: str, to_state: str, config: Dict[str, Any] | None = None) -> Dict[str, Any]:

@@ -110,7 +110,7 @@ def test_generic_role_names():
 
     # Encourage presence of known generic roles
     generic_indicators = [
-        "validator-codex-global",
+        "validator-global-codex",
         "api-builder",
         "task-owner",
         "reviewer",

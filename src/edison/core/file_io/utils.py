@@ -5,7 +5,6 @@ Single source of truth for safe file access patterns:
 - Safe reads with shared locks and fast failure on missing files
 - YAML support with consistent error handling
 - Directory management utilities
-- Canonical UTC timestamp helper
 
 See `.project/qa/EDISON_NO_LEGACY_POLICY.md` for configuration and migration rules.
 """
@@ -124,25 +123,19 @@ def read_json_safe(path: Path, default: Any = _DEFAULT_SENTINEL) -> Any:
         return default
 
 
-def utc_timestamp() -> str:
-    """Return ISO 8601 UTC timestamp (delegates to lib.utils.time)."""
-    from ..utils import time as time_utils  # type: ignore
-
-    return time_utils.utc_timestamp()
-
-
 # ============================================================================
 # YAML I/O
 # ============================================================================
 
-def read_yaml_safe(path: Path, default: Any = None) -> Any:
+def read_yaml_safe(path: Path, default: Any = None, raise_on_error: bool = False) -> Any:
     """Read YAML with error handling.
 
-    Returns default if file is missing or invalid.
+    Returns default if file is missing or invalid, unless raise_on_error is True.
 
     Args:
         path: YAML file path to read
         default: Value to return if file missing or invalid (default: None)
+        raise_on_error: If True, propagate exceptions instead of returning default.
 
     Returns:
         Any: Parsed YAML data, or default if error
@@ -152,10 +145,14 @@ def read_yaml_safe(path: Path, default: Any = None) -> Any:
         >>> assert isinstance(config, dict)
     """
     if not HAS_YAML:
+        if raise_on_error:
+            raise RuntimeError("PyYAML is required")
         return default
 
     path = Path(path)
     if not path.exists():
+        if raise_on_error:
+            raise FileNotFoundError(f"File not found: {path}")
         return default
 
     try:
@@ -163,6 +160,28 @@ def read_yaml_safe(path: Path, default: Any = None) -> Any:
             fcntl.flock(f.fileno(), fcntl.LOCK_SH)
             data = yaml.safe_load(f)  # type: ignore[no-untyped-call]
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        return data if data is not None else default
+    except Exception:
+        if raise_on_error:
+            raise
+        return default
+
+
+def parse_yaml_string(content: str, default: Any = None) -> Any:
+    """Parse YAML from string with error handling.
+
+    Args:
+        content: YAML string content
+        default: Value to return on error (default: None)
+
+    Returns:
+        Parsed data or default
+    """
+    if not HAS_YAML:
+        return default
+
+    try:
+        data = yaml.safe_load(content)  # type: ignore[no-untyped-call]
         return data if data is not None else default
     except Exception:
         return default
@@ -189,6 +208,29 @@ def write_yaml_safe(path: Path, data: Any) -> None:
         )
 
     _atomic_write(Path(path), _writer)
+
+
+def dump_yaml_string(data: Any, sort_keys: bool = True) -> str:
+    """Dump data to YAML string.
+
+    Args:
+        data: Data to dump
+        sort_keys: Whether to sort keys (default: True)
+
+    Returns:
+        YAML string
+    """
+    if not HAS_YAML:
+        raise RuntimeError(
+            "PyYAML is required for YAML operations. Install with: pip install pyyaml"
+        )
+
+    return yaml.safe_dump(  # type: ignore[no-untyped-call]
+        data,
+        default_flow_style=False,
+        sort_keys=sort_keys,
+        allow_unicode=True,
+    )
 
 
 # ============================================================================
@@ -306,9 +348,10 @@ __all__ = [
     "_atomic_write",
     "write_json_safe",
     "read_json_safe",
-    "utc_timestamp",
     "read_yaml_safe",
     "write_yaml_safe",
+    "parse_yaml_string",
+    "dump_yaml_string",
     "ensure_directory",
     "ensure_dir",
     "read_json_with_default",

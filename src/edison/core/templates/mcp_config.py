@@ -1,10 +1,10 @@
 """MCP configuration helpers shared by CLI commands.
 
-This module centralizes creation and persistence of `.mcp.json` entries
-for the edison-zen MCP server. Configuration is loaded from YAML sources
-(`edison.data.config.zen.yaml` plus project overlays) with no hardcoded
-values, and JSON output formatting comes from the CLI config section of
-`defaults.yaml`/project overrides.
+This module centralizes creation and persistence of `.mcp.json` entries for
+all Edison-managed MCP servers. Configuration is fully YAML-driven
+(`edison.data.config.mcp.yml` + pack overlays + project overrides) with no
+hardcoded values, and JSON output formatting comes from the CLI config
+section of `defaults.yaml`/project overrides.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Sequence
 
 import yaml
 
@@ -127,11 +127,8 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
 
 
 def _load_yaml_file(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        return {}
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-        return data if isinstance(data, dict) else {}
+    data = file_utils.read_yaml_safe(path, default={})
+    return data if isinstance(data, dict) else {}
 
 
 def _load_json_format(project_root: Path) -> Dict[str, Any]:
@@ -154,26 +151,43 @@ def _load_json_format(project_root: Path) -> Dict[str, Any]:
     }
 
 
-def _load_zen_config(project_root: Path) -> Dict[str, Any]:
-    """Load zen configuration with project overlays."""
+def _iter_pack_overlays(project_root: Path, packs: Sequence[str] | None) -> Iterable[Path]:
+    """Yield pack-level mcp.yml files for the requested packs (if any)."""
 
-    config = read_yaml("config", "zen.yaml") or {}
+    pack_root = get_project_config_dir(project_root, create=False) / "packs"
+    if not pack_root.exists():
+        return []
+
+    allowed = set(packs) if packs else None
+    overlays: list[Path] = []
+
+    for pack_dir in sorted(p for p in pack_root.iterdir() if p.is_dir()):
+        if allowed and pack_dir.name not in allowed:
+            continue
+        for fname in ("mcp.yml", "mcp.yaml"):
+            candidate = pack_dir / "config" / fname
+            if candidate.exists():
+                overlays.append(candidate)
+    return overlays
+
+
+def _load_mcp_config(project_root: Path, packs: Sequence[str] | None = None) -> Dict[str, Any]:
+    """Load MCP configuration from base + pack overlays + project overrides."""
+
+    merged = (read_yaml("config", "mcp.yml") or {}).get("mcp") or {}
+
+    for overlay_path in _iter_pack_overlays(project_root, packs):
+        overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
+        merged = _deep_merge(merged, overlay)
+
     project_config_dir = get_project_config_dir(project_root)
-    overlay = project_config_dir / "config" / "zen.yml"
-    config = _deep_merge(config, _load_yaml_file(overlay))
-    return config
+    for fname in ("mcp.yml", "mcp.yaml"):
+        overlay_path = project_config_dir / "config" / fname
+        if overlay_path.exists():
+            overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
+            merged = _deep_merge(merged, overlay)
 
-
-def _resolve_run_script_path(project_root: Path) -> Path:
-    candidates = [
-        project_root / ".edison" / "scripts" / "zen" / "run-server.sh",
-        project_root / "scripts" / "zen" / "run-server.sh",
-        Path(__file__).resolve().parents[4] / "scripts" / "zen" / "run-server.sh",
-    ]
-    for path in candidates:
-        if path.exists():
-            return path
-    return candidates[-1]
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -181,68 +195,102 @@ def _resolve_run_script_path(project_root: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def get_edison_zen_config(project_root: Path, use_script: bool = False) -> McpServerConfig:
-    """Build the edison-zen MCP server configuration for a project."""
+def build_mcp_servers(
+    project_root: Path,
+    packs: Sequence[str] | None = None,
+    *,
+    prefer_scripts: bool = False,
+) -> tuple[Path, dict[str, McpServerConfig], dict[str, Dict[str, Any]]]:
+    """Build merged MCP server catalog.
 
-    zen_cfg = _load_zen_config(project_root)
-    mcp_cfg = (zen_cfg.get("zen") or {}).get("mcp") or {}
+    Returns:
+        Tuple of (config_path, servers_dict, setup_metadata)
+    """
 
-    required = ["server_id", "command", "args", "env", "config_file"]
-    missing = [key for key in required if key not in mcp_cfg]
-    if missing:
-        raise ValueError(f"Missing zen.mcp config keys: {', '.join(missing)}")
+    project_root = Path(project_root).expanduser().resolve()
+    mcp_cfg = _load_mcp_config(project_root, packs=packs)
 
-    env_cfg = mcp_cfg.get("env") or {}
-    resolved_env = {k: str(v).replace("{PROJECT_ROOT}", str(project_root.resolve())) for k, v in env_cfg.items()}
+    config_file = mcp_cfg.get("config_file", ".mcp.json")
+    target_path = Path(config_file)
+    if not target_path.is_absolute():
+        target_path = project_root / target_path
 
-    if use_script:
-        command = str(_resolve_run_script_path(project_root))
-        args: list[str] = []
-    else:
-        command = str(mcp_cfg.get("command"))
-        args = list(mcp_cfg.get("args", []))
+    servers: dict[str, McpServerConfig] = {}
+    setup: dict[str, Dict[str, Any]] = {}
 
-    return McpServerConfig(command=command, args=args, env=resolved_env)
+    for server_id, raw in (mcp_cfg.get("servers") or {}).items():
+        if not isinstance(raw, dict):
+            continue
+        if "command" not in raw:
+            raise ValueError(f"Missing command for MCP server '{server_id}'")
+
+        script_cfg = raw.get("script") if prefer_scripts else None
+        cmd_source = script_cfg if isinstance(script_cfg, dict) else raw
+
+        args_raw = cmd_source.get("args") or []
+        env_raw = raw.get("env") or {}
+
+        if not isinstance(env_raw, dict):
+            raise ValueError(f"env for MCP server '{server_id}' must be a mapping")
+
+        resolved_env = {
+            k: str(v).replace("{PROJECT_ROOT}", str(project_root))
+            for k, v in env_raw.items()
+        }
+
+        servers[server_id] = McpServerConfig(
+            command=str(cmd_source.get("command")),
+            args=[str(a).replace("{PROJECT_ROOT}", str(project_root)) for a in args_raw],
+            env=resolved_env,
+        )
+        setup[server_id] = dict(raw.get("setup") or {})
+
+    return target_path, servers, setup
 
 
 def configure_mcp_json(
     project_root: Path,
     *,
     config_file: str | Path | None = None,
-    overwrite: bool = False,
+    server_ids: Sequence[str] | None = None,
+    packs: Sequence[str] | None = None,
+    overwrite: bool = True,
     dry_run: bool = False,
-    use_shell_script: bool = False,
+    prefer_scripts: bool = False,
 ) -> dict[str, Any]:
-    """Add or update edison-zen server entry in `.mcp.json`.
+    """Write (or simulate) an updated `.mcp.json` using YAML-driven values.
 
-    Returns the resulting configuration dictionary with metadata under
-    ``_meta`` (path, added flag). Does not write when ``dry_run`` is True.
+    Args:
+        project_root: Project root path.
+        config_file: Optional override for the target .mcp.json path.
+        server_ids: Limit updates to the specified server ids (default all managed).
+        packs: Optional list of packs whose overrides should be applied.
+        overwrite: Whether to replace existing managed entries.
+        dry_run: When True, return config without writing to disk.
     """
 
     project_root = Path(project_root).expanduser().resolve()
+    target_path, servers, _ = build_mcp_servers(project_root, packs=packs, prefer_scripts=prefer_scripts)
 
-    zen_cfg = _load_zen_config(project_root)
-    mcp_cfg = (zen_cfg.get("zen") or {}).get("mcp") or {}
-    if config_file is None:
-        config_file = mcp_cfg.get("config_file", ".mcp.json")
+    if server_ids is not None:
+        servers = {sid: cfg for sid, cfg in servers.items() if sid in server_ids}
 
-    target_path = Path(config_file)
-    if not target_path.is_absolute():
-        target_path = project_root / target_path
+    if config_file is not None:
+        cfg_path = Path(config_file)
+        if not cfg_path.is_absolute():
+            cfg_path = project_root / cfg_path
+        target_path = cfg_path
 
     config = McpConfig.load(target_path)
-    server_id = mcp_cfg.get("server_id", "edison-zen")
-    server_cfg = get_edison_zen_config(project_root, use_script=use_shell_script)
 
-    added = False
-    try:
-        added = config.add_server(server_id, server_cfg, overwrite=overwrite)
-    except ValueError:
-        # Existing entry when overwrite is False
-        added = False
+    added_count = 0
+    for server_id, server_cfg in servers.items():
+        is_new = config.add_server(server_id, server_cfg, overwrite=overwrite)
+        if is_new:
+            added_count += 1
 
     result = config.to_dict()
-    result["_meta"] = {"path": str(target_path), "added": added}
+    result["_meta"] = {"path": str(target_path), "added": added_count}
 
     if dry_run:
         return result

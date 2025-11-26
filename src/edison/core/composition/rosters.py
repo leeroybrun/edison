@@ -4,21 +4,16 @@ Generates AVAILABLE_VALIDATORS.md from ValidatorRegistry.
 """
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
+from edison.core.config import ConfigManager
+from edison.core.paths.project import get_project_config_dir
+
 from .agents import AgentRegistry
+from .headers import build_generated_header
 from .validators import ValidatorRegistry
-
-
-def _generation_header() -> str:
-    """Standard header for generated roster files."""
-    return (
-        "<!-- GENERATED FILE - DO NOT EDIT DIRECTLY -->\n"
-        "<!-- Regenerate: edison compose --all -->\n"
-        f"<!-- Generated: {datetime.now().isoformat()} -->\n\n"
-    )
+from .path_utils import resolve_project_dir_placeholders
 
 
 def generate_available_agents(output_path: Path, repo_root: Optional[Path] = None) -> None:
@@ -27,9 +22,11 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
 
     registry = AgentRegistry(repo_root=repo_root)
     agents = registry.get_all()
+    project_dir = get_project_config_dir(repo_root or registry.repo_root)
+    cfg_mgr = ConfigManager(repo_root=repo_root)
 
     content = (
-        f"{_generation_header()}"
+        f"{build_generated_header('rosters.available_agents', config=cfg_mgr, target_path=output_path)}"
         "# Available Agents\n\n"
         "This file is dynamically generated from the AgentRegistry. Do not edit directly.\n\n"
         "## Agent Roster\n\n"
@@ -42,6 +39,12 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
         "See `guidelines/shared/DELEGATION.md` for file pattern → agent mappings.\n"
     )
 
+    content = resolve_project_dir_placeholders(
+        content,
+        project_dir=project_dir,
+        target_path=output_path,
+        repo_root=repo_root or registry.repo_root,
+    )
     output_path.write_text(content, encoding="utf-8")
 
 
@@ -64,8 +67,11 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
     critical_validators = validators_by_tier.get('critical', [])
     specialized_validators = validators_by_tier.get('specialized', [])
 
+    cfg_mgr = ConfigManager(repo_root=repo_root)
+    project_dir = get_project_config_dir(repo_root or registry.repo_root)
+
     content = (
-        f"{_generation_header()}"
+        f"{build_generated_header('rosters.available_validators', config=cfg_mgr, target_path=output_path)}"
         "# Available Validators\n\n"
         "This file is dynamically generated from the ValidatorRegistry. Do not edit directly.\n\n"
         "## Validator Roster\n\n"
@@ -92,6 +98,12 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
         "See `guidelines/shared/VALIDATION.md` for detailed workflow.\n"
     )
 
+    content = resolve_project_dir_placeholders(
+        content,
+        project_dir=project_dir,
+        target_path=output_path,
+        repo_root=repo_root or registry.repo_root,
+    )
     output_path.write_text(content, encoding="utf-8")
 
 

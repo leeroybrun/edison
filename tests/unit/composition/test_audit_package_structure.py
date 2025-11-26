@@ -26,13 +26,13 @@ def test_audit_package_exists():
 
 def test_discovery_module_exists():
     """Discovery module must exist with guideline discovery functions."""
-    from edison.core.composition.audit import discovery
+    from edison.core.composition.audit import guideline_discovery
 
     # Verify module has expected functions
-    assert hasattr(discovery, "discover_guidelines")
-    assert hasattr(discovery, "GuidelineRecord")
-    assert hasattr(discovery, "GuidelineCategory")
-    assert callable(discovery.discover_guidelines)
+    assert hasattr(guideline_discovery, "discover_guidelines")
+    assert hasattr(guideline_discovery, "GuidelineRecord")
+    assert hasattr(guideline_discovery, "GuidelineCategory")
+    assert callable(guideline_discovery.discover_guidelines)
 
 
 def test_analysis_module_exists():
@@ -98,12 +98,12 @@ def test_composition_package_exports_audit_functions():
 def test_no_circular_imports():
     """Verify no circular import issues between audit modules."""
     # If this test runs without ImportError, circular imports are not present
-    from edison.core.composition.audit import discovery
+    from edison.core.composition.audit import guideline_discovery
     from edison.core.composition.audit import analysis
     from edison.core.composition.audit import purity
 
     # All modules should be importable without errors
-    assert discovery is not None
+    assert guideline_discovery is not None
     assert analysis is not None
     assert purity is not None
 

@@ -47,7 +47,7 @@ def main(args: argparse.Namespace) -> int:
         _move_session_json_to,
         _session_dir
     )
-    from edison.core.file_io.utils import utc_timestamp
+    from edison.core.utils.time import utc_timestamp
 
     try:
         session_id = normalize_session_id(args.session_id)

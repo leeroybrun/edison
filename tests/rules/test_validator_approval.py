@@ -163,8 +163,8 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
         "round": 1,
         "approved": False,
         "validators": [
-            {"validatorId": "codex-global", "approved": True, "verdict": "approve"},
-            {"validatorId": "claude-global", "approved": False, "verdict": "reject"},
+            {"validatorId": "global-codex", "approved": True, "verdict": "approve"},
+            {"validatorId": "global-claude", "approved": False, "verdict": "reject"},
             {"validatorId": "security", "approved": False, "verdict": "blocked"},
         ],
         "missing": ["performance"],
@@ -180,7 +180,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
     msg = str(exc.value).lower()
     assert "not approved" in msg
     # All failing/missing validators should be surfaced
-    for vid in ("claude-global", "security", "performance"):
+    for vid in ("global-claude", "security", "performance"):
         assert vid in msg
 
 

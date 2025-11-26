@@ -83,21 +83,6 @@ class TestFindSessionJsonCandidates:
         assert sessions_root / "done" / session_id / "session.json" in candidates
         assert sessions_root / "validated" / session_id / "session.json" in candidates
 
-    def test_returns_candidates_for_legacy_flat_layout(self, project_root):
-        """Should return paths for legacy flat layout {state}/{id}.json."""
-        sessions_root = project_root / ".project" / "sessions"
-        session_id = "test-session-123"
-
-        candidates = discovery.find_session_json_candidates(
-            session_id=session_id,
-            sessions_root=sessions_root
-        )
-
-        # Should include legacy flat layout paths
-        assert sessions_root / "wip" / f"{session_id}.json" in candidates
-        assert sessions_root / "draft" / f"{session_id}.json" in candidates
-        assert sessions_root / "done" / f"{session_id}.json" in candidates
-
     def test_uses_custom_states_list(self, project_root):
         """Should use custom states list when provided."""
         sessions_root = project_root / ".project" / "sessions"
@@ -114,8 +99,8 @@ class TestFindSessionJsonCandidates:
         done_candidates = [c for c in candidates if "done" in str(c)]
         draft_candidates = [c for c in candidates if "draft" in str(c)]
 
-        assert len(wip_candidates) >= 2  # new + legacy
-        assert len(done_candidates) >= 2  # new + legacy
+        assert len(wip_candidates) == 1  # Only new layout
+        assert len(done_candidates) == 1  # Only new layout
         assert len(draft_candidates) == 0  # Not in custom states
 
     def test_uses_state_map_for_directory_names(self, project_root):
@@ -181,25 +166,6 @@ class TestResolveSessionJson:
         )
 
         assert result == session_json
-        assert result.exists()
-
-    def test_finds_legacy_flat_layout_session(self, project_root):
-        """Should find session in legacy flat layout."""
-        sessions_root = project_root / ".project" / "sessions"
-        session_id = "legacy-session-789"
-
-        # Create session in legacy flat layout
-        legacy_dir = sessions_root / "wip"
-        legacy_dir.mkdir(parents=True)
-        legacy_json = legacy_dir / f"{session_id}.json"
-        legacy_json.write_text('{"id": "legacy-session-789"}')
-
-        result = discovery.resolve_session_json(
-            session_id=session_id,
-            sessions_root=sessions_root
-        )
-
-        assert result == legacy_json
         assert result.exists()
 
     def test_prefers_first_match_in_state_order(self, project_root):

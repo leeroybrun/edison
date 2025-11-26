@@ -9,8 +9,10 @@ validators.
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 
+from edison.core.config import ConfigManager
 from tests.conftest import REPO_ROOT
 
 
@@ -18,8 +20,8 @@ TEMPLATES = [
     {
         "role": "orchestrator",
         "role_label": "ORCHESTRATOR",
-        "path": REPO_ROOT / "src/edison/core/constitutions/orchestrator-base.md",
-        "constitution_path": ".edison/_generated/constitutions/ORCHESTRATORS.md",
+        "path": REPO_ROOT / "src/edison/data/constitutions/orchestrator-base.md",
+        "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATORS.md",
         "mandatory_block": "{{#each mandatoryReads.orchestrator}}",
         "rules_block": "{{#each rules.orchestrator}}",
         "workflow_section": "Session Workflow",
@@ -36,8 +38,8 @@ TEMPLATES = [
     {
         "role": "agents",
         "role_label": "AGENT",
-        "path": REPO_ROOT / "src/edison/core/constitutions/agents-base.md",
-        "constitution_path": ".edison/_generated/constitutions/AGENTS.md",
+        "path": REPO_ROOT / "src/edison/data/constitutions/agents-base.md",
+        "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md",
         "mandatory_block": "{{#each mandatoryReads.agents}}",
         "rules_block": "{{#each rules.agent}}",
         "workflow_section": "Workflow Requirements",
@@ -54,8 +56,8 @@ TEMPLATES = [
     {
         "role": "validators",
         "role_label": "VALIDATOR",
-        "path": REPO_ROOT / "src/edison/core/constitutions/validators-base.md",
-        "constitution_path": ".edison/_generated/constitutions/VALIDATORS.md",
+        "path": REPO_ROOT / "src/edison/data/constitutions/validators-base.md",
+        "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md",
         "mandatory_block": "{{#each mandatoryReads.validators}}",
         "rules_block": "{{#each rules.validator}}",
         "workflow_section": "Validation Workflow",
@@ -72,10 +74,17 @@ TEMPLATES = [
 
 
 COMMON_HEADER_FIELDS = [
-    "<!-- GENERATED FILE - DO NOT EDIT DIRECTLY -->",
+    (
+        (
+            (ConfigManager().load_config(validate=False).get("composition") or {})
+        ).get("generatedFileHeader")
+        or ""
+    ).strip(),
     "<!-- Source: {{source_layers}} -->",
     "<!-- Regenerate: edison compose --all -->",
 ]
+
+assert COMMON_HEADER_FIELDS[0], "composition.generatedFileHeader must be configured"
 
 
 def _require_block_closed(content: str, open_tag: str) -> None:
@@ -126,6 +135,5 @@ def test_constitution_template_core_sections(template: dict) -> None:
 
 
 def test_constitution_templates_directory_exists() -> None:
-    base_dir = REPO_ROOT / "src/edison/core/constitutions"
+    base_dir = REPO_ROOT / "src/edison/data/constitutions"
     assert base_dir.is_dir(), "Missing constitutions directory"
-

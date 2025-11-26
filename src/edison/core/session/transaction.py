@@ -18,8 +18,9 @@ from ..file_io.locking import acquire_file_lock
 from ..file_io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
-    utc_timestamp as io_utc_timestamp,
+    ensure_dir,
 )
+from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..exceptions import SessionError
 from .store import sanitize_session_id
 from ..paths.management import get_management_paths
@@ -41,7 +42,7 @@ def _get_tx_root() -> Path:
 
 def _tx_dir(session_id: str) -> Path:
     d = _get_tx_root() / sanitize_session_id(session_id)
-    d.mkdir(parents=True, exist_ok=True)
+    ensure_dir(d)
     return d
 
 def _sid_dir(session_id: str) -> Path:
@@ -74,7 +75,7 @@ def _sid_dir(session_id: str) -> Path:
 
 def _tx_validation_dir(session_id: str, tx_id: str) -> Path:
     d = _get_tx_root() / sanitize_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
-    d.mkdir(parents=True, exist_ok=True)
+    ensure_dir(d)
     return d
 
 def _tx_validation_log_path(session_id: str) -> Path:
@@ -92,7 +93,7 @@ def _append_tx_log(session_id: str, tx_id: str, action: str, message: str = "", 
     }
     try:
         with acquire_file_lock(log_path):
-            log_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(log_path.parent)
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(payload) + "\n")
                 f.flush()
@@ -264,8 +265,8 @@ class ValidationTransaction:
         self._committed = False
         self._aborted = False
         # Initialize directories
-        (self.staging_root / self._mgmt_rel).mkdir(parents=True, exist_ok=True)
-        self.snapshot_root.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self.staging_root / self._mgmt_rel)
+        ensure_dir(self.snapshot_root)
         # Write meta stub
         meta = {
             "txId": self.tx_id,
@@ -333,10 +334,10 @@ class ValidationTransaction:
         for sf in staged_files:
             rel = _relative_to_staging(self.staging_root, sf)
             dst = self.final_root / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(dst.parent)
             if dst.exists():
                 backup_path = self.snapshot_root / rel
-                backup_path.parent.mkdir(parents=True, exist_ok=True)
+                ensure_dir(backup_path.parent)
                 shutil.copy2(dst, backup_path)
             shutil.copy2(sf, dst)
             

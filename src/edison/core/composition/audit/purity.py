@@ -15,7 +15,7 @@ Purity ensures clean separation between generic (core/pack) and project-specific
 import os
 from typing import Dict, Iterable, List, Set, Any
 
-from .discovery import GuidelineRecord
+from .guideline_discovery import GuidelineRecord
 
 
 # Default banned tokens should stay generic; project-specific terms are injected via env

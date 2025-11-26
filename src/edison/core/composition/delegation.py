@@ -99,7 +99,7 @@ def delegate_task(
         child_id = f"delegated-{uuid.uuid4().hex[:8]}"
 
     _task.create_task_record(child_id, description)
-    
+
     updates = {
         'agent': agent,
         'status': 'pending',
@@ -115,6 +115,19 @@ def delegate_task(
         updates,
         operation='delegate',
     )
+
+    # Update parent task's child_tasks list
+    if parent_task_id:
+        parent = _task.load_task_record(parent_task_id)
+        child_tasks = parent.get('child_tasks', [])
+        if child_id not in child_tasks:
+            child_tasks.append(child_id)
+        _task.update_task_record(
+            parent_task_id,
+            {'child_tasks': child_tasks},
+            operation='add-child',
+        )
+
     return child_id
 
 def _classify_status(status: str) -> str:

@@ -9,7 +9,7 @@ from edison.data import get_data_path
 
 def _load_agent_content() -> str:
     agents_dir = get_data_path("agents")
-    path = agents_dir / "database-architect-core.md"
+    path = agents_dir / "database-architect.md"
     assert path.exists(), f"Missing agent file: {path}"
     return path.read_text(encoding="utf-8")
 

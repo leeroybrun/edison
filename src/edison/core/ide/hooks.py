@@ -63,9 +63,10 @@ class HookComposer:
 
         self.cfg_mgr = ConfigManager(self.repo_root)
 
-        self.core_dir = self.repo_root / ".edison" / "core"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
-        self.project_dir = get_project_config_dir(self.repo_root)
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        self.core_dir = config_dir / "core"
+        self.packs_dir = config_dir / "packs"
+        self.project_dir = config_dir
         self.templates_dir = self.core_dir / "templates" / "hooks"
 
     # ----- Public API -----

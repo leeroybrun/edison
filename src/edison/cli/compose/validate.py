@@ -42,11 +42,13 @@ def main(args: argparse.Namespace) -> int:
     """Validate composition - delegates to composition validator."""
     from edison.core.composition import validate_composition
     from edison.core.paths import resolve_project_root
+    from edison.core.paths.project import get_project_config_dir
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
 
         # For now, just do basic validation that the repo structure exists
+        config_dir = get_project_config_dir(repo_root, create=False)
         validation_result = {
             "valid": True,
             "repo_root": str(repo_root),
@@ -55,8 +57,8 @@ def main(args: argparse.Namespace) -> int:
 
         # Check for basic required directories
         required_dirs = [
-            repo_root / ".edison",
-            repo_root / ".edison" / "core",
+            config_dir,
+            config_dir / "core",
         ]
 
         for dir_path in required_dirs:

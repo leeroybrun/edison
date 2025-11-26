@@ -11,6 +11,8 @@ from pathlib import Path
 
 import yaml
 
+from edison.core.paths.project import get_project_config_dir
+
 
 def rules_migrate_registry_paths() -> int:
     """
@@ -21,7 +23,8 @@ def rules_migrate_registry_paths() -> int:
     try:
         # Find project root
         cwd = Path.cwd()
-        registry_path = cwd / ".edison" / "core" / "rules" / "registry.json"
+        config_dir = get_project_config_dir(cwd, create=False)
+        registry_path = config_dir / "core" / "rules" / "registry.json"
 
         if not registry_path.exists():
             print(f"Registry not found: {registry_path}", file=sys.stderr)
@@ -66,8 +69,9 @@ def rules_json_to_yaml_migration() -> int:
     try:
         # Find project root
         cwd = Path.cwd()
-        json_path = cwd / ".edison" / "core" / "rules" / "registry.json"
-        yaml_path = cwd / ".edison" / "core" / "rules" / "registry.yml"
+        config_dir = get_project_config_dir(cwd, create=False)
+        json_path = config_dir / "core" / "rules" / "registry.json"
+        yaml_path = config_dir / "core" / "rules" / "registry.yml"
 
         if not json_path.exists():
             print(f"JSON registry not found: {json_path}", file=sys.stderr)
@@ -151,7 +155,8 @@ def rules_verify_anchors() -> int:
     try:
         # Find project root
         cwd = Path.cwd()
-        yaml_path = cwd / ".edison" / "core" / "rules" / "registry.yml"
+        config_dir = get_project_config_dir(cwd, create=False)
+        yaml_path = config_dir / "core" / "rules" / "registry.yml"
 
         if not yaml_path.exists():
             print(f"YAML registry not found: {yaml_path}", file=sys.stderr)

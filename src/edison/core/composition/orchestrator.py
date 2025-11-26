@@ -2,17 +2,19 @@ from __future__ import annotations
 
 """Orchestrator manifest assembly and delegation helpers."""
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Iterable
 
 from edison.core.file_io import utils as io_utils
+from edison.core.file_io.utils import read_json_safe
+from edison.core.utils.time import utc_timestamp
 from .packs import yaml
 from ..utils.text import render_conditional_includes
 from .formatting import render_orchestrator_json, render_orchestrator_markdown
 from .validators import collect_validators
 from .workflow import get_workflow_loop_instructions
+from .path_utils import resolve_project_dir_placeholders
 
 
 def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], project_dir: Path) -> Dict[str, List[str]]:
@@ -78,15 +80,12 @@ def collect_packs(packs_dir: Path, active_packs: Iterable[str]) -> List[Dict[str
 
         pack_yml = packs_dir / pack_name / "pack.yml"
         if pack_yml.exists() and yaml is not None:
-            try:
-                data = yaml.safe_load(pack_yml.read_text(encoding="utf-8")) or {}
-                meta_block = data.get("pack") or {}
-                if isinstance(meta_block, dict):
-                    base_meta["id"] = str(meta_block.get("id") or base_meta["id"])
-                    base_meta["name"] = str(meta_block.get("name") or base_meta["name"])
-                    base_meta["version"] = str(meta_block.get("version") or base_meta["version"])
-            except Exception:
-                pass
+            data = io_utils.read_yaml_safe(pack_yml, default={})
+            meta_block = data.get("pack") or {}
+            if isinstance(meta_block, dict):
+                base_meta["id"] = str(meta_block.get("id") or base_meta["id"])
+                base_meta["name"] = str(meta_block.get("name") or base_meta["name"])
+                base_meta["version"] = str(meta_block.get("version") or base_meta["version"])
 
         packs.append(base_meta)
 
@@ -176,7 +175,7 @@ def compose_claude_orchestrator(engine, output_dir: Path | str) -> Path:
         "\n---\n\n",
     ]
 
-    core_brief = engine.repo_root / ".edison" / "packs" / "clients" / "claude" / "CLAUDE.md"
+    core_brief = engine.project_dir / "packs" / "clients" / "claude" / "CLAUDE.md"
     if core_brief.exists():
         raw = core_brief.read_text(encoding="utf-8")
         orchestrator_parts.append(engine.resolve_includes(raw, core_brief))
@@ -196,6 +195,12 @@ def compose_claude_orchestrator(engine, output_dir: Path | str) -> Path:
     if packs:
         content = render_conditional_includes(content, packs)
     output_file = out_dir / "CLAUDE.md"
+    content = resolve_project_dir_placeholders(
+        content,
+        project_dir=engine.project_dir,
+        target_path=output_file,
+        repo_root=engine.repo_root,
+    )
     output_file.write_text(content, encoding="utf-8")
 
     return output_file
@@ -235,6 +240,12 @@ def compose_claude_agents(engine, output_dir: Path | str | None = None, *, packs
             continue
 
         out_file = out_dir / f"{name}.md"
+        text = resolve_project_dir_placeholders(
+            text,
+            project_dir=engine.project_dir,
+            target_path=out_file,
+            repo_root=engine.repo_root,
+        )
         out_file.write_text(text, encoding="utf-8")
         results[name] = out_file
 
@@ -259,13 +270,9 @@ def load_delegation_config(config: Dict, core_dir: Path, project_dir: Path) -> D
         core_dir / "delegation" / "config.json",
         project_dir / "delegation" / "config.json",
     ]:
-        if path.exists():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8")) or {}
-                if isinstance(data, dict):
-                    delegation_cfg.update(data)
-            except Exception:
-                continue
+        data = read_json_safe(path, default={})
+        if isinstance(data, dict):
+            delegation_cfg.update(data)
 
     if isinstance(cfg, dict) and isinstance(cfg.get("delegation"), dict):
         delegation_cfg.update(cfg.get("delegation") or {})
@@ -366,7 +373,7 @@ def compose_orchestrator_manifest(
     delegation = load_delegation_config(config, core_dir, project_dir)
 
     data = {
-        "generated": datetime.now().isoformat(),
+        "generated": utc_timestamp(),
         "version": "2.0.0",
         "config": config,
         "composition": {

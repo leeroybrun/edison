@@ -35,6 +35,7 @@ from .registry import (
     RulesRegistry,
     compose_rules,
 )
+from .file_patterns import FilePatternRegistry
 from .engine import (
     RulesEngine,
 )
@@ -51,6 +52,7 @@ __all__ = [
     # Registry
     "RulesRegistry",
     "compose_rules",
+    "FilePatternRegistry",
     # Engine
     "RulesEngine",
 ]

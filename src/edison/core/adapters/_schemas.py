@@ -21,6 +21,7 @@ except Exception:  # pragma: no cover - surfaced via doctor script
     jsonschema = None  # type: ignore[assignment]
 
 from ..paths import PathResolver
+from ..paths.project import get_project_config_dir
 
 
 class SchemaValidationError(ValueError):
@@ -33,7 +34,7 @@ def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
     """Resolve schemas directory for the given repository root.
 
     Lookup order:
-    1. .edison/core/schemas (dev mode)
+    1. <project_config_dir>/core/schemas (dev mode)
     2. src/edison/data/schemas (packaged mode)
 
     Args:
@@ -49,7 +50,8 @@ def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
         repo_root = PathResolver.resolve_project_root()
 
     # Try dev mode location first
-    dev_schemas = repo_root / ".edison" / "core" / "schemas"
+    config_dir = get_project_config_dir(repo_root, create=False)
+    dev_schemas = config_dir / "core" / "schemas"
     if dev_schemas.exists():
         return dev_schemas
 

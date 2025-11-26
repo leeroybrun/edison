@@ -25,7 +25,7 @@ def test_validation_doc_includes_batched_parallel_execution_model():
 
     # Consensus rules for the global validators
     for rule in (
-        "Both codex-global and claude-global must agree",
+        "Both global-codex and global-claude must agree",
         "If they disagree, escalate to human review",
         "Tie-breaker: More specific feedback wins",
     ):

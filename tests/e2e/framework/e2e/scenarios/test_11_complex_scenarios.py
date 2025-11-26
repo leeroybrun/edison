@@ -639,8 +639,8 @@ def test_bundle_validation_parent_only(test_project_dir: TestProjectDir):
 
         # Validator reports for all blocking validators (global, critical, specialized)
         for validator_id, model in [
-            ("codex-global", "codex"),
-            ("claude-global", "claude"),
+            ("global-codex", "codex"),
+            ("global-claude", "claude"),
             ("security", "codex"),
             ("performance", "codex"),
             ("prisma", "codex"),

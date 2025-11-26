@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from edison.core.task import io, locking, metadata, paths
+from edison.core.task import io, locking, record_metadata, paths
 
 
 def test_paths_session_state_dir_returns_path() -> None:
@@ -39,7 +39,7 @@ def test_metadata_read_metadata_extracts_owner_and_status(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
-    meta = metadata.read_metadata(path, "task")
+    meta = record_metadata.read_metadata(path, "task")
 
     assert meta.owner == "alice"
     assert meta.status == "wip"

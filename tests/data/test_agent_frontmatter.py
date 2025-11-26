@@ -9,7 +9,7 @@ from edison.data import get_data_path
 
 AGENT_SPECS = {
     "api-builder": {
-        "filename": "api-builder-core.md",
+        "filename": "api-builder.md",
         "model": "codex",
         "description": "Backend API specialist for route handlers, validation, and data flow",
         "context7_ids": [
@@ -19,7 +19,7 @@ AGENT_SPECS = {
         ],
     },
     "component-builder": {
-        "filename": "component-builder-core.md",
+        "filename": "component-builder.md",
         "model": "claude",
         "description": "UI component specialist for accessible, responsive Next.js/React interfaces",
         "context7_ids": [
@@ -30,7 +30,7 @@ AGENT_SPECS = {
         ],
     },
     "database-architect": {
-        "filename": "database-architect-core.md",
+        "filename": "database-architect.md",
         "model": "codex",
         "description": "Database schema and migration specialist for reliable, performant data layers",
         "context7_ids": [
@@ -38,7 +38,7 @@ AGENT_SPECS = {
         ],
     },
     "code-reviewer": {
-        "filename": "code-reviewer-core.md",
+        "filename": "code-reviewer.md",
         "model": "claude",
         "description": "Code quality reviewer ensuring TDD compliance and actionable feedback",
         "context7_ids": [
@@ -49,7 +49,7 @@ AGENT_SPECS = {
         ],
     },
     "test-engineer": {
-        "filename": "test-engineer-core.md",
+        "filename": "test-engineer.md",
         "model": "codex",
         "description": "Test automation and TDD guardian ensuring coverage and reliability",
         "context7_ids": [
@@ -58,7 +58,7 @@ AGENT_SPECS = {
         ],
     },
     "feature-implementer": {
-        "filename": "feature-implementer-core.md",
+        "filename": "feature-implementer.md",
         "model": "claude",
         "description": "Full-stack feature implementer delivering end-to-end product experiences",
         "context7_ids": [
@@ -162,13 +162,13 @@ def test_agent_frontmatter_yaml_parses_without_duplicates(agent_name: str, spec:
 
 
 def test_component_builder_has_server_client_examples() -> None:
-    """Test that component-builder-core.md includes Server and Client Component examples.
+    """Test that component-builder.md includes Server and Client Component examples.
 
     This validates T-027: Server/Client examples must be present to demonstrate
     Next.js 16 App Router patterns for when to use Server vs Client Components.
     """
     agents_dir = get_data_path("agents")
-    path = agents_dir / "component-builder-core.md"
+    path = agents_dir / "component-builder.md"
     content = path.read_text(encoding="utf-8")
 
     # Check for Server Components section
@@ -252,8 +252,8 @@ def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
     assert "context7CompatibleLibraryID" in section, \
         f"{path} get-library-docs example missing context7CompatibleLibraryID"
 
-    assert "config/post_training_packages.yaml" in section, \
-        f"{path} must point to config/post_training_packages.yaml for versions"
+    assert "config/context7.yml" in section, \
+        f"{path} must point to config/context7.yml for versions"
 
     for warning in ("Next.js 16", "React 19", "Tailwind CSS 4", "Prisma 6"):
         assert warning in section, f"{path} missing version warning for {warning}"

@@ -20,7 +20,9 @@ import subprocess
 from pathlib import Path
 from typing import Optional, List
 from edison.core.utils.subprocess import run_with_timeout
+from edison.core.file_io.utils import read_json_safe
 from .management import get_management_paths
+from .project import DEFAULT_PROJECT_CONFIG_PRIMARY, get_project_config_dir
 
 
 class EdisonPathError(ValueError):
@@ -260,9 +262,8 @@ class PathResolver:
                         continue
 
                     try:
-                        import json
-                        data = json.loads(session_json.read_text())
-                        if data.get("owner") == owner:
+                        data = read_json_safe(session_json, default={})
+                        if isinstance(data, dict) and data.get("owner") == owner:
                             return PathResolver._validate_session_id(session_dir.name)
                     except Exception:
                         continue

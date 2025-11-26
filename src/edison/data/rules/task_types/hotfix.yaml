@@ -1,5 +1,7 @@
 task_type: hotfix
 title: Hotfix
+blocking: true
+severity: error
 applies_when:
   - "An urgent production or customer-impacting issue requires immediate mitigation outside normal release cadence."
   - "Rollback, patch, or config toggle is needed to restore service health or SLA compliance."

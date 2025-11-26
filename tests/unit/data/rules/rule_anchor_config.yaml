@@ -1,0 +1,9 @@
+target_dirs:
+  - src/edison/data/rules
+marker_patterns:
+  - '<!--\s*RULE:\s*[^-]+?-->'
+  - '<!--\s*ID:\s*[^-]+?-->'
+include_extensions:
+  - .yaml
+  - .yml
+  - .md

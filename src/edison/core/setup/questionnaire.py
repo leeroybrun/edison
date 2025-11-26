@@ -15,9 +15,10 @@ try:  # Optional dependency; fallback rendering when missing
 except Exception:  # pragma: no cover - handled at runtime
     Template = None  # type: ignore[assignment]
 
-from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
+from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY, get_project_config_dir
 from edison.core.paths.resolver import PathResolver
-from .discovery import SetupDiscovery
+from edison.core.file_io.utils import read_yaml_safe, dump_yaml_string
+from .component_discovery import SetupDiscovery
 
 
 class SetupQuestionnaire:
@@ -32,7 +33,8 @@ class SetupQuestionnaire:
         assume_yes: bool = False,
     ) -> None:
         self.repo_root = repo_root or PathResolver.resolve_project_root()
-        self.edison_core = edison_core or (self.repo_root / ".edison" / "core")
+        config_dir = get_project_config_dir(self.repo_root, create=False)
+        self.edison_core = edison_core or (config_dir / "core")
         self.config_path = config_path or (self.edison_core / "config" / "setup.yaml")
         self.assume_yes = assume_yes
 
@@ -128,7 +130,7 @@ class SetupQuestionnaire:
             defaults_config["database"] = config_dict["database"]
         if config_dict.get("auth"):
             defaults_config["auth"] = config_dict["auth"]
-        configs["defaults.yml"] = yaml.safe_dump(defaults_config, sort_keys=False)
+        configs["defaults.yml"] = dump_yaml_string(defaults_config, sort_keys=False)
 
         # packs.yml - enabled packs and pack-specific config
         packs_config = {
@@ -138,53 +140,53 @@ class SetupQuestionnaire:
         }
         if pack_configs:
             packs_config["pack_config"] = pack_configs
-        configs["packs.yml"] = yaml.safe_dump(packs_config, sort_keys=False)
+        configs["packs.yml"] = dump_yaml_string(packs_config, sort_keys=False)
 
         # validators.yml - validator configuration
         if config_dict.get("validators"):
-            configs["validators.yml"] = yaml.safe_dump(
+            configs["validators.yml"] = dump_yaml_string(
                 {"validators": config_dict["validators"]},
                 sort_keys=False
             )
 
         # delegation.yml - agents configuration
         if config_dict.get("agents"):
-            configs["delegation.yml"] = yaml.safe_dump(
+            configs["delegation.yml"] = dump_yaml_string(
                 {"agents": config_dict["agents"]},
                 sort_keys=False
             )
 
         # orchestrators.yml - IDE orchestrators
         if config_dict.get("orchestrators"):
-            configs["orchestrators.yml"] = yaml.safe_dump(
+            configs["orchestrators.yml"] = dump_yaml_string(
                 {"orchestrators": config_dict["orchestrators"]},
                 sort_keys=False
             )
 
         # worktrees.yml - worktree configuration
         if config_dict.get("worktrees"):
-            configs["worktrees.yml"] = yaml.safe_dump(
+            configs["worktrees.yml"] = dump_yaml_string(
                 {"worktrees": config_dict["worktrees"]},
                 sort_keys=False
             )
 
         # workflow.yml - task and session states
         if config_dict.get("workflow"):
-            configs["workflow.yml"] = yaml.safe_dump(
+            configs["workflow.yml"] = dump_yaml_string(
                 {"workflow": config_dict["workflow"]},
                 sort_keys=False
             )
 
         # tdd.yml - TDD enforcement rules
         if config_dict.get("tdd"):
-            configs["tdd.yml"] = yaml.safe_dump(
+            configs["tdd.yml"] = dump_yaml_string(
                 {"tdd": config_dict["tdd"]},
                 sort_keys=False
             )
 
         # ci.yml - CI commands
         if config_dict.get("ci"):
-            configs["ci.yml"] = yaml.safe_dump(
+            configs["ci.yml"] = dump_yaml_string(
                 {"ci": config_dict["ci"]},
                 sort_keys=False
             )
@@ -272,7 +274,7 @@ class SetupQuestionnaire:
             if not pack_setup_path.exists():
                 continue
 
-            pack_setup = yaml.safe_load(pack_setup_path.read_text(encoding="utf-8")) or {}
+            pack_setup = read_yaml_safe(pack_setup_path, default={})
             config_template = (pack_setup.get("setup") or {}).get("config_template") or {}
             if not config_template:
                 continue
@@ -310,11 +312,7 @@ class SetupQuestionnaire:
         return pattern.sub(lambda m: str(context.get(m.group(1), "")), value)
 
     def _load_config(self) -> Dict[str, Any]:
-        if not self.config_path.exists():
-            return {}
-        with self.config_path.open("r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)  # type: ignore[no-untyped-call]
-            return data or {}
+        return read_yaml_safe(self.config_path, default={})
 
     def _questions_for_mode(self, mode: str) -> List[Dict[str, Any]]:
         setup = self.config.get("setup") or {}

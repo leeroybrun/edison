@@ -180,7 +180,7 @@ cat .project/qa/validation-evidence/<task-id>/round-N/bundle-*.json
 
 ## References
 
-- Validator roster (dynamic): `.edison/_generated/AVAILABLE_VALIDATORS.md`
+- Validator roster (dynamic): `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`
 - Extended validation guide: `.edison/core/guidelines/shared/VALIDATION.md`
 - Validator configuration: `.edison/validators/config.json`
 - Validation output format: `.edison/validators/OUTPUT_FORMAT.md`

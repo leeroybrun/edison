@@ -37,11 +37,10 @@ class RulesRegistry:
         except (EdisonPathError, ValueError) as exc:  # pragma: no cover - defensive
             raise RulesCompositionError(str(exc)) from exc
 
-        self.core_registry_path = (
-            self.project_root / ".edison" / "core" / "rules" / "registry.yml"
-        )
-        self.packs_root = self.project_root / ".edison" / "packs"
-        self.project_config_dir = get_project_config_dir(self.project_root)
+        config_dir = get_project_config_dir(self.project_root, create=False)
+        self.core_registry_path = config_dir / "core" / "rules" / "registry.yml"
+        self.packs_root = config_dir / "packs"
+        self.project_config_dir = config_dir
 
     # ------------------------------------------------------------------
     # Registry loading
@@ -53,7 +52,8 @@ class RulesRegistry:
                 raise RulesCompositionError(f"Rules registry not found at {path}")
             return {"version": None, "rules": []}
 
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        from edison.core.file_io.utils import read_yaml_safe
+        data = read_yaml_safe(path, raise_on_error=True) or {}
         if not isinstance(data, dict):
             raise RulesCompositionError(
                 f"Invalid rules registry at {path}: expected mapping at top level"
@@ -114,11 +114,11 @@ class RulesRegistry:
         project_dir_prefix = f"{self.project_config_dir.name}/"
         if file_part.startswith(project_dir_prefix):
             source_path = (self.project_config_dir / file_part[len(project_dir_prefix):]).resolve()
-        elif file_part.startswith((".edison/", "/")):
+        elif file_part.startswith("/"):
             source_path = (self.project_root / file_part.lstrip("/")).resolve()
         else:
             # Treat as relative to core directory (e.g., "guidelines/VALIDATION.md")
-            source_path = (self.project_root / ".edison" / "core" / file_part).resolve()
+            source_path = (self.project_config_dir / "core" / file_part).resolve()
 
         return source_path, str(anchor) if anchor else None
 

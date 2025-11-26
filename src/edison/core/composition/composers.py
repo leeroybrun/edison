@@ -31,6 +31,7 @@ from .includes import (
 )
 from .packs import auto_activate_packs
 from .formatting import compose_zen_prompts as formatting_compose_zen_prompts
+from .path_utils import resolve_project_dir_placeholders
 from .orchestrator import (
     compose_orchestrator_manifest,
     collect_validators,
@@ -98,11 +99,17 @@ This constitution contains:
         return f"{header}\n\n{text}", constitution_path
 
     def _dedupe_pack_contexts(paths: List[Path]) -> List[Path]:
-        """Return paths with duplicate packs removed while preserving order."""
+        """Return paths with duplicate packs removed while preserving order.
+        
+        Path structure: packs/{pack_name}/validators/overlays/{role}.md
+        To get pack_name: path.parent.parent.parent.name
+        """
         seen: Set[str] = set()
         unique: List[Path] = []
         for path in paths:
-            pack_name = path.parent.parent.name if path.parent.parent else ""
+            # Navigate up: overlays -> validators -> {pack_name}
+            pack_dir = path.parent.parent.parent if path.parent and path.parent.parent else None
+            pack_name = pack_dir.name if pack_dir else ""
             key = pack_name or str(path)
             if key in seen:
                 continue
@@ -378,20 +385,19 @@ class CompositionEngine:
         else:
             self.config = config
 
-        # For Edison's own tests, use bundled data directory instead of .edison/core
-        edison_dir = self.repo_root / ".edison"
-        core_validators_dir = edison_dir / "core" / "validators"
-        if edison_dir.exists() and core_validators_dir.exists():
-            self.core_dir = edison_dir / "core"
-            self.packs_dir = edison_dir / "packs"
+        # Prefer project-configured core/packs; fall back to bundled data inside Edison
+        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+
+        core_validators_dir = self.project_dir / "core" / "validators"
+        if core_validators_dir.exists():
+            self.core_dir = self.project_dir / "core"
+            self.packs_dir = self.project_dir / "packs"
         else:
             # Running within Edison itself - use bundled data
             from edison.data import get_data_path
 
             self.core_dir = get_data_path("")
             self.packs_dir = get_data_path("packs")
-
-        self.project_dir = get_project_config_dir(self.repo_root)
 
     def _active_packs(self) -> List[str]:
         packs = ((self.config or {}).get("packs", {}) or {}).get("active", [])
@@ -400,40 +406,39 @@ class CompositionEngine:
         return packs
 
     def _pack_context_paths(self, packs: List[str], role: str) -> List[Path]:
+        """Find pack context files for a validator role.
+        
+        Pattern: .edison/packs/<pack>/validators/overlays/<role>.md
+        Directory provides context - no suffix needed.
+        """
         paths: List[Path] = []
         for name in packs:
-            base = self.packs_dir / name / "validators"
-            preferred = base / f"{role}-context.md"
-            fallback = base / "codex-context.md"
-            paths.append(preferred if preferred.exists() else fallback)
+            path = self.packs_dir / name / "validators" / "overlays" / f"{role}.md"
+            if path.exists():
+                paths.append(path)
         return paths
 
     def _overlay_path_for_role(self, role: str) -> Optional[Path]:
+        """Find project overlay path for a validator role.
+        
+        Pattern: <project_config_dir>/validators/overlays/<role>.md
+        Directory provides context - no suffix needed.
+        
+        Config override: validators.overlays.<role> in project config.
+        """
+        # Check config-specified path first
         overlay_cfg = ((self.config or {}).get("validators", {}) or {}).get("overlays", {}) or {}
         ov_rel = overlay_cfg.get(role)
         if isinstance(ov_rel, str) and ov_rel:
             rel_path = Path(ov_rel)
-            candidates = []
             if rel_path.is_absolute():
-                candidates.append(rel_path)
-            else:
-                candidates.append((self.project_dir / rel_path).resolve())
-                candidates.append((self.repo_root / rel_path).resolve())
-
-            for candidate in candidates:
-                if candidate.exists():
-                    return candidate
-
-            # Return the first candidate even when missing so compose emits a helpful marker
-            return candidates[0] if candidates else rel_path
-        candidates = [
-            self.project_dir / "validators" / "overlays" / f"{role}-overlay.md",
-            self.project_dir / "validators" / "overlays" / f"{role}-global-overlay.md",
-        ]
-        for c in candidates:
-            if c.exists():
-                return c
-        return None
+                return rel_path if rel_path.exists() else None
+            path = (self.project_dir / rel_path).resolve()
+            return path if path.exists() else None
+        
+        # Default pattern
+        path = self.project_dir / "validators" / "overlays" / f"{role}.md"
+        return path if path.exists() else None
 
     def resolve_includes(self, text: str, base_file: Path) -> str:
         expanded, _ = resolve_includes(text, base_file)
@@ -497,43 +502,33 @@ class CompositionEngine:
             return ids
 
         def _core_path_for_validator(v_id: str) -> Path:
+            """Find core validator template.
+            
+            Patterns (checked in order):
+              - .edison/core/validators/global/<role>.md
+              - .edison/core/validators/critical/<role>.md
+              - .edison/core/validators/specialized/<role>.md
+              - .edison/packs/<pack>/validators/<role>.md (pack-provided)
+            
+            Directory provides context - no suffix needed.
+            """
             role = v_id.split("-", 1)[0]
-            candidates = [
-                self.core_dir / "validators" / "global" / f"{role}-core.md",
-                self.core_dir / "validators" / "critical" / f"{role}.md",
-                self.core_dir / "validators" / "specialized" / f"{role}.md",
-                self.project_dir / "validators" / "specialized" / f"{role}.md",
-            ]
-            for c in candidates:
-                if c.exists():
-                    return c
-
-            # Fallback: pack-provided validator specs (e.g., prisma/database)
-            # Search all packs, not just active ones, to support validator composition
-            # even when packs aren't explicitly activated
+            
+            # Core validators
+            for subdir in ("global", "critical", "specialized"):
+                path = self.core_dir / "validators" / subdir / f"{role}.md"
+                if path.exists():
+                    return path
+            
+            # Pack-provided validators
             if self.packs_dir.exists():
-                # Try role name first, then common aliases
-                role_aliases = [role]
-                if role == "prisma":
-                    role_aliases.append("database")
-
                 for pack_path in self.packs_dir.iterdir():
                     if pack_path.is_dir():
-                        for alias in role_aliases:
-                            cand = pack_path / "validators" / f"{alias}.md"
-                            if cand.exists():
-                                return cand
+                        path = pack_path / "validators" / f"{role}.md"
+                        if path.exists():
+                            return path
 
-            raise ComposeError(
-                f"Validator spec not found for {v_id}. Looked for: "
-                + ", ".join(str(c.relative_to(self.repo_root)) for c in candidates)
-            )
-
-        role_map = {
-            "codex": "codex-global",
-            "claude": "claude-global",
-            "gemini": "gemini-global",
-        }
+            raise ComposeError(f"Validator spec not found: {role}.md")
 
         packs: List[str] = (
             list(packs_override)
@@ -543,9 +538,9 @@ class CompositionEngine:
 
         if validator == "all":
             validators = _validator_ids_from_config(packs) or [
-                "codex-global",
-                "claude-global",
-                "gemini-global",
+                "global-codex",
+                "global-claude",
+                "global-gemini",
                 "security",
                 "performance",
                 "react",
@@ -555,7 +550,7 @@ class CompositionEngine:
                 "testing",
             ]
         else:
-            validators = [role_map.get(validator, validator)]
+            validators = [validator]
 
         if changed_files:
             try:
@@ -571,19 +566,29 @@ class CompositionEngine:
 
         critical_roles = {"security", "performance"}
         results: Dict[str, ComposeResult] = {}
+        composed_roles: Dict[str, ComposeResult] = {}  # Cache by role to avoid duplicate composition
+        
         for v in validators:
             role = v.split("-", 1)[0]
+            
+            # For validators with model suffix (e.g., global-codex), compose once per role
+            # and reuse the result for all variants
+            if role in composed_roles:
+                results[v] = composed_roles[role]
+                continue
+            
             core_path = _core_path_for_validator(v)
             overlay = self._overlay_path_for_role(role)
             pack_paths = [] if role in critical_roles else self._pack_context_paths(packs, role)
 
             res = compose_prompt(
-                validator_id=v,
+                validator_id=role,  # Use role as ID so output is e.g., global.md not global-codex.md
                 core_base=core_path,
                 pack_contexts=pack_paths,
                 overlay=overlay,
                 enforce_dry=enforce_dry,
             )
+            composed_roles[role] = res
             results[v] = res
         return results
 
@@ -637,7 +642,13 @@ class CompositionEngine:
             else:
                 out_file = out_dir / f"{name}.md"
 
-            out_file.write_text(result.text, encoding="utf-8")
+            rendered = resolve_project_dir_placeholders(
+                result.text,
+                project_dir=self.project_dir,
+                target_path=out_file,
+                repo_root=self.repo_root,
+            )
+            out_file.write_text(rendered, encoding="utf-8")
             results[name] = out_file
 
         return results

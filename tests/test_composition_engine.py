@@ -13,6 +13,7 @@ from edison.core.composition import (
     ComposeError,
     dry_duplicate_report,
 )
+from edison.core.composition.includes import _get_max_depth
 
 # Define ROOT as the edison project root directory
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +65,49 @@ def test_depth_limit():
         assert ">3" in str(err) or "exceeded" in str(err)
 
 
+def test_max_depth_from_config():
+    """Test that max_depth is loaded from configuration."""
+    # This test verifies that _get_max_depth() reads from defaults.yaml
+    max_depth = _get_max_depth()
+    # Should be 3 from defaults.yaml
+    assert max_depth == 3, f"Expected max_depth=3 from config, got {max_depth}"
+
+
+def test_depth_limit_configurable():
+    """Test that max_depth can be configured via the max_depth parameter."""
+    # Build a chain of 3 levels deep
+    tmp_dir = ROOT / "tests" / "context" / "comp_samples" / "configurable_depth"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a 3-level include chain: 0 -> 1 -> 2 -> END
+    for i in range(4):
+        cur = tmp_dir / f"{i}.md"
+        nxt = tmp_dir / f"{i+1}.md"
+        if i < 3:
+            body = "L{} {{{{include:{}}}}}".format(i, nxt.relative_to(cur.parent))
+        else:
+            body = "END"
+        cur.write_text(body, encoding="utf-8")
+
+    base = tmp_dir / "0.md"
+    content = base.read_text(encoding="utf-8")
+
+    # Should work with max_depth=3 (default)
+    expanded, deps = resolve_includes(content, base, max_depth=3)
+    assert "L0" in expanded and "L1" in expanded and "L2" in expanded and "END" in expanded
+
+    # Should fail with max_depth=1 (only allows 0->1, not 0->1->2)
+    try:
+        resolve_includes(content, base, max_depth=1)
+        assert False, "Expected depth overflow with max_depth=1"
+    except ComposeError as err:
+        assert ">1" in str(err) or "exceeded" in str(err)
+
+    # Should work with max_depth=5
+    expanded, deps = resolve_includes(content, base, max_depth=5)
+    assert "L0" in expanded and "L1" in expanded and "L2" in expanded and "END" in expanded
+
+
 def test_dry_linter():
     core = "# H\n" + ("alpha beta gamma delta " * 12)
     packs = ("alpha beta gamma delta " * 12)
@@ -84,8 +128,8 @@ def test_compose_integration_smoke(isolated_project_env: Path):
         shutil.copytree(src_validators, dst_validators, dirs_exist_ok=True)
 
     # Compose using real core + no packs to avoid external deps
-    codex_core = dst_validators / "global" / "codex-core.md"
-    assert codex_core.exists(), "codex-core.md must exist"
+    codex_core = dst_validators / "global" / "codex.md"
+    assert codex_core.exists(), "codex.md must exist"
 
     # Set repo root override for composition modules to use isolated env
     import edison.core.composition.includes as includes
@@ -94,7 +138,7 @@ def test_compose_integration_smoke(isolated_project_env: Path):
     composers._REPO_ROOT_OVERRIDE = root
 
     res = compose_prompt(
-        validator_id="codex-global",
+        validator_id="global-codex",
         core_base=codex_core,
         pack_contexts=[],
         overlay=None,  # No overlay needed for smoke test

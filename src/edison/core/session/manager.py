@@ -15,7 +15,7 @@ from .naming import generate_session_id
 from ..paths import PathResolver
 from ..paths.management import get_management_paths
 from ..exceptions import SessionError
-from ..file_io.utils import utc_timestamp
+from ..utils.time import utc_timestamp
 
 _CONFIG = SessionConfig()
 logger = logging.getLogger(__name__)

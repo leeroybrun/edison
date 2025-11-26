@@ -4,7 +4,7 @@ from __future__ import annotations
 
 Builds the three role constitutions (orchestrator, agents, validators) from
 layered sources:
-  - Core templates:      <repo>/.edison/core/constitutions/*-base.md
+  - Core templates:      <repo>/src/edison/data/constitutions/*-base.md
   - Pack additions:      <repo>/.edison/packs/<pack>/constitutions/*-additions.md
   - Project overrides:   <project_config_dir>/constitutions/*-overrides.md
 
@@ -16,13 +16,15 @@ Templates use a small Handlebars-style syntax. Rendering covers:
   - {{#each delegationRules}}        → delegation rules (when provided)
 """
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.config import ConfigManager
+from edison.core.utils.time import utc_timestamp
+from .headers import resolve_version
 from edison.core.paths.project import get_project_config_dir
 from edison.data import get_data_path
+from .path_utils import resolve_project_dir_placeholders
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers
     from edison.core.rules import RulesEngine
@@ -55,19 +57,17 @@ def _normalize_role(role: str) -> str:
     return normalized
 
 
-def _core_base_path(repo_root: Path) -> Path:
-    """Resolve core layer root (.edison/core or bundled package core)."""
-    project_core = repo_root / ".edison" / "core"
-    if (project_core / "constitutions").exists():
-        return project_core
-    # Fallback to bundled source tree (src/edison/core)
-    return Path(__file__).resolve().parent.parent
+def _core_base_path(_repo_root: Path) -> Path:
+    """Resolve core layer root now stored in the packaged data bundle."""
+    # Core markdown lives in edison.data; project-level overrides are handled separately.
+    return get_data_path("")
 
 
 def _packs_root(repo_root: Path, config: Dict[str, Any]) -> Path:
+    config_dir = get_project_config_dir(repo_root, create=False)
     directory = (
         (config.get("packs", {}) or {}).get("directory")
-        or ".edison/packs"
+        or f"{config_dir.name}/packs"
     )
     path = (repo_root / directory).resolve()
     if path.exists():
@@ -202,6 +202,10 @@ def render_constitution_template(
     normalized = _normalize_role(role)
     role_cfg_key = ROLE_MAP[normalized]["mandatory"]
     rule_role = ROLE_MAP[normalized]["rules"]
+    template_name = f"constitutions/{ROLE_MAP[normalized]['slug']}-base.md"
+    full_config = config.load_config(validate=False)
+    version = resolve_version(config, full_config)
+    generated_iso = utc_timestamp()
 
     # Load constitution config with project overlay precedence
     core_cfg = config.load_yaml(config.core_config_dir / "constitution.yaml")
@@ -237,7 +241,10 @@ def render_constitution_template(
 
     rendered = template
     rendered = rendered.replace("{{source_layers}}", " + ".join(source_layers))
-    rendered = rendered.replace("{{generated_date}}", datetime.now().isoformat())
+    rendered = rendered.replace("{{generated_date}}", generated_iso)
+    rendered = rendered.replace("{{timestamp}}", generated_iso)
+    rendered = rendered.replace("{{version}}", str(version))
+    rendered = rendered.replace("{{template_name}}", template_name)
     rendered = _replace_each_block(
         rendered,
         f"mandatoryReads.{role_cfg_key}",
@@ -270,7 +277,14 @@ def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None
         ("validators", "VALIDATORS.md"),
     ]:
         content = compose_constitution(role, config)
-        (out_dir / filename).write_text(content, encoding="utf-8")
+        out_path = out_dir / filename
+        rendered = resolve_project_dir_placeholders(
+            content,
+            project_dir=config.project_config_dir.parent,
+            target_path=out_path,
+            repo_root=config.repo_root,
+        )
+        out_path.write_text(rendered, encoding="utf-8")
 
 
 __all__ = [

@@ -44,11 +44,11 @@ def _load_retry_config() -> dict:
     }
     try:
         from edison.data import get_data_path
-        import yaml  # type: ignore
+        from edison.core.file_io.utils import read_yaml_safe
 
         cfg_path = get_data_path("config", "defaults.yaml")
         if cfg_path.exists():
-            data = yaml.safe_load(cfg_path.read_text()) or {}
+            data = read_yaml_safe(cfg_path, default={})
             r = (data.get("resilience") or {}).get("retry") or {}
             defaults.update(
                 {

@@ -42,7 +42,7 @@ def _write_minimal_validator_templates(root: Path) -> None:
 
     for vid in sorted(validator_ids):
         role = vid.split("-", 1)[0]
-        path = validators_dir / f"{role}-core.md"
+        path = validators_dir / f"{role}.md"
         path.write_text(
             f"# {role.title()} Validator\n\nBase template for {vid}.\n",
             encoding="utf-8",

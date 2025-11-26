@@ -1,5 +1,7 @@
 task_type: chore
 title: Maintenance Chore
+blocking: true
+severity: error
 applies_when:
   - "Non-feature maintenance such as dependency bumps, lint/format upgrades, CI/CD plumbing, or repository hygiene is required."
   - "Operational tasks like rotating keys, cleaning logs/artifacts, or updating automation scripts are in scope."

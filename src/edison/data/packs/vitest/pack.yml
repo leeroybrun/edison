@@ -17,6 +17,6 @@ provides:
     - guidelines/api-testing.md
     - guidelines/component-testing.md
   agents:
-    - agents/test-engineer-vitest.md
+    - agents/test-engineer.md
   validators:
     - validators/testing.md

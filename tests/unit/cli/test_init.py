@@ -28,7 +28,7 @@ def _base_env(project_root: Path) -> dict[str, str]:
     return env
 
 
-def test_init_configures_zen_by_default(tmp_path: Path):
+def test_init_configures_mcp_by_default(tmp_path: Path):
     project = tmp_path / "project"
     project.mkdir()
 
@@ -41,26 +41,28 @@ def test_init_configures_zen_by_default(tmp_path: Path):
     assert mcp_path.exists()
 
     data = json.loads(mcp_path.read_text())
-    assert "edison-zen" in data.get("mcpServers", {})
-    env = data["mcpServers"]["edison-zen"].get("env", {})
+    servers = data.get("mcpServers", {})
+    assert "edison-zen" in servers
+    assert "context7" in servers
+    env = servers["edison-zen"].get("env", {})
     assert env.get("ZEN_WORKING_DIR") == str(project.resolve())
 
 
-def test_init_can_skip_zen_setup(tmp_path: Path):
+def test_init_can_skip_mcp_setup(tmp_path: Path):
     project = tmp_path / "project"
     project.mkdir()
 
-    result = run_edison_init(["--skip-zen"], _base_env(project), project)
+    result = run_edison_init(["--skip-mcp"], _base_env(project), project)
 
     assert result.returncode == 0, result.stderr
     assert not (project / ".mcp.json").exists()
 
 
-def test_init_zen_script_option_uses_run_script(tmp_path: Path):
+def test_init_mcp_script_option_uses_run_script(tmp_path: Path):
     project = tmp_path / "project"
     project.mkdir()
 
-    result = run_edison_init(["--zen-script"], _base_env(project), project)
+    result = run_edison_init(["--mcp-script"], _base_env(project), project)
 
     assert result.returncode == 0, result.stderr
 

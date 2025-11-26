@@ -1,9 +1,0 @@
-id: FILE_PATTERN.NEXTJS_APP_ROUTER
-title: Next.js app router files trigger nextjs validator
-patterns:
-  - "**/page.tsx"
-  - "**/layout.tsx"
-validators:
-  - nextjs
-rationale: >-
-  App Router entrypoints must follow Next.js conventions for routing, data fetching, and rendering, so page and layout files trigger the nextjs validator.

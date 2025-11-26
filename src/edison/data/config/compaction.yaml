@@ -1,0 +1,14 @@
+# Compaction hook configuration
+
+compaction:
+  hooks:
+    enabled: true
+    defaultRole: "agents"
+    defaultSource: "compaction"
+    reminder:
+      messageTemplate: "⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
+      notify: true
+    log:
+      enabled: true
+      path: "{PROJECT_CONFIG_DIR}/logs/compaction.log"
+      entryTemplate: "{timestamp} role={role} source={source} message={message}"

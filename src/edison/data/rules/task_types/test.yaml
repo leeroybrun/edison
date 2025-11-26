@@ -1,5 +1,7 @@
 task_type: test
 title: Test Authoring
+blocking: true
+severity: error
 applies_when:
   - "Work is limited to creating, improving, or stabilizing automated tests for existing functionality."
   - "Coverage gaps exist in critical paths, regressions, or newly added behavior."

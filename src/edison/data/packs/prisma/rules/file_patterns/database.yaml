@@ -1,0 +1,10 @@
+id: FILE_PATTERN.DATABASE
+title: Prisma schema files trigger database validator
+blocking: true
+severity: error
+patterns:
+  - "**/schema.prisma"
+validators:
+  - database
+rationale: >-
+  Prisma schema changes affect migrations and data integrity, requiring review by the database validator.

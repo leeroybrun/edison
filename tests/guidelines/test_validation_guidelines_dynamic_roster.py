@@ -23,7 +23,7 @@ GUIDELINE_FILES = [
     get_data_path("guidelines") / "agents" / "VALIDATION_AWARENESS.md",
 ]
 
-AGENT_VALIDATION_FILES = sorted(get_data_path("agents").glob("*-core.md"))
+AGENT_VALIDATION_FILES = sorted(get_data_path("agents").glob("*.md"))
 
 ALL_TARGET_FILES = GUIDELINE_FILES + AGENT_VALIDATION_FILES
 

@@ -19,8 +19,8 @@ provides:
     - guidelines/metadata.md
     - guidelines/caching.md
   agents:
-    - agents/api-builder-nextjs.md
-    - agents/component-builder-nextjs.md
+    - agents/api-builder.md
+    - agents/component-builder.md
   validators:
     - validators/api.md
     - validators/nextjs.md

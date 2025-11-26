@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 import yaml
 
 from ..paths import PathResolver, EdisonPathError
+from ..paths.project import get_project_config_dir
 from .config import SessionConfig
 
 
@@ -23,9 +24,10 @@ def _load_statemachine_spec() -> Dict[str, Any]:
     try:
         # First try loading from project root (for project-specific overrides)
         root = PathResolver.resolve_project_root()
-        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
+        defaults_path = get_project_config_dir(root, create=False) / "core" / "config" / "defaults.yaml"
         if defaults_path.exists():
-            data = yaml.safe_load(defaults_path.read_text(encoding="utf-8")) or {}
+            from edison.core.file_io.utils import read_yaml_safe
+            data = read_yaml_safe(defaults_path, default={})
             return (data.get("statemachine") or {}) if isinstance(data, dict) else {}
     except EdisonPathError:
         pass
@@ -167,7 +169,7 @@ def write_state_machine_docs(target_path: Path | None = None) -> Path:
             root = PathResolver.resolve_project_root()
         except EdisonPathError:
             root = Path(__file__).resolve().parents[3]
-        target_path = root / ".edison" / "core" / "docs" / "STATE_MACHINE.md"
+        target_path = get_project_config_dir(root, create=False) / "core" / "docs" / "STATE_MACHINE.md"
 
     matrix = generate_transition_matrix()
     mermaid = generate_mermaid_diagram()

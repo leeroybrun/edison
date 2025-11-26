@@ -47,10 +47,9 @@ def test_generation_header_contains_iso_timestamp(tmp_path: Path) -> None:
     generate_available_agents(output_path, repo_root=tmp_path)
     content = _read(output_path)
 
-    assert "<!-- GENERATED FILE - DO NOT EDIT DIRECTLY -->" in content
-    match = re.search(r"<!-- Generated:\s*([^>]+) -->", content)
+    assert "AUTO-GENERATED FILE - DO NOT EDIT MANUALLY" in content
+    match = re.search(r"Generated at:\s*([0-9T:.-]+)", content)
     assert match, "Generated header must include timestamp"
-    # Validate ISO timestamp format
     datetime.fromisoformat(match.group(1).strip())
 
 
@@ -72,7 +71,7 @@ def test_generator_uses_registry_not_hardcoded_names(tmp_path: Path) -> None:
     agents_dir = repo_root / ".edison" / "core" / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
 
-    (agents_dir / "innovation-core.md").write_text(
+    (agents_dir / "innovation.md").write_text(
         """---
 name: innovation
 description: "Innovation specialist"

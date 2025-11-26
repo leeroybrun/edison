@@ -33,7 +33,7 @@ Validators run in waves for efficiency and fast feedback:
 ┌─────────────────────────────────────────────────────────────┐
 │ Wave 1: Global Validators (Parallel)                        │
 │ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ codex-global    │  │ claude-global   │  → Consensus      │
+│ │ global-codex    │  │ global-claude   │  → Consensus      │
 │ └─────────────────┘  └─────────────────┘    Required       │
 └─────────────────────────────────────────────────────────────┘
                           ↓ (if pass)
@@ -55,7 +55,7 @@ Validators run in waves for efficiency and fast feedback:
 ### Consensus Rules
 
 **Global Validators:**
-- Both codex-global and claude-global must agree
+- Both global-codex and global-claude must agree
 - If they disagree, escalate to human review
 - Tie-breaker: More specific feedback wins
 
@@ -161,7 +161,7 @@ Use the guarded CLI to create/update validator reports without hand-editing JSON
 
 ```bash
 # Approve example
-edison validators report --task <task-id> --validator codex-global --model codex --round 1 \
+edison validators report --task <task-id> --validator global-codex --model codex --round 1 \
   --verdict approve --summary "All checks green" \
   --add-strength "Solid test coverage" \
   --add-evidence .project/qa/validation-evidence/<task-id>/round-1/command-test.txt

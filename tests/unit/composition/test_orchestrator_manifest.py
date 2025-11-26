@@ -27,7 +27,7 @@ class TestOrchestratorManifest:
             "validation": {
                 "roster": {
                     "global": [
-                        {"name": "codex-global", "model": "codex", "blocking": False},
+                        {"name": "global-codex", "model": "codex", "blocking": False},
                     ],
                     "critical": [],
                     "specialized": [],
@@ -68,7 +68,7 @@ class TestOrchestratorManifest:
             "validation": {
                 "roster": {
                     "global": [
-                        {"name": "codex-global", "model": "codex", "blocking": False},
+                        {"name": "global-codex", "model": "codex", "blocking": False},
                     ],
                     "critical": [],
                     "specialized": [],
@@ -162,7 +162,7 @@ class TestOrchestratorManifest:
         # Core agent template
         core_agents_dir = core_dir / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
-        (core_agents_dir / "feature-implementer-core.md").write_text(
+        (core_agents_dir / "feature-implementer.md").write_text(
             "\n".join(
                 [
                     "# Agent: {{AGENT_NAME}}",
@@ -275,7 +275,7 @@ class TestOrchestratorManifest:
         project_delegation = {
             "priority": {
                 "implementers": ["feature-implementer"],
-                "validators": ["validator-codex-global"],
+                "validators": ["validator-global-codex"],
             }
         }
         (project_dir / "delegation").mkdir(parents=True, exist_ok=True)
@@ -296,7 +296,7 @@ class TestOrchestratorManifest:
             "delegation": {
                 "roleMapping": {
                     "feature-implementer": "project-feature-implementer",
-                    "validator-codex-global": "project-validator-codex-global",
+                    "validator-global-codex": "project-validator-global-codex",
                 }
             },
         }
@@ -310,13 +310,13 @@ class TestOrchestratorManifest:
 
         # Priority chains from project config
         assert delegation["priority"]["implementers"] == ["feature-implementer"]
-        assert delegation["priority"]["validators"] == ["validator-codex-global"]
+        assert delegation["priority"]["validators"] == ["validator-global-codex"]
 
         # Role mapping from merged Edison config
         assert delegation["roleMapping"]["feature-implementer"] == "project-feature-implementer"
         assert (
-            delegation["roleMapping"]["validator-codex-global"]
-            == "project-validator-codex-global"
+            delegation["roleMapping"]["validator-global-codex"]
+            == "project-validator-global-codex"
         )
 
         # Rules and defaults from core delegation config
@@ -409,3 +409,56 @@ class TestOrchestratorManifest:
 
         # Should not raise
         jsonschema.validate(instance=json_data, schema=schema)
+
+    def test_orchestrator_manifest_uses_utc_timestamp(self, tmp_path: Path) -> None:
+        """Orchestrator manifest generated timestamp must be UTC-aware and properly formatted."""
+        from datetime import datetime, timezone
+
+        repo_root = tmp_path
+        core_dir = repo_root / ".edison" / "core"
+        core_dir.mkdir(parents=True, exist_ok=True)
+
+        self._write_defaults(core_dir)
+        self._write_core_guidelines(core_dir)
+
+        config = {
+            "project": {"name": "test-project"},
+            "packs": {"active": []},
+            "validation": {
+                "roster": {
+                    "global": [],
+                    "critical": [],
+                    "specialized": [],
+                }
+            },
+            "delegation": {
+                "filePatterns": {},
+                "taskTypes": {},
+            },
+        }
+
+        engine = CompositionEngine(config, repo_root=repo_root)
+        output_dir = repo_root / ".edison" / "_generated"
+        result = engine.compose_orchestrator_manifest(output_dir)
+
+        json_data = json.loads(result["json"].read_text(encoding="utf-8"))
+        generated_ts = json_data["generated"]
+
+        # Must be a valid ISO 8601 timestamp
+        assert isinstance(generated_ts, str), "Timestamp must be a string"
+
+        # Must be parseable as UTC datetime
+        # Should end with +00:00 or Z (UTC indicator)
+        assert generated_ts.endswith("+00:00") or generated_ts.endswith("Z"), \
+            f"Timestamp must be UTC-aware: {generated_ts}"
+
+        # Must be parseable
+        if generated_ts.endswith("Z"):
+            parsed_ts = generated_ts[:-1] + "+00:00"
+        else:
+            parsed_ts = generated_ts
+
+        dt = datetime.fromisoformat(parsed_ts)
+        assert dt.tzinfo is not None, "Timestamp must be timezone-aware"
+        assert dt.tzinfo == timezone.utc or dt.utcoffset().total_seconds() == 0, \
+            "Timestamp must be in UTC timezone"

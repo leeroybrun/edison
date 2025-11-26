@@ -18,7 +18,7 @@ def test_constitution_templates_embed_generated_header() -> None:
     cfg_mgr = ConfigManager()
     header_template = _load_header_template(cfg_mgr)
 
-    templates_dir = Path("src/edison/core/constitutions")
+    templates_dir = Path("src/edison/data/constitutions")
     templates = sorted(templates_dir.glob("*-base.md"))
     assert templates, "expected constitution templates to exist"
 
