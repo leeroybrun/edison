@@ -5,6 +5,7 @@ from pathlib import Path
 
 from edison.core.composition import includes, metadata
 from edison.core.composition.composers import CompositionEngine
+from edison.core.paths.project import get_project_config_dir
 
 
 def _write_core_validator(repo_root: Path, validator_id: str = "codex-global") -> Path:
@@ -62,6 +63,52 @@ def test_validators_emit_to_generated_validators(tmp_path: Path) -> None:
         assert manifest.exists(), "manifest should live alongside generated validators"
         manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
         assert manifest_data, "manifest should record composed artifacts"
+    finally:
+        includes._REPO_ROOT_OVERRIDE = original_root
+
+
+def test_validator_prompts_include_constitution_reference(tmp_path: Path) -> None:
+    """Validator prompts must auto-include constitution header and path."""
+
+    original_root = includes._REPO_ROOT_OVERRIDE
+
+    # Prepare minimal core validators
+    _write_core_validator(tmp_path, "codex-global")
+    _write_core_validator(tmp_path, "security")
+
+    # Ensure composition operates relative to the temp repo
+    includes._REPO_ROOT_OVERRIDE = tmp_path
+
+    config = _minimal_config()
+    config["validation"]["roster"]["global"].append({"id": "security"})
+
+    try:
+        engine = CompositionEngine(config=config, repo_root=tmp_path)
+        results = engine.compose_validators(enforce_dry=False)
+
+        project_dir = get_project_config_dir(tmp_path)
+        constitution_rel = (
+            project_dir.relative_to(tmp_path)
+            / "_generated"
+            / "constitutions"
+            / "VALIDATORS.md"
+        ).as_posix()
+
+        assert {"codex-global", "security"}.issubset(results.keys())
+
+        for validator_id, res in results.items():
+            text = res.text.lstrip()
+            assert text.startswith(
+                "## MANDATORY: Read Constitution First"
+            ), f"{validator_id} missing constitution header"
+            assert (
+                constitution_rel in text
+            ), f"{validator_id} missing constitution path {constitution_rel}"
+            assert (
+                text.count("## MANDATORY: Read Constitution First") == 1
+            ), f"{validator_id} constitution header duplicated"
+            assert "Re-read the constitution" in text
+            assert "# Core Edison Principles" in text
     finally:
         includes._REPO_ROOT_OVERRIDE = original_root
 

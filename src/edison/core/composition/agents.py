@@ -199,6 +199,30 @@ class AgentRegistry:
                 return path
         return None
 
+    # ------- Constitution Reference -------
+    def _build_constitution_header(self) -> str:
+        """Build the constitution reference header to inject at the top of agent prompts.
+
+        Returns a markdown section instructing agents to read their constitution first.
+        """
+        return """## MANDATORY: Read Constitution First
+
+Before starting any work, you MUST read the Agent Constitution at:
+`.edison/_generated/constitutions/AGENTS.md`
+
+This constitution contains:
+- Your mandatory workflow
+- Applicable rules you must follow
+- Output format requirements
+- All mandatory guideline reads
+
+**Re-read the constitution:**
+- At the start of every task
+- After any context compaction
+- When instructed by the orchestrator
+
+---"""
+
     # ------- Composition -------
     def compose_agent(self, agent_name: str, packs: List[str]) -> str:
         """Compose a single agent from core + pack + project overlays."""
@@ -257,6 +281,10 @@ class AgentRegistry:
         # {{include-if:has-pack(name):...}} directives.
         if packs:
             composed = render_conditional_includes(composed, packs)
+
+        # Auto-inject constitution reference at the top
+        constitution_header = self._build_constitution_header()
+        composed = f"{constitution_header}\n\n{composed}"
 
         return composed
 

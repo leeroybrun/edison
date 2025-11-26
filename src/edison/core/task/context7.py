@@ -11,7 +11,6 @@ Design principles:
 from __future__ import annotations
 
 import fnmatch
-import json
 import os
 import sys
 from pathlib import Path
@@ -68,7 +67,9 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
             try:
                 if path.suffix == ".yml" or path.suffix == ".yaml":
                     return yaml.safe_load(path.read_text()) or {}
-                return json.loads(path.read_text())
+                
+                from edison.core.file_io.utils import read_json_safe
+                return read_json_safe(path)
             except Exception:
                 # Treat unreadable config as missing in fail_closed mode
                 if fail_closed:

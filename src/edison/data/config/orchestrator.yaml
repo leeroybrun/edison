@@ -38,4 +38,4 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "file"
-        path: ".edison/_generated/ORCHESTRATOR_GUIDE.md"
+        path: ".edison/_generated/constitutions/ORCHESTRATORS.md"

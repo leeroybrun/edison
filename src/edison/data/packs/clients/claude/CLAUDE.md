@@ -19,9 +19,9 @@ This document provides condensed orchestration guidance for Claude Code when wor
 
 **CRITICAL**: Load these files at session start:
 
-1. **Generated Orchestrator Manifest**:
-   - `.edison/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic roster of agents/validators/rules
-   - Generated from: `scripts/prompts/compose --orchestrator`
+1. **Orchestrator Constitution**:
+   - `.edison/_generated/constitutions/ORCHESTRATORS.md` - Orchestrator constitution and guidelines
+   - Generated from: `edison compose all`
 
 2. **Core Workflow**:
    - `.edison/core/guidelines/SESSION_WORKFLOW.md` - Session workflow and state machine
@@ -150,14 +150,14 @@ Key commands for orchestration:
 
 These files are GENERATED (never hand-edit):
 
-- `.edison/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic manifest
+- `.edison/_generated/constitutions/*.md` - Role constitutions (AGENTS, VALIDATORS, ORCHESTRATORS)
 - `.edison/_generated/agents/*.md` - Composed agent prompts
 - `.edison/_generated/validators/*.md` - Composed validator prompts
 - `.claude/agents/*.md` - Claude Code agent files (generated from _generated/)
 
 Regenerate with:
 ```bash
-scripts/prompts/compose --all
+edison compose all
 ```
 
 ## Error Recovery
@@ -165,14 +165,14 @@ scripts/prompts/compose --all
 If orchestrator encounters errors:
 
 1. **Path resolution errors**: Check `AGENTS_PROJECT_ROOT` env var is set correctly
-2. **Missing manifest**: Run `scripts/prompts/compose --orchestrator`
+2. **Missing constitution**: Run `edison compose all` to regenerate constitutions
 3. **Broken rules**: Check `.edison/core/rules/registry.yml` paths
 4. **Validation failures**: Read validator reports in `.project/qa/validation-evidence/`
 
 ## Summary
 
 **Orchestrator's job**:
-1. Load manifest and mandatory guides at session start
+1. Load constitution (constitutions/ORCHESTRATORS.md) and mandatory guides at session start
 2. Run `session next` before every action
 3. Read rules FIRST, then act
 4. Delegate 80%+ of work to specialized agents

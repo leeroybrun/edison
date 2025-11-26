@@ -15,9 +15,11 @@ Run after implementation is complete and before a task can advance beyond `done/
 - If any validator is blocked or missing, halt and resolve before proceeding.
 
 ## Validator Roster & Waves
-**Global (blocking):** codex-global, claude-global, gemini-global.
-**Critical (blocking):** security, performance.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** {{component-framework}}, {{web-framework}}, api, database, testing, etc. (example pack validators)
+See `AVAILABLE_VALIDATORS.md` (generated from the ValidatorRegistry) for the current validator roster, models, and trigger patterns.
+
+**Global (blocking):** all global validators in the roster always run first and must approve.
+**Critical (blocking):** every critical validator in the roster is blocking for promotion.
+**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/config/validators.yml`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
 

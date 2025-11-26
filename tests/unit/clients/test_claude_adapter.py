@@ -51,14 +51,15 @@ class TestClaudeAdapterUnit:
         path.write_text("\n".join(content_lines), encoding="utf-8")
         return path
 
-    def _write_orchestrator_guide(self, root: Path) -> Path:
-        out_dir = root / ".agents" / "_generated"
+    def _write_orchestrator_constitution(self, root: Path) -> Path:
+        """Write orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)."""
+        out_dir = root / ".agents" / "_generated" / "constitutions"
         out_dir.mkdir(parents=True, exist_ok=True)
-        guide = out_dir / "ORCHESTRATOR_GUIDE.md"
-        guide.write_text(
+        constitution = out_dir / "ORCHESTRATORS.md"
+        constitution.write_text(
             "\n".join(
                 [
-                    "# Test Orchestrator Guide",
+                    "# Test Orchestrator Constitution",
                     "",
                     "## 📋 Mandatory Preloads (Session Start)",
                     "- SESSION_WORKFLOW.md",
@@ -66,7 +67,7 @@ class TestClaudeAdapterUnit:
             ),
             encoding="utf-8",
         )
-        return guide
+        return constitution
 
     def _write_orchestrator_manifest(self, root: Path) -> Path:
         out_dir = root / ".agents" / "_generated"
@@ -147,8 +148,8 @@ class TestClaudeAdapterUnit:
         mtime_second = dest.stat().st_mtime
         assert mtime_second == pytest.approx(mtime_first)
 
-    def test_sync_orchestrator_appends_guide(self, isolated_project_env: Path) -> None:
-        """sync_orchestrator_to_claude appends composed orchestrator guide into CLAUDE.md."""
+    def test_sync_orchestrator_appends_constitution(self, isolated_project_env: Path) -> None:
+        """sync_orchestrator_to_claude appends orchestrator constitution into CLAUDE.md."""
         root = isolated_project_env
         claude_dir = root / ".claude"
         claude_dir.mkdir(parents=True, exist_ok=True)
@@ -165,7 +166,7 @@ class TestClaudeAdapterUnit:
             ),
             encoding="utf-8",
         )
-        guide = self._write_orchestrator_guide(root)
+        constitution = self._write_orchestrator_constitution(root)
 
         adapter = ClaudeSync(repo_root=root)
         out_path = adapter.sync_orchestrator_to_claude()
@@ -174,8 +175,8 @@ class TestClaudeAdapterUnit:
         content = claude_md.read_text(encoding="utf-8")
         # Existing content preserved
         assert "# Claude Orchestrator Brief" in content
-        # Guide content injected with clear markers
-        assert guide.read_text(encoding="utf-8").splitlines()[0] in content
+        # Constitution content injected with clear markers
+        assert constitution.read_text(encoding="utf-8").splitlines()[0] in content
         assert "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->" in content
         assert "<!-- EDISON_ORCHESTRATOR_GUIDE_END -->" in content
 

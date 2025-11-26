@@ -1,0 +1,50 @@
+version: "1.0.0"
+
+rules:
+  - id: RULE.TAILWIND.V4_SYNTAX
+    title: "Use Tailwind v4 Syntax"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/v4-syntax.md
+    guidance: "Use @import 'tailwindcss' (v4 syntax), not @tailwind directives (v3 syntax)."
+
+  - id: RULE.TAILWIND.AVOID_APPLY
+    title: "Avoid Legacy @apply Usage"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/tailwind/guidelines/v4-syntax.md
+    guidance: "Avoid legacy @apply usage in component files; prefer design tokens, utility classes, or @layer definitions instead."
+
+  - id: RULE.TAILWIND.DESIGN_TOKENS
+    title: "Use Design Tokens"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/tailwind/guidelines/design-tokens.md
+    guidance: "Use design tokens for consistent theming and maintainability."
+
+  - id: RULE.TAILWIND.RESPONSIVE_DESIGN
+    title: "Mobile-First Responsive Design"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/responsive.md
+    guidance: "Follow mobile-first responsive design patterns using Tailwind's responsive prefixes."
+
+  - id: RULE.TAILWIND.UTILITY_FIRST
+    title: "Utility-First Approach"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/tailwind/guidelines/STYLING.md
+    guidance: "Favor Tailwind utility classes over custom CSS when appropriate."
+
+  - id: RULE.TAILWIND.SEMANTIC_NAMING
+    title: "Semantic Class Organization"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/tailwind/guidelines/STYLING.md
+    guidance: "Organize utility classes semantically and consistently."

@@ -86,11 +86,26 @@ def _atomic_write(
                 pass
 
 
-def write_json_safe(path: Path, data: Any, indent: int = 2, *, acquire_lock: bool = True) -> None:
+def write_json_safe(
+    path: Path, 
+    data: Any, 
+    indent: int = 2, 
+    *, 
+    acquire_lock: bool = True, 
+    sort_keys: bool = True, 
+    ensure_ascii: bool = False
+) -> None:
     """Atomically write JSON data to ``path`` (delegates to lib.utils.json_io)."""
     from ..utils import json_io  # Lazy import to avoid cycles
 
-    json_io.write_json_atomic(Path(path), data, acquire_lock=acquire_lock)
+    json_io.write_json_atomic(
+        Path(path), 
+        data, 
+        acquire_lock=acquire_lock, 
+        indent=indent, 
+        sort_keys=sort_keys, 
+        ensure_ascii=ensure_ascii
+    )
 
 
 def read_json_safe(path: Path, default: Any = _DEFAULT_SENTINEL) -> Any:

@@ -33,6 +33,7 @@ from ...config import ConfigManager
 from ...composition.guidelines import GuidelineRegistry
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
+from edison.core.file_io.utils import write_json_safe
 
 AgentRegistry = _agents.AgentRegistry
 AgentError = _agents.AgentError
@@ -290,7 +291,7 @@ class CursorSync:
             "generatedAt": utc_timestamp(),
             "hash": generated_hash,
         }
-        self._snapshot_meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        write_json_safe(self._snapshot_meta_path, meta, indent=2)
 
     # ------------------------------------------------------------------
     # Public API

@@ -6,7 +6,6 @@ Each checker validates whether a task satisfies specific rule requirements.
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
@@ -23,11 +22,8 @@ if TYPE_CHECKING:
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
     """Safely load JSON from a file, returning empty dict on error."""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f) or {}
-    except Exception:
-        return {}
+    from ..file_io.utils import read_json_with_default
+    return read_json_with_default(path, default={})
 
 
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:

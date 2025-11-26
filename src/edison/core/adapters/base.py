@@ -54,7 +54,17 @@ class PromptAdapter(ABC):
 
     @property
     def orchestrator_guide_path(self) -> Path:
+        """DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011).
+
+        Returns legacy path for backward compatibility.
+        Use orchestrator_constitution_path instead.
+        """
         return self.generated_root / "ORCHESTRATOR_GUIDE.md"
+
+    @property
+    def orchestrator_constitution_path(self) -> Path:
+        """Path to orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md)."""
+        return self.generated_root / "constitutions" / "ORCHESTRATORS.md"
 
     @property
     def orchestrator_manifest_path(self) -> Path:

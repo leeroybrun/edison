@@ -62,6 +62,41 @@ def compose_prompt(
     dry_min_shingles: Optional[int] = None,
 ) -> ComposeResult:
     """Compose a validator prompt from core + pack contexts + overlay."""
+    def _validator_constitution_header(repo_root: Path) -> tuple[str, Path]:
+        """Return constitution header text and dependency path."""
+        project_dir = get_project_config_dir(repo_root)
+        constitution_path = project_dir / "_generated" / "constitutions" / "VALIDATORS.md"
+        try:
+            constitution_rel = constitution_path.relative_to(repo_root)
+        except ValueError:
+            constitution_rel = constitution_path
+
+        path_str = constitution_rel.as_posix()
+        header = f"""## MANDATORY: Read Constitution First
+
+Before starting validation, you MUST read the Validator Constitution at:
+`{path_str}`
+
+This constitution contains:
+- Your validation workflow
+- Applicable rules for validation
+- Output format requirements
+- All mandatory guideline reads
+
+**Re-read the constitution:**
+- At the start of every validation task
+- After any context compaction
+
+---"""
+        return header, constitution_path
+
+    def _inject_constitution(text: str, *, repo_root: Path) -> tuple[str, Path]:
+        """Prepend validator constitution reference when missing."""
+        header, constitution_path = _validator_constitution_header(repo_root)
+        if text.lstrip().startswith("## MANDATORY: Read Constitution First"):
+            return text, constitution_path
+        return f"{header}\n\n{text}", constitution_path
+
     def _dedupe_pack_contexts(paths: List[Path]) -> List[Path]:
         """Return paths with duplicate packs removed while preserving order."""
         seen: Set[str] = set()
@@ -157,6 +192,12 @@ def compose_prompt(
     for d in final_deps:
         if d not in deps:
             deps.append(d)
+
+    # Auto-inject constitution reference for all validators
+    final, constitution_dep = _inject_constitution(final, repo_root=root)
+    constitution_dep_resolved = constitution_dep.resolve()
+    if constitution_dep_resolved not in deps:
+        deps.append(constitution_dep_resolved)
 
     duplicate_report = None
     if enforce_dry:

@@ -1,9 +1,9 @@
 # Session Workflow (Active Session Playbook)
 
 
-> **Extended Version**: See [core/guides/extended/SESSION_WORKFLOW.md](../../guides/extended/SESSION_WORKFLOW.md) for full details.
+> **Canonical Location**: `.edison/core/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
 
-See extended guide: .edison/core/guides/extended/SESSION_WORKFLOW.md
+Canonical path: .edison/core/guidelines/orchestrators/SESSION_WORKFLOW.md
 
 This guide assumes you already ran the appropriate intake prompt (`START.SESSION.md` or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`. From this point on, every action revolves around the tasks and QA briefs listed in that session file.
 

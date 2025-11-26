@@ -73,7 +73,7 @@ Always query Context7 before assuming you know the current API!
 |---|-----------|------|---------|
 | 1 | **Workflow** | `.edison/core/guidelines/agents/MANDATORY_WORKFLOW.md` | Claim -> Implement -> Ready cycle |
 | 2 | **TDD** | `.edison/core/guidelines/agents/TDD_REQUIREMENT.md` | RED-GREEN-REFACTOR protocol |
-| 3 | **Validation** | `.edison/core/guidelines/agents/VALIDATION_AWARENESS.md` | 9-validator architecture |
+| 3 | **Validation** | `.edison/core/guidelines/agents/VALIDATION_AWARENESS.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
 | 4 | **Delegation** | `.edison/core/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
 | 5 | **Context7** | `.edison/core/guidelines/agents/CONTEXT7_REQUIREMENT.md` | Post-training package docs |
 | 6 | **Rules** | `.edison/core/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |

@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Iterable
 
+from edison.core.file_io import utils as io_utils
 from .packs import yaml
 from ..utils.text import render_conditional_includes
 from .formatting import render_orchestrator_json, render_orchestrator_markdown
@@ -330,7 +331,14 @@ def compose_orchestrator_manifest(
     active_packs: List[str],
     output_dir: Path,
 ) -> Dict[str, Path]:
-    """Generate orchestrator guide (Markdown + JSON) for LLM orchestrators."""
+    """Generate orchestrator manifest (JSON only) for LLM orchestrators.
+
+    DEPRECATED: ORCHESTRATOR_GUIDE.md generation removed (T-011).
+    Use constitutions/ORCHESTRATORS.md instead.
+
+    Returns:
+        Dict with 'json' key pointing to orchestrator-manifest.json
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -366,15 +374,18 @@ def compose_orchestrator_manifest(
         "workflowLoop": get_workflow_loop_instructions(),
     }
 
-    md_content = render_orchestrator_markdown(data)
-    md_file = output_path / "ORCHESTRATOR_GUIDE.md"
-    md_file.write_text(md_content, encoding="utf-8")
+    # DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011)
+    # Constitution system (constitutions/ORCHESTRATORS.md) replaces it
+    # md_content = render_orchestrator_markdown(data)
+    # md_file = output_path / "ORCHESTRATOR_GUIDE.md"
+    # md_file.write_text(md_content, encoding="utf-8")
 
     json_content = render_orchestrator_json(data)
     json_file = output_path / "orchestrator-manifest.json"
-    json_file.write_text(json.dumps(json_content, indent=2), encoding="utf-8")
+    io_utils.write_json_safe(json_file, json_content, indent=2)
 
-    return {"markdown": md_file, "json": json_file}
+    # Return only JSON manifest (no markdown)
+    return {"json": json_file}
 
 
 __all__ = [

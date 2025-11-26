@@ -116,7 +116,8 @@ def resolve_session_json(
     Example:
         >>> path = resolve_session_json("my-session", Path(".project/sessions"))
         >>> if path:
-        ...     data = json.loads(path.read_text())
+        ...     from edison.core.file_io.utils import read_json_safe
+        ...     data = read_json_safe(path)
     """
     candidates = find_session_json_candidates(
         session_id=session_id,

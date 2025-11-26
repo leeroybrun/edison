@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from .._schemas import load_schema, validate_payload, SchemaValidationError
 from ...paths import PathResolver  # type: ignore
 from ...paths.project import get_project_config_dir
+from edison.core.file_io.utils import write_json_safe
 
 
 class ClaudeAdapterError(RuntimeError):
@@ -45,8 +46,13 @@ class ClaudeSync:
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
         self.project_config_dir = get_project_config_dir(self.repo_root)
         self.agents_generated_dir = self.project_config_dir / "_generated" / "agents"
+        # DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011)
+        # Use constitutions/ORCHESTRATORS.md instead
         self.orchestrator_guide_path = (
             self.project_config_dir / "_generated" / "ORCHESTRATOR_GUIDE.md"
+        )
+        self.orchestrator_constitution_path = (
+            self.project_config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
         )
         self.orchestrator_manifest_path = (
             self.project_config_dir / "_generated" / "orchestrator-manifest.json"
@@ -136,18 +142,16 @@ class ClaudeSync:
         return changed
 
     def sync_orchestrator_to_claude(self) -> Path:
-        """Inject composed orchestrator guide into ``.claude/CLAUDE.md``.
+        """Inject orchestrator constitution into ``.claude/CLAUDE.md``.
+
+        DEPRECATED: ORCHESTRATOR_GUIDE.md support removed (T-011).
+        Now uses constitutions/ORCHESTRATORS.md instead.
 
         Behavior:
           - Ensures ``.claude`` exists (via validate_claude_structure).
           - If ``CLAUDE.md`` does not exist, creates a minimal stub.
-          - If ``ORCHESTRATOR_GUIDE.md`` is missing, leaves ``CLAUDE.md``
-            unchanged.
-          - Otherwise, appends or replaces a marked block:
-              <!-- EDISON_ORCHESTRATOR_GUIDE_START -->
-              # Edison Orchestrator Guide (Generated)
-              <ORCHESTRATOR_GUIDE.md content>
-              <!-- EDISON_ORCHESTRATOR_GUIDE_END -->
+          - If constitution is missing, leaves ``CLAUDE.md`` unchanged.
+          - Otherwise, appends or replaces a marked block with constitution content.
 
         Returns:
             Path to the updated ``CLAUDE.md`` file.
@@ -158,12 +162,24 @@ class ClaudeSync:
         if not claude_md.exists():
             claude_md.write_text("# Claude Code Orchestrator\n", encoding="utf-8")
 
-        if not self.orchestrator_guide_path.exists():
-            # Nothing to inject; return existing orchestrator unchanged
+        # Try constitution first (new way), fallback to legacy ORCHESTRATOR_GUIDE.md
+        constitution_path = self.orchestrator_constitution_path
+        guide_source = None
+        source_label = "Constitution"
+
+        if constitution_path.exists():
+            guide_source = constitution_path
+            source_label = "Constitution"
+        elif self.orchestrator_guide_path.exists():
+            # Graceful fallback for projects with legacy ORCHESTRATOR_GUIDE.md
+            guide_source = self.orchestrator_guide_path
+            source_label = "Guide (Legacy)"
+        else:
+            # No orchestrator content available; return unchanged
             return claude_md
 
         base = claude_md.read_text(encoding="utf-8")
-        guide_text = self.orchestrator_guide_path.read_text(encoding="utf-8").strip()
+        guide_text = guide_source.read_text(encoding="utf-8").strip()
 
         marker_start = "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->"
         marker_end = "<!-- EDISON_ORCHESTRATOR_GUIDE_END -->"
@@ -171,7 +187,7 @@ class ClaudeSync:
         block_lines = [
             marker_start,
             "",
-            "# Edison Orchestrator Guide (Generated)",
+            f"# Edison Orchestrator {source_label} (Generated)",
             "",
             guide_text,
             "",
@@ -252,7 +268,7 @@ class ClaudeSync:
         }
 
         out_path = self.claude_dir / "config.json"
-        out_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+        write_json_safe(out_path, config, indent=2)
         return out_path
 
     # ---------- Internals ----------

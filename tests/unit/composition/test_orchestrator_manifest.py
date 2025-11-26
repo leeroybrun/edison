@@ -53,8 +53,8 @@ class TestOrchestratorManifest:
         )
         (guidelines_dir / "TDD.md").write_text("# TDD", encoding="utf-8")
 
-    def test_compose_orchestrator_manifest_creates_both_files(self, tmp_path: Path) -> None:
-        """Orchestrator manifest generation creates Markdown and JSON views."""
+    def test_compose_orchestrator_manifest_creates_json_only(self, tmp_path: Path) -> None:
+        """Orchestrator manifest generation creates JSON only (ORCHESTRATOR_GUIDE.md deprecated)."""
         repo_root = tmp_path
         core_dir = repo_root / ".edison" / "core"
         core_dir.mkdir(parents=True, exist_ok=True)
@@ -85,19 +85,14 @@ class TestOrchestratorManifest:
 
         result = engine.compose_orchestrator_manifest(output_dir)
 
-        # Files created
-        assert result["markdown"].exists()
+        # Only JSON should be created (no markdown)
+        assert "markdown" not in result, "ORCHESTRATOR_GUIDE.md deprecated (T-011)"
+        assert "json" in result
         assert result["json"].exists()
 
-        # Markdown content sanity
-        md_content = result["markdown"].read_text(encoding="utf-8")
-        assert "Orchestrator Guide" in md_content
-        assert "📋 Mandatory Preloads" in md_content
-        assert "🔍 Available Validators" in md_content
-        # Delegation section should be present even with minimal config
-        assert "Delegation Configuration" in md_content
-        assert "🔁 Workflow Loop" in md_content
-        assert "scripts/session next" in md_content
+        # ORCHESTRATOR_GUIDE.md must NOT exist
+        md_file = output_dir / "ORCHESTRATOR_GUIDE.md"
+        assert not md_file.exists(), "ORCHESTRATOR_GUIDE.md must not be generated"
 
         # JSON content sanity
         json_data = json.loads(result["json"].read_text(encoding="utf-8"))

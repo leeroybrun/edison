@@ -1,0 +1,31 @@
+entries:
+  - source: orchestrators/SESSION_WORKFLOW.md
+    expected:
+      - ".edison/core/guidelines/orchestrators/SESSION_WORKFLOW.md"
+    forbidden:
+      - "../../guides/extended/SESSION_WORKFLOW.md"
+  - source: agents/CONTEXT7_REQUIREMENT.md
+    expected:
+      - ".edison/core/guidelines/shared/CONTEXT7.md"
+    forbidden:
+      - ".edison/core/guides/extended/CONTEXT7_GUIDE.md"
+  - source: agents/DELEGATION_AWARENESS.md
+    expected:
+      - ".edison/core/guidelines/shared/DELEGATION.md"
+    forbidden:
+      - ".edison/core/guides/extended/DELEGATION_GUIDE.md"
+  - source: agents/MANDATORY_WORKFLOW.md
+    expected:
+      - ".edison/core/guidelines/agents/AGENT_WORKFLOW.md"
+    forbidden:
+      - ".edison/core/guides/extended/IMPLEMENTER_WORKFLOW.md"
+  - source: agents/IMPORTANT_RULES.md
+    expected:
+      - ".edison/core/guidelines/shared/QUALITY.md"
+    forbidden:
+      - ".edison/core/guides/extended/QUALITY_STANDARDS.md"
+  - source: agents/VALIDATION_AWARENESS.md
+    expected:
+      - ".edison/core/guidelines/shared/VALIDATION.md"
+    forbidden:
+      - ".edison/core/guides/extended/VALIDATION_GUIDE.md"

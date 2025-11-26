@@ -26,6 +26,8 @@ def discover_domains() -> dict[str, Path]:
     cli_dir = Path(__file__).parent
     domains = {}
     for item in cli_dir.iterdir():
+        if item.name == "commands":
+            continue
         if item.is_dir() and not item.name.startswith("_"):
             # Must have at least one non-init .py file
             has_commands = any(
@@ -35,6 +37,37 @@ def discover_domains() -> dict[str, Path]:
             if has_commands:
                 domains[item.name] = item
     return domains
+
+
+@lru_cache(maxsize=32)
+def discover_root_commands() -> dict[str, dict[str, Any]]:
+    """Discover top-level commands under cli/commands (no domain prefix)."""
+
+    cli_dir = Path(__file__).parent
+    commands_dir = cli_dir / "commands"
+    commands: dict[str, dict[str, Any]] = {}
+
+    if not commands_dir.exists():
+        return commands
+
+    for item in commands_dir.glob("*.py"):
+        if item.name.startswith("_"):
+            continue
+
+        cmd_name = item.stem
+        try:
+            module = importlib.import_module(f"edison.cli.commands.{cmd_name}")
+            commands[cmd_name] = {
+                "module": module,
+                "summary": getattr(module, "SUMMARY", cmd_name),
+                "register_args": getattr(module, "register_args", None),
+                "main": getattr(module, "main", None),
+            }
+        except ImportError as e:
+            print(f"Warning: Could not import command {cmd_name}: {e}", file=sys.stderr)
+            continue
+
+    return commands
 
 
 @lru_cache(maxsize=32)
@@ -98,6 +131,17 @@ def build_parser() -> argparse.ArgumentParser:
         description="Available command domains",
         metavar="<domain>",
     )
+
+    # Register top-level commands (no domain prefix)
+    for cmd_name, cmd_info in sorted(discover_root_commands().items()):
+        cmd_parser = subparsers.add_parser(
+            cmd_name,
+            help=cmd_info["summary"],
+        )
+        if cmd_info["register_args"]:
+            cmd_info["register_args"](cmd_parser)
+        if cmd_info["main"]:
+            cmd_parser.set_defaults(_func=cmd_info["main"])
 
     # Auto-register domains
     for domain_name in sorted(discover_domains().keys()):
@@ -165,8 +209,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
 
-    # If no command specified, show domain help
-    if not getattr(args, "command", None):
+    # If no command specified and no handler bound, show domain help
+    if not getattr(args, "command", None) and not getattr(args, "_func", None):
         # Re-parse with just the domain to get its help
         domain_parser = parser._subparsers._group_actions[0].choices.get(args.domain)
         if domain_parser:

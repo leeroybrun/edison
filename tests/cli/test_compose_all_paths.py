@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from edison.cli.compose.all import main
+from edison.core.composition.constitution import get_rules_for_role
 from edison.core.paths.project import get_project_config_dir
 from argparse import Namespace
 
@@ -34,49 +35,6 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
             f"# {guideline_name}\n\nTest guideline content.\n",
             encoding="utf-8",
         )
-
-    # Create constitution templates
-    constitutions_dir = core_dir / "constitutions"
-    constitutions_dir.mkdir(parents=True, exist_ok=True)
-
-    # Orchestrator template
-    (constitutions_dir / "orchestrator-base.md").write_text(
-        "<!-- Role: ORCHESTRATOR -->\n"
-        "# Orchestrator Constitution\n"
-        "{{#each mandatoryReads.orchestrator}}\n"
-        "- {{this.path}}: {{this.purpose}}\n"
-        "{{/each}}\n"
-        "{{#each rules.orchestrator}}\n"
-        "### {{this.id}}: {{this.name}}\n"
-        "{{/each}}\n",
-        encoding="utf-8",
-    )
-
-    # Agents template
-    (constitutions_dir / "agents-base.md").write_text(
-        "<!-- Role: AGENT -->\n"
-        "# Agents Constitution\n"
-        "{{#each mandatoryReads.agents}}\n"
-        "- {{this.path}}: {{this.purpose}}\n"
-        "{{/each}}\n"
-        "{{#each rules.agent}}\n"
-        "### {{this.id}}: {{this.name}}\n"
-        "{{/each}}\n",
-        encoding="utf-8",
-    )
-
-    # Validators template
-    (constitutions_dir / "validators-base.md").write_text(
-        "<!-- Role: VALIDATOR -->\n"
-        "# Validator Constitution\n"
-        "{{#each mandatoryReads.validators}}\n"
-        "- {{this.path}}: {{this.purpose}}\n"
-        "{{/each}}\n"
-        "{{#each rules.validator}}\n"
-        "### {{this.id}}: {{this.name}}\n"
-        "{{/each}}\n",
-        encoding="utf-8",
-    )
 
     # Create minimal config with proper structure
     # Note: ConfigManager looks for *.yml files in project config dir, not *.yaml
@@ -149,6 +107,7 @@ def real_args():
     args.agents = False
     args.validators = False
     args.orchestrator = False
+    args.constitutions = False
     args.guidelines = False
     args.dry_run = False
     args.json = False
@@ -206,13 +165,15 @@ def test_compose_all_uses_resolved_config_dir_for_orchestrator(tmp_path, real_ar
     config_dir = get_project_config_dir(tmp_path)
     expected_output_dir = config_dir / "_generated"
 
-    # Check for orchestrator manifest (note: guide file is UPPERCASE)
+    # Check for orchestrator manifest (JSON only - ORCHESTRATOR_GUIDE.md deprecated T-011)
     manifest_file = expected_output_dir / "orchestrator-manifest.json"
-    guide_file = expected_output_dir / "ORCHESTRATOR_GUIDE.md"
 
     assert expected_output_dir.exists(), f"Output directory should exist at {expected_output_dir}"
     assert manifest_file.exists(), f"Manifest file should exist at {manifest_file}"
-    assert guide_file.exists(), f"Guide file should exist at {guide_file}"
+
+    # ORCHESTRATOR_GUIDE.md must NOT be generated (deprecated T-011)
+    guide_file = expected_output_dir / "ORCHESTRATOR_GUIDE.md"
+    assert not guide_file.exists(), "ORCHESTRATOR_GUIDE.md deprecated - use constitutions/ORCHESTRATORS.md"
 
 
 def test_compose_all_generates_validators_constitution(tmp_path, real_args):
@@ -289,3 +250,80 @@ def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
         "Template placeholders should be rendered"
     assert "{{/each}}" not in content, \
         "Template placeholders should be rendered"
+
+
+def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
+    """Test that edison compose --all generates constitutions/ORCHESTRATORS.md."""
+    _setup_minimal_edison_structure(tmp_path)
+    real_args.repo_root = str(tmp_path)
+
+    result = main(real_args)
+
+    assert result == 0, "Compose should succeed"
+
+    config_dir = get_project_config_dir(tmp_path)
+    constitutions_dir = config_dir / "_generated" / "constitutions"
+    orchestrators_constitution = constitutions_dir / "ORCHESTRATORS.md"
+
+    assert constitutions_dir.exists(), f"Constitutions directory should exist at {constitutions_dir}"
+    assert orchestrators_constitution.exists(), f"ORCHESTRATORS.md should exist at {orchestrators_constitution}"
+
+
+def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
+    """Test that ORCHESTRATORS.md has Role: ORCHESTRATOR in header."""
+    _setup_minimal_edison_structure(tmp_path)
+    real_args.repo_root = str(tmp_path)
+
+    result = main(real_args)
+    assert result == 0, "Compose should succeed"
+
+    config_dir = get_project_config_dir(tmp_path)
+    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+
+    content = orchestrators_constitution.read_text(encoding="utf-8")
+    assert "<!-- Role: ORCHESTRATOR -->" in content, "ORCHESTRATORS.md should have Role: ORCHESTRATOR in header"
+
+
+def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
+    """Test that mandatory reads match constitution.yaml orchestrator section."""
+    _setup_minimal_edison_structure(tmp_path)
+    real_args.repo_root = str(tmp_path)
+
+    result = main(real_args)
+    assert result == 0, "Compose should succeed"
+
+    config_dir = get_project_config_dir(tmp_path)
+    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+
+    content = orchestrators_constitution.read_text(encoding="utf-8")
+    assert "guidelines/SESSION_WORKFLOW.md: Session workflow" in content, \
+        "ORCHESTRATORS.md should have mandatory reads from constitution.yaml"
+
+
+def test_orchestrators_constitution_has_rules_and_roster_references(tmp_path, real_args):
+    """Test that rules render for orchestrator and roster files are generated."""
+    _setup_minimal_edison_structure(tmp_path)
+    real_args.repo_root = str(tmp_path)
+
+    result = main(real_args)
+    assert result == 0, "Compose should succeed"
+
+    config_dir = get_project_config_dir(tmp_path)
+    output_dir = config_dir / "_generated"
+    orchestrators_constitution = output_dir / "constitutions" / "ORCHESTRATORS.md"
+
+    content = orchestrators_constitution.read_text(encoding="utf-8")
+    # Verify Handlebars markers were rendered and an actual rule id appears
+    assert "{{#each rules.orchestrator}}" not in content
+    rules = get_rules_for_role("orchestrator")
+    assert rules, "Expected orchestrator rules to be available"
+    assert rules[0]["id"] in content, "Orchestrator rules should be rendered into constitution"
+
+    # Verify references to rosters are present and generated
+    assert "AVAILABLE_AGENTS.md" in content, "Orchestrator constitution should reference available agents"
+    assert "AVAILABLE_VALIDATORS.md" in content, "Orchestrator constitution should reference available validators"
+
+    available_agents = output_dir / "AVAILABLE_AGENTS.md"
+    available_validators = output_dir / "AVAILABLE_VALIDATORS.md"
+    assert available_agents.exists(), "AVAILABLE_AGENTS.md should be generated alongside constitutions"
+    assert available_validators.exists(), "AVAILABLE_VALIDATORS.md should be generated alongside constitutions"

@@ -5,35 +5,26 @@
 
 ## Purpose
 
-All agent work is validated by a multi-validator architecture before tasks can be promoted to `done`. Agents must understand this system to produce work that passes validation on the first try. This document explains the 9-validator architecture and your role within it.
+All agent work is validated by a multi-validator architecture before tasks can be promoted to `done`. Agents must understand this system to produce work that passes validation on the first try. This document explains the tiered validator architecture and how to use the dynamic roster in `AVAILABLE_VALIDATORS.md`.
 
 ## Requirements
 
 ### The Multi-Validator Architecture
 
-Your work will be validated by **9 independent validators** organized in three tiers:
+Your work is validated by the roster in `AVAILABLE_VALIDATORS.md`, organized into three tiers:
 
-#### Tier 1: Global Validators (ALWAYS run, BOTH must approve)
+#### Tier 1: Global Validators (always run; all must approve)
+- Current global validators and models are listed in `AVAILABLE_VALIDATORS.md`.
+- Global validators review end-to-end correctness and must unanimously approve.
 
-| Validator | Model | Purpose |
-|-----------|-------|---------|
-| **Codex Global** | Codex | Code quality, patterns, consistency |
-| **Claude Global** | Claude | Architecture, design, maintainability |
+#### Tier 2: Critical Validators (always run; blocking)
+- The critical validator roster lives in `AVAILABLE_VALIDATORS.md`.
+- Any critical validator rejection blocks promotion, even if globals approve.
 
-**Both global validators MUST approve** for a task to pass validation.
-
-#### Tier 2: Critical Validators (ALWAYS run, blocking)
-
-| Validator | Model | Purpose | Blocks |
-|-----------|-------|---------|--------|
-| **Security** | Codex | Auth, input validation, secrets, injection attacks | Yes |
-| **Performance** | Codex | Query optimization, caching, memory leaks | Yes |
-
-**Critical validators can BLOCK task promotion** even if globals approve.
-
-#### Tier 3: Specialized Validators (triggered by file patterns)
-
-Specialized validators are triggered by file patterns defined in active packs. These validators ensure framework-specific best practices are followed.
+#### Tier 3: Specialized Validators (pattern-triggered)
+- Triggered by file patterns defined in `.edison/config/validators.yml`.
+- Active specialized validators and their triggers are documented in `AVAILABLE_VALIDATORS.md`.
+- These validators can block if `blocksOnFail=true` in config.
 
 **Specialized validators run based on changed files**. Active packs contribute specialized validators for their frameworks. Check `.edison/config/validators.yml` for current triggers and validator configuration.
 
@@ -45,46 +36,22 @@ Specialized validators are triggered by file patterns defined in active packs. T
 
 #### What Validators Check
 
-**Codex Global**:
-- Code follows established patterns
-- Consistent naming conventions
-- No code smells or anti-patterns
-- Language-specific best practices
-
-**Claude Global**:
-- Architecture makes sense
-- Code is maintainable
+**Global Validators** (Tier 1):
+- Code follows established patterns and naming conventions
+- Architecture makes sense and is maintainable
 - Design decisions are sound
-- No over-engineering or under-engineering
+- No code smells or anti-patterns
 
-**Security Validator** (CRITICAL):
-- Authentication checks on all protected resources
-- Input validation with appropriate schema validation tools
-- No injection vulnerabilities
-- No cross-site scripting (XSS) vulnerabilities
-- Sensitive data not exposed in responses
-- Error messages don't leak internal details
+**Critical Validators** (Tier 2):
+- **Security**: Authentication, input validation, injection prevention, sensitive data handling.
+- **Performance**: Query optimization, indexing, pagination, resource utilization.
+- **Testing**: TDD compliance, coverage, test quality, no skipped tests.
 
-**Performance Validator**:
-- No N+1 queries
-- Proper indexing used
-- Pagination for large datasets
-- Efficient resource utilization
-- Proper caching strategies
-
-**Testing Validator**:
-- TDD compliance (tests written first)
-- Adequate test coverage (>=80%)
-- No skipped tests
-- Fast tests (<100ms unit, <1s integration)
-- Real behavior tested (minimal mocking)
-
-**Specialized Validators** (triggered by file patterns):
-- Framework-specific best practices followed
-- Proper conventions and patterns used
-- Accessibility standards met (where applicable)
-- Comprehensive error handling
-- Configuration follows conventions
+**Specialized Validators** (Tier 3):
+- Framework-specific best practices
+- Accessibility standards
+- Configuration conventions
+- Domain-specific rules
 
 ### Validation Workflow
 
@@ -130,7 +97,7 @@ Validators produce structured reports:
 
 ### How to Pass Validation
 
-**Security Validator**:
+**Security Validation**:
 ```
 PSEUDOCODE:
 1. Add authentication checks to protected resources
@@ -146,7 +113,7 @@ PSEUDOCODE:
    )
 ```
 
-**Performance Validator**:
+**Performance Validation**:
 ```
 PSEUDOCODE:
 1. Limit fields in queries (select only needed data)
@@ -161,7 +128,7 @@ PSEUDOCODE:
    })
 ```
 
-**Testing Validator**:
+**Testing Validation**:
 ```
 PSEUDOCODE:
 1. Write tests FIRST (TDD workflow)
@@ -171,7 +138,7 @@ PSEUDOCODE:
 5. Refactor if needed
 ```
 
-**Specialized Validators**:
+**Specialized Validation**:
 ```
 PSEUDOCODE:
 Framework-specific validators check:
@@ -213,7 +180,8 @@ cat .project/qa/validation-evidence/<task-id>/round-N/bundle-*.json
 
 ## References
 
-- Extended validation guide: `.edison/core/guides/extended/VALIDATION_GUIDE.md`
+- Validator roster (dynamic): `.edison/_generated/AVAILABLE_VALIDATORS.md`
+- Extended validation guide: `.edison/core/guidelines/shared/VALIDATION.md`
 - Validator configuration: `.edison/validators/config.json`
 - Validation output format: `.edison/validators/OUTPUT_FORMAT.md`
 

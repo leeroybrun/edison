@@ -251,7 +251,7 @@ documentation = mcp__context7__get_library_docs({
 ## References
 
 - Context7 usage guide: `.edison/core/guidelines/CONTEXT7.md`
-- Extended patterns: `.edison/core/guides/extended/CONTEXT7_GUIDE.md`
+- Extended patterns: `.edison/core/guidelines/shared/CONTEXT7.md`
 - Tech stack reference: `.edison/core/guides/reference/TECH_STACK.md`
 
 ---

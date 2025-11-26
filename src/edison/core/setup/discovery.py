@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Any, Set
-import json
 import yaml
 
 
@@ -145,13 +144,8 @@ class SetupDiscovery:
             return data or {}
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
-        if not path.exists():
-            return {}
-        with path.open("r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return {}
+        from edison.core.file_io.utils import read_json_with_default
+        return read_json_with_default(path, default={})
 
     def _extract_ids(self, path: Path) -> List[str]:
         data = self._load_yaml(path)

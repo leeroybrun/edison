@@ -69,8 +69,13 @@ def _run_compose_orchestrator(project_root: Path) -> tuple[int, str, str]:
 
 
 @pytest.mark.integration
+@pytest.mark.skip(reason="ORCHESTRATOR_GUIDE.md deprecated (T-011) - constitution system replaces it")
 def test_orchestrator_guide_has_workflow_loop_section(orchestrator_env: Path) -> None:
-    """Generated ORCHESTRATOR_GUIDE.md must include workflow loop instructions."""
+    """DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011).
+
+    Constitution system (constitutions/ORCHESTRATORS.md) replaces it.
+    Test kept for reference but skipped.
+    """
     root = orchestrator_env
 
     code, out, err = _run_compose_orchestrator(root)
@@ -87,8 +92,13 @@ def test_orchestrator_guide_has_workflow_loop_section(orchestrator_env: Path) ->
 
 
 @pytest.mark.integration
+@pytest.mark.skip(reason="ORCHESTRATOR_GUIDE.md deprecated (T-011) - constitution system replaces it")
 def test_orchestrator_guide_summarizes_validators_and_agents(orchestrator_env: Path) -> None:
-    """Guide should surface validators roster and agent categories for orchestrators."""
+    """DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011).
+
+    Guide functionality moved to constitution system.
+    Test kept for reference but skipped.
+    """
     root = orchestrator_env
 
     code, out, err = _run_compose_orchestrator(root)

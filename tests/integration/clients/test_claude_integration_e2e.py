@@ -109,9 +109,11 @@ class TestClaudeIntegrationE2E:
                 "project": [],
             },
         )
-        # Minimal orchestrator guide so sync_orchestrator_to_claude has content
-        guide = root / ".agents" / "_generated" / "ORCHESTRATOR_GUIDE.md"
-        guide.write_text("# Orchestrator Guide\n\nDetails.", encoding="utf-8")
+        # Minimal orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)
+        constitutions_dir = root / ".agents" / "_generated" / "constitutions"
+        constitutions_dir.mkdir(parents=True, exist_ok=True)
+        constitution = constitutions_dir / "ORCHESTRATORS.md"
+        constitution.write_text("# Orchestrator Constitution\n\nDetails.", encoding="utf-8")
 
         # Pre-existing CLAUDE.md template to be enriched
         claude_dir = root / ".claude"
@@ -151,10 +153,10 @@ class TestClaudeIntegrationE2E:
         assert api_agent.exists()
         assert comp_agent.exists()
 
-        # Orchestrator enriched with guide content
+        # Orchestrator enriched with constitution content
         claude_md = claude_dir / "CLAUDE.md"
         content = claude_md.read_text(encoding="utf-8")
-        assert "Orchestrator Guide" in content
+        assert "Orchestrator Constitution" in content or "Orchestrator Guide" in content
         assert "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->" in content
 
         # config.json generated with roster

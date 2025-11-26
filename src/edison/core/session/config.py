@@ -215,9 +215,8 @@ class SessionConfig:
             manifest_path = get_project_config_dir(root) / "manifest.json"
             
             if manifest_path.exists():
-                import json
-
-                manifest = json.loads(manifest_path.read_text())
+                from ..file_io.utils import read_json_safe
+                manifest = read_json_safe(manifest_path)
                 if isinstance(manifest, dict):
                     wt = manifest.get("worktrees")
                     if isinstance(wt, dict):

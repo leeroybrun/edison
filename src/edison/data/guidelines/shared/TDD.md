@@ -103,7 +103,7 @@ Before accepting work from a sub-agent, verify:
 
 ```json
 {
-  "taskId": "{{task_id}}",
+  "taskId": "<task-id>",
   "tddCompliance": {
     "testFirst": true|false,
     "redPhaseEvidence": "path/to/screenshot or git commit",

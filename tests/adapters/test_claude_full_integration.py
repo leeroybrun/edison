@@ -21,7 +21,10 @@ def _seed_generated(repo_root: Path) -> Path:
     generated_root = repo_root / ".agents" / "_generated"
     (generated_root / "agents").mkdir(parents=True, exist_ok=True)
 
-    (generated_root / "ORCHESTRATOR_GUIDE.md").write_text("Guide body", encoding="utf-8")
+    # ORCHESTRATOR_GUIDE.md deprecated (T-011) - use constitution instead
+    constitutions_dir = generated_root / "constitutions"
+    constitutions_dir.mkdir(parents=True, exist_ok=True)
+    (constitutions_dir / "ORCHESTRATORS.md").write_text("Constitution body", encoding="utf-8")
     (generated_root / "orchestrator-manifest.json").write_text("{}", encoding="utf-8")
 
     agent = generated_root / "agents" / "demo.md"

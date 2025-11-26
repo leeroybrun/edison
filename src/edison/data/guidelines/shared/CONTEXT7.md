@@ -44,7 +44,7 @@ Read full: `.edison/core/guides/extended/CONTEXT7.md`.
   - `.project/qa/validation-evidence/<task-id>/round-<N>/context7-<package>.txt`
   - Briefly list topics queried and the doc version/date.
 - Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.
-- Notes in task files (e.g., "Context7 ({{library}})") are NOT accepted as evidence.
+- Notes in task files (e.g., "Context7 (<library>)") are NOT accepted as evidence.
 - When HMAC stamping is enabled in config, include the stamped digest inside each marker.
 <!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED END -->
 

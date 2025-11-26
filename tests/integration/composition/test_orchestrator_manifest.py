@@ -92,17 +92,18 @@ def _run_compose_orchestrator(project_root: Path) -> tuple[int, str, str]:
 
 @pytest.mark.integration
 def test_orchestrator_manifest_written_to_generated_dir(orchestrator_env: Path) -> None:
-    """compose --orchestrator must write manifest + guide into .agents/_generated/."""
+    """compose --orchestrator must write manifest JSON (ORCHESTRATOR_GUIDE.md deprecated T-011)."""
     root = orchestrator_env
 
     code, out, err = _run_compose_orchestrator(root)
     assert code == 0, f"compose --orchestrator failed\nstdout:\n{out}\nstderr:\n{err}"
 
     manifest_path = root / ".agents" / "_generated" / "orchestrator-manifest.json"
-    guide_path = root / ".agents" / "_generated" / "ORCHESTRATOR_GUIDE.md"
-
     assert manifest_path.is_file(), f"Missing orchestrator manifest at {manifest_path}"
-    assert guide_path.is_file(), f"Missing orchestrator guide at {guide_path}"
+
+    # ORCHESTRATOR_GUIDE.md must NOT be generated (deprecated T-011)
+    guide_path = root / ".agents" / "_generated" / "ORCHESTRATOR_GUIDE.md"
+    assert not guide_path.exists(), "ORCHESTRATOR_GUIDE.md deprecated - use constitutions/ORCHESTRATORS.md"
 
 
 @pytest.mark.integration

@@ -53,8 +53,7 @@ class McpConfig:
         if not path.exists():
             return cls()
 
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = file_utils.read_json_safe(path)
 
         if not isinstance(data, dict):
             raise ValueError("existing .mcp.json must be a JSON object")
@@ -101,11 +100,13 @@ class McpConfig:
         if json_format:
             fmt.update(json_format)
 
-        def _writer(f) -> None:
-            json.dump(self.to_dict(), f, **fmt)
-            f.write("\n")
-
-        file_utils._atomic_write(path, _writer)
+        file_utils.write_json_safe(
+            path,
+            self.to_dict(),
+            indent=int(fmt.get("indent", 2)),
+            sort_keys=bool(fmt.get("sort_keys", True)),
+            ensure_ascii=bool(fmt.get("ensure_ascii", False)),
+        )
 
 
 # ---------------------------------------------------------------------------

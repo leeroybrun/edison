@@ -68,10 +68,26 @@ def read_json(file_path: Path | str) -> Any:
     return data
 
 
-def write_json_atomic(file_path: Path | str, data: Any, *, acquire_lock: bool = True) -> None:
+def write_json_atomic(
+    file_path: Path | str,
+    data: Any,
+    *,
+    acquire_lock: bool = True,
+    indent: int | None = None,
+    sort_keys: bool | None = None,
+    ensure_ascii: bool | None = None,
+) -> None:
     """Atomically write JSON to ``file_path`` honoring config formatting."""
     path = Path(file_path)
-    cfg = _cfg()
+    cfg = _cfg().copy()
+    
+    if indent is not None:
+        cfg["indent"] = indent
+    if sort_keys is not None:
+        cfg["sort_keys"] = sort_keys
+    if ensure_ascii is not None:
+        cfg["ensure_ascii"] = ensure_ascii
+
     io_utils._atomic_write(  # type: ignore[attr-defined]
         path,
         _json_writer(data, cfg),

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
+from edison.core.file_io.utils import write_json_safe
 
 
 def merge_permissions(base: Dict, overlay: Dict) -> Dict:
@@ -167,7 +168,7 @@ class SettingsComposer:
                 # If existing file is invalid, replace it entirely
                 pass
 
-        target.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+        write_json_safe(target, settings, indent=2)
         return target
 
 

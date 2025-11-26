@@ -14,7 +14,15 @@ from .composers import (
     compose_guidelines,
     CompositionEngine,
 )
+from .constitution import (
+    get_rules_for_role,
+    load_constitution_layer,
+    compose_constitution,
+    render_constitution_template,
+    generate_all_constitutions,
+)
 from .packs import auto_activate_packs
+from .rosters import generate_available_agents, generate_available_validators
 from ..utils.text import (
     dry_duplicate_report,
     render_conditional_includes,
@@ -91,4 +99,13 @@ __all__ = [
     "project_terms",
     "DEFAULT_PROJECT_TERMS",
     "PACK_TECH_TERMS",
+    # Constitutions
+    "get_rules_for_role",
+    "load_constitution_layer",
+    "compose_constitution",
+    "render_constitution_template",
+    "generate_all_constitutions",
+    # Rosters
+    "generate_available_agents",
+    "generate_available_validators",
 ]

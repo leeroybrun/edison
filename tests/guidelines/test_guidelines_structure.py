@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import yaml
 import pytest
 
 from edison.data import get_data_path
@@ -123,3 +124,54 @@ def test_condensed_and_extended_have_explicit_path_cross_links() -> None:
         "Missing expected shared guidelines:\n" + "\n".join(missing)
     )
 
+
+def _resolve_guideline_target_path(reference: str, guidelines_root: Path) -> Path | None:
+    prefix = ".edison/core/guidelines/"
+    if reference.startswith(prefix):
+        relative = reference[len(prefix):].lstrip("/")
+        return guidelines_root / relative
+    return None
+
+
+def test_guideline_cross_references_align_with_existing_files() -> None:
+    """
+    Ensure known cross-references in guidelines point at existing markdown files
+    and do not retain broken legacy links.
+    """
+
+    config_path = Path(__file__).resolve().parents[1] / "fixtures/guidelines/cross_references.yaml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+
+    guidelines_root = get_data_path("guidelines")
+
+    missing_expected: list[str] = []
+    forbidden_present: list[str] = []
+    missing_targets: list[str] = []
+
+    for entry in config.get("entries", []):
+        source_path = guidelines_root / entry["source"]
+        text = source_path.read_text(encoding="utf-8")
+
+        for expected in entry.get("expected", []):
+            if expected not in text:
+                missing_expected.append(f"{entry['source']}: missing '{expected}'")
+
+            target = _resolve_guideline_target_path(expected, guidelines_root)
+            if target is not None and not target.exists():
+                missing_targets.append(
+                    f"{entry['source']}: target '{expected}' not found at {target.relative_to(guidelines_root)}"
+                )
+
+        for forbidden in entry.get("forbidden", []):
+            if forbidden in text:
+                forbidden_present.append(f"{entry['source']}: contains forbidden '{forbidden}'")
+
+    errors: list[str] = []
+    if missing_expected:
+        errors.append("Missing expected references:\n- " + "\n- ".join(sorted(missing_expected)))
+    if missing_targets:
+        errors.append("Expected target files are missing:\n- " + "\n- ".join(sorted(missing_targets)))
+    if forbidden_present:
+        errors.append("Forbidden references still present:\n- " + "\n- ".join(sorted(forbidden_present)))
+
+    assert not errors, "\n\n".join(errors)

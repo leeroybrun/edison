@@ -151,7 +151,7 @@ edison validators validate <task-id>
 
 ## References
 
-- Extended workflow: `.edison/core/guides/extended/IMPLEMENTER_WORKFLOW.md`
+- Extended workflow: `.edison/core/guidelines/agents/AGENT_WORKFLOW.md`
 - Output format: `.edison/implementation/OUTPUT_FORMAT.md`
 - Session workflow: `.edison/core/guidelines/SESSION_WORKFLOW.md`
 

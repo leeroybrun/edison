@@ -92,7 +92,7 @@ class ZenPromptAdapter(PromptAdapter):
             f"Role: {agent_name}",
             "",
             f"Orchestrator manifest: {self.project_config_dir_name}/_generated/orchestrator-manifest.json",
-            f"Orchestrator guide: {self.project_config_dir_name}/_generated/ORCHESTRATOR_GUIDE.md",
+            f"Orchestrator constitution: {self.project_config_dir_name}/_generated/constitutions/ORCHESTRATORS.md",
         ]
 
         if generic_for_concrete:

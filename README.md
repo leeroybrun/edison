@@ -39,6 +39,66 @@ edison config configure
 edison validators validate <task-id>
 ```
 
+## Zen MCP Integration
+
+Edison uses the [Zen MCP Server](https://github.com/BeehiveInnovations/zen-mcp-server) for sub-agent delegation.
+
+### Quick Setup
+
+```bash
+# During project initialization (automatic)
+edison init my-project
+
+# Or manually
+edison zen setup
+edison zen configure
+```
+
+### Manual Setup
+
+If automatic setup fails:
+
+1. **Install uvx** (provides zen-mcp-server):
+   ```bash
+   pip install uv
+   ```
+
+2. **Configure your project**:
+   ```bash
+   edison zen configure /path/to/project
+   ```
+
+3. **Verify setup**:
+   ```bash
+   edison zen setup --check
+   ```
+
+### Starting the Server
+
+```bash
+# Start zen-mcp-server
+edison zen start-server
+
+# Or in background
+edison zen start-server --background
+```
+
+### Configuration Options
+
+The `edison zen configure` command creates a `.mcp.json` file in your project with the following options:
+
+```bash
+# Preview configuration without writing
+edison zen configure --dry-run
+
+# Configure specific project
+edison zen configure /path/to/project
+```
+
+### Troubleshooting
+
+For detailed setup instructions, troubleshooting, and advanced configuration, see [docs/ZEN_SETUP.md](docs/ZEN_SETUP.md).
+
 ## Project Structure
 
 ```

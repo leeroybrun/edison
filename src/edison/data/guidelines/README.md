@@ -28,9 +28,9 @@ These bidirectional links are enforced by tests under `.edison/core/tests/guidel
 
 - Packs MAY contribute additional guidelines under `.edison/packs/<pack>/guidelines/*.md`.
 - Guideline filenames should be **namespaced by pack** to avoid collisions in the global registry, for example:
-  - `{{framework}}-routing.md`, `{{framework}}-metadata.md`
-  - `{{orm}}-migrations.md`, `{{orm}}-query-optimization.md`
-  - `{{test-framework}}-component-testing.md`, `{{test-framework}}-test-quality.md`
+  - `framework-routing.md`, `framework-metadata.md`
+  - `orm-migrations.md`, `orm-query-optimization.md`
+  - `test-framework-component-testing.md`, `test-framework-test-quality.md`
 - The guideline composition engine discovers these pack guidelines and composes them alongside core and project-level guidelines into `.edison/_generated/guidelines/*.md`.
 
 ## Core orchestration & process (mandatory)

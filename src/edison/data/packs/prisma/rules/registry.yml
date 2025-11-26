@@ -1,0 +1,66 @@
+version: "1.0.0"
+
+rules:
+  - id: RULE.PRISMA.UUID_PRIMARY_KEYS
+    title: "Use UUID Primary Keys"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/prisma/guidelines/schema-design.md
+    guidance: "Use UUID primary keys; prefer explicit relations with @relation."
+
+  - id: RULE.PRISMA.EXPLICIT_RELATIONS
+    title: "Explicit Relation Definitions"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/prisma/guidelines/relationships.md
+    guidance: "Define explicit relations using @relation attribute for clarity and maintainability."
+
+  - id: RULE.PRISMA.NORMALIZATION
+    title: "Appropriate Schema Normalization"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/prisma/guidelines/schema-design.md
+    guidance: "Normalize appropriately; avoid excessive denormalization unless justified by performance requirements."
+
+  - id: RULE.PRISMA.ENUMS_FOR_CONSTRAINTS
+    title: "Use Enums for Constrained Values"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/prisma/guidelines/schema-design.md
+    guidance: "Use enums for constrained value sets to ensure type safety."
+
+  - id: RULE.PRISMA.INDEXES_AND_CONSTRAINTS
+    title: "Add Indexes and Unique Constraints"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/prisma/guidelines/schema-design.md
+    guidance: "Add unique constraints and indexes as needed for performance and data integrity."
+
+  - id: RULE.PRISMA.QUERY_OPTIMIZATION
+    title: "Query Optimization Patterns"
+    category: implementation
+    blocking: false
+    applies_to: [agent]
+    sourcePath: packs/prisma/guidelines/query-optimization.md
+    guidance: "Follow Prisma query optimization patterns for efficient database access."
+
+  - id: RULE.PRISMA.MIGRATION_SAFETY
+    title: "Safe Migration Practices"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/prisma/guidelines/migrations.md
+    guidance: "Follow safe migration practices; review migrations before applying to production."
+
+  - id: RULE.PRISMA.TESTING_STRATEGY
+    title: "Database Testing Strategy"
+    category: testing
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/prisma/guidelines/TESTING.md
+    guidance: "Test database interactions with appropriate test database strategy."

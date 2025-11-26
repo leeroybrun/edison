@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
 
-from ..composition import resolve_includes, ComposeError
+from ..composition.includes import resolve_includes, ComposeError
 from ..paths import EdisonPathError, PathResolver
 from ..paths.project import get_project_config_dir
 

@@ -29,7 +29,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--orchestrator",
         action="store_true",
-        help="Only compose orchestrator manifest and guide",
+        help="Only compose orchestrator manifest",
+    )
+    parser.add_argument(
+        "--constitutions",
+        action="store_true",
+        help="Only compose constitutions (and supporting rosters)",
     )
     parser.add_argument(
         "--guidelines",
@@ -77,6 +82,10 @@ def main(args: argparse.Namespace) -> int:
     """Compose artifacts - delegates to composition engine."""
     from edison.core.composition import CompositionEngine
     from edison.core.composition.constitution import generate_all_constitutions
+    from edison.core.composition.rosters import (
+        generate_available_agents,
+        generate_available_validators,
+    )
     from edison.core.config import ConfigManager
     from edison.core.paths import resolve_project_root
     from edison.core.paths.project import get_project_config_dir
@@ -89,7 +98,13 @@ def main(args: argparse.Namespace) -> int:
         results = {}
 
         # Determine what to compose
-        compose_all = not any([args.agents, args.validators, args.orchestrator, args.guidelines])
+        compose_all = not any([
+            args.agents,
+            args.validators,
+            args.orchestrator,
+            args.guidelines,
+            args.constitutions,
+        ])
 
         if args.dry_run:
             if args.json:
@@ -98,15 +113,25 @@ def main(args: argparse.Namespace) -> int:
                 print(f"[dry-run] Would compose artifacts in {repo_root}")
             return 0
 
-        # Generate constitutions for all roles
-        if compose_all:
+        # Generate rosters + constitutions (constitutions depend on rosters)
+        if compose_all or args.constitutions:
             cfg_mgr = ConfigManager(repo_root)
             output_path = config_dir / "_generated"
+
+            # Generate rosters first so constitutions can reference them
+            generate_available_agents(output_path / "AVAILABLE_AGENTS.md", repo_root=repo_root)
+            generate_available_validators(output_path / "AVAILABLE_VALIDATORS.md", repo_root=repo_root)
+
+            # Generate constitutions for all roles
             generate_all_constitutions(cfg_mgr, output_path)
             constitutions_dir = output_path / "constitutions"
             if constitutions_dir.exists():
                 constitution_files = list(constitutions_dir.glob("*.md"))
                 results["constitutions"] = [str(f) for f in constitution_files]
+            results["rosters"] = [
+                str(output_path / "AVAILABLE_AGENTS.md"),
+                str(output_path / "AVAILABLE_VALIDATORS.md"),
+            ]
 
         if compose_all or args.guidelines:
             guideline_files = engine.compose_guidelines()

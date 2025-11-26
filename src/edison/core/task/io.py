@@ -13,6 +13,7 @@ import getpass
 
 from ..exceptions import TaskStateError
 from edison.core.file_io import utils as io_utils
+from edison.core.file_io.utils import write_json_safe, read_json_safe
 from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT
@@ -196,13 +197,8 @@ def move_to_status(
     return safe_move_file(src, dest)
 
 
-def atomic_write_json(path: Path, data: Dict[str, Any], *, indent: int = 2) -> None:
-    target = Path(path)
-
-    def _writer(f):
-        json.dump(data, f, indent=indent)
-
-    io_utils._atomic_write(target, _writer)
+# Aliased for compatibility - use edison.core.file_io.utils.write_json_safe directly
+atomic_write_json = write_json_safe
 
 
 def write_text_locked(path: Path, content: str) -> None:
@@ -242,12 +238,11 @@ def utc_timestamp() -> str:
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return read_json_safe(path)
 
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    write_json_safe(path, data, indent=2)
 
 
 def _validate_task_record(rec: Dict[str, Any]) -> None:
@@ -289,12 +284,12 @@ def _append_task_to_session(session_id: str, task_id: str) -> None:
     if path is None:
         return
     try:
-        data = json.loads(path.read_text(encoding="utf-8")) or {}
+        data = io_utils.read_json_with_default(path, {}) or {}
         tasks = data.get("tasks") or []
         if task_id not in tasks:
             tasks.append(task_id)
         data["tasks"] = tasks
-        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        write_json_safe(path, data, indent=2)
     except Exception:
         pass
 
