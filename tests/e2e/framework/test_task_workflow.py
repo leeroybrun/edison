@@ -14,7 +14,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.session.lib import ensure_session 
+from tests.helpers.session import ensure_session 
 from edison.core.task import create_task, claim_task, ready_task 
 def test_task_claim_work_complete_flow(tmp_path):
     """Runs Claim → Work → Complete flow and verifies file locations."""

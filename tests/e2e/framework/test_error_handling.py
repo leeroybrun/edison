@@ -18,7 +18,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.session import lib as sessionlib  # type: ignore
+from tests.helpers import session as sessionlib  # type: ignore
 from edison.core.utils import resilience  # type: ignore
 from edison.core.config import ConfigManager 
 def test_missing_project_name_raises(monkeypatch: pytest.MonkeyPatch):

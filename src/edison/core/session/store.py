@@ -439,3 +439,147 @@ def render_markdown(session: Dict[str, Any], state_spec: Optional[Dict[str, Any]
             lines.append(f"- **{qid}**: {q_status}")
             
     return "\\n".join(lines)
+
+
+# ============================================================================
+# High-level session operations (formerly in lib.py)
+# ============================================================================
+
+def _get_worktree_base() -> Path:
+    """Get the worktree base directory from configuration."""
+    from ..config import ConfigManager
+    cfg = ConfigManager().load_config(validate=False)
+    wt = (cfg.get("worktrees") or {}).get("baseDirectory")
+    if wt:
+        base = Path(wt)
+        return base if base.is_absolute() else (PathResolver.resolve_project_root().parent / base).resolve()
+    root = PathResolver.resolve_project_root()
+    return (root.parent / f"{root.name}-worktrees").resolve()
+
+
+def _append_state_history(data: Dict[str, Any], from_state: str, to_state: str, reason: Optional[str]) -> None:
+    """Append a state transition to the session's history."""
+    history = list(data.get("state_history") or data.get("stateHistory") or [])
+    history.append({
+        "from": from_state,
+        "to": to_state,
+        "timestamp": io_utc_timestamp(),
+        "reason": reason,
+    })
+    data["state_history"] = history
+
+
+def ensure_session(session_id: str, state: str = "Active") -> Path:
+    """Create a session directory and session.json in the requested state.
+
+    Returns the session directory path.
+    """
+    from .validation import validate_session_id_format
+
+    sid = sanitize_session_id(session_id)
+    target_state = state.lower()
+    validate_session_id_format(sid)
+
+    sess_dir = _session_dir(target_state, sid)
+    sess_dir.mkdir(parents=True, exist_ok=True)
+    sess_json = sess_dir / "session.json"
+
+    if sess_json.exists():
+        data = io_read_json_safe(sess_json)
+    else:
+        data = {
+            "id": sid,
+            "state": state.title(),
+            "worktreeBase": str(_get_worktree_base()),
+            "meta": {
+                "sessionId": sid,
+                "createdAt": io_utc_timestamp(),
+                "lastActive": io_utc_timestamp(),
+                "status": target_state,
+            },
+            "metadata": {},
+            "tasks": {},
+            "qa": {},
+            "state_history": [],
+            "activityLog": [
+                {"timestamp": io_utc_timestamp(), "message": "Session created"}
+            ],
+        }
+
+    # Default readiness flag required by state-machine conditions
+    if "ready" not in data:
+        data["ready"] = True
+
+    # Sync state and persist
+    data["state"] = state.title()
+    io_atomic_write_json(sess_json, data)
+
+    # Maintain alias under wip flat layout for legacy callers
+    legacy = _sessions_root() / "wip" / f"{sid}.json"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    io_atomic_write_json(legacy, data)
+
+    return sess_dir
+
+
+def transition_state(
+    session: Union[str, Path],
+    target_state: str,
+    *,
+    reason: Optional[str] = None
+) -> bool:
+    """Transition session to a new state with validation.
+
+    Accepts either a session id or a path to the session directory.
+    Returns True on success, False on failure for Path-based calls.
+    Raises exceptions for ID-based calls on failure.
+    """
+    from . import state as session_state
+
+    target = target_state.lower()
+    if isinstance(session, Path):
+        sess_dir = session.resolve()
+        sid = sess_dir.name
+        json_path = sess_dir / "session.json"
+    else:
+        sid = session
+        try:
+            json_path = get_session_json_path(sid)
+            sess_dir = json_path.parent
+        except Exception:
+            sess_dir = _session_dir(target, sid)
+            json_path = sess_dir / "session.json"
+
+    try:
+        data = io_read_json_safe(json_path)
+    except FileNotFoundError:
+        if isinstance(session, Path):
+            return False
+        raise SessionNotFoundError(f"session {sid} not found")
+    except Exception:
+        if isinstance(session, Path):
+            return False
+        raise
+
+    if "ready" not in data:
+        data["ready"] = True
+
+    current = str(data.get("state") or "").lower() or "active"
+    try:
+        session_state.validate_transition(current, target, context={"session": data})
+    except Exception:
+        # Path-based calls return False on invalid transition
+        if isinstance(session, Path):
+            return False
+        raise
+
+    data["state"] = target.title()
+    _append_state_history(data, current, target, reason)
+    io_atomic_write_json(json_path, data)
+
+    try:
+        _move_session_json_to(target, sid)
+    except Exception:
+        pass
+
+    return True

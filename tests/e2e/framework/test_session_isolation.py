@@ -14,7 +14,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.session.lib import ensure_session, close_session, validate_session 
+from tests.helpers.session import ensure_session, close_session, validate_session 
 def test_session_isolation_physical_moves(tmp_path):
     """Verifies physical directory moves across lifecycle: Active -> Closing -> Validated."""
     sid = 'sess-iso-1'

@@ -164,13 +164,11 @@ class SessionManager:
         owner: Optional[str] = None,
         naming_strategy: Optional[str] = None,
     ) -> Path:
-        from . import lib as sessionlib  # lazy to avoid circular import during module init
-
         sid = session_id or self._generate_session_id(
             process=process, owner=owner, naming_strategy=naming_strategy
         )
 
-        path = sessionlib.ensure_session(sid, state="Active")
+        path = store.ensure_session(sid, state="Active")
         data = store.load_session(sid)
         data["state"] = str(data.get("state", "active")).lower()
         meta = data.setdefault("meta", {})
@@ -203,8 +201,6 @@ class SessionManager:
         return store.load_session(session_id)
 
     def transition_state(self, session_id: str, to_state: str) -> Path:
-        from . import lib as sessionlib  # lazy
-
         # Ensure readiness flag for state machine conditions
         try:
             data = store.load_session(session_id)
@@ -213,7 +209,7 @@ class SessionManager:
         except Exception:
             pass
 
-        sessionlib.transition_state(session_id, to_state)
+        store.transition_state(session_id, to_state)
         updated = store.load_session(session_id, state=to_state)
         updated["state"] = to_state
         try:
