@@ -6392,27 +6392,27 @@ python scripts/validators/migration_validator.py
 
 | Task ID | Title | Status | Dependencies Met | Notes |
 |---------|-------|--------|------------------|-------|
-| T-001 | Create Core Constitution Templates | ⬜ TODO | ✅ None | |
-| T-002 | Create Constitution Configuration Schema | ⬜ TODO | ✅ None | |
-| T-003 | Add applies_to Field to Rules Registry | ⬜ TODO | ✅ None | |
-| T-004 | Implement Constitution Composer | ⬜ TODO | ⬜ T-001, T-002, T-003 | |
-| T-005 | Implement get_rules_for_role() API | ⬜ TODO | ⬜ T-003 | |
+| T-001 | Create Core Constitution Templates | ✅ DONE | ✅ None | Wave 1 - 7 tests |
+| T-002 | Create Constitution Configuration Schema | ✅ DONE | ✅ None | Wave 1 - 10 tests |
+| T-003 | Add applies_to Field to Rules Registry | ✅ DONE | ✅ None | Wave 1 - 2 tests, 37 rules updated |
+| T-004 | Implement Constitution Composer | ⬜ TODO | ✅ T-001, T-002, T-003 | Ready for Wave 2 |
+| T-005 | Implement get_rules_for_role() API | ⬜ TODO | ✅ T-003 | Ready for Wave 2 |
 | T-006 | Generate AVAILABLE_AGENTS.md Dynamically | ⬜ TODO | ⬜ T-004 | |
 | T-007 | Generate AVAILABLE_VALIDATORS.md Dynamically | ⬜ TODO | ⬜ T-004 | |
 | T-008 | Generate constitutions/ORCHESTRATORS.md | ⬜ TODO | ⬜ T-004, T-005, T-006, T-007 | |
 | T-009 | Generate constitutions/AGENTS.md | ⬜ TODO | ⬜ T-004, T-005 | |
 | T-010 | Generate constitutions/VALIDATORS.md | ⬜ TODO | ⬜ T-004, T-005 | |
 | T-011 | Deprecate and Remove ORCHESTRATOR_GUIDE.md | ⬜ TODO | ⬜ T-008 | |
-| T-012 | Fix Zen Prompt Composition - Wrong Role Bug | ⬜ TODO | ✅ None | **BLOCKER** |
+| T-012 | Fix Zen Prompt Composition - Wrong Role Bug | ✅ DONE | ✅ None | Wave 1 - 9 tests, BLOCKER RESOLVED |
 
 ### 11.2 P1 - CRITICAL Tasks Status
 
 | Task ID | Title | Status | Dependencies Met | Notes |
 |---------|-------|--------|------------------|-------|
-| T-013 | Fix Pack Section Duplication Bug | ⬜ TODO | ⬜ T-012 | |
-| T-014 | Create post-training-packages.yaml | ⬜ TODO | ✅ None | |
-| T-015 | Fix Hardcoded Rule Source Paths | ⬜ TODO | ✅ None | |
-| T-016 | Add Complete YAML Frontmatter to All Agents | ⬜ TODO | ✅ None | |
+| T-013 | Fix Pack Section Duplication Bug | ⬜ TODO | ✅ T-012 | Ready for Wave 2 |
+| T-014 | Create post-training-packages.yaml | ✅ DONE | ✅ None | Wave 1 - 5 tests |
+| T-015 | Fix Hardcoded Rule Source Paths | ✅ DONE | ✅ None | Wave 1 - 3 tests, 47 files updated |
+| T-016 | Add Complete YAML Frontmatter to All Agents | ✅ DONE | ✅ None | Wave 1 - 13 tests |
 | T-017 | Create START_NEW_SESSION.md | ⬜ TODO | ⬜ T-008 | |
 | T-018 | Create START_RESUME_SESSION.md | ⬜ TODO | ⬜ T-017 | |
 | T-019 | Create START_VALIDATE_SESSION.md | ⬜ TODO | ⬜ T-017 | |
@@ -6506,10 +6506,10 @@ python scripts/validators/migration_validator.py
 
 | Task ID | Title | Status | Dependencies Met | Notes |
 |---------|-------|--------|------------------|-------|
-| T-ZEN-001 | Create `edison zen setup` Command | ⬜ TODO | ✅ None | |
-| T-ZEN-002 | Create `edison zen start-server` Command | ⬜ TODO | ⬜ T-ZEN-001 | |
-| T-ZEN-003 | Create `edison zen configure` Command | ⬜ TODO | ⬜ T-ZEN-001 | |
-| T-ZEN-004 | Auto-detect uvx Availability | ⬜ TODO | ⬜ T-ZEN-001 | |
+| T-ZEN-001 | Create `edison zen setup` Command | ✅ DONE | ✅ None | Wave 1 - 4 tests |
+| T-ZEN-002 | Create `edison zen start-server` Command | ⬜ TODO | ✅ T-ZEN-001 | Ready for Wave 2 |
+| T-ZEN-003 | Create `edison zen configure` Command | ⬜ TODO | ✅ T-ZEN-001 | Ready for Wave 2 |
+| T-ZEN-004 | Auto-detect uvx Availability | ⬜ TODO | ✅ T-ZEN-001 | Ready for Wave 2 |
 | T-ZEN-005 | Template .mcp.json Configuration | ⬜ TODO | ⬜ T-ZEN-003 | |
 | T-ZEN-006 | Add Zen Setup to `edison init` Flow | ⬜ TODO | ⬜ T-ZEN-001, T-ZEN-002, T-ZEN-003 | |
 | T-ZEN-007 | Document Zen Setup in Edison README | ⬜ TODO | ⬜ T-ZEN-001-006 | |
@@ -6519,32 +6519,40 @@ python scripts/validators/migration_validator.py
 
 | Priority | Total | Done | In Progress | Remaining |
 |----------|-------|------|-------------|-----------|
-| P0 - BLOCKER | 12 | 0 | 0 | 12 |
-| P1 - CRITICAL | 23 | 0 | 0 | 23 |
+| P0 - BLOCKER | 12 | 4 | 0 | 8 |
+| P1 - CRITICAL | 23 | 3 | 0 | 20 |
 | P2 - HIGH | 27 | 0 | 0 | 27 |
 | P3 - MEDIUM | 9 | 0 | 0 | 9 |
-| P4 - LOW | 0 | 0 | 0 | 0 |
+| P4 - LOW | 7 | 0 | 0 | 7 |
 | Wilson Overlay | 5 | 0 | 0 | 5 |
 | Edison Packs | 6 | 0 | 0 | 6 |
-| Zen Track | 8 | 0 | 0 | 8 |
-| **TOTAL** | **79** | **0** | **0** | **79** |
+| Zen Track | 8 | 1 | 0 | 7 |
+| **TOTAL** | **79** | **8** | **0** | **71** |
 
 ### 11.10 Wave Execution Log
 
 Record each wave of execution here:
 
 ```
-Wave 1: [DATE]
-- Tasks delegated: [list]
-- Results: [summary]
-- Follow-ups needed: [list]
+Wave 1: 2025-11-26
+- Tasks delegated: T-001, T-002, T-003, T-012, T-014, T-015, T-016, T-ZEN-001
+- Sub-agents: 4x Codex (via edison-zen MCP), 4x Claude Code (via Task tool)
+- Results: ALL 8 TASKS COMPLETE ✅
+  - T-001: Constitution templates created (7 tests)
+  - T-002: Constitution config schema created (10 tests)
+  - T-003: applies_to field added to 37 rules (2 tests)
+  - T-012: Zen prompt role bug FIXED (9 tests) - BLOCKER RESOLVED
+  - T-014: post-training-packages.yaml created (5 tests)
+  - T-015: 47 files migrated .agents/ → .edison/ (3 tests)
+  - T-016: YAML frontmatter added to 6 agents (13 tests)
+  - T-ZEN-001: edison zen setup command created (4 tests)
+- Total tests added: 53
+- Follow-ups needed: None - all tasks completed end-to-end
 
-Wave 2: [DATE]
-- Tasks delegated: [list]
-- Results: [summary]
-- Follow-ups needed: [list]
-
-[Continue as needed...]
+Wave 2: [IN PROGRESS]
+- Tasks delegated: [pending]
+- Results: [pending]
+- Follow-ups needed: [pending]
 ```
 
 ---

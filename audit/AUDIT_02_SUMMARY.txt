@@ -1,0 +1,186 @@
+================================================================================
+AUDIT 02: HARDCODED VALUES & CONFIGURATION ANALYSIS - SUMMARY
+================================================================================
+Date: 2025-11-26
+Auditor: Claude (Sonnet 4.5)
+Scope: src/edison/core (Edison Core Framework)
+Rules: #4 (NO HARDCODED VALUES), #5 (100% CONFIGURABLE)
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+Status: ⚠️ MIXED - Significant Violations Found
+Compliance Score: 48.2% (40/83 items configurable)
+
+KEY FINDINGS:
+✅ GOOD: Well-designed config system with YAML-first approach
+✅ GOOD: Most timeouts, dimensions, paths already in defaults.yaml
+⚠️  MODERATE: ~50+ hardcoded values found
+❌ CRITICAL: Environment variables used instead of config (30+ instances)
+❌ CRITICAL: Directory/file names hardcoded (300+ occurrences)
+❌ CRITICAL: Magic numbers in locking, retry, text processing
+
+================================================================================
+TOP 10 CRITICAL VIOLATIONS
+================================================================================
+1. Retry Logic (resilience.py)           - Config exists but not used
+2. Environment Vars (subprocess.py)       - Duplicates YAML config
+3. DRY Detection (3 files)                - Duplicated env var usage
+4. File Locking (locking.py)              - Hardcoded timeout/intervals
+5. Directory Names (50+ files)            - ".edison", ".claude", etc.
+6. Text Processing (text.py)              - k=12, min_shingles=2
+7. Include Depth (includes.py)            - MAX_DEPTH = 3
+8. Session ID Limit (resolver.py)         - 64 chars hardcoded
+9. Short Desc Max (commands.py)           - 80 chars hardcoded
+10. QA Thresholds (scoring.py)            - Regression threshold=0.5
+
+================================================================================
+EFFORT REQUIRED
+================================================================================
+Priority 1 (CRITICAL):  16 hours (~2 days)
+Priority 2 (HIGH):      13 hours (~1.5 days)
+Priority 3 (MEDIUM):     7 hours (~1 day)
+TOTAL:                  36 hours (~4.5 days)
+
+Quick Wins (<1hr each): 5 tasks = 2.5 hours
+
+================================================================================
+IMMEDIATE ACTIONS REQUIRED
+================================================================================
+1. Add missing config sections to defaults.yaml (30 min)
+   - file_io.locking.*
+   - composition.dry.*
+   - filenames.*, patterns.*, extensions.*
+   - commands.*, session.max_id_length, qa.scoring.*
+
+2. Fix resilience retry logic to use config (2 hours)
+   - src/edison/core/utils/resilience.py
+
+3. Remove environment variable duplication (2 hours)
+   - Remove EDISON_GIT_TIMEOUT_SECONDS
+   - Remove EDISON_DB_TIMEOUT_SECONDS
+   - Remove EDISON_JSON_IO_LOCK_TIMEOUT
+   - Remove EDISON_DRY_MIN_SHINGLES (3 files)
+
+4. Create PathConfig utility class (3 hours)
+   - Centralize all directory/file name access
+   - Update 50+ files to use PathConfig
+
+5. Update file locking to use config (2 hours)
+   - src/edison/core/file_io/locking.py
+
+================================================================================
+CONFIG ADDITIONS NEEDED
+================================================================================
+Add to src/edison/data/config/defaults.yaml (after line 577):
+
+file_io:
+  locking:
+    timeout_seconds: 10.0
+    poll_interval: 0.1
+
+composition:
+  dry:
+    shingle_size: 12
+    min_shingles: 2
+  max_include_depth: 3
+
+filenames:
+  session: "session.json"
+  task: "task.json"
+  orchestrator_manifest: "orchestrator-manifest.json"
+
+patterns:
+  round_directory: "round-{round}"
+  validator_report: "validator-{name}-report.json"
+
+commands:
+  short_desc_max_length: 80
+
+session:
+  max_id_length: 64
+
+qa:
+  scoring:
+    regression_threshold: 0.5
+
+================================================================================
+ENVIRONMENT VARIABLES TO REMOVE
+================================================================================
+DELETE (use config instead):
+❌ EDISON_GIT_TIMEOUT_SECONDS
+❌ EDISON_DB_TIMEOUT_SECONDS
+❌ EDISON_JSON_IO_LOCK_TIMEOUT
+❌ EDISON_DRY_MIN_SHINGLES
+❌ DEBUG_CONTEXT7
+
+KEEP:
+✅ AGENTS_PROJECT_ROOT (test isolation)
+✅ EDISON_FORCE_* (testing flags)
+
+================================================================================
+FILES WITH MOST VIOLATIONS
+================================================================================
+paths/resolver.py        10+ violations  [P1 CRITICAL]
+utils/subprocess.py       8+ violations  [P1 CRITICAL]
+utils/resilience.py        4 violations  [P1 CRITICAL]
+utils/text.py              4 violations  [P1 CRITICAL]
+file_io/locking.py         3 violations  [P1 CRITICAL]
+composition/includes.py    2 violations  [P2 HIGH]
+qa/scoring.py              3 violations  [P2 HIGH]
+ide/commands.py            3 violations  [P2 MEDIUM]
+
+================================================================================
+SUCCESS METRICS
+================================================================================
+BEFORE:
+- Hardcoded values: 83
+- Config compliance: 48.2%
+- Env vars as primary config: 30+
+- Files with hardcoded paths: 50+
+
+TARGET:
+- Hardcoded values: <5
+- Config compliance: 98%
+- Env vars as primary config: 1 (AGENTS_PROJECT_ROOT)
+- Files with hardcoded paths: 0
+
+================================================================================
+RECOMMENDED NEXT STEPS
+================================================================================
+1. Review audit reports with team
+2. Block all new features until P1 items fixed
+3. Create feature branch: fix/hardcoded-values-audit-02
+4. Start with quick wins (2.5 hours)
+5. Work through P1 tasks (2 days)
+6. Add config validation and tests
+7. Update documentation (CLAUDE.md, config guide)
+8. Add enforcement (pre-commit hooks)
+
+================================================================================
+DELIVERABLES CREATED
+================================================================================
+✅ audit/AUDIT_02_HARDCODED_VALUES_REPORT.md   - Full detailed report
+✅ audit/AUDIT_02_ACTION_PLAN.md               - Step-by-step action plan
+✅ audit/AUDIT_02_QUICK_REFERENCE.md           - Quick lookup guide
+✅ audit/AUDIT_02_SUMMARY.txt                  - This summary
+
+================================================================================
+RISK ASSESSMENT
+================================================================================
+Current State:  MEDIUM RISK - Configuration fragmented, behavior unpredictable
+After P1 Fixes: LOW RISK - Core behavior fully configurable
+After All Fixes: VERY LOW RISK - 98% configurable, well-tested
+
+================================================================================
+CONTACT & REFERENCES
+================================================================================
+Full Report: audit/AUDIT_02_HARDCODED_VALUES_REPORT.md
+Action Plan: audit/AUDIT_02_ACTION_PLAN.md
+Quick Ref:   audit/AUDIT_02_QUICK_REFERENCE.md
+Config File: src/edison/data/config/defaults.yaml
+Config Mgr:  src/edison/core/config.py
+
+================================================================================
+END OF SUMMARY
+================================================================================
