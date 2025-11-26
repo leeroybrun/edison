@@ -18,7 +18,7 @@ This guideline explains how to use Context7 as a pattern for querying up-to-date
 - Relying on outdated training data leads to deprecated implementations
 
 **Which frameworks need Context7?**
-Active packs define which frameworks require Context7 refresh. Check `.agents/config/packs.yml` for:
+Active packs define which frameworks require Context7 refresh. Check `.edison/config/packs.yml` for:
 - Active packs and their framework dependencies
 - Pack versions and framework versions
 - Breaking changes indicators
@@ -31,7 +31,7 @@ Active packs define which frameworks require Context7 refresh. Check `.agents/co
 
 #### Step 1: Identify Framework from Active Packs
 ```pseudocode
-// Check .agents/config/packs.yml for active packs
+// Check .edison/config/packs.yml for active packs
 // Example: if 'web-framework' pack is active, identify its main framework
 framework_name = get_framework_from_active_pack()
 ```
@@ -168,7 +168,7 @@ await mcp__context7__get_library_docs({
 **NEVER hardcode library IDs in this guideline.**
 
 Instead, follow this pattern:
-1. Check `.agents/config/packs.yml` for active packs
+1. Check `.edison/config/packs.yml` for active packs
 2. Identify framework name from pack metadata
 3. Use `mcp__context7__resolve_library_id({ libraryName: 'framework-name' })`
 4. Context7 returns the correct library ID (format: `/org/project` or `/org/project/version`)
@@ -244,7 +244,7 @@ documentation = mcp__context7__get_library_docs({
 
 **Key Points**:
 - These are MCP function calls, not bash/shell commands
-- Framework names come from `.agents/config/packs.yml`
+- Framework names come from `.edison/config/packs.yml`
 - Topics should be specific to implementation needs
 - Token count scales with query complexity (typical range: 3000-5000)
 

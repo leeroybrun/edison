@@ -3,7 +3,7 @@
 > **Extended Version:** For detailed delegation flows, config overlays, and examples, see [Extended Delegation Guide](../../guides/extended/DELEGATION.md)
 
 ## Delegation Checklist (fail-closed)
-- [ ] Load delegation config via ConfigManager overlays (`.edison/core/config/delegation.yaml` → pack overlays → `.agents/config/delegation.yml`) before deciding.
+- [ ] Load delegation config via ConfigManager overlays (`.edison/core/config/delegation.yaml` → pack overlays → `.edison/config/delegation.yml`) before deciding.
 - [ ] Apply the deterministic priority chain to pick the best-matched sub-agent.
 - [ ] Include config-driven guidance (preferred model, Zen role mapping, ownership) in every prompt you send.
 - [ ] Use parallel sub-agents up to the configured concurrency cap; batch overflow.

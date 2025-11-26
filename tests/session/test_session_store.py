@@ -20,7 +20,20 @@ def project_root(tmp_path, monkeypatch):
     
     import yaml
     
-    defaults_data = {"edison": {"version": "1.0.0"}}
+    defaults_data = {
+        "edison": {"version": "1.0.0"},
+        "file_locking": {
+            "timeout_seconds": 10.0,
+            "poll_interval_seconds": 0.1,
+            "fail_open": False,
+        },
+        "session": {
+            "validation": {
+                "idRegex": r"^[a-zA-Z0-9_\-\.]+$",
+                "maxLength": 64,
+            }
+        },
+    }
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
     
     session_data = {
@@ -86,6 +99,30 @@ def test_sanitize_session_id(project_root):
         
     with pytest.raises(ValueError, match="too long"):
         store.sanitize_session_id("a" * 65)
+
+
+def test_sanitize_session_id_requires_configured_max_length(project_root):
+    """Ensure maxLength must be configured in YAML (no hardcoded fallback)."""
+    import yaml
+
+    config_dir = project_root / ".edison" / "core" / "config"
+
+    # Remove maxLength from session.yaml to simulate missing configuration override
+    session_path = config_dir / "session.yaml"
+    session_cfg = yaml.safe_load(session_path.read_text()) or {}
+    session_cfg.setdefault("session", {}).setdefault("validation", {}).pop("maxLength", None)
+    session_path.write_text(yaml.dump(session_cfg))
+
+    # Ensure defaults.yaml does not provide maxLength either
+    defaults_path = config_dir / "defaults.yaml"
+    defaults_cfg = yaml.safe_load(defaults_path.read_text()) or {}
+    defaults_cfg.pop("session", None)
+    defaults_path.write_text(yaml.dump(defaults_cfg))
+
+    store.reset_session_store_cache()
+
+    with pytest.raises(ValueError, match="maxLength"):
+        store.sanitize_session_id("any")
 
 def test_session_dirs_creation(project_root):
     """Test that _ensure_session_dirs creates configured directories."""

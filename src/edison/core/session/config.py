@@ -127,7 +127,10 @@ class SessionConfig:
 
     def get_max_id_length(self) -> int:
         """Get max length for session ID."""
-        return int(self._session_config.get("validation", {}).get("maxLength", 64))
+        val = self._session_config.get("validation", {}).get("maxLength")
+        if val is None:
+            raise ValueError("session.validation.maxLength not configured")
+        return int(val)
 
     def get_session_states(self) -> Dict[str, str]:
         """Get mapping of session states to directory names."""

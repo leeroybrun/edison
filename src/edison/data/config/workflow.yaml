@@ -1,0 +1,30 @@
+version: "1.0.0"
+
+qaStates:
+  - waiting
+  - todo
+  - wip
+  - done
+  - validated
+
+taskStates:
+  - todo
+  - wip
+  - blocked
+  - done
+  - validated
+
+validationLifecycle:
+  onApprove:
+    qaState: done → validated
+    taskState: done → validated
+  onReject:
+    qaState: wip → waiting
+    taskState: done → wip
+  onRevalidate:
+    qaState: waiting → todo
+
+timeouts:
+  staleTaskThreshold: 4h
+  sessionTimeout: 2h
+  validatorTimeout: 5m

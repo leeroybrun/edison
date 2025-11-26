@@ -26,18 +26,18 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["title"],
+        "required": ["title", "description", "severity"],
         "properties": {
-          "title": {"type": "string"},
-          "description": {"type": "string"},
-          "type": {"type": "string"},
-          "severity": {"type": "string", "enum": ["low","medium","high","critical"]},
+          "title": {"type": "string", "description": "Brief task title"},
+          "description": {"type": "string", "description": "Detailed task description"},
+          "type": {"type": "string", "enum": ["bug", "enhancement", "refactor", "test", "docs"]},
+          "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
           "blocking": {"type": "boolean", "default": false},
           "claimNow": {"type": "boolean", "default": false},
-          "parentId": {"type": "string"},
+          "parentId": {"type": "string", "description": "Parent task ID if this is a subtask"},
           "files": {"type": "array", "items": {"type": "string"}},
           "suggestedSlug": {"type": "string"},
-          "suggestedWave": {"type": "string"}
+          "suggestedWave": {"type": "integer"}
         }
       },
       "default": []

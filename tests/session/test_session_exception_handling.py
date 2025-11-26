@@ -141,5 +141,6 @@ def test_non_critical_errors_logged_but_continue(session_env, caplog):
 
     # Session file should exist even after non-critical errors
     assert path.exists()
-    assert path.name == f"{session_id}.json"
+    assert path.name == "session.json"
+    assert path.parent.name == session_id
     assert any("Unexpected git error" in rec.getMessage() for rec in caplog.records)

@@ -78,3 +78,22 @@ def test_atomic_write_honors_lock_context(tmp_path: Path) -> None:
     )
 
     assert locked.read_text() == "ok"
+
+
+def test_read_json_safe_invalid_json_raises(tmp_path: Path) -> None:
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{unquoted: invalid}", encoding="utf-8")
+    
+    with pytest.raises(json.JSONDecodeError):
+        read_json_safe(invalid)
+
+
+def test_read_json_with_default_returns_default_on_error(tmp_path: Path) -> None:
+    # Case 1: Missing file
+    missing = tmp_path / "missing.json"
+    assert io_utils.read_json_with_default(missing, default={}) == {}
+
+    # Case 2: Invalid JSON
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{bad}", encoding="utf-8")
+    assert io_utils.read_json_with_default(invalid, default=[]) == []

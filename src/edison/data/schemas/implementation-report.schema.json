@@ -203,7 +203,7 @@
     },
     "delegationCompliance": {
       "type": "boolean",
-      "description": "Optional: Whether delegation followed .agents/delegation/config.json rules (only relevant when implementationApproach is delegated-*)"
+      "description": "Optional: Whether delegation followed .edison/delegation/config.json rules (only relevant when implementationApproach is delegated-*)"
     },
     "tracking": {
       "type": "object",

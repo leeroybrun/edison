@@ -790,7 +790,7 @@ Human-readable report (required):
 ---
 
 **Validator**: Security
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.agents/config/validators.yml`)
+**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
 **Specification**: `.edison/core/validators/critical/security.md`
 ```
 
@@ -848,6 +848,6 @@ Machine-readable JSON report (required):
 
 ## Edison validation guards (current)
 - Validate only against bundles emitted by `edison validators bundle <root-task>`; block/return `BLOCKED` if the manifest or parent `bundle-approved.json` is missing.
-- Load roster, triggers, and blocking flags via ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.agents/config/validators.yml`) instead of JSON.
+- Load roster, triggers, and blocking flags via ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`) instead of JSON.
 - `edison qa promote` now enforces state machine rules plus bundle presence; ensure your Markdown + JSON report lives in the round evidence directory referenced by the bundle.
 - Honor Context7 requirements: auto-detected post-training packages must have markers (HMAC when enabled) before issuing approval.

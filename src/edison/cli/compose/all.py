@@ -76,6 +76,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Compose artifacts - delegates to composition engine."""
     from edison.core.composition import CompositionEngine
+    from edison.core.composition.constitution import generate_all_constitutions
+    from edison.core.config import ConfigManager
     from edison.core.paths import resolve_project_root
     from edison.core.paths.project import get_project_config_dir
 
@@ -95,6 +97,16 @@ def main(args: argparse.Namespace) -> int:
             else:
                 print(f"[dry-run] Would compose artifacts in {repo_root}")
             return 0
+
+        # Generate constitutions for all roles
+        if compose_all:
+            cfg_mgr = ConfigManager(repo_root)
+            output_path = config_dir / "_generated"
+            generate_all_constitutions(cfg_mgr, output_path)
+            constitutions_dir = output_path / "constitutions"
+            if constitutions_dir.exists():
+                constitution_files = list(constitutions_dir.glob("*.md"))
+                results["constitutions"] = [str(f) for f in constitution_files]
 
         if compose_all or args.guidelines:
             guideline_files = engine.compose_guidelines()

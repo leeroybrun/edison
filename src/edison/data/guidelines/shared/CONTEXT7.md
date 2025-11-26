@@ -40,7 +40,7 @@ Read full: `.edison/core/guides/extended/CONTEXT7.md`.
 
 <!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED START -->
 ## Evidence markers (required when used)
-- When a task uses any package listed in `postTrainingPackages` (see ConfigManager overlays: `.edison/core/config/validators.yaml` → pack overlays → `.agents/config/validators.yml`), include a marker file per package in the current round evidence directory, e.g.:
+- When a task uses any package listed in `postTrainingPackages` (see ConfigManager overlays: `.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`), include a marker file per package in the current round evidence directory, e.g.:
   - `.project/qa/validation-evidence/<task-id>/round-<N>/context7-<package>.txt`
   - Briefly list topics queried and the doc version/date.
 - Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.

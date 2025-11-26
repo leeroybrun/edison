@@ -119,14 +119,6 @@ def _session_json_candidates(session_id: str, *, states: Optional[List[str]] = N
         new_dir = root / dir_name / sid
         candidates.append(new_dir / "session.json")
 
-        # Legacy flat layout support (kept for migration safety if files exist)
-        # .project/sessions/<state>/<sid>.json
-        flat_dir = root / dir_name
-        candidates.append(flat_dir / f"{sid}.json")
-
-    # Ensure explicit legacy wip flat path is always considered
-    candidates.append(root / "wip" / f"{sid}.json")
-
     return candidates
 
 def get_session_json_path(session_id: str) -> Path:
@@ -161,7 +153,7 @@ def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]
     states = _session_state_order(state)
     candidates = [p for p in _session_json_candidates(sid, states=states) if p.exists()]
     if candidates:
-        # Prefer the most recently modified session JSON (legacy flat files may be updated manually)
+        # Prefer the most recently modified session JSON
         newest = max(candidates, key=lambda p: p.stat().st_mtime)
         try:
             data = _read_json(newest)
@@ -210,13 +202,6 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
     j.parent.mkdir(parents=True, exist_ok=True)
     with acquire_file_lock(j, timeout=5):
         _write_json(j, data)
-
-    # Maintain legacy flat file for compatibility with older task tests
-    legacy_dir = _sessions_root() / "wip"
-    legacy_dir.mkdir(parents=True, exist_ok=True)
-    legacy_flat = legacy_dir / f"{sid}.json"
-    with acquire_file_lock(legacy_flat, timeout=5):
-        _write_json(legacy_flat, data)
 
 def _ensure_session_dirs() -> None:
     states = _CONFIG.get_session_states()
@@ -280,9 +265,6 @@ def _list_active_sessions() -> List[str]:
         for d in sorted(root.iterdir()):
             if d.is_dir() and (d / "session.json").exists():
                 out.append(d.name)
-        # Check for legacy flat files
-        for p in sorted(root.glob("*.json")):
-            out.append(p.stem)
         return sorted(set(out))
     except Exception:
         return []
@@ -312,29 +294,18 @@ def _move_session_json_to(status: str, session_id: str) -> Path:
         # If we are in new layout, src is .../sid/session.json.
         # We should probably move the parent directory if it matches sid.
         
-        if src.parent.name == sid:
-            # It's a directory layout. Move the directory.
-            import shutil
-            # We need to move src.parent to dest_dir.parent (which is the status dir)
-            # dest_dir is already correctly mapped via _session_dir(status, sid)
-            # So we want to move src.parent (.../old_status/sid) to dest_dir
+        # It's a directory layout. Move the directory.
+        import shutil
+        # We need to move src.parent to dest_dir.parent (which is the status dir)
+        # dest_dir is already correctly mapped via _session_dir(status, sid)
+        # So we want to move src.parent (.../old_status/sid) to dest_dir
 
-            if dest_dir.exists():
-                shutil.rmtree(dest_dir) # Overwrite if exists
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir) # Overwrite if exists
 
-            shutil.move(str(src.parent), str(dest_dir))
+        shutil.move(str(src.parent), str(dest_dir))
 
-            # Clean up legacy flat file if it exists
-            legacy_flat = _sessions_root() / "wip" / f"{sid}.json"
-            if legacy_flat.exists():
-                legacy_flat.unlink()
-
-            return dest / "session.json"
-        else:
-            # Legacy flat file. Move just the file to the new layout? Or keep flat?
-            # Let's upgrade to new layout during move.
-            task.safe_move_file(src, dest)
-            return dest
+        return dest / "session.json"
 
     except Exception as e:
         logger.error("Failed to move session JSON for %s to %s: %s", session_id, status, e)
@@ -513,11 +484,6 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
     # Sync state and persist
     data["state"] = state.title()
     io_atomic_write_json(sess_json, data)
-
-    # Maintain alias under wip flat layout for legacy callers
-    legacy = _sessions_root() / "wip" / f"{sid}.json"
-    legacy.parent.mkdir(parents=True, exist_ok=True)
-    io_atomic_write_json(legacy, data)
 
     return sess_dir
 

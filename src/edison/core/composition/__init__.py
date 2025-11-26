@@ -14,18 +14,6 @@ from .composers import (
     compose_guidelines,
     CompositionEngine,
 )
-# Re-export IDE modules for backward compatibility
-from ..ide.commands import (  # noqa: F401
-    CommandArg,
-    CommandDefinition,
-    CommandComposer,
-    PlatformAdapter,
-    ClaudeCommandAdapter,
-    CursorCommandAdapter,
-    CodexCommandAdapter,
-)
-from ..ide.hooks import HookComposer, HookDefinition  # noqa: F401
-from ..ide.settings import SettingsComposer, merge_permissions  # noqa: F401
 from .packs import auto_activate_packs
 from ..utils.text import (
     dry_duplicate_report,
@@ -80,17 +68,6 @@ __all__ = [
     "_strip_headings_and_code",
     "_tokenize",
     "_shingles",
-    "CommandArg",
-    "CommandDefinition",
-    "CommandComposer",
-    "PlatformAdapter",
-    "ClaudeCommandAdapter",
-    "CursorCommandAdapter",
-    "CodexCommandAdapter",
-    "SettingsComposer",
-    "HookComposer",
-    "HookDefinition",
-    "merge_permissions",
     # Guidelines
     "GuidelineRegistry",
     "GuidelineCompositionResult",

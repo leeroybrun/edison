@@ -16,7 +16,7 @@
     },
     "validatorId": {
       "type": "string",
-      "description": "Validator identifier from .agents/validators/config.json (e.g., 'codex-global', 'security', 'ui')"
+      "description": "Validator identifier from .edison/validators/config.json (e.g., 'codex-global', 'security', 'ui')"
     },
     "model": {
       "type": "string",

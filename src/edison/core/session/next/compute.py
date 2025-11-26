@@ -22,7 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils import cli
+from edison.core.utils.cli_arguments import parse_common_args
+from edison.core.utils.cli_output import output_json
 from edison.core.session.config import SessionConfig
 from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
@@ -458,7 +459,7 @@ def main() -> None:  # CLI facade for direct execution
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("session_id")
-    cli.parse_common_args(parser)
+    parse_common_args(parser)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--scope", choices=["tasks", "qa", "session"])
     args = parser.parse_args()
@@ -480,7 +481,7 @@ def main() -> None:  # CLI facade for direct execution
         payload = compute_next(session_id, args.scope, limit)
 
     if args.json:
-        print(cli.output_json(payload))
+        print(output_json(payload))
     else:
         # Enhanced human-readable output with rules, validators, delegation details
         print(format_human_readable(payload))

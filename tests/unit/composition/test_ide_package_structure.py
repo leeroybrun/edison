@@ -89,15 +89,14 @@ def test_ide_package_exports_all_composers() -> None:
         raise AssertionError(f"IDE package should export all composers: {e}")
 
 
-def test_composition_package_still_exports_ide_modules() -> None:
-    """Composition package should re-export IDE modules for backward compatibility."""
+def test_ide_modules_not_exported_from_composition() -> None:
+    """Composition package should NOT re-export IDE modules (backward compatibility removed)."""
     try:
         from edison.core.composition import CommandComposer, HookComposer, SettingsComposer
-        assert CommandComposer is not None
-        assert HookComposer is not None
-        assert SettingsComposer is not None
-    except ImportError as e:
-        raise AssertionError(f"Composition should re-export IDE modules: {e}")
+        raise AssertionError("IDE modules should NOT be importable from composition package")
+    except ImportError:
+        # Expected: IDE modules should only be imported from edison.core.ide
+        pass
 
 
 def test_no_ide_modules_in_composition_directory() -> None:

@@ -41,8 +41,7 @@ class TestSessionConfigPaths:
         }
         (agents_dir / "manifest.json").write_text(json.dumps(agents_manifest))
         
-        # 3. Mock PathResolver to return our tmp_path
-        monkeypatch.setattr("edison.core.paths.resolver.PathResolver.resolve_project_root", lambda: repo_root)
+        # 3. Initialize Config (no patching needed)
         
         # 4. Initialize Config
         config = SessionConfig(repo_root=repo_root)
@@ -69,7 +68,7 @@ class TestSessionConfigPaths:
         
         # Set env var to point to custom dir
         monkeypatch.setenv("EDISON_paths__project_config_dir", str(custom_config_dir))
-        monkeypatch.setattr("edison.core.paths.resolver.PathResolver.resolve_project_root", lambda: repo_root)
+
         
         # Initialize Config
         config = SessionConfig(repo_root=repo_root)

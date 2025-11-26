@@ -1,0 +1,47 @@
+# edison/core/config/constitution.yaml
+# Defines mandatory reads for each role type in the Edison framework
+
+version: "1.0.0"
+
+mandatoryReads:
+  orchestrator:
+    - path: constitutions/ORCHESTRATORS.md
+      purpose: Main orchestrator constitution
+    - path: guidelines/orchestrators/SESSION_WORKFLOW.md
+      purpose: Session lifecycle management
+    - path: guidelines/shared/DELEGATION.md
+      purpose: Delegation rules and patterns
+    - path: AVAILABLE_AGENTS.md
+      purpose: Dynamic agent roster
+    - path: AVAILABLE_VALIDATORS.md
+      purpose: Dynamic validator roster
+    - path: guidelines/shared/TDD.md
+      purpose: TDD enforcement requirements
+    - path: guidelines/shared/VALIDATION.md
+      purpose: Validation workflow
+
+  agents:
+    - path: constitutions/AGENTS.md
+      purpose: Agent constitution
+    - path: guidelines/agents/MANDATORY_WORKFLOW.md
+      purpose: Implementation workflow
+    - path: guidelines/agents/OUTPUT_FORMAT.md
+      purpose: Report format specification
+    - path: guidelines/shared/TDD.md
+      purpose: TDD requirements
+    - path: guidelines/shared/CONTEXT7.md
+      purpose: Context7 usage requirements
+    - path: guidelines/shared/QUALITY.md
+      purpose: Quality standards
+    - path: guidelines/shared/EPHEMERAL_SUMMARIES_POLICY.md
+      purpose: Summary file prohibition
+
+  validators:
+    - path: constitutions/VALIDATORS.md
+      purpose: Validator constitution
+    - path: guidelines/validators/VALIDATOR_WORKFLOW.md
+      purpose: Validation workflow
+    - path: guidelines/validators/OUTPUT_FORMAT.md
+      purpose: Report format specification
+    - path: guidelines/shared/CONTEXT7.md
+      purpose: Context7 knowledge refresh

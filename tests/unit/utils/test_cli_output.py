@@ -11,14 +11,65 @@ the implementation exists.
 from __future__ import annotations
 
 import json
-import os
 from io import StringIO
-from unittest.mock import patch
+from pathlib import Path
+from typing import Any
 
 import pytest
 
 
-def test_output_json_pretty_format() -> None:
+@pytest.fixture
+def isolated_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """
+    Isolate ConfigManager to use a minimal defaults.yaml in tmp_path.
+    
+    This ensures that:
+    1. The project root is set to tmp_path (empty, so no project config)
+    2. The core defaults are loaded from a controlled file in tmp_path, 
+       which matches DEFAULT_CLI_CONFIG (specifically having no 'default' key for confirm).
+    """
+    # 1. Isolate project root
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+
+    # 2. Setup mock data directory for core defaults
+    data_dir = tmp_path / "data"
+    config_dir = data_dir / "config"
+    config_dir.mkdir(parents=True)
+    
+    # Create minimal defaults.yaml that matches DEFAULT_CLI_CONFIG (no 'default' in 'confirm')
+    defaults_content = """
+cli:
+  json:
+    indent: 2
+    sort_keys: true
+    ensure_ascii: false
+  table:
+    padding: 1
+    column_gap: 2
+  confirm:
+    assume_yes_env: ""
+  output:
+    success_prefix: "[OK]"
+    error_prefix: "[ERR]"
+    warning_prefix: "[WARN]"
+    use_color: false
+"""
+    (config_dir / "defaults.yaml").write_text(defaults_content, encoding="utf-8")
+    
+    # Patch get_data_path to return our mock config directory
+    # We need to handle the signature: get_data_path(subpackage: str, filename: str = "")
+    def mock_get_data_path(subpackage: str, filename: str = "") -> Path:
+        # We only care about 'config' for this test
+        base = data_dir / subpackage
+        if not base.exists():
+            # For other subpackages (like schemas), just create dir so it doesn't crash
+            base.mkdir(parents=True, exist_ok=True)
+        return base / filename if filename else base
+
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
+
+
+def test_output_json_pretty_format(isolated_config: None) -> None:
     """output_json should format JSON with indentation by default."""
     from edison.core.utils.cli_output import output_json
 
@@ -34,7 +85,7 @@ def test_output_json_pretty_format() -> None:
     assert "  " in result  # 2-space indent
 
 
-def test_output_json_compact_format() -> None:
+def test_output_json_compact_format(isolated_config: None) -> None:
     """output_json with pretty=False should produce compact JSON."""
     from edison.core.utils.cli_output import output_json
 
@@ -49,7 +100,7 @@ def test_output_json_compact_format() -> None:
     assert "\n" not in result
 
 
-def test_output_json_sorts_keys() -> None:
+def test_output_json_sorts_keys(isolated_config: None) -> None:
     """output_json should sort keys by default."""
     from edison.core.utils.cli_output import output_json
 
@@ -60,7 +111,7 @@ def test_output_json_sorts_keys() -> None:
     assert result == '{"a":2,"m":3,"z":1}'
 
 
-def test_output_table_basic_formatting() -> None:
+def test_output_table_basic_formatting(isolated_config: None) -> None:
     """output_table should format rows as aligned columns."""
     from edison.core.utils.cli_output import output_table
 
@@ -86,7 +137,7 @@ def test_output_table_basic_formatting() -> None:
     assert len(lines) >= 3  # Header + 2 rows
 
 
-def test_output_table_with_dict_rows() -> None:
+def test_output_table_with_dict_rows(isolated_config: None) -> None:
     """output_table should handle dict rows using headers as keys."""
     from edison.core.utils.cli_output import output_table
 
@@ -104,11 +155,11 @@ def test_output_table_with_dict_rows() -> None:
     assert "25" in result
 
 
-def test_output_table_empty_rows() -> None:
+def test_output_table_empty_rows(isolated_config: None) -> None:
     """output_table should handle empty rows gracefully."""
     from edison.core.utils.cli_output import output_table
 
-    rows: list = []
+    rows: list[Any] = []
     headers = ["Col1", "Col2"]
 
     result = output_table(rows, headers)
@@ -118,7 +169,7 @@ def test_output_table_empty_rows() -> None:
     assert "Col2" in result
 
 
-def test_output_table_missing_dict_keys() -> None:
+def test_output_table_missing_dict_keys(isolated_config: None) -> None:
     """output_table should handle missing keys in dict rows."""
     from edison.core.utils.cli_output import output_table
 
@@ -135,91 +186,89 @@ def test_output_table_missing_dict_keys() -> None:
     assert "Bob" in result
 
 
-def test_confirm_returns_true_for_yes() -> None:
+def test_confirm_returns_true_for_yes(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should return True when user enters 'yes' or 'y'."""
     from edison.core.utils.cli_output import confirm
 
-    with patch("builtins.input", return_value="yes"):
-        assert confirm("Continue?") is True
+    inputs = iter(["yes", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    with patch("builtins.input", return_value="y"):
-        assert confirm("Continue?") is True
+    assert confirm("Continue?") is True
+    assert confirm("Continue?") is True
 
 
-def test_confirm_returns_false_for_no() -> None:
+def test_confirm_returns_false_for_no(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should return False when user enters 'no' or 'n'."""
     from edison.core.utils.cli_output import confirm
 
-    with patch("builtins.input", return_value="no"):
-        assert confirm("Continue?") is False
+    inputs = iter(["no", "n"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    with patch("builtins.input", return_value="n"):
-        assert confirm("Continue?") is False
+    assert confirm("Continue?") is False
+    assert confirm("Continue?") is False
 
 
-def test_confirm_uses_default_on_empty_input() -> None:
+def test_confirm_uses_default_on_empty_input(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should use default value on empty input."""
-    from edison.core.utils.cli_output import confirm, DEFAULT_CLI_CONFIG
+    from edison.core.utils.cli_output import confirm
 
-    # Mock _cfg to return config without "default" key so function parameter is used
-    mock_cfg = {**DEFAULT_CLI_CONFIG, "confirm": {"assume_yes_env": ""}}
-
-    with patch("edison.core.utils.cli_output._cfg", return_value=mock_cfg):
-        with patch("builtins.input", return_value=""):
-            assert confirm("Continue?", default=True) is True
-
-        with patch("builtins.input", return_value=""):
-            assert confirm("Continue?", default=False) is False
+    monkeypatch.setattr("builtins.input", lambda _: "")
+    assert confirm("Continue?", default=True) is True
+    assert confirm("Continue?", default=False) is False
 
 
-def test_confirm_case_insensitive() -> None:
+def test_confirm_case_insensitive(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should accept uppercase input."""
     from edison.core.utils.cli_output import confirm
 
-    with patch("builtins.input", return_value="YES"):
-        assert confirm("Continue?") is True
+    inputs = iter(["YES", "NO"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    with patch("builtins.input", return_value="NO"):
-        assert confirm("Continue?") is False
+    assert confirm("Continue?") is True
+    assert confirm("Continue?") is False
 
 
-def test_confirm_handles_eof() -> None:
+def test_confirm_handles_eof(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should handle EOFError gracefully."""
-    from edison.core.utils.cli_output import confirm, DEFAULT_CLI_CONFIG
+    from edison.core.utils.cli_output import confirm
 
-    # Mock _cfg to return config without "default" key so function parameter is used
-    mock_cfg = {**DEFAULT_CLI_CONFIG, "confirm": {"assume_yes_env": ""}}
+    def raise_eof(_: str) -> str:
+        raise EOFError
 
-    with patch("edison.core.utils.cli_output._cfg", return_value=mock_cfg):
-        with patch("builtins.input", side_effect=EOFError):
-            # Should use default on EOF
-            result = confirm("Continue?", default=True)
-            assert result is True
+    monkeypatch.setattr("builtins.input", raise_eof)
+    
+    # Should use default on EOF
+    result = confirm("Continue?", default=True)
+    assert result is True
 
 
-def test_error_prints_to_stderr() -> None:
+def test_error_prints_to_stderr(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """error should print message to stderr with prefix."""
     from edison.core.utils.cli_output import error
 
-    with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
-        exit_code = error("Something failed")
+    mock_stderr = StringIO()
+    monkeypatch.setattr("sys.stderr", mock_stderr)
 
-        output = mock_stderr.getvalue()
-        assert "Something failed" in output
-        assert "[ERR]" in output
-        assert exit_code == 1
+    exit_code = error("Something failed")
+
+    output = mock_stderr.getvalue()
+    assert "Something failed" in output
+    assert "[ERR]" in output
+    assert exit_code == 1
 
 
-def test_error_custom_exit_code() -> None:
+def test_error_custom_exit_code(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """error should return custom exit code."""
     from edison.core.utils.cli_output import error
 
-    with patch("sys.stderr", new_callable=StringIO):
-        exit_code = error("Failed", exit_code=42)
-        assert exit_code == 42
+    mock_stderr = StringIO()
+    monkeypatch.setattr("sys.stderr", mock_stderr)
+
+    exit_code = error("Failed", exit_code=42)
+    assert exit_code == 42
 
 
-def test_success_prints_with_prefix(capsys: pytest.CaptureFixture[str]) -> None:
+def test_success_prints_with_prefix(isolated_config: None, capsys: pytest.CaptureFixture[str]) -> None:
     """success should print message with success prefix."""
     from edison.core.utils.cli_output import success
 
@@ -230,7 +279,7 @@ def test_success_prints_with_prefix(capsys: pytest.CaptureFixture[str]) -> None:
     assert "[OK]" in captured.out
 
 
-def test_output_json_handles_unicode() -> None:
+def test_output_json_handles_unicode(isolated_config: None) -> None:
     """output_json should handle unicode characters properly."""
     from edison.core.utils.cli_output import output_json
 
@@ -245,7 +294,7 @@ def test_output_json_handles_unicode() -> None:
     assert "🌍" in result
 
 
-def test_output_table_aligns_columns() -> None:
+def test_output_table_aligns_columns(isolated_config: None) -> None:
     """output_table should align columns with proper spacing."""
     from edison.core.utils.cli_output import output_table
 

@@ -96,10 +96,6 @@ def create_session(
     sess_dir.mkdir(parents=True, exist_ok=True)
     path = sess_dir / "session.json"
     store._write_json(path, sess)  # type: ignore[attr-defined]
-    # Maintain legacy flat file for compatibility
-    legacy = store._sessions_root() / "wip" / f"{session_id}.json"  # type: ignore[attr-defined]
-    legacy.parent.mkdir(parents=True, exist_ok=True)
-    store._write_json(legacy, sess)  # type: ignore[attr-defined]
     return path
 
 def get_session(session_id: str) -> Dict[str, Any]:
@@ -186,14 +182,6 @@ class SessionManager:
             meta["orchestratorProfile"] = owner
 
         store.save_session(sid, data)
-        # Legacy-compatible active path to satisfy callers expecting active/ tree
-        try:
-            mgmt_paths = get_management_paths(self.project_root)
-            legacy_dir = mgmt_paths.get_session_state_dir("active") / sid
-            legacy_dir.mkdir(parents=True, exist_ok=True)
-            store._write_json(legacy_dir / "session.json", data)  # type: ignore[attr-defined]
-        except Exception:
-            pass
         return path / "session.json"
 
     def get_session(self, session_id: str) -> Dict[str, Any]:
@@ -212,13 +200,6 @@ class SessionManager:
         store.transition_state(session_id, to_state)
         updated = store.load_session(session_id, state=to_state)
         updated["state"] = to_state
-        try:
-            mgmt_paths = get_management_paths(self.project_root)
-            legacy_dir = mgmt_paths.get_session_state_dir("active") / session_id
-            legacy_dir.mkdir(parents=True, exist_ok=True)
-            store._write_json(legacy_dir / "session.json", updated)  # type: ignore[attr-defined]
-        except Exception:
-            pass
         return store.get_session_json_path(session_id)
 
     # --- Internal helpers -------------------------------------------------
@@ -279,16 +260,6 @@ def create_session_with_worktree(
         store.save_session(session_id, sess)
 
     if had_noncritical_error:
-        # Provide legacy-compatible filename expected by older callers/tests
-        alias_path = path.with_name(f"{session_id}.json")
-        if not alias_path.exists():
-            try:
-                data = store.load_session(session_id)
-                alias_path.parent.mkdir(parents=True, exist_ok=True)
-                store._write_json(alias_path, data)  # type: ignore[attr-defined]
-            except Exception:
-                # Best-effort; ignore if alias cannot be created
-                pass
-        return alias_path
+        return path
 
     return path

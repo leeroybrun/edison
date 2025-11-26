@@ -10,9 +10,11 @@ from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
 from edison.core.session.context import SessionContext
 from edison.core import task  # type: ignore
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe, utc_timestamp as io_utc_timestamp 
-from edison.core.qa import evidence as qa_evidence 
-from edison.core.utils import cli 
+from edison.core.config import get_task_states, get_qa_states
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe, utc_timestamp as io_utc_timestamp
+from edison.core.qa import evidence as qa_evidence
+from edison.core.utils.cli_arguments import parse_common_args
+from edison.core.utils.cli_output import output_json, error, success 
 def _latest_round_dir(task_id: str) -> Path | None:
     """Return the latest evidence round directory for ``task_id``."""
     ev_root = qa_evidence.get_evidence_dir(task_id)
@@ -77,7 +79,7 @@ def verify_session_health(session_id: str) -> dict:
             msg = f"Task {task_id} missing on disk"
             failures.append(msg)
             continue
-        if status not in {"done", "validated", "wip"}:
+        if status not in get_task_states():
             msg = f"Task {task_id} unexpected state: {status}"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "task", "taskId": task_id, "state": status})
@@ -89,7 +91,7 @@ def verify_session_health(session_id: str) -> dict:
             status = p.parent.name
         except FileNotFoundError:
             status = "missing"
-        if status not in {"waiting", "todo", "wip", "done", "validated"}:
+        if status not in get_qa_states():
             msg = f"QA {qa_id} unexpected state: {status}"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})
@@ -158,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Verify session for phase guards")
-    cli.parse_common_args(parser)
+    parse_common_args(parser)
     parser.add_argument("session_id")
     parser.add_argument("--phase", required=True, choices=["closing"])
     args = parser.parse_args(argv)
@@ -168,12 +170,12 @@ def main(argv: list[str] | None = None) -> int:
     health = verify_session_health(args.session_id)
 
     if args.json:
-        print(cli.output_json(health))
+        print(output_json(health))
     else:
         if health.get("ok"):
-            cli.success("Session passes closing verification")
+            success("Session passes closing verification")
         else:
-            cli.error("Session verification failed")
+            error("Session verification failed")
 
     return 0 if health.get("ok") else 1
 

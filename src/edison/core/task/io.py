@@ -6,7 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 from datetime import datetime, timezone
 
 import getpass
@@ -18,6 +18,7 @@ from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT
 from ..paths.management import get_management_paths
 from .metadata import TYPE_INFO
+from edison.core.config import get_semantic_state
 
 
 def _task_filename(task_id: str) -> str:
@@ -31,8 +32,9 @@ def _write(path: Path, content: str) -> None:
 
 
 def create_task(task_id: str, title: str, description: str = "") -> Path:
+    default_status = TYPE_INFO["task"]["default_status"]
     filename = _task_filename(task_id)
-    path = _tasks_root() / "todo" / filename
+    path = _tasks_root() / default_status / filename
 
     # Check if task already exists
     if path.exists():
@@ -41,7 +43,7 @@ def create_task(task_id: str, title: str, description: str = "") -> Path:
     body = (
         f"---\n"
         f"id: {task_id}\n"
-        f"status: todo\n"
+        f"status: {default_status}\n"
         f"title: {title}\n"
         f"---\n\n{description}\n"
     )
@@ -50,11 +52,13 @@ def create_task(task_id: str, title: str, description: str = "") -> Path:
     return path
 
 
-def default_owner() -> str:
+def default_owner(process_finder: Optional[Callable[[], Tuple[str, int]]] = None) -> str:
     try:
-        from ..process.inspector import find_topmost_process  # type: ignore
+        if process_finder is None:
+            from ..process.inspector import find_topmost_process  # type: ignore
+            process_finder = find_topmost_process
 
-        process_name, pid = find_topmost_process()
+        process_name, pid = process_finder()
         return process_name
     except Exception:
         pass
@@ -62,7 +66,8 @@ def default_owner() -> str:
 
 
 def create_qa_brief(task_id: str, title: str) -> Path:
-    path = _qa_root() / "waiting" / f"{task_id}-qa.md"
+    default_qa = TYPE_INFO["qa"]["default_status"]
+    path = _qa_root() / default_qa / f"{task_id}-qa.md"
     content = (
         f"# QA Brief for {task_id}\n\n"
         f"- [ ] Unit tests green\n"
@@ -75,46 +80,57 @@ def create_qa_brief(task_id: str, title: str) -> Path:
 
 
 def claim_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
-    src = _tasks_root() / "todo" / _task_filename(task_id)
-    dst = _session_tasks_dir(session_id, "wip") / _task_filename(task_id)
+    default_status = TYPE_INFO["task"]["default_status"]
+    wip_status = get_semantic_state("task", "wip")
+    
+    src = _tasks_root() / default_status / _task_filename(task_id)
+    dst = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
     dst.parent.mkdir(parents=True, exist_ok=True)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
-    content = content.replace("status: todo", "status: wip") or content
+    content = content.replace(f"status: {default_status}", f"status: {wip_status}") or content
     dst.write_text(content, encoding="utf-8")
     if src.exists():
         src.unlink(missing_ok=False)
 
-    qa_dst = _session_qa_dir(session_id, "waiting") / f"{task_id}-qa.md"
+    default_qa = TYPE_INFO["qa"]["default_status"]
+    qa_dst = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
     qa_dst.parent.mkdir(parents=True, exist_ok=True)
-    qa_src = _qa_root() / "waiting" / f"{task_id}-qa.md"
+    qa_src = _qa_root() / default_qa / f"{task_id}-qa.md"
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
     else:
-        qa_dst.write_text(f"# QA Brief for {task_id}\n\n- **Status:** waiting\n", encoding="utf-8")
+        qa_dst.write_text(f"# QA Brief for {task_id}\n\n- **Status:** {default_qa}\n", encoding="utf-8")
 
     return src, dst
 
 
 def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
-    src = _session_tasks_dir(session_id, "wip") / _task_filename(task_id)
-    dst = _session_tasks_dir(session_id, "done") / _task_filename(task_id)
+    wip_status = get_semantic_state("task", "wip")
+    done_status = get_semantic_state("task", "done")
+    
+    src = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
+    dst = _session_tasks_dir(session_id, done_status) / _task_filename(task_id)
     dst.parent.mkdir(parents=True, exist_ok=True)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
-    content = content.replace("status: wip", "status: done") or content
+    content = content.replace(f"status: {wip_status}", f"status: {done_status}") or content
     dst.write_text(content, encoding="utf-8")
     if src.exists():
         src.unlink(missing_ok=False)
-    qa_src = _session_qa_dir(session_id, "waiting") / f"{task_id}-qa.md"
-    qa_dst = _session_qa_dir(session_id, "todo") / f"{task_id}-qa.md"
+    
+    default_qa = TYPE_INFO["qa"]["default_status"]
+    qa_todo = get_semantic_state("qa", "todo")
+    
+    qa_src = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
+    qa_dst = _session_qa_dir(session_id, qa_todo) / f"{task_id}-qa.md"
     qa_dst.parent.mkdir(parents=True, exist_ok=True)
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
     else:
-        global_waiting = _qa_root() / "waiting" / f"{task_id}-qa.md"
+        global_waiting = _qa_root() / default_qa / f"{task_id}-qa.md"
         if global_waiting.exists():
             safe_move_file(global_waiting, qa_dst)
         else:
-            qa_dst.write_text(f"# QA Brief for {task_id}\n\n- **Status:** todo\n", encoding="utf-8")
+            qa_dst.write_text(f"# QA Brief for {task_id}\n\n- **Status:** {qa_todo}\n", encoding="utf-8")
     return src, dst
 
 
@@ -248,7 +264,7 @@ def update_task_record(task_id: str, updates: Dict[str, Any], *, operation: str 
         record = _read_json(path)
     record.update(updates)
     record.setdefault("id", task_id)
-    record.setdefault("status", "todo")
+    record.setdefault("status", TYPE_INFO["task"]["default_status"])
     record.setdefault("updated_at", _now_iso())
     record["operation"] = operation
     _validate_task_record(record)
@@ -283,7 +299,9 @@ def _append_task_to_session(session_id: str, task_id: str) -> None:
         pass
 
 
-def create_task_record(task_id: str, title: str, *, status: str = "todo") -> Dict[str, Any]:
+def create_task_record(task_id: str, title: str, *, status: str = None) -> Dict[str, Any]:
+    if status is None:
+        status = TYPE_INFO["task"]["default_status"]
     record = {
         "id": task_id,
         "title": title,

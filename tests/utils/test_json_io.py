@@ -20,6 +20,10 @@ def _write_json_config(repo_root: Path) -> None:
             "git_operations": 5.0,
             "file_operations": 5.0,
         },
+        "file_locking": {
+            "timeout_seconds": 5.0,
+            "poll_interval_seconds": 0.1,
+        },
     }
     cfg_dir = repo_root / ".edison" / "core" / "config"
     cfg_dir.mkdir(parents=True, exist_ok=True)

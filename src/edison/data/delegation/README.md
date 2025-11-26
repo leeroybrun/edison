@@ -162,7 +162,7 @@ const result = await mcp__edison-zen__clink({
 
 ## Configuration Structure
 
-### File: `.agents/delegation/config.json`
+### File: `.edison/delegation/config.json`
 
 **Six Major Sections**:
 
@@ -268,7 +268,7 @@ How to call Codex/Gemini via Zen MCP server.
 
 ## Usage Guide
 
-### For Orchestrator (`.agents/AGENTS.md`)
+### For Orchestrator (`.edison/AGENTS.md`)
 
 #### Decision Priority Chain
 
@@ -316,7 +316,7 @@ Task({
 })
 ```
 
-### For Sub-Agents (`.agents/agents/*.md`)
+### For Sub-Agents (`.edison/agents/*.md`)
 
 #### Reading Config
 
@@ -432,7 +432,7 @@ See [examples/](./examples/) directory:
 
 **Solution**:
 1. Check if edit is <10 lines (allowed exception)
-2. Review `.agents/AGENTS.md` - "DELEGATE MAXIMUM WORK" section
+2. Review `.edison/AGENTS.md` - "DELEGATE MAXIMUM WORK" section
 3. Verify orchestratorGuidance.alwaysDelegateToSubAgent: true
 
 ---
@@ -446,12 +446,12 @@ See [examples/](./examples/) directory:
 - ⏳ Create example files
 
 ### Phase 2: Orchestrator Awareness
-- Update `.agents/AGENTS.md` with delegation guidance
+- Update `.edison/AGENTS.md` with delegation guidance
 - Update `docs/project/ORCHESTRATION_GUIDE.md` with workflow
 - Update `docs/archive/agents/CODEX_DELEGATION_GUIDE.md` with patterns (legacy deep-dive)
 
 ### Phase 3: Sub-Agent Delegation
-- Update all 6 sub-agent files (`.agents/agents/*.md`)
+- Update all 6 sub-agent files (`.edison/agents/*.md`)
 - Add "Delegation Awareness" sections
 - Add Zen MCP usage patterns
 
@@ -488,7 +488,7 @@ See [examples/](./examples/) directory:
 - **Config**: [config.json](./config.json)
 - **Schema**: [config.schema.json](./config.schema.json)
 - **Examples**: [examples/](./examples/)
-- **Orchestrator Guide**: [../../../.agents/AGENTS.md](../../../.agents/AGENTS.md)
+- **Orchestrator Guide**: [../../../.edison/AGENTS.md](../../../.edison/AGENTS.md)
 - **Codex Delegation**: [../../../docs/archive/agents/CODEX_DELEGATION_GUIDE.md](../../../docs/archive/agents/CODEX_DELEGATION_GUIDE.md)
 - **Zen MCP**: Multi-model delegation via `mcp__edison-zen__clink` (ALWAYS pass `working_directory` from `SessionContext.build_zen_environment(sessionId)`)
 

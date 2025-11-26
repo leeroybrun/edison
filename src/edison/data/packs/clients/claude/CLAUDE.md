@@ -20,7 +20,7 @@ This document provides condensed orchestration guidance for Claude Code when wor
 **CRITICAL**: Load these files at session start:
 
 1. **Generated Orchestrator Manifest**:
-   - `.agents/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic roster of agents/validators/rules
+   - `.edison/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic roster of agents/validators/rules
    - Generated from: `scripts/prompts/compose --orchestrator`
 
 2. **Core Workflow**:
@@ -28,8 +28,8 @@ This document provides condensed orchestration guidance for Claude Code when wor
    - `.edison/core/guidelines/DELEGATION.md` - Delegation priority chain
 
 3. **Project Configuration**:
-   - `.agents/config.yml` - Project config and pack activation
-   - `.agents/README.md` - Project overview
+   - `.edison/config.yml` - Project config and pack activation
+   - `.edison/README.md` - Project overview
 
 ## Delegation Priority Chain
 
@@ -150,9 +150,9 @@ Key commands for orchestration:
 
 These files are GENERATED (never hand-edit):
 
-- `.agents/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic manifest
-- `.agents/_generated/agents/*.md` - Composed agent prompts
-- `.agents/_generated/validators/*.md` - Composed validator prompts
+- `.edison/_generated/ORCHESTRATOR_GUIDE.md` - Dynamic manifest
+- `.edison/_generated/agents/*.md` - Composed agent prompts
+- `.edison/_generated/validators/*.md` - Composed validator prompts
 - `.claude/agents/*.md` - Claude Code agent files (generated from _generated/)
 
 Regenerate with:

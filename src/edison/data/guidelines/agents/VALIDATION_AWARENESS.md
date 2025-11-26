@@ -35,7 +35,7 @@ Your work will be validated by **9 independent validators** organized in three t
 
 Specialized validators are triggered by file patterns defined in active packs. These validators ensure framework-specific best practices are followed.
 
-**Specialized validators run based on changed files**. Active packs contribute specialized validators for their frameworks. Check `.agents/config/validators.yml` for current triggers and validator configuration.
+**Specialized validators run based on changed files**. Active packs contribute specialized validators for their frameworks. Check `.edison/config/validators.yml` for current triggers and validator configuration.
 
 ### Your Role: Produce Excellent Work
 
@@ -214,8 +214,8 @@ cat .project/qa/validation-evidence/<task-id>/round-N/bundle-*.json
 ## References
 
 - Extended validation guide: `.edison/core/guides/extended/VALIDATION_GUIDE.md`
-- Validator configuration: `.agents/validators/config.json`
-- Validation output format: `.agents/validators/OUTPUT_FORMAT.md`
+- Validator configuration: `.edison/validators/config.json`
+- Validation output format: `.edison/validators/OUTPUT_FORMAT.md`
 
 ---
 

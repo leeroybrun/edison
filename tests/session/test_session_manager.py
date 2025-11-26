@@ -17,7 +17,14 @@ def project_root(tmp_path, monkeypatch):
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
     
-    defaults_data = {"edison": {"version": "1.0.0"}}
+    defaults_data = {
+        "edison": {"version": "1.0.0"},
+        "file_locking": {
+            "timeout_seconds": 1,
+            "poll_interval_seconds": 0.1,
+            "fail_open": False
+        }
+    }
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
     
     session_data = {

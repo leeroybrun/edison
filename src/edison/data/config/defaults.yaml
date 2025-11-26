@@ -42,9 +42,17 @@ resilience:
     failure_threshold: 5
     recovery_timeout_seconds: 300
 
+file_locking:
+  timeout_seconds: 10.0
+  poll_interval_seconds: 0.1
+  fail_open: false
+
 session:
   timeout_hours: 8
   stale_check_interval_hours: 1
+  validation:
+    idRegex: "^[a-zA-Z0-9_\\-\\.]+$"
+    maxLength: 64
 
 # Validation defaults (mirrors core/config/validators.yaml)
 validation:

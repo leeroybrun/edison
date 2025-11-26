@@ -11,7 +11,7 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Config**: `.agents/delegation/config.json` (single source of truth for model selection)
+**Delegation Config**: `.edison/delegation/config.json` (single source of truth for model selection)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
@@ -22,7 +22,7 @@ The orchestrator uses this configuration to assign tasks to the most appropriate
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `.agents/delegation/config.json` to understand your scope
+1. **READ** `.edison/delegation/config.json` to understand your scope
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -82,7 +82,7 @@ Orchestrator → component-builder (UI work)
 
 ```pseudocode
 // Example: Reading your scope
-config = load_json('.agents/delegation/config.json')
+config = load_json('.edison/delegation/config.json')
 
 // Check file pattern rules
 filePatterns = config.filePatternRules
@@ -162,7 +162,7 @@ Or for MISMATCH:
 
 ```bash
 # View delegation config
-cat .agents/delegation/config.json
+cat .edison/delegation/config.json
 
 # Check which agent handles a file pattern (orchestrator tool)
 edison delegation check "<path-to-file>"
@@ -175,7 +175,7 @@ edison agents scope api-builder
 
 - Delegation guide: `.edison/core/guidelines/DELEGATION.md`
 - Extended patterns: `.edison/core/guides/extended/DELEGATION_GUIDE.md`
-- Config schema: `.agents/delegation/config.schema.json`
+- Config schema: `.edison/delegation/config.schema.json`
 
 ---
 

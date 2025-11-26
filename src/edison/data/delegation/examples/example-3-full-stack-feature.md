@@ -116,7 +116,7 @@ Task({
     3. Verify integration (UI calls API correctly)
     4. Return complete working feature
 
-    Check .agents/delegation/config.json for detailed rules.
+    Check .edison/delegation/config.json for detailed rules.
   `
 })
 ```

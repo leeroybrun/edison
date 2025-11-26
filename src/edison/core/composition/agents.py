@@ -18,9 +18,10 @@ The composed agent text is pure Markdown and typically written to
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import os
+import yaml
 
 from ..utils.text import dry_duplicate_report, render_conditional_includes
 from ..paths import PathResolver
@@ -104,8 +105,19 @@ class AgentRegistry:
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         # Respect project root resolution, including AGENTS_PROJECT_ROOT in tests
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
-        self.core_dir = self.repo_root / ".edison" / "core"
-        self.packs_dir = self.repo_root / ".edison" / "packs"
+
+        # For Edison's own tests, use bundled data directory instead of .edison/core
+        edison_dir = self.repo_root / ".edison"
+        core_agents_dir = edison_dir / "core" / "agents"
+        if edison_dir.exists() and core_agents_dir.exists():
+            self.core_dir = edison_dir / "core"
+            self.packs_dir = edison_dir / "packs"
+        else:
+            # Running within Edison itself - use bundled data
+            from edison.data import get_data_path
+            self.core_dir = get_data_path("")
+            self.packs_dir = get_data_path("packs")
+
         self.project_dir = get_project_config_dir(self.repo_root)
 
     # ------- Discovery -------
@@ -131,6 +143,19 @@ class AgentRegistry:
                 f"Core agent '{name}' not found under {self.core_dir / 'agents'}"
             )
         return agents[name]
+
+    def exists(self, name: str) -> bool:
+        """Check if an agent exists in the registry."""
+        agents = self.discover_core_agents()
+        return name in agents
+
+    def get(self, name: str) -> Dict:
+        """Get agent metadata by name."""
+        agent = self.resolve_core_agent(name)
+        return {
+            "name": agent.name,
+            "core_path": str(agent.core_path),
+        }
 
     def discover_pack_overlays(self, agent_name: str, packs: List[str]) -> List[PackOverlay]:
         """Discover pack overlays for a given agent name."""
@@ -285,6 +310,46 @@ class AgentRegistry:
             min_shingles=min_s,
             k=12,
         )
+
+    # ------- Roster metadata -------
+    @staticmethod
+    def _read_front_matter(path: Path) -> Dict[str, Any]:
+        """Extract YAML front matter from an agent file."""
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception:
+            return {}
+
+        cleaned = text.lstrip("\ufeff")
+        if not cleaned.startswith("---"):
+            return {}
+
+        parts = cleaned.split("---", 2)
+        if len(parts) < 3:
+            return {}
+
+        try:
+            data = yaml.safe_load(parts[1]) or {}
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def get_all(self) -> List[Dict[str, Any]]:
+        """Return metadata for all core agents."""
+        agents: List[Dict[str, Any]] = []
+        for core_agent in self.discover_core_agents().values():
+            meta = self._read_front_matter(core_agent.core_path)
+            agents.append(
+                {
+                    "name": str(meta.get("name") or core_agent.name),
+                    "type": str(meta.get("type") or "implementer"),
+                    "model": str(meta.get("model") or "codex"),
+                    "description": str(meta.get("description") or ""),
+                    "core_path": str(core_agent.core_path),
+                }
+            )
+
+        return sorted(agents, key=lambda a: a["name"])
 
 
 def compose_agent(agent_name: str, packs: List[str], *, repo_root: Optional[Path] = None) -> str:

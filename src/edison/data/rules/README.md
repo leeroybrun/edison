@@ -7,7 +7,7 @@ Core rule files governing Edison behaviors, gates, and policy checks.
 
 Helper scripts (run from project root):
 
-- `python .edison/core/scripts/rules_migrate_registry_paths.py` – repair legacy `.agents/*` source paths and verify all rule files exist.
+- `python .edison/core/scripts/rules_migrate_registry_paths.py` – repair legacy `.edison/*` source paths and verify all rule files exist.
 - `python .edison/core/scripts/rules_json_to_yaml_migration.py` – regenerate `registry.yml` from `registry.json`.
 - `python .edison/core/scripts/rules_verify_anchors.py` – verify that all fragment anchors in `registry.yml` exist in guideline files.
 

@@ -2,7 +2,7 @@ Edison Packs (v2)
 
 Purpose
 - Encapsulate tech‑stack knowledge (validators, guidelines, examples)
-- Keep Edison core generic; project rules live in `.agents/`
+- Keep Edison core generic; project rules live in `.edison/`
 
 Layout
 ```

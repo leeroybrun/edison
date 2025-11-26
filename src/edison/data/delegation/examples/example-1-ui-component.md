@@ -73,7 +73,7 @@ Task({
     - filePatternRules['*.tsx'] → preferredModel: "claude"
     - This is your specialty! Implement directly.
 
-    Check .agents/delegation/config.json for detailed rules.
+    Check .edison/delegation/config.json for detailed rules.
   `
 })
 ```

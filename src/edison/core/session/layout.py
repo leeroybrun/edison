@@ -1,11 +1,9 @@
 """Session layout detection utilities.
 
 These helpers normalize how session-aware code locates the on-disk base
-directory for tasks/qa. Repositories may store ``session.json`` either as a
-legacy *flat* file (``.project/sessions/<state>/<sid>.json``) or inside a
-session directory (``.../<sid>/session.json``). Some fixtures also persist a
-``parent`` hint inside the session payload. The helpers below determine the
-effective base directory for record storage regardless of layout.
+directory for tasks/qa. The session is stored inside a session directory
+(``.../<sid>/session.json``). The helpers below determine the
+effective base directory for record storage.
 """
 from __future__ import annotations
 

@@ -39,6 +39,8 @@ from .orchestrator import (
     compose_claude_orchestrator as orch_compose_claude_orchestrator,
     compose_claude_agents as orch_compose_claude_agents,
 )
+from .agents import AgentRegistry
+from .validators import ValidatorRegistry
 
 
 @dataclass
@@ -60,11 +62,26 @@ def compose_prompt(
     dry_min_shingles: Optional[int] = None,
 ) -> ComposeResult:
     """Compose a validator prompt from core + pack contexts + overlay."""
+    def _dedupe_pack_contexts(paths: List[Path]) -> List[Path]:
+        """Return paths with duplicate packs removed while preserving order."""
+        seen: Set[str] = set()
+        unique: List[Path] = []
+        for path in paths:
+            pack_name = path.parent.parent.name if path.parent.parent else ""
+            key = pack_name or str(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(path)
+        return unique
+
     root = _repo_root()
     if not core_base.exists():
         raise ComposeError(
             f"Core base not found for {validator_id}: {core_base.relative_to(root)}"
         )
+
+    deduped_pack_contexts = _dedupe_pack_contexts(pack_contexts)
 
     deps: List[Path] = [core_base.resolve()]
     core_raw = _read_text(core_base)
@@ -72,7 +89,7 @@ def compose_prompt(
     deps.extend([p for p in core_deps if p not in deps])
 
     pack_texts: List[str] = []
-    for p in pack_contexts:
+    for p in deduped_pack_contexts:
         if not p.exists():
             pack_texts.append(f"<!-- Missing pack context: {p.relative_to(root)} -->")
             continue
@@ -125,7 +142,7 @@ def compose_prompt(
         final = "\n\n".join([s for s in sections if s is not None])
 
     active_packs: Set[str] = set()
-    for p in pack_contexts:
+    for p in deduped_pack_contexts:
         try:
             pack_name = p.parent.parent.name
             if pack_name:
@@ -183,6 +200,113 @@ def compose_prompt(
         hash=content_hash,
         duplicate_report=duplicate_report,
     )
+
+
+def compose_agent_zen_prompt(agent_name: str, *, repo_root: Optional[Path] = None) -> str:
+    """Compose Zen system prompt for an agent.
+
+    Args:
+        agent_name: Name of the agent to compose
+        repo_root: Optional repository root path
+
+    Returns:
+        Formatted Zen prompt for the agent
+    """
+    from .agents import compose_agent
+
+    registry = AgentRegistry(repo_root=repo_root)
+    agent = registry.get(agent_name)
+
+    # Get full agent brief content
+    # Load configuration to get active packs
+    root = repo_root or _repo_root()
+    from ..config import ConfigManager
+    cfg_mgr = ConfigManager(root)
+    try:
+        config = cfg_mgr.load_config(validate=False)
+    except FileNotFoundError:
+        config = {}
+
+    packs = ((config.get("packs", {}) or {}).get("active", []) or [])
+    if not isinstance(packs, list):
+        packs = []
+
+    agent_content = compose_agent(agent_name, packs=packs, repo_root=root)
+
+    return f"""# {agent['name']} Agent
+
+{agent_content}
+
+## Constitution Reference
+Before starting work, read: constitutions/AGENTS.md
+"""
+
+
+def compose_validator_zen_prompt(validator_name: str, *, repo_root: Optional[Path] = None) -> str:
+    """Compose Zen system prompt for a validator.
+
+    Args:
+        validator_name: Name of the validator to compose
+        repo_root: Optional repository root path
+
+    Returns:
+        Formatted Zen prompt for the validator
+    """
+    registry = ValidatorRegistry(repo_root=repo_root)
+    validator = registry.get(validator_name)
+
+    # Compose validator content using the engine
+    root = repo_root or _repo_root()
+    engine = CompositionEngine(repo_root=root)
+
+    # Get validator composition
+    results = engine.compose_validators(validator=validator_name, enforce_dry=False)
+
+    if validator_name not in results:
+        raise ComposeError(f"Failed to compose validator: {validator_name}")
+
+    validator_result = results[validator_name]
+    validator_content = validator_result.text
+
+    validator_display_name = validator.get("name", validator_name)
+
+    return f"""# {validator_display_name} Validator
+
+{validator_content}
+
+## Constitution Reference
+Before starting validation, read: constitutions/VALIDATORS.md
+"""
+
+
+def compose_zen_prompt(name: str, *, repo_root: Optional[Path] = None) -> str:
+    """Compose a Zen prompt for an agent or validator.
+
+    Determines role type from registry and calls appropriate composer.
+
+    Args:
+        name: Name of the agent or validator
+        repo_root: Optional repository root path
+
+    Returns:
+        Formatted Zen prompt for the role
+
+    Raises:
+        ValueError: If name is not found in either registry
+    """
+    root = repo_root or _repo_root()
+
+    # Check if it's a validator
+    validator_registry = ValidatorRegistry(repo_root=root)
+    if validator_registry.exists(name):
+        return compose_validator_zen_prompt(name, repo_root=root)
+
+    # Check if it's an agent
+    agent_registry = AgentRegistry(repo_root=root)
+    if agent_registry.exists(name):
+        return compose_agent_zen_prompt(name, repo_root=root)
+
+    raise ValueError(f"Unknown agent or validator: {name}")
 
 
 class CompositionEngine:
@@ -516,6 +640,9 @@ __all__ = [
     "ComposeResult",
     "compose_prompt",
     "compose_guidelines",
+    "compose_zen_prompt",
+    "compose_agent_zen_prompt",
+    "compose_validator_zen_prompt",
     "resolve_includes",
     "render_conditional_includes",
     "auto_activate_packs",

@@ -10,9 +10,9 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.agents/manifest.json` and every `mandatory` entry before touching code. Edison scripts (`session next`, `tasks/claim`) inject rules proactively.
+1. **Mandatory preload** – Load `.edison/manifest.json` and every `mandatory` entry before touching code. Edison scripts (`session next`, `tasks/claim`) inject rules proactively.
 
-2. **Correct intake prompt** – Start every session via `.agents/START.SESSION.md`. That checklist handles QA sweeps + task selection.
+2. **Correct intake prompt** – Start every session via `.edison/START.SESSION.md`. That checklist handles QA sweeps + task selection.
 
 3. **Session record alive** – Every session has a JSON file under `.project/sessions/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison scripts.
 
@@ -20,7 +20,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `.agents/delegation/config.json`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `.edison/delegation/config.json`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
 7. **Context7 first** – Query Context7 before coding against any package listed under `postTrainingPackages` in validator config. Never guess about post-training APIs.
 
@@ -58,13 +58,13 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 ### Project Configuration (Always)
 
-- `.agents/manifest.json` - Authoritative preload list (project-specific)
-- `.agents/validators/config.json` - Validator roster and triggers (project-specific)
-- `.agents/delegation/config.json` - Delegation model routing (project-specific)
+- `.edison/manifest.json` - Authoritative preload list (project-specific)
+- `.edison/validators/config.json` - Validator roster and triggers (project-specific)
+- `.edison/delegation/config.json` - Delegation model routing (project-specific)
 
 ### Project-Specific Client Rules (Conditional)
 
-Configured in `.agents/manifest.json` under `mandatory` array. May include:
+Configured in `.edison/manifest.json` under `mandatory` array. May include:
 - Claude-specific rules (`.edison/packs/clients/claude/CLAUDE.md`)
 - Cursor-specific rules (`.edison/packs/clients/cursor/rules/*.mdc`)
 - Other client packs as needed
@@ -92,7 +92,7 @@ Edison scripts inject rules automatically:
 - Length: Optimized for AI context windows
 
 **Guides** (Deep Dives, On-Demand)
-- Location: `.edison/core/guides/` + `.agents/guides/`
+- Location: `.edison/core/guides/` + `.edison/guides/`
 - Purpose: Extended patterns, examples, deep technical explanations
 - When: Load only when needed (preserves context budget)
 - Examples: TDD_GUIDE (extended), QUALITY_GUIDE (deep patterns)
@@ -187,7 +187,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 - Session-scoped queues prevent race conditions
 
 ### Delegation
-- Route complex work through `.agents/delegation/config.json`
+- Route complex work through `.edison/delegation/config.json`
 - Match file patterns to model capabilities
 - Specialized implementers for frontend/backend/database/testing
 
@@ -214,7 +214,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 
 **Project Overlay**:
 - `edison.yaml` - Project-specific configuration overrides
-- `.agents/manifest.json` - Authoritative preload list
+- `.edison/manifest.json` - Authoritative preload list
 
 **State Machine**:
 - `.edison/core/templates/session-workflow.json` - State definitions and transitions
@@ -224,7 +224,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 
 All in `.edison/core/guidelines/`:
 - `SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `DELEGATION.md` + `.agents/delegation/config.json` - Delegation routing
+- `DELEGATION.md` + `.edison/delegation/config.json` - Delegation routing
 - `TDD.md` - Test-driven development enforcement (RED→GREEN→REFACTOR)
 - `QUALITY.md` - Code quality standards and patterns
 - `HONEST_STATUS.md` - Status integrity and directory-name truth
@@ -241,7 +241,7 @@ All in `.edison/core/guidelines/`:
 
 **Session Templates**:
 - `.edison/core/templates/session-workflow.json` - State machine definitions
-- `.agents/START.SESSION.md` - Session intake checklist
+- `.edison/START.SESSION.md` - Session intake checklist
 
 ### Scripts (Automation)
 
@@ -382,10 +382,10 @@ This template provides the Edison framework orchestration hub. **Projects extend
 
 ### Example: Project Overlay
 
-`.agents/AGENTS.md` structure:
+`.edison/AGENTS.md` structure:
 ```markdown
 \{\{include:.edison/core/templates/AGENTS.md\}\}
-\{\{include:.agents/AGENTS.{PROJECT_NAME}.md\}\}
+\{\{include:.edison/AGENTS.{PROJECT_NAME}.md\}\}
 ```
 
 Project overlay adds:
@@ -438,4 +438,4 @@ This orchestration hub ensures:
 - ✅ Delegation patterns (route complex work to specialists)
 - ✅ Post-training safety (Context7 queries mandatory)
 
-**Next Step**: Read `.agents/START.SESSION.md` to begin a session correctly.
+**Next Step**: Read `.edison/START.SESSION.md` to begin a session correctly.

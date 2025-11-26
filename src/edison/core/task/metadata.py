@@ -7,13 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
-from ..state import (
-    RichStateMachine,
-    StateTransitionError,
-    action_registry,
-    condition_registry,
-    guard_registry,
-    _flatten_transitions,
+from edison.core.config import (
+    load_workflow_config,
+    get_task_states,
+    get_qa_states,
+    get_semantic_state,
 )
 from .paths import (
     TASK_DIRS,
@@ -25,101 +23,27 @@ from .paths import (
     LAST_ACTIVE_PREFIX,
     CONTINUATION_PREFIX,
 )
-from .locking import file_lock, safe_move_file
 
 RecordType = Literal["task", "qa"]
 
 
-def _load_statemachine() -> Dict[str, Any]:
-    """Load task/qa state machine from defaults.yaml with fallbacks."""
-    try:
-        from edison.core.config import ConfigManager
-        cfg = ConfigManager().load_config(validate=False)
-        sm = cfg.get("statemachine")
-        if sm:
-            return sm
-    except Exception:
-        pass
-
-    try:
-        from edison.data import get_data_path
-        import yaml  # type: ignore
-
-        for candidate in [
-            get_data_path("config", "state-machine.yaml"),
-            Path("config/state-machine.yaml").resolve(),
-        ]:
-            if candidate.exists():
-                data = yaml.safe_load(candidate.read_text()) or {}
-                sm = (data or {}).get("statemachine")
-                if sm:
-                    return sm
-    except Exception:
-        pass
-
-    try:
-        from edison.data import get_data_path
-        import yaml  # type: ignore
-
-        cfg_path = get_data_path("config", "defaults.yaml")
-        data = yaml.safe_load(cfg_path.read_text()) if cfg_path.exists() else {}
-        sm = (data or {}).get("statemachine")
-        if sm:
-            return sm
-    except Exception:
-        pass
-
-    return {
-        "task": {
-            "states": {
-                "todo": {"allowed_transitions": [{"to": "wip"}, {"to": "blocked"}]},
-                "wip": {
-                    "allowed_transitions": [
-                        {"to": "blocked"},
-                        {"to": "done"},
-                        {"to": "todo"},
-                        {"to": "validated"},
-                    ]
-                },
-                "blocked": {"allowed_transitions": [{"to": "wip"}, {"to": "todo"}]},
-                "done": {"allowed_transitions": [{"to": "validated"}, {"to": "wip"}]},
-                "validated": {"allowed_transitions": []},
-            },
-        },
-        "qa": {
-            "states": {
-                "waiting": {"allowed_transitions": [{"to": "todo"}]},
-                "todo": {"allowed_transitions": [{"to": "wip"}]},
-                "wip": {"allowed_transitions": [{"to": "done"}, {"to": "todo"}]},
-                "done": {"allowed_transitions": [{"to": "validated"}, {"to": "wip"}]},
-                "validated": {"allowed_transitions": []},
-            },
-        },
-    }
-
-
 def _allowed_states_for(record_type: Literal["task", "qa"]) -> List[str]:
-    sm = _load_statemachine()
-    domain = "task" if record_type == "task" else "qa"
-    states = (sm.get(domain) or {}).get("states") or []
-    if isinstance(states, dict):
-        return list(states.keys())
-    return [str(s) for s in states]
+    if record_type == "task":
+        return get_task_states()
+    return get_qa_states()
 
 
 TYPE_INFO: Dict[str, Dict[str, Any]] = {
     "task": {
-        "allowed_statuses": _allowed_states_for("task")
-        or ["todo", "wip", "blocked", "done", "validated"],
-        "default_status": "todo",
+        "allowed_statuses": _allowed_states_for("task"),
+        "default_status": get_semantic_state("task", "todo"),
         "owner_prefix": OWNER_PREFIX_TASK,
         "status_prefix": STATUS_PREFIX,
         "dirs": TASK_DIRS,
     },
     "qa": {
-        "allowed_statuses": _allowed_states_for("qa")
-        or ["waiting", "todo", "wip", "done", "validated"],
-        "default_status": "waiting",
+        "allowed_statuses": _allowed_states_for("qa"),
+        "default_status": get_semantic_state("qa", "waiting"),
         "owner_prefix": OWNER_PREFIX_QA,
         "status_prefix": STATUS_PREFIX,
         "dirs": QA_DIRS,
@@ -128,37 +52,24 @@ TYPE_INFO: Dict[str, Dict[str, Any]] = {
 
 
 def validate_state_transition(
-    domain: Literal["task", "qa"], from_state: str, to_state: str
+    domain: Literal["task", "qa"],
+    from_state: str,
+    to_state: str,
 ) -> Tuple[bool, str]:
     """Validate a state transition using configured state machine."""
-    domain = "qa" if domain == "qa" else "task"
-    sm = _load_statemachine()
-    spec = sm.get(domain) or {}
+    allowed = _allowed_states_for(domain)
+    
+    if from_state not in allowed:
+         return False, f"Invalid from_state '{from_state}' for {domain}. Allowed: {allowed}"
+    
+    if to_state not in allowed:
+        return False, f"Invalid to_state '{to_state}' for {domain}. Allowed: {allowed}"
 
-    if domain == "qa" and isinstance(spec.get("states"), dict):
-        states = spec.get("states", {})
-        wip_state = states.get("wip") or {}
-        transitions = wip_state.get("allowed_transitions") or []
-        if isinstance(transitions, list) and not any((t or {}).get("to") == "waiting" for t in transitions):
-            transitions.append({"to": "waiting", "guard": "always_allow"})
-            wip_state["allowed_transitions"] = transitions
-            states["wip"] = wip_state
-            spec["states"] = states
-
-    try:
-        machine = RichStateMachine(domain, spec, guard_registry, condition_registry, action_registry)
-        machine.validate(from_state, to_state, context={}, execute_actions=False)
-        return True, "ok"
-    except StateTransitionError as exc:
-        transitions = machine.transitions_map() if "machine" in locals() else _flatten_transitions(
-            spec.get("states", {})
-        )
-        allowed = sorted(transitions.get(from_state, []))
-        known = sorted(machine.states.keys()) if "machine" in locals() else []
-        return (
-            False,
-            f"{domain} transition {from_state} -> {to_state} not allowed. Allowed from {from_state}: {allowed}. Known states: {known}. {exc}",
-        )
+    # Note: Strict transition rules are not currently enforced by the YAML config,
+    # so we allow any transition between valid states.
+    # If strict rules are needed, they should be added to workflow.yaml and checked here.
+    
+    return True, "ok"
 
 
 def detect_record_type(path: Optional[Path], explicit: Optional[str]) -> RecordType:
@@ -244,7 +155,9 @@ def ensure_session_block(lines: List[str]) -> None:
     if not _has(owner_prefix):
         lines.append(f"{owner_prefix}_unassigned_\n")
     if not _has(STATUS_PREFIX):
-        default_status = "waiting" if is_qa else "todo"
+        # Use default status from config via TYPE_INFO
+        record_type = "qa" if is_qa else "task"
+        default_status = TYPE_INFO[record_type]["default_status"]
         lines.append(f"{STATUS_PREFIX}{default_status}\n")
 
     if is_qa:

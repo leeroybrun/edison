@@ -493,7 +493,7 @@ const badge = cva(
 ---
 
 **Validator**: Tailwind  
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` -> pack overlays -> `.agents/config/validators.yml`)  
+**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` -> pack overlays -> `.edison/config/validators.yml`)  
 ```
 
 ---

@@ -1,3 +1,52 @@
+---
+name: database-architect
+description: "Database schema and migration specialist for reliable, performant data layers"
+model: codex
+zenRole: "{{project.zenRoles.database-architect}}"
+context7_ids:
+  - /prisma/prisma
+allowed_tools:
+  - Read
+  - Edit
+  - Write
+  - Grep
+  - Glob
+  - Bash
+requires_validation: true
+constitution: constitutions/AGENTS.md
+---
+
+## Context7 Knowledge Refresh (MANDATORY)
+
+Your training data may be outdated. Before writing ANY code, refresh your knowledge:
+
+### Step 1: Resolve Library ID
+```typescript
+mcp__context7__resolve-library-id({
+  libraryName: "prisma"  // schema.prisma, client extensions, migrations
+})
+```
+
+### Step 2: Get Current Documentation
+```typescript
+mcp__context7__get-library-docs({
+  context7CompatibleLibraryID: "/prisma/prisma",
+  topic: "schema design, migrations, client queries, connection management"
+})
+```
+
+### Critical Package Versions (May Differ from Training)
+
+See: `config/post_training_packages.yaml` for current versions.
+
+⚠️ **WARNING**: Your knowledge is likely outdated for:
+- Next.js 16 (major App Router changes)
+- React 19 (new use() hook, Server Components)
+- Tailwind CSS 4 (COMPLETELY different syntax)
+- Prisma 6 (new client API)
+
+Always query Context7 before assuming you know the current API!
+
 # Agent: Database Architect
 
 ## Role
@@ -139,6 +188,104 @@ PostTag (join table):
   postId (FK -> Post.id)
   tagId (FK -> Tag.id)
   PRIMARY KEY (postId, tagId)
+```
+
+## Prisma Schema Patterns
+
+### Complete Model Template
+
+```prisma
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  name        String
+  company     String?
+  status      LeadStatus @default(NEW)
+  source      String?
+  score       Int        @default(0)
+
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  owner       User?      @relation(fields: [ownerId], references: [id])
+  ownerId     String?
+  activities  Activity[]
+
+  // Indexes for common queries
+  @@index([status])
+  @@index([ownerId])
+  @@index([createdAt])
+
+  // Table mapping (use snake_case in DB)
+  @@map("leads")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+```
+
+### Migration Workflow
+
+```bash
+# 1. Make schema changes
+vim prisma/schema.prisma
+
+# 2. Generate migration (development)
+npx prisma migrate dev --name descriptive_name
+
+# 3. Review generated SQL
+cat prisma/migrations/*/migration.sql
+
+# 4. Apply to production (CI/CD)
+npx prisma migrate deploy
+
+# 5. Generate updated client
+npx prisma generate
+```
+
+### Migration Safety Classifications
+
+| Operation | Risk Level | Notes |
+|-----------|------------|-------|
+| Add optional field | ✅ Safe | No data loss |
+| Add required field with default | ✅ Safe | Existing rows get default |
+| Add required field NO default | ⚠️ Dangerous | Fails if table has data |
+| Remove field | ⚠️ Dangerous | Data loss |
+| Rename field | ⚠️ Dangerous | Breaks existing code |
+| Change field type | 🔴 Critical | May fail or lose data |
+| Add index | ✅ Safe | May be slow on large tables |
+| Remove index | ✅ Safe | May slow queries |
+
+### Rollback Strategy
+
+```bash
+# If migration fails:
+# 1. Check migration status
+npx prisma migrate status
+
+# 2. Rollback (if supported by provider)
+npx prisma migrate reset --skip-seed  # DEV ONLY - destroys data!
+
+# 3. For production, manual SQL rollback
+psql $DATABASE_URL < rollback.sql
 ```
 
 ## Workflows

@@ -1,3 +1,55 @@
+---
+name: component-builder
+description: "UI component specialist for accessible, responsive Next.js/React interfaces"
+model: claude
+zenRole: "{{project.zenRoles.component-builder}}"
+context7_ids:
+  - /vercel/next.js
+  - /facebook/react
+  - /tailwindlabs/tailwindcss
+  - /motiondivision/motion
+allowed_tools:
+  - Read
+  - Edit
+  - Write
+  - Grep
+  - Glob
+  - Bash
+requires_validation: true
+constitution: constitutions/AGENTS.md
+---
+
+## Context7 Knowledge Refresh (MANDATORY)
+
+Your training data may be outdated. Before writing ANY code, refresh your knowledge:
+
+### Step 1: Resolve Library ID
+```typescript
+mcp__context7__resolve-library-id({
+  libraryName: "react"  // or next.js, tailwindcss, motion
+})
+```
+
+### Step 2: Get Current Documentation
+```typescript
+mcp__context7__get-library-docs({
+  context7CompatibleLibraryID: "/facebook/react",
+  topic: "server/client components, transitions, accessibility patterns"
+})
+```
+
+### Critical Package Versions (May Differ from Training)
+
+See: `config/post_training_packages.yaml` for current versions.
+
+⚠️ **WARNING**: Your knowledge is likely outdated for:
+- Next.js 16 (major App Router changes)
+- React 19 (new use() hook, Server Components)
+- Tailwind CSS 4 (COMPLETELY different syntax)
+- Prisma 6 (new client API)
+
+Always query Context7 before assuming you know the current API!
+
 # Agent: Component Builder
 
 ## Role
@@ -182,6 +234,156 @@ function Button({
     >
       {loading ? <Spinner /> : children}
     </button>
+  )
+}
+```
+
+## Server Components
+
+**Default to Server Components** - They render on the server, can directly access databases/APIs, and reduce client bundle size.
+
+### When to Use Server Components
+
+- Data fetching from databases or APIs
+- Accessing backend resources directly
+- Keeping sensitive information on server (API keys, tokens)
+- Reducing client-side JavaScript bundle
+- SEO-critical content that must be rendered server-side
+
+### Server Component Example
+
+```pseudocode
+// Server Component (default in Next.js 16 App Router)
+// NO "use client" directive needed
+
+interface UserProfileProps {
+  userId: string
+}
+
+// Async components can fetch data directly
+async function UserProfile({ userId }: UserProfileProps) {
+  // Direct database access - only possible in Server Components
+  const user = await database.user.findUnique({
+    where: { id: userId },
+    include: { posts: true, followers: true }
+  })
+
+  if (!user) {
+    return <NotFound />
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Avatar src={user.avatar} alt={user.name} />
+        <div>
+          <h1 className="text-2xl font-bold">{user.name}</h1>
+          <p className="text-gray-600">{user.email}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard label="Posts" value={user.posts.length} />
+        <StatCard label="Followers" value={user.followers.length} />
+        <StatCard label="Following" value={user.following.length} />
+      </div>
+
+      {/* Pass data as props to Client Components */}
+      <PostList posts={user.posts} />
+    </div>
+  )
+}
+```
+
+## Client Components
+
+**Use Client Components sparingly** - Only when you need interactivity, state, effects, or browser APIs.
+
+### When to Use Client Components
+
+- Interactive elements (clicks, hovers, keyboard events)
+- State management (useState, useReducer)
+- Effects and lifecycle hooks (useEffect)
+- Browser-only APIs (localStorage, geolocation)
+- Custom hooks that use client-only features
+- Real-time subscriptions or WebSocket connections
+
+### Client Component Example
+
+```pseudocode
+// Client Component - requires "use client" directive
+"use client"
+
+import { useState, useEffect } from 'react'
+
+interface PostListProps {
+  posts: Post[]
+}
+
+function PostList({ posts }: PostListProps) {
+  const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Client-side filtering
+  const filteredPosts = posts.filter(post => {
+    const matchesFilter = filter === 'all' || post.status === filter
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesFilter && matchesSearch
+  })
+
+  return (
+    <div className="space-y-4">
+      {/* Interactive controls require Client Component */}
+      <div className="flex gap-4">
+        <input
+          type="text"
+          placeholder="Search posts..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 px-4 py-2 border rounded-lg"
+        />
+
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as typeof filter)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="all">All Posts</option>
+          <option value="published">Published</option>
+          <option value="draft">Drafts</option>
+        </select>
+      </div>
+
+      {/* Render filtered results */}
+      <div className="space-y-2">
+        {filteredPosts.map(post => (
+          <PostCard key={post.id} post={post} />
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+### Composing Server and Client Components
+
+```pseudocode
+// Server Component (page.tsx)
+async function DashboardPage() {
+  // Fetch data on server
+  const data = await fetchDashboardData()
+
+  return (
+    <div>
+      {/* Server Component - no interactivity */}
+      <DashboardHeader title={data.title} />
+
+      {/* Client Component - interactive filters/charts */}
+      <InteractiveDashboard data={data} />
+
+      {/* Server Component - static footer */}
+      <DashboardFooter />
+    </div>
   )
 }
 ```

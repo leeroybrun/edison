@@ -85,7 +85,7 @@ Task({
     - Edge case handling (Codex systematic approach)
 
     DELEGATE THIS TO CODEX via mcp__edison-zen__clink (include working_directory from SessionContext.build_zen_environment(sessionId)).
-    Check .agents/delegation/config.json for detailed rules.
+    Check .edison/delegation/config.json for detailed rules.
   `
 })
 ```

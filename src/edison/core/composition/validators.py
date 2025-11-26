@@ -7,9 +7,11 @@ and handles roster merging, normalization, and metadata enrichment.
 """
 
 from pathlib import Path
-from typing import Dict, List, Iterable
+from typing import Dict, List, Iterable, Optional
 
 from .metadata import normalize_validator_entries
+from ..paths import PathResolver
+from ..paths.project import get_project_config_dir
 
 
 def _validator_map(roster: Dict[str, List[Dict]]) -> Dict[str, Dict]:
@@ -131,6 +133,110 @@ def collect_validators(
     )
 
 
+class ValidatorRegistry:
+    """Discover and access Edison validators from configuration."""
+
+    def __init__(self, repo_root: Optional[Path] = None) -> None:
+        """Initialize validator registry with configuration discovery."""
+        self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
+
+        # For Edison's own tests, use bundled data directory instead of .edison/core
+        edison_dir = self.repo_root / ".edison"
+        core_validators_dir = edison_dir / "core" / "validators"
+        if edison_dir.exists() and core_validators_dir.exists():
+            self.core_dir = edison_dir / "core"
+            self.packs_dir = edison_dir / "packs"
+        else:
+            # Running within Edison itself - use bundled data
+            from edison.data import get_data_path
+            self.core_dir = get_data_path("")
+            self.packs_dir = get_data_path("packs")
+
+        self.project_dir = get_project_config_dir(self.repo_root)
+        self._validators_cache: Optional[Dict[str, Dict]] = None
+
+    def _load_validators(self) -> Dict[str, Dict]:
+        """Load all validators from configuration."""
+        if self._validators_cache is not None:
+            return self._validators_cache
+
+        # Load configuration
+        from edison.core.config import ConfigManager
+        cfg_mgr = ConfigManager(self.repo_root)
+        try:
+            config = cfg_mgr.load_config(validate=False)
+        except FileNotFoundError:
+            config = {}
+
+        # Get active packs
+        packs = ((config.get("packs", {}) or {}).get("active", []) or [])
+        if not isinstance(packs, list):
+            packs = []
+
+        # Collect validators
+        roster = collect_validators(
+            config,
+            repo_root=self.repo_root,
+            project_dir=self.project_dir,
+            packs_dir=self.packs_dir,
+            active_packs=packs,
+        )
+
+        # Build validator map
+        validators: Dict[str, Dict] = {}
+        for bucket in ("global", "critical", "specialized"):
+            for entry in roster.get(bucket, []) or []:
+                if isinstance(entry, dict) and entry.get("id"):
+                    validators[entry["id"]] = entry
+
+        self._validators_cache = validators
+        return validators
+
+    def exists(self, name: str) -> bool:
+        """Check if a validator exists in the registry."""
+        validators = self._load_validators()
+        return name in validators
+
+    def get(self, name: str) -> Dict:
+        """Get validator metadata by name."""
+        validators = self._load_validators()
+        if name not in validators:
+            raise ValueError(f"Validator '{name}' not found in registry")
+        return validators[name]
+
+    def get_all(self) -> Dict[str, List[Dict]]:
+        """Get all validators grouped by tier (global, critical, specialized).
+
+        Returns:
+            Dict with keys 'global', 'critical', 'specialized', each containing
+            a list of validator metadata dicts.
+        """
+        # Load configuration
+        from edison.core.config import ConfigManager
+        cfg_mgr = ConfigManager(self.repo_root)
+        try:
+            config = cfg_mgr.load_config(validate=False)
+        except FileNotFoundError:
+            config = {}
+
+        # Get active packs
+        packs = ((config.get("packs", {}) or {}).get("active", []) or [])
+        if not isinstance(packs, list):
+            packs = []
+
+        # Collect validators grouped by tier
+        roster = collect_validators(
+            config,
+            repo_root=self.repo_root,
+            project_dir=self.project_dir,
+            packs_dir=self.packs_dir,
+            active_packs=packs,
+        )
+
+        return roster
+
+
 __all__ = [
     "collect_validators",
+    "ValidatorRegistry",
 ]

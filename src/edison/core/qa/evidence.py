@@ -56,18 +56,19 @@ class EvidenceManager:
         >>> bundle = mgr.read_bundle_summary()
     """
 
-    def __init__(self, task_id: str):
+    def __init__(self, task_id: str, project_root: Optional[Path] = None):
         """Initialize evidence manager for a task.
 
         Args:
             task_id: Task ID (e.g., "task-100" or "100")
+            project_root: Optional project root; defaults to PathResolver resolution
 
         Examples:
             >>> mgr = EvidenceManager("task-100")
             >>> assert mgr.task_id == "task-100"
         """
         self.task_id = task_id
-        root = PathResolver.resolve_project_root()
+        root = project_root or PathResolver.resolve_project_root()
         mgmt_paths = get_management_paths(root)
         self.base_dir = mgmt_paths.get_qa_root() / "validation-evidence" / task_id
 
@@ -461,7 +462,7 @@ class EvidenceManager:
             round_dir = self.base_dir / f"round-{round}"
             return round_dir if round_dir.exists() else None
         else:
-            return self.get_latest_round_dir()
+            return self._get_latest_round_dir()
 
 
 def _task_evidence_root(task_id: str) -> Path:

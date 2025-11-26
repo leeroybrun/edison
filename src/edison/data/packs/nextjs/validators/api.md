@@ -677,7 +677,7 @@ GET    /api/v1/dashboard/lead?action=delete # ❌ Action in query
 ---
 
 **Validator**: API
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.agents/config/validators.yml`)
+**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
 ```
 
 ---

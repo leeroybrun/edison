@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ..paths import EdisonPathError, PathResolver
 from ..paths.management import get_management_paths
 from edison.core.utils.subprocess import run_with_timeout
+from edison.data import read_yaml
 
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
@@ -43,6 +44,73 @@ class RulesEngine:
 
         # Lazy cache for context-aware rule lookup
         self._all_rules_cache: Optional[List[Rule]] = None
+
+    # ------------------------------------------------------------------
+    # Role-based rule query API (Phase T-005)
+    # ------------------------------------------------------------------
+    @classmethod
+    def get_all(cls) -> List[Dict[str, Any]]:
+        """
+        Load all rules from the bundled registry.
+
+        Returns:
+            List of rule dictionaries from the registry
+        """
+        registry_data = read_yaml("rules", "registry.yml")
+        rules = registry_data.get("rules", [])
+        return rules if isinstance(rules, list) else []
+
+    @classmethod
+    def get_rules_for_role(cls, role: str) -> List[Dict[str, Any]]:
+        """
+        Extract rules that apply to a specific role.
+
+        Args:
+            role: One of 'orchestrator', 'agent', 'validator'
+
+        Returns:
+            List of rule dictionaries where applies_to includes the role
+
+        Raises:
+            ValueError: If role is not one of the valid options
+        """
+        if role not in ('orchestrator', 'agent', 'validator'):
+            raise ValueError(f"Invalid role: {role}. Must be orchestrator, agent, or validator")
+
+        all_rules = cls.get_all()
+        return [
+            rule for rule in all_rules
+            if role in rule.get('applies_to', [])
+        ]
+
+    @classmethod
+    def filter_rules(cls, context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Filter rules by context metadata (role, category, etc.).
+
+        This classmethod API provides simplified filtering of rules from the
+        bundled registry, complementing the instance method get_rules_for_context
+        which works with Rule objects for runtime enforcement.
+
+        Args:
+            context: Dictionary with optional keys:
+                - role: One of 'orchestrator', 'agent', 'validator'
+                - category: Rule category (e.g., 'validation', 'delegation')
+
+        Returns:
+            List of rule dictionaries matching the context filters
+        """
+        rules = cls.get_all()
+
+        # Filter by role if specified
+        if 'role' in context:
+            rules = [r for r in rules if context['role'] in r.get('applies_to', [])]
+
+        # Filter by category if specified
+        if 'category' in context:
+            rules = [r for r in rules if r.get('category') == context['category']]
+
+        return rules
 
     def _parse_rules(self, rules_dict: Dict[str, List[Dict]]) -> Dict[str, List[Rule]]:
         """Parse rules dictionary into Rule objects."""

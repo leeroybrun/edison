@@ -1,8 +1,7 @@
-"""Session discovery utilities - find session.json across different layouts.
+"""Session discovery utilities - find session.json files.
 
-This module provides utilities to locate session.json files across both:
-- New nested layout: {sessions_root}/{state}/{session_id}/session.json
-- Legacy flat layout: {sessions_root}/{state}/{session_id}.json
+This module provides utilities to locate session.json files using:
+- Hierarchical layout: {sessions_root}/{state}/{session_id}/session.json
 
 All configuration (states, state mappings) comes from SessionConfig.
 NO HARDCODED VALUES.
@@ -36,9 +35,8 @@ def find_session_json_candidates(
 ) -> List[Path]:
     """Find all possible session.json paths for a session ID.
 
-    Searches across both layout styles:
-    - New nested layout: {sessions_root}/{state}/{session_id}/session.json
-    - Legacy flat layout: {sessions_root}/{state}/{session_id}.json
+    Searches using the hierarchical layout:
+    - {sessions_root}/{state}/{session_id}/session.json
 
     Args:
         session_id: The session identifier (will be sanitized)
@@ -90,16 +88,6 @@ def find_session_json_candidates(
         # New-style directory layout: {root}/{state_dir}/{sid}/session.json
         new_layout_dir = sessions_root / dir_name / sid
         candidates.append(new_layout_dir / "session.json")
-
-        # Legacy flat layout: {root}/{state_dir}/{sid}.json
-        legacy_flat_path = sessions_root / dir_name / f"{sid}.json"
-        candidates.append(legacy_flat_path)
-
-    # Ensure explicit legacy wip flat path is always considered
-    # (backward compatibility for sessions that might only exist there)
-    legacy_wip = sessions_root / "wip" / f"{sid}.json"
-    if legacy_wip not in candidates:
-        candidates.append(legacy_wip)
 
     return candidates
 

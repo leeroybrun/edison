@@ -8,14 +8,14 @@ import pytest
 
 def _call_run_cli(main, *args: Any, **kwargs: Any) -> int:
     """
-    Helper to call cli_utils.run_cli without exiting the interpreter.
+    Helper to call run_cli without exiting the interpreter.
 
     The helper simply forwards to run_cli and returns the exit code so tests
     can assert on stdout/stderr and codes without invoking sys.exit().
     """
-    from edison.core import cli_utils  # type: ignore[attr-defined]
+    from edison.core.utils.cli_errors import run_cli
 
-    return cli_utils.run_cli(main, *args, **kwargs)  # type: ignore[attr-defined]
+    return run_cli(main, *args, **kwargs)
 
 
 def test_run_cli_success_passthrough(capsys: pytest.CaptureFixture[str]) -> None:

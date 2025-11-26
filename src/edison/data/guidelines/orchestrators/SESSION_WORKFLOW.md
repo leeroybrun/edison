@@ -57,7 +57,7 @@ Session state names map to on-disk directories as follows:
 
 - [ ] Session record in `.project/sessions/wip/` (active) is current (Owner, Last Active, task & QA scope, Activity Log).
 - [ ] Every claimed task has a matching QA brief (in `qa/waiting|todo|wip|done`).
-- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`.agents/implementation/OUTPUT_FORMAT.md`).
+- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`.edison/implementation/OUTPUT_FORMAT.md`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
 - [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
@@ -65,7 +65,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `tasks/wip/` and QA in `qa/waiting/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow `.agents/session-workflow.json`; use guards (`edison tasks ready`, `edison validators bundle`) not manual moves.
+- [ ] State transitions follow `.edison/session-workflow.json`; use guards (`edison tasks ready`, `edison validators bundle`) not manual moves.
 - [ ] Auto-start ran (`edison session start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
@@ -99,20 +99,20 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 ### Hierarchy & State Machine
 
-- Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.agents/session-workflow.json`; `edison session status <id>` renders the Markdown view for humans/LLMs.
+- Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.edison/session-workflow.json`; `edison session status <id>` renders the Markdown view for humans/LLMs.
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY START -->
-- Use `.agents/scripts/tasks/new --parent <id>` or `.agents/scripts/tasks/link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `.agents/scripts/tasks/link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
+- Use `.edison/scripts/tasks/new --parent <id>` or `.edison/scripts/tasks/link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `.edison/scripts/tasks/link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY END -->
 - Before promoting a task to `done/`, run `edison tasks ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
 - Before invoking validators, run `edison validators bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
 - Use `scripts/me whoami|tasks|bundle` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED START -->
-> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison tasks status`, `edison qa promote`, `.agents/scripts/qa/round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
+> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison tasks status`, `edison qa promote`, `.edison/scripts/qa/round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED END -->
 
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES START -->
-All task/QA moves MUST go through guarded CLIs (`edison tasks status`, `edison qa promote`, `.agents/scripts/qa/round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
+All task/QA moves MUST go through guarded CLIs (`edison tasks status`, `edison qa promote`, `.edison/scripts/qa/round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES END -->
 
 <!-- RULE: RULE.QA.PAIR_ON_WIP START -->
@@ -153,12 +153,12 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `.agents/delegation/config.json`:**
+**Delegate according to `.edison/delegation/config.json`:**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
    # Example: Delegating implementation to a specialized agent role
-   <orchestrator-cli> --role <agent-name> --task <task-id> --prompt-source .agents/implementation/IMPLEMENTER_WORKFLOW.md
+   <orchestrator-cli> --role <agent-name> --task <task-id> --prompt-source .edison/implementation/IMPLEMENTER_WORKFLOW.md
    ```
 
 2. **Sub-agent will handle:**
@@ -186,7 +186,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 **If you must implement yourself:**
 
-1. **YOU must follow `.agents/implementation/IMPLEMENTER_WORKFLOW.md`:**
+1. **YOU must follow `.edison/implementation/IMPLEMENTER_WORKFLOW.md`:**
    - Call `scripts/track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
    - Call `scripts/track complete`
@@ -199,7 +199,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 2. **Spawn follow-up tasks** (if any discovered):
    - Create in `tasks/todo/` with paired QA in `qa/waiting/`
-   - Link to parent via `.agents/scripts/tasks/link`
+   - Link to parent via `.edison/scripts/tasks/link`
    - Decide if they belong in current session (claim now) or future session (leave in todo/)
 
 3. **Update session Activity Log** with implementation milestone.
@@ -233,7 +233,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 > **💡 CRITICAL WORKFLOW AID:** After every action (claim, delegate, status change), run `edison session next <session-id>` to see the next steps and stay "on rails." This enhanced orchestration helper:
 > - Shows ALL applicable rules BEFORE actions (proactive, not just at enforcement)
 > - Displays complete validator roster with model bindings (prevents forgetting validators or using wrong models)
-> - Shows delegation suggestions with detailed reasoning from `.agents/delegation/config.json`
+> - Shows delegation suggestions with detailed reasoning from `.edison/delegation/config.json`
 > - Lists related tasks (parent/child/sibling) for context
 > - Provides decision points (concurrency cap, wave batching, optional validators)
 > - Returns precise commands with rule references so you never miss a step
@@ -377,7 +377,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 - Triggers: Framework file patterns from pack configuration
 - Focus: Framework patterns, routing, data loading, caching
 
-**Note**: Specific models, blocking status, and trigger patterns are defined in `.agents/_generated/orchestrator-manifest.json` based on active packs.
+**Note**: Specific models, blocking status, and trigger patterns are defined in `.edison/_generated/orchestrator-manifest.json` based on active packs.
 
 **Each validator will handle:**
 - ✅ Calling `scripts/track start` (their mandatory first step)
@@ -502,13 +502,13 @@ scripts/track stale
 ### Linking semantics for follow-ups (fail-closed)
 - Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done` or `validated`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
-- The readiness gate runs `.agents/scripts/tasks/ensure-followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
+- The readiness gate runs `.edison/scripts/tasks/ensure-followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
 <!-- RULE: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING END -->
 
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST START -->
 ### Duplicate prevention before creation
 - Before creating any follow-up, search existing tasks by slug/title similarity. If a near-duplicate (≥0.82) exists, do NOT create a new task—link/record the existing ID where appropriate.
-- The helper `.agents/scripts/tasks/ensure-followups` performs this check automatically.
+- The helper `.edison/scripts/tasks/ensure-followups` performs this check automatically.
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST END -->
 
 ### Parent Requeue (auto‑suggested)
@@ -536,9 +536,9 @@ scripts/track stale
 ---
 
 **References**
-- `.agents/AGENTS.md` – orchestration policies & delegation guardrails
-- `.agents/guidelines/VALIDATION.md` – validator gate specifics
-- `.agents/guidelines/TDD.md` – RED/GREEN/REFACTOR protocol
-- `.agents/guidelines/HONEST_STATUS.md` – directory semantics + reporting rules
-- `.agents/delegation/config.json` – sub-agent decision tables
-- `.agents/validators/config.json` – validator triggers + block/allow list
+- `.edison/AGENTS.md` – orchestration policies & delegation guardrails
+- `.edison/guidelines/VALIDATION.md` – validator gate specifics
+- `.edison/guidelines/TDD.md` – RED/GREEN/REFACTOR protocol
+- `.edison/guidelines/HONEST_STATUS.md` – directory semantics + reporting rules
+- `.edison/delegation/config.json` – sub-agent decision tables
+- `.edison/validators/config.json` – validator triggers + block/allow list

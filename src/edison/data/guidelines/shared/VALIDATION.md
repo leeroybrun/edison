@@ -5,7 +5,7 @@
 Run after implementation is complete and before a task can advance beyond `done/`. QA briefs are the canonical validation record.
 
 ## Validation Checklist (fail-closed)
-- Load the validator config via ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.agents/config/validators.yml`) for triggers, blocking rules, and `postTrainingPackages` (Context7 list).
+- Load the validator config via ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`) for triggers, blocking rules, and `postTrainingPackages` (Context7 list).
 - Automation passing for the round (type-check, lint, test, build or project equivalent).
 - QA brief exists in `qa/{waiting|todo|wip}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).

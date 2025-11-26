@@ -1,0 +1,11 @@
+zen:
+  # MCP client configuration for edison-zen
+  mcp:
+    config_file: ".mcp.json"
+    server_id: "edison-zen"
+    command: "edison"
+    args:
+      - "zen"
+      - "start-server"
+    env:
+      ZEN_WORKING_DIR: "{PROJECT_ROOT}"

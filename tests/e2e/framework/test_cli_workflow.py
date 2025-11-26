@@ -12,7 +12,6 @@ import textwrap
 from pathlib import Path
 from typing import Iterable, Optional
 import unittest
-from unittest import mock
 
 def get_repo_root() -> Path:
     current = Path(__file__).resolve()
@@ -31,22 +30,45 @@ from edison.core.utils.subprocess import run_with_timeout
 
 
 class DefaultOwnerTests(unittest.TestCase):
-    def test_prefers_highest_llm_process_in_chain(self) -> None:
-        chain = [(3210, "claude-helper"), (4321, "claude"), (1001, "zsh")]
-        with mock.patch.object(task, "_calling_process_chain", return_value=chain):
-            owner = task.default_owner()
-        self.assertEqual(owner, "claude-pid-4321")
+    def test_uses_detected_process_name(self) -> None:
+        def fake_finder() -> tuple[str, int]:
+            return ("claude", 4321)
+            
+        owner = task.default_owner(process_finder=fake_finder)
+        self.assertEqual(owner, "claude")
 
-    def test_falls_back_to_first_non_llm_process(self) -> None:
-        chain = [(2222, "cursor"), (1111, "wezterm")]
-        with mock.patch.object(task, "_calling_process_chain", return_value=chain):
-            owner = task.default_owner()
-        self.assertEqual(owner, "cursor-pid-2222")
+    def test_falls_back_to_env_or_user_when_detection_fails(self) -> None:
+        def failing_finder() -> tuple[str, int]:
+            raise RuntimeError("No process found")
+            
+        # Ensure we don't accidentally pick up the real env var if set during test
+        old_env = os.environ.get("AGENTS_OWNER")
+        if "AGENTS_OWNER" in os.environ:
+            del os.environ["AGENTS_OWNER"]
+            
+        try:
+            import getpass
+            expected_user = getpass.getuser()
+            owner = task.default_owner(process_finder=failing_finder)
+            self.assertEqual(owner, expected_user)
+        finally:
+            if old_env is not None:
+                os.environ["AGENTS_OWNER"] = old_env
 
-    def test_returns_none_when_no_calling_process_detected(self) -> None:
-        with mock.patch.object(task, "_calling_process_chain", return_value=[]):
-            owner = task.default_owner()
-        self.assertIsNone(owner)
+    def test_prefers_env_var_over_user_fallback(self) -> None:
+        def failing_finder() -> tuple[str, int]:
+            raise RuntimeError("No process found")
+
+        old_env = os.environ.get("AGENTS_OWNER")
+        os.environ["AGENTS_OWNER"] = "env-defined-owner"
+        try:
+            owner = task.default_owner(process_finder=failing_finder)
+            self.assertEqual(owner, "env-defined-owner")
+        finally:
+            if old_env:
+                os.environ["AGENTS_OWNER"] = old_env
+            else:
+                del os.environ["AGENTS_OWNER"]
 
 
 class ScriptWorkflowTests(unittest.TestCase):
