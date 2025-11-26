@@ -7,9 +7,9 @@ import threading
 
 import pytest
 
-import edison.core.io.utils as io_utils
-from edison.core.io.locking import LockTimeoutError, acquire_file_lock
-from edison.core.io.utils import read_json_safe, utc_timestamp, write_json_safe
+import edison.core.file_io.utils as io_utils
+from edison.core.file_io.locking import LockTimeoutError, acquire_file_lock
+from edison.core.file_io.utils import read_json_safe, utc_timestamp, write_json_safe
 
 
 def test_write_json_safe_roundtrip(tmp_path: Path) -> None:

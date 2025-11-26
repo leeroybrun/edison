@@ -179,15 +179,7 @@ def _cache_dir() -> Path:
     """Get composed artifacts cache directory (project-scoped)."""
     root = _repo_root()
     proj_dir = get_project_config_dir(root)
-    old = root / ".edison" / "core" / ".cache" / "composed"
-    if old.exists():
-        rel = old.relative_to(root)
-        raise ComposeError(
-            f"Legacy cache path detected: {rel}. "
-            "Edison no longer writes or reads from this location. "
-            f"Move artifacts to {proj_dir.name}/.cache/composed and delete the old directory."
-        )
-    return proj_dir / ".cache" / "composed"
+    return proj_dir / "_generated" / "validators"
 
 
 def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: str) -> Path:

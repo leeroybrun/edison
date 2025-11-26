@@ -15,7 +15,7 @@ from edison.core.qa.evidence import (
 )
 from edison.core.session.next.status import infer_task_status, infer_qa_status
 from edison.core.session.next.utils import project_cfg_dir
-from edison.core.io.utils import read_json_safe as io_read_json_safe
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe
 from edison.core.qa import evidence as qa_evidence
 from edison.core import task
 

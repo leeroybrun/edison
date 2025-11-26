@@ -7,10 +7,16 @@ Fixtures:
 """
 from __future__ import annotations
 
+import sys
 import pytest
 from pathlib import Path
 
-from tests.e2e.helpers.test_env import TestProjectDir, TestGitRepo
+# Add tests directory to path so tests can import from helpers.*
+TESTS_ROOT = Path(__file__).resolve().parent.parent
+if str(TESTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TESTS_ROOT))
+
+from helpers.test_env import TestProjectDir, TestGitRepo
 from edison.core.utils.subprocess import run_with_timeout
 
 

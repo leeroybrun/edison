@@ -54,7 +54,7 @@ def main(args: argparse.Namespace) -> int:
     """Repair session - delegates to core library."""
     from edison.core.session.store import normalize_session_id, load_session, save_session
     from edison.core.session.worktree import worktree_health_check
-    from edison.core.io.utils import utc_timestamp
+    from edison.core.file_io.utils import utc_timestamp
 
     try:
         session_id = normalize_session_id(args.session_id)

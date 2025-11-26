@@ -23,8 +23,8 @@ from edison.core import task
 from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
 from edison.core.session import store as session_store
-from edison.core.io.locking import acquire_file_lock, LockTimeoutError
-from edison.core.io.utils import read_json_safe as io_read_json_safe  # type: ignore  # pylint: disable=wrong-import-position
+from edison.core.file_io.locking import acquire_file_lock, LockTimeoutError
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe  # type: ignore  # pylint: disable=wrong-import-position
 
 
 def _bootstrap_minimal_project(tmp_root: Path) -> None:

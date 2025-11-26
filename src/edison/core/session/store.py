@@ -12,8 +12,8 @@ from datetime import datetime, timezone
 from ..paths.resolver import PathResolver
 from ..legacy_guard import enforce_no_legacy_project_root
 from .. import task
-from ..io.locking import acquire_file_lock
-from ..io.utils import (
+from ..file_io.locking import acquire_file_lock
+from ..file_io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
     utc_timestamp as io_utc_timestamp,

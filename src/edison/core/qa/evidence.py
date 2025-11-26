@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from ..paths import PathResolver, EdisonPathError
 from ..paths.management import get_management_paths
-from ..io.utils import read_json_safe, write_json_safe
+from ..file_io.utils import read_json_safe, write_json_safe
 
 
 class EvidenceError(Exception):

@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.helpers.assertions import assert_file_exists, assert_file_contains
-from tests.e2e.helpers.command_runner import (
+from helpers.assertions import assert_file_exists, assert_file_contains
+from helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,
@@ -24,7 +24,7 @@ from tests.e2e.helpers.command_runner import (
     assert_error_contains,
     assert_json_output,
 )
-from tests.e2e.helpers.test_env import TestProjectDir
+from helpers.test_env import TestProjectDir
 
 
 @pytest.mark.golden_path

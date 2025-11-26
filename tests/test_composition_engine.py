@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import re
+import shutil
 
 import sys
 
@@ -70,10 +71,28 @@ def test_dry_linter():
     assert report["violations"], "Expected DRY violations"
 
 
-def test_compose_integration_smoke():
+def test_compose_integration_smoke(isolated_project_env: Path):
+    # Use isolated environment to avoid polluting Edison repo
+    root = isolated_project_env
+
+    # Copy validators directory structure to isolated environment
+    # isolated_project_env creates .edison/core, so we should copy validators there
+    src_validators = ROOT / "src" / "edison" / "data" / "validators"
+    dst_validators = root / ".edison" / "core" / "validators"
+    if src_validators.exists():
+        dst_validators.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src_validators, dst_validators, dirs_exist_ok=True)
+
     # Compose using real core + no packs to avoid external deps
-    codex_core = ROOT / "src" / "edison" / "data" / "validators" / "global" / "codex-core.md"
+    codex_core = dst_validators / "global" / "codex-core.md"
     assert codex_core.exists(), "codex-core.md must exist"
+
+    # Set repo root override for composition modules to use isolated env
+    import edison.core.composition.includes as includes
+    import edison.core.composition.composers as composers
+    includes._REPO_ROOT_OVERRIDE = root
+    composers._REPO_ROOT_OVERRIDE = root
+
     res = compose_prompt(
         validator_id="codex-global",
         core_base=codex_core,
@@ -83,3 +102,6 @@ def test_compose_integration_smoke():
     )
     assert res.cache_path and res.cache_path.exists()
     assert "Codex Global Validator" in res.text
+
+    # Verify cache is in isolated environment, not Edison repo
+    assert root in res.cache_path.parents, f"Cache path {res.cache_path} not in isolated env {root}"

@@ -53,7 +53,6 @@ def infer_validator_metadata(
 
     candidate_paths = [
         project_dir / "_generated" / "validators" / f"{validator_id}.md",
-        project_dir / ".cache" / "composed" / f"{validator_id}.md",
         project_dir / "validators" / "specialized" / f"{validator_id}.md",
         repo_root / ".edison" / "core" / "validators" / "specialized" / f"{validator_id}.md",
     ]

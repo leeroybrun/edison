@@ -24,7 +24,6 @@ composition:
     # Search paths for validator definitions (ordered by priority)
     searchPaths:
       - "{project_dir}/_generated/validators/{validator_id}.md"
-      - "{project_dir}/.cache/composed/{validator_id}.md"
       - "{project_dir}/validators/specialized/{validator_id}.md"
       - "{repo_root}/.edison/core/validators/specialized/{validator_id}.md"
       - "{packs_dir}/{pack}/validators/{validator_id}.md"

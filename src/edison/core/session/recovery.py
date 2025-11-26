@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..paths.resolver import PathResolver
 from .. import task
-from ..io.utils import utc_timestamp as io_utc_timestamp
+from ..file_io.utils import utc_timestamp as io_utc_timestamp
 from .store import (
     load_session,
     save_session,
@@ -278,7 +278,7 @@ def detect_incomplete_transactions() -> List[Dict[str, Any]]:
     - meta: Full transaction metadata
     """
     from .transaction import _get_tx_root, TX_VALIDATION_SUBDIR
-    from ..io.utils import read_json_safe as io_read_json_safe
+    from ..file_io.utils import read_json_safe as io_read_json_safe
 
     tx_root = _get_tx_root()
     if not tx_root.exists():
@@ -343,7 +343,7 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
     Returns the number of recovered transactions.
     """
     from .transaction import _tx_dir, _find_tx_session, finalize_tx, abort_tx, _get_tx_root, TX_VALIDATION_SUBDIR
-    from ..io.utils import read_json_safe as io_read_json_safe
+    from ..file_io.utils import read_json_safe as io_read_json_safe
 
     sid = sanitize_session_id(session_id)
     # Validation transactions are stored in <tx_root>/<sid>/validation/<tx_id>
@@ -404,8 +404,8 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
 
         # 2. Mark as aborted in meta.json (validation transactions store metadata differently)
         try:
-            from ..io.locking import acquire_file_lock
-            from ..io.utils import write_json_safe as io_write_json_safe
+            from ..file_io.locking import acquire_file_lock
+            from ..file_io.utils import write_json_safe as io_write_json_safe
 
             with acquire_file_lock(meta_path):
                 meta["abortedAt"] = io_utc_timestamp()

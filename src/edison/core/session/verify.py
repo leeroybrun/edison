@@ -10,7 +10,7 @@ from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
 from edison.core.session.context import SessionContext
 from edison.core import task  # type: ignore
-from edison.core.io.utils import read_json_safe as io_read_json_safe, utc_timestamp as io_utc_timestamp 
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe, utc_timestamp as io_utc_timestamp 
 from edison.core.qa import evidence as qa_evidence 
 from edison.core.utils import cli 
 def _latest_round_dir(task_id: str) -> Path | None:

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from ..io.utils import write_json_safe as io_write_json_safe, read_json_safe as io_read_json_safe
+from ..file_io.utils import write_json_safe as io_write_json_safe, read_json_safe as io_read_json_safe
 from . import config as qa_config
 from . import evidence
 

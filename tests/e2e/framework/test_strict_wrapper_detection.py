@@ -3,9 +3,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Add tests directory to path so tests can import from helpers.*
+TESTS_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(TESTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TESTS_ROOT))
 
-from e2e.helpers.test_env import TestProjectDir
-from e2e.helpers.command_runner import (
+from helpers.test_env import TestProjectDir
+from helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_output_contains,

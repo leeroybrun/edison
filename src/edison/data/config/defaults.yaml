@@ -55,7 +55,7 @@ validation:
     maintainability: 15
     performance: 10
   cache:
-    directory: "{PROJECT_CONFIG_DIR}/.cache/composed"
+    directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
   roster:
     global:
       - id: codex-global
@@ -64,7 +64,7 @@ validation:
         interface: clink
         role: codereviewer
         zenRole: validator-codex-global
-        specFile: .cache/composed/codex-global.md
+        specFile: _generated/validators/codex-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1
@@ -79,7 +79,7 @@ validation:
         interface: Task
         role: code-reviewer
         zenRole: validator-claude-global
-        specFile: .cache/composed/claude-global.md
+        specFile: _generated/validators/claude-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1
@@ -94,7 +94,7 @@ validation:
         interface: clink
         role: codereviewer
         zenRole: validator-gemini-global
-        specFile: .cache/composed/gemini-global.md
+        specFile: _generated/validators/gemini-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1

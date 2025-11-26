@@ -16,7 +16,7 @@ from ..paths import (
     CONTINUATION_PREFIX,
     safe_relative,
 )
-from ..io import (
+from ..file_io import (
     create_task,
     create_qa_brief,
     claim_task,

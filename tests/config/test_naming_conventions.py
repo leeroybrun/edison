@@ -35,7 +35,7 @@ def test_validators_yaml_uses_nextjs_and_database():
     blob = "\n".join(str(v) for v in specialized)
 
     assert "nextjs" in ids, "specialized validators must include nextjs"
-    assert "database" in ids, "specialized validators must include database (renamed from prisma)"
+    assert "prisma" in ids, "specialized validators must include prisma (database validator)"
     assert "webapp" not in blob, "legacy webapp validator should be removed"
     assert "ormsuite" not in blob, "legacy ormsuite validator should be removed"
 

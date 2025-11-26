@@ -15,6 +15,7 @@ try:  # Optional dependency; fallback rendering when missing
 except Exception:  # pragma: no cover - handled at runtime
     Template = None  # type: ignore[assignment]
 
+from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
 from edison.core.paths.resolver import PathResolver
 from .discovery import SetupDiscovery
 

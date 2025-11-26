@@ -17,13 +17,13 @@ import json
 import pytest
 from pathlib import Path
 
-from tests.e2e.helpers import TestProjectDir
-from tests.e2e.helpers.command_runner import (
+from helpers import TestProjectDir
+from helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_output_contains,
 )
-from tests.e2e.helpers.assertions import assert_file_exists
+from helpers.assertions import assert_file_exists
 
 
 @pytest.mark.session

@@ -12,19 +12,15 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable
 
 try:
     import yaml  # type: ignore
 except Exception as err:  # pragma: no cover - surfaced in tests
     raise RuntimeError("PyYAML is required for project path resolution") from err
 
-from .management import get_management_paths
-from .resolver import PathResolver
-
 # Primary preference remains .edison to align with current convention.
 DEFAULT_PROJECT_CONFIG_PRIMARY = ".edison"
-DEFAULT_PROJECT_CONFIG_FALLBACK = ".agents"
 
 
 def _load_project_dir_from_yaml(path: Path) -> str | None:
@@ -48,8 +44,8 @@ def _load_project_dir_from_yaml(path: Path) -> str | None:
 def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
     """Resolve project config dir using configuration precedence.
 
-    Precedence: environment override → project overlays (.agents, then .edison)
-    → core defaults. Falls back to ``DEFAULT_PROJECT_CONFIG_FALLBACK`` when no
+    Precedence: environment override → project overlays (.edison)
+    → core defaults. Falls back to ``DEFAULT_PROJECT_CONFIG_PRIMARY`` when no
     config provides a value.
     """
 
@@ -69,81 +65,35 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
         found = _load_project_dir_from_yaml(path)
         value = found or value
 
-    # Process lower-precedence (.edison) before higher-precedence (.agents)
-    for config_dir in (repo_root / ".edison" / "config", repo_root / ".agents" / "config"):
-        if not config_dir.exists():
-            continue
+    # Process project overrides (.edison)
+    config_dir = repo_root / ".edison" / "config"
+    if config_dir.exists():
         yaml_files = sorted(config_dir.glob("*.yml")) + sorted(config_dir.glob("*.yaml"))
         for yaml_path in yaml_files:
             found = _load_project_dir_from_yaml(yaml_path)
             if found is not None:
                 value = found
 
-    return value or DEFAULT_PROJECT_CONFIG_FALLBACK
-
-
-def _looks_like_project_config_dir(path: Path) -> bool:
-    """Heuristic to detect a project config directory without hardcoded names."""
-
-    if not path.is_dir():
-        return False
-
-    # Ignore repository plumbing and framework core checkouts
-    try:
-        management_dir = get_management_paths(PathResolver.resolve_project_root()).get_management_root().name
-    except Exception:
-        management_dir = ".project"
-
-    if path.name in {".git", management_dir}:
-        return False
-
-    if path.name == ".edison" and (path / "core").exists():
-        # Framework core, not project-level config
-        return False
-
-    # Signals of a project config dir: config folder or config.yml overlay
-    if (path / "config").exists() or (path / "config.yml").exists():
-        return True
-
-    # Generated artifacts or validators/guidelines folders also indicate a
-    # project config surface.
-    markers = ["_generated", "validators", "guidelines", "agents"]
-    return any((path / marker).exists() for marker in markers)
+    return value or DEFAULT_PROJECT_CONFIG_PRIMARY
 
 
 def get_project_config_dir(
     repo_root: Path, candidates: Iterable[str] | None = None, create: bool = True
 ) -> Path:
-    """Return the project config directory using configuration (preferred).
+    """Return the project config directory using configuration.
 
     Args:
         repo_root: Repository root path.
-        candidates: Optional override for preference order (legacy fallback).
+        candidates: Ignored (legacy compatibility).
         create: If True, create the resolved directory when it does not exist.
 
     Returns:
-        Path: Project configuration directory resolved via config or fallbacks.
+        Path: Project configuration directory resolved via config.
     """
 
-    project_dir_name = _resolve_project_dir_from_configs(repo_root)
+    project_dir_name = _resolve_project_dir_from_configs(repo_root) or DEFAULT_PROJECT_CONFIG_PRIMARY
 
     project_dir = repo_root / project_dir_name
-    if project_dir.exists():
-        return project_dir
-
-    # Legacy heuristic fallback for callers that supply candidate preference
-    preference: Sequence[str] = tuple(candidates) if candidates is not None else (DEFAULT_PROJECT_CONFIG_PRIMARY,)
-    for name in preference:
-        candidate = repo_root / name
-        if candidate.exists():
-            return candidate
-
-    # Dynamic detection remains a last resort for non-configured repositories
-    for entry in sorted(repo_root.iterdir()):
-        if not entry.name.startswith("."):
-            continue
-        if _looks_like_project_config_dir(entry):
-            return entry
 
     if create:
         project_dir.mkdir(parents=True, exist_ok=True)

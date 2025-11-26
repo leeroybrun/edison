@@ -10,11 +10,15 @@ import sys
 
 import pytest
 
-# Resolve repository root
+# Resolve repository root and tests directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
+TESTS_ROOT = Path(__file__).resolve().parent.parent
 
-# Import test helpers from e2e
-from tests.e2e.helpers.test_env import TestProjectDir
+# Add tests directory to path so tests can import from helpers.*
+if str(TESTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TESTS_ROOT))
+
+from helpers.test_env import TestProjectDir
 
 
 @pytest.fixture

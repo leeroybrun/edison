@@ -184,7 +184,7 @@ class ConfigManager:
         """Load JSON file safely (returns {} when missing/empty)."""
         if not path.exists():
             return {}
-        from .io.utils import read_json_safe as io_read_json_safe
+        from .file_io.utils import read_json_safe as io_read_json_safe
         data = io_read_json_safe(path)
         return data or {}
 

@@ -31,7 +31,7 @@ from edison.core.session.context import SessionContext
 from edison.core import task
 from edison.core.qa import validator as qa_validator
 from edison.core.qa import evidence as qa_evidence
-from edison.core.io.utils import read_json_safe as io_read_json_safe
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe
 
 from edison.core.session.next.utils import (
     project_cfg_dir,

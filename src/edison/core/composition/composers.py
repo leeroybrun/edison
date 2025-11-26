@@ -192,8 +192,13 @@ class CompositionEngine:
         from ..config import ConfigManager  # local import to avoid cycles at import time
 
         self.repo_root = repo_root or _repo_root()
+        # Ensure all composition helpers resolve paths relative to this engine's repo.
         global _REPO_ROOT_OVERRIDE
         _REPO_ROOT_OVERRIDE = self.repo_root
+        # Keep the source of truth inside the includes module as well.
+        from . import includes as _includes  # local import to avoid cycles
+
+        _includes._REPO_ROOT_OVERRIDE = self.repo_root
         if config is None:
             cfg_mgr = ConfigManager(self.repo_root)
             self.config = cfg_mgr.load_config(validate=False)
@@ -211,16 +216,7 @@ class CompositionEngine:
             self.core_dir = get_data_path("")
             self.packs_dir = get_data_path("packs")
 
-        default_project_dir = get_project_config_dir(self.repo_root)
-        alt_project_dir = self.repo_root / ".agents"
-        if (
-            (self.repo_root / ".edison" / "core").exists()
-            and not (default_project_dir / "config").exists()
-            and alt_project_dir.exists()
-        ):
-            self.project_dir = alt_project_dir
-        else:
-            self.project_dir = default_project_dir
+        self.project_dir = get_project_config_dir(self.repo_root)
 
     def _active_packs(self) -> List[str]:
         packs = ((self.config or {}).get("packs", {}) or {}).get("active", [])

@@ -161,7 +161,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
 def _load_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
-    from ..io.utils import read_json_safe as io_read_json_safe
+    from ..file_io.utils import read_json_safe as io_read_json_safe
     return io_read_json_safe(path) or {}
 
 
@@ -453,7 +453,7 @@ def validate_pack(pack_path: Path, schema_path: Optional[Path] = None) -> Valida
         schema_path = _repo_root() / ".edison" / "core" / "schemas" / "pack.schema.json"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
-        from ..io.utils import read_json_safe as _io_read_json_safe
+        from ..file_io.utils import read_json_safe as _io_read_json_safe
         schema = _io_read_json_safe(schema_path)
         Draft202012Validator.check_schema(schema)
         v = Draft202012Validator(schema)

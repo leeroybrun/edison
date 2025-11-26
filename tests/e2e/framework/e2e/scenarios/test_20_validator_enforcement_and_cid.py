@@ -10,8 +10,8 @@ import json
 from pathlib import Path
 import pytest
 
-from tests.e2e.helpers.test_env import TestProjectDir
-from tests.e2e.helpers.command_runner import run_script, assert_command_success
+from helpers.test_env import TestProjectDir
+from helpers.command_runner import run_script, assert_command_success
 
 
 def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "approve") -> None:

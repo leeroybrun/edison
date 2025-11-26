@@ -53,7 +53,7 @@ def main(args: argparse.Namespace) -> int:
     """Track session work - delegates to core library."""
     from edison.core.qa.scoring import track_validation_score
     from edison.core.session.store import load_session, save_session
-    from edison.core.io.utils import utc_timestamp
+    from edison.core.file_io.utils import utc_timestamp
 
     try:
         if args.subcommand == "start":

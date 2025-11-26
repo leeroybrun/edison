@@ -86,7 +86,7 @@ def main(args: argparse.Namespace) -> int:
             if args.session:
                 from edison.core.session import store as session_store
                 from edison.core.paths.resolver import PathResolver
-                from edison.core.io.utils import read_json_safe, write_json_safe
+                from edison.core.file_io.utils import read_json_safe, write_json_safe
 
                 session_id = session_store.sanitize_session_id(args.session)
 

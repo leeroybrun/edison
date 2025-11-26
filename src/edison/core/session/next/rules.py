@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from edison.core.utils.git import get_repo_root
-from edison.core.io.utils import read_json_safe as io_read_json_safe
+from edison.core.file_io.utils import read_json_safe as io_read_json_safe
 from edison.core.session.next.utils import project_cfg_dir
 
 

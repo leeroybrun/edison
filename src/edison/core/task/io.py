@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import getpass
 
 from ..exceptions import TaskStateError
-from edison.core.io import utils as io_utils
+from edison.core.file_io import utils as io_utils
 from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT

@@ -27,7 +27,7 @@ def test_includes_resolve_and_cache_dir(tmp_path: Path) -> None:
     assert inc.resolve() in deps
 
     cache_dir = includes.get_cache_dir()
-    assert cache_dir.name == "composed"
+    assert cache_dir.name == "validators"
     assert repo in cache_dir.parents
 
 

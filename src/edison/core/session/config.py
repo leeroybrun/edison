@@ -204,7 +204,13 @@ class SessionConfig:
         # Merge overrides from manifest.json when present
         try:
             from ..paths.resolver import PathResolver  # local import to avoid cycles
-            manifest_path = PathResolver.resolve_project_root() / ".agents" / "manifest.json"
+            
+            # Resolve root if we don't have it, or use what we have
+            root = self.repo_root if self.repo_root else PathResolver.resolve_project_root()
+            
+            # Use central logic to find config dir (respects .edison, env vars, etc)
+            manifest_path = get_project_config_dir(root) / "manifest.json"
+            
             if manifest_path.exists():
                 import json
 

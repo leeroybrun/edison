@@ -77,9 +77,11 @@ def main(args: argparse.Namespace) -> int:
     """Compose artifacts - delegates to composition engine."""
     from edison.core.composition import CompositionEngine
     from edison.core.paths import resolve_project_root
+    from edison.core.paths.project import get_project_config_dir
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        config_dir = get_project_config_dir(repo_root)
         engine = CompositionEngine(repo_root=repo_root)
 
         results = {}
@@ -109,14 +111,14 @@ def main(args: argparse.Namespace) -> int:
                 for vid, result in validator_results.items()
             }
             # Also write validators to .agents/_generated/validators/
-            generated_validators_dir = repo_root / ".agents" / "_generated" / "validators"
+            generated_validators_dir = config_dir / "_generated" / "validators"
             generated_validators_dir.mkdir(parents=True, exist_ok=True)
             for vid, result in validator_results.items():
                 output_file = generated_validators_dir / f"{vid}.md"
                 output_file.write_text(result.text, encoding="utf-8")
 
         if compose_all or args.orchestrator:
-            output_dir = repo_root / ".agents" / "_generated"
+            output_dir = config_dir / "_generated"
             output_dir.mkdir(parents=True, exist_ok=True)
             orchestrator_result = engine.compose_orchestrator_manifest(output_dir)
             results["orchestrator"] = {

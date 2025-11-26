@@ -23,12 +23,12 @@ from pathlib import Path
 
 import json
 
-from tests.e2e.helpers import TestProjectDir, TestGitRepo
-from tests.e2e.helpers.assertions import (
+from helpers import TestProjectDir, TestGitRepo
+from helpers.assertions import (
     assert_file_exists,
     assert_directory_exists,
 )
-from tests.e2e.helpers.command_runner import (
+from helpers.command_runner import (
     run_script,
     assert_command_success,
     assert_command_failure,

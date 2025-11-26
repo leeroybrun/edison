@@ -126,7 +126,7 @@ def test_apply_project_overrides(tmp_path: Path) -> None:
         tmp_path / ".edison/packs/pack1/config/hooks.yml",
         {"hooks": {"definitions": pack_override}},
     )
-    _write_yaml(tmp_path / ".agents/config/hooks.yml", {"hooks": {"definitions": project_override}})
+    _write_yaml(tmp_path / ".edison/config/hooks.yml", {"hooks": {"definitions": project_override}})
 
     config = {"hooks": {}, "packs": {"active": ["pack1"]}}
     composer = HookComposer(config=config, repo_root=tmp_path)

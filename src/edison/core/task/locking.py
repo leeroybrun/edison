@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-from ..io.locking import acquire_file_lock, LockTimeoutError
+from ..file_io.locking import acquire_file_lock, LockTimeoutError
 from ..utils.subprocess import run_with_timeout
 from .paths import ROOT
 

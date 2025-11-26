@@ -93,7 +93,7 @@ def test_compose_complete_settings(tmp_path: Path) -> None:
         {"settings": {"claude": {"permissions": {"allow": ["PackAllow"], "deny": [], "ask": []}}}},
     )
     _write_yaml(
-        tmp_path / ".agents/config/settings.yml",
+        tmp_path / ".edison/config/settings.yml",
         {
             "settings": {
                 "claude": {

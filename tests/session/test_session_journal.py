@@ -19,7 +19,7 @@ from edison.core import task  # type: ignore  # pylint: disable=wrong-import-pos
 from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
 from edison.core.session import store as session_store
-from edison.core.io.locking import LockTimeoutError
+from edison.core.file_io.locking import LockTimeoutError
 
 
 class SessionJournalTests(unittest.TestCase):

@@ -33,17 +33,20 @@ class ProjectManagementPaths:
         """Load config to get management directory path.
 
         Resolution order:
-        1) .agents/config.yml
-        2) .agents/config.yaml
-        3) .agents/config/paths.yml
-        4) .agents/config/paths.yaml
+        1) {config_dir}/config.yml
+        2) {config_dir}/config.yaml
+        3) {config_dir}/config/paths.yml
+        4) {config_dir}/config/paths.yaml
         Falls back to defaults when none exist or contain a value.
         """
+        from .project import get_project_config_dir
+        config_dir = get_project_config_dir(self.repo_root)
+
         candidates = [
-            self.repo_root / ".agents" / "config.yml",
-            self.repo_root / ".agents" / "config.yaml",
-            self.repo_root / ".agents" / "config" / "paths.yml",
-            self.repo_root / ".agents" / "config" / "paths.yaml",
+            config_dir / "config.yml",
+            config_dir / "config.yaml",
+            config_dir / "config" / "paths.yml",
+            config_dir / "config" / "paths.yaml",
         ]
 
         merged: Dict[str, Any] = {}

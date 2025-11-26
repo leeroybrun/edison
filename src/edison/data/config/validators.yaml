@@ -1,6 +1,6 @@
 validation:
   cache:
-    directory: "{PROJECT_CONFIG_DIR}/.cache/composed"
+    directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
   roster:
     global:
       - id: codex-global
@@ -10,7 +10,7 @@ validation:
         role: codereviewer
         # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
         zenRole: validator-codex-global
-        specFile: .cache/composed/codex-global.md
+        specFile: _generated/validators/codex-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1
@@ -26,7 +26,7 @@ validation:
         role: code-reviewer
         # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
         zenRole: validator-claude-global
-        specFile: .cache/composed/claude-global.md
+        specFile: _generated/validators/claude-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1
@@ -42,7 +42,7 @@ validation:
         role: codereviewer
         # Use generic role name; project-specific mapping lives in project config overlays → delegation.roleMapping
         zenRole: validator-gemini-global
-        specFile: .cache/composed/gemini-global.md
+        specFile: _generated/validators/gemini-global.md
         triggers: ["*"]
         alwaysRun: true
         priority: 1
