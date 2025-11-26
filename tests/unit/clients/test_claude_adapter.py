@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.claude_adapter import ClaudeCodeAdapter
+from edison.core.adapters import ClaudeSync as ClaudeCodeAdapter
+from edison.core.adapters import load_schema
 
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -233,10 +234,10 @@ class TestClaudeAdapterUnit:
 
         adapter = ClaudeCodeAdapter(repo_root=root)
         # Sanity check: jsonschema and schema are available
-        import edison.core.claude_adapter as mod  # type: ignore
+        import edison.core.adapters._schemas as schemas_mod  # type: ignore
 
-        assert mod.jsonschema is not None  # type: ignore[attr-defined]
-        assert adapter._load_schema("claude-agent.schema.json"), "claude-agent.schema.json schema not loaded"
+        assert schemas_mod.jsonschema is not None  # type: ignore[attr-defined]
+        assert load_schema("claude-agent.schema.json", repo_root=root), "claude-agent.schema.json schema not loaded"
 
         text = bad_agent.read_text(encoding="utf-8")
         sections = adapter._parse_edison_agent(text, fallback_name="broken-agent")
@@ -269,7 +270,7 @@ class TestClaudeAdapterUnit:
 
         adapter = ClaudeCodeAdapter(repo_root=root)
         # Sanity check: schema must be available for validation
-        assert adapter._load_schema("claude-agent-config.schema.json"), "claude-agent-config.schema.json schema not loaded"
+        assert load_schema("claude-agent-config.schema.json", repo_root=root), "claude-agent-config.schema.json schema not loaded"
         changed = adapter.sync_agents_to_claude()
 
         assert len(changed) == 1

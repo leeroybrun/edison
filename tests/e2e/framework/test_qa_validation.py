@@ -14,7 +14,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.sessionlib import ensure_session 
+from edison.core.session.lib import ensure_session 
 from edison.core.task import create_task, ready_task, qa_progress 
 def test_qa_checklist_and_validation_workflow(tmp_path):
     """Ensures QA brief pairing and state transitions across the QA pipeline."""

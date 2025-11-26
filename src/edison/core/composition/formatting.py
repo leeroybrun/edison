@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Dict, List
 
-from ..composition_utils import render_conditional_includes
+from ..utils.text import render_conditional_includes
 
 
 def format_for_zen(content: str) -> str:

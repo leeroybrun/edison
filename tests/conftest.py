@@ -49,6 +49,22 @@ def _reset_all_global_caches() -> None:
     except Exception:
         pass
 
+    # Task paths caches - CRITICAL for test isolation
+    try:
+        import edison.core.task.paths as task_paths  # type: ignore
+        task_paths._ROOT_CACHE = None  # type: ignore[attr-defined]
+        task_paths._SESSION_CONFIG_CACHE = None  # type: ignore[attr-defined]
+        task_paths._TASK_CONFIG_CACHE = None  # type: ignore[attr-defined]
+        task_paths._TASK_ROOT_CACHE = None  # type: ignore[attr-defined]
+        task_paths._QA_ROOT_CACHE = None  # type: ignore[attr-defined]
+        task_paths._SESSIONS_ROOT_CACHE = None  # type: ignore[attr-defined]
+        task_paths._TASK_DIRS_CACHE = None  # type: ignore[attr-defined]
+        task_paths._QA_DIRS_CACHE = None  # type: ignore[attr-defined]
+        task_paths._SESSION_DIRS_CACHE = None  # type: ignore[attr-defined]
+        task_paths._PREFIX_CACHE = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
     # State machine caches AND SessionConfig which loads at module import
     try:
         import edison.core.session.state as session_state  # type: ignore

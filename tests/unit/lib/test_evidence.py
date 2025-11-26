@@ -10,7 +10,7 @@ import pytest
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-from edison.core.evidence import EvidenceManager  # type: ignore  # noqa: E402
+from edison.core.qa.evidence import EvidenceManager  # type: ignore  # noqa: E402
 
 
 class TestEvidenceManagerStatics:

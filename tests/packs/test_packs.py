@@ -16,7 +16,7 @@ for i in range(1, 10):
         break
 assert ROOT is not None, 'cannot locate repository root (.git)'
 
-from edison.core.packs import (
+from edison.core.composition.packs import (
     validate_pack,
     discover_packs,
     resolve_dependencies,

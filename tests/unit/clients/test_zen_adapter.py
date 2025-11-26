@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
 
 import pytest
 
-
-# Ensure Edison core lib is importable in unit tests
+from edison.core.adapters import ZenSync as ZenAdapter
 
 
 class TestZenAdapterUnit:
@@ -209,7 +207,6 @@ rules:
 
     def test_role_based_guideline_filtering(self, isolated_project_env: Path) -> None:
         """ZenAdapter.get_applicable_guidelines should filter by role."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)
@@ -231,7 +228,6 @@ rules:
 
     def test_role_based_rule_filtering(self, isolated_project_env: Path) -> None:
         """ZenAdapter.get_applicable_rules should filter rule categories."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_rules_registry(root)
@@ -263,7 +259,6 @@ rules:
         self, isolated_project_env: Path
     ) -> None:
         """Config-driven zen.roles should control guideline selection for project roles."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_config_with_project_roles(root)
         self._write_guidelines_with_packs_and_overlays(root)
@@ -285,7 +280,6 @@ rules:
         self, isolated_project_env: Path
     ) -> None:
         """Config-driven zen.roles.rules should filter by category and pack."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_config_with_project_roles(root)
         self._write_rules_with_packs(root)
@@ -309,7 +303,6 @@ rules:
 
     def test_compose_prompt_includes_role_sections(self, isolated_project_env: Path) -> None:
         """compose_zen_prompt should include model/role and role-specific sections."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)
@@ -332,7 +325,6 @@ rules:
     @pytest.mark.parametrize("model", ["codex", "claude", "gemini"])
     def test_model_specific_formatting(self, isolated_project_env: Path, model: str) -> None:
         """compose_zen_prompt should annotate prompts with model-specific hints."""
-        from edison.core.zen_adapter import ZenAdapter 
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)

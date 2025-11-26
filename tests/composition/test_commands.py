@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition.commands import (  # type: ignore  # noqa: E402
+from edison.core.ide.commands import (  # type: ignore  # noqa: E402
     CommandArg,
     CommandDefinition,
     CommandComposer,

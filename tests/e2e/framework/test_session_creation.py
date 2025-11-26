@@ -14,7 +14,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.sessionlib import ensure_session, load_session, _get_worktree_base 
+from edison.core.session.lib import ensure_session, load_session, _get_worktree_base 
 def test_session_initialization_and_json(tmp_path):
     """Creates a session and verifies session.json content and computed paths.
 

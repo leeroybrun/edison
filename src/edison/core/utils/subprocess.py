@@ -1,12 +1,20 @@
 from __future__ import annotations
 
-"""Subprocess helpers with config-driven timeouts."""
+"""Subprocess helpers with config-driven timeouts and command wrappers.
 
+This module provides safe subprocess execution with:
+- Config-driven timeout management
+- Command wrappers for common operations (git, db, CI)
+- Shell pipeline parsing
+- No shell=True by default (security)
+"""
+
+import os
 import shlex
 import subprocess
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Any, Iterable, Sequence
+from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
 
 FALLBACK_TIMEOUTS: Dict[str, float] = {
     "git_operations": 30.0,
@@ -16,6 +24,10 @@ FALLBACK_TIMEOUTS: Dict[str, float] = {
     "file_operations": 10.0,
     "default": 60.0,
 }
+
+# Default timeouts (seconds); can be overridden via environment
+DEFAULT_GIT_TIMEOUT = float(os.environ.get("EDISON_GIT_TIMEOUT_SECONDS", "60"))
+DEFAULT_DB_TIMEOUT = float(os.environ.get("EDISON_DB_TIMEOUT_SECONDS", "30"))
 
 
 def _resolve_repo_root(cwd: Path | str | None = None) -> Path:
@@ -129,4 +141,214 @@ def reset_subprocess_timeout_cache() -> None:
     _load_timeouts.cache_clear()
 
 
-__all__ = ["run_with_timeout", "configured_timeout", "check_output_with_timeout", "reset_subprocess_timeout_cache"]
+def _to_cwd(cwd: Optional[Path | str]) -> Optional[str]:
+    """Convert Path or str cwd to str for subprocess."""
+    if cwd is None:
+        return None
+    return str(cwd)
+
+
+def run_command(
+    cmd: Sequence[str],
+    *,
+    cwd: Optional[Path | str] = None,
+    env: Optional[MutableMapping[str, str]] = None,
+    timeout: Optional[float] = None,
+    capture_output: bool = False,
+    text: bool = True,
+    check: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Thin wrapper around subprocess.run with safe defaults.
+
+    - No shell=True (security)
+    - Optional timeout
+    - Optional capture_output/text/check flags
+
+    Args:
+        cmd: Command sequence to execute
+        cwd: Working directory (Path or str)
+        env: Environment variables
+        timeout: Timeout in seconds (uses configured timeout if None)
+        capture_output: Capture stdout/stderr
+        text: Return output as text instead of bytes
+        check: Raise CalledProcessError on non-zero exit
+
+    Returns:
+        CompletedProcess from subprocess.run
+    """
+    return run_with_timeout(
+        list(cmd),
+        cwd=_to_cwd(cwd),
+        env=env,
+        timeout=timeout,
+        capture_output=capture_output,
+        text=text,
+        check=check,
+    )
+
+
+def run_git_command(
+    cmd: Sequence[str],
+    *,
+    cwd: Optional[Path | str] = None,
+    env: Optional[MutableMapping[str, str]] = None,
+    timeout: Optional[float] = None,
+    capture_output: bool = False,
+    text: bool = True,
+    check: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run a git command with a default timeout (60s, overridable via env).
+
+    Args:
+        cmd: Git command sequence to execute
+        cwd: Working directory (Path or str)
+        env: Environment variables
+        timeout: Timeout in seconds (defaults to DEFAULT_GIT_TIMEOUT)
+        capture_output: Capture stdout/stderr
+        text: Return output as text instead of bytes
+        check: Raise CalledProcessError on non-zero exit
+
+    Returns:
+        CompletedProcess from subprocess.run
+    """
+    return run_command(
+        cmd,
+        cwd=cwd,
+        env=env,
+        timeout=timeout or DEFAULT_GIT_TIMEOUT,
+        capture_output=capture_output,
+        text=text,
+        check=check,
+    )
+
+
+def run_db_command(
+    cmd: Sequence[str],
+    *,
+    cwd: Optional[Path | str] = None,
+    env: Optional[MutableMapping[str, str]] = None,
+    timeout: Optional[float] = None,
+    capture_output: bool = False,
+    text: bool = True,
+    check: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run a database-related command with a default timeout (30s, overridable).
+
+    Args:
+        cmd: Database command sequence to execute
+        cwd: Working directory (Path or str)
+        env: Environment variables
+        timeout: Timeout in seconds (defaults to DEFAULT_DB_TIMEOUT)
+        capture_output: Capture stdout/stderr
+        text: Return output as text instead of bytes
+        check: Raise CalledProcessError on non-zero exit
+
+    Returns:
+        CompletedProcess from subprocess.run
+    """
+    return run_command(
+        cmd,
+        cwd=cwd,
+        env=env,
+        timeout=timeout or DEFAULT_DB_TIMEOUT,
+        capture_output=capture_output,
+        text=text,
+        check=check,
+    )
+
+
+def run_ci_command_from_string(
+    base_cmd: str,
+    extra_args: Sequence[str] = (),
+    *,
+    cwd: Optional[Path | str] = None,
+    env: Optional[MutableMapping[str, str]] = None,
+    timeout: Optional[float] = None,
+    capture_output: bool = False,
+    text: bool = True,
+    check: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Execute a CI command defined as a shell-style string plus extra args.
+
+    The base command is parsed with :mod:`shlex` and never executed via a shell,
+    so shell metacharacters in ``extra_args`` are always treated as literals.
+
+    Args:
+        base_cmd: Shell-style command string (parsed with shlex)
+        extra_args: Additional arguments to append
+        cwd: Working directory (Path or str)
+        env: Environment variables
+        timeout: Timeout in seconds
+        capture_output: Capture stdout/stderr
+        text: Return output as text instead of bytes
+        check: Raise CalledProcessError on non-zero exit
+
+    Returns:
+        CompletedProcess from subprocess.run
+    """
+    argv = shlex.split(base_cmd)
+    argv.extend(extra_args)
+    return run_command(
+        argv,
+        cwd=cwd,
+        env=env,
+        timeout=timeout,
+        capture_output=capture_output,
+        text=text,
+        check=check,
+    )
+
+
+def expand_shell_pipeline(
+    cmd: str,
+) -> List[List[str]]:
+    """
+    Parse a limited shell-like command string into one or more argv lists.
+
+    Supports:
+    - Simple commands: ``"pnpm lint"``
+    - Logical OR: ``"cmd1 || cmd2"``
+
+    Shell metacharacters such as ``;`` are *not* treated as separators to avoid
+    command-chaining injection; they are part of arguments instead.
+
+    Args:
+        cmd: Shell-style command string
+
+    Returns:
+        List of command argument lists
+    """
+    tokens = shlex.split(cmd)
+    if not tokens:
+        return []
+
+    segments: List[List[str]] = [[]]
+    current = segments[0]
+
+    for tok in tokens:
+        if tok == "||":
+            if current:
+                current = []
+                segments.append(current)
+            continue
+        current.append(tok)
+
+    # Remove any empty segments defensively
+    return [seg for seg in segments if seg]
+
+
+__all__ = [
+    "run_with_timeout",
+    "configured_timeout",
+    "check_output_with_timeout",
+    "reset_subprocess_timeout_cache",
+    "run_command",
+    "run_git_command",
+    "run_db_command",
+    "run_ci_command_from_string",
+    "expand_shell_pipeline",
+]

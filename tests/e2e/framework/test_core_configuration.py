@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 import pytest
 
-# Add Edison core to path so `from edison.core import sessionlib` resolves
+# Add Edison core to path so `from edison.core.session import lib as sessionlib` resolves
 _THIS_FILE = Path(__file__).resolve()
 _CORE_ROOT = None
 for _parent in _THIS_FILE.parents:
@@ -40,7 +40,7 @@ def test_sessionlib_project_name_falls_back_to_repo_name(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
     monkeypatch.delenv("PROJECT_NAME", raising=False)
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     assert sessionlib._get_project_name() == "demo-repo"
 
@@ -52,7 +52,7 @@ def test_sessionlib_project_name_from_env(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
     monkeypatch.setenv("PROJECT_NAME", "demo-proj")
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     assert sessionlib._get_project_name() == "demo-proj"
 
@@ -66,7 +66,7 @@ def test_sessionlib_project_name_from_config(tmp_path, monkeypatch):
 
     _write_project_overlay(repo, "project", {"project": {"name": "cfg-proj"}})
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     assert sessionlib._get_project_name() == "cfg-proj"
 
@@ -78,7 +78,7 @@ def test_sessionlib_requires_database_url(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     with pytest.raises(ValueError, match="DATABASE_URL is required"):
         sessionlib._get_database_url()
@@ -91,7 +91,7 @@ def test_sessionlib_get_database_url_from_env(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
     monkeypatch.setenv("DATABASE_URL", "sqldb://user:pass@localhost/db")
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     assert sessionlib._get_database_url() == "sqldb://user:pass@localhost/db"
 
@@ -111,7 +111,7 @@ def test_worktree_base_uses_project_name(tmp_path, monkeypatch):
         },
     )
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     base_dir = sessionlib._get_worktree_base()
     expected = (repo.parent / "custom-worktrees").resolve()
@@ -127,7 +127,7 @@ def test_worktree_base_defaults_to_project_name(tmp_path, monkeypatch):
 
     _write_project_overlay(repo, "project", {"project": {"name": "my-project"}})
 
-    from edison.core import sessionlib
+    from edison.core.session import lib as sessionlib
 
     base_dir = sessionlib._get_worktree_base()
     expected = (repo.parent / "my-project-worktrees").resolve()

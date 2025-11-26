@@ -4,8 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
-from ..cli_utils import run_git_command
+from ..utils.subprocess import run_git_command
 
 
 def _parse_worktree_list(stdout: str) -> List[Dict[str, Any]]:

@@ -40,10 +40,28 @@ def _write_cli_config(repo_root: Path) -> None:
 @pytest.fixture()
 def cli_module(isolated_project_env: Path, monkeypatch):
     _write_cli_config(isolated_project_env)
-    # Ensure module picks up fresh config for this repo root
-    import edison.core.utils.cli as cli  # type: ignore
+    # Import from the split modules (cli.py was split into cli_arguments, cli_output, cli_errors)
+    from types import ModuleType
 
-    importlib.reload(cli)
+    # Import individual modules
+    import edison.core.utils.cli_arguments as args_module
+    import edison.core.utils.cli_output as output_module
+
+    # Reload to pick up fresh config
+    importlib.reload(args_module)
+    importlib.reload(output_module)
+
+    # Create a combined module that mimics the old cli module interface
+    cli = ModuleType("cli")
+    cli.parse_common_args = args_module.parse_common_args
+    cli.session_parent = args_module.session_parent
+    cli.dry_run_parent = args_module.dry_run_parent
+    cli.output_json = output_module.output_json
+    cli.output_table = output_module.output_table
+    cli.confirm = output_module.confirm
+    cli.error = output_module.error
+    cli.success = output_module.success
+
     return cli
 
 

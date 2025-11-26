@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import sys
 
 import pytest
 
+from edison.core.adapters import ZenSync as ZenAdapter, WORKFLOW_HEADING
+from edison.core.config import ConfigManager
+
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
-from edison.core.zen_adapter import ZenAdapter, WORKFLOW_HEADING  # type: ignore  # noqa: E402
 
 
 def _repo_root() -> Path:

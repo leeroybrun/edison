@@ -9,7 +9,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition.settings import SettingsComposer, merge_permissions  # type: ignore  # noqa: E402
+from edison.core.ide.settings import SettingsComposer, merge_permissions  # type: ignore  # noqa: E402
 
 
 def _write_yaml(path: Path, data: Dict) -> None:
@@ -126,8 +126,8 @@ def test_compose_with_hooks_section(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         def generate_settings_json_hooks_section(self) -> Dict:
             return {"PreToolUse": ["echo from hook"]}
 
-    # Mock the HookComposer in the composition.hooks module
-    monkeypatch.setattr("edison.core.composition.hooks.HookComposer", MockHookComposer)
+    # Mock the HookComposer in the ide.hooks module
+    monkeypatch.setattr("edison.core.ide.hooks.HookComposer", MockHookComposer)
 
     composer = SettingsComposer(config={"hooks": {"enabled": True}}, repo_root=tmp_path)
     settings = composer.compose_settings()

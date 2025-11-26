@@ -21,8 +21,8 @@ import pytest
 
 # Import modules (not specific symbols) so missing functions cause clear RED failures per-test
 from edison.core import task as _task  # type: ignore
-from edison.core import delegationlib as _delegationlib  # type: ignore
-from edison.core.sessionlib import ensure_session 
+from edison.core.composition import delegation as _delegationlib  # type: ignore
+from edison.core.session.lib import ensure_session 
 from edison.core.utils.subprocess import run_with_timeout
 
 
@@ -162,6 +162,6 @@ def test_task_session_linking(tmp_path):
     assert task.get('session_id') == sid
 
     # Session side should include the task id in its metadata (task-side responsibility to register it)
-    from edison.core.sessionlib import load_session  # late import for clarity
+    from edison.core.session.lib import load_session  # late import for clarity
     sess = load_session(sid)
     assert 'tasks' in sess and tid in sess['tasks']

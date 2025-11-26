@@ -31,46 +31,151 @@ def _resolve_repo_root() -> Path:
     return root
 
 
-ROOT = _resolve_repo_root()
-
-if ROOT.name == ".edison":
-    raise ValueError(
-        f"CRITICAL: Repo root resolved to .edison directory ({ROOT}). "
-        f"This indicates a path resolution bug. "
-        f"Set AGENTS_PROJECT_ROOT to your actual project root."
-    )
-
-enforce_no_legacy_project_root("lib.task.paths")
-
-_SESSION_CONFIG = SessionConfig()
-_TASK_CONFIG = TaskConfig(repo_root=ROOT)
-
-TASK_ROOT: Path = _TASK_CONFIG.tasks_root()
-QA_ROOT: Path = _TASK_CONFIG.qa_root()
-
-_sessions_rel = _SESSION_CONFIG.get_session_root_path()
-SESSIONS_ROOT: Path = (ROOT / _sessions_rel).resolve()
-
-_TASK_STATES = _TASK_CONFIG.task_states() or ["todo", "wip", "blocked", "done", "validated"]
-_QA_STATES = _TASK_CONFIG.qa_states() or ["waiting", "todo", "wip", "done", "validated"]
-
-TASK_DIRS: Dict[str, Path] = {state: (TASK_ROOT / state).resolve() for state in _TASK_STATES}
-QA_DIRS: Dict[str, Path] = {state: (QA_ROOT / state).resolve() for state in _QA_STATES}
+# Cache holders for lazy initialization - reset by conftest.py for test isolation
+_ROOT_CACHE: Path | None = None
+_SESSION_CONFIG_CACHE: SessionConfig | None = None
+_TASK_CONFIG_CACHE: TaskConfig | None = None
+_TASK_ROOT_CACHE: Path | None = None
+_QA_ROOT_CACHE: Path | None = None
+_SESSIONS_ROOT_CACHE: Path | None = None
+_TASK_DIRS_CACHE: Dict[str, Path] | None = None
+_QA_DIRS_CACHE: Dict[str, Path] | None = None
 
 
-def _build_session_dirs() -> Dict[str, Path]:
-    """Compute on-disk session directories from configuration."""
-    state_map = _SESSION_CONFIG.get_session_states()
-    base = SESSIONS_ROOT
-    return {state: (base / dirname).resolve() for state, dirname in state_map.items()}
+def _get_root() -> Path:
+    """Lazily resolve and cache ROOT."""
+    global _ROOT_CACHE
+    if _ROOT_CACHE is None:
+        _ROOT_CACHE = _resolve_repo_root()
+        if _ROOT_CACHE.name == ".edison":
+            raise ValueError(
+                f"CRITICAL: Repo root resolved to .edison directory ({_ROOT_CACHE}). "
+                f"This indicates a path resolution bug. "
+                f"Set AGENTS_PROJECT_ROOT to your actual project root."
+            )
+        enforce_no_legacy_project_root("lib.task.paths")
+    return _ROOT_CACHE
 
 
-SESSION_DIRS: Dict[str, Path] = _build_session_dirs()
+def _get_session_config() -> SessionConfig:
+    """Lazily resolve and cache SessionConfig."""
+    global _SESSION_CONFIG_CACHE
+    if _SESSION_CONFIG_CACHE is None:
+        _SESSION_CONFIG_CACHE = SessionConfig()
+    return _SESSION_CONFIG_CACHE
+
+
+def _get_task_config() -> TaskConfig:
+    """Lazily resolve and cache TaskConfig."""
+    global _TASK_CONFIG_CACHE
+    if _TASK_CONFIG_CACHE is None:
+        _TASK_CONFIG_CACHE = TaskConfig(repo_root=_get_root())
+    return _TASK_CONFIG_CACHE
+
+
+def _get_task_root() -> Path:
+    """Lazily resolve and cache TASK_ROOT."""
+    global _TASK_ROOT_CACHE
+    if _TASK_ROOT_CACHE is None:
+        _TASK_ROOT_CACHE = _get_task_config().tasks_root()
+    return _TASK_ROOT_CACHE
+
+
+def _get_qa_root() -> Path:
+    """Lazily resolve and cache QA_ROOT."""
+    global _QA_ROOT_CACHE
+    if _QA_ROOT_CACHE is None:
+        _QA_ROOT_CACHE = _get_task_config().qa_root()
+    return _QA_ROOT_CACHE
+
+
+def _get_sessions_root() -> Path:
+    """Lazily resolve and cache SESSIONS_ROOT."""
+    global _SESSIONS_ROOT_CACHE
+    if _SESSIONS_ROOT_CACHE is None:
+        sessions_rel = _get_session_config().get_session_root_path()
+        _SESSIONS_ROOT_CACHE = (_get_root() / sessions_rel).resolve()
+    return _SESSIONS_ROOT_CACHE
+
+
+def _get_task_states() -> List[str]:
+    """Get task states from config or defaults."""
+    return _get_task_config().task_states() or ["todo", "wip", "blocked", "done", "validated"]
+
+
+def _get_qa_states() -> List[str]:
+    """Get QA states from config or defaults."""
+    return _get_task_config().qa_states() or ["waiting", "todo", "wip", "done", "validated"]
+
+
+def _get_task_dirs() -> Dict[str, Path]:
+    """Lazily resolve and cache TASK_DIRS."""
+    global _TASK_DIRS_CACHE
+    if _TASK_DIRS_CACHE is None:
+        task_root = _get_task_root()
+        _TASK_DIRS_CACHE = {state: (task_root / state).resolve() for state in _get_task_states()}
+    return _TASK_DIRS_CACHE
+
+
+def _get_qa_dirs() -> Dict[str, Path]:
+    """Lazily resolve and cache QA_DIRS."""
+    global _QA_DIRS_CACHE
+    if _QA_DIRS_CACHE is None:
+        qa_root = _get_qa_root()
+        _QA_DIRS_CACHE = {state: (qa_root / state).resolve() for state in _get_qa_states()}
+    return _QA_DIRS_CACHE
+
+
+# For backward compatibility, expose module-level variables
+# that are resolved lazily via __getattr__
+def __getattr__(name: str):
+    """Lazy module attribute access for backward compatibility."""
+    if name == "ROOT":
+        return _get_root()
+    if name == "TASK_ROOT":
+        return _get_task_root()
+    if name == "QA_ROOT":
+        return _get_qa_root()
+    if name == "SESSIONS_ROOT":
+        return _get_sessions_root()
+    if name == "TASK_DIRS":
+        return _get_task_dirs()
+    if name == "QA_DIRS":
+        return _get_qa_dirs()
+    if name == "SESSION_DIRS":
+        return _get_session_dirs()
+    if name == "_SESSION_CONFIG":
+        return _get_session_config()
+    if name == "_TASK_CONFIG":
+        return _get_task_config()
+    if name == "_TASK_STATES":
+        return _get_task_states()
+    if name == "_QA_STATES":
+        return _get_qa_states()
+    # Prefix constants - lazily resolved from config
+    if name in ("OWNER_PREFIX_TASK", "OWNER_PREFIX_QA", "STATUS_PREFIX",
+                "CLAIMED_PREFIX", "LAST_ACTIVE_PREFIX", "CONTINUATION_PREFIX"):
+        return _get_prefix_cache()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+_SESSION_DIRS_CACHE: Dict[str, Path] | None = None
+
+
+def _get_session_dirs() -> Dict[str, Path]:
+    """Lazily resolve and cache SESSION_DIRS."""
+    global _SESSION_DIRS_CACHE
+    if _SESSION_DIRS_CACHE is None:
+        state_map = _get_session_config().get_session_states()
+        base = _get_sessions_root()
+        _SESSION_DIRS_CACHE = {state: (base / dirname).resolve() for state, dirname in state_map.items()}
+    return _SESSION_DIRS_CACHE
 
 
 def _session_state_dir(state: str) -> Path:
     """Return the on-disk directory for a session state with sane fallbacks."""
-    return SESSION_DIRS.get(state.lower()) or (SESSIONS_ROOT / state.lower()).resolve()
+    session_dirs = _get_session_dirs()
+    return session_dirs.get(state.lower()) or (_get_sessions_root() / state.lower()).resolve()
 
 
 def session_state_dir(state: str) -> Path:
@@ -123,12 +228,24 @@ def _session_qa_dir(session_id: str, state: str) -> Path:
 
 
 # Metadata line prefixes used across task/QA templates (config-driven)
-OWNER_PREFIX_TASK = _TASK_CONFIG.default_prefix("ownerPrefix")
-OWNER_PREFIX_QA = _TASK_CONFIG.default_prefix("validatorOwnerPrefix")
-STATUS_PREFIX = _TASK_CONFIG.default_prefix("statusPrefix")
-CLAIMED_PREFIX = _TASK_CONFIG.default_prefix("claimedPrefix")
-LAST_ACTIVE_PREFIX = _TASK_CONFIG.default_prefix("lastActivePrefix")
-CONTINUATION_PREFIX = _TASK_CONFIG.default_prefix("continuationPrefix")
+# These are lazily resolved via __getattr__ to support test isolation
+_PREFIX_CACHE: Dict[str, str] | None = None
+
+
+def _get_prefix_cache() -> Dict[str, str]:
+    """Lazily resolve and cache prefix values."""
+    global _PREFIX_CACHE
+    if _PREFIX_CACHE is None:
+        task_config = _get_task_config()
+        _PREFIX_CACHE = {
+            "OWNER_PREFIX_TASK": task_config.default_prefix("ownerPrefix"),
+            "OWNER_PREFIX_QA": task_config.default_prefix("validatorOwnerPrefix"),
+            "STATUS_PREFIX": task_config.default_prefix("statusPrefix"),
+            "CLAIMED_PREFIX": task_config.default_prefix("claimedPrefix"),
+            "LAST_ACTIVE_PREFIX": task_config.default_prefix("lastActivePrefix"),
+            "CONTINUATION_PREFIX": task_config.default_prefix("continuationPrefix"),
+        }
+    return _PREFIX_CACHE
 
 
 def get_pack_context() -> List[str]:
@@ -144,11 +261,11 @@ def get_pack_context() -> List[str]:
 
 
 def _tasks_root() -> Path:
-    return TASK_ROOT
+    return _get_task_root()
 
 
 def _qa_root() -> Path:
-    return QA_ROOT
+    return _get_qa_root()
 
 
 def safe_relative(path: Path) -> str:

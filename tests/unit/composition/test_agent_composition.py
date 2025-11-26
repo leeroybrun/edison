@@ -8,7 +8,7 @@ import pytest
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-from edison.core.agents import (  # type: ignore  # noqa: E402
+from edison.core.composition.agents import (  # type: ignore  # noqa: E402
     AgentRegistry,
     AgentNotFoundError,
     AgentTemplateError,

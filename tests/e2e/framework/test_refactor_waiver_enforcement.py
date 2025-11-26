@@ -1,14 +1,20 @@
-import runpy
-import types
 import unittest
+import sys
 from pathlib import Path
+
+# Add tests directory to path for direct import
+tests_dir = Path(__file__).parents[2]
+if str(tests_dir) not in sys.path:
+    sys.path.insert(0, str(tests_dir))
+
+# Import directly from helpers module file to avoid circular import issues
+from helpers.tdd_helpers import _validate_refactor_cycle
 
 
 class RefactorWaiverTests(unittest.TestCase):
     def setUp(self) -> None:  # noqa: D401
-        # load lib module dictionary directly from path to avoid import caching side-effects
-        mod_dict = runpy.run_path(str((Path('.edison/core/lib/tddlib.py')).resolve()))
-        self.tddlib = types.SimpleNamespace(**mod_dict)
+        # Direct import from test helpers
+        self.tddlib = type('TddLib', (), {'_validate_refactor_cycle': _validate_refactor_cycle})()
 
     def test_valid_red_green_refactor_sequence(self):
         commits = [

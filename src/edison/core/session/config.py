@@ -17,6 +17,8 @@ class SessionConfig:
     """
     def __init__(self, repo_root: Optional[Path] = None):
         self._mgr = ConfigManager(repo_root=repo_root)
+        # Store repo_root for external access (DomainConfig pattern)
+        self.repo_root = self._mgr.repo_root if hasattr(self._mgr, 'repo_root') else repo_root
         # Load config without validation for now
         self._full_config = self._mgr.load_config(validate=False)
         self._state_config = self._full_config.get("statemachine", {})

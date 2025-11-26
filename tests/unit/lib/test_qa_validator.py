@@ -16,8 +16,7 @@ def test_simple_delegation_hint_uses_task_type_rules(
     This mirrors the legacy QA helper behavior to ensure delegation logic resides
     in lib.qa.validator rather than orchestration scripts.
     """
-    # Ensure task operates against the isolated project root
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    # isolated_project_env fixture already sets AGENTS_PROJECT_ROOT and resets caches
 
     task_id = "9000-delegation-ui-component"
     # Create a real task file via task
@@ -56,7 +55,7 @@ def test_build_validator_roster_categorizes_validators(
 
     This exercises the new lib.qa.validator implementation without mocks.
     """
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    # isolated_project_env fixture already sets AGENTS_PROJECT_ROOT and resets caches
 
     # Create a simple task with primary files that will trigger specialized validators
     task_id = "9001-validator-roster"

@@ -58,7 +58,7 @@ def main(args: argparse.Namespace) -> int:
     """Manage QA rounds - delegates to QA library."""
     from edison.core.qa import rounds, evidence
     from edison.core.paths import resolve_project_root
-    from edison.core.io_utils import write_json_safe
+    from edison.core.io.utils import write_json_safe
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
@@ -66,7 +66,7 @@ def main(args: argparse.Namespace) -> int:
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
             # Append round entry to QA file
-            from edison.core.io_utils import utc_timestamp
+            from edison.core.io.utils import utc_timestamp
             from datetime import datetime
 
             # Find QA file

@@ -9,7 +9,8 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Callable, Dict, ContextManager
 
-from edison.core import io_utils, locklib
+from edison.core.io import utils as io_utils
+from edison.core.io import locking as locklib
 
 # Default configuration (can be overridden by passing config to functions)
 DEFAULT_JSON_CONFIG: Dict[str, Any] = {

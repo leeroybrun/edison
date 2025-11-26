@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from edison.core.agents import AgentRegistry
+from edison.core.composition.agents import AgentRegistry
 from edison.data import get_data_path
 
 def test_nextjs_pack_declares_component_builder_agent() -> None:

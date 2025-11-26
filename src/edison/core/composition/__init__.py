@@ -14,7 +14,8 @@ from .composers import (
     compose_guidelines,
     CompositionEngine,
 )
-from .commands import (  # noqa: F401
+# Re-export IDE modules for backward compatibility
+from ..ide.commands import (  # noqa: F401
     CommandArg,
     CommandDefinition,
     CommandComposer,
@@ -23,16 +24,42 @@ from .commands import (  # noqa: F401
     CursorCommandAdapter,
     CodexCommandAdapter,
 )
-from .hooks import HookComposer, HookDefinition  # noqa: F401
-from .settings import SettingsComposer, merge_permissions  # noqa: F401
+from ..ide.hooks import HookComposer, HookDefinition  # noqa: F401
+from ..ide.settings import SettingsComposer, merge_permissions  # noqa: F401
 from .packs import auto_activate_packs
-from ..composition_utils import (
+from ..utils.text import (
     dry_duplicate_report,
     render_conditional_includes,
     ENGINE_VERSION,
     _strip_headings_and_code,
     _tokenize,
     _shingles,
+)
+from .guidelines import (
+    GuidelineRegistry,
+    GuidelineCompositionResult,
+    GuidelinePaths,
+    compose_guideline,
+)
+from .agents import (
+    AgentRegistry,
+    AgentError,
+    AgentNotFoundError,
+    AgentTemplateError,
+    CoreAgent,
+    PackOverlay,
+    compose_agent,
+)
+from .audit import (
+    GuidelineRecord,
+    GuidelineCategory,
+    discover_guidelines,
+    build_shingle_index,
+    duplication_matrix,
+    purity_violations,
+    project_terms,
+    DEFAULT_PROJECT_TERMS,
+    PACK_TECH_TERMS,
 )
 
 __all__ = [
@@ -64,4 +91,27 @@ __all__ = [
     "HookComposer",
     "HookDefinition",
     "merge_permissions",
+    # Guidelines
+    "GuidelineRegistry",
+    "GuidelineCompositionResult",
+    "GuidelinePaths",
+    "compose_guideline",
+    # Agents
+    "AgentRegistry",
+    "AgentError",
+    "AgentNotFoundError",
+    "AgentTemplateError",
+    "CoreAgent",
+    "PackOverlay",
+    "compose_agent",
+    # Audit
+    "GuidelineRecord",
+    "GuidelineCategory",
+    "discover_guidelines",
+    "build_shingle_index",
+    "duplication_matrix",
+    "purity_violations",
+    "project_terms",
+    "DEFAULT_PROJECT_TERMS",
+    "PACK_TECH_TERMS",
 ]

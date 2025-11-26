@@ -50,7 +50,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Compose IDE settings - delegates to composition engine."""
-    from edison.core.composition.settings import SettingsComposer
+    from edison.core.ide.settings import SettingsComposer
     from edison.core.paths import resolve_project_root
     from edison.core.config import ConfigManager
 

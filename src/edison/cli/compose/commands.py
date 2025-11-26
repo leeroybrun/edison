@@ -50,7 +50,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Compose CLI commands - delegates to composition engine."""
-    from edison.core.composition.commands import CommandComposer
+    from edison.core.ide.commands import CommandComposer
     from edison.core.paths import resolve_project_root
     from edison.core.config import ConfigManager
 

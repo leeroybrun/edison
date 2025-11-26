@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
 from ..paths.project import get_project_config_dir
-from ..composition_utils import (
+from ..utils.text import (
     ENGINE_VERSION,
     dry_duplicate_report,
     render_conditional_includes,
@@ -424,7 +424,7 @@ class CompositionEngine:
         project_overrides: bool = True,
         dry_min_shingles: Optional[int] = None,
     ) -> Dict[str, Path]:
-        from ..guidelines import GuidelineRegistry  # type: ignore
+        from .guidelines import GuidelineRegistry
 
         registry = GuidelineRegistry(repo_root=self.repo_root)
 

@@ -9,7 +9,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 CORE_PATH = ROOT / ".edison" / "core"
-from edison.core.adapters.claude import ClaudeAdapter  # type: ignore  # noqa: E402
+from edison.core.adapters import ClaudeAdapter  # type: ignore  # noqa: E402
 
 
 def _write_yaml(path: Path, data: Dict) -> None:

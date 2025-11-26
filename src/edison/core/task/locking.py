@@ -11,13 +11,13 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-from ..locklib import acquire_file_lock, LockTimeoutError
+from ..io.locking import acquire_file_lock, LockTimeoutError
 from ..utils.subprocess import run_with_timeout
 from .paths import ROOT
 
 # Fallback when resilience is unavailable (kept for compatibility in partial installs)
 try:  # pragma: no cover - defensive import
-    from ..resilience import retry_with_backoff  # type: ignore
+    from ..utils.resilience import retry_with_backoff  # type: ignore
 except Exception:  # noqa: BLE001
     def retry_with_backoff(
         max_attempts: int = 3,

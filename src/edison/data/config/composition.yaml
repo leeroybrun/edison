@@ -1,0 +1,30 @@
+# Composition system configuration
+# Controls prompt composition, orchestrator manifests, and agent assembly
+
+composition:
+  # Workflow loop instructions for orchestrators
+  workflowLoop:
+    command: "scripts/session next <session-id>"
+    frequency: "Before EVERY action"
+    readOrder:
+      - "1. 📋 APPLICABLE RULES (read FIRST)"
+      - "2. 🎯 RECOMMENDED ACTIONS (read AFTER rules)"
+      - "3. 🤖 DELEGATION HINT (follow priority chain)"
+      - "4. 🔍 VALIDATORS (auto-detected from git diff)"
+
+  # Metadata inference for validators
+  metadata:
+    defaults:
+      model: "codex"
+      alwaysRun: false
+      blocksOnFail: false
+      triggers:
+        - "*"
+
+    # Search paths for validator definitions (ordered by priority)
+    searchPaths:
+      - "{project_dir}/_generated/validators/{validator_id}.md"
+      - "{project_dir}/.cache/composed/{validator_id}.md"
+      - "{project_dir}/validators/specialized/{validator_id}.md"
+      - "{repo_root}/.edison/core/validators/specialized/{validator_id}.md"
+      - "{packs_dir}/{pack}/validators/{validator_id}.md"

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
-import subprocess
-from pathlib import Path
-import sys
 import json
+import os
+from pathlib import Path
 from typing import Tuple
+
+from edison.core.adapters import ClaudeSync as ClaudeCodeAdapter
+from edison.core.composition import CompositionEngine
+from edison.core.config import ConfigManager
+from edison.core.utils.subprocess import run_with_timeout
 
 
 def _get_repo_root() -> Path:
@@ -24,13 +27,6 @@ def _get_repo_root() -> Path:
 
 REPO_ROOT = _get_repo_root()
 SCRIPTS_ROOT = REPO_ROOT / ".edison" / "core" / "scripts"
-
-# Ensure core lib is importable in this test module
-CORE_ROOT = REPO_ROOT / ".edison" / "core"
-from edison.core.claude_adapter import ClaudeCodeAdapter 
-from edison.core.composition import CompositionEngine 
-from edison.core.config import ConfigManager 
-from edison.core.utils.subprocess import run_with_timeout
 
 
 def _run_compose(*args: str) -> Tuple[int, str, str]:

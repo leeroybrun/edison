@@ -11,8 +11,11 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
+TESTS_ROOT = HERE.parent
 
-# Add helpers directory to path so tests can import from helpers.*
+# Add tests directory to path so tests can import from helpers.*
+if str(TESTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TESTS_ROOT))
 
 from helpers.test_env import TestProjectDir
 

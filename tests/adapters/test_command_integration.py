@@ -8,11 +8,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition.commands import compose_commands  # type: ignore  # noqa: E402
+from edison.core.ide.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
-from edison.core.adapters.claude import ClaudeAdapter  # type: ignore  # noqa: E402
-from edison.core.adapters.cursor import CursorAdapter  # type: ignore  # noqa: E402
-from edison.core.adapters.codex import CodexAdapter  # type: ignore  # noqa: E402
+from edison.core.adapters import ClaudeAdapter, CursorPromptAdapter, CodexAdapter  # type: ignore  # noqa: E402
 
 
 def _write_yaml(path: Path, data: Dict) -> None:
@@ -72,7 +70,7 @@ def test_generate_commands_all_platforms(tmp_path: Path) -> None:
 
     # Adapter helpers should also generate per-platform
     claude = ClaudeAdapter(generated_root, repo_root=tmp_path)
-    cursor = CursorAdapter(generated_root, repo_root=tmp_path)
+    cursor = CursorPromptAdapter(generated_root, repo_root=tmp_path)
     codex = CodexAdapter(generated_root, repo_root=tmp_path)
 
     claude_cmds = claude.generate_commands()

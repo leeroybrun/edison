@@ -15,7 +15,7 @@ from .naming import SessionNamingStrategy
 from ..paths import PathResolver
 from ..paths.management import get_management_paths
 from ..exceptions import SessionError
-from ..io_utils import utc_timestamp
+from ..io.utils import utc_timestamp
 
 _CONFIG = SessionConfig()
 logger = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ class SessionManager:
         owner: Optional[str] = None,
         naming_strategy: Optional[str] = None,
     ) -> Path:
-        from edison.core import sessionlib  # lazy to avoid circular import during module init
+        from . import lib as sessionlib  # lazy to avoid circular import during module init
 
         sid = session_id or self._generate_session_id(
             process=process, owner=owner, naming_strategy=naming_strategy
@@ -203,7 +203,7 @@ class SessionManager:
         return store.load_session(session_id)
 
     def transition_state(self, session_id: str, to_state: str) -> Path:
-        from edison.core import sessionlib  # lazy
+        from . import lib as sessionlib  # lazy
 
         # Ensure readiness flag for state machine conditions
         try:

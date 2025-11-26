@@ -3,213 +3,20 @@ from __future__ import annotations
 """Orchestrator manifest assembly and delegation helpers."""
 
 import json
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Iterable
 
 from .packs import yaml
-
-from ..composition_utils import render_conditional_includes
+from ..utils.text import render_conditional_includes
 from .formatting import render_orchestrator_json, render_orchestrator_markdown
-
-
-def get_workflow_loop_instructions() -> Dict:
-    """Return workflow loop instructions for orchestrators."""
-    return {
-        "command": "scripts/session next <session-id>",
-        "frequency": "Before EVERY action",
-        "readOrder": [
-            "1. 📋 APPLICABLE RULES (read FIRST)",
-            "2. 🎯 RECOMMENDED ACTIONS (read AFTER rules)",
-            "3. 🤖 DELEGATION HINT (follow priority chain)",
-            "4. 🔍 VALIDATORS (auto-detected from git diff)",
-        ],
-    }
-
-
-def _validator_map(roster: Dict[str, List[Dict]]) -> Dict[str, Dict]:
-    """Build quick lookup map of validator definitions keyed by id."""
-    mapping: Dict[str, Dict] = {}
-    for entries in roster.values():
-        for entry in entries or []:
-            if isinstance(entry, dict) and entry.get("id"):
-                mapping[entry["id"]] = entry
-    return mapping
-
-
-def _infer_validator_metadata(
-    validator_id: str,
-    *,
-    repo_root: Path,
-    project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
-) -> Dict:
-    """Best-effort metadata extraction for validators defined only by id."""
-
-    inferred: Dict[str, object] = {
-        "id": validator_id,
-        "name": validator_id.replace("-", " ").title(),
-        "model": "codex",
-        "triggers": ["*"],
-        "alwaysRun": False,
-        "blocksOnFail": False,
-    }
-
-    def _first_existing(paths: Iterable[Path]) -> Path | None:
-        for p in paths:
-            if p.exists():
-                return p
-        return None
-
-    candidate_paths = [
-        project_dir / "_generated" / "validators" / f"{validator_id}.md",
-        project_dir / ".cache" / "composed" / f"{validator_id}.md",
-        project_dir / "validators" / "specialized" / f"{validator_id}.md",
-        repo_root / ".edison" / "core" / "validators" / "specialized" / f"{validator_id}.md",
-    ]
-
-    for pack in active_packs:
-        candidate_paths.append(packs_dir / pack / "validators" / f"{validator_id}.md")
-
-    path = _first_existing(candidate_paths)
-    if not path:
-        return inferred
-
-    try:
-        text = path.read_text(encoding="utf-8")
-    except Exception:
-        return inferred
-
-    headers = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
-    for h in headers:
-        cleaned = h.strip()
-        if cleaned and cleaned.lower() != "core edison principles":
-            inferred["name"] = cleaned
-            break
-
-    model = re.search(r"\*\*Model\*\*:\s*([^\n*]+)", text)
-    if model:
-        inferred["model"] = model.group(1).strip()
-
-    triggers_line = re.search(r"\*\*Triggers\*\*:\s*([^\n]+)", text)
-    if triggers_line:
-        triggers = re.findall(r"`([^`]+)`", triggers_line.group(1))
-        if triggers:
-            inferred["triggers"] = triggers
-
-    if re.search(r"\*\*Blocks on Fail\*\*:\s*✅\s*YES", text, flags=re.IGNORECASE):
-        inferred["blocksOnFail"] = True
-
-    return inferred  # type: ignore[return-value]
-
-
-def _normalize_validator_entries(
-    raw_entries,
-    *,
-    fallback_map: Dict[str, Dict],
-    repo_root: Path,
-    project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
-) -> List[Dict]:
-    """Normalize roster entries into dicts, enriching ids with inferred metadata."""
-    normalized: List[Dict] = []
-    for entry in raw_entries or []:
-        if isinstance(entry, dict):
-            if "id" in entry:
-                normalized.append(entry)
-        elif isinstance(entry, str) and entry:
-            base = fallback_map.get(entry)
-            if base:
-                normalized.append(base)
-            else:
-                normalized.append(
-                    _infer_validator_metadata(
-                        entry,
-                        repo_root=repo_root,
-                        project_dir=project_dir,
-                        packs_dir=packs_dir,
-                        active_packs=active_packs,
-                    )
-                )
-    return normalized
-
-
-def _merge_rosters(
-    base_roster: Dict[str, List[Dict]],
-    override_roster: Dict[str, List[Dict]],
-    *,
-    repo_root: Path,
-    project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
-) -> Dict[str, List[Dict]]:
-    """Merge validation + validators rosters without hardcoded ids."""
-    result: Dict[str, List[Dict]] = {}
-    base_map = _validator_map(base_roster)
-
-    for bucket in ("global", "critical", "specialized"):
-        base_entries = _normalize_validator_entries(
-            base_roster.get(bucket, []),
-            fallback_map=base_map,
-            repo_root=repo_root,
-            project_dir=project_dir,
-            packs_dir=packs_dir,
-            active_packs=active_packs,
-        )
-
-        override_entries = _normalize_validator_entries(
-            override_roster.get(bucket, []),
-            fallback_map=base_map,
-            repo_root=repo_root,
-            project_dir=project_dir,
-            packs_dir=packs_dir,
-            active_packs=active_packs,
-        )
-
-        if override_entries:
-            seen = {e["id"] for e in override_entries if isinstance(e, dict) and e.get("id")}
-            merged: List[Dict] = list(override_entries)
-            for entry in base_entries:
-                if entry.get("id") not in seen:
-                    merged.append(entry)
-            result[bucket] = merged
-        else:
-            result[bucket] = base_entries
-
-    return result
-
-
-def collect_validators(
-    config: Dict,
-    *,
-    repo_root: Path,
-    project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
-) -> Dict[str, List[Dict]]:
-    """Collect validator roster from merged configuration (validation + validators)."""
-    validation_cfg = ((config or {}).get("validation", {}) or {})
-    validators_cfg = ((config or {}).get("validators", {}) or {})
-
-    base_roster = (validation_cfg.get("roster", {}) or {}) if isinstance(validation_cfg, dict) else {}
-    override_roster = (validators_cfg.get("roster", {}) or {}) if isinstance(validators_cfg, dict) else {}
-
-    return _merge_rosters(
-        base_roster,
-        override_roster,
-        repo_root=repo_root,
-        project_dir=project_dir,
-        packs_dir=packs_dir,
-        active_packs=active_packs,
-    )
+from .validators import collect_validators
+from .workflow import get_workflow_loop_instructions
 
 
 def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], project_dir: Path) -> Dict[str, List[str]]:
     """Collect agents from Core + Packs + Project using AgentRegistry."""
-    from .. import agents as agents_module  # type: ignore
+    from . import agents as agents_module
 
     AgentRegistry = agents_module.AgentRegistry
 
@@ -383,7 +190,7 @@ def compose_claude_orchestrator(engine, output_dir: Path | str) -> Path:
 
 def compose_claude_agents(engine, output_dir: Path | str | None = None, *, packs_override: Optional[List[str]] = None) -> Dict[str, Path]:
     """Compose agents for Claude Code consumption."""
-    from .. import agents as agents_module  # type: ignore
+    from . import agents as agents_module
 
     AgentRegistry = agents_module.AgentRegistry
     AgentError = agents_module.AgentError

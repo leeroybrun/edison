@@ -45,7 +45,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Compose git hooks - delegates to composition engine."""
-    from edison.core.composition.hooks import compose_hooks, install_hooks
+    from edison.core.ide.hooks import compose_hooks
     from edison.core.paths import resolve_project_root
 
     try:

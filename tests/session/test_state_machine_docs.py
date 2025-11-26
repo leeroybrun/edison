@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from edison.core.state_machine_docs import ( 
+from edison.core.session.state_machine_docs import (
     generate_transition_matrix,
     generate_mermaid_diagram,
     write_state_machine_docs,

@@ -12,8 +12,8 @@ from datetime import datetime, timezone
 from ..paths.resolver import PathResolver
 from ..legacy_guard import enforce_no_legacy_project_root
 from .. import task
-from ..locklib import acquire_file_lock
-from ..io_utils import (
+from ..io.locking import acquire_file_lock
+from ..io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
     utc_timestamp as io_utc_timestamp,
@@ -33,6 +33,17 @@ enforce_no_legacy_project_root("lib.session.store")
 
 # Initialize config once (or per call if dynamic reload needed, but once is usually fine for core lib)
 _CONFIG = SessionConfig()
+
+
+def reset_session_store_cache() -> None:
+    """Reset the cached SessionConfig.
+
+    This is primarily for testing purposes to ensure clean test state
+    when environment variables or config files change.
+    In production, this should rarely be needed.
+    """
+    global _CONFIG
+    _CONFIG = SessionConfig()
 
 def _sessions_root() -> Path:
     """Return the absolute sessions root directory path."""

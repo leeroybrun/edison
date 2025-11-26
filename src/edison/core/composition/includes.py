@@ -12,7 +12,7 @@ from typing import List, Optional, Set, Tuple
 from edison.core.utils.git import get_repo_root
 
 from ..paths.project import get_project_config_dir
-from ..composition_utils import ENGINE_VERSION
+from ..utils.text import ENGINE_VERSION
 
 # Engine constants
 MAX_DEPTH = 3

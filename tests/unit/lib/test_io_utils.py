@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.io_utils import (
+from edison.core.io.utils import (
     utc_timestamp,
     read_json_safe,
     write_json_safe,

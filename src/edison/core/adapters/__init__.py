@@ -3,27 +3,93 @@ from __future__ import annotations
 """
 Provider-agnostic prompt adapters.
 
-These adapters project Edison `_generated` artifacts (under
-`<project_config_dir>/_generated/`) into provider-specific layouts such as:
+This module provides two categories of adapters:
 
-  - `.claude/` (Claude Code)
-  - `.zen/conf/systemprompts/**` (Zen MCP)
-  - `.cursor/**` (Cursor)
+1. **PromptAdapter-based adapters** (thin views over `_generated`):
+   Located in the `prompt/` subdirectory:
+   - ClaudeAdapter: Projects into `.claude/`
+   - ZenPromptAdapter: Projects into `.zen/conf/systemprompts/`
+   - CursorPromptAdapter: Projects into `.cursor/`
+   - CodexAdapter: Projects into `.codex/`
 
-Composition logic lives in the core engine; adapters are thin views over
-the `_generated` tree and must not re-run include or pack resolution.
+2. **Full-featured adapters** (composition + sync + validation):
+   Located in the `sync/` subdirectory:
+   - ClaudeSync: Full Claude Code integration with agent sync (formerly ClaudeCodeAdapter)
+   - ZenSync: Full Zen MCP integration with role composition (formerly ZenAdapter)
+   - CursorSync: Full Cursor integration with .cursorrules management (formerly CursorAdapter)
+
+Choose based on your use case:
+- For rendering from `_generated` artifacts: Use PromptAdapter-based
+- For full composition and sync: Use the full-featured sync adapters
 """
 
+# ============================================================================
+# Base and shared utilities
+# ============================================================================
 from .base import PromptAdapter  # noqa: F401
-from .claude import ClaudeAdapter  # noqa: F401
-from .zen import ZenPromptAdapter  # noqa: F401
-from .codex import CodexAdapter  # noqa: F401
-from .cursor import CursorAdapter  # noqa: F401
+from ._config import ConfigMixin  # noqa: F401
+
+# ============================================================================
+# PromptAdapter-based adapters (thin views over _generated)
+# ============================================================================
+from .prompt.claude import ClaudeAdapter  # noqa: F401
+from .prompt.zen import ZenPromptAdapter  # noqa: F401
+from .prompt.codex import CodexAdapter  # noqa: F401
+from .prompt.cursor import CursorPromptAdapter  # noqa: F401
+
+# ============================================================================
+# Full-featured adapters (composition + sync + validation)
+# ============================================================================
+from .sync.claude import (
+    ClaudeSync,
+    ClaudeAdapterError,
+    EdisonAgentSections,
+)
+from .sync.cursor import CursorSync, AUTOGEN_BEGIN, AUTOGEN_END
+from .sync.zen import ZenSync, WORKFLOW_HEADING
+
+# ============================================================================
+# Backward compatibility aliases
+# ============================================================================
+ClaudeCodeAdapter = ClaudeSync  # Renamed to ClaudeSync
+CursorAdapter = CursorSync  # Renamed to CursorSync
+ZenAdapter = ZenSync  # Renamed to ZenSync
+
+# ============================================================================
+# Shared schema validation utilities
+# ============================================================================
+from ._schemas import (
+    load_schema,
+    validate_payload,
+    validate_payload_safe,
+    SchemaValidationError,
+)
 
 __all__ = [
+    # Base and shared
     "PromptAdapter",
+    "ConfigMixin",
+    # PromptAdapter-based (thin)
     "ClaudeAdapter",
     "ZenPromptAdapter",
+    "CursorPromptAdapter",
     "CodexAdapter",
+    # Full-featured sync adapters
+    "ClaudeSync",
+    "ClaudeAdapterError",
+    "EdisonAgentSections",
+    "CursorSync",
+    "AUTOGEN_BEGIN",
+    "AUTOGEN_END",
+    "ZenSync",
+    "WORKFLOW_HEADING",
+    # Backward compatibility aliases
+    "ClaudeCodeAdapter",
     "CursorAdapter",
+    "ZenAdapter",
+    # Schema utilities
+    "load_schema",
+    "validate_payload",
+    "validate_payload_safe",
+    "SchemaValidationError",
 ]

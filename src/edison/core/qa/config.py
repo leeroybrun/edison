@@ -19,6 +19,44 @@ from ..paths.resolver import PathResolver
 enforce_no_legacy_project_root("lib.qa.config")
 
 
+class QAConfig:
+    """QA configuration access following the DomainConfig pattern.
+
+    Provides structured access to QA-related configuration with repo_root exposure.
+    """
+
+    def __init__(self, repo_root: Optional[Path] = None):
+        self._mgr = ConfigManager(repo_root=repo_root)
+        self.repo_root = self._mgr.repo_root if hasattr(self._mgr, 'repo_root') else repo_root
+        self._config = self._mgr.load_config(validate=False)
+
+    def get_delegation_config(self) -> Dict[str, Any]:
+        """Return the ``delegation`` section from configuration."""
+        section = self._config.get("delegation", {}) or {}
+        return section if isinstance(section, dict) else {}
+
+    def get_validation_config(self) -> Dict[str, Any]:
+        """Return the ``validation`` section from configuration."""
+        section = self._config.get("validation", {}) or {}
+        return section if isinstance(section, dict) else {}
+
+    def get_max_concurrent_validators(self) -> int:
+        """Return the global validator concurrency cap from configuration."""
+        orchestration = self._config.get("orchestration", {}) or {}
+        value = orchestration.get("maxConcurrentAgents")
+        if value is None:
+            raise RuntimeError(
+                "orchestration.maxConcurrentAgents missing in configuration; "
+                "define it in .edison/core/config/defaults.yaml or project overlays."
+            )
+        return int(value)
+
+    # Alias for consistency with module-level function
+    def max_concurrent_validators(self) -> int:
+        """Alias for get_max_concurrent_validators."""
+        return self.get_max_concurrent_validators()
+
+
 def load_config(repo_root: Optional[Path] = None, *, validate: bool = False) -> Dict[str, Any]:
     """Load merged Edison configuration for the given repository root."""
     root = repo_root or PathResolver.resolve_project_root()
@@ -53,6 +91,7 @@ def max_concurrent_validators(repo_root: Optional[Path] = None) -> int:
 
 
 __all__ = [
+    "QAConfig",
     "load_config",
     "load_delegation_config",
     "load_validation_config",

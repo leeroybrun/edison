@@ -58,7 +58,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Audit guidelines - delegates to guideline_audit library."""
-    from edison.core import guideline_audit
+    from edison.core.composition import audit as guideline_audit
     from edison.core.paths import resolve_project_root
 
     try:

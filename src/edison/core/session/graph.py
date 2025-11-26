@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 from .. import task
-from ..io_utils import utc_timestamp as io_utc_timestamp
-from ..evidence import EvidenceManager
+from ..io.utils import utc_timestamp as io_utc_timestamp
+from ..qa.evidence import EvidenceManager
 from ..paths.resolver import PathResolver
 from ..paths.management import get_management_paths
 from .store import (

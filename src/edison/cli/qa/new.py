@@ -52,7 +52,7 @@ def main(args: argparse.Namespace) -> int:
     """Create QA brief - delegates to QA library."""
     from edison.core.qa import evidence, rounds
     from edison.core.paths import resolve_project_root
-    from edison.core.io_utils import write_json_safe
+    from edison.core.io.utils import write_json_safe
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

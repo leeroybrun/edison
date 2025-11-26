@@ -38,7 +38,7 @@ def _write_timeout_config(root: Path, default: float = 0.2, file_ops: float = 1.
 
 
 def test_run_with_timeout_honors_configured_value(isolated_project_env: Path) -> None:
-    from edison.core.wrapper import run_with_timeout
+    from edison.core.utils.subprocess import run_with_timeout
 
     _write_timeout_config(isolated_project_env, default=1.0, file_ops=0.5)
 
@@ -51,7 +51,7 @@ def test_run_with_timeout_honors_configured_value(isolated_project_env: Path) ->
 
 
 def test_run_with_timeout_raises_on_expiry(isolated_project_env: Path) -> None:
-    from edison.core.wrapper import run_with_timeout
+    from edison.core.utils.subprocess import run_with_timeout
 
     _write_timeout_config(isolated_project_env, default=0.1, file_ops=0.15)
 
@@ -62,7 +62,7 @@ def test_run_with_timeout_raises_on_expiry(isolated_project_env: Path) -> None:
 
 
 def test_run_with_timeout_respects_timeout_type(isolated_project_env: Path) -> None:
-    from edison.core.wrapper import run_with_timeout
+    from edison.core.utils.subprocess import run_with_timeout
 
     _write_timeout_config(isolated_project_env, default=0.5, file_ops=0.05)
 

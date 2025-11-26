@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition.hooks import HookComposer, HookDefinition  # type: ignore  # noqa: E402
+from edison.core.ide.hooks import HookComposer, HookDefinition  # type: ignore  # noqa: E402
 
 
 ALLOWED_TYPES = [

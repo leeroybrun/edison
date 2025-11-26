@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 
-from edison.core import sessionlib  # type: ignore
+from edison.core.session import lib as sessionlib  # type: ignore
 
 
 def test_sessionlib_has_no_prisma_cli_calls() -> None:
