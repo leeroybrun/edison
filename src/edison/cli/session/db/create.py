@@ -33,10 +33,10 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Create session database - delegates to core library."""
     from edison.core.session.database import create_session_database
-    from edison.core.session.store import normalize_session_id
+    from edison.core.session.store import validate_session_id
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
         db_url = create_session_database(session_id)
 
         if db_url:

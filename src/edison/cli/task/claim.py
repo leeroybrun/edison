@@ -84,7 +84,7 @@ def main(args: argparse.Namespace) -> int:
         # Get or auto-detect session
         session_id = args.session_id
         if session_id:
-            session_id = session_store.normalize_session_id(session_id)
+            session_id = session_store.validate_session_id(session_id)
         else:
             # Try to get current session
             session_id = session_manager.get_current_session()

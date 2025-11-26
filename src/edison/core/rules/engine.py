@@ -10,8 +10,8 @@ import fnmatch
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..paths import EdisonPathError, PathResolver
-from ..paths.management import get_management_paths
+from edison.core.utils.paths import EdisonPathError, PathResolver
+from edison.core.utils.paths import get_management_paths
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import read_yaml
 

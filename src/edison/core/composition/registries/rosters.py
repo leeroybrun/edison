@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from edison.core.config import ConfigManager
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 from .agents import AgentRegistry
 from .validators import ValidatorRegistry

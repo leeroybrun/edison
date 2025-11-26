@@ -114,6 +114,24 @@ from .audit import (
     PACK_TECH_TERMS,
 )
 
+# IDE composition
+from .ide import (
+    CommandArg,
+    CommandDefinition,
+    CommandComposer,
+    PlatformAdapter,
+    ClaudeCommandAdapter,
+    CursorCommandAdapter,
+    CodexCommandAdapter,
+    compose_commands,
+    HookComposer,
+    HookDefinition,
+    compose_hooks,
+    ALLOWED_TYPES,
+    SettingsComposer,
+    merge_permissions,
+)
+
 # Utils re-exports for backward compatibility
 from ..utils.text import (
     dry_duplicate_report,
@@ -220,4 +238,19 @@ __all__ = [
     "_strip_headings_and_code",
     "_tokenize",
     "_shingles",
+    # IDE
+    "CommandArg",
+    "CommandDefinition",
+    "CommandComposer",
+    "PlatformAdapter",
+    "ClaudeCommandAdapter",
+    "CursorCommandAdapter",
+    "CodexCommandAdapter",
+    "compose_commands",
+    "HookComposer",
+    "HookDefinition",
+    "compose_hooks",
+    "ALLOWED_TYPES",
+    "SettingsComposer",
+    "merge_permissions",
 ]

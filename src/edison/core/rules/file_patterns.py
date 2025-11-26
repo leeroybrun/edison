@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from edison.data import get_data_path
-from edison.core.paths import PathResolver, EdisonPathError
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import PathResolver, EdisonPathError
+from edison.core.utils.paths import get_project_config_dir
 
 
 class FilePatternRegistry:
@@ -50,8 +50,8 @@ class FilePatternRegistry:
 
     @staticmethod
     def _load_yaml(path: Path) -> Dict[str, Any]:
-        from edison.core.file_io.utils import read_yaml_safe
-        data = read_yaml_safe(path, raise_on_error=True) or {}
+        from edison.core.utils.io import read_yaml
+        data = read_yaml(path, raise_on_error=True) or {}
         if not isinstance(data, dict):
             raise ValueError(f"{path} must parse to a mapping")
         data["_path"] = str(path)

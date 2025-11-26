@@ -37,7 +37,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Show rules for given contexts."""
     from edison.core.rules import RulesRegistry
-    from edison.core.paths import PathResolver
+    from edison.core.utils.paths import PathResolver
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else PathResolver.resolve_project_root()

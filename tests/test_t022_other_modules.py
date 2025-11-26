@@ -1,7 +1,7 @@
 
 import pytest
 from pathlib import Path
-from edison.core.ide import settings
+from edison.core.composition.ide import settings
 from edison.core.file_io import locking
 from edison.core.paths import project
 from edison.core.utils import resilience

@@ -6,13 +6,20 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from edison.core.session import recovery
 from edison.core.session import store
-from edison.core.config.domains import SessionConfig
+from edison.core.session._config import reset_config_cache
+from edison.core.config.cache import clear_all_caches
+import edison.core.utils.paths.resolver as path_resolver
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
     """
     Sets up a temporary project root.
     """
+    # Reset ALL caches first
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+
     # Setup .edison/core/config
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
@@ -47,11 +54,18 @@ def project_root(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
     
-    # Reload configs
-    store._CONFIG = SessionConfig()
-    recovery._CONFIG = SessionConfig()
+    # Reset caches AFTER env vars are set
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+    store.reset_session_store_cache()
     
-    return tmp_path
+    yield tmp_path
+
+    # Cleanup
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
 
 def test_is_session_expired(project_root):
     """Test session expiration logic."""

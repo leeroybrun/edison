@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from edison.core.templates.mcp_config import configure_mcp_json
+from edison.core.mcp.config import configure_mcp_json
 
 SUMMARY = "Configure .mcp.json for all MCP servers"
 

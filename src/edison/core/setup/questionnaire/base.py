@@ -5,9 +5,9 @@ import copy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.file_io.utils import read_yaml_safe
-from edison.core.paths.project import get_project_config_dir
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.io import read_yaml
+from edison.core.utils.paths import get_project_config_dir
+from edison.core.utils.paths import PathResolver
 from ..component_discovery import SetupDiscovery
 
 from . import prompts
@@ -126,7 +126,7 @@ class SetupQuestionnaire:
     # ---------- Internal helpers ----------
     def _load_config(self) -> Dict[str, Any]:
         """Load setup.yaml configuration."""
-        return read_yaml_safe(self.config_path, default={})
+        return read_yaml(self.config_path, default={})
 
     def _questions_for_mode(self, mode: str) -> List[Dict[str, Any]]:
         """Get list of questions for a given mode."""

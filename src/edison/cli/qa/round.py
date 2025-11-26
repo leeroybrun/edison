@@ -57,8 +57,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Manage QA rounds - delegates to QA library."""
     from edison.core.qa import rounds, evidence
-    from edison.core.paths import resolve_project_root
-    from edison.core.file_io.utils import write_json_safe
+    from edison.core.utils.paths import resolve_project_root
+    from edison.core.utils.io import write_json_atomic
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
@@ -119,7 +119,7 @@ def main(args: argparse.Namespace) -> int:
                 "currentRound": round_num,
                 "round": round_num,
             }
-            write_json_safe(metadata_path, metadata)
+            write_json_atomic(metadata_path, metadata)
 
             if args.json:
                 print(json.dumps({

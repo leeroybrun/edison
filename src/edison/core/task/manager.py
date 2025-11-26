@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from edison.core.paths import PathResolver
+from edison.core.utils.paths import PathResolver
 import edison.core.task as task
 from edison.core.task.config import TaskConfig
 

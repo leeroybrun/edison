@@ -70,8 +70,8 @@ class CompositionSchema:
             from edison.data import get_data_path
             path = Path(get_data_path("config")) / "composition.yaml"
         
-        from edison.core.file_io.utils import read_yaml_safe
-        data = read_yaml_safe(path, default={})
+        from edison.core.utils.io import read_yaml
+        data = read_yaml(path, default={})
         instance = cls(data)
         
         if path is None:

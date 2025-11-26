@@ -70,7 +70,7 @@ def _parse_wave_config(wave_str: str) -> List[str]:
 def main(args: argparse.Namespace) -> int:
     """Run validator wave - orchestrates multiple validators."""
     from edison.core.qa import validator, rounds
-    from edison.core.paths import resolve_project_root
+    from edison.core.utils.paths import resolve_project_root
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

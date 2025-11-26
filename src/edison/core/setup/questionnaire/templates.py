@@ -5,7 +5,7 @@ import re
 from textwrap import dedent
 from typing import Any, Dict, TYPE_CHECKING
 
-from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
+from edison.core.utils.paths import DEFAULT_PROJECT_CONFIG_PRIMARY
 
 if TYPE_CHECKING:
     from .base import SetupQuestionnaire

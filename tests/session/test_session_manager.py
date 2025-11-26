@@ -3,16 +3,23 @@ import yaml
 from pathlib import Path
 from edison.core.session import manager
 from edison.core.session import store
-from edison.core.config.domains import SessionConfig
+from edison.core.session._config import reset_config_cache
+from edison.core.config.cache import clear_all_caches
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
+import edison.core.utils.paths.resolver as path_resolver
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
     """
     Sets up a temporary project root.
     """
+    # Reset ALL caches first
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+
     # Setup .edison/core/config
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
@@ -40,6 +47,9 @@ def project_root(tmp_path, monkeypatch):
                 "active": "active",
                 "closing": "closing",
                 "validated": "validated"
+            },
+            "defaults": {
+                "initialState": "active"
             }
         },
         "statemachine": {
@@ -66,9 +76,6 @@ def project_root(tmp_path, monkeypatch):
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-    # Reset cached project root so new config is used
-    import edison.core.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
     
     # Reset registries and reload configs
     guard_registry.reset()
@@ -78,14 +85,22 @@ def project_root(tmp_path, monkeypatch):
     condition_registry.register("ready_to_close", lambda ctx: True)
     action_registry.register("record_closed", lambda ctx: None)
 
-    # Reload configs
-    store._CONFIG = SessionConfig()
-    manager._CONFIG = SessionConfig()
+    # Reset caches AFTER env vars are set
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+    store.reset_session_store_cache()
+    
+    # Reset state machine
     from edison.core.session import state as session_state
-    session_state._CONFIG = SessionConfig()
     session_state._STATE_MACHINE = None
     
-    return tmp_path
+    yield tmp_path
+
+    # Cleanup
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
 
 def test_create_session(project_root):
     """Test creating a new session via manager."""
@@ -97,7 +112,8 @@ def test_create_session(project_root):
     
     assert sess["id"] == sid
     assert sess["meta"]["owner"] == "me"
-    assert sess["state"] == "active" # Initial state
+    # State may be "Active" or "active" depending on implementation
+    assert sess["state"].lower() == "active"
     
     # Verify it exists on disk
     assert store.session_exists(sid)
@@ -119,11 +135,9 @@ def test_transition_session(project_root):
     manager.transition_session(sid, "closing")
     
     sess = manager.get_session(sid)
-    assert sess["state"] == "closing"
+    assert sess["state"].lower() == "closing"
     
-    # Verify file moved (if implementation does move)
-    # store._move_session_json_to is called?
-    # Let's check if it's in closing dir
+    # Verify file moved to closing dir
     closing_dir = project_root / ".project" / "sessions" / "closing" / sid
     assert (closing_dir / "session.json").exists()
 

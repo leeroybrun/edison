@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 from edison.core.config.domains import SessionConfig
 from edison.core.paths.project import get_project_config_dir
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.resolver import PathResolver
 
 def test_get_worktree_config_reads_manifest(tmp_path, monkeypatch):
     """Test that worktree config is read from manifest.json using read_json_safe logic."""

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from ...file_io.utils import read_json_safe
+from edison.core.utils.io import read_json
 from .helpers import _latest_round_dir
 
 
@@ -16,7 +16,7 @@ def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
     if not rp.exists():
         return []
     try:
-        data = read_json_safe(rp)
+        data = read_json(rp)
     except Exception:
         return []
     out: List[Dict[str, Any]] = []
@@ -42,7 +42,7 @@ def load_bundle_followups(task_id: str) -> List[Dict[str, Any]]:
     if not bp.exists():
         return []
     try:
-        data = read_json_safe(bp)
+        data = read_json(bp)
     except Exception:
         return []
     out: List[Dict[str, Any]] = []

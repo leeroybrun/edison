@@ -5,13 +5,20 @@ from pathlib import Path
 import yaml
 from edison.core.session import worktree
 from edison.core.session._config import reset_config_cache
+from edison.core.config.cache import clear_all_caches
 from edison.core.utils.subprocess import run_with_timeout
+import edison.core.utils.paths.resolver as path_resolver
 
 @pytest.fixture
 def git_repo(tmp_path, monkeypatch):
     """
     Sets up a temporary git repo and configures environment variables.
     """
+    # Reset ALL caches first
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+
     # Setup .edison/core/config
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
@@ -19,13 +26,16 @@ def git_repo(tmp_path, monkeypatch):
     defaults_data = {"edison": {"version": "1.0.0"}}
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
     
+    # Create worktrees directory path - use absolute path 
+    worktrees_dir = tmp_path / "worktrees"
+    
     session_data = {
         "worktrees": {
             "enabled": True,
-            "baseDirectory": str(tmp_path / "worktrees"),
+            "baseDirectory": str(worktrees_dir),
             "branchPrefix": "session/",
             "timeouts": {
-                "health_check": 2, # Short timeout for tests
+                "health_check": 2,
                 "fetch": 5,
                 "checkout": 5,
                 "worktree_add": 5,
@@ -48,15 +58,24 @@ def git_repo(tmp_path, monkeypatch):
     run_with_timeout(["git", "config", "user.name", "Your Name"], cwd=repo_dir, check=True)
     run_with_timeout(["git", "commit", "--allow-empty", "-m", "Initial commit"], cwd=repo_dir, check=True)
     
-    # Reset config cache to pick up new settings
+    # Reset caches AFTER env vars are set
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
     reset_config_cache()
     
-    return repo_dir
+    yield repo_dir
+
+    # Cleanup
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
 
 def test_get_worktree_base(git_repo):
     """Test base directory resolution."""
     base = worktree._get_worktree_base()
-    assert base == git_repo / "worktrees"
+    # The base should be the worktrees directory we configured
+    expected = git_repo / "worktrees"
+    assert base == expected
 
 def test_git_is_healthy(git_repo):
     """Test git health check."""
@@ -66,9 +85,7 @@ def test_git_is_healthy(git_repo):
 def test_create_worktree(git_repo):
     """Test worktree creation."""
     sid = "test-session"
-    wt_path, branch = worktree.create_worktree(sid, base_branch="master") # master is default in old git, main in new. 
-    # Check what default branch is. 'Initial commit' usually on master or main.
-    # Let's check current branch.
+    # Check current branch
     r = run_with_timeout(["git", "branch", "--show-current"], cwd=git_repo, capture_output=True, text=True)
     base_branch = r.stdout.strip()
     
@@ -81,8 +98,6 @@ def test_create_worktree(git_repo):
     
     # Verify it's in the list
     items = worktree._git_list_worktrees()
-    # items is list of (path, branch)
-    # We need to resolve paths to compare
     found = False
     for p, b in items:
         if p.resolve() == wt_path.resolve() and b == branch:

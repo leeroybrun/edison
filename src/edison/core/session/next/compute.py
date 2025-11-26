@@ -22,8 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.cli_arguments import parse_common_args
-from edison.core.utils.cli_output import output_json
+from edison.core.utils.cli.arguments import parse_common_args
+from edison.core.utils.cli.output import output_json
 from edison.core.session._config import get_config
 from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
@@ -32,7 +32,7 @@ from edison.core.session.context import SessionContext
 from edison.core import task
 from edison.core.qa import validator as qa_validator
 from edison.core.qa import evidence as qa_evidence
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe
+from edison.core.utils.io import read_json as io_read_json
 
 from edison.core.session.next.utils import (
     project_cfg_dir,
@@ -57,7 +57,7 @@ from edison.core.session.next.output import format_human_readable
 
 load_session = session_manager.get_session
 build_validation_bundle = session_graph.build_validation_bundle
-normalize_session_id = session_store.normalize_session_id
+validate_session_id = session_store.validate_session_id
 
 
 def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str, Any]:
@@ -464,14 +464,14 @@ def main() -> None:  # CLI facade for direct execution
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--scope", choices=["tasks", "qa", "session"])
     args = parser.parse_args()
-    session_id = normalize_session_id(args.session_id)
+    session_id = validate_session_id(args.session_id)
 
     if args.repo_root:
         os.environ["AGENTS_PROJECT_ROOT"] = str(args.repo_root)
 
     if args.limit == 0:
         try:
-            manifest = io_read_json_safe(project_cfg_dir() / "manifest.json")
+            manifest = io_read_json(project_cfg_dir() / "manifest.json")
             limit = int(manifest.get("orchestration", {}).get("maxConcurrentAgents", 5))
         except Exception:
             limit = 5

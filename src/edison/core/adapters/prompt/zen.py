@@ -14,7 +14,7 @@ Output location: Configurable via composition.yaml (default: .zen/conf/systempro
 from pathlib import Path
 from typing import List, Optional
 
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 from ...composition.output import OutputConfigLoader
 from ..base import PromptAdapter
 

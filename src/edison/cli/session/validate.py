@@ -53,11 +53,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Validate session health - delegates to core library."""
     from edison.core.session.verify import verify_session_health
-    from edison.core.session.store import normalize_session_id
+    from edison.core.session.store import validate_session_id
     from edison.core.qa.scoring import track_validation_score
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
         health = verify_session_health(session_id)
 
         result = {

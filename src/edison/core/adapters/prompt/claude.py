@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..base import PromptAdapter
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 
 class ClaudeAdapter(PromptAdapter):

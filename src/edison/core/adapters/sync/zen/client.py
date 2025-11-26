@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Any
 
 from ....paths import PathResolver
 from ....config import ConfigManager
+from ....config.domains import PacksConfig
 from ....composition import GuidelineRegistry
 from ....rules import RulesRegistry
 
@@ -37,11 +38,14 @@ class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
     # ------------------------------------------------------------------
     # Public API: role-aware discovery
     # ------------------------------------------------------------------
+    @property
+    def _packs_config(self) -> PacksConfig:
+        """Lazy PacksConfig accessor."""
+        return PacksConfig(repo_root=self.repo_root)
+
     def _active_packs(self) -> List[str]:
-        packs = ((self.config or {}).get("packs", {}) or {}).get("active", [])
-        if isinstance(packs, list):
-            return packs
-        return []
+        """Get active packs via PacksConfig."""
+        return self._packs_config.active_packs
 
     # ---------- Role configuration helpers ----------
     def _load_zen_roles_config(self) -> Dict[str, Any]:

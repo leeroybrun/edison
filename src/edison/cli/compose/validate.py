@@ -41,8 +41,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Validate composition - delegates to composition validator."""
     from edison.core.composition import validate_composition
-    from edison.core.paths import resolve_project_root
-    from edison.core.paths.project import get_project_config_dir
+    from edison.core.utils.paths import resolve_project_root
+    from edison.core.utils.paths import get_project_config_dir
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

@@ -51,7 +51,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Promote QA brief - delegates to QA library."""
     from edison.core.qa import promoter, bundler, rounds
-    from edison.core.paths import resolve_project_root
+    from edison.core.utils.paths import resolve_project_root
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

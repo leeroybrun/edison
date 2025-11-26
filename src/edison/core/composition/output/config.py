@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Any
 
-from edison.core.file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
+from edison.core.utils.merge import deep_merge
 from edison.data import get_data_path
 
 
@@ -50,8 +51,8 @@ class OutputConfigLoader:
     """Loads and resolves output configuration from composition.yaml."""
 
     def __init__(self, repo_root: Optional[Path] = None, project_config_dir: Optional[Path] = None):
-        from edison.core.paths.project import get_project_config_dir
-        from edison.core.paths import PathResolver
+        from edison.core.utils.paths import get_project_config_dir
+        from edison.core.utils.paths import PathResolver
         
         self.repo_root = repo_root or PathResolver.resolve_project_root()
         self.project_config_dir = project_config_dir or get_project_config_dir(self.repo_root)
@@ -64,28 +65,18 @@ class OutputConfigLoader:
         
         # Load core defaults
         core_config_path = get_data_path("config", "composition.yaml")
-        core_config = read_yaml_safe(core_config_path, default={})
+        core_config = read_yaml(core_config_path, default={})
         
         # Load project overrides if they exist
         project_config_path = self.project_config_dir / "composition.yaml"
         if project_config_path.exists():
-            project_config = read_yaml_safe(project_config_path, default={})
+            project_config = read_yaml(project_config_path, default={})
             # Deep merge project config over core config
-            self._config = self._deep_merge(core_config, project_config)
+            self._config = deep_merge(core_config, project_config)
         else:
             self._config = core_config
         
         return self._config
-
-    def _deep_merge(self, base: Dict, override: Dict) -> Dict:
-        """Deep merge two dictionaries, with override taking precedence."""
-        result = base.copy()
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = value
-        return result
 
     def _resolve_path(self, path_template: str) -> Path:
         """Resolve path template with placeholders."""

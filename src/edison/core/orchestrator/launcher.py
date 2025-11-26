@@ -23,7 +23,7 @@ from typing import Dict, List, Optional
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.session.context import SessionContext
 from edison.core.utils.time import utc_timestamp
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 
 class _SafeDict(dict):

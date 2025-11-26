@@ -44,8 +44,10 @@ def test_packs_public_api_unchanged():
             validate_pack,
             load_pack_metadata,
             resolve_dependencies,
-            load_active_packs,
         )
+        # Active packs now via PacksConfig (canonical source)
+        from edison.core.config.domains import PacksConfig
+        
         # Verify they're callable/usable
         assert callable(auto_activate_packs)
         assert callable(compose)

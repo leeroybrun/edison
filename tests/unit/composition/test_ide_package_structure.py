@@ -27,7 +27,7 @@ def test_ide_package_exists() -> None:
 def test_ide_commands_module_exists() -> None:
     """IDE commands module should be in ide package."""
     try:
-        from edison.core.ide import commands
+        from edison.core.composition.ide import commands
         assert commands is not None
     except ImportError as e:
         raise AssertionError(f"edison.core.ide.commands should exist: {e}")
@@ -36,7 +36,7 @@ def test_ide_commands_module_exists() -> None:
 def test_ide_hooks_module_exists() -> None:
     """IDE hooks module should be in ide package."""
     try:
-        from edison.core.ide import hooks
+        from edison.core.composition.ide import hooks
         assert hooks is not None
     except ImportError as e:
         raise AssertionError(f"edison.core.ide.hooks should exist: {e}")
@@ -45,34 +45,34 @@ def test_ide_hooks_module_exists() -> None:
 def test_ide_settings_module_exists() -> None:
     """IDE settings module should be in ide package."""
     try:
-        from edison.core.ide import settings
+        from edison.core.composition.ide import settings
         assert settings is not None
     except ImportError as e:
         raise AssertionError(f"edison.core.ide.settings should exist: {e}")
 
 
 def test_command_composer_in_ide() -> None:
-    """CommandComposer should be importable from edison.core.ide.commands."""
+    """CommandComposer should be importable from edison.core.composition.ide.commands."""
     try:
-        from edison.core.ide.commands import CommandComposer
+        from edison.core.composition.ide.commands import CommandComposer
         assert CommandComposer is not None
     except ImportError as e:
         raise AssertionError(f"CommandComposer should be in ide.commands: {e}")
 
 
 def test_hook_composer_in_ide() -> None:
-    """HookComposer should be importable from edison.core.ide.hooks."""
+    """HookComposer should be importable from edison.core.composition.ide.hooks."""
     try:
-        from edison.core.ide.hooks import HookComposer
+        from edison.core.composition.ide.hooks import HookComposer
         assert HookComposer is not None
     except ImportError as e:
         raise AssertionError(f"HookComposer should be in ide.hooks: {e}")
 
 
 def test_settings_composer_in_ide() -> None:
-    """SettingsComposer should be importable from edison.core.ide.settings."""
+    """SettingsComposer should be importable from edison.core.composition.ide.settings."""
     try:
-        from edison.core.ide.settings import SettingsComposer
+        from edison.core.composition.ide.settings import SettingsComposer
         assert SettingsComposer is not None
     except ImportError as e:
         raise AssertionError(f"SettingsComposer should be in ide.settings: {e}")
@@ -81,7 +81,7 @@ def test_settings_composer_in_ide() -> None:
 def test_ide_package_exports_all_composers() -> None:
     """IDE package __init__.py should export all composer classes."""
     try:
-        from edison.core.ide import CommandComposer, HookComposer, SettingsComposer
+        from edison.core.composition.ide import CommandComposer, HookComposer, SettingsComposer
         assert CommandComposer is not None
         assert HookComposer is not None
         assert SettingsComposer is not None
@@ -95,7 +95,7 @@ def test_ide_modules_not_exported_from_composition() -> None:
         from edison.core.composition import CommandComposer, HookComposer, SettingsComposer
         raise AssertionError("IDE modules should NOT be importable from composition package")
     except ImportError:
-        # Expected: IDE modules should only be imported from edison.core.ide
+        # Expected: IDE modules should only be imported from edison.core.composition.ide
         pass
 
 

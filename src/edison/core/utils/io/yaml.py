@@ -1,0 +1,142 @@
+"""YAML I/O utilities with atomic writes and advisory locks."""
+from __future__ import annotations
+
+import fcntl
+from pathlib import Path
+from typing import Any
+
+from .core import atomic_write
+
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+
+def read_yaml(
+    path: Path, default: Any = None, raise_on_error: bool = False
+) -> Any:
+    """Read YAML with error handling.
+
+    Returns default if file is missing or invalid, unless raise_on_error is True.
+
+    Args:
+        path: YAML file path to read
+        default: Value to return if file missing or invalid (default: None)
+        raise_on_error: If True, propagate exceptions instead of returning default.
+
+    Returns:
+        Any: Parsed YAML data, or default if error
+
+    Examples:
+        >>> config = read_yaml(Path("config.yaml"), default={})
+        >>> assert isinstance(config, dict)
+    """
+    if not HAS_YAML:
+        if raise_on_error:
+            raise RuntimeError("PyYAML is required")
+        return default
+
+    path = Path(path)
+    if not path.exists():
+        if raise_on_error:
+            raise FileNotFoundError(f"File not found: {path}")
+        return default
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+            data = yaml.safe_load(f)  # type: ignore[no-untyped-call]
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        return data if data is not None else default
+    except Exception:
+        if raise_on_error:
+            raise
+        return default
+
+
+def write_yaml(path: Path, data: Any) -> None:
+    """Atomically write YAML data to ``path``.
+
+    Matches the JSON helper by using the shared atomic writer. Keys are
+    sorted for deterministic output.
+
+    Args:
+        path: Target file path
+        data: Data to serialize as YAML
+
+    Raises:
+        RuntimeError: If PyYAML is not installed
+    """
+    if not HAS_YAML:
+        raise RuntimeError(
+            "PyYAML is required for YAML operations. Install with: pip install pyyaml"
+        )
+
+    def _writer(f) -> None:
+        yaml.safe_dump(  # type: ignore[no-untyped-call]
+            data,
+            f,
+            default_flow_style=False,
+            sort_keys=True,
+            allow_unicode=True,
+        )
+
+    atomic_write(Path(path), _writer)
+
+
+def parse_yaml_string(content: str, default: Any = None) -> Any:
+    """Parse YAML from string with error handling.
+
+    Args:
+        content: YAML string content
+        default: Value to return on error (default: None)
+
+    Returns:
+        Parsed data or default
+    """
+    if not HAS_YAML:
+        return default
+
+    try:
+        data = yaml.safe_load(content)  # type: ignore[no-untyped-call]
+        return data if data is not None else default
+    except Exception:
+        return default
+
+
+def dump_yaml_string(data: Any, sort_keys: bool = True) -> str:
+    """Dump data to YAML string.
+
+    Args:
+        data: Data to dump
+        sort_keys: Whether to sort keys (default: True)
+
+    Returns:
+        YAML string
+
+    Raises:
+        RuntimeError: If PyYAML is not installed
+    """
+    if not HAS_YAML:
+        raise RuntimeError(
+            "PyYAML is required for YAML operations. Install with: pip install pyyaml"
+        )
+
+    return yaml.safe_dump(  # type: ignore[no-untyped-call]
+        data,
+        default_flow_style=False,
+        sort_keys=sort_keys,
+        allow_unicode=True,
+    )
+
+
+__all__ = [
+    "HAS_YAML",
+    "read_yaml",
+    "write_yaml",
+    "parse_yaml_string",
+    "dump_yaml_string",
+]

@@ -37,11 +37,6 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     return CompositionPathResolver(root).packs_dir
 
 
-def load_active_packs(config: Dict[str, Any]) -> List[str]:
-    packs = (config.get("packs") or {}).get("active") or []
-    return [str(x) for x in packs if isinstance(x, str)]
-
-
 def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     """Discover all valid packs using composition path resolution."""
     root = root or _repo_root()

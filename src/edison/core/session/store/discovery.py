@@ -12,7 +12,7 @@ from ._shared import (
     _session_json_candidates,
     _sessions_root,
     _session_state_order,
-    sanitize_session_id,
+    validate_session_id,
     _session_dir,
 )
 
@@ -22,7 +22,7 @@ enforce_no_legacy_project_root("lib.session.store.discovery")
 
 def get_session_json_path(session_id: str) -> Path:
     """Public helper: resolve the current ``session.json`` for ``session_id``."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     # Prefer any existing JSON path across supported layouts.
     for path in _session_json_candidates(sid):
         if path.exists():
@@ -35,7 +35,7 @@ def get_session_json_path(session_id: str) -> Path:
 
 
 def session_exists(session_id: str) -> bool:
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     for path in _session_json_candidates(sid):
         if path.exists():
             return True
@@ -77,7 +77,7 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
     # Try PID-based inference first
     session_id: Optional[str] = None
     try:
-        from ..process.inspector import infer_session_id
+        from edison.core.process.inspector import infer_session_id
         session_id = infer_session_id()
 
         # Check if PID-based session exists
@@ -89,7 +89,7 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
 
     # Fallback: Owner-based lookup
     if owner:
-        candidate = sanitize_session_id(owner)
+        candidate = validate_session_id(owner)
         if session_exists(candidate):
             return candidate
 

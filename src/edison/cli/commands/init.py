@@ -11,9 +11,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 from edison.data import get_data_path
-from edison.core.templates.mcp_config import configure_mcp_json
+from edison.core.mcp.config import configure_mcp_json
 
 SUMMARY = "Initialize an Edison project (creates config + MCP setup)"
 

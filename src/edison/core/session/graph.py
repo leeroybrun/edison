@@ -7,12 +7,12 @@ from pathlib import Path
 from .. import task
 from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..qa.evidence import EvidenceManager
-from ..paths.resolver import PathResolver
-from ..paths.management import get_management_paths
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_management_paths
 from .store import (
     _load_or_create_session,
     save_session,
-    sanitize_session_id,
+    validate_session_id,
 )
 from .models import TaskEntry, QAEntry
 
@@ -198,7 +198,7 @@ def gather_cluster(session: Dict[str, Any], root_task: str) -> List[Dict[str, An
 
 def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
     """Build a validation bundle manifest for a task hierarchy."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     sess = _load_or_create_session(sid)
     cluster = gather_cluster(sess, root_task)
 

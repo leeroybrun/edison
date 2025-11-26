@@ -72,8 +72,8 @@ __all__ = [
     "reset_config_cache",
     "reset_session_store_cache",
     "validate_session_id",
-    "normalize_session_id",
     "sanitize_session_id",
+    "normalize_session_id",
     # Public API - Exceptions
     "SessionNotFoundError",
     "SessionStateError",

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional, Dict
 
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths import PathResolver
 
 from . import store
 

@@ -9,11 +9,11 @@ import re
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from edison.core.paths import PathResolver
-from edison.core.file_io.utils import write_json_safe, read_json_safe, ensure_directory
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.io import write_json_atomic, read_json, ensure_directory
 from edison.core.config.manager import ConfigManager
 
-from ..paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 from ..utils.text import ENGINE_VERSION
 
 
@@ -226,14 +226,14 @@ def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: s
     # Write manifest entry per artifact for traceability
     manifest_path = out_dir / "manifest.json"
     try:
-        existing = read_json_safe(manifest_path, default={})
+        existing = read_json(manifest_path, default={})
         existing[validator_id] = {
             "path": str(_rel(out_path)),
             "hash": content_hash,
             "engineVersion": ENGINE_VERSION,
             "dependencies": [str(_rel(p)) for p in deps],
         }
-        write_json_safe(manifest_path, existing, indent=2)
+        write_json_atomic(manifest_path, existing, indent=2)
     except Exception:
         # Non-fatal
         pass
@@ -266,7 +266,6 @@ __all__ = [
     "_write_cache",
     "_cache_dir",
     "_repo_root",
-    "_REPO_ROOT_OVERRIDE",
     "get_cache_dir",
     "validate_composition",
     "MAX_DEPTH",

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from edison.core.config import ConfigManager
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 from .headers import build_generated_header
 from ..path_utils import resolve_project_dir_placeholders

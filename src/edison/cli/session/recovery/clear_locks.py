@@ -38,15 +38,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Clear stale locks - delegates to core library."""
-    from edison.core.session.store import normalize_session_id
+    from edison.core.session.store import validate_session_id
     from pathlib import Path
-    from edison.core.paths.resolver import PathResolver
+    from edison.core.utils.paths import PathResolver
 
     try:
         cleared = []
 
         if args.session_id:
-            session_id = normalize_session_id(args.session_id)
+            session_id = validate_session_id(args.session_id)
             # Clear locks for specific session
             # This would call a lock clearing function from the core library
             cleared.append(session_id)

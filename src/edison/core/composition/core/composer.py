@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from edison.core.paths import PathResolver
+from edison.core.utils.paths import PathResolver
 
 from .discovery import LayerDiscovery, LayerSource
 from .errors import CompositionValidationError

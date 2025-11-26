@@ -52,12 +52,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Repair session - delegates to core library."""
-    from edison.core.session.store import normalize_session_id, load_session, save_session
+    from edison.core.session.store import validate_session_id, load_session, save_session
     from edison.core.session.worktree import worktree_health_check
     from edison.core.utils.time import utc_timestamp
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
         fixes_applied = []
 
         if args.all or args.fix_state:

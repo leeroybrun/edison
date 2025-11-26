@@ -85,10 +85,10 @@ def main(args: argparse.Namespace) -> int:
             # Create link - update session if provided
             if args.session:
                 from edison.core.session import store as session_store
-                from edison.core.paths.resolver import PathResolver
-                from edison.core.file_io.utils import read_json_safe, write_json_safe
+                from edison.core.utils.paths import PathResolver
+                from edison.core.utils.io import read_json, write_json_atomic
 
-                session_id = session_store.sanitize_session_id(args.session)
+                session_id = session_store.validate_session_id(args.session)
 
                 # Find or create session
                 try:
@@ -121,7 +121,7 @@ def main(args: argparse.Namespace) -> int:
                     # Create session directory structure
                     session_dir = PathResolver.resolve_project_root() / ".project" / "sessions" / "draft" / session_id
                     session_dir.mkdir(parents=True, exist_ok=True)
-                    write_json_safe(session_dir / "session.json", session)
+                    write_json_atomic(session_dir / "session.json", session)
 
             # Output result
             if args.json:

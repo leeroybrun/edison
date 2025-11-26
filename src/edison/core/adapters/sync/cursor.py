@@ -30,10 +30,11 @@ from ...paths import PathResolver
 from ...paths.project import get_project_config_dir
 from ...composition.registries import agents as _agents
 from ...config import ConfigManager
+from ...config.domains import PacksConfig
 from ...composition import GuidelineRegistry
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
-from edison.core.file_io.utils import write_json_safe, ensure_dir
+from edison.core.utils.io import write_json_atomic, ensure_dir
 
 AgentRegistry = _agents.AgentRegistry
 AgentError = _agents.AgentError
@@ -101,11 +102,14 @@ class CursorSync:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    @property
+    def _packs_config(self) -> PacksConfig:
+        """Lazy PacksConfig accessor."""
+        return PacksConfig(repo_root=self.repo_root)
+
     def _active_packs(self) -> List[str]:
-        packs = ((self.config or {}).get("packs", {}) or {}).get("active", [])
-        if isinstance(packs, list):
-            return [str(p) for p in packs]
-        return []
+        """Get active packs via PacksConfig."""
+        return self._packs_config.active_packs
 
     @staticmethod
     def _split_autogen_block(text: str) -> tuple[str, str, str]:
@@ -216,7 +220,7 @@ class CursorSync:
         if rule.get("dependencies"):
             meta["dependencies"] = rule["dependencies"]
 
-        from edison.core.file_io.utils import dump_yaml_string
+        from edison.core.utils.io import dump_yaml_string
         front_matter = dump_yaml_string(meta, sort_keys=False).rstrip()
 
         body = (rule.get("body") or "").strip()
@@ -279,7 +283,7 @@ class CursorSync:
             "generatedAt": utc_timestamp(),
             "hash": generated_hash,
         }
-        write_json_safe(self._snapshot_meta_path, meta, indent=2)
+        write_json_atomic(self._snapshot_meta_path, meta, indent=2)
 
     # ------------------------------------------------------------------
     # Public API

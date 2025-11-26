@@ -19,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..paths import PathResolver
+from edison.core.utils.paths import PathResolver
 from .evidence import EvidenceManager
 from edison.core.config.domains import QAConfig
 

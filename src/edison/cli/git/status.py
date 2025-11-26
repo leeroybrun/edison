@@ -41,7 +41,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Show git status - delegates to git library."""
     from edison.core.git import status as git_status
-    from edison.core.paths import resolve_project_root
+    from edison.core.utils.paths import resolve_project_root
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

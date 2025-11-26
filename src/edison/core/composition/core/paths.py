@@ -17,8 +17,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from edison.core.paths import PathResolver
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 
 
 @dataclass(frozen=True)

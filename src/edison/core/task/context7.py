@@ -18,11 +18,11 @@ from typing import Dict, Iterable, List, Optional, Set
 
 import yaml
 
-from edison.core.paths import PathResolver
-from edison.core.paths.project import get_project_config_dir
-from edison.core.paths.management import get_management_paths
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
+from edison.core.utils.paths import get_management_paths
 from edison.core.qa import evidence as qa_evidence
-from edison.core.git.operations import get_changed_files
+from edison.core.utils.git import get_changed_files
 
 
 DEFAULT_TRIGGERS: Dict[str, List[str]] = {
@@ -65,12 +65,12 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
     for path in candidates:
         if path.exists():
             try:
-                from edison.core.file_io.utils import read_yaml_safe, read_json_safe
+                from edison.core.utils.io import read_yaml, read_json
 
                 if path.suffix == ".yml" or path.suffix == ".yaml":
-                    return read_yaml_safe(path, raise_on_error=True) or {}
+                    return read_yaml(path, raise_on_error=True) or {}
                 
-                return read_json_safe(path)
+                return read_json(path)
             except Exception:
                 # Treat unreadable config as missing in fail_closed mode
                 if fail_closed:

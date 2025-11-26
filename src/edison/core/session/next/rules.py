@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from edison.core.utils.git import get_repo_root
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe
+from edison.core.utils.io import read_json as io_read_json
 from edison.core.session.next.utils import project_cfg_dir
 
 
@@ -46,7 +46,7 @@ def expand_rules(rule_ids: List[str]) -> List[Dict[str, Any]]:
         return []
     reg_path = project_cfg_dir() / "rules" / "registry.json"
     try:
-        registry = io_read_json_safe(reg_path)
+        registry = io_read_json(reg_path)
     except Exception:
         return []
     

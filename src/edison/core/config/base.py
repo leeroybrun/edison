@@ -57,7 +57,7 @@ class BaseDomainConfig(ABC):
             return self._repo_root
 
         # Resolve if not explicitly provided
-        from ..paths import PathResolver
+        from edison.core.utils.paths import PathResolver
         return PathResolver.resolve_project_root()
 
     @abstractmethod

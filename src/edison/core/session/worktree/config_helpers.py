@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths import PathResolver
 from edison.core.config.domains.project import (
     get_project_name,
     substitute_project_tokens,

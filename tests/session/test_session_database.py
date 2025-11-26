@@ -3,13 +3,20 @@ import pytest
 import yaml
 from pathlib import Path
 from edison.core.session import database
-from edison.core.config.domains import SessionConfig
+from edison.core.session._config import reset_config_cache
+from edison.core.config.cache import clear_all_caches
+import edison.core.utils.paths.resolver as path_resolver
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
     """
     Sets up a temporary project root with a dummy database adapter.
     """
+    # Reset ALL caches first
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+
     # Setup .edison/core/config
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
@@ -20,37 +27,44 @@ def project_root(tmp_path, monkeypatch):
             "enabled": True,
             "adapter": "test-adapter",
             "sessionPrefix": "test_session",
+            "url": "sqldb://user:pass@localhost:5432/base",
             "cleanupStrategy": "drop"
         }
     }
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
     
-    # Create dummy adapter
-    adapter_dir = tmp_path / ".edison" / "packs" / "test-adapter"
-    adapter_dir.mkdir(parents=True)
+    # Create dummy adapter in packs directory  
+    packs_dir = config_dir / "packs" / "test-adapter"
+    packs_dir.mkdir(parents=True)
     
-    adapter_code = """
+    adapter_code = '''
 def create_session_database(session_id, db_prefix, base_db_url, repo_dir, worktree_config):
     return f"{base_db_url}/{db_prefix}_{session_id}"
 
 def drop_session_database(session_id, db_prefix, base_db_url, repo_dir, worktree_config):
     # Write to a file to verify call
     (repo_dir / "dropped.txt").write_text(f"Dropped {session_id}")
-"""
-    (adapter_dir / "db_adapter.py").write_text(adapter_code)
+'''
+    (packs_dir / "db_adapter.py").write_text(adapter_code)
     
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-    monkeypatch.setenv("DATABASE_URL", "sqldb://user:pass@localhost:5432/base")
     
-    # Reload config
-    database._CONFIG = SessionConfig()
+    # Reset caches AFTER env vars are set
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
     
-    return tmp_path
+    yield tmp_path
+
+    # Cleanup
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
 
 def test_get_database_url(project_root):
-    """Test getting database URL from env."""
+    """Test getting database URL from config."""
     assert database._get_database_url() == "sqldb://user:pass@localhost:5432/base"
 
 def test_get_session_db_prefix(project_root):
@@ -85,7 +99,8 @@ def test_database_disabled(project_root):
     data["database"]["enabled"] = False
     config_path.write_text(yaml.dump(data))
     
-    # Reload config
-    database._CONFIG = SessionConfig()
+    # Reset config cache
+    clear_all_caches()
+    reset_config_cache()
     
     assert database.create_session_database("sess123") is None

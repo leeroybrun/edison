@@ -13,17 +13,17 @@ from typing import Any, Dict, Optional, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-from ..paths.resolver import PathResolver
-from ..file_io.locking import acquire_file_lock
-from ..file_io.utils import (
-    write_json_safe as io_atomic_write_json,
-    read_json_safe as io_read_json_safe,
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.io.locking import acquire_file_lock
+from edison.core.utils.io import (
+    write_json_atomic as io_write_json_atomic,
+    read_json as io_read_json,
     ensure_dir,
 )
 from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..exceptions import SessionError
-from .store import sanitize_session_id
-from ..paths.management import get_management_paths
+from .store import validate_session_id
+from edison.core.utils.paths import get_management_paths
 from ._config import get_config
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def _get_tx_root() -> Path:
     return (root / rel).resolve()
 
 def _tx_dir(session_id: str) -> Path:
-    d = _get_tx_root() / sanitize_session_id(session_id)
+    d = _get_tx_root() / validate_session_id(session_id)
     ensure_dir(d)
     return d
 
@@ -71,7 +71,7 @@ def _sid_dir(session_id: str) -> Path:
         raise
 
 def _tx_validation_dir(session_id: str, tx_id: str) -> Path:
-    d = _get_tx_root() / sanitize_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
+    d = _get_tx_root() / validate_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
     ensure_dir(d)
     return d
 
@@ -107,7 +107,7 @@ def begin_tx(
     to_status: Optional[str] = None,
 ) -> str:
     """Begin a lightweight validation/transition transaction for a session."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     tx_id = uuid.uuid4().hex
     tx_dir = _tx_dir(sid)
     path = tx_dir / f"{tx_id}.json"
@@ -124,7 +124,7 @@ def begin_tx(
     }
     try:
         with acquire_file_lock(path):
-            io_atomic_write_json(path, payload)
+            io_write_json_atomic(path, payload)
     except SystemExit:
         raise
     except Exception as e:
@@ -145,20 +145,20 @@ def finalize_tx(session_id: str, tx_id: str) -> None:
     if not p.exists():
         return
     with acquire_file_lock(p):
-        data = io_read_json_safe(p)
+        data = io_read_json(p)
         data["finalizedAt"] = io_utc_timestamp()
-        io_atomic_write_json(p, data)
+        io_write_json_atomic(p, data)
 
 def abort_tx(session_id: str, tx_id: str, reason: str = "") -> None:
     p = _tx_dir(session_id) / f"{tx_id}.json"
     if not p.exists():
         return
     with acquire_file_lock(p):
-        data = io_read_json_safe(p)
+        data = io_read_json(p)
         data["abortedAt"] = io_utc_timestamp()
         if reason:
             data["reason"] = reason
-        io_atomic_write_json(p, data)
+        io_write_json_atomic(p, data)
 
 def _find_tx_session(tx_id: str) -> str:
     """Locate the session id for a given ``tx_id`` under TX_ROOT."""
@@ -246,7 +246,7 @@ def _relative_to_staging(staging_root: Path, p: Path) -> Path:
 
 class ValidationTransaction:
     def __init__(self, session_id: str, wave: str):
-        self.session_id = sanitize_session_id(session_id)
+        self.session_id = validate_session_id(session_id)
         self.wave = wave
         self.tx_id = str(uuid.uuid4())
         self.tx_dir = _tx_validation_dir(self.session_id, self.tx_id)
@@ -273,7 +273,7 @@ class ValidationTransaction:
             "finalizedAt": None,
             "abortedAt": None,
         }
-        io_atomic_write_json(self.meta_path, meta)
+        io_write_json_atomic(self.meta_path, meta)
         _append_tx_log(self.session_id, self.tx_id, "started", f"staging={str(self.staging_root)}", wave=self.wave)
         # Disk-space forced precheck
         _ensure_disk_space(self.final_root, 1)
@@ -299,11 +299,11 @@ class ValidationTransaction:
                     except Exception:
                         pass
         try:
-            meta = io_read_json_safe(self.meta_path)
+            meta = io_read_json(self.meta_path)
         except Exception:
             meta = {}
         meta["preManifest"] = manifest
-        io_atomic_write_json(self.meta_path, meta)
+        io_write_json_atomic(self.meta_path, meta)
 
     def commit(self) -> None:
         if self._committed:
@@ -339,9 +339,9 @@ class ValidationTransaction:
             shutil.copy2(sf, dst)
             
         self._committed = True
-        meta = io_read_json_safe(self.meta_path)
+        meta = io_read_json(self.meta_path)
         meta["finalizedAt"] = io_utc_timestamp()
-        io_atomic_write_json(self.meta_path, meta)
+        io_write_json_atomic(self.meta_path, meta)
         _append_tx_log(self.session_id, self.tx_id, "committed", wave=self.wave)
 
     def abort(self, reason: str = "") -> None:
@@ -354,10 +354,10 @@ class ValidationTransaction:
         if self.snapshot_root.exists():
             shutil.rmtree(self.snapshot_root, ignore_errors=True)
             
-        meta = io_read_json_safe(self.meta_path)
+        meta = io_read_json(self.meta_path)
         meta["abortedAt"] = io_utc_timestamp()
         meta["reason"] = reason
-        io_atomic_write_json(self.meta_path, meta)
+        io_write_json_atomic(self.meta_path, meta)
         _append_tx_log(self.session_id, self.tx_id, "aborted", f"reason={reason}", wave=self.wave)
 
     def rollback(self) -> None:

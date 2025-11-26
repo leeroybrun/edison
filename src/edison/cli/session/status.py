@@ -36,7 +36,7 @@ def main(args: argparse.Namespace) -> int:
     try:
         session_id = args.session_id
         if session_id:
-            session_id = session_store.normalize_session_id(session_id)
+            session_id = session_store.validate_session_id(session_id)
             session = session_manager.get_session(session_id)
         else:
             # Get current/active session

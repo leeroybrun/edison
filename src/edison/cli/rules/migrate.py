@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 
 
 def rules_migrate_registry_paths() -> int:

@@ -48,9 +48,9 @@ from .sync.cursor import CursorSync, AUTOGEN_BEGIN, AUTOGEN_END
 from .sync.zen import ZenSync, WORKFLOW_HEADING
 
 # ============================================================================
-# Shared schema validation utilities
+# Shared schema validation utilities (re-exported from core.schemas)
 # ============================================================================
-from ._schemas import (
+from ..schemas import (
     load_schema,
     validate_payload,
     validate_payload_safe,

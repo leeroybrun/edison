@@ -12,7 +12,7 @@ from typing import Callable, Any, Tuple, Type, Optional, Dict
 from pathlib import Path
 import logging
 
-from edison.core.file_io import utils as io_utils
+from edison.core.utils import io as io_utils
 
 logger = logging.getLogger(__name__)
 
@@ -149,10 +149,10 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     shutil.move(str(rec_dir), str(dest_dir))
 
     sess_json = dest_dir / "session.json"
-    payload = io_utils.read_json_safe(sess_json, default={})
+    payload = io_utils.read_json(sess_json, default={})
     if not isinstance(payload, dict):
         payload = {}
         
     payload["state"] = "Active"
-    io_utils.write_json_safe(sess_json, payload, ensure_ascii=False)
+    io_utils.write_json_atomic(sess_json, payload, ensure_ascii=False)
     return dest_dir

@@ -6,7 +6,10 @@ Edison configuration across all adapter implementations (Claude, Cursor, Zen, Co
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..config.domains import PacksConfig as _PacksConfig
 
 
 class ConfigMixin:
@@ -65,6 +68,25 @@ class ConfigMixin:
             Dict containing Edison configuration.
         """
         return self._load_config()
+
+    @property
+    def packs_config(self) -> "_PacksConfig":
+        """Lazy-load PacksConfig for the current repo.
+
+        Returns:
+            PacksConfig instance for active pack management.
+        """
+        from ..config.domains import PacksConfig
+        return PacksConfig(repo_root=self.repo_root)
+
+    @property
+    def active_packs(self) -> List[str]:
+        """Get list of active packs.
+
+        Returns:
+            List of active pack names.
+        """
+        return self.packs_config.active_packs
 
 
 __all__ = ["ConfigMixin"]

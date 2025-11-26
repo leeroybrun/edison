@@ -11,8 +11,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-from ..file_io.locking import acquire_file_lock, LockTimeoutError
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
+from edison.core.utils.io import ensure_dir
 from ..utils.subprocess import run_with_timeout
 from .paths import ROOT
 
@@ -45,11 +45,11 @@ def _load_retry_config() -> dict:
     }
     try:
         from edison.data import get_data_path
-        from edison.core.file_io.utils import read_yaml_safe
+        from edison.core.utils.io import read_yaml
 
         cfg_path = get_data_path("config", "defaults.yaml")
         if cfg_path.exists():
-            data = read_yaml_safe(cfg_path, default={})
+            data = read_yaml(cfg_path, default={})
             r = (data.get("resilience") or {}).get("retry") or {}
             defaults.update(
                 {

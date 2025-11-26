@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ...file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
 
 
 @dataclass
@@ -22,7 +22,7 @@ class PackMetadata:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml_safe(path, default={})
+    return read_yaml(path, default={})
 
 
 def load_pack_metadata(pack_path: Path) -> PackMetadata:

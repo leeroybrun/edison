@@ -41,7 +41,7 @@ def main(args: argparse.Namespace) -> int:
     """Recover damaged session - delegates to core library."""
     from edison.core.session.recovery import restore_records_to_global_transactional
     from edison.core.session.store import (
-        normalize_session_id,
+        validate_session_id,
         load_session,
         save_session,
         _move_session_json_to,
@@ -50,7 +50,7 @@ def main(args: argparse.Namespace) -> int:
     from edison.core.utils.time import utc_timestamp
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
 
         recovered_records = 0
         if args.restore_records:

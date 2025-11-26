@@ -14,7 +14,7 @@ from edison.core.utils.merge import deep_merge as _deep_merge, merge_arrays
 # Lazy imports to avoid circular dependencies
 # These are imported at runtime inside methods that need them
 if TYPE_CHECKING:
-    from edison.core.paths import PathResolver, EdisonPathError
+    from edison.core.utils.paths import PathResolver, EdisonPathError
 
 try:  # Optional: Present in Edison core Python env
     import yaml  # type: ignore
@@ -40,7 +40,7 @@ class ConfigManager:
         self.repo_root = repo_root or self._find_repo_root()
         
         # Lazy import to avoid circular dependencies
-        from edison.core.paths.project import get_project_config_dir
+        from edison.core.utils.paths import get_project_config_dir
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
 
         # Bundled defaults from edison.data package (always available)
@@ -56,7 +56,7 @@ class ConfigManager:
 
     def _find_repo_root(self) -> Path:
         # Lazy import to avoid circular dependencies
-        from edison.core.paths import PathResolver, EdisonPathError
+        from edison.core.utils.paths import PathResolver, EdisonPathError
         try:
             return PathResolver.resolve_project_root()
         except EdisonPathError as exc:
@@ -67,14 +67,14 @@ class ConfigManager:
         return _deep_merge(base, override)
 
     def load_yaml(self, path: Path) -> Dict[str, Any]:
-        from edison.core.file_io.utils import read_yaml_safe
-        return read_yaml_safe(path, default={})
+        from edison.core.utils.io import read_yaml
+        return read_yaml(path, default={})
 
     def load_json(self, path: Path) -> Dict[str, Any]:
         if not path.exists():
             return {}
-        from edison.core.file_io.utils import read_json_safe as io_read_json_safe
-        data = io_read_json_safe(path)
+        from edison.core.utils.io import read_json as io_read_json
+        data = io_read_json(path)
         return data or {}
 
     def validate_schema(self, config: Dict[str, Any], schema_name: str) -> None:

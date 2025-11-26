@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 from ...paths import PathResolver
-from ...file_io.utils import read_json_safe
+from edison.core.utils.io import read_json
 from .helpers import _task_evidence_root, list_evidence_files
 
 
@@ -67,7 +67,7 @@ def read_validator_jsons(task_id: str) -> Dict[str, Any]:
     out["round"] = latest.name
     for p in latest.glob("validator-*-report.json"):
         try:
-            data = read_json_safe(p)
+            data = read_json(p)
             out["reports"].append(data)
         except Exception:
             continue

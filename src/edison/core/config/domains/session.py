@@ -102,8 +102,8 @@ class SessionConfig(BaseDomainConfig):
 
     def get_template_path(self, key: str) -> str:
         """Get expanded path to a template (e.g. 'primary', 'repo')."""
-        from edison.core.paths import PathResolver
-        from edison.core.paths.project import get_project_config_dir
+        from edison.core.utils.paths import PathResolver
+        from edison.core.utils.paths import get_project_config_dir
 
         root = PathResolver.resolve_project_root()
         project_dir = get_project_config_dir(root)
@@ -205,7 +205,7 @@ class SessionConfig(BaseDomainConfig):
     # --- Worktree Config ---
     def get_worktree_config(self) -> Dict[str, Any]:
         """Get worktree configuration (merged from defaults and overrides)."""
-        from edison.core.paths.project import get_project_config_dir
+        from edison.core.utils.paths import get_project_config_dir
 
         defaults = {
             "enabled": True,
@@ -227,9 +227,9 @@ class SessionConfig(BaseDomainConfig):
             manifest_path = get_project_config_dir(root) / "manifest.json"
 
             if manifest_path.exists():
-                from edison.core.file_io.utils import read_json_safe
+                from edison.core.utils.io import read_json
 
-                manifest = read_json_safe(manifest_path)
+                manifest = read_json(manifest_path)
                 if isinstance(manifest, dict):
                     wt = manifest.get("worktrees")
                     if isinstance(wt, dict):

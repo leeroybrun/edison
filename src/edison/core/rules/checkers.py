@@ -10,8 +10,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from ..paths import EdisonPathError, PathResolver
-from ..paths.management import get_management_paths
+from edison.core.utils.paths import EdisonPathError, PathResolver
+from edison.core.utils.paths import get_management_paths
 
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
     """Safely load JSON from a file, returning empty dict on error."""
-    from ..file_io.utils import read_json_safe
-    return read_json_safe(path, default={})
+    from edison.core.utils.io import read_json
+    return read_json(path, default={})
 
 
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:

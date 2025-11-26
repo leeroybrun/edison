@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from edison.data import read_yaml
-from ...file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
 from ...paths.project import get_project_config_dir
 from ..includes import _repo_root
 
@@ -22,15 +22,15 @@ class PackManifest:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml_safe(path, default={})
+    return read_yaml(path, default={})
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
-    from ...file_io.utils import read_json_safe as io_read_json_safe
+    from edison.core.utils.io import read_json as io_read_json
 
-    return io_read_json_safe(path) or {}
+    return io_read_json(path) or {}
 
 
 def _pack_dir(repo_root: Path, name: str) -> Path:

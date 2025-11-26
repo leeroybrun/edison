@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional
 
 from ...paths import PathResolver
 from ...paths.management import get_management_paths
-from ...file_io.utils import read_json_safe
+from edison.core.utils.io import read_json
 
 
 def _task_evidence_root(task_id: str) -> Path:
@@ -46,7 +46,7 @@ def get_latest_round(task_id: str) -> Optional[int]:
     meta = root / "metadata.json"
     try:
         if meta.exists():
-            data = read_json_safe(meta)
+            data = read_json(meta)
             if isinstance(data, dict):
                 for key in ("currentRound", "round"):
                     value = data.get(key)

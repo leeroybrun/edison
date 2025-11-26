@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, TYPE_CHECKING
 
-from edison.core.file_io.utils import read_yaml_safe, dump_yaml_string
+from edison.core.utils.io import read_yaml, dump_yaml_string
 
 from .context import build_context_with_defaults, build_config_dict
 from .templates import render_readme_template as _render_readme, render_template_dict
@@ -136,7 +136,7 @@ def _render_pack_configs(
         if not pack_setup_path.exists():
             continue
 
-        pack_setup = read_yaml_safe(pack_setup_path, default={})
+        pack_setup = read_yaml(pack_setup_path, default={})
         config_template = (pack_setup.get("setup") or {}).get("config_template") or {}
         if not config_template:
             continue

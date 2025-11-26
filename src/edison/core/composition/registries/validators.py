@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Iterable, Optional
 
-from edison.core.paths import PathResolver
+from edison.core.utils.paths import PathResolver
 from ..core import CompositionPathResolver
 
 

@@ -20,10 +20,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.file_io.utils import parse_yaml_string
+from edison.core.utils.io import parse_yaml_string
 from edison.core.utils.text import dry_duplicate_report, render_conditional_includes
-from edison.core.paths import PathResolver
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 from ..path_utils import resolve_project_dir_placeholders
 
 # Import from core composition system - ALL discovery and composition

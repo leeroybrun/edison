@@ -44,7 +44,7 @@ def main(args: argparse.Namespace) -> int:
     try:
         if args.parent:
             # Allocate child ID - scan actual task files, not just metadata
-            from edison.core.paths.resolver import PathResolver
+            from edison.core.utils.paths import PathResolver
             from pathlib import Path
 
             parent_id = task.normalize_record_id("task", args.parent)

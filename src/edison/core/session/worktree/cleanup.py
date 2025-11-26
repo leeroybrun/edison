@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import List, Optional
 
-from edison.core.file_io.utils import ensure_directory
+from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
 from .config_helpers import _config, _get_repo_dir
 

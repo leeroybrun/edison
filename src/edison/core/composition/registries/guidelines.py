@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
 
-from edison.core.paths import PathResolver
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 from ..includes import resolve_includes, ComposeError
 from edison.core.utils.text import (
     dry_duplicate_report,

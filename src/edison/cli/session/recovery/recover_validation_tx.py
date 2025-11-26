@@ -33,10 +33,10 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Recover stuck validation transactions - delegates to core library."""
     from edison.core.session.recovery import recover_incomplete_validation_transactions
-    from edison.core.session.store import normalize_session_id
+    from edison.core.session.store import validate_session_id
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
         recovered_count = recover_incomplete_validation_transactions(session_id)
 
         result = {

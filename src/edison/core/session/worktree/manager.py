@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from edison.core.file_io.utils import ensure_directory
+from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
 from .config_helpers import _config, _get_repo_dir, _resolve_worktree_target
 from .git_ops import get_existing_worktree_for_branch

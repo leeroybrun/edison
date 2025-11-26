@@ -22,9 +22,9 @@ from edison.core.composition.packs import (
     discover_packs,
     resolve_dependencies,
     PackInfo,
-    load_active_packs,
     load_pack,
 )
+from edison.core.config.domains import PacksConfig
 
 
 def write(path: Path, content: str) -> None:
@@ -174,9 +174,17 @@ def test_dependency_resolution_and_cycles(tmp_path: Path):
     assert dep.cycles, 'expected cycle list'
 
 
-def test_load_active_packs_from_config_dict():
-    cfg = { 'packs': { 'active': ['typescript', 'react'] } }
-    active = load_active_packs(cfg)
+def test_packs_config_active_packs(tmp_path: Path):
+    """PacksConfig.active_packs returns active packs from edison config."""
+    # Create a minimal edison config with active packs
+    edison_dir = tmp_path / '.edison'
+    edison_dir.mkdir(parents=True)
+    (edison_dir / 'edison.yaml').write_text(
+        'packs:\n  active:\n    - typescript\n    - react\n',
+        encoding='utf-8'
+    )
+    packs_cfg = PacksConfig(repo_root=tmp_path)
+    active = packs_cfg.active_packs
     assert active == ['typescript', 'react']
 
 

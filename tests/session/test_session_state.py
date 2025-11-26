@@ -1,17 +1,24 @@
 import pytest
 import yaml
 from edison.core.session import state
-from edison.core.config.domains import SessionConfig
+from edison.core.session._config import reset_config_cache
+from edison.core.config.cache import clear_all_caches
 from edison.core.exceptions import SessionStateError
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
+import edison.core.utils.paths.resolver as path_resolver
 
 @pytest.fixture
 def session_config(tmp_path, monkeypatch):
     """
     Sets up a temporary config for state transitions.
     """
+    # Reset ALL caches first
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
     
@@ -51,8 +58,6 @@ def session_config(tmp_path, monkeypatch):
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-    import edison.core.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
     
     # Reset global registries used by state module
     guard_registry.reset()
@@ -62,11 +67,19 @@ def session_config(tmp_path, monkeypatch):
     condition_registry.register("ready_to_close", lambda ctx: ctx.get("session", {}).get("ready", False))
     action_registry.register("record_closed", lambda ctx: ctx.setdefault("log", []).append("closed"))
 
-    # Reload config/state engine
-    state._CONFIG = SessionConfig()
+    # Reset caches AFTER env vars are set
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
     state._STATE_MACHINE = None
     
-    return state._CONFIG
+    yield tmp_path
+
+    # Cleanup
+    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_all_caches()
+    reset_config_cache()
+    state._STATE_MACHINE = None
 
 def test_validate_transition(session_config):
     """Test validating state transitions."""

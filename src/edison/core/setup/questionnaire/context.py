@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, TYPE_CHECKING
 
-from edison.core.paths.management import get_management_paths
-from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
+from edison.core.utils.paths import get_management_paths
+from edison.core.utils.paths import DEFAULT_PROJECT_CONFIG_PRIMARY
 
 if TYPE_CHECKING:
     from .base import SetupQuestionnaire

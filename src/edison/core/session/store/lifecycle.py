@@ -8,9 +8,9 @@ from typing import Any, Dict, Optional, Union, Iterator
 from contextlib import contextmanager
 
 from ...legacy_guard import enforce_no_legacy_project_root
-from ...file_io.utils import (
-    write_json_safe as io_atomic_write_json,
-    read_json_safe as io_read_json_safe,
+from ...utils.io import (
+    write_json_atomic as io_write_json_atomic,
+    read_json as io_read_json,
     ensure_directory,
 )
 from ...utils.time import utc_timestamp as io_utc_timestamp
@@ -65,7 +65,7 @@ def _move_session_json_to(status: str, session_id: str) -> Path:
 @contextmanager
 def acquire_session_lock(session_id: str, *, timeout: float = 5.0) -> Iterator[Path]:
     """Context manager to acquire a lock on the session file."""
-    from ...file_io.locking import acquire_file_lock
+    from ...utils.io.locking import acquire_file_lock
     from .discovery import get_session_json_path
 
     path = get_session_json_path(session_id)
@@ -128,7 +128,7 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
     sess_json = sess_dir / "session.json"
 
     if sess_json.exists():
-        data = io_read_json_safe(sess_json)
+        data = io_read_json(sess_json)
     else:
         data = {
             "id": sid,
@@ -155,7 +155,7 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
 
     # Sync state and persist
     data["state"] = state.title()
-    io_atomic_write_json(sess_json, data)
+    io_write_json_atomic(sess_json, data)
 
     return sess_dir
 
@@ -190,7 +190,7 @@ def transition_state(
             json_path = sess_dir / "session.json"
 
     try:
-        data = io_read_json_safe(json_path)
+        data = io_read_json(json_path)
     except FileNotFoundError:
         if isinstance(session, Path):
             return False
@@ -214,7 +214,7 @@ def transition_state(
 
     data["state"] = target.title()
     _append_state_history(data, current, target, reason)
-    io_atomic_write_json(json_path, data)
+    io_write_json_atomic(json_path, data)
 
     try:
         _move_session_json_to(target, sid)

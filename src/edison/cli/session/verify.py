@@ -44,7 +44,7 @@ def main(args: argparse.Namespace) -> int:
     from edison.core.session.verify import verify_session_health
 
     try:
-        session_id = session_store.normalize_session_id(args.session_id)
+        session_id = session_store.validate_session_id(args.session_id)
         health = verify_session_health(session_id)
 
         if args.json:

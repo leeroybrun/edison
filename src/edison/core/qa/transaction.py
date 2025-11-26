@@ -4,14 +4,14 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ..file_io.utils import (
-    write_json_safe as io_atomic_write_json,
-    read_json_safe as io_read_json_safe,
+from edison.core.utils.io import (
+    write_json_atomic as io_write_json_atomic,
+    read_json as io_read_json,
     ensure_directory as io_ensure_dir,
 )
 from ..session import transaction as _session_transaction
-from ..paths.management import get_management_paths
-from ..paths.resolver import PathResolver
+from edison.core.utils.paths import get_management_paths
+from edison.core.utils.paths import PathResolver
 
 
 class ValidationTransaction:
@@ -74,14 +74,14 @@ class ValidationTransaction:
         meta_path: Path = self._tx.meta_path  # type: ignore[assignment]
         self.journal_path = meta_path.parent
         try:
-            meta = io_read_json_safe(meta_path) or {}
+            meta = io_read_json(meta_path) or {}
         except Exception:
             meta = {}
         if "taskId" not in meta:
             meta["taskId"] = self.task_id
         if "round" not in meta:
             meta["round"] = self.round_num
-        io_atomic_write_json(meta_path, meta)
+        io_write_json_atomic(meta_path, meta)
         return self
 
     def write_validator_report(self, validator_name: str, report: Dict[str, Any]) -> None:
@@ -90,7 +90,7 @@ class ValidationTransaction:
             raise RuntimeError("ValidationTransaction.begin() must be called before writing reports")
         safe_name = str(validator_name).replace("/", "-")
         path = self.staging_dir / f"validator-{safe_name}-report.json"
-        io_atomic_write_json(path, report)
+        io_write_json_atomic(path, report)
 
     def commit(self) -> None:
         """Atomically move staged evidence into the final QA evidence tree."""

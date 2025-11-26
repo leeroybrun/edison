@@ -79,8 +79,8 @@ def main(args: argparse.Namespace) -> int:
         LayeredComposer,
     )
     from edison.core.config import ConfigManager
-    from edison.core.paths import resolve_project_root
-    from edison.core.paths.project import get_project_config_dir
+    from edison.core.utils.paths import resolve_project_root
+    from edison.core.utils.paths import get_project_config_dir
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

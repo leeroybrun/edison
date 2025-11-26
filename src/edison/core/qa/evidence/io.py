@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ...file_io.utils import read_json_safe, write_json_safe
+from edison.core.utils.io import read_json, write_json_atomic
 from .exceptions import EvidenceError
 
 
@@ -14,7 +14,7 @@ def read_bundle_summary(round_dir: Path) -> Dict[str, Any]:
     if not bundle_path.exists():
         return {}
     try:
-        return read_json_safe(bundle_path)
+        return read_json(bundle_path)
     except Exception:
         # Invalid JSON is treated as missing
         return {}
@@ -26,7 +26,7 @@ def read_implementation_report(round_dir: Path) -> Dict[str, Any]:
     if not report_path.exists():
         return {}
     try:
-        return read_json_safe(report_path)
+        return read_json(report_path)
     except Exception:
         return {}
 
@@ -41,7 +41,7 @@ def read_validator_report(round_dir: Path, validator_name: str) -> Dict[str, Any
     if not report_path.exists():
         return {}
     try:
-        return read_json_safe(report_path)
+        return read_json(report_path)
     except Exception:
         return {}
 
@@ -50,7 +50,7 @@ def write_bundle_summary(round_dir: Path, data: Dict[str, Any]) -> None:
     """Write bundle-approved.json to round directory."""
     bundle_path = round_dir / "bundle-approved.json"
     try:
-        write_json_safe(bundle_path, data)
+        write_json_atomic(bundle_path, data)
     except Exception as e:
         raise EvidenceError(
             f"Failed to write bundle summary to {bundle_path}: {e}"
@@ -61,7 +61,7 @@ def write_implementation_report(round_dir: Path, data: Dict[str, Any]) -> None:
     """Write implementation-report.json to round directory."""
     report_path = round_dir / "implementation-report.json"
     try:
-        write_json_safe(report_path, data)
+        write_json_atomic(report_path, data)
     except Exception as e:
         raise EvidenceError(
             f"Failed to write implementation report to {report_path}: {e}"
@@ -78,7 +78,7 @@ def write_validator_report(
         report_path = round_dir / f"validator-{validator_name}-report.json"
 
     try:
-        write_json_safe(report_path, data)
+        write_json_atomic(report_path, data)
     except Exception as e:
         raise EvidenceError(
             f"Failed to write validator report to {report_path}: {e}"

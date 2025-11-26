@@ -11,13 +11,13 @@ from datetime import datetime, timezone
 import getpass
 
 from ..exceptions import TaskStateError
-from edison.core.file_io import utils as io_utils
-from edison.core.file_io.utils import write_json_safe, read_json_safe, ensure_dir
+from edison.core.utils import io as io_utils
+from edison.core.utils.io import write_json_atomic, read_json, ensure_directory
 from edison.core.utils.time import utc_timestamp
 from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT
-from ..paths.management import get_management_paths
+from edison.core.utils.paths import get_management_paths
 from .record_metadata import TYPE_INFO
 from edison.core.config import get_semantic_state
 from edison.core.config.domains.project import get_project_settings
@@ -202,8 +202,8 @@ def move_to_status(
     return safe_move_file(src, dest)
 
 
-# Aliased for compatibility - use edison.core.file_io.utils.write_json_safe directly
-atomic_write_json = write_json_safe
+# Aliased for compatibility - use edison.core.file_io.utils.write_json_atomic directly
+write_json_atomic = write_json_atomic
 
 
 def write_text_locked(path: Path, content: str) -> None:
@@ -235,11 +235,11 @@ def _task_meta_path(task_id: str) -> Path:
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
-    return read_json_safe(path)
+    return read_json(path)
 
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
-    write_json_safe(path, data, indent=2)
+    write_json_atomic(path, data, indent=2)
 
 
 def _validate_task_record(rec: Dict[str, Any]) -> None:
@@ -281,12 +281,12 @@ def _append_task_to_session(session_id: str, task_id: str) -> None:
     if path is None:
         return
     try:
-        data = io_utils.read_json_safe(path, {}) or {}
+        data = io_utils.read_json(path, {}) or {}
         tasks = data.get("tasks") or []
         if task_id not in tasks:
             tasks.append(task_id)
         data["tasks"] = tasks
-        write_json_safe(path, data, indent=2)
+        write_json_atomic(path, data, indent=2)
     except Exception:
         pass
 
@@ -391,7 +391,7 @@ __all__ = [
     "ready_task",
     "qa_progress",
     "move_to_status",
-    "atomic_write_json",
+    "write_json_atomic",
     "default_owner",
     "_task_filename",
     "write_text_locked",

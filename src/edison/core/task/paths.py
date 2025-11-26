@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from ..paths import EdisonPathError, PathResolver
+from edison.core.utils.paths import EdisonPathError, PathResolver
 from ..config.domains import SessionConfig
 from .config import TaskConfig
 

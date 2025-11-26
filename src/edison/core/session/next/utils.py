@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.git import get_repo_root
-from edison.core.paths.management import get_management_paths
+from edison.core.utils.paths import get_management_paths
 from edison.core import task
 
 

@@ -12,9 +12,9 @@ from . import validation
 from . import worktree
 from ._config import get_config
 from .naming import generate_session_id
-from ..paths import PathResolver
-from ..paths.management import get_management_paths
-from ..file_io.utils import ensure_directory
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_management_paths
+from edison.core.utils.io import ensure_directory
 from ..exceptions import SessionError
 from ..utils.time import utc_timestamp
 

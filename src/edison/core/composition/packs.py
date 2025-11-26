@@ -23,11 +23,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from edison.data import read_yaml
-from ..paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 
 from .includes import _repo_root
 from edison.data import get_data_path
-from ..file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
 
 try:  # PyYAML is required for pack-trigger discovery
     import yaml  # type: ignore
@@ -104,7 +104,7 @@ def auto_activate_packs(
         if not pack_yml.exists():
             continue
 
-        data = read_yaml_safe(pack_yml, default={})
+        data = read_yaml(pack_yml, default={})
 
         triggers = data.get("triggers") or {}
         raw_patterns: List[str]
@@ -148,14 +148,14 @@ class PackManifest:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml_safe(path, default={})
+    return read_yaml(path, default={})
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
-    from ..file_io.utils import read_json_safe as io_read_json_safe
-    return io_read_json_safe(path) or {}
+    from edison.core.utils.io import read_json as io_read_json
+    return io_read_json(path) or {}
 
 
 def _pack_dir(repo_root: Path, name: str) -> Path:
@@ -444,11 +444,6 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     return UnifiedPathResolver(root).packs_dir
 
 
-def load_active_packs(config: Dict[str, Any]) -> List[str]:
-    packs = (config.get("packs") or {}).get("active") or []
-    return [str(x) for x in packs if isinstance(x, str)]
-
-
 def load_pack_metadata(pack_path: Path) -> PackMetadata:
     yml = _load_yaml(pack_path / "pack.yml")
     raw_triggers = yml.get("triggers") or {}
@@ -484,8 +479,8 @@ def validate_pack(pack_path: Path, schema_path: Optional[Path] = None) -> Valida
         schema_path = get_data_path("schemas") / "pack.schema.json"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
-        from ..file_io.utils import read_json_safe as _io_read_json_safe
-        schema = _io_read_json_safe(schema_path)
+        from edison.core.utils.io import read_json as _io_read_json
+        schema = _io_read_json(schema_path)
         Draft202012Validator.check_schema(schema)
         v = Draft202012Validator(schema)
         for err in sorted(v.iter_errors(data), key=lambda e: list(e.path)):
@@ -636,5 +631,4 @@ __all__ = [
     "validate_pack",
     "load_pack_metadata",
     "resolve_dependencies",
-    "load_active_packs",
 ]

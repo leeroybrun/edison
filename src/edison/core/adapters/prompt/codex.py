@@ -15,7 +15,7 @@ from typing import Dict, Optional
 from ..base import PromptAdapter
 from .._config import ConfigMixin
 from ...composition.output import OutputConfigLoader
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 
 class CodexAdapter(PromptAdapter, ConfigMixin):

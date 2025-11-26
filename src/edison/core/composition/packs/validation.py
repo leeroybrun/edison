@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.data import get_data_path
-from ...file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
 from .metadata import PackMetadata, load_pack_metadata
 
 
@@ -25,7 +25,7 @@ class ValidationResult:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml_safe(path, default={})
+    return read_yaml(path, default={})
 
 
 def validate_pack(
@@ -43,9 +43,9 @@ def validate_pack(
         schema_path = get_data_path("schemas") / "pack.schema.json"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
-        from ...file_io.utils import read_json_safe as _io_read_json_safe
+        from edison.core.utils.io import read_json as _io_read_json
 
-        schema = _io_read_json_safe(schema_path)
+        schema = _io_read_json(schema_path)
         Draft202012Validator.check_schema(schema)
         v = Draft202012Validator(schema)
         for err in sorted(v.iter_errors(data), key=lambda e: list(e.path)):

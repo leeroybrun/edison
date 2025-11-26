@@ -11,14 +11,14 @@ from .naming import generate_session_id
 from . import store
 from . import worktree
 from .context import SessionContext
-from ..file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 from ..config.domains import OrchestratorConfig
 from ..orchestrator.launcher import (
     OrchestratorLauncher,
     OrchestratorError,
 )
-from ..paths.management import get_management_paths
-from ..paths.project import get_project_config_dir
+from edison.core.utils.paths import get_management_paths
+from edison.core.utils.paths import get_project_config_dir
 
 
 class SessionAutoStartError(Exception):
@@ -243,7 +243,7 @@ class SessionAutoStart:
 
     def _ensure_orchestrator_config(self, repo_root: Path) -> None:
         """Ensure orchestrator config exists; bootstrap from bundled defaults when missing."""
-        from edison.core.file_io.utils import dump_yaml_string
+        from edison.core.utils.io import dump_yaml_string
 
         cfg_dir = get_project_config_dir(repo_root) / "config"
         ensure_dir(cfg_dir)

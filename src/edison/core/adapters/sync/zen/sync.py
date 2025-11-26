@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set, Tuple, TYPE_CHECKING
 
-from ....file_io.utils import read_json_safe, ensure_dir
+from edison.core.utils.io import read_json, ensure_dir
 from .composer import _canonical_model
 from .discovery import _canonical_role
 
@@ -134,7 +134,7 @@ class ZenSyncMixin:
         role_to_paths: Dict[str, Set[Path]] = {}
 
         for cfg_path in sorted(cli_dir.glob("*.json")):
-            data = read_json_safe(cfg_path, default={})
+            data = read_json(cfg_path, default={})
 
             model_name = str(data.get("name") or cfg_path.stem)
             models.add(_canonical_model(model_name))

@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-import edison.core.paths.resolver as resolver
+import edison.core.utils.paths.resolver as resolver
 import edison.core.session.store as session_store
 import edison.core.task as task
 import edison.core.config.domains.qa as qa_config

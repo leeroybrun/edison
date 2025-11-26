@@ -92,7 +92,7 @@ def resolve_timeout_repo_root(repo_root: Optional[Path] = None) -> Path:
         except Exception:
             pass
     try:
-        from edison.core.paths import PathResolver
+        from edison.core.utils.paths import PathResolver
         return PathResolver.resolve_project_root()
     except Exception:
         return Path.cwd().resolve()

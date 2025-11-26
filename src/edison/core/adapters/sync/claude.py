@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 from ...paths import PathResolver
 from ...paths.project import get_project_config_dir
 from ...composition.output import OutputConfigLoader
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_dir
 
 
 class ClaudeAdapterError(RuntimeError):

@@ -2,12 +2,12 @@
 import json
 import pytest
 from pathlib import Path
-from edison.core.templates.mcp_config import (
+from edison.core.mcp.config import (
     McpConfig,
     McpServerConfig,
     configure_mcp_json,
 )
-import edison.core.templates.mcp_config as mcp_config_module
+import edison.core.mcp.config as mcp_config_module
 
 def test_debug_import_path():
     print(f"\nDEBUG: Imported mcp_config from: {mcp_config_module.__file__}")

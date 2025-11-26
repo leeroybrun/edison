@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from edison.core.utils.subprocess import run_with_timeout
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths import PathResolver
 from .config_helpers import _config, _get_repo_dir
 
 

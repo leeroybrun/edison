@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from edison.core.templates.mcp_config import (
+from edison.core.mcp.config import (
     McpServerConfig,
     build_mcp_servers,
     configure_mcp_json,

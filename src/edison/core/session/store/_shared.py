@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 from .._config import get_config, reset_config_cache
-from ..id import validate_session_id, normalize_session_id
+from ..id import validate_session_id, validate_session_id
 
 if TYPE_CHECKING:
-    from ...paths.resolver import PathResolver
+    from ...utils.paths.resolver import PathResolver
 
 # Re-export for backward compatibility
-sanitize_session_id = validate_session_id
+validate_session_id = validate_session_id
 
 
 def reset_session_store_cache() -> None:
@@ -27,7 +27,7 @@ def reset_session_store_cache() -> None:
 def _sessions_root() -> Path:
     """Return the absolute sessions root directory path."""
     # Lazy import to avoid circular dependency
-    from ...paths.resolver import PathResolver
+    from ...utils.paths.resolver import PathResolver
     root = PathResolver.resolve_project_root()
     rel_path = get_config().get_session_root_path()
     return (root / rel_path).resolve()

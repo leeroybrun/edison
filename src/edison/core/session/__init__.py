@@ -19,7 +19,7 @@ from .manager import (
 from ._config import get_config, reset_config_cache
 
 # Session ID validation
-from .id import validate_session_id, sanitize_session_id, normalize_session_id, SessionIdError
+from .id import validate_session_id, validate_session_id, validate_session_id, SessionIdError
 
 # Submodules
 from . import state as _state  # noqa: F401
@@ -39,8 +39,8 @@ __all__ = [
     "reset_config_cache",
     # ID validation
     "validate_session_id",
-    "sanitize_session_id",
-    "normalize_session_id",
+    "validate_session_id",
+    "validate_session_id",
     "SessionIdError",
     # Submodules
     "state",

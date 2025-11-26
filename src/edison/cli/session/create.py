@@ -62,7 +62,7 @@ def main(args: argparse.Namespace) -> int:
     from edison.core.exceptions import SessionError
 
     try:
-        session_id = session_store.normalize_session_id(args.session_id)
+        session_id = session_store.validate_session_id(args.session_id)
 
         # Determine worktree creation
         create_wt = not args.no_worktree
@@ -84,7 +84,7 @@ def main(args: argparse.Namespace) -> int:
         if args.mode == "start":
             try:
                 from edison.core.session.autostart import SessionAutoStart
-                from edison.core.paths import resolve_project_root
+                from edison.core.utils.paths import resolve_project_root
                 from pathlib import Path
 
                 repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()

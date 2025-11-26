@@ -53,7 +53,7 @@ def main(args: argparse.Namespace) -> int:
         # Normalize session ID if provided
         session_id = None
         if args.session:
-            session_id = session_store.normalize_session_id(args.session)
+            session_id = session_store.validate_session_id(args.session)
 
         # Find the task
         task_path = task.find_record(task_id, "task")

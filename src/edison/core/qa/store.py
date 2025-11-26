@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from ..file_io.utils import ensure_dir
-from ..paths.resolver import PathResolver
-from ..paths.management import get_management_paths
+from edison.core.utils.io import ensure_dir
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_management_paths
 
 
 enforce_no_legacy_project_root("lib.qa.store")

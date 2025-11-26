@@ -8,9 +8,9 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..paths.resolver import PathResolver
+from edison.core.utils.paths import PathResolver
 from .. import task
-from ..file_io.utils import ensure_directory
+from edison.core.utils.io import ensure_directory
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from .store import (
     load_session,
@@ -19,7 +19,7 @@ from .store import (
     _list_active_sessions,
     _session_json_path,
     _sessions_root,
-    sanitize_session_id,
+    validate_session_id,
     _read_json,
     _write_json,
 )
@@ -101,7 +101,7 @@ def append_session_log(session_id: str, message: str) -> None:
 
 def restore_records_to_global_transactional(session_id: str) -> int:
     """Restore all session-scoped records back to global queues."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     # Locate the session directory across all configured states.
     session_root: Optional[Path] = None
     for base in _session_dir_map().values():
@@ -280,7 +280,7 @@ def detect_incomplete_transactions() -> List[Dict[str, Any]]:
     - meta: Full transaction metadata
     """
     from .transaction import _get_tx_root, TX_VALIDATION_SUBDIR
-    from ..file_io.utils import read_json_safe as io_read_json_safe
+    from edison.core.utils.io import read_json as io_read_json
 
     tx_root = _get_tx_root()
     if not tx_root.exists():
@@ -309,7 +309,7 @@ def detect_incomplete_transactions() -> List[Dict[str, Any]]:
                 continue
 
             try:
-                meta = io_read_json_safe(meta_path)
+                meta = io_read_json(meta_path)
             except Exception:
                 continue
 
@@ -345,12 +345,12 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
     Returns the number of recovered transactions.
     """
     from .transaction import _tx_dir, _find_tx_session, finalize_tx, abort_tx, _get_tx_root, TX_VALIDATION_SUBDIR
-    from ..file_io.utils import read_json_safe as io_read_json_safe
+    from edison.core.utils.io import read_json as io_read_json
 
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     # Validation transactions are stored in <tx_root>/<sid>/validation/<tx_id>
     # But wait, transaction.py says:
-    # _tx_validation_dir = _get_tx_root() / sanitize_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
+    # _tx_validation_dir = _get_tx_root() / validate_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
 
     tx_root = _get_tx_root()
     val_root = tx_root / sid / TX_VALIDATION_SUBDIR
@@ -369,7 +369,7 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
             continue
 
         try:
-            meta = io_read_json_safe(meta_path)
+            meta = io_read_json(meta_path)
         except Exception:
             continue
 
@@ -406,13 +406,13 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
 
         # 2. Mark as aborted in meta.json (validation transactions store metadata differently)
         try:
-            from ..file_io.locking import acquire_file_lock
-            from ..file_io.utils import write_json_safe as io_write_json_safe
+            from edison.core.utils.io.locking import acquire_file_lock
+            from edison.core.utils.io import write_json_atomic as io_write_json_atomic
 
             with acquire_file_lock(meta_path):
                 meta["abortedAt"] = io_utc_timestamp()
                 meta["reason"] = "recovery-cleanup"
-                io_write_json_safe(meta_path, meta)
+                io_write_json_atomic(meta_path, meta)
 
             recovered += 1
         except Exception as e:

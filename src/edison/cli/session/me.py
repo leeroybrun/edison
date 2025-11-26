@@ -56,7 +56,7 @@ def main(args: argparse.Namespace) -> int:
 
         if args.set_session:
             # Set current session context
-            session_id = session_store.normalize_session_id(args.set_session)
+            session_id = session_store.validate_session_id(args.set_session)
             session_manager.set_current_session(session_id)
             if args.json:
                 print(json.dumps({"status": "set", "session_id": session_id}))

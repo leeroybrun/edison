@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from edison.core.templates.mcp_config import build_mcp_servers, configure_mcp_json
+from edison.core.mcp.config import build_mcp_servers, configure_mcp_json
 
 SUMMARY = "Setup MCP servers defined in mcp.yml (no mocks, YAML-driven)"
 

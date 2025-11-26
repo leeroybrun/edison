@@ -17,7 +17,7 @@ from edison.core.qa.evidence import (
     get_implementation_report_path,
 )
 from edison.core.session.next.utils import project_cfg_dir
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe
+from edison.core.utils.io import read_json as io_read_json
 from edison.core import task
 
 
@@ -114,7 +114,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             have = {r.get("validatorId") for r in v.get("reports", [])}
             # Derive expected blocking IDs from validators config
             try:
-                cfg = io_read_json_safe(project_cfg_dir()/"validators"/"config.json")
+                cfg = io_read_json(project_cfg_dir()/"validators"/"config.json")
                 need = []
                 for vcat in ("global","critical","specialized"):
                     for vv in cfg.get("validators",{}).get(vcat,[]):
@@ -156,7 +156,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             # local helpers (mirrors tasks/ready heuristics)
             def _load_cfg():
                 try:
-                    return io_read_json_safe(project_cfg_dir()/"validators"/"config.json")
+                    return io_read_json(project_cfg_dir()/"validators"/"config.json")
                 except Exception:
                     return {}
 

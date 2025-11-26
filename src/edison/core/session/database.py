@@ -6,8 +6,8 @@ import importlib.util as _importlib_util
 from typing import Any, Dict, Optional
 from pathlib import Path
 
-from ..paths.resolver import PathResolver
-from ..paths.project import get_project_config_dir
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 from ._config import get_config, reset_config_cache
 
 

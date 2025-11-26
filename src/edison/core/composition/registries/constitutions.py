@@ -20,9 +20,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.config import ConfigManager
-from edison.core.file_io.utils import ensure_dir
+from edison.core.config.domains import PacksConfig
+from edison.core.utils.io import ensure_dir
 from edison.core.utils.time import utc_timestamp
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 from ..output.headers import resolve_version
 from ..path_utils import resolve_project_dir_placeholders
 
@@ -86,9 +87,9 @@ def _project_constitutions_dir(repo_root: Path) -> Path:
     return project_root / "constitutions"
 
 
-def _active_packs(config: Dict[str, Any]) -> List[str]:
-    packs = ((config.get("packs", {}) or {}).get("active", [])) or []
-    return [p for p in packs if isinstance(p, str)]
+def _active_packs(repo_root: Path) -> List[str]:
+    """Get active packs via PacksConfig."""
+    return PacksConfig(repo_root=repo_root).active_packs
 
 
 def _replace_each_block(template: str, token: str, rendered: str) -> str:
@@ -174,7 +175,7 @@ def compose_constitution(role: str, config: ConfigManager) -> str:
 
     # Packs (in configured order)
     packs_root = _packs_root(repo_root, cfg_dict)
-    for pack in _active_packs(cfg_dict):
+    for pack in _active_packs(repo_root):
         pack_content = load_constitution_layer(packs_root / pack, normalized, "pack")
         if pack_content:
             layers.append(pack_content)

@@ -75,7 +75,7 @@ def test_mcp_setup_check_reports_status(repo_root: Path):
 def test_mcp_configure_dry_run_outputs_server_entry(repo_root: Path, project_dir: Path):
     """Dry-run configure prints JSON without touching disk."""
 
-    from edison.core.templates.mcp_config import configure_mcp_json
+    from edison.core.mcp.config import configure_mcp_json
 
     payload = configure_mcp_json(project_dir, dry_run=True)
     assert "mcpServers" in payload

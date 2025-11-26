@@ -37,10 +37,10 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Seed session database - delegates to core library."""
-    from edison.core.session.store import normalize_session_id
+    from edison.core.session.store import validate_session_id
 
     try:
-        session_id = normalize_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
 
         # Database seeding would typically run seed scripts via Prisma or similar
         # For now, return a placeholder indicating the operation

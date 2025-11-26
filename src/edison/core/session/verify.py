@@ -11,11 +11,11 @@ from edison.core.session import store as session_store
 from edison.core.session.context import SessionContext
 from edison.core import task  # type: ignore
 from edison.core.config import get_task_states, get_qa_states
-from edison.core.file_io.utils import read_json_safe as io_read_json_safe
+from edison.core.utils.io import read_json as io_read_json
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
-from edison.core.utils.cli_arguments import parse_common_args
-from edison.core.utils.cli_output import output_json, error, success 
+from edison.core.utils.cli.arguments import parse_common_args
+from edison.core.utils.cli.output import output_json, error, success 
 def _latest_round_dir(task_id: str) -> Path | None:
     """Return the latest evidence round directory for ``task_id``."""
     ev_root = qa_evidence.get_evidence_dir(task_id)
@@ -26,7 +26,7 @@ def _latest_round_dir(task_id: str) -> Path | None:
 
 
 def verify_session_health(session_id: str) -> dict:
-    session_id = session_store.normalize_session_id(session_id)
+    session_id = session_store.validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
         session = session_manager.get_session(session_id)
 
@@ -123,7 +123,7 @@ def verify_session_health(session_id: str) -> dict:
                 health["categories"]["missingEvidence"].append({"taskId": task_id, "file": "bundle-approved.json"})
             else:
                 try:
-                    data = io_read_json_safe(latest / "bundle-approved.json")
+                    data = io_read_json(latest / "bundle-approved.json")
                 except Exception as err:
                     msg = f"Task {task_id} invalid bundle-approved.json: {err}"
                     failures.append(msg)

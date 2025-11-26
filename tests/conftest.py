@@ -36,7 +36,7 @@ if not hasattr(io, "open_code"):
 
 # Make Edison core lib importable as `lib.*` from the tests tree
 
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.resolver import PathResolver
 from edison.core.utils.subprocess import run_with_timeout
 
 # Repository root (resolved via PathResolver for relocatability)
@@ -75,6 +75,27 @@ def _reset_all_global_caches() -> None:
         # Critical: SessionConfig is created at module load, must be reset
         if hasattr(session_state, '_CONFIG'):
             session_state._CONFIG = None  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    # Clear ALL config caches (central cache.py)
+    try:
+        from edison.core.config.cache import clear_all_caches
+        clear_all_caches()
+    except Exception:
+        pass
+
+    # Session config cache (centralized in _config.py)
+    try:
+        from edison.core.session._config import reset_config_cache
+        reset_config_cache()
+    except Exception:
+        pass
+    
+    # Session store cache
+    try:
+        from edison.core.session.store import reset_session_store_cache
+        reset_session_store_cache()
     except Exception:
         pass
 

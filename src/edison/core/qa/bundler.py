@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from ..file_io.utils import (
-    write_json_safe as io_write_json_safe,
-    read_json_safe as io_read_json_safe,
+from edison.core.utils.io import (
+    write_json_atomic as io_write_json_atomic,
+    read_json as io_read_json,
     ensure_dir,
 )
 from edison.core.config.domains import qa as qa_config
@@ -41,7 +41,7 @@ def load_bundle_summary(task_id: str, round_num: int, *, config: Optional[Dict[s
     if not path.exists():
         return {}
     try:
-        data = io_read_json_safe(path)
+        data = io_read_json(path)
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
@@ -50,7 +50,7 @@ def load_bundle_summary(task_id: str, round_num: int, *, config: Optional[Dict[s
 def write_bundle_summary(task_id: str, round_num: int, summary: Dict[str, Any], *, config: Optional[Dict[str, Any]] = None) -> Path:
     path = bundle_summary_path(task_id, round_num, config=config)
     ensure_dir(path.parent)
-    io_write_json_safe(path, summary)
+    io_write_json_atomic(path, summary)
     return path
 
 

@@ -21,7 +21,7 @@ import os
 import threading
 from typing import List, Optional
 
-from ..process import inspector
+from ..utils.process import inspector
 
 # Thread-safe counter for session uniqueness within the same process
 _counter_lock = threading.Lock()

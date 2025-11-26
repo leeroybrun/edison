@@ -35,7 +35,7 @@ def main(args: argparse.Namespace) -> int:
     """Interactive configuration - delegates to setup module."""
     from edison.core.setup import configure_project
     from edison.core.config import ConfigManager
-    from edison.core.paths import resolve_project_root
+    from edison.core.utils.paths import resolve_project_root
     from pathlib import Path
 
     try:

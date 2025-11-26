@@ -137,12 +137,12 @@ class SetupDiscovery:
         return path if path.is_absolute() else self.repo_root / path
 
     def _load_yaml(self, path: Path) -> Dict[str, Any]:
-        from edison.core.file_io.utils import read_yaml_safe
-        return read_yaml_safe(path, default={})
+        from edison.core.utils.io import read_yaml
+        return read_yaml(path, default={})
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
-        from edison.core.file_io.utils import read_json_safe
-        return read_json_safe(path, default={})
+        from edison.core.utils.io import read_json
+        return read_json(path, default={})
 
     def _extract_ids(self, path: Path) -> List[str]:
         data = self._load_yaml(path)

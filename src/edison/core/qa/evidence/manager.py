@@ -62,8 +62,8 @@ class EvidenceManager(EvidenceManagerBase, EvidenceManagerReadMixin, EvidenceMan
         """
         latest = EvidenceManager.get_latest_round_dir(task_id)
         bundle_path = latest / "bundle-approved.json"
-        # read_json_safe provides FileNotFoundError + JSON errors
-        return evidence_io.read_json_safe(bundle_path)
+        # read_json provides FileNotFoundError + JSON errors
+        return evidence_io.read_json(bundle_path)
 
     @staticmethod
     def read_implementation_report(task_id: str) -> Dict[str, Any]:
@@ -75,7 +75,7 @@ class EvidenceManager(EvidenceManagerBase, EvidenceManagerReadMixin, EvidenceMan
         """
         latest = EvidenceManager.get_latest_round_dir(task_id)
         report_path = latest / "implementation-report.json"
-        return evidence_io.read_json_safe(report_path)
+        return evidence_io.read_json(report_path)
 
 
 def get_evidence_manager(task_id: str) -> EvidenceManager:

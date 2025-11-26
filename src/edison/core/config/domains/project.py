@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..base import BaseDomainConfig
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 
 DEFAULT_PROJECT_TERMS = ["project", "app_", "better-auth", "odoo"]
 

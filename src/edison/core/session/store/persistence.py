@@ -6,22 +6,22 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ...legacy_guard import enforce_no_legacy_project_root
-from ...file_io.locking import acquire_file_lock
-from ...file_io.utils import (
-    write_json_safe as io_atomic_write_json,
-    read_json_safe as io_read_json_safe,
+from ...utils.io.locking import acquire_file_lock
+from ...utils.io import (
+    write_json_atomic as io_write_json_atomic,
+    read_json as io_read_json,
     ensure_directory,
 )
 from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...exceptions import SessionNotFoundError, SessionStateError
-from ...paths.resolver import PathResolver
+from ...utils.paths.resolver import PathResolver
 
 from .._config import get_config
 from ._shared import (
     _session_json_candidates,
     _sessions_root,
     _session_state_order,
-    sanitize_session_id,
+    validate_session_id,
     _session_dir,
 )
 
@@ -32,16 +32,16 @@ enforce_no_legacy_project_root("lib.session.store.persistence")
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
-    return io_read_json_safe(path)
+    return io_read_json(path)
 
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
-    io_atomic_write_json(path, data, acquire_lock=False)
+    io_write_json_atomic(path, data, acquire_lock=False)
 
 
 def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]:
     """Load the JSON metadata for a session."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     states = _session_state_order(state)
     candidates = [p for p in _session_json_candidates(sid, states=states) if p.exists()]
     if candidates:
@@ -86,7 +86,7 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
     """Safely persist session JSON using locking and atomic write."""
     from .discovery import get_session_json_path
 
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     # If session exists, use its current path. If not, default to initial state
     try:
         j = get_session_json_path(sid)
@@ -125,14 +125,14 @@ def _read_template() -> Dict[str, Any]:
 
     for candidate in candidates:
         if candidate.exists():
-            return io_read_json_safe(candidate)
+            return io_read_json(candidate)
 
     raise RuntimeError("Missing session template (checked configured paths)")
 
 
 def _load_or_create_session(session_id: str) -> Dict[str, Any]:
     """Load existing session JSON or create a minimal skeleton."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     try:
         return load_session(sid)
     except Exception:

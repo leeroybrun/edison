@@ -4,7 +4,7 @@ import fnmatch
 from pathlib import Path
 from typing import Iterable, List, Optional, Set
 
-from ...file_io.utils import read_yaml_safe
+from edison.core.utils.io import read_yaml
 from ..includes import _repo_root
 
 try:  # PyYAML is required for pack-trigger discovery
@@ -77,7 +77,7 @@ def auto_activate_packs(
         if not pack_yml.exists():
             continue
 
-        data = read_yaml_safe(pack_yml, default={})
+        data = read_yaml(pack_yml, default={})
 
         triggers = data.get("triggers") or {}
         raw_patterns: List[str]

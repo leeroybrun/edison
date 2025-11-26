@@ -26,7 +26,7 @@ def _cfg() -> Dict[str, Any]:
     """
     try:
         from ..config import ConfigManager
-        from ..paths import PathResolver
+        from .paths import PathResolver
 
         repo_root = PathResolver.resolve_project_root()
         cfg_manager = ConfigManager(repo_root)

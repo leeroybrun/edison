@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import yaml
 
 from ..composition.includes import resolve_includes, ComposeError
-from ..paths import EdisonPathError, PathResolver
-from ..paths.project import get_project_config_dir
+from edison.core.utils.paths import EdisonPathError, PathResolver
+from edison.core.utils.paths import get_project_config_dir
 
 from .errors import AnchorNotFoundError, RulesCompositionError
 from .helpers import extract_anchor_content as _extract_anchor_content
@@ -59,8 +59,8 @@ class RulesRegistry:
                 raise RulesCompositionError(f"Rules registry not found at {path}")
             return {"version": None, "rules": []}
 
-        from edison.core.file_io.utils import read_yaml_safe
-        data = read_yaml_safe(path, raise_on_error=True) or {}
+        from edison.core.utils.io import read_yaml
+        data = read_yaml(path, raise_on_error=True) or {}
         if not isinstance(data, dict):
             raise RulesCompositionError(
                 f"Invalid rules registry at {path}: expected mapping at top level"

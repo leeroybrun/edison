@@ -8,7 +8,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.ide.commands import compose_commands  # type: ignore  # noqa: E402
+from edison.core.composition.ide.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 from edison.core.adapters import ClaudeAdapter, CursorPromptAdapter, CodexAdapter  # type: ignore  # noqa: E402
 

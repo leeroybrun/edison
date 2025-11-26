@@ -47,7 +47,6 @@ from .registry import (
     DependencyResult,
     discover_packs,
     resolve_dependencies,
-    load_active_packs,
 )
 
 __all__ = [
@@ -71,5 +70,4 @@ __all__ = [
     "DependencyResult",
     "discover_packs",
     "resolve_dependencies",
-    "load_active_packs",
 ]
