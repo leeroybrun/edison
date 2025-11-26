@@ -96,7 +96,7 @@ def test_config_manager_defaults_to_project_root_not_edison(
     when running commands from within .edison/core.
     """
     # Import here to avoid affecting module-level imports.
-    import edison.core.paths.resolver as resolver  # type: ignore
+    import edison.core.utils.paths.resolver as resolver  # type: ignore
 
     # Simulate running inside the Edison framework directory.
     monkeypatch.chdir(CORE_ROOT)

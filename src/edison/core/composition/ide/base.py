@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from ...config import ConfigManager
 from ...config.domains import PacksConfig
-from ...paths.project import get_project_config_dir
-from ...paths import PathResolver
+from ...utils.paths.project import get_project_config_dir
+from ...utils.paths import PathResolver
 
 
 class IDEComposerBase(ABC):

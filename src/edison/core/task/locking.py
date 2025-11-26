@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from ..utils.subprocess import run_with_timeout
 from .paths import ROOT
 
@@ -122,7 +122,7 @@ def safe_move_file(path: Path, destination: Path) -> Path:
     """Atomically move a file, preferring git mv -- when available."""
     src = Path(path)
     dest = Path(destination)
-    ensure_dir(dest.parent)
+    ensure_directory(dest.parent)
 
     try:
         result = _safe_git_command(
@@ -158,7 +158,7 @@ def safe_move_file(path: Path, destination: Path) -> Path:
 def write_text_locked(path: Path, content: str) -> None:
     """Write text atomically while holding an exclusive lock on the target."""
     target = Path(path)
-    ensure_dir(target.parent)
+    ensure_directory(target.parent)
     tmp: Optional[Path] = None
     with file_lock(target):
         try:

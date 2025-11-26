@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from ....paths import PathResolver
+from edison.core.utils.paths import PathResolver
 from ....config import ConfigManager
 from ....config.domains import PacksConfig
 from ....composition import GuidelineRegistry

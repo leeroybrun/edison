@@ -21,7 +21,7 @@ from edison.core.session import worktree
 from edison.core.session.naming import reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.subprocess import run_with_timeout
-from edison.core.process.inspector import infer_session_id
+from edison.core.utils.process.inspector import infer_session_id
 
 
 # Import target under test (implementation added in this task)

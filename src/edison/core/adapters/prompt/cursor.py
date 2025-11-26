@@ -13,7 +13,7 @@ from typing import Dict, Optional
 from ..base import PromptAdapter
 from .._config import ConfigMixin
 from ...composition.output import OutputConfigLoader
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 
 
 class CursorPromptAdapter(PromptAdapter, ConfigMixin):
@@ -50,7 +50,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         if client_cfg is not None and not client_cfg.enabled:
             return
         
-        ensure_dir(output_root)
+        ensure_directory(output_root)
 
         adapter_config = self.config.get("adapters", {}).get("cursor", {})
 
@@ -64,7 +64,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         # Write agents
         agents_dirname = adapter_config.get("agents_dirname", "cursor-agents")
         agents_output_dir = output_root / agents_dirname
-        ensure_dir(agents_output_dir)
+        ensure_directory(agents_output_dir)
 
         for agent_name in self.list_agents():
             content = self.render_agent(agent_name)
@@ -74,7 +74,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         # Write validators
         validators_dirname = adapter_config.get("validators_dirname", "cursor-validators")
         validators_output_dir = output_root / validators_dirname
-        ensure_dir(validators_output_dir)
+        ensure_directory(validators_output_dir)
 
         for validator_name in self.list_validators():
             content = self.render_validator(validator_name)

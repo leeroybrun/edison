@@ -72,7 +72,7 @@ def test_questionnaire_defaults_pick_management_dir(mgmt_repo: Tuple[Path, Path]
 
 def test_resolver_project_path_uses_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.paths.resolver as resolver
+    import edison.core.utils.paths.resolver as resolver
 
     importlib.reload(resolver)
     path = resolver.PathResolver.get_project_path("tasks")

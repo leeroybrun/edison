@@ -14,7 +14,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from edison.core.composition.delegation import map_role, route_task, get_role_mapping 
+from tests.helpers.delegation import map_role, route_task, get_role_mapping
 def test_route_task_maps_role_correctly():
     """Routes a generic role and verifies target_role equals mapping result."""
     mapping = get_role_mapping()

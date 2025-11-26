@@ -47,7 +47,7 @@ def _reset_all_global_caches() -> None:
     """Reset ALL global caches in Edison modules to ensure test isolation."""
     # Path resolver cache
     try:
-        import edison.core.paths.resolver as paths  # type: ignore
+        import edison.core.utils.paths.resolver as paths  # type: ignore
         paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -161,7 +161,7 @@ def isolated_project_env(tmp_path, monkeypatch):
 
     # Ensure PathResolver uses this isolated root for the duration of the test
     try:
-        import edison.core.paths.resolver as paths  # type: ignore
+        import edison.core.utils.paths.resolver as paths  # type: ignore
         paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -393,7 +393,7 @@ def isolated_project_env(tmp_path, monkeypatch):
 
     # Reset cache so other tests do not accidentally reuse this root
     try:
-        import edison.core.paths.resolver as paths  # type: ignore
+        import edison.core.utils.paths.resolver as paths  # type: ignore
 
         paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     except Exception:

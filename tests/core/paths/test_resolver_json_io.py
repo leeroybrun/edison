@@ -2,12 +2,12 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 import pytest
-from edison.core.paths.resolver import PathResolver
-import edison.core.file_io.utils as io_utils
+from edison.core.utils.paths.resolver import PathResolver
+import edison.core.utils.io as io_utils
 
-def test_detect_session_id_uses_read_json_safe(tmp_path, monkeypatch):
+def test_detect_session_id_uses_read_json(tmp_path, monkeypatch):
     """
-    Verify that detect_session_id uses read_json_safe to read session.json.
+    Verify that detect_session_id uses read_json to read session.json.
     This ensures consistent file locking and error handling.
     """
     # Setup
@@ -36,9 +36,9 @@ def test_detect_session_id_uses_read_json_safe(tmp_path, monkeypatch):
     # Mock get_management_paths to ensure it finds our structure
     # But since we used standard structure, real one should work if resolve_project_root works.
     
-    # Patch read_json_safe to verify it is called
+    # Patch read_json to verify it is called
     # We patch where it is USED, not where it is defined
-    with patch('edison.core.paths.resolver.session.read_json_safe', side_effect=io_utils.read_json_safe) as mock_read:
+    with patch('edison.core.session.id.read_json', side_effect=io_utils.read_json) as mock_read:
         # Run
         # Explicitly set owner to match file
         result = PathResolver.detect_session_id(owner="tester")

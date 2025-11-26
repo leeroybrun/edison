@@ -19,7 +19,7 @@ import pytest
 
 def test_json_output_success_schema() -> None:
     """json_output should produce correct success schema."""
-    from edison.core.utils.cli_errors import json_output
+    from edison.core.utils.cli.errors import json_output
 
     result = json_output(success=True, data={"result": "ok"})
     parsed = json.loads(result)
@@ -31,7 +31,7 @@ def test_json_output_success_schema() -> None:
 
 def test_json_output_error_dict_schema() -> None:
     """json_output should handle error as dict."""
-    from edison.core.utils.cli_errors import json_output
+    from edison.core.utils.cli.errors import json_output
 
     error_data = {
         "message": "Something failed",
@@ -49,7 +49,7 @@ def test_json_output_error_dict_schema() -> None:
 
 def test_json_output_error_string() -> None:
     """json_output should handle error as string."""
-    from edison.core.utils.cli_errors import json_output
+    from edison.core.utils.cli.errors import json_output
 
     result = json_output(success=False, data={}, error="Error message")
     parsed = json.loads(result)
@@ -62,7 +62,7 @@ def test_json_output_error_string() -> None:
 
 def test_json_output_no_error() -> None:
     """json_output should handle None error."""
-    from edison.core.utils.cli_errors import json_output
+    from edison.core.utils.cli.errors import json_output
 
     result = json_output(success=True, data={"key": "value"}, error=None)
     parsed = json.loads(result)
@@ -74,7 +74,7 @@ def test_json_output_no_error() -> None:
 
 def test_cli_error_json_mode(capsys: pytest.CaptureFixture[str]) -> None:
     """cli_error should emit structured JSON in json_mode."""
-    from edison.core.utils.cli_errors import cli_error
+    from edison.core.utils.cli.errors import cli_error
 
     exit_code = cli_error(
         "Test error",
@@ -96,7 +96,7 @@ def test_cli_error_json_mode(capsys: pytest.CaptureFixture[str]) -> None:
 def test_cli_error_text_mode() -> None:
     """cli_error should emit text message in text mode."""
     from io import StringIO
-    from edison.core.utils.cli_errors import cli_error
+    from edison.core.utils.cli.errors import cli_error
 
     # Provide custom stream
     stream = StringIO()
@@ -111,7 +111,7 @@ def test_cli_error_text_mode() -> None:
 
 def test_cli_error_default_code() -> None:
     """cli_error should use default ERROR code."""
-    from edison.core.utils.cli_errors import cli_error
+    from edison.core.utils.cli.errors import cli_error
 
     exit_code = cli_error("Test", json_mode=True)
 
@@ -120,7 +120,7 @@ def test_cli_error_default_code() -> None:
 
 def test_run_cli_success_passthrough(capsys: pytest.CaptureFixture[str]) -> None:
     """run_cli should pass through successful output and return code 0."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_ok() -> int:
         print("ok-main")
@@ -135,7 +135,7 @@ def test_run_cli_success_passthrough(capsys: pytest.CaptureFixture[str]) -> None
 
 def test_run_cli_none_return_is_success(capsys: pytest.CaptureFixture[str]) -> None:
     """run_cli should treat None return as success (code 0)."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_none() -> None:
         print("done")
@@ -150,7 +150,7 @@ def test_run_cli_none_return_is_success(capsys: pytest.CaptureFixture[str]) -> N
 def test_run_cli_edison_error_to_json(capsys: pytest.CaptureFixture[str]) -> None:
     """EdisonError subclasses should be rendered via json_output()."""
     from edison.core import exceptions
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_fail() -> None:
         raise exceptions.TaskNotFoundError("missing task", context={"taskId": "T-1"})
@@ -170,7 +170,7 @@ def test_run_cli_edison_error_to_json(capsys: pytest.CaptureFixture[str]) -> Non
 def test_run_cli_edison_error_text_mode(capsys: pytest.CaptureFixture[str]) -> None:
     """EdisonError should be rendered as text when json_errors=False."""
     from edison.core import exceptions
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_fail() -> None:
         raise exceptions.TaskNotFoundError("missing task")
@@ -185,7 +185,7 @@ def test_run_cli_edison_error_text_mode(capsys: pytest.CaptureFixture[str]) -> N
 
 def test_run_cli_keyboard_interrupt_to_json(capsys: pytest.CaptureFixture[str]) -> None:
     """KeyboardInterrupt should be mapped to CANCELLED json error."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_interrupt() -> None:
         raise KeyboardInterrupt()
@@ -203,7 +203,7 @@ def test_run_cli_keyboard_interrupt_to_json(capsys: pytest.CaptureFixture[str]) 
 
 def test_run_cli_keyboard_interrupt_text_mode(capsys: pytest.CaptureFixture[str]) -> None:
     """KeyboardInterrupt should emit text in text mode."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_interrupt() -> None:
         raise KeyboardInterrupt()
@@ -217,7 +217,7 @@ def test_run_cli_keyboard_interrupt_text_mode(capsys: pytest.CaptureFixture[str]
 
 def test_run_cli_unexpected_exception_to_json(capsys: pytest.CaptureFixture[str]) -> None:
     """Non-Edison exceptions should emit INTERNAL_ERROR with type context."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     class CustomError(RuntimeError):
         pass
@@ -240,7 +240,7 @@ def test_run_cli_unexpected_exception_to_json(capsys: pytest.CaptureFixture[str]
 
 def test_run_cli_unexpected_exception_text_mode(capsys: pytest.CaptureFixture[str]) -> None:
     """Unexpected exceptions should emit text in text mode."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_boom() -> None:
         raise RuntimeError("boom")
@@ -254,7 +254,7 @@ def test_run_cli_unexpected_exception_text_mode(capsys: pytest.CaptureFixture[st
 
 def test_run_cli_forwards_args_kwargs(capsys: pytest.CaptureFixture[str]) -> None:
     """run_cli should forward args and kwargs to main function."""
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     def main_with_args(name: str, count: int = 1) -> int:
         print(f"{name}: {count}")

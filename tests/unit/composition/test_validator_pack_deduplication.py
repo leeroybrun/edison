@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from edison.core.composition import LayeredComposer
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths.project import get_project_config_dir
 
 
 def _write_core_validator(project_dir: Path, validator_id: str) -> Path:

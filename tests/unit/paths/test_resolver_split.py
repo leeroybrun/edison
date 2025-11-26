@@ -1,56 +1,67 @@
+"""Test that the paths utilities are properly structured after refactoring."""
 import pytest
 import sys
 from pathlib import Path
-import edison.core.paths.resolver as resolver_pkg
 
-def test_internal_modules_existence():
-    """Test that the split internal modules exist and are importable."""
-    # These imports will FAIL until the split is implemented
-    from edison.core.paths.resolver import base
-    from edison.core.paths.resolver import project
-    from edison.core.paths.resolver import session
-    from edison.core.paths.resolver import evidence
-    
-    assert base is not None
-    assert project is not None
-    assert session is not None
-    assert evidence is not None
 
-def test_public_api_reexports():
-    """Test that the public API is preserved in the new __init__.py."""
-    # These should be available at the top level
-    from edison.core.paths.resolver import (
+def test_utils_paths_public_api():
+    """Test that the public API is preserved in utils/paths/."""
+    from edison.core.utils.paths import (
         PathResolver,
         EdisonPathError,
         resolve_project_root,
-        detect_session_id,
+        get_management_paths,
+        get_project_config_dir,
         find_evidence_round,
-        is_git_repository,
-        get_git_root,
-        _PROJECT_ROOT_CACHE
+        list_evidence_rounds,
+        _PROJECT_ROOT_CACHE,
     )
     
     assert PathResolver is not None
     assert issubclass(EdisonPathError, ValueError)
     assert callable(resolve_project_root)
-    assert callable(detect_session_id)
+    assert callable(get_management_paths)
+    assert callable(get_project_config_dir)
     assert callable(find_evidence_round)
+    assert callable(list_evidence_rounds)
+
+
+def test_utils_git_public_api():
+    """Test that git utilities are available in utils/git/."""
+    from edison.core.utils.git import (
+        is_git_repository,
+        get_git_root,
+        get_repo_root,
+        get_current_branch,
+        is_clean_working_tree,
+        is_worktree,
+        get_worktree_parent,
+        get_worktree_info,
+        get_changed_files,
+    )
+    
     assert callable(is_git_repository)
     assert callable(get_git_root)
+    assert callable(get_repo_root)
+    assert callable(get_current_branch)
 
-def test_internal_modules_not_leaking():
-    """Test that internal modules are NOT directly importable if not explicitly exposed."""
-    # The 'resolver' package itself should expose the main API, but we want to ensure
-    # we can import the submodules.
-    # This test is slightly redundant with test_internal_modules_existence but 
-    # emphasizes the structure.
+
+def test_session_id_detection_moved():
+    """Test that session ID detection is available in session/id.py."""
+    from edison.core.session.id import (
+        validate_session_id,
+        detect_session_id,
+        SessionIdError,
+    )
     
-    import edison.core.paths.resolver.project as project_mod
-    assert hasattr(project_mod, "resolve_project_root")
+    assert callable(validate_session_id)
+    assert callable(detect_session_id)
+    assert issubclass(SessionIdError, ValueError)
 
-def test_functionality_preservation(tmp_path):
-    """Basic functionality test to ensure the moved code still works."""
-    from edison.core.paths.resolver import is_git_repository
+
+def test_is_git_repository_functionality(tmp_path):
+    """Basic functionality test to ensure git utilities work."""
+    from edison.core.utils.git import is_git_repository
     
     # Create a fake git dir
     (tmp_path / ".git").mkdir()

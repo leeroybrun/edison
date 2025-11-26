@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from edison.core.paths.project import get_project_config_dir
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.project import get_project_config_dir
+from edison.core.utils.paths.resolver import PathResolver
 
 
 CONFIG_FILE = "wilson_entity_examples.yaml"

@@ -71,7 +71,7 @@ cli:
 
 def test_output_json_pretty_format(isolated_config: None) -> None:
     """output_json should format JSON with indentation by default."""
-    from edison.core.utils.cli_output import output_json
+    from edison.core.utils.cli.output import output_json
 
     data = {"key": "value", "nested": {"foo": "bar"}}
     result = output_json(data, pretty=True)
@@ -87,7 +87,7 @@ def test_output_json_pretty_format(isolated_config: None) -> None:
 
 def test_output_json_compact_format(isolated_config: None) -> None:
     """output_json with pretty=False should produce compact JSON."""
-    from edison.core.utils.cli_output import output_json
+    from edison.core.utils.cli.output import output_json
 
     data = {"key": "value", "nested": {"foo": "bar"}}
     result = output_json(data, pretty=False)
@@ -102,7 +102,7 @@ def test_output_json_compact_format(isolated_config: None) -> None:
 
 def test_output_json_sorts_keys(isolated_config: None) -> None:
     """output_json should sort keys by default."""
-    from edison.core.utils.cli_output import output_json
+    from edison.core.utils.cli.output import output_json
 
     data = {"z": 1, "a": 2, "m": 3}
     result = output_json(data, pretty=False)
@@ -113,7 +113,7 @@ def test_output_json_sorts_keys(isolated_config: None) -> None:
 
 def test_output_table_basic_formatting(isolated_config: None) -> None:
     """output_table should format rows as aligned columns."""
-    from edison.core.utils.cli_output import output_table
+    from edison.core.utils.cli.output import output_table
 
     rows = [
         ["foo", "bar", "baz"],
@@ -139,7 +139,7 @@ def test_output_table_basic_formatting(isolated_config: None) -> None:
 
 def test_output_table_with_dict_rows(isolated_config: None) -> None:
     """output_table should handle dict rows using headers as keys."""
-    from edison.core.utils.cli_output import output_table
+    from edison.core.utils.cli.output import output_table
 
     rows = [
         {"name": "Alice", "age": 30},
@@ -157,7 +157,7 @@ def test_output_table_with_dict_rows(isolated_config: None) -> None:
 
 def test_output_table_empty_rows(isolated_config: None) -> None:
     """output_table should handle empty rows gracefully."""
-    from edison.core.utils.cli_output import output_table
+    from edison.core.utils.cli.output import output_table
 
     rows: list[Any] = []
     headers = ["Col1", "Col2"]
@@ -171,7 +171,7 @@ def test_output_table_empty_rows(isolated_config: None) -> None:
 
 def test_output_table_missing_dict_keys(isolated_config: None) -> None:
     """output_table should handle missing keys in dict rows."""
-    from edison.core.utils.cli_output import output_table
+    from edison.core.utils.cli.output import output_table
 
     rows = [
         {"name": "Alice"},  # Missing 'age'
@@ -188,7 +188,7 @@ def test_output_table_missing_dict_keys(isolated_config: None) -> None:
 
 def test_confirm_returns_true_for_yes(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should return True when user enters 'yes' or 'y'."""
-    from edison.core.utils.cli_output import confirm
+    from edison.core.utils.cli.output import confirm
 
     inputs = iter(["yes", "y"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
@@ -199,7 +199,7 @@ def test_confirm_returns_true_for_yes(isolated_config: None, monkeypatch: pytest
 
 def test_confirm_returns_false_for_no(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should return False when user enters 'no' or 'n'."""
-    from edison.core.utils.cli_output import confirm
+    from edison.core.utils.cli.output import confirm
 
     inputs = iter(["no", "n"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
@@ -210,7 +210,7 @@ def test_confirm_returns_false_for_no(isolated_config: None, monkeypatch: pytest
 
 def test_confirm_uses_default_on_empty_input(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should use default value on empty input."""
-    from edison.core.utils.cli_output import confirm
+    from edison.core.utils.cli.output import confirm
 
     monkeypatch.setattr("builtins.input", lambda _: "")
     assert confirm("Continue?", default=True) is True
@@ -219,7 +219,7 @@ def test_confirm_uses_default_on_empty_input(isolated_config: None, monkeypatch:
 
 def test_confirm_case_insensitive(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should accept uppercase input."""
-    from edison.core.utils.cli_output import confirm
+    from edison.core.utils.cli.output import confirm
 
     inputs = iter(["YES", "NO"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
@@ -230,7 +230,7 @@ def test_confirm_case_insensitive(isolated_config: None, monkeypatch: pytest.Mon
 
 def test_confirm_handles_eof(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """confirm should handle EOFError gracefully."""
-    from edison.core.utils.cli_output import confirm
+    from edison.core.utils.cli.output import confirm
 
     def raise_eof(_: str) -> str:
         raise EOFError
@@ -244,7 +244,7 @@ def test_confirm_handles_eof(isolated_config: None, monkeypatch: pytest.MonkeyPa
 
 def test_error_prints_to_stderr(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """error should print message to stderr with prefix."""
-    from edison.core.utils.cli_output import error
+    from edison.core.utils.cli.output import error
 
     mock_stderr = StringIO()
     monkeypatch.setattr("sys.stderr", mock_stderr)
@@ -259,7 +259,7 @@ def test_error_prints_to_stderr(isolated_config: None, monkeypatch: pytest.Monke
 
 def test_error_custom_exit_code(isolated_config: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """error should return custom exit code."""
-    from edison.core.utils.cli_output import error
+    from edison.core.utils.cli.output import error
 
     mock_stderr = StringIO()
     monkeypatch.setattr("sys.stderr", mock_stderr)
@@ -270,7 +270,7 @@ def test_error_custom_exit_code(isolated_config: None, monkeypatch: pytest.Monke
 
 def test_success_prints_with_prefix(isolated_config: None, capsys: pytest.CaptureFixture[str]) -> None:
     """success should print message with success prefix."""
-    from edison.core.utils.cli_output import success
+    from edison.core.utils.cli.output import success
 
     success("Operation completed")
 
@@ -281,7 +281,7 @@ def test_success_prints_with_prefix(isolated_config: None, capsys: pytest.Captur
 
 def test_output_json_handles_unicode(isolated_config: None) -> None:
     """output_json should handle unicode characters properly."""
-    from edison.core.utils.cli_output import output_json
+    from edison.core.utils.cli.output import output_json
 
     data = {"message": "Hello 世界 🌍"}
     result = output_json(data)
@@ -296,7 +296,7 @@ def test_output_json_handles_unicode(isolated_config: None) -> None:
 
 def test_output_table_aligns_columns(isolated_config: None) -> None:
     """output_table should align columns with proper spacing."""
-    from edison.core.utils.cli_output import output_table
+    from edison.core.utils.cli.output import output_table
 
     rows = [
         ["short", "x"],

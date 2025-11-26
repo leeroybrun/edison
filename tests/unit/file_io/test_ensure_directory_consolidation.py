@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 from pathlib import Path
-from edison.core.file_io.utils import ensure_directory
+from edison.core.utils.io import ensure_directory
 
 
 def test_ensure_directory_creates_missing_directory(tmp_path: Path) -> None:
@@ -90,10 +90,10 @@ def test_ensure_directory_raises_on_file_conflict(tmp_path: Path) -> None:
 
 def test_no_ensure_dir_in_exports() -> None:
     """Test ensure_dir is NOT exported in __all__ (consolidation complete)."""
-    from edison.core.file_io import utils
+    import edison.core.utils.io as io_pkg
 
-    assert "ensure_directory" in utils.__all__
-    assert "ensure_dir" not in utils.__all__, (
+    assert "ensure_directory" in io_pkg.__all__
+    assert "ensure_dir" not in io_pkg.__all__, (
         "ensure_dir should be removed from __all__ - "
         "use ensure_directory() as single source of truth"
     )
@@ -101,10 +101,10 @@ def test_no_ensure_dir_in_exports() -> None:
 
 def test_no_ensure_dir_function_exists() -> None:
     """Test ensure_dir function no longer exists (complete removal)."""
-    from edison.core.file_io import utils
+    import edison.core.utils.io as io_pkg
 
-    assert hasattr(utils, "ensure_directory"), "ensure_directory should exist"
-    assert not hasattr(utils, "ensure_dir"), (
+    assert hasattr(io_pkg, "ensure_directory"), "ensure_directory should exist"
+    assert not hasattr(io_pkg, "ensure_dir"), (
         "ensure_dir should be completely removed - "
         "use ensure_directory() as single source of truth"
     )

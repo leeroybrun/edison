@@ -12,10 +12,10 @@ from the unified composition engine output.
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ...paths import PathResolver
-from ...paths.project import get_project_config_dir
+from ...utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 from ...composition.output import OutputConfigLoader
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 
 
 class ClaudeAdapterError(RuntimeError):
@@ -71,12 +71,12 @@ class ClaudeSync:
         if not self.claude_dir.exists():
             if not create_missing:
                 raise ClaudeAdapterError(f"Missing: {self.claude_dir}")
-            ensure_dir(self.claude_dir)
+            ensure_directory(self.claude_dir)
         
         if not self.claude_agents_dir.exists():
             if not create_missing:
                 raise ClaudeAdapterError(f"Missing: {self.claude_agents_dir}")
-            ensure_dir(self.claude_agents_dir)
+            ensure_directory(self.claude_agents_dir)
         
         return self.claude_dir
 
@@ -104,7 +104,7 @@ class ClaudeSync:
         if target is None:
             return None
         
-        ensure_dir(target.parent)
+        ensure_directory(target.parent)
         target.write_text(content, encoding="utf-8")
         return target
 

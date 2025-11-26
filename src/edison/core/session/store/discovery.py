@@ -77,7 +77,7 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
     # Try PID-based inference first
     session_id: Optional[str] = None
     try:
-        from edison.core.process.inspector import infer_session_id
+        from edison.core.utils.process.inspector import infer_session_id
         session_id = infer_session_id()
 
         # Check if PID-based session exists

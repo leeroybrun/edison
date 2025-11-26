@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..base import PromptAdapter
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 
 
 class ClaudeAdapter(PromptAdapter):
@@ -70,7 +70,7 @@ class ClaudeAdapter(PromptAdapter):
         Args:
             output_root: Output directory (typically .claude/)
         """
-        ensure_dir(output_root)
+        ensure_directory(output_root)
         
         # Delegate to ClaudeSync for proper Claude Code layout
         from ..sync.claude import ClaudeSync

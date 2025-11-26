@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.file_io.locking import LockTimeoutError, acquire_file_lock
+from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
 
 
 def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:

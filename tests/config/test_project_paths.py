@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from edison.core.paths.project import (
+from edison.core.utils.paths.project import (
     DEFAULT_PROJECT_CONFIG_PRIMARY,
     _resolve_project_dir_from_configs,
     get_project_config_dir,

@@ -11,7 +11,7 @@ from .naming import generate_session_id
 from . import store
 from . import worktree
 from .context import SessionContext
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from ..config.domains import OrchestratorConfig
 from ..orchestrator.launcher import (
     OrchestratorLauncher,
@@ -145,8 +145,8 @@ class SessionAutoStart:
 
                 if worktree_path:
                     if dry_run:
-                        ensure_dir(worktree_path)
-                        ensure_dir(worktree_path / ".git")
+                        ensure_directory(worktree_path)
+                        ensure_directory(worktree_path / ".git")
                     session = store.load_session(session_id)
                     git_meta = session.setdefault("git", {}) if isinstance(session, dict) else {}
                     git_meta["worktreePath"] = str(worktree_path)
@@ -238,7 +238,7 @@ class SessionAutoStart:
         """Return path for per-session orchestrator log."""
         mgmt_paths = get_management_paths(self.session_manager.project_root)
         base = mgmt_paths.get_session_state_dir("wip") / session_id
-        ensure_dir(base)
+        ensure_directory(base)
         return base / "orchestrator.log"
 
     def _ensure_orchestrator_config(self, repo_root: Path) -> None:
@@ -246,7 +246,7 @@ class SessionAutoStart:
         from edison.core.utils.io import dump_yaml_string
 
         cfg_dir = get_project_config_dir(repo_root) / "config"
-        ensure_dir(cfg_dir)
+        ensure_directory(cfg_dir)
         cfg_path = cfg_dir / "orchestrator.yaml"
         if cfg_path.exists():
             return

@@ -33,7 +33,7 @@ def test_reset_all_global_caches_without_tasks_state():
 
     # Verify it resets other caches properly
     try:
-        import edison.core.paths.resolver as paths
+        import edison.core.utils.paths.resolver as paths
         # After reset, cache should be None
         assert paths._PROJECT_ROOT_CACHE is None
     except Exception:

@@ -4,8 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
-from ...paths import PathResolver
-from ...paths.management import get_management_paths
+from ...utils.paths import PathResolver
+from edison.core.utils.paths import get_management_paths
 from . import rounds
 
 

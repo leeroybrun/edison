@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from edison.core.task import io as task_io
 from edison.core.task import locking
-from edison.core.file_io.utils import ensure_dir
+from edison.core.utils.io import ensure_directory as ensure_dir
 
 # ----------------------------------------------------------------------
 # Tests for src/edison/core/task/io.py

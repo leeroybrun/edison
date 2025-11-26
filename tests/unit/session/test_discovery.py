@@ -1,7 +1,7 @@
 """Tests for session discovery utilities - finding session.json across layouts."""
 import pytest
 from pathlib import Path
-from edison.core.session import discovery
+from edison.core.session.store import discovery
 
 
 @pytest.fixture

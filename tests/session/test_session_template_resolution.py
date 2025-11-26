@@ -5,8 +5,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from edison.core.paths import PathResolver 
-from edison.core.paths.project import get_project_config_dir 
+from edison.core.utils.paths import PathResolver 
+from edison.core.utils.paths.project import get_project_config_dir 
 def test_session_template_resolves_from_project_config_dir(
     monkeypatch: "pytest.MonkeyPatch", tmp_path: Path
 ) -> None:

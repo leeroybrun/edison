@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from edison.core.qa.manager import QAManager
 from edison.core.qa.evidence import EvidenceManager
-from edison.core.paths import PathResolver
+from edison.core.utils.paths import PathResolver
 
 
 @pytest.fixture

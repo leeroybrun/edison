@@ -11,7 +11,7 @@ import pytest
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-from edison.core.paths import (  # type: ignore  # noqa: E402
+from edison.core.utils.paths import (  # type: ignore  # noqa: E402
     EdisonPathError,
     PathResolver,
     resolve_project_root,
@@ -25,7 +25,7 @@ def _reset_project_root_cache() -> None:
     Ensure each test runs with a clean project-root cache so that env/CWD
     manipulations are observed independently.
     """
-    import edison.core.paths.resolver as paths  # type: ignore
+    import edison.core.utils.paths.resolver as paths  # type: ignore
 
     paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     yield
@@ -203,7 +203,7 @@ class TestMemoization:
         monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
 
         # Import the module and ensure cache starts empty
-        import edison.core.paths.resolver as resolver_module
+        import edison.core.utils.paths.resolver as resolver_module
 
         resolver_module._PROJECT_ROOT_CACHE = None
 

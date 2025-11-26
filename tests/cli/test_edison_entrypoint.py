@@ -9,7 +9,8 @@ import os
 import pytest
 from pathlib import Path
 
-from edison.core.paths import resolve_project_root, get_git_root, is_git_repository
+from edison.core.utils.paths import resolve_project_root
+from edison.core.utils.git import get_git_root, is_git_repository
 from edison.cli._dispatcher import discover_domains, discover_commands
 
 
@@ -55,7 +56,7 @@ def test_resolve_project_root_walks_up(isolated_project_env: Path) -> None:
     try:
         os.chdir(nested)
         # Clear cache to force fresh resolution
-        import edison.core.paths.resolver as paths
+        import edison.core.utils.paths.resolver as paths
         paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
 
         detected = resolve_project_root()

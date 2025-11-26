@@ -14,7 +14,7 @@ Output location: Configurable via composition.yaml (default: .zen/conf/systempro
 from pathlib import Path
 from typing import List, Optional
 
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from ...composition.output import OutputConfigLoader
 from ..base import PromptAdapter
 
@@ -133,7 +133,7 @@ class ZenPromptAdapter(PromptAdapter):
             output_dir = output_root
             filename_pattern = "{name}.txt"
         
-        ensure_dir(output_dir)
+        ensure_directory(output_dir)
         
         # Write client file
         try:

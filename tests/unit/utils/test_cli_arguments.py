@@ -18,7 +18,7 @@ import pytest
 
 def test_parse_common_args_adds_json_flag() -> None:
     """parse_common_args should add --json flag."""
-    from edison.core.utils.cli_arguments import parse_common_args
+    from edison.core.utils.cli.arguments import parse_common_args
 
     parser = argparse.ArgumentParser()
     parse_common_args(parser)
@@ -34,7 +34,7 @@ def test_parse_common_args_adds_json_flag() -> None:
 
 def test_parse_common_args_adds_yes_flag() -> None:
     """parse_common_args should add -y/--yes flag."""
-    from edison.core.utils.cli_arguments import parse_common_args
+    from edison.core.utils.cli.arguments import parse_common_args
 
     parser = argparse.ArgumentParser()
     parse_common_args(parser)
@@ -54,7 +54,7 @@ def test_parse_common_args_adds_yes_flag() -> None:
 
 def test_parse_common_args_adds_repo_root_flag() -> None:
     """parse_common_args should add --repo-root flag with Path type."""
-    from edison.core.utils.cli_arguments import parse_common_args
+    from edison.core.utils.cli.arguments import parse_common_args
 
     parser = argparse.ArgumentParser()
     parse_common_args(parser)
@@ -71,7 +71,7 @@ def test_parse_common_args_adds_repo_root_flag() -> None:
 
 def test_parse_common_args_returns_parser() -> None:
     """parse_common_args should return the parser for chaining."""
-    from edison.core.utils.cli_arguments import parse_common_args
+    from edison.core.utils.cli.arguments import parse_common_args
 
     parser = argparse.ArgumentParser()
     result = parse_common_args(parser)
@@ -81,7 +81,7 @@ def test_parse_common_args_returns_parser() -> None:
 
 def test_session_parent_creates_session_flag_optional() -> None:
     """session_parent should create a parent parser with optional --session flag."""
-    from edison.core.utils.cli_arguments import session_parent
+    from edison.core.utils.cli.arguments import session_parent
 
     parent = session_parent()
     parser = argparse.ArgumentParser(parents=[parent])
@@ -97,7 +97,7 @@ def test_session_parent_creates_session_flag_optional() -> None:
 
 def test_session_parent_creates_session_flag_required() -> None:
     """session_parent with required=True should make --session required."""
-    from edison.core.utils.cli_arguments import session_parent
+    from edison.core.utils.cli.arguments import session_parent
 
     parent = session_parent(required=True)
     parser = argparse.ArgumentParser(parents=[parent])
@@ -113,7 +113,7 @@ def test_session_parent_creates_session_flag_required() -> None:
 
 def test_session_parent_custom_help_text() -> None:
     """session_parent should accept custom help text."""
-    from edison.core.utils.cli_arguments import session_parent
+    from edison.core.utils.cli.arguments import session_parent
 
     custom_help = "Custom session help text"
     parent = session_parent(help_text=custom_help)
@@ -134,7 +134,7 @@ def test_session_parent_custom_help_text() -> None:
 
 def test_session_parent_default_help_text() -> None:
     """session_parent should have sensible default help text."""
-    from edison.core.utils.cli_arguments import session_parent
+    from edison.core.utils.cli.arguments import session_parent
 
     parent = session_parent()
 
@@ -152,7 +152,7 @@ def test_session_parent_default_help_text() -> None:
 
 def test_dry_run_parent_creates_dry_run_flag() -> None:
     """dry_run_parent should create a parent parser with --dry-run flag."""
-    from edison.core.utils.cli_arguments import dry_run_parent
+    from edison.core.utils.cli.arguments import dry_run_parent
 
     parent = dry_run_parent()
     parser = argparse.ArgumentParser(parents=[parent])
@@ -168,7 +168,7 @@ def test_dry_run_parent_creates_dry_run_flag() -> None:
 
 def test_dry_run_parent_custom_help_text() -> None:
     """dry_run_parent should accept custom help text."""
-    from edison.core.utils.cli_arguments import dry_run_parent
+    from edison.core.utils.cli.arguments import dry_run_parent
 
     custom_help = "Custom dry run help"
     parent = dry_run_parent(help_text=custom_help)
@@ -186,7 +186,7 @@ def test_dry_run_parent_custom_help_text() -> None:
 
 def test_dry_run_parent_default_help_text() -> None:
     """dry_run_parent should have sensible default help text."""
-    from edison.core.utils.cli_arguments import dry_run_parent
+    from edison.core.utils.cli.arguments import dry_run_parent
 
     parent = dry_run_parent()
 
@@ -204,7 +204,7 @@ def test_dry_run_parent_default_help_text() -> None:
 
 def test_parent_parsers_have_add_help_false() -> None:
     """Parent parsers should have add_help=False to avoid conflicts."""
-    from edison.core.utils.cli_arguments import session_parent, dry_run_parent
+    from edison.core.utils.cli.arguments import session_parent, dry_run_parent
 
     session = session_parent()
     dry_run = dry_run_parent()
@@ -215,7 +215,7 @@ def test_parent_parsers_have_add_help_false() -> None:
 
 def test_multiple_parents_can_be_combined() -> None:
     """Multiple parent parsers should work together without conflicts."""
-    from edison.core.utils.cli_arguments import session_parent, dry_run_parent, parse_common_args
+    from edison.core.utils.cli.arguments import session_parent, dry_run_parent, parse_common_args
 
     session = session_parent()
     dry_run = dry_run_parent()

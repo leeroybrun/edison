@@ -7,7 +7,7 @@ from typing import Generator
 
 import pytest
 
-from edison.core.paths import (
+from edison.core.utils.paths import (
     EdisonPathError,
     PathResolver,
     resolve_project_root,
@@ -17,7 +17,7 @@ from edison.core.utils import git as git_utils
 from edison.core.utils import subprocess as subprocess_utils
 from edison.core.task import paths as task_paths
 from edison.core.composition import includes as composition_includes
-from edison.core.composition import guidelines as composition_guidelines
+from edison.core.composition.registries import guidelines as composition_guidelines
 # from edison.core.adapters.sync import zen as zen_adapter
 from edison.core.adapters.sync import cursor as cursor_adapter
 
@@ -42,7 +42,7 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
 @pytest.fixture(autouse=True)
 def _reset_path_caches() -> Generator[None, None, None]:
     """Reset internal caches before each test."""
-    import edison.core.paths.resolver.project as project_mod
+    import edison.core.utils.paths.resolver.project as project_mod
     from edison.core.task import paths as task_paths_mod
 
     project_mod._PROJECT_ROOT_CACHE = None
@@ -145,7 +145,7 @@ class TestRepoRootConsolidation:
         monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
 
         # Access module-level cache variable from the correct module
-        import edison.core.paths.resolver.project as project_mod
+        import edison.core.utils.paths.resolver.project as project_mod
 
         # First call populates cache
         root1 = resolve_project_root()

@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set, Tuple, TYPE_CHECKING
 
-from edison.core.utils.io import read_json, ensure_dir
+from edison.core.utils.io import read_json, ensure_directory
 from .composer import _canonical_model
 from .discovery import _canonical_role
 
@@ -50,7 +50,7 @@ class ZenSyncMixin:
 
     def _zen_prompts_dir(self: ZenSync) -> Path:
         out_dir = self.repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
-        ensure_dir(out_dir)
+        ensure_directory(out_dir)
         return out_dir
 
     def sync_role_prompts(self: ZenSync, model: str, roles: List[str]) -> Dict[str, Path]:

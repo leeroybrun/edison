@@ -16,9 +16,6 @@ from .core import (
     read_text,
     write_text,
 )
-
-# Alias for backward compatibility
-ensure_dir = ensure_directory
 from .json import (
     DEFAULT_JSON_CONFIG,
     read_json,
@@ -43,7 +40,6 @@ __all__ = [
     "PathLike",
     "ensure_parent_dir",
     "ensure_directory",
-    "ensure_dir",  # alias for ensure_directory
     "atomic_write",
     "read_text",
     "write_text",

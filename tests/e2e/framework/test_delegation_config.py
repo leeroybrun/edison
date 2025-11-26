@@ -15,7 +15,7 @@ if _CORE_ROOT is None:
 
 CORE_ROOT = _CORE_ROOT
 from edison.core.config import ConfigManager 
-from edison.core.composition.delegation import get_role_mapping, map_role 
+from tests.helpers.delegation import get_role_mapping, map_role
 def test_role_mapping_loaded_from_config():
     """Loads role mapping via ConfigManager and verifies structure is sane.
 

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from edison.core.composition import composers, includes
-from edison.core.paths import project
+from edison.core.utils.paths import project
 
 def test_compose_prompt_json_safe_refactor():
     # Setup temporary directory

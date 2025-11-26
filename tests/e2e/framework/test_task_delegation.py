@@ -21,8 +21,8 @@ import pytest
 
 # Import modules (not specific symbols) so missing functions cause clear RED failures per-test
 from edison.core import task as _task  # type: ignore
-from edison.core.composition import delegation as _delegationlib  # type: ignore
-from tests.helpers.session import ensure_session 
+from tests.helpers import delegation as _delegationlib  # type: ignore
+from tests.helpers.session import ensure_session
 from edison.core.utils.subprocess import run_with_timeout
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.resolver import PathResolver
 
 FORBIDDEN_TOKEN = "wilson"
 ALLOWED_SUFFIXES = {

@@ -64,7 +64,7 @@ def test_task_config_reads_paths_and_states(tmp_path: Path, monkeypatch):
 
     monkeypatch.chdir(repo)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.paths.resolver as resolver
+    import edison.core.utils.paths.resolver as resolver
     resolver._PROJECT_ROOT_CACHE = None
 
     from edison.core.task.config import TaskConfig 

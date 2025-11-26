@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from edison.core.config import ConfigManager
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 
 from .agents import AgentRegistry
 from .validators import ValidatorRegistry
@@ -24,7 +24,7 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
     
     Uses composition path resolution for consistent discovery.
     """
-    ensure_dir(output_path.parent)
+    ensure_directory(output_path.parent)
 
     registry = AgentRegistry(repo_root=repo_root)
     agents = registry.get_all()
@@ -67,7 +67,7 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
         repo_root: Optional repository root path for testing
     """
     # Ensure output directory exists
-    ensure_dir(output_path.parent)
+    ensure_directory(output_path.parent)
 
     # Get validators from registry
     registry = ValidatorRegistry(repo_root=repo_root)

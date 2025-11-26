@@ -3,7 +3,7 @@ import json
 import yaml
 from pathlib import Path
 from edison.core.task.context7 import load_validator_config
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.resolver import PathResolver
 
 def test_load_validator_config_json(tmp_path, monkeypatch):
     """Test loading validator config from JSON."""

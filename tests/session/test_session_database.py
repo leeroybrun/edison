@@ -18,7 +18,7 @@ def project_root(tmp_path, monkeypatch):
     reset_config_cache()
 
     # Setup .edison/core/config
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
     
     defaults_data = {
@@ -31,10 +31,10 @@ def project_root(tmp_path, monkeypatch):
             "cleanupStrategy": "drop"
         }
     }
-    (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
+    (config_dir / "defaults.yml").write_text(yaml.dump(defaults_data))
     
-    # Create dummy adapter in packs directory  
-    packs_dir = config_dir / "packs" / "test-adapter"
+    # Create dummy adapter in packs directory (at .edison/packs/, not .edison/config/packs/)
+    packs_dir = tmp_path / ".edison" / "packs" / "test-adapter"
     packs_dir.mkdir(parents=True)
     
     adapter_code = '''
@@ -94,7 +94,7 @@ def test_drop_session_database(project_root):
 def test_database_disabled(project_root):
     """Test behavior when database is disabled."""
     # Update config to disable
-    config_path = project_root / ".edison" / "core" / "config" / "defaults.yaml"
+    config_path = project_root / ".edison" / "config" / "defaults.yml"
     data = yaml.safe_load(config_path.read_text())
     data["database"]["enabled"] = False
     config_path.write_text(yaml.dump(data))

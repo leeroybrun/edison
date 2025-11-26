@@ -8,7 +8,7 @@ import os
 import pytest
 from pathlib import Path
 
-from edison.core.process.inspector import (
+from edison.core.utils.process.inspector import (
     find_topmost_process,
     infer_session_id,
     is_process_alive,

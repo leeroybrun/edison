@@ -23,7 +23,7 @@ from typing import Dict, List, Optional
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.session.context import SessionContext
 from edison.core.utils.time import utc_timestamp
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 
 
 class _SafeDict(dict):
@@ -86,7 +86,7 @@ class OrchestratorLauncher:
         tokens = self._build_tokens()
         log_file = None
         if log_path:
-            ensure_dir(log_path.parent)
+            ensure_directory(log_path.parent)
             log_file = log_path.open("a", encoding="utf-8")
             log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
             if initial_prompt is not None:
@@ -127,7 +127,7 @@ class OrchestratorLauncher:
             if not cwd_path.is_absolute():
                 cwd_path = (self._project_root / cwd_path).resolve()
             if not cwd_path.exists():
-                ensure_dir(cwd_path)
+                ensure_directory(cwd_path)
 
         initial_cfg = profile.get("initial_prompt") or {}
         prompt_enabled = bool(initial_cfg.get("enabled", False))

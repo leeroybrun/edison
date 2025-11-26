@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.paths import PathResolver
+from edison.core.utils.paths import PathResolver
 
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -28,7 +28,7 @@ def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypa
     (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
 
     # Reload PathResolver module to pick up new environment
-    importlib.reload(importlib.import_module("edison.core.paths"))
+    importlib.reload(importlib.import_module("edison.core.utils.paths"))
 
     resolved = PathResolver.resolve_project_root()
     assert resolved == tmp_path
@@ -53,7 +53,7 @@ def test_resolve_repo_root_ignores_project_env_when_agents_unset(tmp_path: Path,
     monkeypatch.setenv("project_PROJECT_ROOT", str(project_root))
 
     # Reload PathResolver module to pick up new environment
-    importlib.reload(importlib.import_module("edison.core.paths"))
+    importlib.reload(importlib.import_module("edison.core.utils.paths"))
 
     resolved = PathResolver.resolve_project_root()
 

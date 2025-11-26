@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from edison.core.composition.ide.commands import CommandComposer
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths.project import get_project_config_dir
 
 def test_command_composer_uses_dynamic_project_dir(tmp_path):
     """Test that CommandComposer resolves project_dir dynamically."""

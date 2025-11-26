@@ -155,8 +155,8 @@ def test_concurrent_session_updates():
 def test_file_lock_timeout(tmp_path: Path):
     """S5: Lock acquisition times out when already held (NFS-safe)."""
     # Import directly from new locklib
-    from edison.core.file_io.locking import acquire_file_lock, LockTimeoutError 
-    from edison.core.file_io.locking import acquire_file_lock, LockTimeoutError 
+    from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
+    from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
     from edison.core.session import manager as session_manager
     from edison.core.session import store as session_store
 

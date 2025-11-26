@@ -29,7 +29,7 @@ def _task_filename(task_id: str) -> str:
 
 
 def _write(path: Path, content: str) -> None:
-    ensure_dir(path.parent)
+    ensure_directory(path.parent)
     path.write_text(content, encoding="utf-8")
 
 
@@ -61,7 +61,7 @@ def default_owner(process_finder: Optional[Callable[[], Tuple[str, int]]] = None
 
     try:
         if process_finder is None:
-            from ..process.inspector import find_topmost_process  # type: ignore
+            from ..utils.process.inspector import find_topmost_process  # type: ignore
             process_finder = find_topmost_process
 
         process_name, pid = process_finder()
@@ -91,7 +91,7 @@ def claim_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     src = _tasks_root() / default_status / _task_filename(task_id)
     dst = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
-    ensure_dir(dst.parent)
+    ensure_directory(dst.parent)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
     content = content.replace(f"status: {default_status}", f"status: {wip_status}") or content
     dst.write_text(content, encoding="utf-8")
@@ -100,7 +100,7 @@ def claim_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
 
     default_qa = TYPE_INFO["qa"]["default_status"]
     qa_dst = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
-    ensure_dir(qa_dst.parent)
+    ensure_directory(qa_dst.parent)
     qa_src = _qa_root() / default_qa / f"{task_id}-qa.md"
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
@@ -116,7 +116,7 @@ def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     src = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
     dst = _session_tasks_dir(session_id, done_status) / _task_filename(task_id)
-    ensure_dir(dst.parent)
+    ensure_directory(dst.parent)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
     content = content.replace(f"status: {wip_status}", f"status: {done_status}") or content
     dst.write_text(content, encoding="utf-8")
@@ -128,7 +128,7 @@ def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     qa_src = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
     qa_dst = _session_qa_dir(session_id, qa_todo) / f"{task_id}-qa.md"
-    ensure_dir(qa_dst.parent)
+    ensure_directory(qa_dst.parent)
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
     else:
@@ -151,7 +151,7 @@ def qa_progress(task_id: str, from_state: str, to_state: str, session_id: Option
         src = _qa_root() / from_state / f"{task_id}-qa.md"
         dst = _qa_root() / to_state / f"{task_id}-qa.md"
 
-    ensure_dir(dst.parent)
+    ensure_directory(dst.parent)
     dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     src.unlink(missing_ok=False)
     return src, dst
@@ -219,7 +219,7 @@ def move_to_status_atomic(path: Path, record_type: str, status: str, session_id:
 def record_tdd_evidence(task_id: str, phase: str, note: str = "") -> Path:
     mgmt_paths = get_management_paths(ROOT)
     path = (mgmt_paths.get_qa_root() / "validation-evidence" / "tasks").resolve() / f"task-{task_id}.tdd.md"
-    ensure_dir(path.parent)
+    ensure_directory(path.parent)
     with path.open("a", encoding="utf-8") as f:
         f.write(f"{phase.upper()}: {note}\n")
     return path

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from edison.core.utils.subprocess import run_with_timeout
-from edison.core.paths.resolver import PathResolver
+from edison.core.utils.paths.resolver import PathResolver
 
 
 def run_script(

@@ -141,7 +141,7 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     sid = rec_dir.name
     sessions_root = rec_dir.parent.parent  # .../.project/sessions
     active_root = sessions_root / "active"
-    io_utils.ensure_dir(active_root)
+    io_utils.ensure_directory(active_root)
 
     dest_dir = active_root / sid
     if dest_dir.exists():

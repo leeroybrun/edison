@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from edison.data import read_yaml
 from edison.core.utils.io import read_yaml
-from ...paths.project import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir
 from ..includes import _repo_root
 
 

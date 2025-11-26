@@ -13,7 +13,7 @@ def _call_run_cli(main, *args: Any, **kwargs: Any) -> int:
     The helper simply forwards to run_cli and returns the exit code so tests
     can assert on stdout/stderr and codes without invoking sys.exit().
     """
-    from edison.core.utils.cli_errors import run_cli
+    from edison.core.utils.cli.errors import run_cli
 
     return run_cli(main, *args, **kwargs)
 

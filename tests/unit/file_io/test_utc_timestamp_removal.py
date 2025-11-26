@@ -2,7 +2,7 @@
 
 This test enforces NO LEGACY principle by verifying that:
 1. utc_timestamp should be imported from edison.core.utils.time (source of truth)
-2. NOT from edison.core.file_io.utils (legacy wrapper that should be removed)
+2. NOT from edison.core.utils.io (legacy wrapper that should be removed)
 """
 from __future__ import annotations
 
@@ -19,20 +19,18 @@ def test_utc_timestamp_import_from_correct_source():
     assert len(timestamp) > 0
 
 
-def test_utc_timestamp_not_in_file_io_utils():
-    """Verify that file_io.utils does NOT export utc_timestamp (legacy removed)."""
-    from edison.core.file_io import utils as file_io_utils
+def test_utc_timestamp_not_in_io_package():
+    """Verify that utils.io does NOT export utc_timestamp (legacy removed)."""
+    import edison.core.utils.io as io_pkg
 
     # utc_timestamp should NOT be in __all__ export list
-    if hasattr(file_io_utils, '__all__'):
-        assert 'utc_timestamp' not in file_io_utils.__all__, \
-            "utc_timestamp should be removed from file_io.utils.__all__"
+    if hasattr(io_pkg, '__all__'):
+        assert 'utc_timestamp' not in io_pkg.__all__, \
+            "utc_timestamp should NOT be exported from utils.io"
 
-    # utc_timestamp should NOT be importable from file_io.utils
-    # (or if it exists, it should not be in the public API)
-    with pytest.raises(ImportError):
-        # This should fail after we remove the wrapper
-        exec("from edison.core.file_io.utils import utc_timestamp")
+    # utc_timestamp should NOT be directly importable from utils.io
+    assert not hasattr(io_pkg, 'utc_timestamp'), \
+        "utc_timestamp should not be in utils.io - use utils.time instead"
 
 
 def test_all_imports_use_utils_time():
@@ -63,9 +61,9 @@ def test_all_imports_use_utils_time():
 
         content = full_path.read_text()
 
-        # Should NOT import from file_io.utils
+        # Should NOT import from utils.io
         # We check line by line to avoid false positives where file imports OTHER things
-        # from file_io.utils but imports utc_timestamp correctly from utils.time
+        # from utils.io but imports utc_timestamp correctly from utils.time
         for line in content.splitlines():
-            if "from edison.core.file_io.utils import" in line and "utc_timestamp" in line:
-                pytest.fail(f"{file_path} imports utc_timestamp from file_io.utils: {line}")
+            if "from edison.core.utils.io import" in line and "utc_timestamp" in line:
+                pytest.fail(f"{file_path} imports utc_timestamp from utils.io: {line}")

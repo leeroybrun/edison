@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.config import ConfigManager
 from edison.core.config.domains import PacksConfig
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.paths import get_project_config_dir
 from ..output.headers import resolve_version
@@ -275,7 +275,7 @@ def render_constitution_template(
 def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None:
     """Generate all three constitution files."""
     out_dir = (Path(output_path) / "constitutions").resolve()
-    ensure_dir(out_dir)
+    ensure_directory(out_dir)
 
     for role, filename in [
         ("orchestrator", "ORCHESTRATORS.md"),

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
 
@@ -29,7 +29,7 @@ def score_history_file(session_id: str, project_root: Optional[Path] = None) -> 
 
 
 def append_jsonl(path: Path, obj: Dict[str, Any]) -> None:
-    ensure_dir(path.parent)
+    ensure_directory(path.parent)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 

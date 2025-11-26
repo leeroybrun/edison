@@ -5,7 +5,11 @@ from typing import Any
 
 # We will import the utils after we modify them, but for now we can test the existing ones
 # and plan the new ones.
-from edison.core.file_io.utils import read_yaml_safe, write_yaml_safe, parse_yaml_string, dump_yaml_string
+from edison.core.utils.io import read_yaml, write_yaml, parse_yaml_string, dump_yaml_string
+
+# Aliases for backwards compatibility with test
+read_yaml_safe = read_yaml
+write_yaml_safe = write_yaml
 
 def test_read_yaml_safe_basic(tmp_path):
     p = tmp_path / "test.yaml"

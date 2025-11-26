@@ -7,16 +7,22 @@ import threading
 
 import pytest
 
-import edison.core.file_io.utils as io_utils
-from edison.core.file_io.locking import LockTimeoutError, acquire_file_lock
-from edison.core.file_io.utils import read_json_safe, write_json_safe
+import edison.core.utils.io as io_utils
+from edison.core.utils.io import (
+    read_json,
+    write_json_atomic,
+    read_yaml,
+    write_yaml,
+    atomic_write,
+)
+from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
 from edison.core.utils.time import utc_timestamp
 
 
-def test_write_json_safe_roundtrip(tmp_path: Path) -> None:
+def test_write_json_atomic_roundtrip(tmp_path: Path) -> None:
     out = tmp_path / "nested" / "data.json"
     payload: Dict[str, Any] = {"a": 1, "b": {"c": [1, 2, 3]}}
-    write_json_safe(out, payload)
+    write_json_atomic(out, payload)
 
     assert out.exists()
     data = json.loads(out.read_text())
@@ -24,14 +30,14 @@ def test_write_json_safe_roundtrip(tmp_path: Path) -> None:
 
     # Overwrite
     payload2 = {"a": 2}
-    write_json_safe(out, payload2)
+    write_json_atomic(out, payload2)
     assert json.loads(out.read_text()) == payload2
 
 
-def test_read_json_safe_missing_raises(tmp_path: Path) -> None:
+def test_read_json_missing_raises(tmp_path: Path) -> None:
     missing = tmp_path / "nope.json"
     with pytest.raises(FileNotFoundError):
-        read_json_safe(missing)
+        read_json(missing)
 
 
 def test_concurrent_atomic_writes_produce_valid_json(tmp_path: Path) -> None:
@@ -39,7 +45,7 @@ def test_concurrent_atomic_writes_produce_valid_json(tmp_path: Path) -> None:
 
     def writer(value: int) -> None:
         for _ in range(50):
-            write_json_safe(out, {"v": value})
+            write_json_atomic(out, {"v": value})
 
     t1 = threading.Thread(target=writer, args=(1,))
     t2 = threading.Thread(target=writer, args=(2,))
@@ -66,14 +72,14 @@ def test_atomic_write_honors_lock_context(tmp_path: Path) -> None:
     # Hold the lock to force a timeout in the nested writer
     with acquire_file_lock(locked, timeout=0.5):
         with pytest.raises(LockTimeoutError):
-            io_utils._atomic_write(  # type: ignore[attr-defined]
+            atomic_write(
                 locked,
                 lambda f: f.write("late"),
                 lock_cm=acquire_file_lock(locked, timeout=0.1, fail_open=False),
             )
 
     # Once the lock is released, the write should succeed with the provided lock
-    io_utils._atomic_write(  # type: ignore[attr-defined]
+    atomic_write(
         locked,
         lambda f: f.write("ok"),
         lock_cm=acquire_file_lock(locked, timeout=0.5, fail_open=False),
@@ -82,12 +88,12 @@ def test_atomic_write_honors_lock_context(tmp_path: Path) -> None:
     assert locked.read_text() == "ok"
 
 
-def test_read_json_safe_invalid_json_raises(tmp_path: Path) -> None:
+def test_read_json_invalid_json_raises(tmp_path: Path) -> None:
     invalid = tmp_path / "invalid.json"
     invalid.write_text("{unquoted: invalid}", encoding="utf-8")
     
     with pytest.raises(json.JSONDecodeError):
-        read_json_safe(invalid)
+        read_json(invalid)
 
 
 
@@ -96,8 +102,8 @@ def test_read_json_safe_invalid_json_raises(tmp_path: Path) -> None:
 # YAML I/O Tests
 # ============================================================================
 
-def test_read_yaml_safe_with_valid_file(tmp_path: Path) -> None:
-    """Test read_yaml_safe with valid YAML file."""
+def test_read_yaml_with_valid_file(tmp_path: Path) -> None:
+    """Test read_yaml with valid YAML file."""
     yaml_file = tmp_path / "config.yaml"
     yaml_content = """
 name: test
@@ -110,7 +116,7 @@ nested:
 """
     yaml_file.write_text(yaml_content, encoding="utf-8")
 
-    data = io_utils.read_yaml_safe(yaml_file)
+    data = read_yaml(yaml_file)
     assert data is not None
     assert data["name"] == "test"
     assert data["version"] == 1.0
@@ -118,44 +124,44 @@ nested:
     assert data["nested"]["key"] == "value"
 
 
-def test_read_yaml_safe_with_missing_file(tmp_path: Path) -> None:
-    """Test read_yaml_safe returns default when file is missing."""
+def test_read_yaml_with_missing_file(tmp_path: Path) -> None:
+    """Test read_yaml returns default when file is missing."""
     missing = tmp_path / "missing.yaml"
 
     # Default None
-    result = io_utils.read_yaml_safe(missing)
+    result = read_yaml(missing)
     assert result is None
 
     # Custom default
-    result = io_utils.read_yaml_safe(missing, default={})
+    result = read_yaml(missing, default={})
     assert result == {}
 
-    result = io_utils.read_yaml_safe(missing, default={"fallback": True})
+    result = read_yaml(missing, default={"fallback": True})
     assert result == {"fallback": True}
 
 
-def test_read_yaml_safe_with_invalid_yaml(tmp_path: Path) -> None:
-    """Test read_yaml_safe returns default when YAML is invalid."""
+def test_read_yaml_with_invalid_yaml(tmp_path: Path) -> None:
+    """Test read_yaml returns default when YAML is invalid."""
     invalid = tmp_path / "invalid.yaml"
     invalid.write_text("{ invalid: yaml: structure", encoding="utf-8")
 
     # Should return default instead of raising
-    result = io_utils.read_yaml_safe(invalid, default={})
+    result = read_yaml(invalid, default={})
     assert result == {}
 
 
-def test_read_yaml_safe_with_empty_file(tmp_path: Path) -> None:
-    """Test read_yaml_safe with empty YAML file."""
+def test_read_yaml_with_empty_file(tmp_path: Path) -> None:
+    """Test read_yaml with empty YAML file."""
     empty = tmp_path / "empty.yaml"
     empty.write_text("", encoding="utf-8")
 
     # Empty YAML file should return default
-    result = io_utils.read_yaml_safe(empty, default={})
+    result = read_yaml(empty, default={})
     assert result == {}
 
 
-def test_write_yaml_safe_creates_file(tmp_path: Path) -> None:
-    """Test write_yaml_safe creates file atomically."""
+def test_write_yaml_creates_file(tmp_path: Path) -> None:
+    """Test write_yaml creates file atomically."""
     yaml_file = tmp_path / "nested" / "output.yaml"
     data = {
         "name": "test",
@@ -164,35 +170,35 @@ def test_write_yaml_safe_creates_file(tmp_path: Path) -> None:
         "nested": {"key": "value"}
     }
 
-    io_utils.write_yaml_safe(yaml_file, data)
+    write_yaml(yaml_file, data)
 
     assert yaml_file.exists()
     # Read back and verify
-    result = io_utils.read_yaml_safe(yaml_file)
+    result = read_yaml(yaml_file)
     assert result == data
 
 
-def test_write_yaml_safe_overwrites_existing(tmp_path: Path) -> None:
-    """Test write_yaml_safe overwrites existing file."""
+def test_write_yaml_overwrites_existing(tmp_path: Path) -> None:
+    """Test write_yaml overwrites existing file."""
     yaml_file = tmp_path / "overwrite.yaml"
 
     # Write first version
     data1 = {"version": 1}
-    io_utils.write_yaml_safe(yaml_file, data1)
-    assert io_utils.read_yaml_safe(yaml_file) == data1
+    write_yaml(yaml_file, data1)
+    assert read_yaml(yaml_file) == data1
 
     # Overwrite with second version
     data2 = {"version": 2, "new_key": "value"}
-    io_utils.write_yaml_safe(yaml_file, data2)
-    assert io_utils.read_yaml_safe(yaml_file) == data2
+    write_yaml(yaml_file, data2)
+    assert read_yaml(yaml_file) == data2
 
 
-def test_write_yaml_safe_with_sorted_keys(tmp_path: Path) -> None:
-    """Test write_yaml_safe produces deterministic sorted output."""
+def test_write_yaml_with_sorted_keys(tmp_path: Path) -> None:
+    """Test write_yaml produces deterministic sorted output."""
     yaml_file = tmp_path / "sorted.yaml"
     data = {"z": 1, "a": 2, "m": 3}
 
-    io_utils.write_yaml_safe(yaml_file, data)
+    write_yaml(yaml_file, data)
 
     content = yaml_file.read_text()
     lines = content.strip().split("\n")
@@ -220,8 +226,8 @@ def test_yaml_roundtrip_consistency(tmp_path: Path) -> None:
         }
     }
 
-    io_utils.write_yaml_safe(yaml_file, original_data)
-    read_data = io_utils.read_yaml_safe(yaml_file)
+    write_yaml(yaml_file, original_data)
+    read_data = read_yaml(yaml_file)
 
     assert read_data == original_data
 
@@ -232,7 +238,7 @@ def test_yaml_concurrent_atomic_writes(tmp_path: Path) -> None:
 
     def writer(value: int) -> None:
         for _ in range(30):
-            io_utils.write_yaml_safe(yaml_file, {"counter": value})
+            write_yaml(yaml_file, {"counter": value})
 
     t1 = threading.Thread(target=writer, args=(1,))
     t2 = threading.Thread(target=writer, args=(2,))
@@ -242,6 +248,6 @@ def test_yaml_concurrent_atomic_writes(tmp_path: Path) -> None:
     t2.join()
 
     # File must contain valid YAML with either value 1 or 2
-    result = io_utils.read_yaml_safe(yaml_file)
+    result = read_yaml(yaml_file)
     assert result is not None
     assert result.get("counter") in (1, 2)

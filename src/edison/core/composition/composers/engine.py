@@ -10,7 +10,7 @@ from ..packs import auto_activate_packs
 from ..formatting import compose_zen_prompts as formatting_compose_zen_prompts
 from ..path_utils import resolve_project_dir_placeholders
 from ..orchestrator import collect_validators
-from edison.core.utils.io import ensure_dir
+from edison.core.utils.io import ensure_directory
 from ...config.domains import PacksConfig
 
 
@@ -184,7 +184,7 @@ class CompositionEngine:
         if not guideline_names:
             return {}
         out_dir = self.project_dir / "_generated" / "guidelines"
-        ensure_dir(out_dir)
+        ensure_directory(out_dir)
         results: Dict[str, Path] = {}
         for name in sorted(set(guideline_names)):
             try:
@@ -199,7 +199,7 @@ class CompositionEngine:
             subfolder = registry.get_subfolder(name, packs)
             if subfolder:
                 guideline_out_dir = out_dir / subfolder
-                ensure_dir(guideline_out_dir)
+                ensure_directory(guideline_out_dir)
                 out_file = guideline_out_dir / f"{name}.md"
             else:
                 out_file = out_dir / f"{name}.md"

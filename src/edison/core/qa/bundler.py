@@ -8,7 +8,7 @@ from ..legacy_guard import enforce_no_legacy_project_root
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
     read_json as io_read_json,
-    ensure_dir,
+    ensure_directory,
 )
 from edison.core.config.domains import qa as qa_config
 from . import evidence
@@ -49,7 +49,7 @@ def load_bundle_summary(task_id: str, round_num: int, *, config: Optional[Dict[s
 
 def write_bundle_summary(task_id: str, round_num: int, summary: Dict[str, Any], *, config: Optional[Dict[str, Any]] = None) -> Path:
     path = bundle_summary_path(task_id, round_num, config=config)
-    ensure_dir(path.parent)
+    ensure_directory(path.parent)
     io_write_json_atomic(path, summary)
     return path
 

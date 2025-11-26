@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters._schemas import (
+from edison.core.schemas import (
     load_schema,
     validate_payload,
     validate_payload_safe,
@@ -250,7 +250,7 @@ class TestSchemaFallbackBehavior:
         root = isolated_project_env
 
         # Mock jsonschema as unavailable
-        import edison.core.adapters._schemas as schemas_module
+        import edison.core.schemas.validation as schemas_module
         monkeypatch.setattr(schemas_module, "jsonschema", None)
 
         payload = {"name": "test"}

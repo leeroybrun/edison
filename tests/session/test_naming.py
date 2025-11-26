@@ -15,7 +15,7 @@ from edison.core.session.naming import (
     reset_session_naming_counter,
     generate_session_id,
 )
-from edison.core.process.inspector import infer_session_id
+from edison.core.utils.process.inspector import infer_session_id
 
 
 @pytest.fixture(autouse=True)
@@ -92,7 +92,7 @@ class TestGenerateSessionIdFunction:
 
     def test_generate_session_id_raises_on_error(self, monkeypatch):
         """Should raise SessionNamingError if inspector fails."""
-        from edison.core.process import inspector
+        from edison.core.utils.process import inspector
         
         def broken_find():
             raise RuntimeError("Process inspection failed")

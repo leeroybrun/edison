@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from edison.core.utils.io import read_json, write_json_atomic, ensure_dir
+from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
 from .base import IDEComposerBase
 
 # Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
@@ -137,7 +137,7 @@ class SettingsComposer(IDEComposerBase):
         """Write settings.json to .claude/, merging with existing file if present."""
         settings = self.compose_settings()
         target = self.repo_root / ".claude" / "settings.json"
-        ensure_dir(target.parent)
+        ensure_directory(target.parent)
 
         claude_cfg = self._claude_config()
 

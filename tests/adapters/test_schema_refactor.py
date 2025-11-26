@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import patch
 from pathlib import Path
-from edison.core.adapters._schemas import load_schema
+from edison.core.schemas import load_schema
 
 @pytest.fixture
 def schema_dir(tmp_path):
@@ -18,7 +18,7 @@ def test_load_schema_uses_read_json_safe(schema_dir):
     """Verify load_schema handles files correctly with centralized I/O."""
 
     # Mock _get_schemas_dir to return our temp dir so we control the file system
-    with patch("edison.core.adapters._schemas._get_schemas_dir", return_value=schema_dir):
+    with patch("edison.core.schemas.validation._get_schemas_dir", return_value=schema_dir):
         result = load_schema("test_schema")
 
         # Verification of result (Real behavior)
@@ -30,6 +30,6 @@ def test_load_schema_handles_malformed_json(schema_dir):
     # Create a malformed JSON file
     (schema_dir / "bad_schema.json").write_text("{ invalid json }", encoding="utf-8")
 
-    with patch("edison.core.adapters._schemas._get_schemas_dir", return_value=schema_dir):
+    with patch("edison.core.schemas.validation._get_schemas_dir", return_value=schema_dir):
         with pytest.raises(json.JSONDecodeError):
             load_schema("bad_schema")

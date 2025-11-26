@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.paths import PathResolver 
+from edison.core.utils.paths import PathResolver 
 from edison.core.session.manager import SessionManager 
 from edison.core.session import state as session_state 
 from edison.core.config.domains import SessionConfig

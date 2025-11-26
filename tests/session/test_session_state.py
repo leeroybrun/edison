@@ -19,11 +19,11 @@ def session_config(tmp_path, monkeypatch):
     clear_all_caches()
     reset_config_cache()
 
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
     
     defaults_data = {"edison": {"version": "1.0.0"}}
-    (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
+    (config_dir / "defaults.yml").write_text(yaml.dump(defaults_data))
     
     # Define a rich state machine with guards/conditions/actions
     state_machine = {
@@ -53,7 +53,7 @@ def session_config(tmp_path, monkeypatch):
             }
         }
     }
-    (config_dir / "state-machine.yaml").write_text(yaml.dump(state_machine))
+    (config_dir / "state-machine.yml").write_text(yaml.dump(state_machine))
     
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))

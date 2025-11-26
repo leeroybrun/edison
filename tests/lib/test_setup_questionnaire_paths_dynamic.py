@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from edison.core.setup.questionnaire import SetupQuestionnaire
-from edison.core.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
+from edison.core.utils.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
 
 def test_questionnaire_defaults_to_edison_config_dir(tmp_path):
     """Test that SetupQuestionnaire defaults to .edison, not .agents."""

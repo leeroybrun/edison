@@ -5,7 +5,7 @@ import importlib
 
 import pytest
 
-from edison.core.paths import PathResolver 
+from edison.core.utils.paths import PathResolver 
 def _write_state_machine_config(root: Path) -> None:
     """Provide a minimal state-machine config in the modular layout."""
     cfg_dir = root / ".agents" / "config"

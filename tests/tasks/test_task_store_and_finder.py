@@ -71,7 +71,7 @@ def test_create_and_find_task(tmp_path, monkeypatch):
     _bootstrap_repo(repo)
 
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.paths.resolver as resolver
+    import edison.core.utils.paths.resolver as resolver
 
     resolver._PROJECT_ROOT_CACHE = None
 

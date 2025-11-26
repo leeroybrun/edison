@@ -13,7 +13,7 @@ from edison.core.session.autostart import SessionAutoStart, SessionAutoStartErro
 from edison.core.session.manager import SessionManager
 from edison.core.session.naming import generate_session_id, reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
-from edison.core.process.inspector import infer_session_id
+from edison.core.utils.process.inspector import infer_session_id
 
 
 @pytest.fixture

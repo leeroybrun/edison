@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
     read_json as io_read_json,
-    ensure_directory as io_ensure_dir,
+    ensure_directory as io_ensure_directory,
 )
 from ..session import transaction as _session_transaction
 from edison.core.utils.paths import get_management_paths
@@ -67,7 +67,7 @@ class ValidationTransaction:
             / self.task_id
             / f"round-{self.round_num}"
         )
-        self.staging_dir = io_ensure_dir(task_round_dir)
+        self.staging_dir = io_ensure_directory(task_round_dir)
 
         # Underlying meta.json lives alongside staging/snapshot; treat its
         # parent directory as the journal path and enrich with task/round.

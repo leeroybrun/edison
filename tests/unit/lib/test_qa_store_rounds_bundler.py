@@ -8,7 +8,7 @@ import pytest
 
 def _reset_project_root(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(root))
-    import edison.core.paths.resolver as resolver  # type: ignore
+    import edison.core.utils.paths.resolver as resolver  # type: ignore
 
     # Clear cached root so PathResolver re-evaluates after env change
     resolver._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.process.inspector import find_topmost_process, infer_session_id
+from edison.core.utils.process.inspector import find_topmost_process, infer_session_id
 from edison.core.session.store import (
     auto_session_for_owner,
     sanitize_session_id,

@@ -10,9 +10,11 @@ import pytest
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-from edison.core.paths import (  # type: ignore  # noqa: E402
+from edison.core.utils.paths import (  # type: ignore  # noqa: E402
     PathResolver,
     EdisonPathError,
+)
+from edison.core.utils.git import (  # type: ignore  # noqa: E402
     is_git_repository,
     get_git_root,
 )
@@ -21,7 +23,7 @@ from edison.core.paths import (  # type: ignore  # noqa: E402
 @pytest.fixture(autouse=True)
 def _reset_project_root_cache() -> None:
     """Ensure each test observes a fresh project-root cache."""
-    import edison.core.paths.resolver as paths  # type: ignore
+    import edison.core.utils.paths.resolver as paths  # type: ignore
 
     paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
     yield

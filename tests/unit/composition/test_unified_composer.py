@@ -19,7 +19,7 @@ from edison.core.composition import (
     CompositionSchema,
     CompositionValidationError,
 )
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths.project import get_project_config_dir
 
 
 class TestSectionParser:

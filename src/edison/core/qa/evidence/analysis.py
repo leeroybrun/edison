@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from ...paths import PathResolver
+from ...utils.paths import PathResolver
 from edison.core.utils.io import read_json
 from .helpers import _task_evidence_root, list_evidence_files
 

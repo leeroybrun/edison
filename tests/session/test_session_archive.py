@@ -13,11 +13,11 @@ def project_root(tmp_path, monkeypatch):
     Sets up a temporary project root.
     """
     # Setup .edison/core/config
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
     
     defaults_data = {"edison": {"version": "1.0.0"}}
-    (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
+    (config_dir / "defaults.yml").write_text(yaml.dump(defaults_data))
     
     session_data = {
         "session": {
@@ -36,7 +36,7 @@ def project_root(tmp_path, monkeypatch):
             }
         }
     }
-    (config_dir / "session.yaml").write_text(yaml.dump(session_data))
+    (config_dir / "session.yml").write_text(yaml.dump(session_data))
     
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))

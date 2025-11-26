@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 import pytest
 import yaml
-from edison.core.paths.management import get_management_paths
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.paths.management import get_management_paths
+from edison.core.utils.paths.project import get_project_config_dir
 
 def test_management_config_loaded_from_resolved_dir(tmp_path, monkeypatch):
     """Verify that management config is loaded from the resolved project config dir."""

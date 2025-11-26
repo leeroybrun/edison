@@ -20,7 +20,7 @@ def project_root(tmp_path, monkeypatch):
     reset_config_cache()
 
     # Create directory structure  
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
 
     # Template location expected by bundled config
@@ -36,7 +36,7 @@ def project_root(tmp_path, monkeypatch):
             "fail_open": False,
         },
     }
-    (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
+    (config_dir / "defaults.yml").write_text(yaml.dump(defaults_data))
 
     session_data = {
         "session": {
@@ -57,7 +57,7 @@ def project_root(tmp_path, monkeypatch):
             "lookupOrder": ["wip", "draft", "done"]
         }
     }
-    (config_dir / "session.yaml").write_text(yaml.dump(session_data))
+    (config_dir / "session.yml").write_text(yaml.dump(session_data))
 
     # Create template file at expected location
     (template_dir / "TEMPLATE.json").write_text("{}")

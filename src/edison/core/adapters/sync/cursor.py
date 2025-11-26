@@ -26,15 +26,15 @@ from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore
 
-from ...paths import PathResolver
-from ...paths.project import get_project_config_dir
+from ...utils.paths import PathResolver
+from edison.core.utils.paths import get_project_config_dir
 from ...composition.registries import agents as _agents
 from ...config import ConfigManager
 from ...config.domains import PacksConfig
 from ...composition import GuidelineRegistry
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
-from edison.core.utils.io import write_json_atomic, ensure_dir
+from edison.core.utils.io import write_json_atomic, ensure_directory
 
 AgentRegistry = _agents.AgentRegistry
 AgentError = _agents.AgentError
@@ -277,7 +277,7 @@ class CursorSync:
         return "\n".join(header_lines + body_parts + footer_lines).rstrip() + "\n"
 
     def _write_snapshot(self, content: str, generated_hash: str) -> None:
-        ensure_dir(self._cursor_cache_dir)
+        ensure_directory(self._cursor_cache_dir)
         self._snapshot_path.write_text(content, encoding="utf-8")
         meta = {
             "generatedAt": utc_timestamp(),
@@ -327,7 +327,7 @@ class CursorSync:
         if not grouped:
             return []
 
-        ensure_dir(self._cursor_rules_dir)
+        ensure_directory(self._cursor_rules_dir)
         written: List[Path] = []
 
         for category, rules in sorted(grouped.items()):
@@ -413,7 +413,7 @@ class CursorSync:
             return 0
 
         packs = self._active_packs()
-        ensure_dir(src_dir)
+        ensure_directory(src_dir)
 
         count = 0
         for name in sorted(core_agents.keys()):
@@ -444,7 +444,7 @@ class CursorSync:
         if not has_sources:
             return []
 
-        ensure_dir(self._cursor_agents_dir)
+        ensure_directory(self._cursor_agents_dir)
         copied: List[Path] = []
 
         for src in sorted(src_dir.glob("*.md")):
