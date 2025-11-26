@@ -10,17 +10,17 @@ import pytest
 from pathlib import Path
 
 
-def test_cursor_adapter_imports_from_adapters_module():
-    """Ensure CursorAdapter can be imported from edison.core.adapters.cursor."""
-    from edison.core.adapters.cursor import CursorAdapter
-    assert CursorAdapter is not None
+def test_cursor_sync_imports_from_adapters_module():
+    """Ensure CursorSync can be imported from canonical edison.core.adapters."""
+    from edison.core.adapters import CursorSync
+    assert CursorSync is not None
 
 
-def test_cursor_adapter_has_full_root_functionality():
-    """Verify merged CursorAdapter has all methods from root cursor_adapter.py."""
-    from edison.core.adapters.cursor import CursorAdapter
+def test_cursor_sync_has_full_functionality():
+    """Verify CursorSync has all required methods."""
+    from edison.core.adapters import CursorSync
 
-    # Core methods from root implementation
+    # Core methods from implementation
     required_methods = [
         'sync_to_cursorrules',
         'sync_structured_rules',
@@ -30,22 +30,22 @@ def test_cursor_adapter_has_full_root_functionality():
     ]
 
     for method_name in required_methods:
-        assert hasattr(CursorAdapter, method_name), f"Missing method: {method_name}"
+        assert hasattr(CursorSync, method_name), f"Missing method: {method_name}"
 
 
 def test_cursor_adapter_has_autogen_constants():
     """Verify AUTOGEN_BEGIN and AUTOGEN_END constants exist."""
-    from edison.core.adapters.cursor import AUTOGEN_BEGIN, AUTOGEN_END
+    from edison.core.adapters import AUTOGEN_BEGIN, AUTOGEN_END
 
     assert AUTOGEN_BEGIN == "<!-- EDISON_CURSOR_AUTOGEN:BEGIN -->"
     assert AUTOGEN_END == "<!-- EDISON_CURSOR_AUTOGEN:END -->"
 
 
-def test_cursor_adapter_can_be_instantiated(tmp_path):
-    """Verify CursorAdapter can be instantiated with project_root."""
-    from edison.core.adapters.cursor import CursorAdapter
+def test_cursor_sync_can_be_instantiated(tmp_path):
+    """Verify CursorSync can be instantiated with project_root."""
+    from edison.core.adapters import CursorSync
 
-    adapter = CursorAdapter(project_root=tmp_path)
+    adapter = CursorSync(project_root=tmp_path)
     assert adapter.repo_root == tmp_path
 
 

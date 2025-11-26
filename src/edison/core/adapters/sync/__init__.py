@@ -4,9 +4,9 @@ Full-featured sync adapters.
 These adapters provide complete IDE/client integration with synchronization,
 configuration generation, and validation features.
 
-- ClaudeSync: Full Claude Code integration (formerly ClaudeCodeAdapter)
-- CursorSync: Full Cursor IDE integration (formerly CursorAdapter)
-- ZenSync: Full Zen MCP integration (formerly ZenAdapter)
+- ClaudeSync: Full Claude Code integration
+- CursorSync: Full Cursor IDE integration
+- ZenSync: Full Zen MCP integration
 """
 
 from .claude import ClaudeSync, ClaudeAdapterError, EdisonAgentSections

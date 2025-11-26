@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ClaudeSync as ClaudeCodeAdapter
+from edison.core.adapters import ClaudeSync
 from edison.core.adapters import load_schema
 
 # Repository root for test fixtures
@@ -92,7 +92,7 @@ class TestClaudeAdapterUnit:
     def test_validate_claude_structure_creates_dirs(self, isolated_project_env: Path) -> None:
         """validate_claude_structure creates .claude and agents subdir when missing."""
         root = isolated_project_env
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
 
         claude_dir = adapter.validate_claude_structure()
 
@@ -105,7 +105,7 @@ class TestClaudeAdapterUnit:
         root = isolated_project_env
         src = self._write_generated_agent(root, "feature-implementer", role_text="Full-stack feature orchestrator.")
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         changed = adapter.sync_agents_to_claude()
 
         claude_agent = root / ".claude" / "agents" / "feature-implementer.md"
@@ -130,7 +130,7 @@ class TestClaudeAdapterUnit:
         root = isolated_project_env
         self._write_generated_agent(root, "api-builder", role_text="Backend API specialist.")
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
 
         first_changed = adapter.sync_agents_to_claude()
         assert len(first_changed) == 1
@@ -167,7 +167,7 @@ class TestClaudeAdapterUnit:
         )
         guide = self._write_orchestrator_guide(root)
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         out_path = adapter.sync_orchestrator_to_claude()
 
         assert out_path == claude_md
@@ -187,7 +187,7 @@ class TestClaudeAdapterUnit:
         claude_dir.mkdir(parents=True, exist_ok=True)
         (claude_dir / "agents").mkdir(exist_ok=True)
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         config_path = adapter.generate_claude_config()
 
         assert config_path == claude_dir / "config.json"
@@ -232,7 +232,7 @@ class TestClaudeAdapterUnit:
             encoding="utf-8",
         )
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         # Sanity check: jsonschema and schema are available
         import edison.core.adapters._schemas as schemas_mod  # type: ignore
 
@@ -268,7 +268,7 @@ class TestClaudeAdapterUnit:
         }
         (cfg_dir / "feature-implementer.json").write_text(json.dumps(cfg), encoding="utf-8")
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         # Sanity check: schema must be available for validation
         assert load_schema("claude-agent-config.schema.json", repo_root=root), "claude-agent-config.schema.json schema not loaded"
         changed = adapter.sync_agents_to_claude()
@@ -294,7 +294,7 @@ class TestClaudeAdapterUnit:
         bad_cfg = {"model": 123}
         (cfg_dir / "feature-implementer.json").write_text(json.dumps(bad_cfg), encoding="utf-8")
 
-        adapter = ClaudeCodeAdapter(repo_root=root)
+        adapter = ClaudeSync(repo_root=root)
         with pytest.raises(Exception) as excinfo:
             adapter._validate_agent_config("feature-implementer", bad_cfg)
 

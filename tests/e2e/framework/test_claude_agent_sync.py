@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Tuple
 
-from edison.core.adapters import ClaudeSync as ClaudeCodeAdapter
+from edison.core.adapters import ClaudeSync
 from edison.core.composition import CompositionEngine
 from edison.core.config import ConfigManager
 from edison.core.utils.subprocess import run_with_timeout
@@ -132,7 +132,7 @@ def test_claude_agent_schema_valid_for_all_agents() -> None:
     generated_dir = REPO_ROOT / ".agents" / "_generated" / "agents"
     assert generated_dir.is_dir(), f"Missing generated agents dir: {generated_dir}"
 
-    adapter = ClaudeCodeAdapter(repo_root=REPO_ROOT)
+    adapter = ClaudeSync(repo_root=REPO_ROOT)
 
     # Every composed agent should yield a schema-valid payload
     for src in sorted(generated_dir.glob("*.md")):

@@ -14,9 +14,9 @@ This module provides two categories of adapters:
 
 2. **Full-featured adapters** (composition + sync + validation):
    Located in the `sync/` subdirectory:
-   - ClaudeSync: Full Claude Code integration with agent sync (formerly ClaudeCodeAdapter)
-   - ZenSync: Full Zen MCP integration with role composition (formerly ZenAdapter)
-   - CursorSync: Full Cursor integration with .cursorrules management (formerly CursorAdapter)
+   - ClaudeSync: Full Claude Code integration with agent sync
+   - ZenSync: Full Zen MCP integration with role composition
+   - CursorSync: Full Cursor integration with .cursorrules management
 
 Choose based on your use case:
 - For rendering from `_generated` artifacts: Use PromptAdapter-based
@@ -49,13 +49,6 @@ from .sync.cursor import CursorSync, AUTOGEN_BEGIN, AUTOGEN_END
 from .sync.zen import ZenSync, WORKFLOW_HEADING
 
 # ============================================================================
-# Backward compatibility aliases
-# ============================================================================
-ClaudeCodeAdapter = ClaudeSync  # Renamed to ClaudeSync
-CursorAdapter = CursorSync  # Renamed to CursorSync
-ZenAdapter = ZenSync  # Renamed to ZenSync
-
-# ============================================================================
 # Shared schema validation utilities
 # ============================================================================
 from ._schemas import (
@@ -83,10 +76,6 @@ __all__ = [
     "AUTOGEN_END",
     "ZenSync",
     "WORKFLOW_HEADING",
-    # Backward compatibility aliases
-    "ClaudeCodeAdapter",
-    "CursorAdapter",
-    "ZenAdapter",
     # Schema utilities
     "load_schema",
     "validate_payload",

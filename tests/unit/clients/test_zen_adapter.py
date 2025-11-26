@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ZenSync as ZenAdapter
+from edison.core.adapters import ZenSync
 
 
 class TestZenAdapterUnit:
@@ -211,7 +211,7 @@ rules:
         self._write_basic_config(root)
         self._write_guidelines(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
 
         default_guides = adapter.get_applicable_guidelines("default")
         assert {"QUALITY", "security", "performance", "architecture"} <= set(default_guides)
@@ -232,7 +232,7 @@ rules:
         self._write_basic_config(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
 
         all_rules = adapter.get_applicable_rules("default")
         assert {r["id"] for r in all_rules} == {
@@ -263,7 +263,7 @@ rules:
         self._write_config_with_project_roles(root)
         self._write_guidelines_with_packs_and_overlays(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
 
         names = adapter.get_applicable_guidelines("project-api-builder")
 
@@ -284,7 +284,7 @@ rules:
         self._write_config_with_project_roles(root)
         self._write_rules_with_packs(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
         rules = adapter.get_applicable_rules("project-api-builder")
         ids = {r["id"] for r in rules}
 
@@ -308,7 +308,7 @@ rules:
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
 
         text = adapter.compose_zen_prompt(role="codereviewer", model="codex", packs=[])
 
@@ -330,7 +330,7 @@ rules:
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(repo_root=root)
+        adapter = ZenSync(repo_root=root)
         text = adapter.compose_zen_prompt(role="default", model=model, packs=[])
 
         assert f"Model: {model}" in text

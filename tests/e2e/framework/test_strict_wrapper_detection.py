@@ -35,7 +35,7 @@ def _make_guard_wrappers(tmp_root: Path, repo_root: Path) -> None:
 
     ensure_followups = scripts_dir / "tasks" / "ensure-followups"
     ensure_followups.write_text(
-        f"#!/usr/bin/env bash\npython3 -m edison.core.tasks.manager ensure-followups \"$@\"\n"
+        f"#!/usr/bin/env bash\npython3 -m edison.core.task.manager ensure-followups \"$@\"\n"
     )
     ensure_followups.chmod(0o755)
 

@@ -86,7 +86,7 @@ class CodexAdapter(PromptAdapter, ConfigMixin):
         if self._cached_config is not None:
             return self._cached_config
 
-        from ..config import ConfigManager
+        from edison.core.config import ConfigManager
 
         try:
             mgr = ConfigManager(self.repo_root)

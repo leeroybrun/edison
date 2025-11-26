@@ -13,24 +13,23 @@ import pytest
 from pathlib import Path
 
 
-def test_claude_code_adapter_import_from_adapters():
-    """Test that ClaudeCodeAdapter can be imported from adapters package."""
-    # RED: This should fail initially since ClaudeCodeAdapter is not in adapters/claude.py
-    from edison.core.adapters.claude import ClaudeCodeAdapter
+def test_claude_sync_import_from_adapters():
+    """Test that ClaudeSync can be imported from canonical adapters package."""
+    from edison.core.adapters import ClaudeSync
 
-    assert ClaudeCodeAdapter is not None
-    assert hasattr(ClaudeCodeAdapter, 'validate_claude_structure')
-    assert hasattr(ClaudeCodeAdapter, 'sync_agents_to_claude')
-    assert hasattr(ClaudeCodeAdapter, 'sync_orchestrator_to_claude')
-    assert hasattr(ClaudeCodeAdapter, 'generate_claude_config')
+    assert ClaudeSync is not None
+    assert hasattr(ClaudeSync, 'validate_claude_structure')
+    assert hasattr(ClaudeSync, 'sync_agents_to_claude')
+    assert hasattr(ClaudeSync, 'sync_orchestrator_to_claude')
+    assert hasattr(ClaudeSync, 'generate_claude_config')
 
 
-def test_claude_code_adapter_can_be_instantiated():
-    """Test that ClaudeCodeAdapter can be instantiated from adapters package."""
-    from edison.core.adapters.claude import ClaudeCodeAdapter
+def test_claude_sync_can_be_instantiated():
+    """Test that ClaudeSync can be instantiated from canonical adapters package."""
+    from edison.core.adapters import ClaudeSync
 
     # Should be able to create an instance
-    adapter = ClaudeCodeAdapter()
+    adapter = ClaudeSync()
     assert adapter is not None
     assert hasattr(adapter, 'repo_root')
     assert hasattr(adapter, 'claude_dir')
@@ -39,14 +38,14 @@ def test_claude_code_adapter_can_be_instantiated():
 
 def test_claude_adapter_error_is_available():
     """Test that ClaudeAdapterError exception is available."""
-    from edison.core.adapters.claude import ClaudeAdapterError
+    from edison.core.adapters import ClaudeAdapterError
 
     assert issubclass(ClaudeAdapterError, RuntimeError)
 
 
 def test_edison_agent_sections_is_available():
     """Test that EdisonAgentSections dataclass is available."""
-    from edison.core.adapters.claude import EdisonAgentSections
+    from edison.core.adapters import EdisonAgentSections
 
     # Should be a dataclass
     sections = EdisonAgentSections(
@@ -68,10 +67,10 @@ def test_root_claude_adapter_import_fails():
 
 def test_all_exports_are_complete():
     """Test that __all__ includes all necessary exports."""
-    from edison.core.adapters import claude
+    from edison.core import adapters
 
-    expected_exports = ['ClaudeAdapter', 'ClaudeCodeAdapter', 'ClaudeAdapterError', 'EdisonAgentSections']
+    expected_exports = ['ClaudeAdapter', 'ClaudeSync', 'ClaudeAdapterError', 'EdisonAgentSections']
 
     for export in expected_exports:
-        assert export in claude.__all__, f"Missing export: {export}"
-        assert hasattr(claude, export), f"Export {export} not available as attribute"
+        assert export in adapters.__all__, f"Missing export: {export}"
+        assert hasattr(adapters, export), f"Export {export} not available as attribute"

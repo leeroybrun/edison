@@ -15,52 +15,46 @@ from pathlib import Path
 
 
 class TestZenAdapterMerged:
-    """Test that both ZenAdapter architectures coexist after merge."""
+    """Test that ZenAdapter functionality is available from canonical location."""
 
-    def test_can_import_zen_prompt_adapter_from_adapters_zen(self):
-        """Verify ZenPromptAdapter (new architecture) is importable."""
-        from edison.core.adapters.zen import ZenPromptAdapter
+    def test_can_import_zen_prompt_adapter_from_adapters(self):
+        """Verify ZenPromptAdapter is importable from canonical location."""
+        from edison.core.adapters import ZenPromptAdapter
 
         assert ZenPromptAdapter is not None
         assert hasattr(ZenPromptAdapter, '__init__')
 
-    def test_can_import_zen_adapter_from_adapters_zen(self):
-        """Verify ZenAdapter (old architecture) is importable from adapters.zen."""
-        from edison.core.adapters.zen import ZenAdapter
+    def test_can_import_zen_sync_from_adapters(self):
+        """Verify ZenSync (full adapter) is importable from canonical location."""
+        from edison.core.adapters import ZenSync
 
-        assert ZenAdapter is not None
-        assert hasattr(ZenAdapter, '__init__')
-        # Verify key methods from old implementation exist
-        assert hasattr(ZenAdapter, 'get_applicable_guidelines')
-        assert hasattr(ZenAdapter, 'get_applicable_rules')
-        assert hasattr(ZenAdapter, 'compose_zen_prompt')
-        assert hasattr(ZenAdapter, 'sync_role_prompts')
-        assert hasattr(ZenAdapter, 'verify_cli_prompts')
-
-    def test_can_import_zen_adapter_from_adapters_init(self):
-        """Verify ZenAdapter is exported from adapters package."""
-        from edison.core.adapters import ZenAdapter
-
-        assert ZenAdapter is not None
+        assert ZenSync is not None
+        assert hasattr(ZenSync, '__init__')
+        # Verify key methods from implementation exist
+        assert hasattr(ZenSync, 'get_applicable_guidelines')
+        assert hasattr(ZenSync, 'get_applicable_rules')
+        assert hasattr(ZenSync, 'compose_zen_prompt')
+        assert hasattr(ZenSync, 'sync_role_prompts')
+        assert hasattr(ZenSync, 'verify_cli_prompts')
 
     def test_can_import_workflow_heading_constant(self):
         """Verify WORKFLOW_HEADING constant is available."""
-        from edison.core.adapters.zen import WORKFLOW_HEADING
+        from edison.core.adapters import WORKFLOW_HEADING
 
         assert WORKFLOW_HEADING is not None
         assert isinstance(WORKFLOW_HEADING, str)
         assert "Edison Workflow Loop" in WORKFLOW_HEADING
 
-    def test_zen_adapter_instantiation(self, tmp_path: Path):
-        """Verify ZenAdapter can be instantiated."""
-        from edison.core.adapters.zen import ZenAdapter
+    def test_zen_sync_instantiation(self, tmp_path: Path):
+        """Verify ZenSync can be instantiated."""
+        from edison.core.adapters import ZenSync
 
         # Create minimal directory structure
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        # ZenAdapter should instantiate without errors
-        adapter = ZenAdapter(repo_root=repo_root, config={})
+        # ZenSync should instantiate without errors
+        adapter = ZenSync(repo_root=repo_root, config={})
 
         assert adapter is not None
         assert adapter.repo_root == repo_root

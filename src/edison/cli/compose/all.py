@@ -125,21 +125,21 @@ def main(args: argparse.Namespace) -> int:
 
         # Sync to clients
         if args.claude:
-            from edison.core.adapters.claude import ClaudeCodeAdapter
-            adapter = ClaudeCodeAdapter(repo_root=repo_root)
+            from edison.core.adapters import ClaudeSync
+            adapter = ClaudeSync(repo_root=repo_root)
             adapter.validate_claude_structure()
             changed = adapter.sync_agents_to_claude()
             results["claude_sync"] = [str(f) for f in changed]
 
         if args.cursor:
-            from edison.core.adapters.cursor import CursorAdapter
-            adapter = CursorAdapter(repo_root=repo_root)
+            from edison.core.adapters import CursorSync
+            adapter = CursorSync(repo_root=repo_root)
             changed = adapter.sync()
             results["cursor_sync"] = [str(f) for f in changed]
 
         if args.zen:
-            from edison.core.adapters.zen import ZenAdapter
-            adapter = ZenAdapter(repo_root=repo_root)
+            from edison.core.adapters import ZenSync
+            adapter = ZenSync(repo_root=repo_root)
             changed = adapter.sync_all_prompts()
             results["zen_sync"] = [str(f) for f in changed]
 

@@ -76,7 +76,7 @@ def _reset_all_global_caches() -> None:
         pass
 
     try:
-        import edison.core.tasks.state as task_state  # type: ignore
+        import edison.core.task.state as task_state  # type: ignore
         if hasattr(task_state, '_STATE_MACHINE'):
             task_state._STATE_MACHINE = None  # type: ignore[attr-defined]
     except Exception:

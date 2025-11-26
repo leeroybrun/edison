@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 
-from integration.test_session_autostart import AutoStartEnv
+from tests.integration.test_session_autostart import AutoStartEnv
 from edison.core.session.autostart import SessionAutoStart
 
 

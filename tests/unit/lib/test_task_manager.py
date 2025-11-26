@@ -55,8 +55,8 @@ def _fresh_task_modules():
     finder_mod = importlib.reload(importlib.import_module("edison.core.task.finder"))  # type: ignore
     io_mod = importlib.reload(importlib.import_module("edison.core.task.io"))  # type: ignore
     task_mod = importlib.reload(importlib.import_module("edison.core.task"))  # type: ignore
-    manager_mod = importlib.reload(importlib.import_module("edison.core.tasks.manager"))  # type: ignore
-    state_mod = importlib.reload(importlib.import_module("edison.core.tasks.state"))  # type: ignore
+    manager_mod = importlib.reload(importlib.import_module("edison.core.task.manager"))  # type: ignore
+    state_mod = importlib.reload(importlib.import_module("edison.core.task.state"))  # type: ignore
     return manager_mod.TaskManager, state_mod
 
 

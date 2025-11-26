@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ZenSync as ZenAdapter, WORKFLOW_HEADING
+from edison.core.adapters import ZenSync, WORKFLOW_HEADING
 from edison.core.config import ConfigManager
 
 # Repository root for test fixtures
@@ -49,7 +49,7 @@ def test_verify_cli_prompts_syncs_all_project_roles(isolated_project_env: Path) 
     """
     repo_root = isolated_project_env
     cfg = ConfigManager(repo_root).load_config(validate=False)
-    adapter = ZenAdapter(repo_root=repo_root, config=cfg)
+    adapter = ZenSync(repo_root=repo_root, config=cfg)
 
     report = adapter.verify_cli_prompts(sync=True)
 

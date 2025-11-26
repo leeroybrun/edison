@@ -576,6 +576,6 @@ class ZenSync:
 
 
 __all__ = [
-    "ZenAdapter",
+    "ZenSync",
     "WORKFLOW_HEADING",
 ]
