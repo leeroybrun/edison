@@ -4,7 +4,7 @@ Read this alongside your role file and the shared common instructions in `.ediso
 
 ## Context7 Knowledge Refresh
 - Follow `.edison/core/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` before validating any task that touches post-training packages.
-- Use the pack-provided `{{PACK_CONTEXT}}` hints to target the correct libraries and topics.
+- Use the pack-provided `{{SECTION:TechStack}}` hints to target the correct libraries and topics.
 
 ## Edison validation guards (current)
 - Validate only against bundles emitted by `edison validators bundle <root-task>`; return `BLOCKED` if the manifest or parent `bundle-approved.json` is missing.

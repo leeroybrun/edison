@@ -33,9 +33,9 @@ Use this roster instead of repeating the table in each agent file:
 - Validator execution (automatic in QA workflow)
 - Bundle generation (automatic in `edison validators bundle`)
 
-{{PACK_TOOLS}}
+{{SECTION:Tools}}
 
 ## Pack-Specific Guidelines Anchor
 Pack overlays inject additional rules here when present.
 
-{{PACK_GUIDELINES}}
+{{SECTION:Guidelines}}

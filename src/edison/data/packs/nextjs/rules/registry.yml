@@ -48,3 +48,19 @@ rules:
     applies_to: [agent, validator]
     sourcePath: packs/nextjs/guidelines/ROUTING.md
     guidance: "Follow Next.js routing conventions and file-based routing structure."
+
+  - id: RULE.NEXTJS.METADATA
+    title: "Metadata API Best Practices"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/nextjs/guidelines/metadata.md
+    guidance: "Implement Metadata API best practices including static metadata export and dynamic generateMetadata function."
+
+  - id: RULE.NEXTJS.CACHING
+    title: "Caching Strategies"
+    category: performance
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/nextjs/guidelines/caching.md
+    guidance: "Optimize performance using caching strategies: leverage fetch options, cache tags, revalidate, and dynamic segment config."

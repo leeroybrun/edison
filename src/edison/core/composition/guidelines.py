@@ -4,20 +4,15 @@ from __future__ import annotations
 """
 Edison Guideline Composition Engine
 
-Builds final guideline documents from layered sources:
-  Core Guidelines  →  Pack Guidelines  →  Project Overrides
+Thin wrapper using unified LayerDiscovery for discovery.
+Guidelines use 'concatenate + dedupe' composition mode (different from section-based).
 
 Features:
-  - Discovery registry for guideline files across layers
-  - Include resolution via lib.composition.resolve_includes
+  - Discovery via unified LayerDiscovery
+  - Concatenate composition mode (Core → Packs → Project)
   - DRY enforcement using 12-word shingles (headings/code ignored)
-  - Layer priority: Core < Packs (dependency order) < Project overrides
-
-The public API is intentionally small and mirrors the prompt
-composition engine where practical.
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
@@ -33,15 +28,13 @@ from ..utils.text import (
     _shingles,
 )
 
+# Import unified discovery system
+from .unified import LayeredComposer, LayerSource
+
 
 # -----------------------
-# Root & IO helpers
+# Text processing helpers (guideline-specific)
 # -----------------------
-
-def _repo_root() -> Path:
-    """Resolve project root via canonical PathResolver."""
-    return PathResolver.resolve_project_root()
-
 
 def _read_text(path: Path) -> str:
     if not path.exists():
@@ -50,7 +43,7 @@ def _read_text(path: Path) -> str:
 
 
 def _split_paragraphs(text: str) -> List[str]:
-    """Split text into logical paragraphs, preserving intra-paragraph newlines."""
+    """Split text into logical paragraphs."""
     paragraphs: List[str] = []
     buf: List[str] = []
     for line in text.splitlines():
@@ -88,31 +81,46 @@ class GuidelineCompositionResult:
 
 
 class GuidelineRegistry:
-    """Registry for discovering and composing guidelines across layers."""
+    """Registry for discovering and composing guidelines.
+    
+    Uses unified LayerDiscovery for discovery.
+    Uses concatenate + dedupe composition mode (guideline-specific).
+    """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
-        self.repo_root = repo_root or _repo_root()
-        config_dir = get_project_config_dir(self.repo_root, create=False)
-        self.core_dir = config_dir / "core" / "guidelines"
-        self.packs_dir = config_dir / "packs"
-        project_dir = config_dir
-        self.project_guidelines_dir = project_dir / "guidelines"
+        self.repo_root = repo_root or PathResolver.resolve_project_root()
+        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+        self.project_guidelines_dir = self.project_dir / "guidelines"
+        
+        # Use unified composer for discovery
+        self._composer = LayeredComposer(repo_root=self.repo_root, content_type="guidelines")
+        self.core_dir = self._composer.core_dir / "guidelines"
+        self.packs_dir = self._composer.packs_dir
 
     # ---------- Discovery ----------
+    # Guidelines use 'concatenate' mode - same-name files are merged, not shadowed.
+    # This is simpler discovery that allows same-name files across layers.
+    
     def core_path(self, name: str) -> Optional[Path]:
-        """Find a core guideline by name anywhere under .edison/core/guidelines."""
-        pattern = f"{name}.md"
-        matches = sorted(self.core_dir.rglob(pattern)) if self.core_dir.exists() else []
+        """Find a core guideline (supports nested directories)."""
+        if not self.core_dir.exists():
+            return None
+        matches = sorted(self.core_dir.rglob(f"{name}.md"))
         return matches[0] if matches else None
 
     def pack_paths(self, name: str, packs: List[str]) -> List[Path]:
-        """Find pack guideline files (supports nested directories)."""
+        """Find pack guideline files (supports nested directories).
+        
+        For 'concatenate' mode, same-name files are extensions, not shadows.
+        """
         paths: List[Path] = []
         for pack in packs:
             pdir = self.packs_dir / pack / "guidelines"
             if not pdir.exists():
                 continue
-            paths.extend(sorted(pdir.rglob(f"{name}.md")))
+            # Find in root or nested subdirectories
+            matches = sorted(pdir.rglob(f"{name}.md"))
+            paths.extend(matches)
         return paths
 
     def project_override_path(self, name: str) -> Optional[Path]:
@@ -123,72 +131,67 @@ class GuidelineRegistry:
         return matches[0] if matches else None
 
     def all_names(self, packs: List[str], *, include_project: bool = True) -> List[str]:
-        """Return all guideline names discovered across layers (recursive)."""
+        """Return all guideline names discovered across layers."""
         names: Set[str] = set()
 
+        # Core guidelines
         if self.core_dir.exists():
             for f in self.core_dir.rglob("*.md"):
-                if f.is_file():
+                if f.is_file() and not f.stem.startswith("_"):
                     names.add(f.stem)
 
+        # Pack guidelines
         for pack in packs:
             pdir = self.packs_dir / pack / "guidelines"
             if not pdir.exists():
                 continue
             for f in pdir.rglob("*.md"):
-                if f.is_file():
+                if f.is_file() and not f.stem.startswith("_"):
                     names.add(f.stem)
 
+        # Project guidelines
         if include_project and self.project_guidelines_dir.exists():
             for f in self.project_guidelines_dir.rglob("*.md"):
-                if f.is_file():
+                if f.is_file() and not f.stem.startswith("_"):
                     names.add(f.stem)
 
         return sorted(names)
 
     def get_subfolder(self, name: str, packs: List[str]) -> Optional[str]:
-        """
-        Determine the subfolder for a guideline based on its source location.
-
-        Priority (high→low):
-          1. Project override location
-          2. Pack location (first pack that has it)
-          3. Core location
-
-        Returns:
-          - Subfolder name relative to guidelines root (e.g., "agents", "shared")
-          - None if guideline is in root directory
-        """
-        # Check project override first
-        if self.project_guidelines_dir.exists():
-            matches = sorted(self.project_guidelines_dir.rglob(f"{name}.md"))
-            if matches:
-                rel_path = matches[0].parent.relative_to(self.project_guidelines_dir)
-                subfolder = str(rel_path) if str(rel_path) != "." else None
-                return subfolder
-
-        # Check packs (in order)
+        """Determine the subfolder for a guideline based on source location."""
+        # Check project first
+        project_path = self.project_override_path(name)
+        if project_path and self.project_guidelines_dir.exists():
+            try:
+                rel_path = project_path.parent.relative_to(self.project_guidelines_dir)
+                return str(rel_path) if str(rel_path) != "." else None
+            except ValueError:
+                pass
+        
+        # Check packs
         for pack in packs:
-            pdir = self.packs_dir / pack / "guidelines"
-            if not pdir.exists():
-                continue
-            matches = sorted(pdir.rglob(f"{name}.md"))
-            if matches:
-                rel_path = matches[0].parent.relative_to(pdir)
-                subfolder = str(rel_path) if str(rel_path) != "." else None
-                return subfolder
-
+            pack_dir = self.packs_dir / pack / "guidelines"
+            pack_paths = self.pack_paths(name, [pack])
+            for p in pack_paths:
+                try:
+                    rel_path = p.parent.relative_to(pack_dir)
+                    return str(rel_path) if str(rel_path) != "." else None
+                except ValueError:
+                    pass
+        
         # Check core
-        if self.core_dir.exists():
-            matches = sorted(self.core_dir.rglob(f"{name}.md"))
-            if matches:
-                rel_path = matches[0].parent.relative_to(self.core_dir)
-                subfolder = str(rel_path) if str(rel_path) != "." else None
-                return subfolder
-
+        core_path = self.core_path(name)
+        if core_path and self.core_dir.exists():
+            try:
+                rel_path = core_path.parent.relative_to(self.core_dir)
+                return str(rel_path) if str(rel_path) != "." else None
+            except ValueError:
+                pass
+        
         return None
 
-    # ---------- Composition ----------
+    # ---------- Composition (concatenate + dedupe mode) ----------
+    
     def _resolve_layer_text(self, path: Optional[Path]) -> str:
         if path is None:
             return ""
@@ -205,35 +208,25 @@ class GuidelineRegistry:
         project_text: str,
         k: int = 12,
     ) -> Tuple[str, Dict[str, str], str]:
-        """Deduplicate paragraphs across layers using 12‑word shingles.
-
-        Priority (high→low):
-          1. Project overrides
-          2. Packs (last pack wins on duplicates)
-          3. Core
-        """
-        # Split into paragraphs
+        """Deduplicate paragraphs across layers using 12‑word shingles."""
         core_pars = _split_paragraphs(core_text)
         pack_pars: Dict[str, List[str]] = {
             pack: _split_paragraphs(txt) for pack, txt in pack_texts.items()
         }
         project_pars = _split_paragraphs(project_text)
 
-        # Track shingles seen so far; process from highest to lowest priority.
         seen: Set[Tuple[str, ...]] = set()
 
-        # Project overrides (highest)
+        # Project (highest priority)
         project_keep: List[bool] = [True] * len(project_pars)
         for idx, para in enumerate(project_pars):
             shingles = _paragraph_shingles(para, k=k)
-            if not shingles:
-                continue
-            if shingles & seen:
+            if shingles and shingles & seen:
                 project_keep[idx] = False
-            else:
+            elif shingles:
                 seen |= shingles
 
-        # Packs: process in reverse order so later packs win.
+        # Packs (reverse order so later packs win)
         pack_names = list(pack_texts.keys())
         pack_keep: Dict[str, List[bool]] = {p: [True] * len(pack_pars[p]) for p in pack_names}
 
@@ -241,39 +234,28 @@ class GuidelineRegistry:
             keep_flags = pack_keep[pack]
             for idx, para in enumerate(pack_pars[pack]):
                 shingles = _paragraph_shingles(para, k=k)
-                if not shingles:
-                    continue
-                if shingles & seen:
+                if shingles and shingles & seen:
                     keep_flags[idx] = False
-                else:
+                elif shingles:
                     seen |= shingles
 
-        # Core (lowest)
+        # Core (lowest priority)
         core_keep: List[bool] = [True] * len(core_pars)
         for idx, para in enumerate(core_pars):
             shingles = _paragraph_shingles(para, k=k)
-            if not shingles:
-                continue
-            if shingles & seen:
+            if shingles and shingles & seen:
                 core_keep[idx] = False
-            else:
+            elif shingles:
                 seen |= shingles
 
-        # Rebuild deduplicated text in layer order: Core → Packs → Project
-        dedup_core = "\n\n".join(
-            [p for p, keep in zip(core_pars, core_keep) if keep]
-        ).strip()
-
+        # Rebuild
+        dedup_core = "\n\n".join([p for p, keep in zip(core_pars, core_keep) if keep]).strip()
         dedup_packs: Dict[str, str] = {}
         for pack in pack_names:
             pars = pack_pars[pack]
-            keep_flags = pack_keep[pack]
-            kept = [p for p, keep in zip(pars, keep_flags) if keep]
+            kept = [p for p, keep in zip(pars, pack_keep[pack]) if keep]
             dedup_packs[pack] = "\n\n".join(kept).strip()
-
-        dedup_project = "\n\n".join(
-            [p for p, keep in zip(project_pars, project_keep) if keep]
-        ).strip()
+        dedup_project = "\n\n".join([p for p, keep in zip(project_pars, project_keep) if keep]).strip()
 
         return dedup_core, dedup_packs, dedup_project
 
@@ -285,12 +267,12 @@ class GuidelineRegistry:
         project_overrides: bool = True,
         dry_min_shingles: Optional[int] = None,
     ) -> GuidelineCompositionResult:
-        """Compose a single guideline from Core + Packs + Project layers."""
+        """Compose a single guideline using concatenate + dedupe mode."""
         core = self.core_path(name)
         pack_paths_list = self.pack_paths(name, packs)
         project = self.project_override_path(name) if project_overrides else None
 
-        # When composing TDD, also merge TESTING overlays from packs/project.
+        # TDD special case: also merge TESTING overlays
         testing_pack_paths: List[Path] = []
         testing_project: Optional[Path] = None
         if name == "TDD":
@@ -310,7 +292,6 @@ class GuidelineRegistry:
         _add_pack_paths(pack_paths_list)
         _add_pack_paths(testing_pack_paths)
 
-        # Flatten to a representative path for metadata while keeping texts merged.
         representative_pack_paths: Dict[str, Path] = {
             pack: sorted(paths)[0] for pack, paths in pack_paths.items()
         }
@@ -330,7 +311,7 @@ class GuidelineRegistry:
             project_parts.append(self._resolve_layer_text(testing_project))
         project_text = "\n\n".join([p for p in project_parts if p]).strip()
 
-        # Deduplicate paragraphs across layers using shingles from config
+        # Get config for deduplication
         from ..config import ConfigManager
         cfg = ConfigManager().load_config(validate=False)
         dry_config = cfg.get("composition", {}).get("dryDetection", {})
@@ -344,43 +325,24 @@ class GuidelineRegistry:
             k=k,
         )
 
-        # Assemble final text in layer order
+        # Assemble final text
         sections: List[str] = []
         if dedup_core:
             sections.append(dedup_core)
-
         for pack in packs:
             txt = dedup_packs.get(pack, "")
             if txt:
                 sections.append(txt)
-
         if dedup_project:
             sections.append(dedup_project)
 
         final_text = "\n\n".join(sections).rstrip() + "\n"
 
-        # Duplication report (for CLI and evidence)
-        # Get DRY detection config from composition.yaml
-        if dry_min_shingles is None:
-            from ..config import ConfigManager
-            cfg = ConfigManager().load_config(validate=False)
-            dry_config = cfg.get("composition", {}).get("dryDetection", {})
-            min_s = dry_config.get("minShingles", 2)
-            k = dry_config.get("shingleSize", 12)
-        else:
-            min_s = dry_min_shingles
-            # Use config for k as well
-            from ..config import ConfigManager
-            cfg = ConfigManager().load_config(validate=False)
-            dry_config = cfg.get("composition", {}).get("dryDetection", {})
-            k = dry_config.get("shingleSize", 12)
+        # DRY report
+        min_s = dry_min_shingles if dry_min_shingles is not None else dry_config.get("minShingles", 2)
 
         duplicate_report = dry_duplicate_report(
-            {
-                "core": core_text,
-                "packs": "\n\n".join(pack_texts.values()),
-                "overlay": project_text,
-            },
+            {"core": core_text, "packs": "\n\n".join(pack_texts.values()), "overlay": project_text},
             min_shingles=min_s,
             k=k,
         )
@@ -394,7 +356,7 @@ class GuidelineRegistry:
 
 
 def compose_guideline(name: str, packs: List[str], project_overrides: bool = True) -> str:
-    """Convenience wrapper for composing a single guideline as plain text."""
+    """Convenience wrapper for composing a single guideline."""
     registry = GuidelineRegistry()
     result = registry.compose(name, packs, project_overrides=project_overrides)
     return result.text

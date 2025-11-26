@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..paths.resolver import PathResolver
 from .. import task
-from ..file_io.utils import ensure_dir
+from ..file_io.utils import ensure_directory
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from .store import (
     load_session,
@@ -173,8 +173,8 @@ def restore_records_to_global_transactional(session_id: str) -> int:
         for rec in reversed(moved):
             try:
                 # move file back to its original session-scoped path
-                ensure_dir(rec["dest"].parent)
-                ensure_dir(rec["src"].parent)
+                ensure_directory(rec["dest"].parent)
+                ensure_directory(rec["src"].parent)
                 moved_back = task.safe_move_file(rec["dest"], rec["src"])
                 logger.warning("Rollback restored %s to %s", rec["dest"], moved_back)
             except Exception as e:
@@ -247,7 +247,7 @@ def handle_timeout(sess_dir: Path) -> Path:
         orig = {}
     
     rec_dir = _sessions_root() / 'recovery' / sess_dir.name
-    ensure_dir(rec_dir.parent)
+    ensure_directory(rec_dir.parent)
     if rec_dir.exists():
         shutil.rmtree(rec_dir)
     shutil.move(str(sess_dir), str(rec_dir))

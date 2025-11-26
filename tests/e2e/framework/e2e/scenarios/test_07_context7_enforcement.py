@@ -26,7 +26,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_output_contains,
 )
-from helpers.test_env import TestProjectDir, TestGitRepo
+from helpers.env import TestProjectDir, TestGitRepo
 
 
 # -------------------------

@@ -26,7 +26,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_error_contains,
 )
-from helpers.test_env import TestProjectDir
+from helpers.env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
 PROJECT_NAME = os.environ.get("PROJECT_NAME", "example-project")

@@ -10,26 +10,23 @@ def test_questionnaire_defaults_to_edison_config_dir(tmp_path):
     repo.mkdir()
     core = repo / ".edison" / "core"
     core.mkdir(parents=True)
-    
+
     # Mock a setup.yaml so the questionnaire can load something
     config_dir = core / "config"
     config_dir.mkdir()
     (config_dir / "setup.yaml").write_text("setup: {basic: []}")
-    
+
     # Act
     q = SetupQuestionnaire(repo_root=repo, edison_core=core)
-    
+
     # Run with empty answers to trigger defaults
     answers = q.run("basic", provided_answers={})
-    
-    # Assert - Check the context that was built (we need to inspect internal method or result)
-    # The run method returns 'resolved', but 'project_config_dir' is part of the context 
-    # used for rendering, not necessarily returned in resolved unless it was a question.
-    # However, 'render_modular_configs' uses _context_with_defaults.
-    
-    # Let's verify via _context_with_defaults directly if possible, or check render output
-    context = q._context_with_defaults({})
-    
+
+    # Assert - Check via the public API (render_modular_configs uses context internally)
+    # We use the context module's build_context_with_defaults to verify
+    from edison.core.setup.questionnaire.context import build_context_with_defaults
+    context = build_context_with_defaults(q, {})
+
     assert context["project_config_dir"] == DEFAULT_PROJECT_CONFIG_PRIMARY
     assert context["project_config_dir"] != ".agents"
 

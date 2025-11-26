@@ -58,6 +58,13 @@ from .audit import (
     DEFAULT_PROJECT_TERMS,
     PACK_TECH_TERMS,
 )
+from .output_config import (
+    OutputConfig,
+    ClientOutputConfig,
+    SyncConfig,
+    OutputConfigLoader,
+    get_output_config,
+)
 
 __all__ = [
     "ComposeError",
@@ -110,4 +117,10 @@ __all__ = [
     "generate_available_agents",
     "generate_available_validators",
     "generate_state_machine_doc",
+    # Output configuration
+    "OutputConfig",
+    "ClientOutputConfig",
+    "SyncConfig",
+    "OutputConfigLoader",
+    "get_output_config",
 ]

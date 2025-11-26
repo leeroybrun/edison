@@ -1,0 +1,23 @@
+name: Motion
+version: 1.0.0
+description: Motion (framer-motion/motion) animations and gesture handling for React components
+
+triggers:
+  filePatterns:
+    - "**/*.tsx"
+    - "**/*.jsx"
+    - "**/*.ts"
+    - "**/motion/**/*"
+    - "**/*animation*"
+
+provides:
+  guidelines:
+    - guidelines/animate-presence.md
+    - guidelines/layout-animations.md
+    - guidelines/gesture-handling.md
+    - guidelines/variants-system.md
+    - guidelines/performance.md
+  agents:
+    - agents/component-builder.md
+  validators:
+    - validators/motion.md

@@ -36,8 +36,8 @@ if not hasattr(io, "open_code"):
 
 # Make Edison core lib importable as `lib.*` from the tests tree
 
-from edison.core.utils.subprocess import run_with_timeout
 from edison.core.paths.resolver import PathResolver
+from edison.core.utils.subprocess import run_with_timeout
 
 # Repository root (resolved via PathResolver for relocatability)
 REPO_ROOT = PathResolver.resolve_project_root()
@@ -107,6 +107,13 @@ def _reset_all_global_caches() -> None:
         import edison.core.config as config_mod  # type: ignore
         if hasattr(config_mod, '_CONFIG_CACHE'):
             config_mod._CONFIG_CACHE = {}  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    try:
+        from edison.core.utils import project_config  # type: ignore
+
+        project_config.reset_project_config_cache()
     except Exception:
         pass
 

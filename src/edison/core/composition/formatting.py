@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from ..utils.text import render_conditional_includes
+from ..file_io.utils import ensure_dir
 from .path_utils import resolve_project_dir_placeholders
 
 
@@ -323,10 +324,18 @@ def render_orchestrator_json(data: Dict) -> Dict:
 
 
 def compose_for_role(engine, role: str) -> str:
-    """Compose prompt content for a specific role using engine sources."""
+    """Compose prompt content for a specific role using unified path resolution.
+    
+    Uses UnifiedPathResolver for consistent path discovery.
+    """
+    from .unified import UnifiedPathResolver
+    
     parts: List[str] = []
+    
+    # Use unified path resolver
+    resolver = UnifiedPathResolver(engine.repo_root, "validators")
 
-    core_template = engine.core_dir / "validators" / "global" / f"{role}.md"
+    core_template = resolver.core_dir / "validators" / "global" / f"{role}.md"
     if core_template.exists():
         parts.append(f"# Edison Core Context for {role}")
         parts.append(engine.resolve_includes(core_template.read_text(encoding="utf-8"), core_template))
@@ -346,10 +355,11 @@ def compose_for_role(engine, role: str) -> str:
         parts.append("\n# Project Rules")
         parts.append(format_rules_context(rules_cfg))
 
-    overlay = engine._overlay_path_for_role(role)
-    if overlay and overlay.exists():
+    # Use unified discovery for overlay
+    overlay_path = resolver.project_dir / "validators" / "overlays" / f"{role}.md"
+    if overlay_path.exists():
         parts.append("\n# Project Overlay")
-        parts.append(engine.resolve_includes(overlay.read_text(encoding="utf-8"), overlay))
+        parts.append(engine.resolve_includes(overlay_path.read_text(encoding="utf-8"), overlay_path))
 
     content = "\n\n".join(parts)
     if active_packs:
@@ -360,7 +370,7 @@ def compose_for_role(engine, role: str) -> str:
 def compose_zen_prompts(engine, output_dir: str | Path) -> Dict[str, Path]:
     """Compose Zen MCP system prompts for configured roles."""
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_path)
 
     results: Dict[str, Path] = {}
 

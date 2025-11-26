@@ -74,7 +74,7 @@ await mcp__context7__get-library-docs({
 
 - Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{PACK_TOOLS}}
+{{SECTION:Tools}}
 
 ## Guidelines
 - Apply TDD; write component tests first and include evidence in the implementation report.
@@ -82,7 +82,14 @@ await mcp__context7__get-library-docs({
 - Deliver accessible, responsive components that match the design system; prefer semantic HTML and strong typing.
 - Keep error handling and state management predictable; document behaviours in the report.
 
-{{PACK_GUIDELINES}}
+{{SECTION:Guidelines}}
+
+## Architecture
+{{SECTION:Architecture}}
+
+{{EXTENSIBLE_SECTIONS}}
+
+{{APPEND_SECTIONS}}
 
 ## IMPORTANT RULES
 - **Design-system fidelity:** Use tokens/layout rules from config; no hardcoded colors/spacings; keep props typed and minimal.

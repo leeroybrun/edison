@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
+from ..file_io.utils import ensure_dir
 from ..paths.resolver import PathResolver
 from ..paths.management import get_management_paths
 
@@ -28,7 +29,7 @@ def score_history_file(session_id: str, project_root: Optional[Path] = None) -> 
 
 
 def append_jsonl(path: Path, obj: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(path.parent)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 

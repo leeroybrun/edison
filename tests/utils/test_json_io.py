@@ -15,6 +15,11 @@ def _write_json_config(repo_root: Path) -> None:
             "sort_keys": True,
             "ensure_ascii": False,
         },
+        "timeouts": {
+            "git_operations_seconds": 60.0,
+            "db_operations_seconds": 30.0,
+            "json_io_lock_seconds": 5.0,
+        },
         "subprocess_timeouts": {
             "default": 5.0,
             "git_operations": 5.0,

@@ -29,7 +29,7 @@ You are a **performance expert** reviewing code for optimization opportunities. 
 
 **BEFORE validating**, refresh your knowledge on framework-specific performance patterns from active packs using Context7.
 
-**See**: `{{PACK_CONTEXT}}` section below for framework-specific performance guidelines.
+**See**: `{{SECTION:TechStack}}` section below for framework-specific performance guidelines.
 
 ### Step 2: Review Git Diff for Performance Impact
 
@@ -765,7 +765,7 @@ Machine-readable JSON report (required):
 ## Remember
 
 - **Performance failures BLOCK** (resolve before completion)
-- **Always** use Context7 for framework-specific performance patterns (see `{{PACK_CONTEXT}}`)
+- **Always** use Context7 for framework-specific performance patterns (see `{{SECTION:TechStack}}`)
 - **Check git diff** for performance regressions
 - **Measure impact** (before/after metrics)
 - **Be pragmatic** - perfect performance isn't required, just good enough

@@ -42,9 +42,9 @@ def _load_config() -> Dict[str, object]:
         return {}
 
     try:
-        import yaml  # type: ignore
+        from edison.core.file_io.utils import read_yaml_safe
 
-        data = yaml.safe_load(_CONFIG_PATH.read_text()) or {}
+        data = read_yaml_safe(_CONFIG_PATH, default={})
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}

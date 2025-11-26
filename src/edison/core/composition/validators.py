@@ -11,7 +11,7 @@ from typing import Dict, List, Iterable, Optional
 
 from .validator_metadata import normalize_validator_entries
 from ..paths import PathResolver
-from ..paths.project import get_project_config_dir
+from .unified import UnifiedPathResolver
 
 
 def _validator_map(roster: Dict[str, List[Dict]]) -> Dict[str, Dict]:
@@ -134,25 +134,21 @@ def collect_validators(
 
 
 class ValidatorRegistry:
-    """Discover and access Edison validators from configuration."""
+    """Discover and access Edison validators from configuration.
+    
+    Uses UnifiedPathResolver for consistent path resolution.
+    """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         """Initialize validator registry with configuration discovery."""
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
 
-        config_dir = get_project_config_dir(self.repo_root, create=False)
-
-        core_validators_dir = config_dir / "core" / "validators"
-        if core_validators_dir.exists():
-            self.core_dir = config_dir / "core"
-            self.packs_dir = config_dir / "packs"
-        else:
-            # Running within Edison itself - use bundled data
-            from edison.data import get_data_path
-            self.core_dir = get_data_path("")
-            self.packs_dir = get_data_path("packs")
-
-        self.project_dir = config_dir
+        # Use unified path resolver (SINGLE SOURCE OF TRUTH)
+        path_resolver = UnifiedPathResolver(self.repo_root, "validators")
+        self.core_dir = path_resolver.core_dir
+        self.packs_dir = path_resolver.packs_dir
+        self.project_dir = path_resolver.project_dir
+        
         self._validators_cache: Optional[Dict[str, Dict]] = None
 
     def _load_validators(self) -> Dict[str, Dict]:

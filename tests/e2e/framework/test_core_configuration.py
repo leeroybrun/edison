@@ -80,7 +80,7 @@ def test_sessionlib_requires_database_url(tmp_path, monkeypatch):
 
     from tests.helpers import session as sessionlib
 
-    with pytest.raises(ValueError, match="DATABASE_URL is required"):
+    with pytest.raises(ValueError, match="database.url.*EDISON_database__url.*DATABASE_URL"):
         sessionlib._get_database_url()
 
 

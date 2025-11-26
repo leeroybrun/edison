@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from helpers.test_env import TestProjectDir
+from helpers.env import TestProjectDir
 from helpers.command_runner import run_script, assert_command_success, assert_json_output
 
 

@@ -33,7 +33,7 @@ from ...config import ConfigManager
 from ...composition.guidelines import GuidelineRegistry
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
-from edison.core.file_io.utils import write_json_safe
+from edison.core.file_io.utils import write_json_safe, ensure_dir
 
 AgentRegistry = _agents.AgentRegistry
 AgentError = _agents.AgentError
@@ -216,7 +216,8 @@ class CursorSync:
         if rule.get("dependencies"):
             meta["dependencies"] = rule["dependencies"]
 
-        front_matter = yaml.safe_dump(meta, sort_keys=False).rstrip()  # type: ignore[no-untyped-call]
+        from edison.core.file_io.utils import dump_yaml_string
+        front_matter = dump_yaml_string(meta, sort_keys=False).rstrip()
 
         body = (rule.get("body") or "").strip()
         if not body:
@@ -272,7 +273,7 @@ class CursorSync:
         return "\n".join(header_lines + body_parts + footer_lines).rstrip() + "\n"
 
     def _write_snapshot(self, content: str, generated_hash: str) -> None:
-        self._cursor_cache_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self._cursor_cache_dir)
         self._snapshot_path.write_text(content, encoding="utf-8")
         meta = {
             "generatedAt": utc_timestamp(),
@@ -322,7 +323,7 @@ class CursorSync:
         if not grouped:
             return []
 
-        self._cursor_rules_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self._cursor_rules_dir)
         written: List[Path] = []
 
         for category, rules in sorted(grouped.items()):
@@ -408,7 +409,7 @@ class CursorSync:
             return 0
 
         packs = self._active_packs()
-        src_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(src_dir)
 
         count = 0
         for name in sorted(core_agents.keys()):
@@ -439,7 +440,7 @@ class CursorSync:
         if not has_sources:
             return []
 
-        self._cursor_agents_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(self._cursor_agents_dir)
         copied: List[Path] = []
 
         for src in sorted(src_dir.glob("*.md")):

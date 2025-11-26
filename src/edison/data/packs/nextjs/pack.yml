@@ -1,7 +1,8 @@
-pack:
-  id: nextjs
-  name: "Next.js"
-  version: "1.0.0"
+name: nextjs
+version: 1.0.0
+description: Next.js 16 App Router pack with Server Components, Client Components, Route Handlers, Server Actions, Metadata API, and caching strategies
+category: framework
+tags: [nextjs, next16, app-router, server-components, route-handlers, server-actions, metadata, caching]
 
 triggers:
   filePatterns:
@@ -10,17 +11,14 @@ triggers:
     - "**/app/**/layout.tsx"
     - "next.config.js"
 
-provides:
-  guidelines:
-    - guidelines/ROUTING.md
-    - guidelines/app-router.md
-    - guidelines/route-handlers.md
-    - guidelines/server-actions.md
-    - guidelines/metadata.md
-    - guidelines/caching.md
-  agents:
-    - agents/api-builder.md
-    - agents/component-builder.md
-  validators:
-    - validators/api.md
-    - validators/nextjs.md
+validators:
+  - api.md
+  - nextjs.md
+guidelines:
+  - ROUTING.md
+  - app-router.md
+  - route-handlers.md
+  - server-actions.md
+  - metadata.md
+  - caching.md
+examples: []

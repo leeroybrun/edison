@@ -141,7 +141,7 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     sid = rec_dir.name
     sessions_root = rec_dir.parent.parent  # .../.project/sessions
     active_root = sessions_root / "active"
-    active_root.mkdir(parents=True, exist_ok=True)
+    io_utils.ensure_dir(active_root)
 
     dest_dir = active_root / sid
     if dest_dir.exists():
@@ -149,7 +149,7 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     shutil.move(str(rec_dir), str(dest_dir))
 
     sess_json = dest_dir / "session.json"
-    payload = io_utils.read_json_with_default(sess_json, default={})
+    payload = io_utils.read_json_safe(sess_json, default={})
     if not isinstance(payload, dict):
         payload = {}
         

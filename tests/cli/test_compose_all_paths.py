@@ -159,9 +159,7 @@ def real_args():
     """Create real args namespace instead of mocking."""
     args = Namespace()
     args.repo_root = None
-    args.agents = False
     args.validators = False
-    args.orchestrator = False
     args.constitutions = False
     args.guidelines = False
     args.dry_run = False
@@ -199,36 +197,6 @@ def test_compose_all_uses_resolved_config_dir_for_validators(tmp_path, real_args
     # Verify content was written
     content = expected_file.read_text(encoding="utf-8")
     assert "Test validator content" in content, "Validator content should be present"
-
-
-def test_compose_all_uses_resolved_config_dir_for_orchestrator(tmp_path, real_args):
-    """Test that orchestrator manifest is written to resolved config dir."""
-    # Setup real Edison structure
-    _setup_minimal_edison_structure(tmp_path)
-
-    # Enable only orchestrator
-    real_args.orchestrator = True
-    real_args.repo_root = str(tmp_path)
-
-    # Execute with real implementation
-    result = main(real_args)
-
-    # Assert success
-    assert result == 0, "Compose should succeed"
-
-    # Verify orchestrator files written to correct location
-    config_dir = get_project_config_dir(tmp_path)
-    expected_output_dir = config_dir / "_generated"
-
-    # Check for orchestrator manifest (JSON only - ORCHESTRATOR_GUIDE.md deprecated T-011)
-    manifest_file = expected_output_dir / "orchestrator-manifest.json"
-
-    assert expected_output_dir.exists(), f"Output directory should exist at {expected_output_dir}"
-    assert manifest_file.exists(), f"Manifest file should exist at {manifest_file}"
-
-    # ORCHESTRATOR_GUIDE.md must NOT be generated (deprecated T-011)
-    guide_file = expected_output_dir / "ORCHESTRATOR_GUIDE.md"
-    assert not guide_file.exists(), "ORCHESTRATOR_GUIDE.md deprecated - use constitutions/ORCHESTRATORS.md"
 
 
 def test_compose_all_generates_validators_constitution(tmp_path, real_args):

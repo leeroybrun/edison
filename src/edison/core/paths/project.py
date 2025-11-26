@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 from typing import Iterable
 
+from edison.core.file_io.utils import ensure_dir
+
 try:
     import yaml  # type: ignore
 except Exception as err:  # pragma: no cover - surfaced in tests
@@ -98,5 +100,5 @@ def get_project_config_dir(
     project_dir = repo_root / project_dir_name
 
     if create:
-        project_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(project_dir)
     return project_dir

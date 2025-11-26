@@ -1,6 +1,11 @@
 edison:
   version: "1.0.0"
 
+project:
+  name: "project"  # Can be overridden by EDISON_project__name
+  owner: null  # If null, will default to getpass.getuser() at runtime
+  audit_terms: []  # Additional terms for audit purity checks
+
 paths:
   project_config_dir: ".edison"
   legacy_project_config_dir: ".project-config"
@@ -19,6 +24,7 @@ worktrees:
 
 database:
   enabled: false
+  url: null  # Required when enabled=true; can be overridden by EDISON_database__url or DATABASE_URL
   templateStrategy: "clone"
   cleanupStrategy: "drop"
   sessionPrefix: "session"
@@ -550,6 +556,11 @@ tasks:
 
 orchestration:
   maxConcurrentAgents: 5
+
+timeouts:
+  git_operations_seconds: 60.0
+  db_operations_seconds: 30.0
+  json_io_lock_seconds: 5.0
 
 subprocess_timeouts:
   git_operations: 30

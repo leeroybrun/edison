@@ -1,7 +1,8 @@
-pack:
-  id: prisma
-  name: "Prisma"
-  version: "1.0.0"
+name: prisma
+version: 1.0.0
+description: Prisma ORM pack for database schema design, migrations, and query optimization
+category: database
+tags: [prisma, orm, database, schema, migrations]
 
 triggers:
   filePatterns:
@@ -9,14 +10,15 @@ triggers:
     - "prisma/**/*"
     - "migrations/**/*"
 
-provides:
-  guidelines:
-    - guidelines/TESTING.md
-    - guidelines/schema-design.md
-    - guidelines/migrations.md
-    - guidelines/query-optimization.md
-    - guidelines/relationships.md
-  agents:
-    - agents/database-architect.md
-  validators:
-    - validators/database.md
+guidelines:
+  - TESTING.md
+  - schema-design.md
+  - migrations.md
+  - query-optimization.md
+  - relationships.md
+
+agents:
+  - overlays/database-architect.md
+
+validators:
+  - database.md

@@ -1,71 +1,143 @@
-### Server Components (Default)
+# React Hooks (React 19)
 
-```tsx
-// app/leads/page.tsx - Server Component (default)
+## Core Rules
 
-import { prisma } from '@/lib/prisma'
-import { LeadList } from '@/components/leads/LeadList'
+- Only call hooks at the top level of components or custom hooks.
+- Derive state; avoid redundant `useState` when values can be computed.
+- Memoize expensive calculations with `useMemo`; keep dependencies minimal and explicit.
+- Use `useCallback` to stabilize function props when needed.
 
-// ✅ Server Component - can query database directly
-export default async function LeadsPage() {
-  // Direct database query
-  const leads = await prisma.lead.findMany()
+## React 19 Features
 
+### use() Hook - Promise Unwrapping
+
+The `use()` hook is a React 19 feature that allows you to unwrap promises in components.
+
+```typescript
+// ✅ CORRECT - use() for promise unwrapping
+import { use } from 'react'
+
+export function DataComponent({ dataPromise }) {
+  const data = use(dataPromise)  // Unwraps promise
+  return <div>{data.name}</div>
+}
+```
+
+**When to use use()**:
+- Unwrap promises passed from server components
+- Handle async data in client components
+- Works with error boundaries for error handling
+- Reduces need for useEffect data fetching
+
+### useFormStatus (React 19 Hook)
+
+The `useFormStatus` hook provides information about the pending state of a form submission.
+
+```typescript
+'use client'
+
+import { useFormStatus } from 'react-dom'
+
+export function SubmitButton() {
+  const { pending } = useFormStatus()
+  
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold font-sans mb-6">Leads</h1>
-      <LeadList leads={leads} />
-    </div>
+    <button disabled={pending} type="submit">
+      {pending ? 'Submitting...' : 'Submit'}
+    </button>
   )
 }
 ```
 
-**Server Component features**:
-- ✅ Can query database directly
-- ✅ Can use async/await in component
-- ✅ No client-side JavaScript sent
-- ✅ Better performance
+**Features**:
+- `pending`: boolean indicating if form submission is in progress
+- Only works with `<form>` elements
+- Automatically connected to nearest parent form
 
-### Client Components (When Needed)
+### useOptimistic (React 19 Hook)
 
-```tsx
-// components/leads/LeadList.tsx - Client Component
+The `useOptimistic` hook updates the UI optimistically while a server action is in progress.
 
-'use client'  // ✅ Explicit directive
+```typescript
+'use client'
 
-import { useState } from 'react'
-import { motion } from 'motion/react'
+import { useOptimistic } from 'react'
 
-export function LeadList({ leads }) {
-  const [filter, setFilter] = useState('')
-
+export function LikeButton({ postId, initialLikes }) {
+  const [likes, optimisticLikes] = useOptimistic(
+    initialLikes,
+    (currentLikes, newLikes) => newLikes
+  )
+  
+  async function handleLike() {
+    // Optimistically update UI
+    optimisticLikes(likes + 1)
+    // Server action updates database
+    await likePost(postId)
+  }
+  
   return (
-    <div>
-      <input
-        type="text"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#222222] rounded-md font-sans"
-        placeholder="Filter leads..."
-      />
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="mt-4 space-y-2"
-      >
-        {leads
-          .filter((lead) => lead.name.includes(filter))
-          .map((lead) => (
-            <LeadCard key={lead.id} lead={lead} />
-          ))}
-      </motion.div>
-    </div>
+    <button onClick={handleLike}>
+      Like ({optimisticLikes})
+    </button>
   )
 }
 ```
 
-**Client Component requirements**:
-- ✅ Use `'use client'` directive
-- ✅ Required for: hooks, browser APIs, interactions, animations
-- ✅ Can import Server Components as children
+**Benefits**:
+- Responsive UI with server actions
+- Automatic rollback if action fails
+- Better UX for forms and mutations
+
+## Standard Hooks
+
+### useState
+
+```typescript
+const [state, setState] = useState<T>(initialValue)
+
+// Lazy initialization for expensive calculations
+const [data, setData] = useState<T>(() => expensiveInit())
+```
+
+### useEffect
+
+```typescript
+useEffect(() => {
+  // Side effect
+  return () => {
+    // Cleanup
+  }
+}, [dependencies])
+```
+
+### useContext
+
+```typescript
+const value = useContext(MyContext)
+```
+
+### useReducer
+
+```typescript
+const [state, dispatch] = useReducer(reducer, initialState)
+```
+
+### useRef
+
+```typescript
+const ref = useRef<HTMLDivElement>(null)
+```
+
+### useMemo
+
+```typescript
+const value = useMemo(() => expensiveCalc(), [deps])
+```
+
+### useCallback
+
+```typescript
+const callback = useCallback(() => doSomething(), [deps])
+```
+

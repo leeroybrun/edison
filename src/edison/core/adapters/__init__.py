@@ -43,7 +43,6 @@ from .prompt.cursor import CursorPromptAdapter  # noqa: F401
 from .sync.claude import (
     ClaudeSync,
     ClaudeAdapterError,
-    EdisonAgentSections,
 )
 from .sync.cursor import CursorSync, AUTOGEN_BEGIN, AUTOGEN_END
 from .sync.zen import ZenSync, WORKFLOW_HEADING
@@ -70,7 +69,6 @@ __all__ = [
     # Full-featured sync adapters
     "ClaudeSync",
     "ClaudeAdapterError",
-    "EdisonAgentSections",
     "CursorSync",
     "AUTOGEN_BEGIN",
     "AUTOGEN_END",

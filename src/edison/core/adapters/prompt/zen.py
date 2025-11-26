@@ -1,22 +1,21 @@
 from __future__ import annotations
 
-"""
-Zen MCP prompt adapter (thin).
+"""Zen MCP prompt adapter.
 
-Projects Edison `_generated` orchestrator artifacts into Zen MCP
-system prompt files under:
+Renders Edison `_generated` artifacts for Zen MCP consumption.
+All output paths are configurable via composition.yaml - NO hardcoded paths.
 
-    .zen/conf/systemprompts/clink/<project>/*.txt
+This adapter does NOT do composition - it reads pre-composed files
+from the unified composition engine output.
 
-This adapter intentionally:
-  - Reads only from `_generated` + existing workflow template
-  - Does not re-run validator/guideline composition
+Output location: Configurable via composition.yaml (default: .zen/conf/systemprompts/)
 """
 
-import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List, Optional
 
+from edison.core.file_io.utils import ensure_dir
+from ...composition.output_config import OutputConfigLoader
 from ..base import PromptAdapter
 
 
@@ -24,157 +23,142 @@ WORKFLOW_HEADING = "## Edison Workflow Loop"
 
 
 class ZenPromptAdapter(PromptAdapter):
-    """Adapter for generating Zen MCP system prompts from `_generated`."""
+    """Adapter for generating Zen MCP system prompts from _generated/."""
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
         super().__init__(generated_root, repo_root=repo_root)
-        self._manifest: Dict[str, Any] = {}
         self.project_config_dir_name = self.generated_root.parent.name
-
-    # ----- Internal helpers -----
-    def _load_manifest(self) -> Dict[str, Any]:
-        if self._manifest:
-            return self._manifest
-        path = self.orchestrator_manifest_path
-        if not path.exists():
-            self._manifest = {}
-            return self._manifest
-        try:
-            self._manifest = json.loads(path.read_text(encoding="utf-8") or "{}")
-        except Exception:
-            self._manifest = {}
-        return self._manifest
+        self._config = OutputConfigLoader(repo_root=self.repo_root)
 
     def _workflow_loop_block(self) -> str:
         """Return shared workflow loop block for all Zen prompts."""
         template = self.repo_root / ".zen" / "templates" / "workflow-loop.txt"
         if template.exists():
             return template.read_text(encoding="utf-8").strip()
-        # Fallback minimal block that still satisfies WORKFLOW_HEADING checks.
-        return "\n".join(
-            [
-                "## Edison Workflow Loop (CRITICAL)",
-                "",
-                "scripts/session next <session-id>",
-            ]
-        )
-
-    # ----- PromptAdapter API -----
-    def render_orchestrator(self, guide_path: Path, manifest_path: Path) -> str:
-        guide = guide_path.read_text(encoding="utf-8").strip()
-        lines = [
-            "=== Edison / Zen MCP Orchestrator ===",
-            f"Source: {guide_path.relative_to(self.repo_root)}",
-            f"Manifest: {manifest_path.relative_to(self.repo_root)}",
+        # Fallback minimal block
+        return "\n".join([
+            "## Edison Workflow Loop (CRITICAL)",
             "",
-            guide,
-        ]
-        return "\n".join(lines).rstrip() + "\n"
+            "scripts/session next <session-id>",
+        ])
+
+    def render_client(self) -> str:
+        """Render Zen client file from _generated/clients/zen.md.
+        
+        Returns:
+            Content of the Zen client configuration.
+        """
+        source = self.clients_dir / "zen.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Client file not found: {source}")
+        return source.read_text(encoding="utf-8")
 
     def render_agent(self, agent_name: str) -> str:
-        """Render a role-specific Zen MCP prompt."""
-        manifest = self._load_manifest()
-        delegation = manifest.get("delegation") or {}
-        priority = delegation.get("priority") or {}
-        role_mapping = delegation.get("roleMapping") or {}
-
-        # Determine generic role for diagnostics (if any).
-        generic_for_concrete = None
-        for generic, concrete in role_mapping.items():
-            if concrete == agent_name:
-                generic_for_concrete = generic
-                break
-
+        """Render agent as Zen prompt from _generated/agents/.
+        
+        Args:
+            agent_name: Name of the agent to render.
+            
+        Returns:
+            Zen-formatted agent prompt.
+        """
+        source = self.agents_dir / f"{agent_name}.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Agent not found: {source}")
+        
+        content = source.read_text(encoding="utf-8")
         workflow_block = self._workflow_loop_block()
-
+        
         lines: List[str] = [
             "=== Edison / Zen MCP Prompt ===",
             f"Role: {agent_name}",
             "",
-            f"Orchestrator manifest: {self.project_config_dir_name}/_generated/orchestrator-manifest.json",
-            f"Orchestrator constitution: {self.project_config_dir_name}/_generated/constitutions/ORCHESTRATORS.md",
+            f"Constitution: {self.project_config_dir_name}/_generated/constitutions/AGENTS.md",
+            "",
+            content.strip(),
+            "",
+            workflow_block,
         ]
-
-        if generic_for_concrete:
-            lines.append(f"Generic role: {generic_for_concrete}")
-
-        # Include delegation priority chains when relevant so the prompt
-        # stands alone for CLI clients.
-        impl_chain = ", ".join(priority.get("implementers", []))
-        val_chain = ", ".join(priority.get("validators", []))
-        if impl_chain or val_chain:
-            lines.append("")
-            lines.append("## Delegation Priority (from manifest)")
-            if impl_chain:
-                lines.append(f"- Implementers: {impl_chain}")
-            if val_chain:
-                lines.append(f"- Validators: {val_chain}")
-
-        lines.append("")
-        lines.append(workflow_block)
-
+        
         return "\n".join(lines).rstrip() + "\n"
 
     def render_validator(self, validator_name: str) -> str:
-        """Render validators as standalone Zen prompts when needed."""
-        manifest = self._load_manifest()
-        validators = manifest.get("validators") or {}
-        all_specs: List[Dict[str, Any]] = []
-        for bucket in ("global", "critical", "specialized"):
-            all_specs.extend(validators.get(bucket, []) or [])
-
-        meta = next(
-            (v for v in all_specs if v.get("id") == validator_name),
-            None,
-        )
-
+        """Render validator as Zen prompt from _generated/validators/.
+        
+        Args:
+            validator_name: Name of the validator to render.
+            
+        Returns:
+            Zen-formatted validator prompt.
+        """
+        source = self.validators_dir / f"{validator_name}.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Validator not found: {source}")
+        
+        content = source.read_text(encoding="utf-8")
+        workflow_block = self._workflow_loop_block()
+        
         lines: List[str] = [
             "=== Edison / Zen MCP Validator Prompt ===",
-            f"Validator id: {validator_name}",
+            f"Validator: {validator_name}",
             "",
-            f"Orchestrator manifest: {self.project_config_dir_name}/_generated/orchestrator-manifest.json",
+            f"Constitution: {self.project_config_dir_name}/_generated/constitutions/VALIDATORS.md",
+            "",
+            content.strip(),
+            "",
+            workflow_block,
         ]
-
-        if meta:
-            lines.append(f"Model: {meta.get('model', '')}")
-            lines.append(f"Scope: {meta.get('scope', '')}")
-            if meta.get("triggers"):
-                lines.append(f"Triggers: {', '.join(meta['triggers'])}")
-
-        lines.append("")
-        lines.append(self._workflow_loop_block())
-
+        
         return "\n".join(lines).rstrip() + "\n"
 
     def write_outputs(self, output_root: Path) -> None:
-        """Write role-specific prompts into the Zen MCP prompt directory."""
-        output_root.mkdir(parents=True, exist_ok=True)
-
-        manifest = self._load_manifest()
-        if not manifest:
-            # Nothing to project; keep behavior graceful for partially
-            # configured projects.
+        """Write role-specific prompts into the Zen MCP prompt directory.
+        
+        Uses composition.yaml configuration for output paths when available.
+        
+        Args:
+            output_root: Directory to write prompt files to (can be overridden by config).
+        """
+        # Check if zen client is enabled
+        zen_cfg = self._config.get_client_config("zen")
+        if zen_cfg is not None and not zen_cfg.enabled:
             return
-
-        delegation = manifest.get("delegation") or {}
-        role_mapping = delegation.get("roleMapping") or {}
-        priority = delegation.get("priority") or {}
-
-        generic_roles: List[str] = []
-        generic_roles.extend(priority.get("implementers", []) or [])
-        generic_roles.extend(priority.get("validators", []) or [])
-        # Ensure we include any generic roles that only appear in roleMapping.
-        for key in role_mapping.keys():
-            if key not in generic_roles:
-                generic_roles.append(key)
-
-        concrete_roles = sorted(
-            role_mapping.get(r, r) for r in generic_roles if isinstance(r, str)
-        )
-
-        for role_name in concrete_roles:
-            text = self.render_agent(role_name)
-            (output_root / f"{role_name}.txt").write_text(text, encoding="utf-8")
+        
+        # Use config-based sync path if available
+        sync_cfg = self._config.get_sync_config("zen")
+        if sync_cfg and sync_cfg.enabled and sync_cfg.prompts_path:
+            output_dir = self._config._resolve_path(sync_cfg.prompts_path)
+            filename_pattern = sync_cfg.prompts_filename_pattern or "{name}.txt"
+        else:
+            output_dir = output_root
+            filename_pattern = "{name}.txt"
+        
+        ensure_dir(output_dir)
+        
+        # Write client file
+        try:
+            client_content = self.render_client()
+            (output_dir / "zen.txt").write_text(client_content, encoding="utf-8")
+        except FileNotFoundError:
+            pass
+        
+        # Write agent prompts
+        for agent_name in self.list_agents():
+            try:
+                text = self.render_agent(agent_name)
+                filename = filename_pattern.format(name=agent_name)
+                (output_dir / filename).write_text(text, encoding="utf-8")
+            except FileNotFoundError:
+                continue
+        
+        # Write validator prompts
+        for validator_name in self.list_validators():
+            try:
+                text = self.render_validator(validator_name)
+                filename = filename_pattern.format(name=validator_name)
+                (output_dir / filename).write_text(text, encoding="utf-8")
+            except FileNotFoundError:
+                continue
 
 
 __all__ = ["ZenPromptAdapter", "WORKFLOW_HEADING"]

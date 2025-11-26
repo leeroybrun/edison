@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from ..file_io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
-    ensure_dir as io_ensure_dir,
+    ensure_directory as io_ensure_dir,
 )
 from ..session import transaction as _session_transaction
 from ..paths.management import get_management_paths

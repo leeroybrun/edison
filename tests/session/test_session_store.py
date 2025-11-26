@@ -8,18 +8,24 @@ from edison.core.session.config import SessionConfig
 def project_root(tmp_path, monkeypatch):
     """
     Sets up a temporary project root and configures environment variables
-    to point to it. ensuring PathResolver and ConfigManager use this root.
+    to point to it, ensuring PathResolver and ConfigManager use this root.
+
+    Setup order is critical:
+    1. Create directory structure FIRST
+    2. Write config files SECOND
+    3. Set environment variables THIRD
+    4. Reset caches LAST (after everything is set up)
     """
-    # Setup .edison/core/config structure in tmp_path
+    import yaml
+
+    # STEP 1: Create directory structure
     config_dir = tmp_path / ".edison" / "core" / "config"
     config_dir.mkdir(parents=True)
-    
-    # Create defaults.yaml and session.yaml in tmp_path
-    # We need to copy the real ones or write minimal ones for testing.
-    # Writing minimal ones ensures we test the config loading logic too.
-    
-    import yaml
-    
+
+    template_dir = tmp_path / ".agents" / "sessions"
+    template_dir.mkdir(parents=True, exist_ok=True)
+
+    # STEP 2: Write config files
     defaults_data = {
         "edison": {"version": "1.0.0"},
         "file_locking": {
@@ -35,7 +41,7 @@ def project_root(tmp_path, monkeypatch):
         },
     }
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))
-    
+
     session_data = {
         "session": {
             "paths": {
@@ -63,26 +69,17 @@ def project_root(tmp_path, monkeypatch):
         }
     }
     (config_dir / "session.yaml").write_text(yaml.dump(session_data))
-    
+
     # Create template file
-    template_dir = tmp_path / ".agents" / "sessions"
-    template_dir.mkdir(parents=True, exist_ok=True)
     (template_dir / "TEMPLATE.json").write_text("{}")
 
-    # Set env vars
+    # STEP 3: Set environment variables
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
-    monkeypatch.setenv("project_ROOT", str(tmp_path)) # Just in case
-    
-    # Clear any cached config or paths
-    # This is tricky if singletons are used. 
-    # SessionConfig creates a new ConfigManager each time, so it should be fine
-    # IF we re-instantiate SessionConfig or if store._CONFIG is re-initialized.
-    # store._CONFIG is a module-level global. We might need to reload the module
-    # or patch the global.
-    
-    # Re-initialize store._CONFIG
-    store._CONFIG = SessionConfig()
-    
+
+    # STEP 4: Reset all caches LAST (after env vars are set and files exist)
+    # This ensures PathResolver and SessionConfig pick up the test configuration
+    store.reset_session_store_cache()
+
     return tmp_path
 
 def test_sanitize_session_id(project_root):

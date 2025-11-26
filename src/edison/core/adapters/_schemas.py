@@ -15,6 +15,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ..file_io.utils import read_json_safe
+
 try:
     import jsonschema  # type: ignore
 except Exception:  # pragma: no cover - surfaced via doctor script
@@ -107,8 +109,7 @@ def load_schema(schema_name: str, *, repo_root: Optional[Path] = None) -> Dict[s
         )
 
     try:
-        with open(schema_path, encoding="utf-8") as f:
-            return json.load(f)
+        return read_json_safe(schema_path)
     except json.JSONDecodeError as e:
         raise json.JSONDecodeError(
             f"Invalid JSON in schema {schema_name}: {e.msg}",

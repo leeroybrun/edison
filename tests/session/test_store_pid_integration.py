@@ -127,12 +127,11 @@ class TestDefaultOwner:
         valid_owners.append(getpass.getuser())
         assert owner in valid_owners
 
-    def test_env_owner_is_not_preferred_over_process(self, monkeypatch):
-        """Process tree detection should take priority over AGENTS_OWNER."""
-        expected_name, _ = find_topmost_process()
+    def test_env_owner_overrides_process_detection(self, monkeypatch):
+        """Configured owner (via env/config) should override process inspection."""
         monkeypatch.setenv("AGENTS_OWNER", "env-owner")
         actual_owner = default_owner()
-        assert actual_owner == expected_name
+        assert actual_owner == "env-owner"
 
 
 class TestBackwardCompatibility:

@@ -1,0 +1,25 @@
+name: better-auth
+version: 1.0.0
+description: Better Auth authentication framework integration pack for OAuth/OIDC and session management
+category: authentication
+tags: [auth, security, session, oauth, oidc]
+
+triggers:
+  filePatterns:
+    - "**/auth/**/*"
+    - "**/*auth*"
+    - "**/*session*"
+    - "better-auth.config.ts"
+    - ".env*"
+
+provides:
+  guidelines:
+    - guidelines/session-management.md
+    - guidelines/provider-configuration.md
+    - guidelines/middleware-patterns.md
+    - guidelines/client-setup-patterns.md
+    - guidelines/security-best-practices.md
+  validators:
+    - validators/auth-security.md
+  agents:
+    - agents/overlays/auth-setup.md

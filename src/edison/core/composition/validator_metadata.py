@@ -5,11 +5,71 @@ from __future__ import annotations
 Infers validator metadata (name, model, triggers, blocking) from validator
 markdown files when validators are defined only by ID. Provides sensible
 defaults when files are missing or parsing fails.
+
+Uses UnifiedPathResolver for consistent path resolution.
 """
 
 import re
 from pathlib import Path
-from typing import Dict, List, Iterable
+from typing import Dict, List, Iterable, Optional
+
+from .unified import UnifiedPathResolver
+
+
+def _discover_validator_file(
+    validator_id: str,
+    *,
+    repo_root: Path,
+    project_dir: Path,
+    packs_dir: Path,
+    active_packs: Iterable[str],
+) -> Optional[Path]:
+    """Discover validator file using unified path resolution.
+    
+    Search order (priority):
+    1. Generated validators in project
+    2. Project validators (explicit project_dir for test compatibility)
+    3. Core validators (global, critical, specialized subdirs)
+    4. Pack validators
+    """
+    resolver = UnifiedPathResolver(repo_root, "validators")
+    
+    # 1. Check generated validators
+    generated_path = resolver.project_dir / "_generated" / "validators" / f"{validator_id}.md"
+    if generated_path.exists():
+        return generated_path
+    
+    # 2. Check project validators (explicit project_dir for compatibility)
+    # Also check resolver.project_dir in case they differ
+    for proj_dir in [project_dir, resolver.project_dir]:
+        if proj_dir and proj_dir.exists():
+            for subdir in ("validators/specialized", "validators"):
+                path = proj_dir / subdir / f"{validator_id}.md"
+                if path.exists():
+                    return path
+    
+    # 3. Check core validators (multiple subdirs)
+    core_validators = resolver.core_dir / "validators"
+    if core_validators.exists():
+        for subdir in ("global", "critical", "specialized"):
+            path = core_validators / subdir / f"{validator_id}.md"
+            if path.exists():
+                return path
+    
+    # 4. Check pack validators (explicit packs_dir for compatibility)
+    for pack in active_packs:
+        # Check explicit packs_dir first
+        if packs_dir and packs_dir.exists():
+            path = packs_dir / pack / "validators" / f"{validator_id}.md"
+            if path.exists():
+                return path
+        # Then check resolver's packs_dir
+        if resolver.packs_dir.exists():
+            path = resolver.packs_dir / pack / "validators" / f"{validator_id}.md"
+            if path.exists():
+                return path
+    
+    return None
 
 
 def infer_validator_metadata(
@@ -22,9 +82,8 @@ def infer_validator_metadata(
 ) -> Dict:
     """Best-effort metadata extraction for validators defined only by id.
 
-    Searches for validator markdown files in multiple locations (project,
-    repo core, packs) and parses metadata from the content. Falls back to
-    sensible defaults if file not found or parsing fails.
+    Uses unified path resolution to search for validator markdown files.
+    Falls back to sensible defaults if file not found or parsing fails.
 
     Args:
         validator_id: Validator identifier (e.g., "python-imports")
@@ -45,22 +104,15 @@ def infer_validator_metadata(
         "blocksOnFail": False,
     }
 
-    def _first_existing(paths: Iterable[Path]) -> Path | None:
-        for p in paths:
-            if p.exists():
-                return p
-        return None
-
-    candidate_paths = [
-        project_dir / "_generated" / "validators" / f"{validator_id}.md",
-        project_dir / "validators" / "specialized" / f"{validator_id}.md",
-        project_dir / "core" / "validators" / "specialized" / f"{validator_id}.md",
-    ]
-
-    for pack in active_packs:
-        candidate_paths.append(packs_dir / pack / "validators" / f"{validator_id}.md")
-
-    path = _first_existing(candidate_paths)
+    # Use unified discovery with explicit paths for compatibility
+    path = _discover_validator_file(
+        validator_id,
+        repo_root=repo_root,
+        project_dir=project_dir,
+        packs_dir=packs_dir,
+        active_packs=active_packs,
+    )
+    
     if not path:
         return inferred
 

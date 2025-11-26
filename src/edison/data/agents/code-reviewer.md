@@ -90,7 +90,7 @@ await mcp__context7__get-library-docs({
 
 - Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{PACK_TOOLS}}
+{{SECTION:Tools}}
 
 ## Guidelines
 - Stay review-only; surface issues with severity and evidence (diffs, commands, file paths) in the implementation report.
@@ -98,7 +98,14 @@ await mcp__context7__get-library-docs({
 - Use Context7 to refresh post-training packages referenced in the change; record markers.
 - Enforce security, accessibility, performance, and contract stability aligned to validator expectations.
 
-{{PACK_GUIDELINES}}
+{{SECTION:Guidelines}}
+
+## Architecture
+{{SECTION:Architecture}}
+
+{{EXTENSIBLE_SECTIONS}}
+
+{{APPEND_SECTIONS}}
 
 ## IMPORTANT RULES
 - **Review-only stance:** Never modify code; provide actionable findings with severity, file:line, and reproduction/commands.

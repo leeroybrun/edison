@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Optional, Union
 
 from edison.core.session import store as session_store
+from edison.core.session import database as session_database
+from edison.core.utils.project_config import get_project_name
 
 
 # Re-export from canonical store module
@@ -19,6 +21,17 @@ ensure_session = session_store.ensure_session
 load_session = session_store.load_session
 transition_state = session_store.transition_state
 _get_worktree_base = session_store._get_worktree_base
+
+
+def _get_project_name() -> str:
+    name = get_project_name()
+    if not name:
+        raise ValueError("PROJECT_NAME is required")
+    return name
+
+
+def _get_database_url() -> str:
+    return session_database._get_database_url()
 
 
 def close_session(session_id: str) -> Path:

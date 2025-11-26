@@ -6,8 +6,6 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import yaml
-
 from .manager import SessionManager
 from .naming import generate_session_id
 from . import store

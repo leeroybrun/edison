@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
     """Safely load JSON from a file, returning empty dict on error."""
-    from ..file_io.utils import read_json_with_default
-    return read_json_with_default(path, default={})
+    from ..file_io.utils import read_json_safe
+    return read_json_safe(path, default={})
 
 
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:

@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 
 from edison.core.file_io.utils import (
-    utc_timestamp,
     read_json_safe,
     write_json_safe,
     ensure_parent_dir,
 )
+from edison.core.utils.time import utc_timestamp
 
 
 def test_utc_timestamp_returns_iso_format():

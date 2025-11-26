@@ -1,3 +1,6 @@
+# global overlay for TypeScript pack
+
+<!-- EXTEND: TechStack -->
 ## TypeScript Validation Context
 
 ### Type Safety
@@ -6,7 +9,7 @@
 - Prefer explicit return types on exported functions.
 - For public APIs, use interfaces/types with clear generics.
 
-### Linting & Type‑Checking
+### Linting & Type-Checking
 - `npm run typecheck` must pass with zero errors.
 - No `@ts-ignore` or `@ts-expect-error` without issue link and scope.
-
+<!-- /EXTEND -->

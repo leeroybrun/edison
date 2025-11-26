@@ -9,8 +9,7 @@ Responsibilities:
 - Categorize guidelines by layer (core/pack/project/other)
 - Track pack ownership for pack-specific guidelines
 
-This module is intentionally dependency-light so it can be used both from
-pytest and from standalone CLI scripts.
+Uses UnifiedPathResolver for consistent path resolution.
 """
 
 from dataclasses import dataclass
@@ -18,7 +17,7 @@ from pathlib import Path
 from typing import List, Optional, Literal
 
 from ..includes import _repo_root as _composition_repo_root
-from ...paths.project import get_project_config_dir
+from ..unified import UnifiedPathResolver
 
 
 GuidelineCategory = Literal["core", "pack", "project", "other"]
@@ -48,6 +47,8 @@ def _repo_root() -> Path:
 def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecord]:
     """Discover guideline files across the repository.
 
+    Uses UnifiedPathResolver for consistent path resolution.
+
     Categories:
     - core:    .edison/core/guidelines/**/*.md
     - pack:    .edison/packs/*/guidelines/**/*.md
@@ -55,11 +56,16 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
     - other:   any additional guidelines/*.md directories not covered above
     """
     root = repo_root or _repo_root()
-    config_dir = get_project_config_dir(root, create=False)
+    
+    # Use unified path resolver for consistent path resolution
+    path_resolver = UnifiedPathResolver(root, "guidelines")
+    core_dir = path_resolver.core_dir / "guidelines"
+    packs_root = path_resolver.packs_dir
+    project_dir = path_resolver.project_dir / "guidelines"
+    
     records: List[GuidelineRecord] = []
 
     # Core guidelines
-    core_dir = config_dir / "core" / "guidelines"
     if core_dir.exists():
         for path in sorted(core_dir.rglob("*.md")):
             if path.name == "README.md":
@@ -67,7 +73,6 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
             records.append(GuidelineRecord(path=path, category="core"))
 
     # Pack guidelines
-    packs_root = config_dir / "packs"
     if packs_root.exists():
         for pack_dir in sorted(p for p in packs_root.iterdir() if p.is_dir()):
             gdir = pack_dir / "guidelines"
@@ -80,8 +85,7 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
                     GuidelineRecord(path=path, category="pack", pack=pack_dir.name)
                 )
 
-    # project project guidelines (including overlays)
-    project_dir = get_project_config_dir(root) / "guidelines"
+    # Project guidelines (including overlays)
     if project_dir.exists():
         for path in sorted(project_dir.rglob("*.md")):
             if "README.md" == path.name:
@@ -90,7 +94,7 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
 
     # Any other guidelines directories in the repo
     known_roots = {
-        core_dir.resolve(),
+        core_dir.resolve() if core_dir.exists() else Path("/nonexistent"),
         *(r.path.parent.resolve() for r in records if r.category in ("pack", "project")),
     }
     for gdir in root.rglob("guidelines"):

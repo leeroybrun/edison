@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import fcntl
 import json
-import os
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Callable, Dict, ContextManager
 
 from edison.core.file_io import utils as io_utils
 from edison.core.file_io import locking as locklib
+from edison.core.utils.timeout_config import get_timeout_settings
 
 # Default configuration (can be overridden by passing config to functions)
 DEFAULT_JSON_CONFIG: Dict[str, Any] = {
@@ -30,14 +30,19 @@ def _cfg() -> Dict[str, Any]:
     return DEFAULT_JSON_CONFIG
 
 
-_LOCK_TIMEOUT_SECONDS = float(os.environ.get("EDISON_JSON_IO_LOCK_TIMEOUT", 5.0))
+def _lock_timeout_seconds() -> float:
+    timeouts = get_timeout_settings()
+    try:
+        return float(timeouts["json_io_lock_seconds"])
+    except KeyError as exc:
+        raise RuntimeError("json_io_lock_seconds missing from timeout configuration") from exc
 
 
 def _lock_context(path: Path, acquire_lock: bool) -> ContextManager[Any]:
     if not acquire_lock:
         return nullcontext()
     return locklib.acquire_file_lock(
-        path, timeout=_LOCK_TIMEOUT_SECONDS, fail_open=True
+        path, timeout=_lock_timeout_seconds(), fail_open=True
     )
 
 

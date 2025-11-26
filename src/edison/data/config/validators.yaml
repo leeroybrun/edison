@@ -81,7 +81,7 @@ validation:
         focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
         blocksOnFail: true
         outputFormat: PerformanceReport
-        reportSection: "Validator Findings & Verdicts > Performance"
+    reportSection: "Validator Findings & Verdicts > Performance"
     specialized:
       - id: react
         name: React Validator

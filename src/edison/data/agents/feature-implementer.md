@@ -83,7 +83,7 @@ await mcp__context7__get-library-docs({
 
 - Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{PACK_TOOLS}}
+{{SECTION:Tools}}
 
 ## Guidelines
 
@@ -111,7 +111,14 @@ await mcp__context7__get-library-docs({
    - BEFORE implementing features using cutting-edge packages, query Context7
    - Record markers when consulted
 
-{{PACK_GUIDELINES}}
+{{SECTION:Guidelines}}
+
+## Architecture
+{{SECTION:Architecture}}
+
+{{EXTENSIBLE_SECTIONS}}
+
+{{APPEND_SECTIONS}}
 
 ## IMPORTANT RULES
 - **End-to-end ownership:** Deliver the whole slice (backend, frontend, integration) with TDD proof and config-driven behaviour.

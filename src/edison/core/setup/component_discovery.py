@@ -141,8 +141,8 @@ class SetupDiscovery:
         return read_yaml_safe(path, default={})
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
-        from edison.core.file_io.utils import read_json_with_default
-        return read_json_with_default(path, default={})
+        from edison.core.file_io.utils import read_json_safe
+        return read_json_safe(path, default={})
 
     def _extract_ids(self, path: Path) -> List[str]:
         data = self._load_yaml(path)

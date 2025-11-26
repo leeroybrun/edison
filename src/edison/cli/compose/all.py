@@ -1,7 +1,7 @@
 """
 Edison compose all command.
 
-SUMMARY: Compose all artifacts (agents, validators, orchestrator, guidelines)
+SUMMARY: Compose all artifacts (validators, constitutions, guidelines)
 """
 
 from __future__ import annotations
@@ -11,25 +11,15 @@ import json
 import sys
 from pathlib import Path
 
-SUMMARY = "Compose all artifacts (agents, validators, orchestrator, guidelines)"
+SUMMARY = "Compose all artifacts (validators, constitutions, guidelines)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
-        "--agents",
-        action="store_true",
-        help="Only compose agents",
-    )
-    parser.add_argument(
         "--validators",
         action="store_true",
         help="Only compose validators",
-    )
-    parser.add_argument(
-        "--orchestrator",
-        action="store_true",
-        help="Only compose orchestrator manifest",
     )
     parser.add_argument(
         "--constitutions",
@@ -100,9 +90,7 @@ def main(args: argparse.Namespace) -> int:
 
         # Determine what to compose
         compose_all = not any([
-            args.agents,
             args.validators,
-            args.orchestrator,
             args.guidelines,
             args.constitutions,
         ])
@@ -140,10 +128,6 @@ def main(args: argparse.Namespace) -> int:
             guideline_files = engine.compose_guidelines()
             results["guidelines"] = [str(f) for f in guideline_files]
 
-        if compose_all or args.agents:
-            agent_files = engine.compose_agents()
-            results["agents"] = [str(f) for f in agent_files]
-
         if compose_all or args.validators:
             validator_results = engine.compose_validators()
             results["validators"] = {
@@ -156,14 +140,6 @@ def main(args: argparse.Namespace) -> int:
             for vid, result in validator_results.items():
                 output_file = generated_validators_dir / f"{vid}.md"
                 output_file.write_text(result.text, encoding="utf-8")
-
-        if compose_all or args.orchestrator:
-            output_dir = config_dir / "_generated"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            orchestrator_result = engine.compose_orchestrator_manifest(output_dir)
-            results["orchestrator"] = {
-                k: str(v) for k, v in orchestrator_result.items()
-            }
 
         # Sync to clients
         if args.claude:

@@ -1,22 +1,29 @@
-pack:
-  id: react
-  name: "React"
-  version: "1.0.0"
-
+name: react
+version: 1.0.0
+description: React 19 pack with Server Components, Client Components, hooks (use, useFormStatus, useOptimistic), and accessibility patterns
+category: framework
+tags: [react, react19, components, hooks, accessibility, server-actions]
 triggers:
   filePatterns:
     - "**/*.tsx"
     - "**/*.jsx"
     - "components/**/*"
-
-provides:
-  guidelines:
-    - guidelines/HOOKS.md
-    - guidelines/hooks-patterns.md
-    - guidelines/component-design.md
-    - guidelines/server-client-components.md
-    - guidelines/accessibility.md
-  agents:
-    - agents/component-builder.md
-  validators:
-    - validators/react.md
+dependencies: []
+validators:
+  - react.md
+guidelines:
+  - HOOKS.md
+  - hooks-patterns.md
+  - component-design.md
+  - server-client-components.md
+  - accessibility.md
+agents:
+  - component-builder.md
+examples:
+  - server-component.tsx
+  - client-component.tsx
+  - custom-hook.ts
+  - use-hook.tsx
+  - form-status.tsx
+  - optimistic-update.tsx
+  - suspense-pattern.tsx

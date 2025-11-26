@@ -2,19 +2,23 @@ mcp:
   config_file: ".mcp.json"
   servers:
     edison-zen:
-      command: "edison"
+      # Portable: use uvx to run zen-mcp-server from git
+      # This works on any machine with uvx installed (pip install uv)
+      command: "uvx"
       args:
-        - "zen"
-        - "start-server"
+        - "--from"
+        - "git+https://github.com/BeehiveInnovations/zen-mcp-server.git"
+        - "zen-mcp-server"
       env:
         ZEN_WORKING_DIR: "{PROJECT_ROOT}"
-      script:
-        command: "bash"
-        args:
-          - "{PROJECT_ROOT}/scripts/zen/run-server.sh"
       setup:
         require:
-          commands: []
+          commands:
+            - "uvx"
+        instructions: |
+          Install uvx: pip install uv
+          Or clone zen-mcp-server: git clone https://github.com/BeehiveInnovations/zen-mcp-server.git ~/zen-mcp-server
+          Configure API keys in {PROJECT_ROOT}/.zen/.env
     context7:
       command: "npx"
       args:

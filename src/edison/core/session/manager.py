@@ -14,6 +14,7 @@ from .config import SessionConfig
 from .naming import generate_session_id
 from ..paths import PathResolver
 from ..paths.management import get_management_paths
+from ..file_io.utils import ensure_directory
 from ..exceptions import SessionError
 from ..utils.time import utc_timestamp
 
@@ -93,7 +94,7 @@ def create_session(
 
     # Persist new session in active/wip directory layout
     sess_dir = store._session_dir(initial_state, session_id)
-    sess_dir.mkdir(parents=True, exist_ok=True)
+    ensure_directory(sess_dir)
     path = sess_dir / "session.json"
     store._write_json(path, sess)  # type: ignore[attr-defined]
     return path

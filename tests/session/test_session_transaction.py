@@ -23,6 +23,11 @@ def project_root(tmp_path, monkeypatch):
             "timeout_seconds": 1,
             "poll_interval_seconds": 0.1,
             "fail_open": False
+        },
+        "timeouts": {
+            "git_operations_seconds": 10,
+            "db_operations_seconds": 5,
+            "json_io_lock_seconds": 5
         }
     }
     (config_dir / "defaults.yaml").write_text(yaml.dump(defaults_data))

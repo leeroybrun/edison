@@ -1,6 +1,8 @@
 """Dynamic generation of roster documentation files.
 
 Generates AVAILABLE_VALIDATORS.md from ValidatorRegistry.
+
+Uses unified path resolution for consistent discovery.
 """
 from __future__ import annotations
 
@@ -8,21 +10,28 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from edison.core.config import ConfigManager
-from edison.core.paths.project import get_project_config_dir
+from edison.core.file_io.utils import ensure_dir
 
 from .agents import AgentRegistry
 from .headers import build_generated_header
 from .validators import ValidatorRegistry
 from .path_utils import resolve_project_dir_placeholders
+from .unified import UnifiedPathResolver
 
 
 def generate_available_agents(output_path: Path, repo_root: Optional[Path] = None) -> None:
-    """Generate AVAILABLE_AGENTS.md from AgentRegistry."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    """Generate AVAILABLE_AGENTS.md from AgentRegistry.
+    
+    Uses unified path resolution for consistent discovery.
+    """
+    ensure_dir(output_path.parent)
 
     registry = AgentRegistry(repo_root=repo_root)
     agents = registry.get_all()
-    project_dir = get_project_config_dir(repo_root or registry.repo_root)
+    
+    # Use unified path resolver instead of direct get_project_config_dir
+    resolver = UnifiedPathResolver(repo_root or registry.repo_root)
+    project_dir = resolver.project_dir
     cfg_mgr = ConfigManager(repo_root=repo_root)
 
     content = (
@@ -51,12 +60,14 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
 def generate_available_validators(output_path: Path, repo_root: Optional[Path] = None) -> None:
     """Generate AVAILABLE_VALIDATORS.md from ValidatorRegistry.
 
+    Uses unified path resolution for consistent discovery.
+    
     Args:
         output_path: Path where the generated file should be written
         repo_root: Optional repository root path for testing
     """
     # Ensure output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_path.parent)
 
     # Get validators from registry
     registry = ValidatorRegistry(repo_root=repo_root)
@@ -68,7 +79,10 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
     specialized_validators = validators_by_tier.get('specialized', [])
 
     cfg_mgr = ConfigManager(repo_root=repo_root)
-    project_dir = get_project_config_dir(repo_root or registry.repo_root)
+    
+    # Use unified path resolver instead of direct get_project_config_dir
+    resolver = UnifiedPathResolver(repo_root or registry.repo_root)
+    project_dir = resolver.project_dir
 
     content = (
         f"{build_generated_header('rosters.available_validators', config=cfg_mgr, target_path=output_path)}"

@@ -16,6 +16,7 @@ import yaml
 
 from ..paths import PathResolver, EdisonPathError
 from ..paths.project import get_project_config_dir
+from ..file_io.utils import ensure_dir
 from .config import SessionConfig
 
 
@@ -203,7 +204,7 @@ def write_state_machine_docs(target_path: Path | None = None) -> Path:
         "",
     ]
 
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(target_path.parent)
     target_path.write_text("\n".join(content), encoding="utf-8")
     return target_path
 

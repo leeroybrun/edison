@@ -69,7 +69,7 @@ The project may use **cutting-edge framework versions** released AFTER your trai
 - Deprecated patterns that fail in production
 - Security vulnerabilities from old practices
 
-**Check Context7 for current framework versions in active packs** - The `{{PACK_CONTEXT}}` placeholder below contains technology-specific guidance including library IDs and topics to query.
+**Check Context7 for current framework versions in active packs** - The `{{SECTION:TechStack}}` placeholder below contains technology-specific guidance including library IDs and topics to query.
 
 ### Step 2: Review Git Diff (Uncommitted Changes)
 
@@ -161,7 +161,7 @@ git diff           # Unstaged changes
 - ✅ Follow framework conventions for data fetching
 - ✅ Proper component/module boundaries
 - ✅ Correct async/await patterns
-- ✅ See `{{PACK_CONTEXT}}` for framework-specific validation
+- ✅ See `{{SECTION:TechStack}}` for framework-specific validation
 
 **Output**:
 ```
@@ -333,7 +333,7 @@ git diff           # Unstaged changes
 - ✅ Use appropriate patterns for different operations
 - ✅ Proper loading/error boundaries
 - ✅ Metadata/SEO properly configured
-- ✅ See `{{PACK_CONTEXT}}` for specific framework guidance
+- ✅ See `{{SECTION:TechStack}}` for specific framework guidance
 
 **Accessibility**:
 - ✅ Semantic HTML
@@ -505,9 +505,13 @@ git diff           # Unstaged changes
 
 ## Technology-Specific Guidance
 
-Framework-specific validation rules are provided via `{{PACK_CONTEXT}}` placeholder.
+Framework-specific validation rules are provided via pack overlays.
 
-{{PACK_CONTEXT}}
+{{SECTION:TechStack}}
+
+{{EXTENSIBLE_SECTIONS}}
+
+{{APPEND_SECTIONS}}
 
 ---
 

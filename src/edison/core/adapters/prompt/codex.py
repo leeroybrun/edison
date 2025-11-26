@@ -1,29 +1,33 @@
 """
 Codex CLI adapter.
 
-Projects Edison commands into user directory:
-  - Commands: `~/.codex/prompts/edison-*.md`
+Projects Edison prompts into user directory using composition.yaml configuration.
+All paths are configurable - NO hardcoded paths.
 
 Note: Codex only supports user-level prompts, not project-level.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Dict, Optional
 
 from ..base import PromptAdapter
 from .._config import ConfigMixin
+from ...composition.output_config import OutputConfigLoader
+from edison.core.file_io.utils import ensure_dir
 
 
 class CodexAdapter(PromptAdapter, ConfigMixin):
-    """Provider adapter for Codex CLI."""
+    """Provider adapter for Codex CLI.
+    
+    Uses composition.yaml for all path configuration.
+    """
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
         super().__init__(generated_root, repo_root)
-        # Initialize ConfigMixin cache
         self._cached_config: Optional[Dict] = None
+        self._output_config = OutputConfigLoader(repo_root=self.repo_root)
 
     def generate_commands(self) -> Dict[str, Path]:
         """Generate prompts for Codex (user directory)."""
@@ -35,31 +39,37 @@ class CodexAdapter(PromptAdapter, ConfigMixin):
         composer = CommandComposer(self.config, self.repo_root)
         commands = composer.compose_for_platform("codex", composer.load_definitions())
 
-        # Warn about user scope
         if commands:
-            print(f"⚠️  Codex prompts are global (user-level), not project-specific")
-            print(f"    Location: ~/.codex/prompts/")
+            print("⚠️  Codex prompts are global (user-level), not project-specific")
+            print("    Location: ~/.codex/prompts/")
 
         return commands
 
     def write_outputs(self, output_root: Path) -> None:
-        """Generate Codex prompts to output_root."""
-        output_root.mkdir(parents=True, exist_ok=True)
+        """Generate Codex prompts to output_root.
+        
+        Uses composition.yaml configuration for paths and settings.
+        """
+        # Check if codex client is enabled
+        client_cfg = self._output_config.get_client_config("codex")
+        if client_cfg is not None and not client_cfg.enabled:
+            return
+        
+        ensure_dir(output_root)
 
-        # Get adapter-specific config
         adapter_config = self.config.get("adapters", {}).get("codex", {})
 
-        # Write orchestrator
-        if self.orchestrator_guide_path.exists():
+        # Write orchestrator constitution
+        if self.orchestrator_constitution_path.exists():
             orchestrator_filename = adapter_config.get("orchestrator_filename", "SYS_PROMPT.md")
             orchestrator_path = output_root / orchestrator_filename
-            content = self.render_orchestrator(self.orchestrator_guide_path, self.orchestrator_manifest_path)
+            content = self._render_constitution()
             orchestrator_path.write_text(content, encoding="utf-8")
 
         # Write agents
         agents_dirname = adapter_config.get("agents_dirname", "agent-prompts")
         agents_output_dir = output_root / agents_dirname
-        agents_output_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(agents_output_dir)
 
         for agent_name in self.list_agents():
             content = self.render_agent(agent_name)
@@ -69,7 +79,7 @@ class CodexAdapter(PromptAdapter, ConfigMixin):
         # Write validators
         validators_dirname = adapter_config.get("validators_dirname", "validator-prompts")
         validators_output_dir = output_root / validators_dirname
-        validators_output_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(validators_output_dir)
 
         for validator_name in self.list_validators():
             content = self.render_validator(validator_name)
@@ -100,15 +110,15 @@ class CodexAdapter(PromptAdapter, ConfigMixin):
         """Lazy load config."""
         return self._load_config()
 
-    def render_orchestrator(self, guide_path: Path, manifest_path: Path) -> str:
-        """Render orchestrator prompt from guide and manifest."""
-        if not guide_path.exists():
-            raise FileNotFoundError(f"Orchestrator guide not found: {guide_path}")
+    def _render_constitution(self) -> str:
+        """Render orchestrator constitution for Codex."""
+        if not self.orchestrator_constitution_path.exists():
+            raise FileNotFoundError(f"Orchestrator constitution not found: {self.orchestrator_constitution_path}")
 
         adapter_config = self.config.get("adapters", {}).get("codex", {})
         header = adapter_config.get("header", "# Codex System Prompt")
 
-        content = guide_path.read_text(encoding="utf-8")
+        content = self.orchestrator_constitution_path.read_text(encoding="utf-8")
         return f"{header}\n\n{content}"
 
     def render_agent(self, agent_name: str) -> str:

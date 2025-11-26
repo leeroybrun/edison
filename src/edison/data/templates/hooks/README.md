@@ -10,10 +10,11 @@ Templates for Claude Code hook scripts. Each template is Bash rendered via Jinja
 - `auto-format.sh.template` (PostToolUse): auto-runs configured formatters for matching Write/Edit file paths.
 - `session-init.sh.template` (SessionStart): announces session start and echoes session id.
 - `session-cleanup.sh.template` (SessionEnd): session teardown; can persist a timestamped log when enabled.
+- `compaction-reminder.sh.template` (PreCompact): reminds agent to re-read its constitution after context compaction; optionally logs compaction events.
 
 ## Config knobs
 - Booleans and lists are all optional and default to safe no-ops.
-- Common keys used across templates: `config.include_*`, `config.file_patterns`, `config.rules_by_state`, `config.only_for_states`, `config.skip_test_files`, `config.require_tests_pass`, `config.require_coverage`, `config.coverage_threshold`, `config.tools`, `config.save_logs`.
+- Common keys used across templates: `config.include_*`, `config.file_patterns`, `config.rules_by_state`, `config.only_for_states`, `config.skip_test_files`, `config.require_tests_pass`, `config.require_coverage`, `config.coverage_threshold`, `config.tools`, `config.save_logs`, `config.log.enabled`, `config.log.path`.
 
 ## Testing
 Run `pytest .edison/core/tests/templates/test_hook_templates.py` to ensure templates render with/without config, produce valid bash, and respect blocking behavior hints.

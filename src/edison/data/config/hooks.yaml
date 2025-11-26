@@ -154,6 +154,24 @@ hooks:
         save_logs: true
         log_directory: ".edison/logs"
 
+    # ===== Context Compaction Hooks (PreCompact) =====
+
+    compaction-reminder:
+      type: PreCompact
+      hook_type: command
+      enabled: true
+      blocking: false
+      description: "Remind agent to re-read constitution after context compaction"
+      template: "compaction-reminder.sh.template"
+      config:
+        default_role: "agents"
+        message_template: "⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
+        notify: true
+        log:
+          enabled: true
+          path: ".edison/logs/compaction.log"
+          entry_template: "{timestamp} role={role} source={source} message={message}"
+
     # ===== Stop Hooks =====
 
     stop-validate:

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
 from ..config import ConfigManager
+from .utils import ensure_dir
 
 _THREAD_MUTEXES: dict[str, threading.Lock] = {}
 _FILE_LOCK_CONFIG_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -69,7 +70,7 @@ def acquire_file_lock(
     start = time.time()
     target = Path(file_path)
     lock_target = target.with_suffix(target.suffix + ".lock") if nfs_safe else target
-    lock_target.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(lock_target.parent)
 
     mutex = _thread_mutex(lock_target)
 

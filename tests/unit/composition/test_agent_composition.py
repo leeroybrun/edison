@@ -18,22 +18,27 @@ from edison.core.composition.agents import (  # type: ignore  # noqa: E402
 
 class TestAgentCompositionUnit:
     def _write_core_agent(self, root: Path, name: str) -> Path:
-        """Create a minimal core agent template."""
+        """Create a minimal core agent template with unified placeholders."""
         core_agents_dir = root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
         path = core_agents_dir / f"{name}.md"
+        # Use unified section placeholders
         content = "\n".join(
             [
-                "# Agent: {{AGENT_NAME}}",
+                f"# Agent: {name}",
                 "",
                 "## Role",
-                "Core role for {{AGENT_NAME}} (packs: {{PACK_NAME}}).",
+                f"Core role for {name}.",
                 "",
                 "## Tools",
-                "{{TOOLS}}",
+                "{{SECTION:Tools}}",
                 "",
                 "## Guidelines",
-                "{{GUIDELINES}}",
+                "{{SECTION:Guidelines}}",
+                "",
+                "{{EXTENSIBLE_SECTIONS}}",
+                "",
+                "{{APPEND_SECTIONS}}",
                 "",
                 "## Workflows",
                 "- Core workflow step",
@@ -43,19 +48,21 @@ class TestAgentCompositionUnit:
         return path
 
     def _write_pack_overlay(self, root: Path, pack: str, agent: str) -> Path:
-        """Create a minimal pack overlay with Tools/Guidelines sections."""
-        pack_agents_dir = root / ".edison" / "packs" / pack / "agents"
-        pack_agents_dir.mkdir(parents=True, exist_ok=True)
-        path = pack_agents_dir / f"{agent}.md"
+        """Create a minimal pack overlay using unified HTML comment syntax."""
+        # Overlays must be in the overlays/ subdirectory (unified convention)
+        pack_overlays_dir = root / ".edison" / "packs" / pack / "agents" / "overlays"
+        pack_overlays_dir.mkdir(parents=True, exist_ok=True)
+        path = pack_overlays_dir / f"{agent}.md"
+        # Use unified HTML comment markers for section extensions
         content = "\n".join(
             [
-                f"# {agent} overlay for {pack}",
-                "",
-                "## Tools",
+                f"<!-- EXTEND: Tools -->",
                 f"- {pack} specific tool",
+                f"<!-- /EXTEND -->",
                 "",
-                "## Guidelines",
+                f"<!-- EXTEND: Guidelines -->",
                 f"- {pack} specific guideline",
+                f"<!-- /EXTEND -->",
             ]
         )
         path.write_text(content, encoding="utf-8")
@@ -86,7 +93,7 @@ class TestAgentCompositionUnit:
         assert "react specific guideline" in result
 
     def test_template_variable_substitution(self, isolated_project_env: Path) -> None:
-        """Template variables like AGENT_NAME and PACK_NAME are substituted."""
+        """Unified section placeholders are correctly substituted."""
         root = isolated_project_env
         self._write_core_agent(root, "api-builder")
         # Two packs to verify multi-pack substitution
@@ -95,18 +102,17 @@ class TestAgentCompositionUnit:
 
         result = compose_agent("api-builder", packs=["react", "fastify"])
 
-        # Agent name substituted
+        # Agent name in header
         assert "# Agent: api-builder" in result
-        # Pack names substituted (comma-separated list)
-        assert "react, fastify" in result or "fastify, react" in result
-        # No unresolved known placeholders remain
+        # Pack overlay content is included
+        assert "react specific tool" in result
+        assert "fastify specific tool" in result
+        # No unresolved unified placeholders remain
         for placeholder in (
-            "{{AGENT_NAME}}",
-            "{{PACK_NAME}}",
-            "{{TOOLS}}",
-            "{{PACK_TOOLS}}",
-            "{{GUIDELINES}}",
-            "{{PACK_GUIDELINES}}",
+            "{{SECTION:Tools}}",
+            "{{SECTION:Guidelines}}",
+            "{{EXTENSIBLE_SECTIONS}}",
+            "{{APPEND_SECTIONS}}",
         ):
             assert placeholder not in result
 
@@ -128,16 +134,17 @@ class TestAgentCompositionUnit:
         with pytest.raises(AgentNotFoundError):
             compose_agent("nonexistent-agent", packs=[])
 
-    def test_invalid_template_raises(self, isolated_project_env: Path) -> None:
-        """Invalid core template (missing Agent header) raises AgentTemplateError."""
+    def test_nonexistent_pack_overlay_ignored(self, isolated_project_env: Path) -> None:
+        """Composition succeeds even if pack doesn't have overlay for agent."""
         root = isolated_project_env
-        core_agents_dir = root / ".edison" / "core" / "agents"
-        core_agents_dir.mkdir(parents=True, exist_ok=True)
-        bad_core = core_agents_dir / "broken.md"
-        bad_core.write_text("## Not an agent template", encoding="utf-8")
+        self._write_core_agent(root, "api-builder")
+        # Create a pack directory but no overlay for this agent
+        pack_dir = root / ".edison" / "packs" / "empty-pack" / "agents" / "overlays"
+        pack_dir.mkdir(parents=True, exist_ok=True)
 
-        with pytest.raises(AgentTemplateError):
-            compose_agent("broken", packs=[])
+        # Should not raise - missing overlays are simply not applied
+        result = compose_agent("api-builder", packs=["empty-pack"])
+        assert "# Agent: api-builder" in result
 
     def test_agent_dry_duplicate_report_detects_overlap(self, isolated_project_env: Path) -> None:
         """AgentRegistry DRY report detects duplicated content between core and pack overlays."""
@@ -150,16 +157,21 @@ class TestAgentCompositionUnit:
         core.write_text(
             "\n".join(
                 [
-                    "# Agent: {{AGENT_NAME}}",
+                    "# Agent: dup-agent",
                     "",
                     "## Role",
                     "Base role.",
                     "",
                     "## Tools",
+                    "{{SECTION:Tools}}",
                     f"- {duplicated}",
                     "",
                     "## Guidelines",
+                    "{{SECTION:Guidelines}}",
                     f"- {duplicated}",
+                    "",
+                    "{{EXTENSIBLE_SECTIONS}}",
+                    "{{APPEND_SECTIONS}}",
                     "",
                     "## Workflows",
                     "- Core workflow step",
@@ -168,19 +180,20 @@ class TestAgentCompositionUnit:
             encoding="utf-8",
         )
 
-        pack_agents_dir = root / ".edison" / "packs" / "react" / "agents"
-        pack_agents_dir.mkdir(parents=True, exist_ok=True)
-        overlay = pack_agents_dir / "dup-agent.md"
+        # Pack overlays must be in the overlays/ subdirectory
+        pack_overlays_dir = root / ".edison" / "packs" / "react" / "agents" / "overlays"
+        pack_overlays_dir.mkdir(parents=True, exist_ok=True)
+        overlay = pack_overlays_dir / "dup-agent.md"
         overlay.write_text(
             "\n".join(
                 [
-                    "# dup-agent overlay for react",
-                    "",
-                    "## Tools",
+                    "<!-- EXTEND: Tools -->",
                     f"- {duplicated}",
+                    "<!-- /EXTEND -->",
                     "",
-                    "## Guidelines",
+                    "<!-- EXTEND: Guidelines -->",
                     "- extra guideline",
+                    "<!-- /EXTEND -->",
                 ]
             ),
             encoding="utf-8",

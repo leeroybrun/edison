@@ -9,12 +9,17 @@ This module provides safe subprocess execution with:
 - No shell=True by default (security)
 """
 
-import os
 import shlex
 import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
+
+from .timeout_config import (
+    get_timeout_settings,
+    reset_timeout_cache,
+    resolve_timeout_repo_root,
+)
 
 FALLBACK_TIMEOUTS: Dict[str, float] = {
     "git_operations": 30.0,
@@ -24,10 +29,6 @@ FALLBACK_TIMEOUTS: Dict[str, float] = {
     "file_operations": 10.0,
     "default": 60.0,
 }
-
-# Default timeouts (seconds); can be overridden via environment
-DEFAULT_GIT_TIMEOUT = float(os.environ.get("EDISON_GIT_TIMEOUT_SECONDS", "60"))
-DEFAULT_DB_TIMEOUT = float(os.environ.get("EDISON_DB_TIMEOUT_SECONDS", "30"))
 
 
 @lru_cache(maxsize=4)
@@ -82,18 +83,7 @@ def _infer_timeout_type(cmd: Any) -> str:
 
 
 def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | str | None = None) -> float:
-    from ..paths import resolver as paths_resolver  # Lazy to avoid import cycle
-
-    if cwd is not None:
-        try:
-            repo_root = Path(cwd).resolve()
-        except Exception:
-            repo_root = Path.cwd().resolve()
-    else:
-        try:
-            repo_root = paths_resolver.PathResolver.resolve_project_root()
-        except Exception:
-            repo_root = Path.cwd().resolve()
+    repo_root = resolve_timeout_repo_root(cwd)
 
     timeouts = _load_timeouts(repo_root)
 
@@ -137,6 +127,7 @@ def check_output_with_timeout(cmd, timeout_type: str | None = None, **kwargs):
 
 def reset_subprocess_timeout_cache() -> None:
     _load_timeouts.cache_clear()
+    reset_timeout_cache()
 
 
 def _to_cwd(cwd: Optional[Path | str]) -> Optional[str]:
@@ -197,13 +188,13 @@ def run_git_command(
     check: bool = False,
 ) -> subprocess.CompletedProcess:
     """
-    Run a git command with a default timeout (60s, overridable via env).
+    Run a git command using the config-driven timeout bucket.
 
     Args:
         cmd: Git command sequence to execute
         cwd: Working directory (Path or str)
         env: Environment variables
-        timeout: Timeout in seconds (defaults to DEFAULT_GIT_TIMEOUT)
+        timeout: Timeout in seconds (defaults to timeouts.git_operations_seconds)
         capture_output: Capture stdout/stderr
         text: Return output as text instead of bytes
         check: Raise CalledProcessError on non-zero exit
@@ -211,11 +202,14 @@ def run_git_command(
     Returns:
         CompletedProcess from subprocess.run
     """
+    timeouts = get_timeout_settings(cwd)
+    default_timeout = timeouts["git_operations_seconds"]
+
     return run_command(
         cmd,
         cwd=cwd,
         env=env,
-        timeout=timeout or DEFAULT_GIT_TIMEOUT,
+        timeout=timeout if timeout is not None else default_timeout,
         capture_output=capture_output,
         text=text,
         check=check,
@@ -233,13 +227,13 @@ def run_db_command(
     check: bool = False,
 ) -> subprocess.CompletedProcess:
     """
-    Run a database-related command with a default timeout (30s, overridable).
+    Run a database-related command using the config-driven timeout bucket.
 
     Args:
         cmd: Database command sequence to execute
         cwd: Working directory (Path or str)
         env: Environment variables
-        timeout: Timeout in seconds (defaults to DEFAULT_DB_TIMEOUT)
+        timeout: Timeout in seconds (defaults to timeouts.db_operations_seconds)
         capture_output: Capture stdout/stderr
         text: Return output as text instead of bytes
         check: Raise CalledProcessError on non-zero exit
@@ -247,11 +241,14 @@ def run_db_command(
     Returns:
         CompletedProcess from subprocess.run
     """
+    timeouts = get_timeout_settings(cwd)
+    default_timeout = timeouts["db_operations_seconds"]
+
     return run_command(
         cmd,
         cwd=cwd,
         env=env,
-        timeout=timeout or DEFAULT_DB_TIMEOUT,
+        timeout=timeout if timeout is not None else default_timeout,
         capture_output=capture_output,
         text=text,
         check=check,

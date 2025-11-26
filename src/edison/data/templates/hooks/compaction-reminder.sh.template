@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+#
+# This hook is triggered automatically by Claude Code BEFORE context compaction.
+# It reminds the agent to re-read its constitution after compaction completes.
+
+set -e
+
+# Configuration from hooks.yaml
+ROLE="{{ config.default_role | default('agents') }}"
+MESSAGE_TEMPLATE="{{ config.message_template | default('⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md') }}"
+NOTIFY="{{ config.notify | default('true') }}"
+LOG_ENABLED="{{ config.log.enabled | default('false') }}"
+LOG_PATH="{{ config.log.path | default('.edison/logs/compaction.log') }}"
+
+# Expand {ROLE} placeholder in message template
+MESSAGE="${MESSAGE_TEMPLATE//\{ROLE\}/$ROLE}"
+
+# Output reminder (Claude Code will inject this into context)
+if [ "$NOTIFY" = "true" ] || [ "$NOTIFY" = "True" ]; then
+    echo "$MESSAGE"
+fi
+
+# Log compaction event if enabled
+{% if config.log.enabled %}
+if [ "$LOG_ENABLED" = "true" ] || [ "$LOG_ENABLED" = "True" ]; then
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    mkdir -p "$(dirname "$LOG_PATH")"
+    echo "$TIMESTAMP role=$ROLE source=precompact message=$MESSAGE" >> "$LOG_PATH"
+fi
+{% endif %}
+
+exit 0

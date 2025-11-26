@@ -224,6 +224,44 @@ class ConfigManager:
         for path, typed_value, raw in self._iter_env_overrides(strict=strict):
             self._set_nested(cfg, path, typed_value)
 
+    def _apply_project_env_aliases(self, cfg: Dict[str, Any]) -> None:
+        """Route legacy project env vars through the config system."""
+        has_edison_project_env = any(k.startswith("EDISON_project__") for k in os.environ.keys())
+        if has_edison_project_env:
+            return
+
+        alias_map = {
+            "PROJECT_NAME": ["project", "name"],
+            "PROJECT_TERMS": ["project", "audit_terms"],
+            "AGENTS_OWNER": ["project", "owner"],
+        }
+
+        for env_key, path in alias_map.items():
+            if env_key not in os.environ:
+                continue
+            raw = os.environ[env_key]
+            if env_key == "PROJECT_TERMS":
+                value = [t.strip() for t in str(raw).split(",") if t.strip()]
+            else:
+                value = str(raw).strip()
+            self._set_nested(cfg, path, value)
+
+    def _apply_database_env_aliases(self, cfg: Dict[str, Any]) -> None:
+        """Allow DATABASE_URL to populate database.url when no EDISON override is present."""
+        has_explicit_database_env = any(k.startswith("EDISON_database__") for k in os.environ.keys())
+        if has_explicit_database_env:
+            return
+
+        legacy_url = os.environ.get("DATABASE_URL")
+        if legacy_url is None:
+            return
+
+        url = str(legacy_url).strip()
+        if not url:
+            return
+
+        self._set_nested(cfg, ["database", "url"], url)
+
     def load_config(self, validate: bool = True) -> Dict[str, Any]:
         cfg: Dict[str, Any] = {}
         defaults_path = self.core_config_dir / "defaults.yaml"
@@ -242,6 +280,8 @@ class ConfigManager:
                 mod_cfg = self.load_yaml(path)
                 cfg = self.deep_merge(cfg, mod_cfg)
 
+        self._apply_project_env_aliases(cfg)
+        self._apply_database_env_aliases(cfg)
         self.apply_env_overrides(cfg, strict=validate)
         if validate:
             self.validate_schema(cfg, "config.schema.json")

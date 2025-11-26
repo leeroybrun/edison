@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from edison.core.config import ConfigManager
+from edison.core.file_io.utils import ensure_dir
 
 from .headers import build_generated_header
 from .path_utils import resolve_project_dir_placeholders
@@ -171,7 +172,7 @@ def generate_state_machine_doc(output_path: Path, repo_root: Optional[Path] = No
         content_parts.append(_render_domain(domain, spec))
         content_parts.append("")
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(output_path.parent)
     full_text = "\n".join(content_parts).strip() + "\n"
     project_dir = cfg_mgr.project_config_dir.parent
     full_text = resolve_project_dir_placeholders(

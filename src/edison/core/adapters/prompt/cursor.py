@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 """
-Cursor prompt adapter (thin).
+Cursor prompt adapter.
 
-Projects Edison `_generated` artifacts for Cursor IDE.
+Projects Edison prompts for Cursor IDE using composition.yaml configuration.
+All paths are configurable - NO hardcoded paths.
 """
 
 from pathlib import Path
@@ -11,15 +12,20 @@ from typing import Dict, Optional
 
 from ..base import PromptAdapter
 from .._config import ConfigMixin
+from ...composition.output_config import OutputConfigLoader
+from edison.core.file_io.utils import ensure_dir
 
 
 class CursorPromptAdapter(PromptAdapter, ConfigMixin):
-    """Provider adapter for Cursor IDE (thin wrapper using PromptAdapter base)."""
+    """Provider adapter for Cursor IDE.
+    
+    Uses composition.yaml for all path configuration.
+    """
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
         super().__init__(generated_root, repo_root)
-        # Initialize ConfigMixin cache
         self._cached_config: Optional[Dict] = None
+        self._output_config = OutputConfigLoader(repo_root=self.repo_root)
         self.cursor_dir = self.repo_root / ".cursor"
 
     def generate_commands(self) -> Dict[str, Path]:
@@ -35,23 +41,30 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         return commands
 
     def write_outputs(self, output_root: Path) -> None:
-        """Write prompts into output_root."""
-        output_root.mkdir(parents=True, exist_ok=True)
+        """Write prompts into output_root.
+        
+        Uses composition.yaml configuration for paths and settings.
+        """
+        # Check if cursor client is enabled
+        client_cfg = self._output_config.get_client_config("cursor")
+        if client_cfg is not None and not client_cfg.enabled:
+            return
+        
+        ensure_dir(output_root)
 
-        # Get adapter-specific config
         adapter_config = self.config.get("adapters", {}).get("cursor", {})
 
-        # Write orchestrator
-        if self.orchestrator_guide_path.exists():
+        # Write orchestrator constitution
+        if self.orchestrator_constitution_path.exists():
             orchestrator_filename = adapter_config.get("orchestrator_filename", "cursor-orchestrator.txt")
             orchestrator_path = output_root / orchestrator_filename
-            content = self.render_orchestrator(self.orchestrator_guide_path, self.orchestrator_manifest_path)
+            content = self._render_constitution()
             orchestrator_path.write_text(content, encoding="utf-8")
 
         # Write agents
         agents_dirname = adapter_config.get("agents_dirname", "cursor-agents")
         agents_output_dir = output_root / agents_dirname
-        agents_output_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(agents_output_dir)
 
         for agent_name in self.list_agents():
             content = self.render_agent(agent_name)
@@ -61,7 +74,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         # Write validators
         validators_dirname = adapter_config.get("validators_dirname", "cursor-validators")
         validators_output_dir = output_root / validators_dirname
-        validators_output_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(validators_output_dir)
 
         for validator_name in self.list_validators():
             content = self.render_validator(validator_name)
@@ -73,17 +86,15 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         if commands:
             print(f"✅ Generated {len(commands)} Cursor commands")
 
-    # Config loading methods inherited from ConfigMixin
-
-    def render_orchestrator(self, guide_path: Path, manifest_path: Path) -> str:
-        """Render orchestrator prompt with workflow template."""
-        if not guide_path.exists():
-            raise FileNotFoundError(f"Orchestrator guide not found: {guide_path}")
+    def _render_constitution(self) -> str:
+        """Render orchestrator constitution with workflow template."""
+        if not self.orchestrator_constitution_path.exists():
+            raise FileNotFoundError(f"Orchestrator constitution not found: {self.orchestrator_constitution_path}")
 
         adapter_config = self.config.get("adapters", {}).get("cursor", {})
         workflow_template_path = adapter_config.get("workflow_template")
 
-        content = guide_path.read_text(encoding="utf-8")
+        content = self.orchestrator_constitution_path.read_text(encoding="utf-8")
 
         # Add workflow marker
         workflow_section = "\n\n## Workflow\n\nThis orchestrator follows Edison workflow conventions."

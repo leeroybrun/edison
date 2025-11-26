@@ -36,7 +36,7 @@ pack.yml (schema: `.edison/core/schemas/pack.schema.json`)
 pack:
   id: typescript
   name: TypeScript
-  version: 1.0.0
+version: 1.0.0
 
 triggers:
   filePatterns:
@@ -44,11 +44,11 @@ triggers:
     - "**/*.tsx"
 
 provides:
-  guidelines:
+guidelines:
     - guidelines/strict-mode.md
     - guidelines/type-safety.md
   validators: []  # discovered by convention from validators/overlays/
-  examples:
+examples:
     - examples/strict-types.ts
 ```
 

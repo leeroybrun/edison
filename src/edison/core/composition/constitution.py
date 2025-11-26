@@ -20,10 +20,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.config import ConfigManager
+from edison.core.file_io.utils import ensure_dir
 from edison.core.utils.time import utc_timestamp
 from .headers import resolve_version
 from edison.core.paths.project import get_project_config_dir
-from edison.data import get_data_path
 from .path_utils import resolve_project_dir_placeholders
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers
@@ -57,23 +57,28 @@ def _normalize_role(role: str) -> str:
     return normalized
 
 
-def _core_base_path(_repo_root: Path) -> Path:
-    """Resolve core layer root now stored in the packaged data bundle."""
-    # Core markdown lives in edison.data; project-level overrides are handled separately.
-    return get_data_path("")
+def _core_base_path(repo_root: Path) -> Path:
+    """Resolve core layer root using unified path resolution."""
+    from .unified import UnifiedPathResolver
+    return UnifiedPathResolver(repo_root, "constitutions").core_dir
 
 
 def _packs_root(repo_root: Path, config: Dict[str, Any]) -> Path:
+    """Resolve packs directory using unified path resolution.
+    
+    Respects config override for directory, otherwise uses unified resolver.
+    """
     config_dir = get_project_config_dir(repo_root, create=False)
-    directory = (
-        (config.get("packs", {}) or {}).get("directory")
-        or f"{config_dir.name}/packs"
-    )
-    path = (repo_root / directory).resolve()
-    if path.exists():
-        return path
-    # Bundled packs (used when running inside Edison repo without .edison/packs)
-    return get_data_path("packs")
+    directory = (config.get("packs", {}) or {}).get("directory")
+    
+    if directory:
+        path = (repo_root / directory).resolve()
+        if path.exists():
+            return path
+    
+    # Use unified path resolver
+    from .unified import UnifiedPathResolver
+    return UnifiedPathResolver(repo_root).packs_dir
 
 
 def _project_constitutions_dir(repo_root: Path) -> Path:
@@ -269,7 +274,7 @@ def render_constitution_template(
 def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None:
     """Generate all three constitution files."""
     out_dir = (Path(output_path) / "constitutions").resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(out_dir)
 
     for role, filename in [
         ("orchestrator", "ORCHESTRATORS.md"),

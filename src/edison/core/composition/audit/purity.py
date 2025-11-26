@@ -6,20 +6,21 @@ Guideline purity checking module.
 Responsibilities:
 - Detect purity violations: project-specific terms leaking into core or pack guidelines
 - Detect pack/technology terms appearing inside project overlays
-- Configurable term detection via environment variables
+- Use project metadata from ConfigManager (no direct env lookups)
 
 Purity ensures clean separation between generic (core/pack) and project-specific
 (project) guidelines, maintaining reusability and portability.
 """
 
-import os
-from typing import Dict, Iterable, List, Set, Any
+from typing import Dict, Iterable, List, Any
 
 from .guideline_discovery import GuidelineRecord
+from edison.core.utils.project_config import (
+    DEFAULT_PROJECT_TERMS,
+    project_terms as _project_terms,
+)
 
 
-# Default banned tokens should stay generic; project-specific terms are injected via env
-DEFAULT_PROJECT_TERMS = ["project", "app_", "better-auth", "odoo"]
 PACK_TECH_TERMS = [
     "nextjs",
     "nextjs",
@@ -57,35 +58,8 @@ def _scan_terms(
 
 
 def project_terms() -> List[str]:
-    """Return project-specific terms to keep out of core/pack guidelines.
-
-    Sources:
-    - Default sentinels that often leak from project overlays.
-    - PROJECT_NAME env var (adds slug and space-stripped variant).
-    - PROJECT_TERMS env var (comma-separated list).
-    """
-    terms: List[str] = list(DEFAULT_PROJECT_TERMS)
-
-    project_name = os.environ.get("PROJECT_NAME", "").strip()
-    if project_name:
-        terms.append(project_name.lower())
-        terms.append(project_name.replace("-", " ").lower())
-
-    extra = os.environ.get("PROJECT_TERMS", "")
-    terms.extend(
-        t.strip().lower()
-        for t in extra.split(",")
-        if t.strip()
-    )
-
-    # De-duplicate while preserving order
-    seen: Set[str] = set()
-    unique_terms: List[str] = []
-    for term in terms:
-        if term and term not in seen:
-            unique_terms.append(term)
-            seen.add(term)
-    return unique_terms
+    """Return project-specific terms to keep out of core/pack guidelines."""
+    return _project_terms()
 
 
 def purity_violations(

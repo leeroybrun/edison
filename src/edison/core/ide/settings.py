@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Set
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
-from edison.core.file_io.utils import read_json_safe, write_json_safe
+from edison.core.file_io.utils import read_json_safe, write_json_safe, ensure_dir
 
 # Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
 # These are used for Edison's generation/merge logic but are not valid Claude Code settings
@@ -156,7 +156,7 @@ class SettingsComposer:
         """Write settings.json to .claude/, merging with existing file if present."""
         settings = self.compose_settings()
         target = self.repo_root / ".claude" / "settings.json"
-        target.parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(target.parent)
 
         claude_cfg = self._claude_config()
 

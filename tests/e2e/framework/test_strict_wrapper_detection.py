@@ -8,7 +8,7 @@ TESTS_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(TESTS_ROOT) not in sys.path:
     sys.path.insert(0, str(TESTS_ROOT))
 
-from helpers.test_env import TestProjectDir
+from helpers.env import TestProjectDir
 from helpers.command_runner import (
     run_script,
     assert_command_success,

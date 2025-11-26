@@ -3,7 +3,6 @@ from __future__ import annotations
 """Task and QA file operations plus atomic writes."""
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
@@ -13,7 +12,7 @@ import getpass
 
 from ..exceptions import TaskStateError
 from edison.core.file_io import utils as io_utils
-from edison.core.file_io.utils import write_json_safe, read_json_safe
+from edison.core.file_io.utils import write_json_safe, read_json_safe, ensure_dir
 from edison.core.utils.time import utc_timestamp
 from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
@@ -21,6 +20,7 @@ from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, R
 from ..paths.management import get_management_paths
 from .record_metadata import TYPE_INFO
 from edison.core.config import get_semantic_state
+from edison.core.utils.project_config import get_project_settings
 
 
 def _task_filename(task_id: str) -> str:
@@ -29,7 +29,7 @@ def _task_filename(task_id: str) -> str:
 
 
 def _write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(path.parent)
     path.write_text(content, encoding="utf-8")
 
 
@@ -55,6 +55,10 @@ def create_task(task_id: str, title: str, description: str = "") -> Path:
 
 
 def default_owner(process_finder: Optional[Callable[[], Tuple[str, int]]] = None) -> str:
+    configured_owner = get_project_settings().get("owner")
+    if isinstance(configured_owner, str) and configured_owner.strip():
+        return configured_owner.strip()
+
     try:
         if process_finder is None:
             from ..process.inspector import find_topmost_process  # type: ignore
@@ -64,7 +68,7 @@ def default_owner(process_finder: Optional[Callable[[], Tuple[str, int]]] = None
         return process_name
     except Exception:
         pass
-    return os.environ.get("AGENTS_OWNER") or getpass.getuser()
+    return getpass.getuser()
 
 
 def create_qa_brief(task_id: str, title: str) -> Path:
@@ -87,7 +91,7 @@ def claim_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     src = _tasks_root() / default_status / _task_filename(task_id)
     dst = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(dst.parent)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
     content = content.replace(f"status: {default_status}", f"status: {wip_status}") or content
     dst.write_text(content, encoding="utf-8")
@@ -96,7 +100,7 @@ def claim_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
 
     default_qa = TYPE_INFO["qa"]["default_status"]
     qa_dst = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
-    qa_dst.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(qa_dst.parent)
     qa_src = _qa_root() / default_qa / f"{task_id}-qa.md"
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
@@ -112,7 +116,7 @@ def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     src = _session_tasks_dir(session_id, wip_status) / _task_filename(task_id)
     dst = _session_tasks_dir(session_id, done_status) / _task_filename(task_id)
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(dst.parent)
     content = src.read_text(encoding="utf-8") if src.exists() else ""
     content = content.replace(f"status: {wip_status}", f"status: {done_status}") or content
     dst.write_text(content, encoding="utf-8")
@@ -124,7 +128,7 @@ def ready_task(task_id: str, session_id: str) -> Tuple[Path, Path]:
     
     qa_src = _session_qa_dir(session_id, default_qa) / f"{task_id}-qa.md"
     qa_dst = _session_qa_dir(session_id, qa_todo) / f"{task_id}-qa.md"
-    qa_dst.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(qa_dst.parent)
     if qa_src.exists():
         safe_move_file(qa_src, qa_dst)
     else:
@@ -147,7 +151,7 @@ def qa_progress(task_id: str, from_state: str, to_state: str, session_id: Option
         src = _qa_root() / from_state / f"{task_id}-qa.md"
         dst = _qa_root() / to_state / f"{task_id}-qa.md"
 
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(dst.parent)
     dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     src.unlink(missing_ok=False)
     return src, dst
@@ -215,7 +219,7 @@ def move_to_status_atomic(path: Path, record_type: str, status: str, session_id:
 def record_tdd_evidence(task_id: str, phase: str, note: str = "") -> Path:
     mgmt_paths = get_management_paths(ROOT)
     path = (mgmt_paths.get_qa_root() / "validation-evidence" / "tasks").resolve() / f"task-{task_id}.tdd.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(path.parent)
     with path.open("a", encoding="utf-8") as f:
         f.write(f"{phase.upper()}: {note}\n")
     return path
@@ -277,7 +281,7 @@ def _append_task_to_session(session_id: str, task_id: str) -> None:
     if path is None:
         return
     try:
-        data = io_utils.read_json_with_default(path, {}) or {}
+        data = io_utils.read_json_safe(path, {}) or {}
         tasks = data.get("tasks") or []
         if task_id not in tasks:
             tasks.append(task_id)

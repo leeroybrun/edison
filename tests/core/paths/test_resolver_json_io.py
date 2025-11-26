@@ -38,7 +38,7 @@ def test_detect_session_id_uses_read_json_safe(tmp_path, monkeypatch):
     
     # Patch read_json_safe to verify it is called
     # We patch where it is USED, not where it is defined
-    with patch('edison.core.paths.resolver.read_json_safe', side_effect=io_utils.read_json_safe) as mock_read:
+    with patch('edison.core.paths.resolver.session.read_json_safe', side_effect=io_utils.read_json_safe) as mock_read:
         # Run
         # Explicitly set owner to match file
         result = PathResolver.detect_session_id(owner="tester")

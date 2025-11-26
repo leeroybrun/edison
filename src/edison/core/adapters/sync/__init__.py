@@ -9,7 +9,7 @@ configuration generation, and validation features.
 - ZenSync: Full Zen MCP integration
 """
 
-from .claude import ClaudeSync, ClaudeAdapterError, EdisonAgentSections
+from .claude import ClaudeSync, ClaudeAdapterError
 from .cursor import CursorSync, AUTOGEN_BEGIN, AUTOGEN_END
 from .zen import ZenSync, WORKFLOW_HEADING
 
@@ -17,7 +17,6 @@ __all__ = [
     # Claude
     "ClaudeSync",
     "ClaudeAdapterError",
-    "EdisonAgentSections",
     # Cursor
     "CursorSync",
     "AUTOGEN_BEGIN",

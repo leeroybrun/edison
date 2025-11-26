@@ -1,0 +1,51 @@
+# Motion Pack Rules Registry
+
+# Motion-specific validation rules for animations
+# These rules check for common animation patterns and best practices
+
+rules:
+  animate_presence_pattern:
+    description: "AnimatePresence must wrap dynamic content with exit animations"
+    severity: warning
+    patterns:
+      - "AnimatePresence.*\\{[^}]*\\}"
+
+  layout_animation_pattern:
+    description: "Use layout prop for position/size changes instead of manual positioning"
+    severity: info
+    patterns:
+      - "motion\\.div.*layout"
+
+  gpu_accelerated_only:
+    description: "Animate only GPU-accelerated properties (transform, opacity)"
+    severity: warning
+    properties:
+      - x
+      - y
+      - rotate
+      - scale
+      - opacity
+
+  gesture_constraints:
+    description: "Drag gestures must have dragConstraints defined"
+    severity: warning
+    patterns:
+      - "drag"
+
+  variants_reusable:
+    description: "Extract repeated animations to variants object"
+    severity: info
+    min_occurrences: 2
+
+  memoized_lists:
+    description: "Animated list items should be memoized to prevent re-renders"
+    severity: info
+    patterns:
+      - "map.*motion"
+
+  animation_timing:
+    description: "Keep animations between 100-500ms for optimal feel"
+    severity: warning
+    limits:
+      min_duration: 0.1  # seconds
+      max_duration: 0.5  # seconds

@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 from edison.core.utils.subprocess import run_with_timeout
-from helpers.test_env import TestGitRepo, TestProjectDir
+from helpers.env import TestGitRepo, TestProjectDir
 
 try:  # Will fail RED phase until autostart is implemented (expected)
     from edison.core.session.autostart import SessionAutoStart

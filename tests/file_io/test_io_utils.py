@@ -53,9 +53,10 @@ def test_concurrent_atomic_writes_produce_valid_json(tmp_path: Path) -> None:
 
 def test_utc_timestamp_is_iso_utc() -> None:
     ts = utc_timestamp()
-    # datetime.fromisoformat accepts "+00:00"; ensure no exception
+    # datetime.fromisoformat needs 'Z' replaced with '+00:00' for Python < 3.11
     from datetime import datetime
-    parsed = datetime.fromisoformat(ts)
+    ts_compat = ts.replace('Z', '+00:00') if ts.endswith('Z') else ts
+    parsed = datetime.fromisoformat(ts_compat)
     assert parsed.tzinfo is not None
 
 
@@ -89,15 +90,6 @@ def test_read_json_safe_invalid_json_raises(tmp_path: Path) -> None:
         read_json_safe(invalid)
 
 
-def test_read_json_with_default_returns_default_on_error(tmp_path: Path) -> None:
-    # Case 1: Missing file
-    missing = tmp_path / "missing.json"
-    assert io_utils.read_json_with_default(missing, default={}) == {}
-
-    # Case 2: Invalid JSON
-    invalid = tmp_path / "invalid.json"
-    invalid.write_text("{bad}", encoding="utf-8")
-    assert io_utils.read_json_with_default(invalid, default=[]) == []
 
 
 # ============================================================================

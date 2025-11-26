@@ -27,7 +27,7 @@ You are a **security expert** reviewing code for vulnerabilities. Your job is to
 
 ### Step 1: Load Framework-Specific Security Context
 
-**BEFORE validating**, consult the `{{PACK_CONTEXT}}` section at the end of this document for framework-specific security patterns and best practices relevant to the technology stack in use.
+**BEFORE validating**, consult the `{{SECTION:TechStack}}` section at the end of this document for framework-specific security patterns and best practices relevant to the technology stack in use.
 
 ### Step 2: Review Git Diff for Security Changes
 
@@ -53,7 +53,7 @@ git diff           # Unstaged changes
 
 **Risk**: Users accessing data they shouldn't have access to
 
-**Check API Endpoints** (framework-specific patterns in `{{PACK_CONTEXT}}`):
+**Check API Endpoints** (framework-specific patterns in `{{SECTION:TechStack}}`):
 
 ```typescript
 // ✅ CORRECT - Requires auth + checks user owns resource
@@ -89,7 +89,7 @@ export async function GET(request) {
 
 **Validation Steps**:
 
-1. ✅ **ALL** API endpoints require authentication (see framework-specific auth patterns in `{{PACK_CONTEXT}}`)
+1. ✅ **ALL** API endpoints require authentication (see framework-specific auth patterns in `{{SECTION:TechStack}}`)
 2. ✅ **ALL** API endpoints check authorization (user can access resource)
 3. ✅ Database queries filter by user identifier or organization identifier
 4. ✅ No direct ID manipulation (user can't change IDs to access others' data)
@@ -117,7 +117,7 @@ export async function GET(request) {
 
 1. ✅ **Passwords**: NEVER stored in plain text
    - Use industry-standard authentication libraries with built-in password hashing
-   - Verify framework's auth system is used, not custom implementation (see `{{PACK_CONTEXT}}`)
+   - Verify framework's auth system is used, not custom implementation (see `{{SECTION:TechStack}}`)
 
 2. ✅ **Secrets**: NEVER hardcoded
    ```typescript
@@ -140,7 +140,7 @@ export async function GET(request) {
 
 5. ✅ **HTTPS**: All production traffic uses HTTPS
    - Ensure SSL/TLS is enforced in production environments
-   - Verify secure cookie flags (httpOnly, secure, sameSite) are set (see `{{PACK_CONTEXT}}`)
+   - Verify secure cookie flags (httpOnly, secure, sameSite) are set (see `{{SECTION:TechStack}}`)
 
 **Validation Steps**:
 
@@ -180,7 +180,7 @@ grep -i password <database-schema-files>
 **Database Injection** (PRIMARY RISK):
 
 ```typescript
-// ✅ SAFE - Using ORM with parameterized queries (see {{PACK_CONTEXT}} for ORM-specific patterns)
+// ✅ SAFE - Using ORM with parameterized queries (see {{SECTION:TechStack}} for ORM-specific patterns)
 const records = await orm.findMany({
   where: { name: { contains: userInput } }
 })
@@ -190,7 +190,7 @@ const records = await database.raw(`
   SELECT * FROM records WHERE name LIKE '%${userInput}%'
 `)  // ❌ VULNERABLE TO SQL INJECTION!
 
-// ✅ SAFE - Raw query with proper parameterization (framework-specific syntax in {{PACK_CONTEXT}})
+// ✅ SAFE - Raw query with proper parameterization (framework-specific syntax in {{SECTION:TechStack}})
 const records = await database.raw(
   'SELECT * FROM records WHERE name LIKE ?',
   [`%${userInput}%`]
@@ -209,7 +209,7 @@ const result = execSync(`git log --author="${userInput}"`)
 
 **Validation Steps**:
 
-1. ✅ **ORM/Query Builder used exclusively** (no raw queries) - check `{{PACK_CONTEXT}}` for database layer
+1. ✅ **ORM/Query Builder used exclusively** (no raw queries) - check `{{SECTION:TechStack}}` for database layer
 2. ✅ If raw queries needed, uses parameterized queries (NOT string interpolation)
 3. ✅ No shell command execution with user input
 4. ✅ No `eval()` or dynamic code execution with user input
@@ -233,11 +233,11 @@ const result = execSync(`git log --author="${userInput}"`)
 
 **Check**:
 
-1. ✅ **Authentication Flow**: Uses industry-standard authentication library (see `{{PACK_CONTEXT}}` for framework auth patterns)
+1. ✅ **Authentication Flow**: Uses industry-standard authentication library (see `{{SECTION:TechStack}}` for framework auth patterns)
 2. ✅ **Session Management**: Secure session handling
    - Secure cookies with proper flags (httpOnly, secure, sameSite)
    - Session expiration and rotation
-   - See `{{PACK_CONTEXT}}` for framework-specific session patterns
+   - See `{{SECTION:TechStack}}` for framework-specific session patterns
 
 3. ✅ **Rate Limiting**: API endpoints protected from abuse
    - Should have rate limiting middleware/guards
@@ -311,10 +311,10 @@ const result = execSync(`git log --author="${userInput}"`)
    ```typescript
    // Only allow specific origins
    const allowedOrigins = ['https://app.example.com']
-   // See {{PACK_CONTEXT}} for framework-specific CORS configuration
+   // See {{SECTION:TechStack}} for framework-specific CORS configuration
    ```
 
-4. ✅ **Security Headers**: Set properly (see `{{PACK_CONTEXT}}` for framework defaults)
+4. ✅ **Security Headers**: Set properly (see `{{SECTION:TechStack}}` for framework defaults)
    - Content-Security-Policy
    - X-Frame-Options
    - X-Content-Type-Options
@@ -365,7 +365,7 @@ cat package.json
 **Validation Steps**:
 
 1. ✅ Run package manager audit - should have **zero high/critical vulnerabilities**
-2. ✅ Check major framework and library packages are up-to-date (see `{{PACK_CONTEXT}}` for critical versions)
+2. ✅ Check major framework and library packages are up-to-date (see `{{SECTION:TechStack}}` for critical versions)
 3. ✅ No deprecated packages
 4. ✅ Dependencies locked (lock files present and committed)
 
@@ -386,7 +386,7 @@ cat package.json
 
 **Risk**: Weak passwords, session hijacking, broken auth
 
-**Check Authentication System** (see `{{PACK_CONTEXT}}` for framework-specific auth patterns):
+**Check Authentication System** (see `{{SECTION:TechStack}}` for framework-specific auth patterns):
 
 1. ✅ **Password Requirements**: Auth library enforces strong passwords
    - Minimum length (8+ characters recommended)
@@ -404,7 +404,7 @@ cat package.json
 
 3. ✅ **Session Expiration**: Sessions expire after reasonable time period
    - Default: 7-30 days depending on sensitivity
-   - Check `{{PACK_CONTEXT}}` for framework defaults
+   - Check `{{SECTION:TechStack}}` for framework defaults
 
 4. ✅ **Logout**: Properly destroys session
    ```typescript
@@ -422,7 +422,7 @@ grep -r "bcrypt" .
 grep -r "crypto.createHash.*password" .
 
 # Should find established auth library usage
-# See {{PACK_CONTEXT}} for framework-specific patterns to look for
+# See {{SECTION:TechStack}} for framework-specific patterns to look for
 ```
 
 **Common Vulnerabilities**:
@@ -449,7 +449,7 @@ grep -r "crypto.createHash.*password" .
    - Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) exist
    - Committed to version control
 
-2. ✅ **Input Validation**: ALL user input validated with schema validators (see `{{PACK_CONTEXT}}` for validation patterns)
+2. ✅ **Input Validation**: ALL user input validated with schema validators (see `{{SECTION:TechStack}}` for validation patterns)
    ```typescript
    // ✅ CORRECT - Using schema validation library
    const schema = validationLibrary.object({
@@ -474,7 +474,7 @@ grep -r "crypto.createHash.*password" .
 ls -la *lock* package-lock.json yarn.lock pnpm-lock.yaml
 
 # Check API endpoints use schema validation
-# Pattern depends on framework - see {{PACK_CONTEXT}}
+# Pattern depends on framework - see {{SECTION:TechStack}}
 grep -r "schema.*parse\|validate" <api-directory>
 ```
 
@@ -604,7 +604,7 @@ grep -r "fetch.*request.*" .
 grep -r "axios.*request.*" .
 grep -r "http.*request.*" .
 
-# Check for redirect vulnerabilities (framework-specific patterns in {{PACK_CONTEXT}})
+# Check for redirect vulnerabilities (framework-specific patterns in {{SECTION:TechStack}})
 grep -r "redirect.*request" .
 ```
 
@@ -623,7 +623,7 @@ grep -r "redirect.*request" .
 
 ## Step 4: Check Framework-Specific Security Requirements
 
-### Authentication Integration (see `{{PACK_CONTEXT}}`)
+### Authentication Integration (see `{{SECTION:TechStack}}`)
 
 ✅ **Verify**:
 - Uses established authentication library (not custom auth)
@@ -633,7 +633,7 @@ grep -r "redirect.*request" .
 
 ### API Endpoint Security Pattern
 
-**Every API endpoint MUST follow this pattern** (see `{{PACK_CONTEXT}}` for framework-specific implementation):
+**Every API endpoint MUST follow this pattern** (see `{{SECTION:TechStack}}` for framework-specific implementation):
 
 ```typescript
 // Generic security pattern - adapt to your framework
@@ -673,7 +673,7 @@ export async function handleRequest(request) {
 }
 ```
 
-### Database Security (see `{{PACK_CONTEXT}}`)
+### Database Security (see `{{SECTION:TechStack}}`)
 
 ✅ **Verify**:
 - ORM/query builder used exclusively (no raw queries without parameterization)
@@ -779,7 +779,7 @@ Human-readable report (required):
 [npm audit output]
 ```
 
-**Authentication Library Integration**: ✅ VERIFIED | ❌ NOT FOUND (see `{{PACK_CONTEXT}}` for expected patterns)
+**Authentication Library Integration**: ✅ VERIFIED | ❌ NOT FOUND (see `{{SECTION:TechStack}}` for expected patterns)
 
 **Schema Validation Coverage**: X/Y API endpoints (X% coverage)
 
@@ -829,7 +829,7 @@ Machine-readable JSON report (required):
 ## Remember
 
 - **Zero tolerance** for security vulnerabilities
-- **Always** consult `{{PACK_CONTEXT}}` for framework-specific security patterns
+- **Always** consult `{{SECTION:TechStack}}` for framework-specific security patterns
 - **Check git diff** for new security risks
 - **Block task completion** if ANY vulnerability found
 - **Be thorough** - production security depends on this
@@ -863,7 +863,7 @@ security_rules = [r for r in rules["rules"].values() if "security" in r.get("cat
 
 Validators MUST read from the composed registry output above (never hardcode rules) before evaluating security changes.
 
-{{PACK_CONTEXT}}
+{{SECTION:TechStack}}
 
 **This section is populated by the composition engine with framework-specific security guidelines:**
 - Authentication patterns (e.g., Next.js auth, Django auth, Express middleware)

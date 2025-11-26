@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
 from edison.core.paths import PathResolver
-from edison.core.file_io.utils import write_json_safe, read_json_with_default, ensure_dir
+from edison.core.file_io.utils import write_json_safe, read_json_safe, ensure_directory
 from edison.core.config.manager import ConfigManager
 
 from ..paths.project import get_project_config_dir
@@ -220,13 +220,13 @@ def _cache_dir() -> Path:
 
 
 def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: str) -> Path:
-    out_dir = ensure_dir(_cache_dir())
+    out_dir = ensure_directory(_cache_dir())
     out_path = out_dir / f"{validator_id}.md"
     out_path.write_text(text, encoding="utf-8")
     # Write manifest entry per artifact for traceability
     manifest_path = out_dir / "manifest.json"
     try:
-        existing = read_json_with_default(manifest_path, default={})
+        existing = read_json_safe(manifest_path, default={})
         existing[validator_id] = {
             "path": str(_rel(out_path)),
             "hash": content_hash,
@@ -254,7 +254,7 @@ def validate_composition(text: str) -> None:
 
 def get_cache_dir() -> Path:
     """Get composed artifacts cache directory, creating it when missing."""
-    d = ensure_dir(_cache_dir())
+    d = ensure_directory(_cache_dir())
     return d
 
 

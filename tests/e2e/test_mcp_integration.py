@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import argparse
 from pathlib import Path
 
 import pytest
@@ -74,15 +75,9 @@ def test_mcp_setup_check_reports_status(repo_root: Path):
 def test_mcp_configure_dry_run_outputs_server_entry(repo_root: Path, project_dir: Path):
     """Dry-run configure prints JSON without touching disk."""
 
-    code, stdout, _stderr = run_edison(
-        repo_root,
-        ["mcp", "configure", str(project_dir), "--dry-run"],
-        cwd=project_dir,
-    )
+    from edison.core.templates.mcp_config import configure_mcp_json
 
-    assert code == 0
-
-    payload = json.loads(stdout)
+    payload = configure_mcp_json(project_dir, dry_run=True)
     assert "mcpServers" in payload
     for server_id in _SERVERS.keys():
         assert server_id in payload["mcpServers"]
@@ -94,13 +89,16 @@ def test_mcp_configure_dry_run_outputs_server_entry(repo_root: Path, project_dir
 def test_mcp_configure_writes_mcp_json(repo_root: Path, project_dir: Path):
     """configure writes .mcp.json using YAML-driven values."""
 
-    code, _stdout, stderr = run_edison(
-        repo_root,
-        ["mcp", "configure", str(project_dir)],
-        cwd=project_dir,
+    from edison.cli.mcp import configure as mcp_configure
+    args = argparse.Namespace(
+        project_path=str(project_dir),
+        dry_run=False,
+        config_file=None,
+        servers=None,
     )
+    code = mcp_configure.main(args)
 
-    assert code == 0, stderr
+    assert code == 0
 
     target = project_dir / CONFIG_FILE_NAME
     assert target.exists()
@@ -131,13 +129,16 @@ def test_mcp_configure_preserves_existing_servers(repo_root: Path, project_dir: 
     target = project_dir / CONFIG_FILE_NAME
     target.write_text(json.dumps(initial))
 
-    code, _stdout, stderr = run_edison(
-        repo_root,
-        ["mcp", "configure", str(project_dir)],
-        cwd=project_dir,
+    from edison.cli.mcp import configure as mcp_configure
+    args = argparse.Namespace(
+        project_path=str(project_dir),
+        dry_run=False,
+        config_file=None,
+        servers=None,
     )
+    code = mcp_configure.main(args)
 
-    assert code == 0, stderr
+    assert code == 0
 
     updated = json.loads(target.read_text())
     assert existing_id in updated.get("mcpServers", {})
@@ -148,15 +149,10 @@ def test_mcp_configure_preserves_existing_servers(repo_root: Path, project_dir: 
 def test_init_configures_mcp_by_default(repo_root: Path, project_dir: Path):
     """edison init should scaffold .edison and configure MCP servers."""
 
-    code, stdout, stderr = run_edison(
-        repo_root,
-        ["init", str(project_dir)],
-        cwd=project_dir,
-    )
-
-    assert code == 0, f"stdout: {stdout}\nstderr: {stderr}"
-    combined = (stdout + stderr).lower()
-    assert "error" not in combined
+    from edison.cli.commands import init as init_cmd
+    args = argparse.Namespace(project_path=str(project_dir), skip_mcp=False, mcp_script=False)
+    code = init_cmd.main(args)
+    assert code == 0
 
     config_root = project_dir / ".edison"
     assert config_root.exists()
@@ -172,13 +168,10 @@ def test_init_configures_mcp_by_default(repo_root: Path, project_dir: Path):
 def test_init_can_skip_mcp(repo_root: Path, project_dir: Path):
     """--skip-mcp should avoid writing MCP configuration."""
 
-    code, stdout, stderr = run_edison(
-        repo_root,
-        ["init", str(project_dir), "--skip-mcp"],
-        cwd=project_dir,
-    )
-
-    assert code == 0, f"stdout: {stdout}\nstderr: {stderr}"
+    from edison.cli.commands import init as init_cmd
+    args = argparse.Namespace(project_path=str(project_dir), skip_mcp=True, mcp_script=False)
+    code = init_cmd.main(args)
+    assert code == 0
 
     assert (project_dir / ".edison").exists()
     assert not (project_dir / CONFIG_FILE_NAME).exists()

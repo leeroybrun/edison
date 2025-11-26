@@ -4,31 +4,36 @@ from __future__ import annotations
 """
 Edison Agent Composition Engine
 
-Builds final agent prompts from layered sources:
-  Core agent templates + Pack overlays + optional project overlays.
+Thin wrapper around the unified composition system for agents.
+All discovery and composition logic is delegated to LayeredComposer.
 
-Discovery (unified naming - directory provides context):
-  - Core agents:      .edison/core/agents/<agent>.md
-  - Pack overlays:    .edison/packs/<pack>/agents/<agent>.md
-  - Project overlays: <project_config_dir>/agents/overlays/<agent>.md
-  - Project agents:   <project_config_dir>/agents/<agent>.md (standalone)
+Agent-specific responsibilities:
+- Constitution header injection
+- Conditional includes processing
+- Front matter metadata extraction
+- Roster generation
 
-The composed agent text is pure Markdown and typically written to
-`<project_config_dir>/_generated/agents/<agent>.md` by the compose CLI.
+Uses the unified composition system with HTML comment markers for overlays.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-import os
-import yaml
+from typing import Any, Dict, List, Optional
 
 from edison.core.file_io.utils import parse_yaml_string
 from ..utils.text import dry_duplicate_report, render_conditional_includes
 from ..paths import PathResolver
 from ..paths.project import get_project_config_dir
 from .path_utils import resolve_project_dir_placeholders
+
+# Import from unified composition system - ALL discovery and composition
+from .unified import (
+    compose,
+    LayeredComposer,
+    LayerSource,
+    SectionParser,
+    CompositionValidationError,
+)
 
 
 class AgentError(RuntimeError):
@@ -45,116 +50,63 @@ class AgentTemplateError(AgentError):
 
 @dataclass
 class CoreAgent:
+    """Core agent reference (for backward compatibility)."""
     name: str
     core_path: Path
+    
+    @classmethod
+    def from_layer_source(cls, source: LayerSource) -> "CoreAgent":
+        """Create CoreAgent from unified LayerSource."""
+        return cls(name=source.entity_name, core_path=source.path)
 
 
 @dataclass
 class PackOverlay:
+    """Pack overlay reference (for backward compatibility)."""
     pack: str
     path: Path
-
-
-def _extract_sections(text: str) -> Tuple[str, str]:
-    """Extract Tools and Guidelines sections from a Markdown document.
-
-    Sections are detected by second‑level headings:
-      - ``## Tools``
-      - ``## Guidelines``
-    Content is captured until the next heading line starting with ``#``.
-    """
-    tools_lines: List[str] = []
-    guidelines_lines: List[str] = []
-    current: Optional[str] = None
-
-    for raw in text.splitlines():
-        line = raw.rstrip("\n")
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            heading = stripped.lstrip("#").strip().lower()
-            if heading == "tools":
-                current = "tools"
-                continue
-            if heading == "guidelines":
-                current = "guidelines"
-                continue
-            # Allow architecture sections to flow into guidelines so
-            # critical architecture notes in overlays are preserved in
-            # composed agent prompts.
-            if heading.startswith("architecture"):
-                current = "guidelines"
-                continue
-            current = None
-            continue
-
-        if current == "tools":
-            tools_lines.append(line)
-        elif current == "guidelines":
-            guidelines_lines.append(line)
-
-    tools = "\n".join(tools_lines).strip()
-    guidelines = "\n".join(guidelines_lines).strip()
-    # Fallback: when no structured sections are found, treat the whole text as
-    # guidelines so pack/project overlays without headings still flow through
-    # composition.
-    if not tools and not guidelines:
-        guidelines = text.strip()
-    return tools, guidelines
+    
+    @classmethod
+    def from_layer_source(cls, source: LayerSource) -> "PackOverlay":
+        """Create PackOverlay from unified LayerSource."""
+        # Extract pack name from layer string "pack:{name}"
+        pack_name = source.layer.replace("pack:", "") if source.layer.startswith("pack:") else source.layer
+        return cls(pack=pack_name, path=source.path)
 
 
 class AgentRegistry:
-    """Discover and compose Edison agents from Core + Packs + Project."""
+    """Discover and compose Edison agents using the unified composition system.
+    
+    ALL discovery is delegated to LayeredComposer.
+    Agent-specific logic: constitution headers, conditional includes, metadata.
+    """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
-        # Respect project root resolution, including AGENTS_PROJECT_ROOT in tests
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
-
-        config_dir = get_project_config_dir(self.repo_root, create=False)
-
-        core_agents_dir = config_dir / "core" / "agents"
-        packs_dir = config_dir / "packs"
-        if packs_dir.exists() or core_agents_dir.exists():
-            self.core_dir = config_dir / "core"
-            self.packs_dir = packs_dir
-        else:
-            # Running within Edison itself - use bundled data
-            from edison.data import get_data_path
-            self.core_dir = get_data_path("")
-            self.packs_dir = get_data_path("packs")
-
-        self.project_dir = config_dir
-
-    # ------- Discovery -------
-    def discover_core_agents(self) -> Dict[str, CoreAgent]:
-        """Return mapping of agent name → CoreAgent from core templates.
+        self.project_dir = get_project_config_dir(self.repo_root, create=False)
         
-        Pattern: .edison/core/agents/<agent>.md
-        Directory provides context - no suffix needed.
-        """
-        agents: Dict[str, CoreAgent] = {}
-        core_agents_dir = self.core_dir / "agents"
-        if not core_agents_dir.exists():
-            return agents
+        # Use unified composer for ALL discovery
+        self._composer = LayeredComposer(repo_root=self.repo_root, content_type="agents")
 
-        for path in sorted(core_agents_dir.glob("*.md")):
-            name = path.stem
-            if name.startswith("_"):
-                continue
-            agents[name] = CoreAgent(name=name, core_path=path)
-        return agents
+    # ------- Discovery (delegated to unified system) ------- 
+    
+    def discover_core_agents(self) -> Dict[str, CoreAgent]:
+        """Discover core agents via unified LayeredComposer."""
+        sources = self._composer.discover_core()
+        return {name: CoreAgent.from_layer_source(src) for name, src in sources.items()}
 
     def resolve_core_agent(self, name: str) -> CoreAgent:
+        """Resolve a specific core agent."""
         agents = self.discover_core_agents()
         if name not in agents:
             raise AgentNotFoundError(
-                f"Core agent '{name}' not found under {self.core_dir / 'agents'}"
+                f"Core agent '{name}' not found. Available: {sorted(agents.keys())}"
             )
         return agents[name]
 
     def exists(self, name: str) -> bool:
         """Check if an agent exists in the registry."""
-        agents = self.discover_core_agents()
-        return name in agents
+        return name in self._composer.discover_core()
 
     def get(self, name: str) -> Dict:
         """Get agent metadata by name."""
@@ -165,67 +117,48 @@ class AgentRegistry:
         }
 
     def discover_pack_overlays(self, agent_name: str, packs: List[str]) -> List[PackOverlay]:
-        """Discover pack overlays for a given agent name."""
+        """Discover pack overlays for a given agent via unified system."""
         overlays: List[PackOverlay] = []
+        existing = set(self._composer.discover_core().keys())
+        
         for pack in packs:
-            overlay_path = self.packs_dir / pack / "agents" / f"{agent_name}.md"
-            if overlay_path.exists():
-                overlays.append(PackOverlay(pack=pack, path=overlay_path))
+            pack_overlays = self._composer.discover_pack_overlays(pack, existing)
+            if agent_name in pack_overlays:
+                overlays.append(PackOverlay.from_layer_source(pack_overlays[agent_name]))
+            # Update existing for next pack (pack-new entities become existing)
+            pack_new = self._composer.discover_pack_new(pack, existing)
+            existing.update(pack_new.keys())
+        
         return overlays
 
     def discover_pack_agent_names(self, packs: List[str]) -> List[str]:
-        """Discover all agent names provided by packs (concrete agents only).
-        
-        Pack agents are discovered from .edison/packs/<pack>/agents/<agent>.md.
-        Files in overlays/ subdirectory are skipped (those are for extending core agents).
-        """
+        """Discover new agent names defined by packs (not overlays)."""
         names: List[str] = []
-        known_packs: set[str] = set()
-        if self.packs_dir.exists():
-            known_packs.update(p.name for p in self.packs_dir.iterdir() if p.is_dir())
-        try:
-            from edison.data import get_data_path
-
-            data_packs_dir = Path(get_data_path("packs"))
-            if data_packs_dir.exists():
-                known_packs.update(p.name for p in data_packs_dir.iterdir() if p.is_dir())
-        except Exception:
-            # Bundled packs may be unavailable in minimal distributions
-            pass
-
+        existing = set(self._composer.discover_core().keys())
+        
         for pack in packs:
-            pack_agents_dir = self.packs_dir / pack / "agents"
-            if not pack_agents_dir.exists():
-                continue
-            for agent_file in sorted(pack_agents_dir.glob("*.md")):
-                stem = agent_file.stem
-                # Skip files starting with _ (like __init__)
-                if stem.startswith("_"):
-                    continue
-                pack_scoped_name = (
-                    stem
-                    if any(stem.endswith(f"-{known}") for known in known_packs)
-                    else f"{stem}-{pack}"
-                )
-                if pack_scoped_name not in names:
-                    names.append(pack_scoped_name)
+            pack_new = self._composer.discover_pack_new(pack, existing)
+            for name in pack_new:
+                if name not in names:
+                    names.append(name)
+            existing.update(pack_new.keys())
+        
         return names
 
     def project_overlay_path(self, agent_name: str) -> Optional[Path]:
-        """Return project overlay path when present.
+        """Return project overlay path if it exists."""
+        existing = set(self._composer.discover_core().keys())
+        # Add pack entities to existing (project overlays can extend pack-new)
+        # Note: This simplified version only checks core agents
+        project_overlays = self._composer.discover_project_overlays(existing)
+        if agent_name in project_overlays:
+            return project_overlays[agent_name].path
+        return None
 
-        Pattern: <project_config_dir>/agents/overlays/<agent>.md
-        Directory provides context - no suffix needed.
-        """
-        path = self.project_dir / "agents" / "overlays" / f"{agent_name}.md"
-        return path if path.exists() else None
-
-    # ------- Constitution Reference -------
+    # ------- Constitution Reference (agent-specific) ------- 
+    
     def _build_constitution_header(self) -> str:
-        """Build the constitution reference header to inject at the top of agent prompts.
-
-        Returns a markdown section instructing agents to read their constitution first.
-        """
+        """Build the constitution reference header to inject at the top of agent prompts."""
         return """## MANDATORY: Read Constitution First
 
 Before starting any work, you MUST read the Agent Constitution at:
@@ -244,69 +177,33 @@ This constitution contains:
 
 ---"""
 
-    # ------- Composition -------
+    # ------- Composition (unified + agent post-processing) ------- 
+    
     def compose_agent(self, agent_name: str, packs: List[str]) -> str:
-        """Compose a single agent from core + pack + project overlays."""
-        core_agent = self.resolve_core_agent(agent_name)
-        core_text = core_agent.core_path.read_text(encoding="utf-8")
-
-        # Minimal structural validation: must start with an Agent header
-        if not core_text.lstrip().startswith("# Agent:"):
-            raise AgentTemplateError(
-                f"Core agent template {core_agent.core_path} is missing '# Agent:' header"
+        """Compose a single agent from core + pack + project overlays.
+        
+        Uses the unified composition system, then applies agent-specific post-processing.
+        """
+        # Use unified composition system for section-based composition
+        try:
+            composed = compose(
+                content_type="agents",
+                name=agent_name,
+                packs=packs,
+                repo_root=self.repo_root,
             )
-
-        overlays = self.discover_pack_overlays(agent_name, packs)
-        project_overlay = self.project_overlay_path(agent_name)
-
-        tools_blocks: List[str] = []
-        guideline_blocks: List[str] = []
-
-        # Pack overlays
-        for overlay in overlays:
-            text = overlay.path.read_text(encoding="utf-8")
-            tools, guidelines = _extract_sections(text)
-            if tools:
-                tools_blocks.append(f"### {overlay.pack}\n\n{tools.strip()}")
-            if guidelines:
-                guideline_blocks.append(f"### {overlay.pack}\n\n{guidelines.strip()}")
-
-        # Optional project overlay (third layer)
-        if project_overlay is not None:
-            proj_text = project_overlay.read_text(encoding="utf-8")
-            proj_tools, proj_guidelines = _extract_sections(proj_text)
-            if proj_tools:
-                tools_blocks.append(f"### project\n\n{proj_tools.strip()}")
-            if proj_guidelines:
-                guideline_blocks.append(f"### project\n\n{proj_guidelines.strip()}")
-
-        tools_block = "\n\n".join(b for b in tools_blocks if b).strip()
-        guidelines_block = "\n\n".join(b for b in guideline_blocks if b).strip()
-
-        packs_display = ", ".join(packs) if packs else ""
-
-        substitutions = {
-            "AGENT_NAME": agent_name,
-            "PACK_NAME": packs_display,
-            "TOOLS": tools_block,
-            "PACK_TOOLS": tools_block,
-            "GUIDELINES": guidelines_block,
-            "PACK_GUIDELINES": guidelines_block,
-        }
-
-        composed = core_text
-        for key, value in substitutions.items():
-            composed = composed.replace(f"{{{{{key}}}}}", value)
-
-        # Allow core templates to gate sections on pack presence via
-        # {{include-if:has-pack(name):...}} directives.
+        except CompositionValidationError as e:
+            if "not found" in str(e).lower():
+                raise AgentNotFoundError(str(e)) from e
+            raise AgentError(str(e)) from e
+        
+        # Agent-specific post-processing
         if packs:
             composed = render_conditional_includes(composed, packs)
-
-        # Auto-inject constitution reference at the top
+        
         constitution_header = self._build_constitution_header()
         composed = f"{constitution_header}\n\n{composed}"
-
+        
         target_path = self.project_dir / "_generated" / "agents" / f"{agent_name}.md"
         composed = resolve_project_dir_placeholders(
             composed,
@@ -314,70 +211,67 @@ This constitution contains:
             target_path=target_path,
             repo_root=self.repo_root,
         )
-
+        
         return composed
 
-    # ------- DRY analysis -------
+    # ------- DRY analysis (uses unified discovery) ------- 
+    
     def dry_duplicate_report_for_agent(
         self,
         agent_name: str,
         packs: List[str],
         dry_min_shingles: Optional[int] = None,
     ) -> Dict:
-        """Return DRY duplication report between core, packs, and project overlay.
-
-        Uses the same 12-word shingling strategy as validator/guideline
-        composition to detect overlapping content between layers.
-        """
-        core_agent = self.resolve_core_agent(agent_name)
-        core_text = core_agent.core_path.read_text(encoding="utf-8")
-        core_tools, core_guidelines = _extract_sections(core_text)
-        core_sections = "\n\n".join(
-            [s for s in (core_tools, core_guidelines) if s]
-        )
-
-        overlays = self.discover_pack_overlays(agent_name, packs)
+        """Return DRY duplication report using unified discovery."""
+        parser = SectionParser()
+        
+        def extract_content(text: str) -> str:
+            sections = parser.parse(text)
+            return "\n\n".join(s.content for s in sections if s.content.strip())
+        
+        # Get core content
+        core_entities = self._composer.discover_core()
+        if agent_name not in core_entities:
+            raise AgentNotFoundError(f"Agent '{agent_name}' not found in core")
+        core_text = core_entities[agent_name].path.read_text(encoding="utf-8")
+        core_sections = extract_content(core_text) or core_text
+        
+        # Get pack overlay content
+        existing = set(core_entities.keys())
         pack_chunks: List[str] = []
-        for overlay in overlays:
-            text = overlay.path.read_text(encoding="utf-8")
-            tools, guidelines = _extract_sections(text)
-            if tools:
-                pack_chunks.append(tools)
-            if guidelines:
-                pack_chunks.append(guidelines)
+        for pack in packs:
+            pack_overlays = self._composer.discover_pack_overlays(pack, existing)
+            if agent_name in pack_overlays:
+                text = pack_overlays[agent_name].path.read_text(encoding="utf-8")
+                content = extract_content(text)
+                if content:
+                    pack_chunks.append(content)
+            pack_new = self._composer.discover_pack_new(pack, existing)
+            existing.update(pack_new.keys())
         packs_text = "\n\n".join(pack_chunks)
-
+        
+        # Get project overlay content
         overlay_text = ""
-        project_overlay = self.project_overlay_path(agent_name)
-        if project_overlay is not None:
-            proj_text = project_overlay.read_text(encoding="utf-8")
-            proj_tools, proj_guidelines = _extract_sections(proj_text)
-            overlay_text = "\n\n".join(
-                [s for s in (proj_tools, proj_guidelines) if s]
-            )
-
-        # Get DRY detection config from composition.yaml
-        if dry_min_shingles is None:
-            from ..config import ConfigManager
-            cfg = ConfigManager().load_config(validate=False)
-            dry_config = cfg.get("composition", {}).get("dryDetection", {})
-            min_s = dry_config.get("minShingles", 2)
-            k = dry_config.get("shingleSize", 12)
-        else:
-            min_s = dry_min_shingles
-            # Use config for k as well
-            from ..config import ConfigManager
-            cfg = ConfigManager().load_config(validate=False)
-            dry_config = cfg.get("composition", {}).get("dryDetection", {})
-            k = dry_config.get("shingleSize", 12)
-
+        project_overlays = self._composer.discover_project_overlays(existing)
+        if agent_name in project_overlays:
+            proj_text = project_overlays[agent_name].path.read_text(encoding="utf-8")
+            overlay_text = extract_content(proj_text)
+        
+        # Get DRY config
+        from ..config import ConfigManager
+        cfg = ConfigManager().load_config(validate=False)
+        dry_config = cfg.get("composition", {}).get("dryDetection", {})
+        min_s = dry_min_shingles if dry_min_shingles is not None else dry_config.get("minShingles", 2)
+        k = dry_config.get("shingleSize", 12)
+        
         return dry_duplicate_report(
             {"core": core_sections, "packs": packs_text, "overlay": overlay_text},
             min_shingles=min_s,
             k=k,
         )
 
-    # ------- Roster metadata -------
+    # ------- Roster metadata (agent-specific) ------- 
+    
     @staticmethod
     def _read_front_matter(path: Path) -> Dict[str, Any]:
         """Extract YAML front matter from an agent file."""
@@ -411,7 +305,6 @@ This constitution contains:
                     "core_path": str(core_agent.core_path),
                 }
             )
-
         return sorted(agents, key=lambda a: a["name"])
 
 

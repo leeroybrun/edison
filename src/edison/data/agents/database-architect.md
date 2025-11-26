@@ -68,7 +68,7 @@ await mcp__context7__get-library-docs({
 
 - Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{PACK_TOOLS}}
+{{SECTION:Tools}}
 
 ## Guidelines
 - Apply TDD; write migrations/tests first and include evidence in the implementation report.
@@ -76,7 +76,14 @@ await mcp__context7__get-library-docs({
 - Guard data integrity with constraints, indexes, and rollback-safe plans; document risks and mitigations.
 - Align schemas and queries with API/feature contracts; keep performance and retention requirements explicit.
 
-{{PACK_GUIDELINES}}
+{{SECTION:Guidelines}}
+
+## Architecture
+{{SECTION:Architecture}}
+
+{{EXTENSIBLE_SECTIONS}}
+
+{{APPEND_SECTIONS}}
 
 ## IMPORTANT RULES
 - **Integrity first:** Constraints, indexes, and explicit defaults must come from config/requirements; prove them with failing-then-passing migration tests.

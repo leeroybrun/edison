@@ -88,27 +88,27 @@ def test_validate_pack_requires_triggers_file_patterns(tmp_path: Path):
     assert 'schema' in codes, "Expected schema validation error for missing triggers.filePatterns"
 
 
-def test_validate_pack_requires_codex_context_validator(tmp_path: Path):
-    """Every pack must provide at least a codex.md validator."""
-    p = tmp_path / '.edison/packs/no_codex'
+def test_validate_pack_requires_global_validator(tmp_path: Path):
+    """Every pack must provide at least a global.md validator."""
+    p = tmp_path / '.edison/packs/no_global'
     write(
         p / 'pack.yml',
         textwrap.dedent(
             '''
-            name: no-codex
+            name: no-global
             version: 1.0.0
-            description: pack without codex validator
+            description: pack without global validator
             triggers:
               filePatterns: ["**/*.ts"]
             validators: []
             '''
         ),
     )
-    # No validators/codex.md file on disk
+    # No validators/global.md file on disk
     res = validate_pack(p)
     assert not res.ok
     codes = {i.code for i in res.issues}
-    assert 'codex-validator-missing' in codes
+    assert 'global-validator-missing' in codes
 
 
 def test_discover_packs_finds_typescript():

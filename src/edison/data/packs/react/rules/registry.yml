@@ -33,21 +33,61 @@ rules:
     sourcePath: packs/react/guidelines/hooks-patterns.md
     guidance: "Follow React hooks best practices and patterns."
 
+  - id: RULE.REACT.RULES_OF_HOOKS
+    title: "Rules of Hooks (React 19)"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "Only call hooks at top level; no conditional hooks, hooks in loops, or in nested functions."
+
+  - id: RULE.REACT.USE_HOOK
+    title: "use() Hook for Promise Unwrapping (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "Use the use() hook to unwrap promises in components; prefer over useEffect for data fetching."
+
+  - id: RULE.REACT.USE_FORM_STATUS
+    title: "useFormStatus for Form Submissions (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "Use useFormStatus hook to track form submission state with server actions."
+
+  - id: RULE.REACT.USE_OPTIMISTIC
+    title: "useOptimistic for UI Updates (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "Use useOptimistic to provide immediate UI feedback while server actions complete."
+
   - id: RULE.REACT.SERVER_CLIENT_BOUNDARY
-    title: "Server/Client Component Boundary"
+    title: "Server/Client Component Boundary (React 19)"
     category: implementation
     blocking: false
     applies_to: [agent, validator]
     sourcePath: packs/react/guidelines/server-client-components.md
-    guidance: "Properly separate server and client components; understand the boundary implications."
+    guidance: "Prefer Server Components by default; use Client Components only for interactivity, hooks, browser APIs."
+
+  - id: RULE.REACT.SUSPENSE_BOUNDARIES
+    title: "Suspense Boundaries for Async Components (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/server-client-components.md
+    guidance: "Wrap async Server Components in Suspense with meaningful fallback UI; avoid loading states without fallback."
 
   - id: RULE.REACT.ACCESSIBILITY
-    title: "Accessibility Requirements"
+    title: "Accessibility Requirements (WCAG 2.1 AA)"
     category: implementation
     blocking: true
     applies_to: [agent, validator]
     sourcePath: packs/react/guidelines/accessibility.md
-    guidance: "All components must meet accessibility standards (WCAG 2.1 AA minimum)."
+    guidance: "All components must meet accessibility standards (WCAG 2.1 AA minimum): semantic HTML, ARIA labels, keyboard navigation."
 
   - id: RULE.REACT.COLOCATE_TESTS
     title: "Co-locate Tests with Components"
@@ -56,3 +96,27 @@ rules:
     applies_to: [agent]
     sourcePath: packs/react/guidelines/component-design.md
     guidance: "Co-locate tests and stories with components when appropriate."
+
+  - id: RULE.REACT.NO_USE_EFFECT_FETCHING
+    title: "Avoid useEffect for Data Fetching (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "In React 19, prefer Server Components or use() hook over useEffect for data fetching to improve performance."
+
+  - id: RULE.REACT.MEMOIZATION_DELIBERATE
+    title: "Deliberate Memoization Strategy"
+    category: performance
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/HOOKS.md
+    guidance: "Use useMemo and useCallback deliberately for expensive operations; avoid premature optimization."
+
+  - id: RULE.REACT.FORM_ACTIONS
+    title: "Server Actions for Forms (React 19)"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/react/guidelines/server-client-components.md
+    guidance: "Prefer Server Actions with form elements over client-side data fetching in React 19."

@@ -1,46 +1,372 @@
-# Composition system configuration
-# Controls prompt composition, orchestrator manifests, and agent assembly
+# Unified Composition Schema
+# Defines section handling for all composable content types
+#
+# Each content type specifies:
+# - known_sections: Core-defined sections with placeholders (can be extended)
+# - extensible_sections: Whether packs/project can define NEW sections
+# - append_sections: Whether arbitrary content can be appended
+#
+# Section modes:
+# - replace: Only core defines this section (no extensions)
+# - append: Each layer adds to this section
+#
+# HTML comment syntax for overlays:
+# - <!-- EXTEND: SectionName --> content <!-- /EXTEND -->
+# - <!-- NEW_SECTION: SectionName --> content <!-- /NEW_SECTION -->
+# - <!-- APPEND --> content <!-- /APPEND -->
+
+version: "1.0"
+
+# Default composition settings
+defaults:
+  extensible_sections: true
+  append_sections: true
+  dedupe_strategy: shingles  # 12-word shingles for deduplication
+  dedupe_min_shingles: 3
+
+# Content type definitions
+content_types:
+  agents:
+    description: "Agent prompt templates with tools and guidelines"
+    
+    known_sections:
+      - name: Role
+        mode: replace
+        description: "Core role definition (not extensible)"
+        
+      - name: Tools
+        placeholder: "{{SECTION:Tools}}"
+        mode: append
+        description: "Available tools for the agent"
+        
+      - name: Guidelines
+        placeholder: "{{SECTION:Guidelines}}"
+        mode: append
+        description: "Guidelines and best practices"
+        
+      - name: Architecture
+        placeholder: "{{SECTION:Architecture}}"
+        mode: append
+        description: "Architecture patterns and constraints"
+        
+      - name: Examples
+        placeholder: "{{SECTION:Examples}}"
+        mode: append
+        description: "Code examples and patterns"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+    
+  validators:
+    description: "Validator prompt templates with checks and criteria"
+    
+    known_sections:
+      - name: Purpose
+        mode: replace
+        description: "Core purpose definition"
+        
+      - name: Checks
+        placeholder: "{{SECTION:Checks}}"
+        mode: append
+        description: "Validation checks to perform"
+        
+      - name: Examples
+        placeholder: "{{SECTION:Examples}}"
+        mode: append
+        description: "Code examples showing pass/fail cases"
+        
+      - name: TechStack
+        placeholder: "{{SECTION:TechStack}}"
+        mode: append
+        description: "Tech-stack specific validation rules"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+    
+  guidelines:
+    description: "Guideline documents with best practices"
+    
+    # Guidelines use full-document composition (concatenate + dedupe)
+    composition_mode: concatenate
+    dedupe: true
+    
+    known_sections:
+      - name: Overview
+        mode: replace
+        description: "Core overview"
+        
+      - name: Principles
+        placeholder: "{{SECTION:Principles}}"
+        mode: append
+        description: "Guiding principles"
+        
+      - name: Practices
+        placeholder: "{{SECTION:Practices}}"
+        mode: append
+        description: "Best practices"
+        
+      - name: Examples
+        placeholder: "{{SECTION:Examples}}"
+        mode: append
+        description: "Examples and patterns"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+    
+  constitutions:
+    description: "Role constitutions with mandatory rules"
+    
+    known_sections:
+      - name: Identity
+        mode: replace
+        description: "Core role identity"
+        
+      - name: MandatoryReads
+        placeholder: "{{SECTION:MandatoryReads}}"
+        mode: append
+        description: "Required document reads"
+        
+      - name: Rules
+        placeholder: "{{SECTION:Rules}}"
+        mode: append
+        description: "Applicable rules"
+        
+      - name: Workflow
+        placeholder: "{{SECTION:Workflow}}"
+        mode: append
+        description: "Workflow steps"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+    
+  rules:
+    description: "Rule definitions from YAML registries"
+    
+    # Rules use YAML merge strategy
+    composition_mode: yaml_merge
+    merge_key: id
+    
+    known_sections: []  # Rules don't use markdown sections
+
+  canonical-entry:
+    description: "Project root entry point (AGENTS.md) with mandatory constitution read"
+    
+    # Canonical entry is mostly static - minimal extension points
+    known_sections:
+      - name: MandatoryRead
+        mode: replace
+        description: "Mandatory constitution read instructions (not extensible)"
+        
+      - name: RoleDetermination
+        mode: replace
+        description: "How to determine role (not extensible)"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+
+  clients:
+    description: "Client-specific configuration files (Claude, Zen, Codex)"
+    
+    known_sections:
+      - name: EntryPoint
+        mode: replace
+        description: "Reference to AGENTS.md entry point"
+        
+      - name: ClientSpecific
+        placeholder: "{{SECTION:ClientSpecific}}"
+        mode: append
+        description: "Client-specific instructions"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+
+# Directory conventions (unified across all types)
+directory_conventions:
+  overlays_subfolder: "overlays"
+  
+  # Path patterns for each layer
+  core: "{config_dir}/core/{type}/{name}.md"
+  pack_overlay: "{packs_dir}/{pack}/{type}/overlays/{name}.md"
+  pack_new: "{packs_dir}/{pack}/{type}/{name}.md"
+  project_overlay: "{project_dir}/{type}/overlays/{name}.md"
+  project_new: "{project_dir}/{type}/{name}.md"
+  
+  # Naming conventions for constitutions (special case)
+  constitution_core: "{config_dir}/core/constitutions/{role}-base.md"
+  constitution_pack: "{packs_dir}/{pack}/constitutions/{role}-additions.md"
+  constitution_project: "{project_dir}/constitutions/{role}-overrides.md"
+
+# Validation rules
+validation:
+  # Error if overlay references non-existent entity
+  overlay_must_exist: true
+  
+  # Error if new definition shadows existing entity
+  no_shadowing: true
+  
+  # Warn on sections that don't match any known/extensible section
+  warn_unknown_sections: true
+
+# =============================================================================
+# OUTPUT CONFIGURATION
+# =============================================================================
+# Configure where composed files are written.
+# All paths are relative to repo root unless absolute.
+# Use {{PROJECT_EDISON_DIR}} placeholder for project config directory.
+#
+# Project-level overrides: Create a composition.yaml in your .edison/ directory
+# and override only the outputs you want to customize.
+
+outputs:
+  # -------------------------------------------------------------------------
+  # Canonical Entry Point (AGENTS.md)
+  # -------------------------------------------------------------------------
+  # The main entry point file that directs LLMs to their role constitution.
+  # Default: Written to repo root as AGENTS.md
+  canonical_entry:
+    enabled: true
+    # Where to write the file (relative to repo root)
+    output_path: "."
+    # Filename (can be customized, e.g., "AGENTS_COMPOSED.md")
+    filename: "AGENTS.md"
+    # Source template (relative to edison data dir)
+    template: "canonical/AGENTS.md"
+
+  # -------------------------------------------------------------------------
+  # Client Files (CLAUDE.md, zen.md, etc.)
+  # -------------------------------------------------------------------------
+  # Client-specific configuration files.
+  # Each client can be individually enabled/disabled and configured.
+  clients:
+    # Claude Code client
+    claude:
+      enabled: true
+      # Where to write (relative to repo root)
+      output_path: ".claude"
+      filename: "CLAUDE.md"
+      template: "clients/claude.md"
+    
+    # Zen MCP client
+    zen:
+      enabled: true
+      output_path: ".zen/conf"
+      filename: "zen.md"
+      template: "clients/zen.md"
+    
+    # Codex client (example of disabled by default)
+    codex:
+      enabled: false
+      output_path: ".codex"
+      filename: "CODEX.md"
+      template: "clients/codex.md"
+    
+    # Cursor IDE client
+    cursor:
+      enabled: false
+      output_path: ".cursor"
+      filename: "CURSOR.md"
+      template: "clients/cursor.md"
+
+  # -------------------------------------------------------------------------
+  # Constitutions
+  # -------------------------------------------------------------------------
+  # Role-specific constitution files.
+  constitutions:
+    enabled: true
+    # Base output directory (relative to project config dir)
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/constitutions"
+    # Individual constitution files
+    files:
+      orchestrators:
+        enabled: true
+        filename: "ORCHESTRATORS.md"
+      agents:
+        enabled: true
+        filename: "AGENTS.md"
+      validators:
+        enabled: true
+        filename: "VALIDATORS.md"
+
+  # -------------------------------------------------------------------------
+  # Agents
+  # -------------------------------------------------------------------------
+  # Composed agent prompt files.
+  agents:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+    # File naming pattern: {agent_name}.md
+    filename_pattern: "{name}.md"
+
+  # -------------------------------------------------------------------------
+  # Validators
+  # -------------------------------------------------------------------------
+  # Composed validator prompt files.
+  validators:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/validators"
+    # File naming pattern: {validator_name}.md
+    filename_pattern: "{name}.md"
+
+  # -------------------------------------------------------------------------
+  # Guidelines
+  # -------------------------------------------------------------------------
+  # Composed guideline files.
+  guidelines:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/guidelines"
+    # Preserve source directory structure
+    preserve_structure: true
+    filename_pattern: "{name}.md"
+
+  # -------------------------------------------------------------------------
+  # Client Sync Outputs
+  # -------------------------------------------------------------------------
+  # Where synced files are written for each client.
+  # These are the final locations after adapter processing.
+  sync:
+    claude:
+      enabled: true
+      # Agents synced to .claude/agents/
+      agents_path: ".claude/agents"
+      # Agent filename pattern
+      agents_filename_pattern: "{name}.md"
+    
+    zen:
+      enabled: true
+      # Zen prompts synced to .zen/conf/systemprompts/
+      prompts_path: ".zen/conf/systemprompts/clink"
+      prompts_filename_pattern: "{name}.txt"
+
+# =============================================================================
+# COMPOSITION WORKFLOW SETTINGS
+# =============================================================================
+# Used by orchestrators for workflow coordination.
 
 composition:
+  workflowLoop:
+    command: "scripts/session next"
+    frequency: "Every task cycle"
+    readOrder:
+      - "Task file in .project/tasks/"
+      - "Relevant guidelines from .edison/"
+      - "Existing code in scope"
+      - "Run tests and validation"
+  
+  # Generated file header template
   generatedFileHeader: |
-    <!-- 
+    <!--
       AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
-      Generated by: Edison Framework v{{version}}
-      Template: {{template_name}}
+      Generated by: Edison Framework v1.0.0
+      Template: {{template}}
       Generated at: {{timestamp}}
       Project config root: {{PROJECT_EDISON_DIR}}
-      
+
       To modify, edit the source template or configuration.
     -->
-  # DRY (Don't Repeat Yourself) detection configuration
+  
+  # DRY detection settings
   dryDetection:
-    minShingles: 2       # Minimum shingles for duplication detection (default from EDISON_DRY_MIN_SHINGLES)
-    shingleSize: 12      # Size of shingles for similarity comparison (k parameter)
-    minSimilarity: 0.8   # Minimum Jaccard similarity for guideline duplication detection
-    cliThreshold: 0.3    # Default duplication threshold for CLI audit command
-
-  # Workflow loop instructions for orchestrators
-  workflowLoop:
-    command: "scripts/session next <session-id>"
-    frequency: "Before EVERY action"
-    readOrder:
-      - "1. 📋 APPLICABLE RULES (read FIRST)"
-      - "2. 🎯 RECOMMENDED ACTIONS (read AFTER rules)"
-      - "3. 🤖 DELEGATION HINT (follow priority chain)"
-      - "4. 🔍 VALIDATORS (auto-detected from git diff)"
-
-  # Metadata inference for validators
-  metadata:
-    defaults:
-      model: "codex"
-      alwaysRun: false
-      blocksOnFail: false
-      triggers:
-        - "*"
-
-    # Search paths for validator definitions (ordered by priority)
-    searchPaths:
-      - "{project_dir}/_generated/validators/{validator_id}.md"
-      - "{project_dir}/validators/specialized/{validator_id}.md"
-      - "{repo_root}/.edison/core/validators/specialized/{validator_id}.md"
-      - "{packs_dir}/{pack}/validators/{validator_id}.md"
+    minShingles: 5
+    shingleSize: 12
+    threshold: 0.37
+    minSimilarity: 0.3

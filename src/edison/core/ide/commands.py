@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
-from ..file_io.utils import ensure_dir
+from ..file_io.utils import ensure_directory
 from edison.core.composition.path_utils import resolve_project_dir_placeholders
 
 # Defaults
@@ -190,13 +190,13 @@ class CommandComposer:
             raise ValueError(f"Unsupported platform: {platform}")
 
         adapter = self.adapters[key]
-        output_dir = ensure_dir(self._output_dir_for(key))
+        output_dir = ensure_directory(self._output_dir_for(key))
 
         results: Dict[str, Path] = {}
         for cmd in defs:
             rendered = adapter.render_command(cmd, self.config.get("commands", {}))
             out_path = adapter.get_output_path(cmd.id, output_dir)
-            ensure_dir(out_path.parent)
+            ensure_directory(out_path.parent)
             rendered = resolve_project_dir_placeholders(
                 rendered,
                 project_dir=self.project_dir,

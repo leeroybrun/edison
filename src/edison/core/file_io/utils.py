@@ -272,41 +272,11 @@ def ensure_directory(path: Path, create: bool = True) -> Path:
         raise FileNotFoundError(f"Directory does not exist: {path}")
 
 
-def ensure_dir(path: Path) -> Path:
-    """Ensure directory exists, creating if necessary.
-
-    Args:
-        path: Directory path to ensure exists
-
-    Returns:
-        The path (for chaining)
-    """
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+def ensure_dir(path: Path, create: bool = True) -> Path:
+    """Backward-compatible alias for ensure_directory."""
+    return ensure_directory(path, create=create)
 
 
-# ============================================================================
-# Enhanced JSON I/O with defaults
-# ============================================================================
-
-def read_json_with_default(path: Path, default: Optional[Any] = None) -> Any:
-    """Read JSON with error handling and default fallback.
-
-    Unlike read_json_safe, this returns a default value on any error
-    (missing file, invalid JSON, etc.) instead of raising exceptions.
-
-    Args:
-        path: JSON file path to read
-        default: Value to return if file missing or invalid (default: None)
-
-    Returns:
-        Any: Parsed JSON data, or default if error
-
-    Examples:
-        >>> config = read_json_with_default(Path("config.json"), default={})
-        >>> assert isinstance(config, dict)
-    """
-    return read_json_safe(path, default=default)
 
 
 # ============================================================================
@@ -354,7 +324,6 @@ __all__ = [
     "dump_yaml_string",
     "ensure_directory",
     "ensure_dir",
-    "read_json_with_default",
     "read_text",
     "write_text",
     "PathLike",

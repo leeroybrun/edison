@@ -24,7 +24,7 @@ from helpers.command_runner import (
     assert_error_contains,
     assert_json_output,
 )
-from helpers.test_env import TestProjectDir
+from helpers.env import TestProjectDir
 
 
 @pytest.mark.golden_path

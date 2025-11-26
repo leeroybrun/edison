@@ -1,5 +1,8 @@
-"""Hook utilities for Edison core."""
+"""Hook utilities for Edison core.
 
-from .compaction import CompactionHook, CompactionHookSettings
+Note: Claude Code hooks are now managed declaratively via hooks.yaml and
+the HookComposer in edison.core.ide.hooks. The compaction reminder hook
+uses the native PreCompact event type and is defined in hooks.yaml.
+"""
 
-__all__ = ["CompactionHook", "CompactionHookSettings"]
+__all__: list[str] = []

@@ -53,6 +53,17 @@
           "type": "string",
           "description": "Project name used in placeholders",
           "examples": ["{PROJECT_NAME}", "my-project"]
+        },
+        "owner": {
+          "description": "Default owner for tasks/sessions; overrides process detection when set",
+          "type": ["string", "null"],
+          "default": null
+        },
+        "audit_terms": {
+          "description": "Additional project-specific terms to ban from core/pack guidelines",
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
         }
       },
       "additionalProperties": false

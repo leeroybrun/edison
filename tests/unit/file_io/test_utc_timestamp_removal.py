@@ -64,7 +64,8 @@ def test_all_imports_use_utils_time():
         content = full_path.read_text()
 
         # Should NOT import from file_io.utils
-        assert "from edison.core.file_io.utils import" not in content or \
-               "utc_timestamp" not in content or \
-               "from edison.core.file_io.utils import" in content and "utc_timestamp" not in content, \
-            f"{file_path} should not import utc_timestamp from file_io.utils"
+        # We check line by line to avoid false positives where file imports OTHER things
+        # from file_io.utils but imports utc_timestamp correctly from utils.time
+        for line in content.splitlines():
+            if "from edison.core.file_io.utils import" in line and "utc_timestamp" in line:
+                pytest.fail(f"{file_path} imports utc_timestamp from file_io.utils: {line}")

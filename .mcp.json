@@ -1,21 +1,27 @@
 {
-    "mcpServers": {
-      "context7": {
-        "command": "npx",
-        "args": ["-y", "@upstash/context7-mcp@latest"]
-      },
-      "sequential-thinking": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-sequential-thinking"
-        ]
-      },
-      "edison-zen": {
-        "command": "bash",
-        "args": [
-          "./scripts/zen/run-server.sh"
-        ]
+  "mcpServers": {
+    "context7": {
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ],
+      "command": "npx",
+      "env": {}
+    },
+    "edison-zen": {
+      "args": [],
+      "command": "./scripts/zen/run-server.sh",
+      "env": {
+        "ZEN_WORKING_DIR": "/Users/leeroy/Documents/Development/edison"
       }
+    },
+    "sequential-thinking": {
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "command": "npx",
+      "env": {}
     }
   }
+}

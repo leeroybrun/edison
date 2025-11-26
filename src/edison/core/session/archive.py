@@ -5,6 +5,7 @@ import tarfile
 from datetime import datetime
 from pathlib import Path
 
+from ..file_io.utils import ensure_dir
 from ..paths.resolver import PathResolver
 from .store import sanitize_session_id, get_session_json_path
 from .config import SessionConfig
@@ -31,7 +32,7 @@ def archive_session(session_id: str) -> Path:
     d = j.parent
 
     archive_path = _archive_path_for_session(sid)
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(archive_path.parent)
 
     # Build tar.gz preserving tree relative to session root for determinism
     with tarfile.open(archive_path, "w:gz") as tf:

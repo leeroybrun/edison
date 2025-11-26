@@ -54,6 +54,12 @@
       "items": { "type": "string" },
       "default": []
     },
+    "agents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Agent overlay files for this pack (relative to agents/ directory)",
+      "default": []
+    },
     "examples": {
       "type": "array",
       "items": { "type": "string" },
