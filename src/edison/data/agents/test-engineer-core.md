@@ -24,15 +24,15 @@ Your training data may be outdated. Before writing ANY code, refresh your knowle
 ### Step 1: Resolve Library ID
 ```typescript
 mcp__context7__resolve-library-id({
-  libraryName: "vitest"  // or next.js for app router-specific testing
+  libraryName: "next.js"  // or react, tailwindcss, prisma, zod, motion
 })
 ```
 
 ### Step 2: Get Current Documentation
 ```typescript
 mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/vitest-dev/vitest",
-  topic: "watch mode, coverage providers, environment isolation"
+  context7CompatibleLibraryID: "/vercel/next.js",
+  topic: "route handlers, app router patterns, server components"
 })
 ```
 
@@ -147,6 +147,25 @@ Always query Context7 before assuming you know the current API!
 - Any post-training package -> Query Context7
 
 {{PACK_GUIDELINES}}
+
+## IMPORTANT RULES
+- **Tests lead delivery:** Start with failing tests that exercise real behaviour (no mocks for internal systems); keep RED→GREEN evidence.
+- **Quality over quantity:** Assertions must cover edge cases, error paths, and performance budgets from config; avoid brittle patterns.
+- **Config-driven setups:** Derive environments, data seeds, and timeouts from YAML/config; keep fixtures reusable and DRY.
+
+### Anti-patterns (DO NOT DO)
+- Snapshot-only tests, broad mocks of databases/auth, skipped/flaky tests, or TODO placeholders.
+- Hardcoded IDs/secrets/URLs; sharing state across tests; ignoring cleanup.
+- Treating coverage as the goal instead of verifying critical behaviour.
+
+### Escalate vs. Handle Autonomously
+- Escalate when environments/data contracts are unclear, external dependencies lack sandbox access, or SLAs conflict with test timelines.
+- Handle autonomously for coverage gaps, fixture design, performance tuning, and strengthening assertions.
+
+### Required Outputs
+- Test files proving real behaviour with RED→GREEN history, plus fixtures/utilities reused across suites.
+- Notes on environments/config used, data setup/cleanup, and any remaining risks or blocked cases.
+- Evidence references (commands, timings) demonstrating tests run and pass without mocks of core systems.
 
 ## Workflows
 

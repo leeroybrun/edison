@@ -46,11 +46,7 @@ class ClaudeSync:
         self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
         self.project_config_dir = get_project_config_dir(self.repo_root)
         self.agents_generated_dir = self.project_config_dir / "_generated" / "agents"
-        # DEPRECATED: ORCHESTRATOR_GUIDE.md no longer generated (T-011)
-        # Use constitutions/ORCHESTRATORS.md instead
-        self.orchestrator_guide_path = (
-            self.project_config_dir / "_generated" / "ORCHESTRATOR_GUIDE.md"
-        )
+        # T-016: NO LEGACY - Only constitution path supported
         self.orchestrator_constitution_path = (
             self.project_config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
         )
@@ -144,8 +140,8 @@ class ClaudeSync:
     def sync_orchestrator_to_claude(self) -> Path:
         """Inject orchestrator constitution into ``.claude/CLAUDE.md``.
 
-        DEPRECATED: ORCHESTRATOR_GUIDE.md support removed (T-011).
-        Now uses constitutions/ORCHESTRATORS.md instead.
+        T-016: NO LEGACY - Only constitution path is supported.
+        ORCHESTRATOR_GUIDE.md fallback removed completely.
 
         Behavior:
           - Ensures ``.claude`` exists (via validate_claude_structure).
@@ -162,24 +158,15 @@ class ClaudeSync:
         if not claude_md.exists():
             claude_md.write_text("# Claude Code Orchestrator\n", encoding="utf-8")
 
-        # Try constitution first (new way), fallback to legacy ORCHESTRATOR_GUIDE.md
+        # ONLY use constitution path (NO LEGACY fallback)
         constitution_path = self.orchestrator_constitution_path
-        guide_source = None
-        source_label = "Constitution"
 
-        if constitution_path.exists():
-            guide_source = constitution_path
-            source_label = "Constitution"
-        elif self.orchestrator_guide_path.exists():
-            # Graceful fallback for projects with legacy ORCHESTRATOR_GUIDE.md
-            guide_source = self.orchestrator_guide_path
-            source_label = "Guide (Legacy)"
-        else:
-            # No orchestrator content available; return unchanged
+        if not constitution_path.exists():
+            # No constitution available; return unchanged
             return claude_md
 
         base = claude_md.read_text(encoding="utf-8")
-        guide_text = guide_source.read_text(encoding="utf-8").strip()
+        guide_text = constitution_path.read_text(encoding="utf-8").strip()
 
         marker_start = "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->"
         marker_end = "<!-- EDISON_ORCHESTRATOR_GUIDE_END -->"
@@ -187,7 +174,7 @@ class ClaudeSync:
         block_lines = [
             marker_start,
             "",
-            f"# Edison Orchestrator {source_label} (Generated)",
+            "# Edison Orchestrator Constitution (Generated)",
             "",
             guide_text,
             "",

@@ -25,7 +25,7 @@ Your training data may be outdated. Before writing ANY code, refresh your knowle
 ### Step 1: Resolve Library ID
 ```typescript
 mcp__context7__resolve-library-id({
-  libraryName: "next.js"  // or prisma, zod
+  libraryName: "next.js"  // or react, tailwindcss, prisma, zod, motion
 })
 ```
 
@@ -33,7 +33,7 @@ mcp__context7__resolve-library-id({
 ```typescript
 mcp__context7__get-library-docs({
   context7CompatibleLibraryID: "/vercel/next.js",
-  topic: "route handlers, validation, server actions, edge/runtime constraints"
+  topic: "route handlers, app router patterns, server components"
 })
 ```
 
@@ -108,6 +108,25 @@ Always query Context7 before assuming you know the current API!
 - Keep API contracts stable and align with feature/database agents; document behaviours in the report.
 
 {{PACK_GUIDELINES}}
+
+## IMPORTANT RULES
+- **Fail-safe contracts:** Define request/response schemas, reject contract drift, and return typed errors with correct HTTP codes.
+- **Auth first:** Default to authenticated handlers, enforce RBAC from YAML config, and log correlation IDs on mutating operations.
+- **TDD evidence:** Start with failing route/validator tests, then implement; keep red/green markers in the report.
+
+### Anti-patterns (DO NOT DO)
+- Shipping unauthenticated endpoints, silent validation failures, or hardcoded secrets/URLs.
+- Mocking database/auth layers or leaving TODOs/partial error handling.
+- Diverging from constitution/config-driven rules or bypassing validation.
+
+### Escalate vs. Handle Autonomously
+- Escalate when auth model/roles are unclear, external API contracts are missing, or shared schemas require breaking changes.
+- Handle autonomously for CRUD endpoints, validation tightening, error-shaping, logging, and pagination/filtering refinements.
+
+### Required Outputs
+- Updated handlers/schemas aligned with YAML config and constitution expectations.
+- Tests that show RED→GREEN for real validation/auth paths (no mocks), with evidence references.
+- Implementation notes capturing decisions, config touched, and any remaining risks.
 
 ## Common Patterns
 

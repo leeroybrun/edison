@@ -327,16 +327,25 @@ This constitution contains:
                 [s for s in (proj_tools, proj_guidelines) if s]
             )
 
-        min_s = (
-            int(os.environ.get("EDISON_DRY_MIN_SHINGLES", "2"))
-            if dry_min_shingles is None
-            else dry_min_shingles
-        )
+        # Get DRY detection config from composition.yaml
+        if dry_min_shingles is None:
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            min_s = dry_config.get("minShingles", 2)
+            k = dry_config.get("shingleSize", 12)
+        else:
+            min_s = dry_min_shingles
+            # Use config for k as well
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            k = dry_config.get("shingleSize", 12)
 
         return dry_duplicate_report(
             {"core": core_sections, "packs": packs_text, "overlay": overlay_text},
             min_shingles=min_s,
-            k=12,
+            k=k,
         )
 
     # ------- Roster metadata -------

@@ -7,7 +7,47 @@ rules:
     blocking: true
     applies_to: [agent, validator]
     sourcePath: packs/tailwind/guidelines/v4-syntax.md
-    guidance: "Use @import 'tailwindcss' (v4 syntax), not @tailwind directives (v3 syntax)."
+    guidance: "Use @import \"tailwindcss\" (v4 syntax), not @tailwind base/components/utilities (v3 syntax)."
+
+  - id: RULE.TAILWIND.FONT_SANS_REQUIRED
+    title: "Apply font-sans explicitly"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#font-sans
+    guidance: "Tailwind v4 does not inject a default font; add font-sans to body/layout and text elements to avoid Times New Roman fallbacks."
+
+  - id: RULE.TAILWIND.ARBITRARY_VALUES_FOR_THEME
+    title: "Use arbitrary values for custom palette"
+    category: implementation
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#arbitrary-values
+    guidance: "Use arbitrary values (e.g., bg-[#0a0a0a]) or theme tokens when colors are outside the design system; do not guess with default palette names."
+
+  - id: RULE.TAILWIND.CLEAR_CACHE_AFTER_CSS_CHANGES
+    title: "Clear cache when utilities disappear"
+    category: quality
+    blocking: false
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#cache-clear
+    guidance: "If classes stop applying, clear the .next cache and restart dev server before debugging Tailwind v4 output."
+
+  - id: RULE.TAILWIND.POSTCSS_V4_PLUGIN
+    title: "Use @tailwindcss/postcss preset"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#postcss-v4
+    guidance: "Configure PostCSS with '@tailwindcss/postcss' (v4 preset); the legacy tailwindcss plugin will not generate utilities in v4."
+
+  - id: RULE.TAILWIND.THEME_TOKENS_IN_CSS
+    title: "Define tokens in @theme"
+    category: implementation
+    blocking: true
+    applies_to: [agent, validator]
+    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#theme-tokens
+    guidance: "Declare design tokens inside an @theme block so components consume generated classes (bg-surface, border-border) instead of hardcoded values."
 
   - id: RULE.TAILWIND.AVOID_APPLY
     title: "Avoid Legacy @apply Usage"

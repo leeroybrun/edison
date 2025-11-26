@@ -97,3 +97,158 @@ def test_read_json_with_default_returns_default_on_error(tmp_path: Path) -> None
     invalid = tmp_path / "invalid.json"
     invalid.write_text("{bad}", encoding="utf-8")
     assert io_utils.read_json_with_default(invalid, default=[]) == []
+
+
+# ============================================================================
+# YAML I/O Tests
+# ============================================================================
+
+def test_read_yaml_safe_with_valid_file(tmp_path: Path) -> None:
+    """Test read_yaml_safe with valid YAML file."""
+    yaml_file = tmp_path / "config.yaml"
+    yaml_content = """
+name: test
+version: 1.0
+features:
+  - feature1
+  - feature2
+nested:
+  key: value
+"""
+    yaml_file.write_text(yaml_content, encoding="utf-8")
+
+    data = io_utils.read_yaml_safe(yaml_file)
+    assert data is not None
+    assert data["name"] == "test"
+    assert data["version"] == 1.0
+    assert data["features"] == ["feature1", "feature2"]
+    assert data["nested"]["key"] == "value"
+
+
+def test_read_yaml_safe_with_missing_file(tmp_path: Path) -> None:
+    """Test read_yaml_safe returns default when file is missing."""
+    missing = tmp_path / "missing.yaml"
+
+    # Default None
+    result = io_utils.read_yaml_safe(missing)
+    assert result is None
+
+    # Custom default
+    result = io_utils.read_yaml_safe(missing, default={})
+    assert result == {}
+
+    result = io_utils.read_yaml_safe(missing, default={"fallback": True})
+    assert result == {"fallback": True}
+
+
+def test_read_yaml_safe_with_invalid_yaml(tmp_path: Path) -> None:
+    """Test read_yaml_safe returns default when YAML is invalid."""
+    invalid = tmp_path / "invalid.yaml"
+    invalid.write_text("{ invalid: yaml: structure", encoding="utf-8")
+
+    # Should return default instead of raising
+    result = io_utils.read_yaml_safe(invalid, default={})
+    assert result == {}
+
+
+def test_read_yaml_safe_with_empty_file(tmp_path: Path) -> None:
+    """Test read_yaml_safe with empty YAML file."""
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("", encoding="utf-8")
+
+    # Empty YAML file should return default
+    result = io_utils.read_yaml_safe(empty, default={})
+    assert result == {}
+
+
+def test_write_yaml_safe_creates_file(tmp_path: Path) -> None:
+    """Test write_yaml_safe creates file atomically."""
+    yaml_file = tmp_path / "nested" / "output.yaml"
+    data = {
+        "name": "test",
+        "version": 1.0,
+        "features": ["feature1", "feature2"],
+        "nested": {"key": "value"}
+    }
+
+    io_utils.write_yaml_safe(yaml_file, data)
+
+    assert yaml_file.exists()
+    # Read back and verify
+    result = io_utils.read_yaml_safe(yaml_file)
+    assert result == data
+
+
+def test_write_yaml_safe_overwrites_existing(tmp_path: Path) -> None:
+    """Test write_yaml_safe overwrites existing file."""
+    yaml_file = tmp_path / "overwrite.yaml"
+
+    # Write first version
+    data1 = {"version": 1}
+    io_utils.write_yaml_safe(yaml_file, data1)
+    assert io_utils.read_yaml_safe(yaml_file) == data1
+
+    # Overwrite with second version
+    data2 = {"version": 2, "new_key": "value"}
+    io_utils.write_yaml_safe(yaml_file, data2)
+    assert io_utils.read_yaml_safe(yaml_file) == data2
+
+
+def test_write_yaml_safe_with_sorted_keys(tmp_path: Path) -> None:
+    """Test write_yaml_safe produces deterministic sorted output."""
+    yaml_file = tmp_path / "sorted.yaml"
+    data = {"z": 1, "a": 2, "m": 3}
+
+    io_utils.write_yaml_safe(yaml_file, data)
+
+    content = yaml_file.read_text()
+    lines = content.strip().split("\n")
+    # Keys should appear in sorted order
+    assert lines[0].startswith("a:")
+    assert lines[1].startswith("m:")
+    assert lines[2].startswith("z:")
+
+
+def test_yaml_roundtrip_consistency(tmp_path: Path) -> None:
+    """Test YAML write-read roundtrip maintains data integrity."""
+    yaml_file = tmp_path / "roundtrip.yaml"
+
+    original_data = {
+        "string": "value",
+        "number": 42,
+        "float": 3.14,
+        "boolean": True,
+        "null_value": None,
+        "list": [1, 2, 3],
+        "nested": {
+            "deep": {
+                "value": "test"
+            }
+        }
+    }
+
+    io_utils.write_yaml_safe(yaml_file, original_data)
+    read_data = io_utils.read_yaml_safe(yaml_file)
+
+    assert read_data == original_data
+
+
+def test_yaml_concurrent_atomic_writes(tmp_path: Path) -> None:
+    """Test concurrent YAML writes produce valid YAML files."""
+    yaml_file = tmp_path / "concurrent.yaml"
+
+    def writer(value: int) -> None:
+        for _ in range(30):
+            io_utils.write_yaml_safe(yaml_file, {"counter": value})
+
+    t1 = threading.Thread(target=writer, args=(1,))
+    t2 = threading.Thread(target=writer, args=(2,))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # File must contain valid YAML with either value 1 or 2
+    result = io_utils.read_yaml_safe(yaml_file)
+    assert result is not None
+    assert result.get("counter") in (1, 2)

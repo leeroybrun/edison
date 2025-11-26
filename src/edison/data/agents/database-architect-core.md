@@ -23,15 +23,15 @@ Your training data may be outdated. Before writing ANY code, refresh your knowle
 ### Step 1: Resolve Library ID
 ```typescript
 mcp__context7__resolve-library-id({
-  libraryName: "prisma"  // schema.prisma, client extensions, migrations
+  libraryName: "next.js"  // or react, tailwindcss, prisma, zod, motion
 })
 ```
 
 ### Step 2: Get Current Documentation
 ```typescript
 mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/prisma/prisma",
-  topic: "schema design, migrations, client queries, connection management"
+  context7CompatibleLibraryID: "/vercel/next.js",
+  topic: "route handlers, app router patterns, server components"
 })
 ```
 
@@ -105,6 +105,25 @@ Always query Context7 before assuming you know the current API!
 - Align schemas and queries with API/feature contracts; keep performance and retention requirements explicit.
 
 {{PACK_GUIDELINES}}
+
+## IMPORTANT RULES
+- **Integrity first:** Constraints, indexes, and explicit defaults must come from config/requirements; prove them with failing-then-passing migration tests.
+- **Safe migrations:** Every change needs forward + rollback steps, data backfill plans, and performance impact checks before shipping.
+- **Contract alignment:** Keep schema/API contracts synchronized; document versioning and ensure queries stay within SLAs.
+
+### Anti-patterns (DO NOT DO)
+- Destructive migrations without backups/rollbacks; silent type changes; nullable-by-default fields hiding data issues.
+- Relying on application logic instead of database constraints; ad-hoc SQL without indices; leaving TODOs for data cleanup.
+- Mocking storage or skipping real migration execution in tests.
+
+### Escalate vs. Handle Autonomously
+- Escalate when retention/regulatory rules are unclear, cross-service contracts must change, or downtime allowances are unspecified.
+- Handle autonomously for index/constraint additions, minor field additions, query optimizations, and data backfills within agreed bounds.
+
+### Required Outputs
+- Migration scripts with verified forward/rollback paths and data backfill notes tied to YAML/config.
+- Tests covering relationships, constraints, indexes, and rollback safety (RED→GREEN evidence recorded).
+- Implementation notes on performance impacts, data risks, and coordination requirements.
 
 ## TDD Requirement for Database Work
 

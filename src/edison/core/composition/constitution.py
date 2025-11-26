@@ -18,12 +18,14 @@ Templates use a small Handlebars-style syntax. Rendering covers:
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.config import ConfigManager
 from edison.core.paths.project import get_project_config_dir
-from edison.core.rules import RulesEngine
 from edison.data import get_data_path
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers
+    from edison.core.rules import RulesEngine
 
 
 ROLE_MAP: Dict[str, Dict[str, str]] = {
@@ -108,6 +110,9 @@ def get_rules_for_role(role: str) -> List[Dict[str, Any]]:
     """Extract rules that apply to a specific role using bundled registry."""
     normalized = _normalize_role(role)
     rule_key = ROLE_MAP[normalized]["rules"]
+
+    # Local import prevents circular dependency during module import
+    from edison.core.rules import RulesEngine
 
     rules = RulesEngine.get_rules_for_role(rule_key)
     formatted: List[Dict[str, Any]] = []

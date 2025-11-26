@@ -5,11 +5,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Tuple
 
+from edison.core.utils.time import utc_timestamp
 from . import store
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def track_validation_score(
@@ -20,7 +17,7 @@ def track_validation_score(
 ) -> None:
     """Append a validation score record to the session's history JSONL file."""
     entry = {
-        "timestamp": _now_iso(),
+        "timestamp": utc_timestamp(),
         "session_id": session_id,
         "validator": validator_name,
         "scores": scores,

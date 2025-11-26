@@ -4,5 +4,6 @@ Alpha {{include:include/a.md}}
 
 Optional {{include-optional:include/maybe.md}}
 
-Legacy {{ safe_include('include/legacy.md', fallback='<!-- none -->') }}
+# T-016: NO LEGACY - Converted from safe_include to modern syntax
+Modern {{include-optional:include/legacy.md}}
 

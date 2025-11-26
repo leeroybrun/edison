@@ -32,19 +32,6 @@ from ...rules import RulesRegistry  # type: ignore
 WORKFLOW_HEADING = "## Edison Workflow Loop"
 
 
-def _detect_repo_root(explicit_root: Optional[Path] = None) -> Path:
-    """Resolve repository root for adapter operations.
-
-    Prefer an explicitly provided root; otherwise delegate to the
-    canonical PathResolver so ZenSync shares consistent semantics
-    with the rest of Edison.
-    """
-    if explicit_root is not None:
-        return explicit_root.resolve()
-
-    return PathResolver.resolve_project_root()
-
-
 def _canonical_model(model: str) -> str:
     """Normalize model identifier to codex|claude|gemini."""
     low = (model or "").strip().lower()
@@ -100,7 +87,7 @@ class ZenSync:
     _role_config_validated: bool
 
     def __init__(self, repo_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> None:
-        root = _detect_repo_root(repo_root)
+        root = repo_root.resolve() if repo_root else PathResolver.resolve_project_root()
         cfg_mgr = ConfigManager(root)
         self.repo_root = root
         self.config = config or cfg_mgr.load_config(validate=False)

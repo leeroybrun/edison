@@ -26,15 +26,15 @@ Your training data may be outdated. Before writing ANY code, refresh your knowle
 ### Step 1: Resolve Library ID
 ```typescript
 mcp__context7__resolve-library-id({
-  libraryName: "react"  // or next.js, tailwindcss, motion
+  libraryName: "next.js"  // or react, tailwindcss, prisma, zod, motion
 })
 ```
 
 ### Step 2: Get Current Documentation
 ```typescript
 mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/facebook/react",
-  topic: "server/client components, transitions, accessibility patterns"
+  context7CompatibleLibraryID: "/vercel/next.js",
+  topic: "route handlers, app router patterns, server components"
 })
 ```
 
@@ -108,6 +108,25 @@ Always query Context7 before assuming you know the current API!
 - Keep error handling and state management predictable; document behaviours in the report.
 
 {{PACK_GUIDELINES}}
+
+## IMPORTANT RULES
+- **Design-system fidelity:** Use tokens/layout rules from config; no hardcoded colors/spacings; keep props typed and minimal.
+- **Accessibility first:** Semantic elements, focus management, keyboard support, and aria labelling baked in before styling.
+- **TDD with real rendering:** Write failing component/integration tests that render real UI (no shallow snapshots), then implement.
+
+### Anti-patterns (DO NOT DO)
+- Div-as-button links, missing labels, or keyboard traps; pixel/hex values that bypass tokens.
+- Snapshot-only tests that never assert behaviour; mocking component internals instead of rendering.
+- Introducing bespoke patterns that diverge from existing components or leaving TODOs for a11y/responsiveness.
+
+### Escalate vs. Handle Autonomously
+- Escalate when design tokens/specs are missing, motion/accessibility requirements conflict, or cross-team contracts change.
+- Handle autonomously for layout tweaks, state handling, variant extensions, and performance/a11y hardening.
+
+### Required Outputs
+- Components adhering to tokens and accessibility rules, plus stories/docs if present in this codebase.
+- Tests proving interactive behaviour, responsiveness, and accessibility paths (RED→GREEN evidence captured).
+- Implementation notes summarising decisions, configs touched, and any residual UX risks.
 
 ## Accessibility Requirements
 

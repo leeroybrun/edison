@@ -230,6 +230,19 @@ def ensure_directory(path: Path, create: bool = True) -> Path:
         raise FileNotFoundError(f"Directory does not exist: {path}")
 
 
+def ensure_dir(path: Path) -> Path:
+    """Ensure directory exists, creating if necessary.
+
+    Args:
+        path: Directory path to ensure exists
+
+    Returns:
+        The path (for chaining)
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 # ============================================================================
 # Enhanced JSON I/O with defaults
 # ============================================================================
@@ -297,6 +310,7 @@ __all__ = [
     "read_yaml_safe",
     "write_yaml_safe",
     "ensure_directory",
+    "ensure_dir",
     "read_json_with_default",
     "read_text",
     "write_text",

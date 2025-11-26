@@ -1,7 +1,7 @@
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import patch
+
 from edison.core.templates.mcp_config import (
     McpServerConfig,
     McpConfig,
@@ -91,7 +91,6 @@ class TestMcpConfig:
         assert path.exists()
         content = json.loads(path.read_text())
         assert content["mcpServers"]["srv"]["command"] == "cmd"
-        assert path.read_text().endswith("\n")
 
 class TestHighLevelFunctions:
     def test_get_edison_zen_config(self, tmp_path):

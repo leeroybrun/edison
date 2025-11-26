@@ -9,8 +9,8 @@ import re
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from edison.core.utils.git import get_repo_root
-from edison.core.file_io.utils import write_json_safe, read_json_with_default
+from edison.core.paths import PathResolver
+from edison.core.file_io.utils import write_json_safe, read_json_with_default, ensure_dir
 
 from ..paths.project import get_project_config_dir
 from ..utils.text import ENGINE_VERSION
@@ -27,10 +27,24 @@ _REPO_ROOT_OVERRIDE: Optional[Path] = None
 
 
 def _repo_root() -> Path:
-    """Resolve Edison repository root using the shared git utility."""
+    """Resolve Edison repository root using the canonical PathResolver."""
     if _REPO_ROOT_OVERRIDE is not None:
         return _REPO_ROOT_OVERRIDE
-    return get_repo_root()
+    return PathResolver.resolve_project_root()
+
+
+def _rel(path: Path) -> Path:
+    """Return path relative to repo root when possible, else absolute.
+
+    Avoids ValueError when working with bundled data files that live outside
+    the active project root (common during CLI-driven composition).
+    """
+
+    root = _repo_root()
+    try:
+        return path.relative_to(root)
+    except ValueError:
+        return path.resolve()
 
 
 def _read_text(path: Path) -> str:
@@ -74,6 +88,7 @@ def _normalize_include_target(raw: str, base_file: Path) -> Path:
 
 _INCLUDE_RE = re.compile(r"\{\{\s*include:([^}]+)\}\}")
 _INCLUDE_OPT_RE = re.compile(r"\{\{\s*include-optional:([^}]+)\}\}")
+# T-016: Kept for backward compatibility with validator.py (not used in resolve_includes)
 _SAFE_INCLUDE_RE = re.compile(
     r"\{\{\s*safe_include\(\s*['\"]([^'\"]+)['\"]\s*,\s*fallback=['\"][^'\"]*['\"]\s*\)\s*\}\}"
 )
@@ -91,26 +106,23 @@ def resolve_includes(
 
     Returns expanded text and the list of dependency file paths in resolution order.
     Raises ComposeError on missing includes, circular refs, or depth overflow.
+
+    T-016: NO LEGACY - safe_include() shim removed completely.
+    Only modern syntax supported: {{include:path}} and {{include-optional:path}}
     """
     if stack is None:
         stack = []
     if deps is None:
         deps = set()
 
-    # Legacy shim: convert ``safe_include('path', fallback='...')`` from older
-    # templates into the modern ``include-optional:path`` form so callers do
-    # not need to migrate all content in lockstep with the engine.
-    if "{{" in content:
-        def _to_optional(m: re.Match) -> str:
-            target = m.group(1)
-            return f"{{{{include-optional:{target}}}}}"
-
-        content = _SAFE_INCLUDE_RE.sub(_to_optional, content)
+    # T-016: NO LEGACY - Legacy shim removed (was lines 114-122)
+    # Legacy {{safe_include('path', fallback='...')}} syntax is NO LONGER SUPPORTED
+    # Use modern {{include-optional:path}} instead
 
     if depth > MAX_DEPTH:
-        chain = " -> ".join([str(p.relative_to(_repo_root())) for p in stack])
+        chain = " -> ".join([str(_rel(p)) for p in stack])
         raise ComposeError(
-            f"Include depth exceeded (>{MAX_DEPTH}) while processing {base_file.relative_to(_repo_root())}. Chain: {chain}"
+            f"Include depth exceeded (>{MAX_DEPTH}) while processing {_rel(base_file)}. Chain: {chain}"
         )
 
     # Process required includes
@@ -118,12 +130,12 @@ def resolve_includes(
         raw = m.group(1)
         target = _normalize_include_target(raw, base_file).resolve()
         if target in stack:
-            chain = " -> ".join([str(p.relative_to(_repo_root())) for p in stack + [target]])
+            chain = " -> ".join([str(_rel(p)) for p in stack + [target]])
             raise ComposeError(f"Circular include detected: {chain}")
         if not target.exists():
-            chain = " -> ".join([str(p.relative_to(_repo_root())) for p in stack])
+            chain = " -> ".join([str(_rel(p)) for p in stack])
             raise ComposeError(
-                f"Include not found: {target.relative_to(_repo_root())} (from {base_file.relative_to(_repo_root())}). Chain: {chain}"
+                f"Include not found: {_rel(target)} (from {_rel(base_file)}). Chain: {chain}"
             )
         deps.add(target)
         included = _read_text(target)
@@ -137,7 +149,7 @@ def resolve_includes(
         raw = m.group(1)
         target = _normalize_include_target(raw, base_file).resolve()
         if target in stack:
-            chain = " -> ".join([str(p.relative_to(_repo_root())) for p in stack + [target]])
+            chain = " -> ".join([str(_rel(p)) for p in stack + [target]])
             raise ComposeError(f"Circular include detected: {chain}")
         if not target.exists():
             return ""  # silent skip
@@ -184,8 +196,7 @@ def _cache_dir() -> Path:
 
 
 def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: str) -> Path:
-    out_dir = _cache_dir()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = ensure_dir(_cache_dir())
     out_path = out_dir / f"{validator_id}.md"
     out_path.write_text(text, encoding="utf-8")
     # Write manifest entry per artifact for traceability
@@ -193,10 +204,10 @@ def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: s
     try:
         existing = read_json_with_default(manifest_path, default={})
         existing[validator_id] = {
-            "path": str(out_path.relative_to(_repo_root())),
+            "path": str(_rel(out_path)),
             "hash": content_hash,
             "engineVersion": ENGINE_VERSION,
-            "dependencies": [str(p.relative_to(_repo_root())) for p in deps],
+            "dependencies": [str(_rel(p)) for p in deps],
         }
         write_json_safe(manifest_path, existing, indent=2)
     except Exception:
@@ -219,8 +230,7 @@ def validate_composition(text: str) -> None:
 
 def get_cache_dir() -> Path:
     """Get composed artifacts cache directory, creating it when missing."""
-    d = _cache_dir()
-    d.mkdir(parents=True, exist_ok=True)
+    d = ensure_dir(_cache_dir())
     return d
 
 

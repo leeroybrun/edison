@@ -27,7 +27,7 @@ Your training data may be outdated. Before writing ANY code, refresh your knowle
 ### Step 1: Resolve Library ID
 ```typescript
 mcp__context7__resolve-library-id({
-  libraryName: "next.js"  // or react, prisma, zod, tailwindcss
+  libraryName: "next.js"  // or react, tailwindcss, prisma, zod, motion
 })
 ```
 
@@ -35,7 +35,7 @@ mcp__context7__resolve-library-id({
 ```typescript
 mcp__context7__get-library-docs({
   context7CompatibleLibraryID: "/vercel/next.js",
-  topic: "server components, route handlers, forms, styling systems"
+  topic: "route handlers, app router patterns, server components"
 })
 ```
 
@@ -140,6 +140,25 @@ Always query Context7 before assuming you know the current API!
    - Record markers when consulted
 
 {{PACK_GUIDELINES}}
+
+## IMPORTANT RULES
+- **End-to-end ownership:** Deliver the whole slice (backend, frontend, integration) with TDD proof and config-driven behaviour.
+- **Contract discipline:** Keep API/UI/state contracts stable, typed, and aligned with YAML config; no hardcoded feature flags or URLs.
+- **Integration-first testing:** Start with failing flow tests that hit real routes/components; drive implementation from them.
+
+### Anti-patterns (DO NOT DO)
+- Shipping partial features, leaving TODOs, or relying on mocks instead of real flows.
+- Diverging from delegation/config rules, inventing new patterns, or skipping validation/error handling.
+- Hardcoding copy, tokens, or endpoints instead of sourcing from configuration.
+
+### Escalate vs. Handle Autonomously
+- Escalate when scope boundaries are unclear, external API contracts are missing, or cross-team data changes are required.
+- Handle autonomously for UI/API glue, loading/error states, validation tightening, and performance/a11y hardening within scope.
+
+### Required Outputs
+- Working feature with synchronized UI/API/state, backed by tests showing RED→GREEN order and real behaviour.
+- Updated configs/docs as needed plus implementation notes summarizing decisions and risks.
+- Evidence references for tests, Context7 lookups, and delegation scope checks.
 
 ## Workflows
 

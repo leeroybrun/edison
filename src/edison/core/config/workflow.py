@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from edison.data import read_yaml, file_exists
+from edison.data import read_yaml as real_read_yaml, file_exists as real_file_exists
 
 _WORKFLOW_CONFIG_CACHE: Optional[Dict[str, Any]] = None
 
 
-def load_workflow_config(force_reload: bool = False) -> Dict[str, Any]:
+def load_workflow_config(
+    force_reload: bool = False,
+    read_yaml_func: Callable[[str, str], Dict[str, Any]] = real_read_yaml,
+    file_exists_func: Callable[[str, str], bool] = real_file_exists,
+) -> Dict[str, Any]:
     """
     Load the workflow configuration from workflow.yaml.
     
@@ -23,17 +27,20 @@ def load_workflow_config(force_reload: bool = False) -> Dict[str, Any]:
     if _WORKFLOW_CONFIG_CACHE is not None and not force_reload:
         return _WORKFLOW_CONFIG_CACHE
         
-    if not file_exists("config", "workflow.yaml"):
+    if not file_exists_func("config", "workflow.yaml"):
         raise FileNotFoundError("workflow.yaml not found in edison.data.config")
         
     try:
-        config = read_yaml("config", "workflow.yaml")
+        config = read_yaml_func("config", "workflow.yaml")
     except Exception as e:
         raise ValueError(f"Failed to parse workflow.yaml: {e}")
         
     _validate_workflow_config(config)
     
-    _WORKFLOW_CONFIG_CACHE = config
+    if not force_reload and read_yaml_func == real_read_yaml:
+         # Only cache if using default readers (production mode)
+        _WORKFLOW_CONFIG_CACHE = config
+        
     return config
 
 
@@ -60,27 +67,27 @@ def _validate_workflow_config(config: Dict[str, Any]) -> None:
         raise ValueError("timeouts must be a dict")
 
 
-def get_task_states() -> List[str]:
+def get_task_states(**kwargs) -> List[str]:
     """Get allowed task states."""
-    config = load_workflow_config()
+    config = load_workflow_config(**kwargs)
     return config["taskStates"]
 
 
-def get_qa_states() -> List[str]:
+def get_qa_states(**kwargs) -> List[str]:
     """Get allowed QA states."""
-    config = load_workflow_config()
+    config = load_workflow_config(**kwargs)
     return config["qaStates"]
 
 
-def get_lifecycle_transition(event: str) -> Dict[str, str]:
+def get_lifecycle_transition(event: str, **kwargs) -> Dict[str, str]:
     """Get transition details for a lifecycle event (onApprove, onReject, onRevalidate)."""
-    config = load_workflow_config()
+    config = load_workflow_config(**kwargs)
     return config["validationLifecycle"].get(event, {})
 
 
-def get_timeout(name: str) -> str:
+def get_timeout(name: str, **kwargs) -> str:
     """Get a timeout value by name."""
-    config = load_workflow_config()
+    config = load_workflow_config(**kwargs)
     return config["timeouts"].get(name, "")
 
 def _parse_transition_target(transition: str) -> str:
@@ -93,12 +100,12 @@ def _parse_transition_source(transition: str) -> str:
         return ""
     return transition.split("→")[0].strip()
 
-def get_semantic_state(domain: str, semantic_key: str) -> str:
+def get_semantic_state(domain: str, semantic_key: str, **kwargs) -> str:
     """
     Resolve a semantic state (e.g. 'wip', 'todo') to the configured state name.
     Uses validationLifecycle to infer states where possible.
     """
-    config = load_workflow_config()
+    config = load_workflow_config(**kwargs)
     lc = config.get("validationLifecycle", {})
     
     # Common derivations

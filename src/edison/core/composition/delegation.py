@@ -10,6 +10,7 @@ import os
 from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone
 
+from edison.core.utils.time import utc_timestamp
 from ..config import ConfigManager
 from .. import task as _task
 
@@ -71,10 +72,6 @@ def route_task(generic_role: str, continuation_id: Optional[str] = None,
 
 # === Group 4 (Task & Delegation) additions ===
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def delegate_task(
     description: str,
     agent: str,
@@ -94,18 +91,28 @@ def delegate_task(
     Returns:
         str: The child task identifier.
     """
-    child_id = _task.create_task_record(
-        description=description,
-        parent_task_id=parent_task_id,
-        session_id=session_id,
-    )
+    if parent_task_id:
+        child_id = _task.next_child_id(parent_task_id)
+    else:
+        # Fallback ID generation
+        import uuid
+        child_id = f"delegated-{uuid.uuid4().hex[:8]}"
+
+    _task.create_task_record(child_id, description)
+    
+    updates = {
+        'agent': agent,
+        'status': 'pending',
+        'delegated_at': utc_timestamp(),
+    }
+    if parent_task_id:
+        updates['parent_task_id'] = parent_task_id
+    if session_id:
+        updates['session_id'] = session_id
+
     _task.update_task_record(
         child_id,
-        {
-            'agent': agent,
-            'status': 'pending' if (_task.load_task_record(child_id).get('status') in (None, 'todo')) else _task.load_task_record(child_id).get('status'),
-            'delegated_at': _now_iso(),
-        },
+        updates,
         operation='delegate',
     )
     return child_id

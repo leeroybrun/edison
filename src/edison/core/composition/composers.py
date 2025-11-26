@@ -201,17 +201,25 @@ This constitution contains:
 
     duplicate_report = None
     if enforce_dry:
-        import os as _os
+        # Get DRY detection config from composition.yaml
+        if dry_min_shingles is None:
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            min_s = dry_config.get("minShingles", 2)
+            k = dry_config.get("shingleSize", 12)
+        else:
+            min_s = dry_min_shingles
+            # Use config for k as well
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            k = dry_config.get("shingleSize", 12)
 
-        min_s = (
-            int(_os.environ.get("EDISON_DRY_MIN_SHINGLES", "2"))
-            if dry_min_shingles is None
-            else dry_min_shingles
-        )
         duplicate_report = dry_duplicate_report(
             {"core": core_expanded, "packs": packs_expanded, "overlay": overlay_expanded},
             min_shingles=min_s,
-            k=12,
+            k=k,
         )
         try:
             import json as _json
@@ -372,12 +380,14 @@ class CompositionEngine:
 
         # For Edison's own tests, use bundled data directory instead of .edison/core
         edison_dir = self.repo_root / ".edison"
-        if edison_dir.exists():
+        core_validators_dir = edison_dir / "core" / "validators"
+        if edison_dir.exists() and core_validators_dir.exists():
             self.core_dir = edison_dir / "core"
             self.packs_dir = edison_dir / "packs"
         else:
             # Running within Edison itself - use bundled data
             from edison.data import get_data_path
+
             self.core_dir = get_data_path("")
             self.packs_dir = get_data_path("packs")
 

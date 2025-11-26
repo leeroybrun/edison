@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import time
 import functools
-import json
 import shutil
-from typing import Callable, Any, Tuple, Type
+from typing import Callable, Any, Tuple, Type, Optional, Dict
 from pathlib import Path
 import logging
 
@@ -18,11 +17,31 @@ from edison.core.file_io import utils as io_utils
 logger = logging.getLogger(__name__)
 
 
+def get_retry_config() -> Dict[str, Any]:
+    """Load retry configuration from YAML-driven settings.
+
+    Returns:
+        Dict[str, Any]: Mapping containing retry settings with safe fallbacks.
+    """
+    from edison.core.config import ConfigManager
+
+    mgr = ConfigManager()
+    cfg = mgr.load_config()
+    retry_cfg = cfg.get("resilience", {}).get("retry", {}) if isinstance(cfg, dict) else {}
+
+    return {
+        "max_attempts": retry_cfg.get("max_attempts", 3),
+        "initial_delay": retry_cfg.get("initial_delay_seconds", 1.0),
+        "backoff_factor": retry_cfg.get("backoff_factor", 2.0),
+        "max_delay": retry_cfg.get("max_delay_seconds", 60.0),
+    }
+
+
 def retry_with_backoff(
-    max_attempts: int = 3,
-    initial_delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    max_delay: float = 60.0,
+    max_attempts: Optional[int] = None,
+    initial_delay: Optional[float] = None,
+    backoff_factor: Optional[float] = None,
+    max_delay: Optional[float] = None,
     exceptions: Tuple[Type[Exception], ...] = (Exception,),
 ):
     """
@@ -41,24 +60,35 @@ def retry_with_backoff(
             # May fail transiently
             pass
     """
+    config = get_retry_config()
+
+    effective_max_attempts = max_attempts if max_attempts is not None else config["max_attempts"]
+    effective_initial_delay = initial_delay if initial_delay is not None else config["initial_delay"]
+    effective_backoff_factor = backoff_factor if backoff_factor is not None else config["backoff_factor"]
+    effective_max_delay = max_delay if max_delay is not None else config["max_delay"]
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            delay = initial_delay
-            for attempt in range(1, max_attempts + 1):
+            delay = effective_initial_delay
+            for attempt in range(1, effective_max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:  # type: ignore[misc]
-                    if attempt == max_attempts:
-                        logger.error(f"{func.__name__} failed after {max_attempts} attempts")
+                    if attempt == effective_max_attempts:
+                        logger.error(
+                            f"{func.__name__} failed after {effective_max_attempts} attempts"
+                        )
                         raise
 
-                    logger.warning(f"{func.__name__} attempt {attempt}/{max_attempts} failed: {e}")
+                    logger.warning(
+                        f"{func.__name__} attempt {attempt}/{effective_max_attempts} failed: {e}"
+                    )
                     logger.info(f"Retrying in {delay}s...")
                     time.sleep(delay)
 
                     # Exponential backoff
-                    delay = min(delay * backoff_factor, max_delay)
+                    delay = min(delay * effective_backoff_factor, effective_max_delay)
 
             raise RuntimeError("Unreachable")  # Should never get here
 

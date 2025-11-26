@@ -301,3 +301,83 @@ class TestClaudeAdapterUnit:
 
         msg = str(excinfo.value)
         assert "schema" in msg.lower() or "validation" in msg.lower()
+
+    def test_sync_orchestrator_only_uses_constitution_path(self, isolated_project_env: Path) -> None:
+        """sync_orchestrator_to_claude ONLY uses constitution path (NO LEGACY fallback to ORCHESTRATOR_GUIDE.md)."""
+        root = isolated_project_env
+        claude_dir = root / ".claude"
+        claude_dir.mkdir(parents=True, exist_ok=True)
+        claude_md = claude_dir / "CLAUDE.md"
+        claude_md.write_text("# Claude Code Orchestrator\n", encoding="utf-8")
+
+        # Write ONLY constitution (modern way)
+        constitution = self._write_orchestrator_constitution(root)
+
+        adapter = ClaudeSync(repo_root=root)
+        out_path = adapter.sync_orchestrator_to_claude()
+
+        # MUST inject constitution content
+        assert out_path == claude_md
+        content = claude_md.read_text(encoding="utf-8")
+        assert "Test Orchestrator Constitution" in content
+        assert "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->" in content
+        assert "<!-- EDISON_ORCHESTRATOR_GUIDE_END -->" in content
+        assert "Constitution" in content
+
+    def test_sync_orchestrator_fails_when_only_legacy_guide_exists(self, isolated_project_env: Path) -> None:
+        """sync_orchestrator_to_claude does NOT fallback to legacy ORCHESTRATOR_GUIDE.md (T-016 - NO LEGACY)."""
+        root = isolated_project_env
+        claude_dir = root / ".claude"
+        claude_dir.mkdir(parents=True, exist_ok=True)
+        claude_md = claude_dir / "CLAUDE.md"
+        original_content = "# Claude Code Orchestrator\nOriginal content.\n"
+        claude_md.write_text(original_content, encoding="utf-8")
+
+        # Write ONLY legacy ORCHESTRATOR_GUIDE.md (deprecated - should be ignored)
+        legacy_dir = root / ".agents" / "_generated"
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        legacy_guide = legacy_dir / "ORCHESTRATOR_GUIDE.md"
+        legacy_guide.write_text("# Legacy Orchestrator Guide\nOld content.\n", encoding="utf-8")
+
+        # NO constitution exists
+        adapter = ClaudeSync(repo_root=root)
+        out_path = adapter.sync_orchestrator_to_claude()
+
+        # Should return unchanged CLAUDE.md (no injection happens)
+        assert out_path == claude_md
+        content = claude_md.read_text(encoding="utf-8")
+        # Original content unchanged
+        assert content == original_content
+        # NO legacy content injected
+        assert "Legacy Orchestrator Guide" not in content
+        assert "Old content" not in content
+
+    def test_sync_orchestrator_never_checks_legacy_guide_path(self, isolated_project_env: Path) -> None:
+        """sync_orchestrator_to_claude does NOT check orchestrator_guide_path attribute (NO LEGACY)."""
+        root = isolated_project_env
+        adapter = ClaudeSync(repo_root=root)
+
+        # Code should NOT reference orchestrator_guide_path in the elif branch
+        # This test verifies implementation by checking behavior:
+        # When both files exist, constitution takes precedence and legacy is NEVER checked
+
+        claude_dir = root / ".claude"
+        claude_dir.mkdir(parents=True, exist_ok=True)
+        claude_md = claude_dir / "CLAUDE.md"
+        claude_md.write_text("# Claude Code Orchestrator\n", encoding="utf-8")
+
+        # Write BOTH constitution and legacy guide
+        constitution = self._write_orchestrator_constitution(root)
+        legacy_dir = root / ".agents" / "_generated"
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        legacy_guide = legacy_dir / "ORCHESTRATOR_GUIDE.md"
+        legacy_guide.write_text("# WRONG CONTENT - Legacy Guide\n", encoding="utf-8")
+
+        out_path = adapter.sync_orchestrator_to_claude()
+
+        content = claude_md.read_text(encoding="utf-8")
+        # ONLY constitution content should be injected
+        assert "Test Orchestrator Constitution" in content
+        # Legacy content should NEVER appear
+        assert "WRONG CONTENT - Legacy Guide" not in content
+        assert "Legacy Guide" not in content

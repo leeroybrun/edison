@@ -11,7 +11,7 @@ from . import state as session_state
 from . import validation
 from . import worktree
 from .config import SessionConfig
-from .naming import SessionNamingStrategy
+from .naming import generate_session_id
 from ..paths import PathResolver
 from ..paths.management import get_management_paths
 from ..exceptions import SessionError
@@ -210,8 +210,10 @@ class SessionManager:
         owner: Optional[str],
         naming_strategy: Optional[str],
     ) -> str:
-        naming = SessionNamingStrategy()
-        return naming.generate()
+        # The parameters process, owner, and naming_strategy are now ignored
+        # as the generate_session_id function does not use them.
+        # This method is effectively a wrapper for backward compatibility.
+        return generate_session_id()
 
 
 

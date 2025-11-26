@@ -22,6 +22,7 @@ from typing import Dict, List, Optional
 
 from .config import OrchestratorConfig
 from edison.core.session.context import SessionContext
+from edison.core.utils.time import utc_timestamp
 
 
 class _SafeDict(dict):
@@ -86,7 +87,7 @@ class OrchestratorLauncher:
         if log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             log_file = log_path.open("a", encoding="utf-8")
-            log_file.write(f"[launch] {datetime.now(timezone.utc).isoformat()} profile={profile_name}\n")
+            log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
             if initial_prompt is not None:
                 log_file.write("[prompt]\n")
                 log_file.write(f"{initial_prompt}\n")
@@ -241,10 +242,7 @@ class OrchestratorLauncher:
             "project_root": str(self._project_root),
             "session_worktree": str(worktree) if worktree else None,
             "session_id": str(session_id) if session_id else None,
-            "timestamp": datetime.now(timezone.utc)
-            .replace(microsecond=0)
-            .isoformat()
-            .replace("+00:00", "Z"),
+            "timestamp": utc_timestamp(),
             "shortid": self._generate_shortid(),
         }
         return {k: v for k, v in tokens.items() if v is not None}

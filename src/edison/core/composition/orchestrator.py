@@ -95,6 +95,13 @@ def collect_packs(packs_dir: Path, active_packs: Iterable[str]) -> List[Dict[str
 
 def collect_mandatory_guidelines(repo_root: Path, packs_dir: Path, active_packs: List[str]) -> List[Dict]:
     """Collect mandatory preload guidelines for orchestrators."""
+
+    def _rel(path: Path) -> Path:
+        try:
+            return path.relative_to(repo_root)
+        except ValueError:
+            return path
+
     mandatory: List[Dict] = [
         {
             "file": ".edison/core/guidelines/SESSION_WORKFLOW.md",
@@ -117,7 +124,7 @@ def collect_mandatory_guidelines(repo_root: Path, packs_dir: Path, active_packs:
         for guideline_file in sorted(pack_guidelines_dir.glob("*.md")):
             mandatory.append(
                 {
-                    "file": str(guideline_file.relative_to(repo_root)),
+                    "file": str(_rel(guideline_file)),
                     "purpose": f"{pack_name} pack: {guideline_file.stem}",
                     "pack": pack_name,
                 }
@@ -128,6 +135,12 @@ def collect_mandatory_guidelines(repo_root: Path, packs_dir: Path, active_packs:
 
 def collect_role_guidelines(repo_root: Path, core_dir: Path) -> Dict[str, List[Dict[str, str]]]:
     """Discover role-specific guideline files for agents, validators, and orchestrators."""
+
+    def _rel(path: Path) -> Path:
+        try:
+            return path.relative_to(repo_root)
+        except ValueError:
+            return path
 
     categories = {
         "agents": core_dir / "guidelines" / "agents",
@@ -142,7 +155,7 @@ def collect_role_guidelines(repo_root: Path, core_dir: Path) -> Dict[str, List[D
             for guideline in sorted(path.glob("*.md")):
                 entries.append(
                     {
-                        "file": str(guideline.relative_to(repo_root)),
+                        "file": str(_rel(guideline)),
                         "title": guideline.stem.replace("_", " ").replace("-", " ").title(),
                     }
                 )
@@ -153,8 +166,7 @@ def collect_role_guidelines(repo_root: Path, core_dir: Path) -> Dict[str, List[D
 
 def compose_claude_orchestrator(engine, output_dir: Path | str) -> Path:
     """Generate Claude Code orchestrator (CLAUDE.md)."""
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = io_utils.ensure_dir(Path(output_dir))
 
     orchestrator_parts: List[str] = [
         "# Claude Code Orchestrator",
@@ -211,10 +223,9 @@ def compose_claude_agents(engine, output_dir: Path | str | None = None, *, packs
         except Exception:
             packs = []
 
-    out_dir = Path(output_dir) if output_dir is not None else (
+    out_dir = io_utils.ensure_dir(Path(output_dir) if output_dir is not None else (
         engine.project_dir / "_generated" / "agents"
-    )
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ))
 
     results: Dict[str, Path] = {}
     for name in sorted(core_agents.keys()):
@@ -339,8 +350,7 @@ def compose_orchestrator_manifest(
     Returns:
         Dict with 'json' key pointing to orchestrator-manifest.json
     """
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    output_path = io_utils.ensure_dir(Path(output_dir))
 
     validators = collect_validators(
         config,

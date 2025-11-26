@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import yaml
 
 from .manager import SessionManager
-from .naming import SessionNamingStrategy
+from .naming import generate_session_id
 from . import store
 from . import worktree
 from .context import SessionContext
@@ -88,7 +88,7 @@ class SessionAutoStart:
         profile = orchestrator_profile or self.orchestrator_config.get_default_profile_name()
 
         # Generate session ID using PID-based inference (legacy args ignored)
-        session_id = SessionNamingStrategy().generate()
+        session_id = generate_session_id()
 
         wt_cfg = self._session_config.get_worktree_config()
         do_worktree = bool(wt_cfg.get("enabled", False)) and not no_worktree

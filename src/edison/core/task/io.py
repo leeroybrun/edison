@@ -14,6 +14,7 @@ import getpass
 from ..exceptions import TaskStateError
 from edison.core.file_io import utils as io_utils
 from edison.core.file_io.utils import write_json_safe, read_json_safe
+from edison.core.utils.time import utc_timestamp
 from ..session.layout import get_session_base_path
 from .locking import safe_move_file, file_lock
 from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, ROOT
@@ -229,14 +230,6 @@ def _task_meta_path(task_id: str) -> Path:
     return _tasks_meta_root() / f"{task_id}.json"
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def utc_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
 def _read_json(path: Path) -> Dict[str, Any]:
     return read_json_safe(path)
 
@@ -260,7 +253,7 @@ def update_task_record(task_id: str, updates: Dict[str, Any], *, operation: str 
     record.update(updates)
     record.setdefault("id", task_id)
     record.setdefault("status", TYPE_INFO["task"]["default_status"])
-    record.setdefault("updated_at", _now_iso())
+    record.setdefault("updated_at", utc_timestamp())
     record["operation"] = operation
     _validate_task_record(record)
     _write_json(path, record)
@@ -301,8 +294,8 @@ def create_task_record(task_id: str, title: str, *, status: str = None) -> Dict[
         "id": task_id,
         "title": title,
         "status": status,
-        "created_at": _now_iso(),
-        "updated_at": _now_iso(),
+        "created_at": utc_timestamp(),
+        "updated_at": utc_timestamp(),
     }
     _write_json(_task_meta_path(task_id), record)
     return record
@@ -318,7 +311,7 @@ def load_task_record(task_id: str) -> Dict[str, Any]:
 def set_task_result(task_id: str, result: Dict[str, Any]) -> Dict[str, Any]:
     record = load_task_record(task_id)
     record["result"] = result
-    record["updated_at"] = _now_iso()
+    record["updated_at"] = utc_timestamp()
     _write_json(_task_meta_path(task_id), record)
     return record
 

@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - handled at runtime
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
+from ..file_io.utils import ensure_dir
 
 
 # Allowed hook lifecycle event types (kept in sync with tests)
@@ -101,8 +102,7 @@ class HookComposer:
         if "claude" not in platforms:
             return {}
 
-        output_dir = self._output_dir(hooks_cfg)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = ensure_dir(self._output_dir(hooks_cfg))
 
         definitions = self.load_definitions()
         results: Dict[str, Path] = {}
@@ -114,7 +114,7 @@ class HookComposer:
 
             outfile = self._output_filename(hook_def)
             out_path = output_dir / outfile
-            out_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(out_path.parent)
             out_path.write_text(rendered, encoding="utf-8")
             # Ensure executable bit for hook scripts
             out_path.chmod(out_path.stat().st_mode | 0o111)

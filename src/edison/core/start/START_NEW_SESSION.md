@@ -1,0 +1,59 @@
+# Start New Session
+
+## Pre-Session Checklist
+
+Before beginning work:
+
+1. ✅ Read your constitution: `constitutions/ORCHESTRATORS.md`
+2. ✅ Load available agents: `AVAILABLE_AGENTS.md`
+3. ✅ Load available validators: `AVAILABLE_VALIDATORS.md`
+4. ✅ Confirm the human's request explicitly
+
+## Session Initialization
+
+Run the session start command:
+```bash
+edison session start
+```
+
+This will:
+- Create a new session ID
+- Initialize the session directory
+- Set up git worktree (if configured)
+- Record session start time
+
+## Intake Protocol
+
+1. **Confirm Request**: Restate what the human is asking for
+2. **Check Stale Work**: Close any work older than the configured threshold
+3. **Shared QA Rule**: Leave QA briefs assigned to other sessions alone
+4. **Reclaim Stale Tasks**: Tasks idle > threshold can be reclaimed
+5. **Select Work**: Choose 1-5 tasks based on scope and dependencies
+
+## Begin Work
+
+After intake is complete:
+```bash
+edison session next
+```
+
+This provides guidance on the next action based on session state.
+
+## Session Loop
+
+Repeat until all tasks complete:
+1. Claim task → `edison tasks claim <task-id>`
+2. Implement following TDD and delegation rules
+3. Mark ready → `edison tasks ready <task-id>`
+4. Run validators → `edison validate <task-id>`
+5. Address any rejections
+6. Complete task → `edison tasks complete <task-id>`
+
+## Constitution Reference
+
+Your full orchestrator instructions are at: `constitutions/ORCHESTRATORS.md`
+
+Re-read this constitution:
+- At session start (now)
+- After any context compaction
+- When resuming after interruption

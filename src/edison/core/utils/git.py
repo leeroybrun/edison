@@ -19,30 +19,14 @@ def _starting_path(start_path: Optional[Path | str]) -> Path:
 
 def get_repo_root(start_path: Optional[Path | str] = None) -> Path:
     """Return the git repository root for ``start_path`` or current directory."""
-    override = os.environ.get("AGENTS_PROJECT_ROOT")
-    if override:
-        path = Path(override).expanduser().resolve()
-        if path.exists():
-            return path
-    start = _starting_path(start_path)
-    try:
-        result = run_with_timeout(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=start,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout_type="git_operations",
-        )
-        root = Path(result.stdout.strip()).resolve()
-        if root.exists():
-            return root
-    except Exception:
-        pass
+    if start_path is None:
+        return PathResolver.resolve_project_root()
 
-    resolved = get_git_root(start)
+    # If start_path is provided, try to find its git root
+    resolved = get_git_root(start_path)
     if resolved is not None:
         return resolved
+
     return PathResolver.resolve_project_root()
 
 

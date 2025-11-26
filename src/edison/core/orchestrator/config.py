@@ -8,6 +8,7 @@ from string import Formatter
 from typing import Any, Dict, Mapping, Optional
 
 from ..config import ConfigManager
+from ..utils.time import utc_timestamp
 from jsonschema import ValidationError
 
 
@@ -113,9 +114,7 @@ class OrchestratorConfig:
         }
 
         if not tokens.get("timestamp"):
-            tokens["timestamp"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
-                "+00:00", "Z"
-            )
+            tokens["timestamp"] = utc_timestamp()
 
         if not tokens.get("shortid"):
             tokens["shortid"] = self._generate_shortid()

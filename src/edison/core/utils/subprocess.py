@@ -30,20 +30,6 @@ DEFAULT_GIT_TIMEOUT = float(os.environ.get("EDISON_GIT_TIMEOUT_SECONDS", "60"))
 DEFAULT_DB_TIMEOUT = float(os.environ.get("EDISON_DB_TIMEOUT_SECONDS", "30"))
 
 
-def _resolve_repo_root(cwd: Path | str | None = None) -> Path:
-    from ..paths import resolver as paths_resolver  # Lazy to avoid import cycle
-
-    if cwd is not None:
-        try:
-            return Path(cwd).resolve()
-        except Exception:
-            pass
-    try:
-        return paths_resolver.PathResolver.resolve_project_root()
-    except Exception:
-        return Path.cwd().resolve()
-
-
 @lru_cache(maxsize=4)
 def _load_timeouts(repo_root: Path) -> Dict[str, float]:
     """Load timeout configuration with fallbacks.
@@ -96,7 +82,19 @@ def _infer_timeout_type(cmd: Any) -> str:
 
 
 def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | str | None = None) -> float:
-    repo_root = _resolve_repo_root(cwd)
+    from ..paths import resolver as paths_resolver  # Lazy to avoid import cycle
+
+    if cwd is not None:
+        try:
+            repo_root = Path(cwd).resolve()
+        except Exception:
+            repo_root = Path.cwd().resolve()
+    else:
+        try:
+            repo_root = paths_resolver.PathResolver.resolve_project_root()
+        except Exception:
+            repo_root = Path.cwd().resolve()
+
     timeouts = _load_timeouts(repo_root)
 
     ttype = timeout_type or _infer_timeout_type(cmd)

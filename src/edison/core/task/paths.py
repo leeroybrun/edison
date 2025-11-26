@@ -6,29 +6,10 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-from edison.core.utils.git import get_repo_root
-
 from ..legacy_guard import enforce_no_legacy_project_root
 from ..paths import EdisonPathError, PathResolver
 from ..session.config import SessionConfig
 from .config import TaskConfig
-
-
-def _resolve_repo_root() -> Path:
-    """Resolve repository root using the canonical PathResolver."""
-    try:
-        root = PathResolver.resolve_project_root()
-    except EdisonPathError as exc:  # pragma: no cover - defensive
-        try:
-            root = get_repo_root()
-        except EdisonPathError as exc2:
-            raise RuntimeError(str(exc2)) from exc2
-    if root.name == ".edison":
-        try:
-            root = PathResolver.resolve_project_root()
-        except EdisonPathError as exc:  # pragma: no cover - defensive
-            raise RuntimeError(str(exc)) from exc
-    return root
 
 
 # Cache holders for lazy initialization - reset by conftest.py for test isolation
@@ -46,7 +27,7 @@ def _get_root() -> Path:
     """Lazily resolve and cache ROOT."""
     global _ROOT_CACHE
     if _ROOT_CACHE is None:
-        _ROOT_CACHE = _resolve_repo_root()
+        _ROOT_CACHE = PathResolver.resolve_project_root()
         if _ROOT_CACHE.name == ".edison":
             raise ValueError(
                 f"CRITICAL: Repo root resolved to .edison directory ({_ROOT_CACHE}). "

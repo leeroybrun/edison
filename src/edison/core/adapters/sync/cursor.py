@@ -44,19 +44,6 @@ AUTOGEN_BEGIN = "<!-- EDISON_CURSOR_AUTOGEN:BEGIN -->"
 AUTOGEN_END = "<!-- EDISON_CURSOR_AUTOGEN:END -->"
 
 
-def _detect_repo_root(explicit_root: Optional[Path] = None) -> Path:
-    """Resolve repository/project root for adapter operations.
-
-    Prefer an explicitly provided root; otherwise delegate to the
-    canonical PathResolver so CursorSync shares the same semantics
-    as the rest of Edison.
-    """
-    if explicit_root is not None:
-        return explicit_root.resolve()
-
-    return PathResolver.resolve_project_root()
-
-
 @dataclass
 class CursorSync:
     """Adapter between Edison composition and Cursor config files."""
@@ -68,7 +55,7 @@ class CursorSync:
     last_auto_composed_agents: int = 0
 
     def __init__(self, project_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> None:
-        root = _detect_repo_root(project_root)
+        root = project_root.resolve() if project_root else PathResolver.resolve_project_root()
         cfg_mgr = ConfigManager(root)
         # ConfigManager enforces defaults.yaml + project config overlays in real projects.
         # For isolated tests we tolerate missing config by falling back to empty.

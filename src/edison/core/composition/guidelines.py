@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
 
-from ..utils.git import get_repo_root
+from edison.core.paths import PathResolver
 from ..paths.project import get_project_config_dir
 from .includes import resolve_includes, ComposeError
 from ..utils.text import (
@@ -39,8 +39,8 @@ from ..utils.text import (
 # -----------------------
 
 def _repo_root() -> Path:
-    """Resolve project root via shared git utility."""
-    return get_repo_root()
+    """Resolve project root via canonical PathResolver."""
+    return PathResolver.resolve_project_root()
 
 
 def _read_text(path: Path) -> str:
@@ -329,13 +329,18 @@ class GuidelineRegistry:
             project_parts.append(self._resolve_layer_text(testing_project))
         project_text = "\n\n".join([p for p in project_parts if p]).strip()
 
-        # Deduplicate paragraphs across layers using 12‑word shingles
+        # Deduplicate paragraphs across layers using shingles from config
+        from ..config import ConfigManager
+        cfg = ConfigManager().load_config(validate=False)
+        dry_config = cfg.get("composition", {}).get("dryDetection", {})
+        k = dry_config.get("shingleSize", 12)
+
         dedup_core, dedup_packs, dedup_project = self._dedupe_layers(
             name=name,
             core_text=core_text,
             pack_texts=pack_texts,
             project_text=project_text,
-            k=12,
+            k=k,
         )
 
         # Assemble final text in layer order
@@ -354,11 +359,21 @@ class GuidelineRegistry:
         final_text = "\n\n".join(sections).rstrip() + "\n"
 
         # Duplication report (for CLI and evidence)
-        min_s = (
-            int(os.environ.get("EDISON_DRY_MIN_SHINGLES", "2"))
-            if dry_min_shingles is None
-            else dry_min_shingles
-        )
+        # Get DRY detection config from composition.yaml
+        if dry_min_shingles is None:
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            min_s = dry_config.get("minShingles", 2)
+            k = dry_config.get("shingleSize", 12)
+        else:
+            min_s = dry_min_shingles
+            # Use config for k as well
+            from ..config import ConfigManager
+            cfg = ConfigManager().load_config(validate=False)
+            dry_config = cfg.get("composition", {}).get("dryDetection", {})
+            k = dry_config.get("shingleSize", 12)
+
         duplicate_report = dry_duplicate_report(
             {
                 "core": core_text,
@@ -366,7 +381,7 @@ class GuidelineRegistry:
                 "overlay": project_text,
             },
             min_shingles=min_s,
-            k=12,
+            k=k,
         )
 
         return GuidelineCompositionResult(

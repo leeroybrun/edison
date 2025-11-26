@@ -1,7 +1,6 @@
 import pytest
 from pathlib import Path
-import yaml
-from unittest.mock import patch, MagicMock
+from typing import Any, Dict, Optional
 from edison.core.config import (
     workflow, 
     load_workflow_config, 
@@ -9,6 +8,24 @@ from edison.core.config import (
     get_qa_states,
     get_semantic_state
 )
+
+# --- Test Helpers ---
+
+def make_fake_read_yaml(return_value: Optional[Dict[str, Any]] = None, side_effect: Optional[Exception] = None):
+    def fake_read(domain: str, filename: str) -> Dict[str, Any]:
+        if side_effect:
+            raise side_effect
+        if return_value is not None:
+            return return_value
+        return {}
+    return fake_read
+
+def make_fake_file_exists(return_value: bool):
+    def fake_exists(domain: str, filename: str) -> bool:
+        return return_value
+    return fake_exists
+
+# --- Tests ---
 
 def test_workflow_module_exists():
     """Test that the workflow module exists."""
@@ -20,6 +37,7 @@ def test_load_workflow_config_exists():
 
 def test_workflow_config_structure():
     """Test that the loaded configuration has the correct structure."""
+    # Using real implementation here as integration test
     config = load_workflow_config()
     assert "qaStates" in config
     assert "taskStates" in config
@@ -66,19 +84,36 @@ def test_default_workflow_yaml_exists():
     assert real_yaml_path.exists(), "src/edison/data/config/workflow.yaml should exist"
 
 def test_invalid_config_raises_error():
-    """Test that invalid config raises ValueError."""
-    with patch("edison.core.config.workflow.read_yaml") as mock_read:
-        # Missing required keys
-        mock_read.return_value = {"version": "1.0.0"}
-        # We need to force reload or patch the cache
-        with patch("edison.core.config.workflow._WORKFLOW_CONFIG_CACHE", None):
-            with pytest.raises(ValueError, match="missing required key"):
-                load_workflow_config(force_reload=True)
+    """Test that invalid config raises ValueError using dependency injection."""
+    # Missing required keys
+    fake_read = make_fake_read_yaml(return_value={"version": "1.0.0"})
+    fake_exists = make_fake_file_exists(True)
+    
+    with pytest.raises(ValueError, match="missing required key"):
+        load_workflow_config(
+            force_reload=True,
+            read_yaml_func=fake_read,
+            file_exists_func=fake_exists
+        )
+
+def test_malformed_yaml_raises_error():
+    """Test that malformed yaml raises ValueError using dependency injection."""
+    fake_read = make_fake_read_yaml(side_effect=Exception("Bad YAML"))
+    fake_exists = make_fake_file_exists(True)
+
+    with pytest.raises(ValueError, match="Failed to parse workflow.yaml"):
+        load_workflow_config(
+            force_reload=True,
+            read_yaml_func=fake_read,
+            file_exists_func=fake_exists
+        )
 
 def test_missing_file_raises_error():
-    """Test that missing file raises FileNotFoundError."""
-    with patch("edison.core.config.workflow.file_exists") as mock_exists:
-        mock_exists.return_value = False
-        with patch("edison.core.config.workflow._WORKFLOW_CONFIG_CACHE", None):
-            with pytest.raises(FileNotFoundError, match="workflow.yaml not found"):
-                load_workflow_config(force_reload=True)
+    """Test that missing file raises FileNotFoundError using dependency injection."""
+    fake_exists = make_fake_file_exists(False)
+    
+    with pytest.raises(FileNotFoundError, match="workflow.yaml not found"):
+        load_workflow_config(
+            force_reload=True,
+            file_exists_func=fake_exists
+        )

@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone
 
 from edison.core.config import ConfigManager
+from edison.core.utils.time import utc_timestamp
 from edison.core import task as _task
 
 
@@ -71,10 +72,6 @@ def route_task(generic_role: str, continuation_id: Optional[str] = None,
     return envelope
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def delegate_task(
     description: str,
     agent: str,
@@ -105,7 +102,7 @@ def delegate_task(
         {
             'agent': agent,
             'status': 'pending' if (_task.load_task_record(child_id).get('status') in (None, 'todo')) else _task.load_task_record(child_id).get('status'),
-            'delegated_at': _now_iso(),
+            'delegated_at': utc_timestamp(),
         },
         operation='delegate',
     )

@@ -13,6 +13,7 @@ provides:
   guidelines:
     - guidelines/STYLING.md
     - guidelines/v4-syntax.md
+    - guidelines/TAILWIND_V4_RULES.md
     - guidelines/design-tokens.md
     - guidelines/responsive.md
   agents:

@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
+from ..file_io.utils import ensure_dir
 
 # Defaults
 DEFAULT_SHORT_DESC_MAX = 80
@@ -187,14 +188,13 @@ class CommandComposer:
             raise ValueError(f"Unsupported platform: {platform}")
 
         adapter = self.adapters[key]
-        output_dir = self._output_dir_for(key)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = ensure_dir(self._output_dir_for(key))
 
         results: Dict[str, Path] = {}
         for cmd in defs:
             rendered = adapter.render_command(cmd, self.config.get("commands", {}))
             out_path = adapter.get_output_path(cmd.id, output_dir)
-            out_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_dir(out_path.parent)
             out_path.write_text(rendered, encoding="utf-8")
             results[cmd.id] = out_path
         return results

@@ -135,3 +135,23 @@ def test_legacy_core_defaults_yaml_outside_config_dir_is_ignored(tmp_path: Path)
 
     # Config MUST come from core/config/defaults.yaml, not legacy defaults.yaml.
     assert cfg.get("version") == "2.1.0"
+
+
+def test_dry_detection_constants_in_composition_config() -> None:
+    """DRY detection constants must be defined once in composition.yaml config."""
+    mgr = ConfigManager(ROOT)
+    cfg = mgr.load_config(validate=False)
+
+    # DRY detection config must exist under composition
+    composition = cfg.get("composition", {})
+    dry_config = composition.get("dryDetection", {})
+
+    # Must have min_shingles defined
+    assert "minShingles" in dry_config, "composition.dryDetection.minShingles must be defined"
+    assert isinstance(dry_config["minShingles"], int)
+    assert dry_config["minShingles"] >= 1
+
+    # Must have k (shingle size) defined
+    assert "shingleSize" in dry_config, "composition.dryDetection.shingleSize must be defined"
+    assert isinstance(dry_config["shingleSize"], int)
+    assert dry_config["shingleSize"] >= 1

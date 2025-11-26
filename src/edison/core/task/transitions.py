@@ -5,7 +5,8 @@ from typing import Any, Dict, Tuple
 
 from ..exceptions import TaskStateError
 from ..rules import RulesEngine
-from .io import qa_progress, ready_task, _now_iso, load_task_record, update_task_record
+from edison.core.utils.time import utc_timestamp
+from .io import qa_progress, ready_task, load_task_record, update_task_record
 from .metadata import validate_state_transition
 
 
@@ -41,7 +42,7 @@ def transition_task(task_id: str, to_state: str, config: Dict[str, Any] | None =
         {
             "from": from_state,
             "to": to_state,
-            "timestamp": _now_iso(),
+            "timestamp": utc_timestamp(),
             "ruleViolations": [v.rule.id for v in violations if v.severity == "warning"],
         }
     )

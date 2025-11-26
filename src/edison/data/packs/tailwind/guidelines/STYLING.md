@@ -1,6 +1,6 @@
 ## 🚨 CRITICAL: TAILWIND CSS V4 SYNTAX
 
-**Complete Guide**: See [../guides/reference/TAILWIND_V4_GUIDE.md](../guides/reference/TAILWIND_V4_GUIDE.md) - v4 syntax is DIFFERENT from v3!
+**Complete Guide**: See [TAILWIND_V4_RULES.md](./TAILWIND_V4_RULES.md) - v4 syntax is DIFFERENT from v3!
 
 **Critical v4 Rules** (full details in guide):
 
@@ -40,6 +40,15 @@
      },
    }
    ```
+
+6. **Define tokens in @theme**:
+   ```css
+   @theme {
+     --color-surface: oklch(18% 0.02 260);
+     --font-sans: "Inter", system-ui, sans-serif;
+   }
+   ```
+   Use the generated classes (e.g., `bg-surface`, `font-sans`) instead of hardcoded values.
 
 **Red Flags** (indicates v3 syntax was used):
 - Times New Roman font → Missing `font-sans`

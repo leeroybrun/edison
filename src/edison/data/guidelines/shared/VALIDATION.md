@@ -23,6 +23,52 @@ See `AVAILABLE_VALIDATORS.md` (generated from the ValidatorRegistry) for the cur
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
 
+## Batched Parallel Execution Model
+
+Validators run in waves for efficiency and fast feedback:
+
+### Wave Execution Order
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Wave 1: Global Validators (Parallel)                        │
+│ ┌─────────────────┐  ┌─────────────────┐                   │
+│ │ codex-global    │  │ claude-global   │  → Consensus      │
+│ └─────────────────┘  └─────────────────┘    Required       │
+└─────────────────────────────────────────────────────────────┘
+                          ↓ (if pass)
+┌─────────────────────────────────────────────────────────────┐
+│ Wave 2: Critical Validators (Parallel, Blocking)            │
+│ ┌─────────────────┐  ┌─────────────────┐                   │
+│ │ security        │  │ performance     │  → Any Fail       │
+│ └─────────────────┘  └─────────────────┘    Blocks         │
+└─────────────────────────────────────────────────────────────┘
+                          ↓ (if pass)
+┌─────────────────────────────────────────────────────────────┐
+│ Wave 3: Specialized Validators (Parallel, Pattern-Triggered)│
+│ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐    │
+│ │ react  │ │ nextjs │ │  api   │ │database│ │testing │    │
+│ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Consensus Rules
+
+**Global Validators:**
+- Both codex-global and claude-global must agree
+- If they disagree, escalate to human review
+- Tie-breaker: More specific feedback wins
+
+**Critical Validators:**
+- ANY failure blocks the task
+- Must fix ALL critical issues before re-validation
+- No partial approvals
+
+**Specialized Validators:**
+- Only triggered if relevant files changed
+- Failures are advisory unless configured as blocking
+- Can proceed with warnings noted
+
 ## Bundle-first rule
 Before any validator wave, run the guarded bundle helper (`edison validators bundle <root-task>`). Paste the manifest into the QA brief. Validators must load only what the bundle lists.
 
@@ -44,6 +90,35 @@ Before any validator wave, run the guarded bundle helper (`edison validators bun
 - Blocking validator reject → task stays/returns to `wip`; QA → `waiting`; spawn follow-ups in `tasks/todo/`; add "Round N" entry to QA.
 - Validator blocked/missing → stop; fix cause; rerun affected validators.
 - Each revalidation uses a new `round-<N>` directory; never overwrite prior evidence.
+
+## Round N Rejection Cycle
+
+When validation fails:
+
+```
+Round 1: Initial Validation
+    ↓ (REJECT)
+Task returns to WIP
+    ↓
+Fix issues identified
+    ↓
+Round 2: Re-validation
+    ↓ (REJECT again?)
+Repeat until APPROVE or escalate
+```
+
+### Rejection Handling
+
+1. **Read rejection report**: Understand ALL issues
+2. **Fix ALL issues**: Don't fix one and re-submit
+3. **Re-run failed validators**: Use `edison validate --validators=<failed>`
+4. **Document fixes**: Update implementation report
+
+### Maximum Rounds
+
+- Configurable via `validation.maxRounds` (default: 3)
+- After max rounds, escalate to human review
+- Each round's feedback is cumulative
 
 ## QA Ownership & Evidence
 - Assign a single QA owner; multiple validators may run, but one owner curates the QA brief.

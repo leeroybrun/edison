@@ -1,6 +1,7 @@
 # Tailwind CSS Validation Context (Claude)
 
 {{include:.edison/packs/tailwind/guidelines/v4-syntax.md}}
+{{include:.edison/packs/tailwind/guidelines/TAILWIND_V4_RULES.md}}
 {{include:.edison/packs/tailwind/guidelines/design-tokens.md}}
 {{include:.edison/packs/tailwind/guidelines/responsive.md}}
 
@@ -9,4 +10,3 @@
 - Apply `font-sans` to text elements by default.
 - Prefer utility classes; minimize custom CSS.
 - Support light and dark modes.
-

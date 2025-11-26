@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from ..file_io.utils import (
     write_json_safe as io_atomic_write_json,
     read_json_safe as io_read_json_safe,
+    ensure_dir as io_ensure_dir,
 )
 from ..session import transaction as _session_transaction
 from ..paths.management import get_management_paths
@@ -66,8 +67,7 @@ class ValidationTransaction:
             / self.task_id
             / f"round-{self.round_num}"
         )
-        task_round_dir.mkdir(parents=True, exist_ok=True)
-        self.staging_dir = task_round_dir
+        self.staging_dir = io_ensure_dir(task_round_dir)
 
         # Underlying meta.json lives alongside staging/snapshot; treat its
         # parent directory as the journal path and enrich with task/round.

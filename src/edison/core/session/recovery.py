@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ..paths.resolver import PathResolver
 from .. import task
 from ..file_io.utils import utc_timestamp as io_utc_timestamp
+from edison.core.utils.time import utc_timestamp
 from .store import (
     load_session,
     save_session,
@@ -260,7 +261,7 @@ def handle_timeout(sess_dir: Path) -> Path:
     _write_json(rec_dir / 'recovery.json', {
         'reason': 'timeout exceeded',
         'original_path': str(sess_dir),
-        'captured_at': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        'captured_at': utc_timestamp(),
         'session': orig,
     })
     return rec_dir

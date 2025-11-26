@@ -1,5 +1,6 @@
 """Utility helpers for Edison core."""
 
+from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Union
 

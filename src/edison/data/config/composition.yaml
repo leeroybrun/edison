@@ -2,6 +2,11 @@
 # Controls prompt composition, orchestrator manifests, and agent assembly
 
 composition:
+  # DRY (Don't Repeat Yourself) detection configuration
+  dryDetection:
+    minShingles: 2       # Minimum shingles for duplication detection (default from EDISON_DRY_MIN_SHINGLES)
+    shingleSize: 12      # Size of shingles for similarity comparison (k parameter)
+
   # Workflow loop instructions for orchestrators
   workflowLoop:
     command: "scripts/session next <session-id>"
