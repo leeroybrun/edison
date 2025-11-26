@@ -8,13 +8,12 @@ from pathlib import Path
 from ..file_io.utils import ensure_dir
 from ..paths.resolver import PathResolver
 from .store import sanitize_session_id, get_session_json_path
-from .config import SessionConfig
+from ._config import get_config
 
-_CONFIG = SessionConfig()
 
 def _archive_root_dir() -> Path:
     root = PathResolver.resolve_project_root()
-    rel_path = _CONFIG.get_archive_root_path()
+    rel_path = get_config().get_archive_root_path()
     return (root / rel_path).resolve()
 
 def _archive_path_for_session(session_id: str) -> Path:

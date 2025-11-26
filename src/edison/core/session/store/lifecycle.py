@@ -15,34 +15,15 @@ from ...file_io.utils import (
 )
 from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...exceptions import SessionNotFoundError
-from ...paths.resolver import PathResolver
 
-from . import _shared
-from ._shared import (
-    sanitize_session_id,
-    _session_dir,
-)
+from ..id import validate_session_id
+from ._shared import _session_dir
+from ..worktree.config_helpers import _get_worktree_base
 
 logger = logging.getLogger(__name__)
 
 # Fail-fast if running against a legacy (pre-Edison) project root
 enforce_no_legacy_project_root("lib.session.store.lifecycle")
-
-
-def _get_worktree_base() -> Path:
-    """Get the worktree base directory from configuration."""
-    from ..config import ConfigManager
-    from ..utils.project_config import substitute_project_tokens
-
-    cfg = ConfigManager().load_config(validate=False)
-    wt = (cfg.get("worktrees") or {}).get("baseDirectory") or "../{PROJECT_NAME}-worktrees"
-    root = PathResolver.resolve_project_root()
-    expanded = substitute_project_tokens(str(wt), root)
-    base = Path(expanded)
-    if base.is_absolute():
-        return base
-    anchor = root if (base.parts and base.parts[0] == "..") else root.parent
-    return (anchor / base).resolve()
 
 
 def _append_state_history(data: Dict[str, Any], from_state: str, to_state: str, reason: Optional[str]) -> None:
@@ -61,7 +42,7 @@ def _move_session_json_to(status: str, session_id: str) -> Path:
     """Move session directory to a new lifecycle state."""
     from .discovery import get_session_json_path
 
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     try:
         src = get_session_json_path(sid)
     except SessionNotFoundError:
@@ -138,7 +119,7 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
     """
     from ..validation import validate_session_id_format
 
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     target_state = state.lower()
     validate_session_id_format(sid)
 

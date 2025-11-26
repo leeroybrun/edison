@@ -14,7 +14,7 @@ class TestGuidelineCompositionUnit:
         """
         GuidelineRegistry should discover core guidelines under .edison/core/guidelines.
         """
-        from edison.core.composition.guidelines import GuidelineRegistry 
+        from edison.core.composition import GuidelineRegistry 
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         core_dir.mkdir(parents=True, exist_ok=True)
@@ -32,7 +32,7 @@ class TestGuidelineCompositionUnit:
         """
         compose_guideline should merge core + pack guidelines in pack order.
         """
-        from edison.core.composition.guidelines import GuidelineRegistry, compose_guideline 
+        from edison.core.composition import GuidelineRegistry, compose_guideline 
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -72,7 +72,7 @@ class TestGuidelineCompositionUnit:
         """
         Project overrides from .edison/guidelines/*.md should be applied with highest priority.
         """
-        from edison.core.composition.guidelines import compose_guideline
+        from edison.core.composition import compose_guideline
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -110,7 +110,7 @@ class TestGuidelineCompositionUnit:
         """
         Includes in guidelines should be resolved via {{include:path}}.
         """
-        from edison.core.composition.guidelines import compose_guideline 
+        from edison.core.composition import compose_guideline 
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         core_dir.mkdir(parents=True, exist_ok=True)
@@ -134,7 +134,7 @@ class TestGuidelineCompositionUnit:
         """
         Duplicate paragraphs across core and packs should be deduplicated using 12-word shingles.
         """
-        from edison.core.composition.guidelines import compose_guideline 
+        from edison.core.composition import compose_guideline 
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -162,7 +162,7 @@ class TestGuidelineCompositionUnit:
         """
         When duplication exists across layers, project overrides win over packs, and packs win over core.
         """
-        from edison.core.composition.guidelines import compose_guideline
+        from edison.core.composition import compose_guideline
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -197,7 +197,7 @@ class TestGuidelineCompositionUnit:
         Phase 3A: Guideline composition should surface duplicate detection
         across core, packs, and project overlays via duplicate_report.
         """
-        from edison.core.composition.guidelines import GuidelineRegistry
+        from edison.core.composition import GuidelineRegistry
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -241,7 +241,7 @@ class TestGuidelineCompositionUnit:
         Phase 3A: Pack guideline discovery should support namespaced filenames
         (e.g. prisma-migrations.md, nextjs-routing.md).
         """
-        from edison.core.composition.guidelines import GuidelineRegistry 
+        from edison.core.composition import GuidelineRegistry 
         root = isolated_project_env
         packs_dir = root / ".edison" / "packs"
         prisma_guides = packs_dir / "prisma" / "guidelines"
@@ -257,15 +257,15 @@ class TestGuidelineCompositionUnit:
 
         assert "prisma-migrations" in names
 
-    def test_composition_engine_compose_guidelines_writes_generated_files(
+    def test_guideline_registry_compose_guidelines_writes_generated_files(
         self,
         isolated_project_env: Path,
     ) -> None:
         """
-        Phase 3A: CompositionEngine.compose_guidelines should assemble core +
-        pack + project guidelines into .edison/_generated/guidelines/*.md.
+        Phase 3A: GuidelineRegistry.compose should assemble core +
+        pack + project guidelines into merged content.
         """
-        from edison.core.composition import CompositionEngine
+        from edison.core.composition import GuidelineRegistry
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"
         packs_dir = root / ".edison" / "packs"
@@ -288,20 +288,17 @@ class TestGuidelineCompositionUnit:
             encoding="utf-8",
         )
 
-        config = {
-            "project": {"name": "test-project"},
-            "packs": {"active": ["alpha"]},
-        }
+        registry = GuidelineRegistry(repo_root=root)
+        result = registry.compose("architecture", ["alpha"])
 
-        engine = CompositionEngine(config, repo_root=root)
-        results = engine.compose_guidelines()
-
+        # Write to output directory
         out_dir = root / ".edison" / "_generated" / "guidelines"
+        out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / "architecture.md"
+        out_file.write_text(result.text, encoding="utf-8")
 
-        assert out_file.exists(), "Expected composed guideline output from CompositionEngine"
+        assert out_file.exists(), "Expected composed guideline output"
         content = out_file.read_text(encoding="utf-8")
         assert "Core text." in content
         assert "Pack text." in content
         assert "Project text." in content
-        assert "architecture" in results

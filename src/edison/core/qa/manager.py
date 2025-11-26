@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from ..paths import PathResolver
 from .evidence import EvidenceManager
-from .config import QAConfig
+from edison.core.config.domains import QAConfig
 
 
 class QAManager:

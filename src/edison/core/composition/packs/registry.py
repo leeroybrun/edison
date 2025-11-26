@@ -31,10 +31,10 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     if base.get("directory"):
         return root / str(base["directory"])
 
-    # Otherwise use unified path resolver
-    from ..unified import UnifiedPathResolver
+    # Otherwise use composition path resolver
+    from ..core import CompositionPathResolver
 
-    return UnifiedPathResolver(root).packs_dir
+    return CompositionPathResolver(root).packs_dir
 
 
 def load_active_packs(config: Dict[str, Any]) -> List[str]:
@@ -43,13 +43,13 @@ def load_active_packs(config: Dict[str, Any]) -> List[str]:
 
 
 def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
-    """Discover all valid packs using unified path resolution."""
+    """Discover all valid packs using composition path resolution."""
     root = root or _repo_root()
 
-    # Use unified path resolver for consistent path resolution
-    from ..unified import UnifiedPathResolver
+    # Use composition path resolver for consistent path resolution
+    from ..core import CompositionPathResolver
 
-    base = UnifiedPathResolver(root).packs_dir
+    base = CompositionPathResolver(root).packs_dir
 
     results: List[PackInfo] = []
     if not base.exists():

@@ -10,7 +10,7 @@ from . import store
 from . import state as session_state
 from . import validation
 from . import worktree
-from .config import SessionConfig
+from ._config import get_config
 from .naming import generate_session_id
 from ..paths import PathResolver
 from ..paths.management import get_management_paths
@@ -18,9 +18,12 @@ from ..file_io.utils import ensure_directory
 from ..exceptions import SessionError
 from ..utils.time import utc_timestamp
 
-_CONFIG = SessionConfig()
 logger = logging.getLogger(__name__)
-_WT_CFG = _CONFIG.get_worktree_config()
+
+
+def _get_worktree_config():
+    """Get worktree config lazily to avoid module-level evaluation."""
+    return get_config().get_worktree_config()
 
 def create_session(
     session_id: str, 
@@ -70,7 +73,8 @@ def create_session(
     # We should update sess["git"] with it.
     
     sess.setdefault("git", {})
-    base_branch = _WT_CFG.get("baseBranch", "main") if isinstance(_WT_CFG, dict) else "main"
+    wt_cfg = _get_worktree_config()
+    base_branch = wt_cfg.get("baseBranch", "main") if isinstance(wt_cfg, dict) else "main"
     sess["git"].setdefault("baseBranch", base_branch)
 
     repo_dir = PathResolver.resolve_project_root()
@@ -150,7 +154,7 @@ class SessionManager:
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
         self.project_root = project_root or PathResolver.resolve_project_root()
-        self._config = SessionConfig(self.project_root)
+        self._config = get_config(self.project_root)
 
     def create_session(
         self,

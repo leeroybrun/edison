@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 from edison.core.session import archive
 from edison.core.session import store
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):

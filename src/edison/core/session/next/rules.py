@@ -22,7 +22,10 @@ RULE_IDS = {
     "delegation": "RULE.DELEGATION.PRIORITY_CHAIN",
 }
 
-REPO_ROOT = get_repo_root()
+
+def _get_repo_root():
+    """Get repo root lazily to avoid module-level evaluation."""
+    return get_repo_root()
 
 
 def rules_for(domain: str, current: str, to: str, state_spec: Dict[str, Any]) -> List[str]:
@@ -46,12 +49,14 @@ def expand_rules(rule_ids: List[str]) -> List[Dict[str, Any]]:
         registry = io_read_json_safe(reg_path)
     except Exception:
         return []
+    
+    repo_root = _get_repo_root()
     out: List[Dict[str, Any]] = []
     for rid in rule_ids:
         entry = next((r for r in registry.get("rules", []) if r.get("id") == rid), None)
         if not entry:
             continue
-        src = REPO_ROOT / entry["sourcePath"]
+        src = repo_root / entry["sourcePath"]
         start = entry.get("start") or f"<!-- RULE: {rid} START -->"
         end = entry.get("end") or f"<!-- RULE: {rid} END -->"
         try:

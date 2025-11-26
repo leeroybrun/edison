@@ -8,7 +8,7 @@ import yaml
 
 from edison.core.rules import RulesEngine
 from edison.core.config import ConfigManager
-from edison.core.composition.validators import collect_validators
+from edison.core.composition import collect_validators
 from edison.core.paths.project import get_project_config_dir
 from edison.core.utils.subprocess import run_with_timeout
 

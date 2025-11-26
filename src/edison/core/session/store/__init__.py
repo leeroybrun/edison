@@ -9,12 +9,15 @@ enforce_no_legacy_project_root("lib.session.store")
 # Re-export exceptions used by store modules
 from ...exceptions import SessionNotFoundError, SessionStateError
 
+# Export config accessor from centralized location
+from .._config import get_config, reset_config_cache
+
+# Export session ID validation from unified module
+from ..id import validate_session_id, sanitize_session_id, normalize_session_id
+
 # Export shared utilities
 from ._shared import (
-    _CONFIG,
     reset_session_store_cache,
-    normalize_session_id,
-    sanitize_session_id,
     _session_filename,
     _session_json_path,
     _sessions_root,
@@ -65,8 +68,10 @@ __all__ = [
     "acquire_session_lock",
     "render_markdown",
     # Public API - Configuration and utilities
-    "_CONFIG",
+    "get_config",
+    "reset_config_cache",
     "reset_session_store_cache",
+    "validate_session_id",
     "normalize_session_id",
     "sanitize_session_id",
     # Public API - Exceptions

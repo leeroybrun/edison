@@ -5,8 +5,7 @@ from typing import Dict, List, Optional, Any
 
 from ....paths import PathResolver
 from ....config import ConfigManager
-from ....composition import CompositionEngine
-from ....composition.guidelines import GuidelineRegistry
+from ....composition import GuidelineRegistry
 from ....rules import RulesRegistry
 
 from .discovery import ZenDiscoveryMixin
@@ -20,7 +19,6 @@ class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
 
     repo_root: Path
     config: Dict[str, Any]
-    engine: CompositionEngine
     guideline_registry: GuidelineRegistry
     rules_registry: RulesRegistry
     _zen_roles_config: Dict[str, Any]
@@ -31,7 +29,6 @@ class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
         cfg_mgr = ConfigManager(root)
         self.repo_root = root
         self.config = config or cfg_mgr.load_config(validate=False)
-        self.engine = CompositionEngine(self.config, repo_root=root)
         self.guideline_registry = GuidelineRegistry(repo_root=root)
         self.rules_registry = RulesRegistry(project_root=root)
         self._zen_roles_config = {}

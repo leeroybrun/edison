@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.composition.output_config import (
+from edison.core.composition import (
     OutputConfigLoader,
     get_output_config,
 )

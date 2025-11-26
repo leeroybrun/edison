@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from edison.core.session import transaction
 from edison.core.session import store
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 from edison.core.exceptions import SessionError
 
 @pytest.fixture

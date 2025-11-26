@@ -9,7 +9,7 @@ Responsibilities:
 - Categorize guidelines by layer (core/pack/project/other)
 - Track pack ownership for pack-specific guidelines
 
-Uses UnifiedPathResolver for consistent path resolution.
+Uses CompositionPathResolver for consistent path resolution.
 """
 
 from dataclasses import dataclass
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import List, Optional, Literal
 
 from ..includes import _repo_root as _composition_repo_root
-from ..unified import UnifiedPathResolver
+from ..core import CompositionPathResolver
 
 
 GuidelineCategory = Literal["core", "pack", "project", "other"]
@@ -47,18 +47,18 @@ def _repo_root() -> Path:
 def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecord]:
     """Discover guideline files across the repository.
 
-    Uses UnifiedPathResolver for consistent path resolution.
+    Uses CompositionPathResolver for consistent path resolution.
 
     Categories:
-    - core:    .edison/core/guidelines/**/*.md
+    - bundled: edison.data/guidelines/**/*.md (bundled defaults)
     - pack:    .edison/packs/*/guidelines/**/*.md
-    - project:  <project_config_dir>/guidelines/**/*.md (including overlays)
+    - project: .edison/guidelines/**/*.md (including overlays)
     - other:   any additional guidelines/*.md directories not covered above
     """
     root = repo_root or _repo_root()
     
-    # Use unified path resolver for consistent path resolution
-    path_resolver = UnifiedPathResolver(root, "guidelines")
+    # Use composition path resolver for consistent path resolution
+    path_resolver = CompositionPathResolver(root, "guidelines")
     core_dir = path_resolver.core_dir / "guidelines"
     packs_root = path_resolver.packs_dir
     project_dir = path_resolver.project_dir / "guidelines"

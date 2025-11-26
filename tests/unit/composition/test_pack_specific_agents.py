@@ -13,7 +13,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from edison.core.composition.unified import LayeredComposer
+from edison.core.composition import LayeredComposer
 from edison.data import get_data_path
 
 

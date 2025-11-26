@@ -9,7 +9,7 @@ import pytest
 import edison.core.paths.resolver as resolver
 import edison.core.session.store as session_store
 import edison.core.task as task
-import edison.core.qa.config as qa_config
+import edison.core.config.domains.qa as qa_config
 
 
 def _set_legacy_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:

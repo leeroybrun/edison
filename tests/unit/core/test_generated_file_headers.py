@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from edison.core.composition.headers import build_generated_header
+from edison.core.composition import build_generated_header
 from edison.core.config import ConfigManager
 
 

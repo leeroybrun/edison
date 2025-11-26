@@ -50,7 +50,7 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
     import edison.core.paths.resolver as resolver
     resolver._PROJECT_ROOT_CACHE = None
 
-    from edison.core.qa.config import QAConfig
+    from edison.core.config.domains.qa import QAConfig
 
     cfg = QAConfig(repo_root=repo)
 
@@ -94,7 +94,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     import edison.core.paths.resolver as resolver
     resolver._PROJECT_ROOT_CACHE = None
 
-    from edison.core.qa.config import QAConfig
+    from edison.core.config.domains.qa import QAConfig
 
     cfg = QAConfig(repo_root=repo)
 
@@ -126,7 +126,7 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
     import edison.core.paths.resolver as resolver
     resolver._PROJECT_ROOT_CACHE = None
 
-    from edison.core.qa.config import QAConfig
+    from edison.core.config.domains.qa import QAConfig
 
     cfg = QAConfig(repo_root=repo)
 
@@ -154,7 +154,7 @@ def test_qa_config_class_raises_on_missing_max_concurrent(tmp_path: Path, monkey
     import edison.core.paths.resolver as resolver
     resolver._PROJECT_ROOT_CACHE = None
 
-    from edison.core.qa.config import QAConfig
+    from edison.core.config.domains.qa import QAConfig
 
     cfg = QAConfig(repo_root=repo)
 

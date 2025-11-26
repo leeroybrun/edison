@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from edison.core.utils.cli_arguments import parse_common_args
 from edison.core.utils.cli_output import output_json
-from edison.core.session.config import SessionConfig
+from edison.core.session._config import get_config
 from edison.core.session import manager as session_manager
 from edison.core.session import store as session_store
 from edison.core.session import graph as session_graph
@@ -41,9 +41,10 @@ from edison.core.session.next.utils import (
     extract_wave_and_base_id,
     allocate_child_id,
 )
-from edison.core.session.next.status import infer_task_status, infer_qa_status
 from edison.core.session.next.rules import RULE_IDS, rules_for, expand_rules
 from edison.core.session.next.actions import (
+    infer_task_status,
+    infer_qa_status,
     missing_evidence_blockers,
     read_validator_jsons,
     load_impl_followups,
@@ -71,7 +72,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         Dictionary with actions, blockers, and recommendations
     """
     session = load_session(session_id)
-    cfg = SessionConfig()
+    cfg = get_config()
     # state_spec structure expected by rules_for: {"domain": {"transitions": ...}}
     state_spec = cfg._state_config # Accessing internal for now to minimize refactor of rules_for
     actions: List[Dict[str, Any]] = []

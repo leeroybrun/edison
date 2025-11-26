@@ -19,6 +19,7 @@ import yaml
 from edison.data import read_yaml
 from edison.core.file_io import utils as file_utils
 from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.merge import deep_merge
 
 
 # ---------------------------------------------------------------------------
@@ -114,18 +115,6 @@ class McpConfig:
 # ---------------------------------------------------------------------------
 
 
-def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge dictionaries without mutating inputs."""
-
-    result = dict(base)
-    for key, value in (override or {}).items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-
 def _load_yaml_file(path: Path) -> Dict[str, Any]:
     data = file_utils.read_yaml_safe(path, default={})
     return data if isinstance(data, dict) else {}
@@ -137,12 +126,12 @@ def _load_json_format(project_root: Path) -> Dict[str, Any]:
     defaults = read_yaml("config", "defaults.yaml") or {}
     cli_defaults = (defaults.get("cli") or {}).get("json", {})
     json_io_cfg = defaults.get("json_io") or {}
-    merged = _deep_merge(json_io_cfg, cli_defaults)
+    merged = deep_merge(json_io_cfg, cli_defaults)
 
     project_config_dir = get_project_config_dir(project_root)
     project_cli_cfg = _load_yaml_file(project_config_dir / "config" / "cli.yml")
     if isinstance(project_cli_cfg, dict):
-        merged = _deep_merge(merged, (project_cli_cfg.get("cli") or {}).get("json", {}))
+        merged = deep_merge(merged, (project_cli_cfg.get("cli") or {}).get("json", {}))
 
     return {
         "indent": merged.get("indent", 2),
@@ -178,14 +167,14 @@ def _load_mcp_config(project_root: Path, packs: Sequence[str] | None = None) -> 
 
     for overlay_path in _iter_pack_overlays(project_root, packs):
         overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
-        merged = _deep_merge(merged, overlay)
+        merged = deep_merge(merged, overlay)
 
     project_config_dir = get_project_config_dir(project_root)
     for fname in ("mcp.yml", "mcp.yaml"):
         overlay_path = project_config_dir / "config" / fname
         if overlay_path.exists():
             overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
-            merged = _deep_merge(merged, overlay)
+            merged = deep_merge(merged, overlay)
 
     return merged
 

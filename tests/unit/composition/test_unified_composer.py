@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 from typing import Dict, List, Set
 
-from edison.core.composition.unified import (
+from edison.core.composition import (
     SectionMode,
     ParsedSection,
     SectionParser,

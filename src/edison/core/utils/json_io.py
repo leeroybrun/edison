@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, ContextManager
 
 from edison.core.file_io import utils as io_utils
 from edison.core.file_io import locking as locklib
-from edison.core.utils.timeout_config import get_timeout_settings
+from edison.core.config.domains.timeouts import get_timeout_settings
 
 # Default configuration (can be overridden by passing config to functions)
 DEFAULT_JSON_CONFIG: Dict[str, Any] = {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from ....composition.formatting import compose_for_role
+from ....composition.output.formatting import compose_for_role
 from .discovery import _canonical_role
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class ZenComposerMixin:
 
         The prompt includes:
           - Model/role header with model-specific context hints
-          - Base Edison context (via CompositionEngine)
+          - Base Edison context (via composition registries)
           - Role-specific guideline excerpts
           - Role-specific rules summary
         """
@@ -33,7 +33,7 @@ class ZenComposerMixin:
         canonical_role = _canonical_role(role)
 
         # Base content derives from the model-specific role used for validators.
-        base_content = compose_for_role(self.engine, model_key)
+        base_content = compose_for_role(self, model_key)
 
         guideline_names = self.get_applicable_guidelines(role)
         guideline_sections: List[str] = []

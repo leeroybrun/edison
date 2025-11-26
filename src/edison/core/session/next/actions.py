@@ -8,36 +8,35 @@ from typing import Any, Dict, List
 
 from edison.core.session import manager as session_manager
 from edison.core.qa.evidence import (
-    missing_evidence_blockers as _ev_missing_evidence_blockers,
-    read_validator_jsons as _ev_read_validator_jsons,
-    load_impl_followups as _ev_load_impl_followups,
-    load_bundle_followups as _ev_load_bundle_followups,
+    missing_evidence_blockers,
+    read_validator_jsons,
+    load_impl_followups,
+    load_bundle_followups,
+    get_evidence_dir,
+    get_latest_round,
+    get_implementation_report_path,
 )
-from edison.core.session.next.status import infer_task_status, infer_qa_status
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.file_io.utils import read_json_safe as io_read_json_safe
-from edison.core.qa import evidence as qa_evidence
 from edison.core import task
 
 
-def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
-    """Wrapper for evidence.missing_evidence_blockers."""
-    return _ev_missing_evidence_blockers(task_id)
+def infer_task_status(task_id: str) -> str:
+    """Infer task status from filesystem location."""
+    try:
+        p = task.find_record(task_id, "task")
+        return task.infer_status_from_path(p, "task") or "unknown"
+    except FileNotFoundError:
+        return "missing"
 
 
-def read_validator_jsons(task_id: str) -> Dict[str, Any]:
-    """Wrapper for evidence.read_validator_jsons."""
-    return _ev_read_validator_jsons(task_id)
-
-
-def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
-    """Wrapper for evidence.load_impl_followups."""
-    return _ev_load_impl_followups(task_id)
-
-
-def load_bundle_followups(task_id: str) -> List[Dict[str, Any]]:
-    """Wrapper for evidence.load_bundle_followups."""
-    return _ev_load_bundle_followups(task_id)
+def infer_qa_status(task_id: str) -> str:
+    """Infer QA status from filesystem location."""
+    try:
+        p = task.find_record(task_id, "qa")
+        return task.infer_status_from_path(p, "qa") or "missing"
+    except FileNotFoundError:
+        return "missing"
 
 
 def find_related_in_session(session_id: str, task_id: str) -> List[Dict[str, Any]]:
@@ -134,10 +133,10 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         # Implementation Report JSON required for ALL tasks
         try:
-            ev_root = qa_evidence.get_evidence_dir(task_id)
-            latest_round = qa_evidence.get_latest_round(task_id)
+            ev_root = get_evidence_dir(task_id)
+            latest_round = get_latest_round(task_id)
             if latest_round is not None:
-                impl_report = qa_evidence.get_implementation_report_path(task_id, latest_round)
+                impl_report = get_implementation_report_path(task_id, latest_round)
                 if not impl_report.exists():
                     rel_path = task.safe_relative(impl_report)
                     reports_missing.append({
@@ -203,8 +202,8 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             files = _files_for_task(task_id)
             used = {pkg for pkg in pkgs for f in files if _matches(f, pkg)}
             if used:
-                ev_root = qa_evidence.get_evidence_dir(task_id)
-                latest_round = qa_evidence.get_latest_round(task_id)
+                ev_root = get_evidence_dir(task_id)
+                latest_round = get_latest_round(task_id)
                 latest = ev_root / f"round-{latest_round}" if latest_round is not None else None
                 missing_pkgs: List[str] = []
                 for pkg in used:

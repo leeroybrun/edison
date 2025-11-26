@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import yaml
 from edison.core.session import worktree
-from edison.core.session.config import SessionConfig
+from edison.core.session._config import reset_config_cache
 from edison.core.utils.subprocess import run_with_timeout
 
 @pytest.fixture
@@ -48,8 +48,8 @@ def git_repo(tmp_path, monkeypatch):
     run_with_timeout(["git", "config", "user.name", "Your Name"], cwd=repo_dir, check=True)
     run_with_timeout(["git", "commit", "--allow-empty", "-m", "Initial commit"], cwd=repo_dir, check=True)
     
-    # Reload config
-    worktree._CONFIG = SessionConfig()
+    # Reset config cache to pick up new settings
+    reset_config_cache()
     
     return repo_dir
 

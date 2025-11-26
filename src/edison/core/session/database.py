@@ -8,22 +8,15 @@ from pathlib import Path
 
 from ..paths.resolver import PathResolver
 from ..paths.project import get_project_config_dir
-from .config import SessionConfig
-
-_CONFIG = SessionConfig()
+from ._config import get_config, reset_config_cache
 
 
-def _session_config() -> SessionConfig:
-    """Return a fresh SessionConfig bound to the current project root."""
-    global _CONFIG
-
-    try:
-        repo_root = PathResolver.resolve_project_root()
-    except Exception:
-        repo_root = getattr(_CONFIG, "repo_root", None)
-
-    _CONFIG = SessionConfig(repo_root=repo_root)
-    return _CONFIG
+def _session_config():
+    """Return the SessionConfig instance.
+    
+    Uses the centralized config accessor.
+    """
+    return get_config()
 
 
 def _database_config() -> Dict[str, Any]:

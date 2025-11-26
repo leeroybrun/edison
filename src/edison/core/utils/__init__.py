@@ -36,6 +36,7 @@ from .text import (
     _tokenize,
     _shingles,
 )
+from .merge import deep_merge, merge_arrays
 
 
 # Lazily import git helpers to avoid circular dependency with paths/resolver at
@@ -171,4 +172,6 @@ __all__ = [
     "_strip_headings_and_code",
     "_tokenize",
     "_shingles",
+    "deep_merge",
+    "merge_arrays",
 ]

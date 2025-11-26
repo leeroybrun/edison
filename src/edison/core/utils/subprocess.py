@@ -15,7 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
 
-from .timeout_config import (
+from edison.core.config.domains.timeouts import (
     get_timeout_settings,
     reset_timeout_cache,
     resolve_timeout_repo_root,

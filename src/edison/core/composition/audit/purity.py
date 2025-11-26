@@ -15,7 +15,7 @@ Purity ensures clean separation between generic (core/pack) and project-specific
 from typing import Dict, Iterable, List, Any
 
 from .guideline_discovery import GuidelineRecord
-from edison.core.utils.project_config import (
+from edison.core.config.domains.project import (
     DEFAULT_PROJECT_TERMS,
     project_terms as _project_terms,
 )

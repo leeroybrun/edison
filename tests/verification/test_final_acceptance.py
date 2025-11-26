@@ -12,7 +12,7 @@ from tests.integration.test_session_autostart import AutoStartEnv
 from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
 from edison.core.session.manager import SessionManager
 from edison.core.session.naming import generate_session_id, reset_session_naming_counter
-from edison.core.orchestrator.config import OrchestratorConfig
+from edison.core.config.domains import OrchestratorConfig
 from edison.core.process.inspector import infer_session_id
 
 

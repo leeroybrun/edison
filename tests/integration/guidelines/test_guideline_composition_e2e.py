@@ -18,7 +18,7 @@ class TestGuidelineCompositionE2E:
         End-to-end guideline composition with core + multi-pack + project layers,
         including include resolution chains and shingling-based deduplication.
         """
-        from edison.core.composition.guidelines import GuidelineRegistry, compose_guideline 
+        from edison.core.composition import GuidelineRegistry, compose_guideline 
         root = isolated_project_env
 
         core_dir = root / ".edison" / "core" / "guidelines"
@@ -99,7 +99,7 @@ class TestGuidelineCompositionE2E:
         """
         Circular include chains in guidelines should raise a ComposeError with a helpful message.
         """
-        from edison.core.composition.guidelines import compose_guideline 
+        from edison.core.composition import compose_guideline 
         from edison.core.composition import ComposeError 
         root = isolated_project_env
         core_dir = root / ".edison" / "core" / "guidelines"

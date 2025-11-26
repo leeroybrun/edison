@@ -2,7 +2,7 @@ import pytest
 import yaml
 from pathlib import Path
 from edison.core.session import validation
-from edison.core.session.config import SessionConfig
+from edison.core.session._config import reset_config_cache
 from edison.core.exceptions import ValidationError
 
 @pytest.fixture
@@ -31,8 +31,8 @@ def project_root(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
     
-    # Reload configs
-    validation._CONFIG = SessionConfig()
+    # Reset config cache to pick up new settings
+    reset_config_cache()
     
     return tmp_path
 
@@ -41,15 +41,17 @@ def test_validate_session_id_format(project_root):
     # Valid
     assert validation.validate_session_id_format("valid-id") is True
     
-    # Invalid chars
+    # Invalid chars (uppercase not allowed by idRegex: ^[a-z0-9-]+$)
     with pytest.raises(ValidationError) as exc:
         validation.validate_session_id_format("Invalid_ID")
-    assert "pattern" in str(exc.value)
+    # Check error message mentions pattern or invalid
+    assert "invalid" in str(exc.value).lower() or "pattern" in str(exc.value).lower()
     
     # Too long
     with pytest.raises(ValidationError) as exc:
         validation.validate_session_id_format("a" * 33)
-    assert "length" in str(exc.value)
+    # Check error message mentions length or long
+    assert "long" in str(exc.value).lower() or "length" in str(exc.value).lower()
 
 def test_validate_session_structure(project_root):
     """Test session structure validation (placeholder)."""

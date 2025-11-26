@@ -2,7 +2,7 @@ import os
 import pytest
 from pathlib import Path
 from edison.core.session import store
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):

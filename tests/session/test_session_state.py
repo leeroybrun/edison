@@ -1,7 +1,7 @@
 import pytest
 import yaml
 from edison.core.session import state
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 from edison.core.exceptions import SessionStateError
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry

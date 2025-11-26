@@ -1,26 +1,33 @@
 """Session validation logic."""
 from __future__ import annotations
 
-import re
 from typing import Any, Dict
 
 from ..exceptions import ValidationError
-from .config import SessionConfig
+from .id import validate_session_id, SessionIdError
 
-_CONFIG = SessionConfig()
 
 def validate_session_id_format(session_id: str) -> bool:
-    """Validate session ID format against configured regex and length."""
-    regex = _CONFIG.get_id_regex()
-    max_len = _CONFIG.get_max_id_length()
+    """Validate session ID format against configured regex and length.
     
-    if len(session_id) > max_len:
-        raise ValidationError(f"Session ID exceeds maximum length of {max_len}")
+    This is a wrapper around validate_session_id that returns bool
+    and raises ValidationError instead of SessionIdError.
+    
+    Args:
+        session_id: The session ID to validate
         
-    if not re.fullmatch(regex, session_id):
-        raise ValidationError(f"Session ID does not match pattern: {regex}")
+    Returns:
+        True if validation passes
         
-    return True
+    Raises:
+        ValidationError: If validation fails
+    """
+    try:
+        validate_session_id(session_id)
+        return True
+    except SessionIdError as e:
+        raise ValidationError(str(e)) from e
+
 
 def validate_session_structure(session: Dict[str, Any]) -> bool:
     """Validate basic session structure."""

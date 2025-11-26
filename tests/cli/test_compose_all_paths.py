@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from edison.cli.compose.all import main
-from edison.core.composition.constitution import get_rules_for_role
+from edison.core.composition import get_rules_for_role
 from edison.core.paths.project import get_project_config_dir
 from argparse import Namespace
 

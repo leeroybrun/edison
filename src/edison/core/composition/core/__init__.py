@@ -8,6 +8,7 @@ Public API:
 - compose(): Compose single entity
 - compose_all(): Compose all entities of a type
 - CompositionMode: Enum for composition modes
+- ConcatenateComposer: Guideline-style paragraph composition
 """
 from __future__ import annotations
 
@@ -18,6 +19,13 @@ from .errors import (
     CompositionNotFoundError,
     CompositionShadowingError,
     CompositionSectionError,
+)
+from .modes import (
+    CompositionMode,
+    ConcatenateComposer,
+    DEFAULT_MODE,
+    get_mode,
+    get_composer,
 )
 from .paths import (
     CompositionPathResolver,
@@ -33,6 +41,7 @@ from .sections import (
     SectionMode,
     ParsedSection,
 )
+from .types import ComposeResult
 
 __all__ = [
     # Composer
@@ -40,11 +49,19 @@ __all__ = [
     # Discovery
     "LayerDiscovery",
     "LayerSource",
+    # Types
+    "ComposeResult",
     # Errors
     "CompositionValidationError",
     "CompositionNotFoundError",
     "CompositionShadowingError",
     "CompositionSectionError",
+    # Modes
+    "CompositionMode",
+    "ConcatenateComposer",
+    "DEFAULT_MODE",
+    "get_mode",
+    "get_composer",
     # Paths
     "CompositionPathResolver",
     "UnifiedPathResolver",

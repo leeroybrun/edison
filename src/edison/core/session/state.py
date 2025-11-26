@@ -11,19 +11,15 @@ from ..state import (
     condition_registry,
     guard_registry,
 )
-from .config import SessionConfig
+from ._config import get_config as _get_session_config
 
 
-_CONFIG: Optional[SessionConfig] = None
 _STATE_MACHINE: Optional[RichStateMachine] = None
 
 
-def _get_config() -> SessionConfig:
-    """Lazy-load SessionConfig to support test isolation."""
-    global _CONFIG
-    if _CONFIG is None:
-        _CONFIG = SessionConfig()
-    return _CONFIG
+def _get_config():
+    """Get SessionConfig using centralized accessor."""
+    return _get_session_config()
 
 
 def _machine() -> RichStateMachine:

@@ -3,6 +3,12 @@
 This module provides canonical path resolution patterns to eliminate
 duplication across 50+ scripts. All path resolution MUST use these helpers
 to ensure consistent behavior across tests, CLIs, and library code.
+
+Path resolution follows these principles:
+- Framework defaults come from edison.data package (bundled)
+- Project config comes from .edison/config/ (project overrides)
+- Generated files go to .edison/_generated/
+- NO legacy .edison/core/ paths
 """
 from __future__ import annotations
 
@@ -12,7 +18,6 @@ from typing import List, Optional
 from .base import EdisonPathError, is_git_repository, get_git_root
 from .project import (
     _PROJECT_ROOT_CACHE,
-    get_edison_core_path,
     get_project_path,
     resolve_project_root,
 )
@@ -63,11 +68,6 @@ class PathResolver:
     def get_project_path(*parts: str) -> Path:
         """Get path relative to project root: .project/{parts}."""
         return get_project_path(*parts)
-
-    @staticmethod
-    def get_edison_core_path(*parts: str) -> Path:
-        """Get path relative to Edison core: .edison/core/{parts}."""
-        return get_edison_core_path(*parts)
 
 
 __all__ = [

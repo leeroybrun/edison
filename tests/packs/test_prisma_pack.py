@@ -27,7 +27,7 @@ for i in range(1, 10):
 assert ROOT is not None, 'cannot locate repository root (.git)'
 
 from edison.core.composition.packs import validate_pack
-from edison.core.composition.unified import LayeredComposer
+from edison.core.composition import LayeredComposer
 from edison.data import get_data_path
 
 

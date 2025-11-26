@@ -24,12 +24,9 @@ from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..exceptions import SessionError
 from .store import sanitize_session_id
 from ..paths.management import get_management_paths
+from ._config import get_config
 
 logger = logging.getLogger(__name__)
-
-from .config import SessionConfig
-
-_CONFIG = SessionConfig()
 
 # Constants removed, resolved dynamically
 TX_VALIDATION_SUBDIR = "validation"
@@ -37,7 +34,7 @@ TX_VALIDATION_SUBDIR = "validation"
 def _get_tx_root() -> Path:
     env_root = os.environ.get("AGENTS_PROJECT_ROOT") or os.environ.get("project_ROOT")
     root = Path(env_root).resolve() if env_root else PathResolver.resolve_project_root()
-    rel = _CONFIG.get_tx_root_path()
+    rel = get_config().get_tx_root_path()
     return (root / rel).resolve()
 
 def _tx_dir(session_id: str) -> Path:

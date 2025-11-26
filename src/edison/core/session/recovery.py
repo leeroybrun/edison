@@ -24,17 +24,18 @@ from .store import (
     _write_json,
 )
 from .transaction import begin_tx, finalize_tx, abort_tx
-from .config import SessionConfig
+from ._config import get_config
 
 logger = logging.getLogger(__name__)
-REPO_DIR = PathResolver.resolve_project_root()
-_CONFIG = SessionConfig()
 
-# Legacy _load_session_config removed.
+
+def _get_repo_dir() -> Path:
+    """Get the repository directory lazily."""
+    return PathResolver.resolve_project_root()
 
 def _session_dir_map() -> Dict[str, Path]:
     base = _sessions_root()
-    states = _CONFIG.get_session_states()
+    states = get_config().get_session_states()
     return {state: (base / dirname).resolve() for state, dirname in states.items()}
 
 def _parse_iso_utc(ts: str) -> Optional[datetime]:
@@ -72,7 +73,7 @@ def is_session_expired(session_id: str) -> bool:
     if ref is None:
         return True
     now = datetime.now(timezone.utc)
-    rec_cfg = _CONFIG.get_recovery_config()
+    rec_cfg = get_config().get_recovery_config()
     skew_allowance = int(rec_cfg.get("clockSkewAllowanceSeconds", 300))
     timeout_hours = int(rec_cfg.get("timeoutHours", 8))
     

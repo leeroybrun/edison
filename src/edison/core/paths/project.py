@@ -3,9 +3,12 @@
 This module centralizes detection of the project-level configuration
 directory. Edison prefers ``.edison`` when it represents project state,
 then auto-detects any other dot-directories that look like project
-configuration (e.g., contain ``config/`` or ``config.yml``). It avoids
-mistaking a framework checkout at ``.edison/core`` for a project config
-directory.
+configuration (e.g., contain ``config/`` or ``config.yml``).
+
+Configuration precedence (highest to lowest):
+1. Environment variable: EDISON_paths__project_config_dir
+2. Project overrides: {repo_root}/.edison/config/*.yml
+3. Bundled defaults: edison.data package
 """
 
 from __future__ import annotations
@@ -48,28 +51,31 @@ def _load_project_dir_from_yaml(path: Path) -> str | None:
 def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
     """Resolve project config dir using configuration precedence.
 
-    Precedence: environment override → project overlays (.edison)
-    → core defaults. Falls back to ``DEFAULT_PROJECT_CONFIG_PRIMARY`` when no
-    config provides a value.
-    """
+    Precedence (highest to lowest):
+    1. Environment variable: EDISON_paths__project_config_dir
+    2. Project overrides: {repo_root}/.edison/config/*.yml
+    3. Bundled defaults: edison.data package
 
+    Falls back to ``DEFAULT_PROJECT_CONFIG_PRIMARY`` when no config provides a value.
+    """
+    # Priority 1: Environment override
     env_override = os.environ.get("EDISON_paths__project_config_dir")
     if isinstance(env_override, str) and env_override.strip():
         return env_override.strip()
 
     value: str | None = None
 
-    core_config_dir = repo_root / ".edison" / "core" / "config"
-    defaults_path = core_config_dir / "defaults.yaml"
-    value = _load_project_dir_from_yaml(defaults_path) or value
+    # Priority 2: Bundled defaults from edison.data package
+    try:
+        from edison.data import get_data_path
 
-    for path in sorted(core_config_dir.glob("*.yaml")):
-        if path.name == "defaults.yaml":
-            continue
-        found = _load_project_dir_from_yaml(path)
-        value = found or value
+        bundled_defaults = get_data_path("config", "defaults.yaml")
+        if bundled_defaults.exists():
+            value = _load_project_dir_from_yaml(bundled_defaults) or value
+    except Exception:
+        pass  # Bundled data not available, continue with project config
 
-    # Process project overrides (.edison)
+    # Priority 3: Project overrides (.edison/config/)
     config_dir = repo_root / ".edison" / "config"
     if config_dir.exists():
         yaml_files = sorted(config_dir.glob("*.yml")) + sorted(config_dir.glob("*.yaml"))

@@ -63,7 +63,7 @@ def test_worktree_path_uses_project_name_from_config(monkeypatch, isolated_proje
     )
 
     from edison.core.session import worktree
-    from edison.core.session.config import SessionConfig
+    from edison.core.config.domains import SessionConfig
 
     # Ensure module uses fresh config bound to isolated repo
     worktree._CONFIG = SessionConfig(repo_root=isolated_project_env)

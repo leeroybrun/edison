@@ -8,7 +8,7 @@ import pytest
 from edison.core.paths import PathResolver 
 from edison.core.session.manager import SessionManager 
 from edison.core.session import state as session_state 
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 
 def _session_json_path(root: Path, session_id: str, state: str = "active") -> Path:
     """

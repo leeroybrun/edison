@@ -3,7 +3,7 @@ import yaml
 from pathlib import Path
 from edison.core.session import manager
 from edison.core.session import store
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry

@@ -7,7 +7,7 @@ from typing import List, Optional
 from ...legacy_guard import enforce_no_legacy_project_root
 from ...exceptions import SessionNotFoundError
 
-from . import _shared
+from .._config import get_config
 from ._shared import (
     _session_json_candidates,
     _sessions_root,
@@ -44,7 +44,7 @@ def session_exists(session_id: str) -> bool:
 
 def _list_active_sessions() -> List[str]:
     try:
-        active_dirname = _shared._CONFIG.get_session_states().get("active", "active")
+        active_dirname = get_config().get_session_states().get("active", "active")
         root = _sessions_root() / active_dirname
         if not root.exists():
             return []
@@ -65,29 +65,16 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
     This is the primary way Edison commands discover their session ID.
 
     Priority:
-      1. PID-based inference from process tree (NEW)
-      2. Legacy owner-based lookup (FALLBACK for backward compatibility)
+      1. PID-based inference from process tree
+      2. Owner-based lookup (fallback)
 
     Args:
-        owner: Optional owner name (used for legacy fallback only)
+        owner: Optional owner name (used for fallback only)
 
     Returns:
-        PID-based session ID (e.g., "edison-pid-12345") or legacy session ID
-
-    Examples:
-        # Auto-start workflow (Edison → Claude)
-        auto_session_for_owner("claude")
-        → Returns "edison-pid-12345" (Edison is topmost)
-
-        # Manual workflow (Claude → Edison)
-        auto_session_for_owner("claude")
-        → Returns "claude-pid-54321" (Claude is topmost)
-
-        # Legacy session still works
-        auto_session_for_owner("old-session-name")
-        → Returns "old-session-name" if it exists
+        PID-based session ID (e.g., "edison-pid-12345") or owner-based session ID
     """
-    # Try PID-based inference first (NEW behavior)
+    # Try PID-based inference first
     session_id: Optional[str] = None
     try:
         from ..process.inspector import infer_session_id
@@ -97,10 +84,10 @@ def auto_session_for_owner(owner: Optional[str]) -> Optional[str]:
         if session_exists(session_id):
             return session_id
     except Exception:
-        # If process inspection fails, fall through to legacy behavior
+        # If process inspection fails, fall through to owner-based lookup
         pass
 
-    # Fallback: Legacy owner-based lookup (BACKWARD COMPATIBILITY)
+    # Fallback: Owner-based lookup
     if owner:
         candidate = sanitize_session_id(owner)
         if session_exists(candidate):

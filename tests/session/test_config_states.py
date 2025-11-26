@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 
 
 def test_state_config_loading():

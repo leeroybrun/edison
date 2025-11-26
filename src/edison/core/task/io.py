@@ -20,7 +20,7 @@ from .paths import _qa_root, _session_qa_dir, _session_tasks_dir, _tasks_root, R
 from ..paths.management import get_management_paths
 from .record_metadata import TYPE_INFO
 from edison.core.config import get_semantic_state
-from edison.core.utils.project_config import get_project_settings
+from edison.core.config.domains.project import get_project_settings
 
 
 def _task_filename(task_id: str) -> str:

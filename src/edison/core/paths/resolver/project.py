@@ -58,23 +58,8 @@ def resolve_project_root() -> Path:
             _PROJECT_ROOT_CACHE = env_path
         return env_path
 
-    # Local project root shortcut: honor a .project directory in CWD, but avoid
-    # treating the Edison framework checkout (.edison/core) as a project root.
+    # Local project root shortcut: honor a .project directory in CWD
     cwd = Path.cwd().resolve()
-
-    # If we're somewhere inside .edison/core (the framework itself), prefer the
-    # outer project directory that owns .edison rather than the inner framework
-    # checkout which carries its own .project folder for internal metadata.
-    edison_core_root = next(
-        (p for p in [cwd, *cwd.parents] if p.name == "core" and p.parent.name == ".edison"),
-        None,
-    )
-    if edison_core_root is not None:
-        owner_project_root = edison_core_root.parent.parent
-        if owner_project_root.exists():
-            if _PROJECT_ROOT_CACHE != owner_project_root:
-                _PROJECT_ROOT_CACHE = owner_project_root
-            return owner_project_root
 
     if (cwd / ".project").exists():
         if cwd.name == ".edison":
@@ -163,16 +148,3 @@ def get_project_path(*parts: str) -> Path:
     root = resolve_project_root()
     mgmt_paths = get_management_paths(root)
     return (mgmt_paths.get_management_root() / Path(*parts)).resolve()
-
-
-def get_edison_core_path(*parts: str) -> Path:
-    """Get path relative to Edison core: .edison/core/{parts}.
-
-    Args:
-        *parts: Path components to append to .edison/core/
-
-    Returns:
-        Path: Absolute path under .edison/core/
-    """
-    root = resolve_project_root()
-    return (root / ".edison" / "core" / Path(*parts)).resolve()

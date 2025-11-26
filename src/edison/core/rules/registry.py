@@ -22,11 +22,12 @@ from .helpers import extract_anchor_content as _extract_anchor_content
 
 class RulesRegistry:
     """
-    Load and compose rules from core + pack YAML registries.
+    Load and compose rules from bundled + pack YAML registries.
 
-    Registry locations (relative to project root):
-      - Core: .edison/core/rules/registry.yml
+    Registry locations:
+      - Bundled: edison.data/rules/registry.yml
       - Packs: .edison/packs/<pack>/rules/registry.yml
+      - Project: .edison/rules/registry.yml (overrides)
 
     This class is read-only; it does not mutate project state.
     """
@@ -38,7 +39,13 @@ class RulesRegistry:
             raise RulesCompositionError(str(exc)) from exc
 
         config_dir = get_project_config_dir(self.project_root, create=False)
-        self.core_registry_path = config_dir / "core" / "rules" / "registry.yml"
+        # Bundled rules from edison.data package
+        try:
+            from edison.data import get_data_path
+            self.core_registry_path = get_data_path("rules", "registry.yml")
+        except Exception:
+            # Fallback for when package data unavailable
+            self.core_registry_path = config_dir / "rules" / "registry.yml"
         self.packs_root = config_dir / "packs"
         self.project_config_dir = config_dir
 
@@ -68,7 +75,7 @@ class RulesRegistry:
         return data
 
     def load_core_registry(self) -> Dict[str, Any]:
-        """Load core rules registry from .edison/core/rules/registry.yml."""
+        """Load bundled rules registry from edison.data package."""
         return self._load_yaml(self.core_registry_path, required=True)
 
     def load_pack_registry(self, pack_name: str) -> Dict[str, Any]:

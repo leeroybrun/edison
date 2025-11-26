@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import re
 
-from edison.core.orchestrator.config import OrchestratorConfig
+from edison.core.config.domains import OrchestratorConfig
 from edison.core.orchestrator.launcher import OrchestratorLauncher
 from edison.core.session.context import SessionContext
 from edison.core.session.recovery import handle_timeout

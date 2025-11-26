@@ -4,25 +4,16 @@ This package provides worktree creation, management, and cleanup operations.
 """
 from __future__ import annotations
 
-# Import internal helpers (for backward compatibility with tests)
-from .config_helpers import (
-    _config,
-    _get_repo_dir,
-    _get_project_name,
-    _worktree_base_dir,
-    _resolve_worktree_target,
-    _get_worktree_base,
-)
-
 # Import git operations
 from .git_ops import (
-    _git_is_healthy,
-    _git_list_worktrees,
     get_existing_worktree_for_branch,
     list_worktrees,
     list_worktrees_porcelain,
     is_registered_worktree,
     worktree_health_check,
+    # Internal functions (exported for testing)
+    _git_is_healthy,
+    _git_list_worktrees,
 )
 
 # Import cleanup operations
@@ -43,9 +34,14 @@ from .manager import (
     ensure_worktree_materialized,
 )
 
-# Legacy SessionConfig reference for backward compatibility
-from edison.core.session.config import SessionConfig
-_CONFIG = SessionConfig()
+# Import config helpers
+from .config_helpers import (
+    _config,
+    _get_repo_dir,
+    _get_worktree_base,
+    _worktree_base_dir,
+    _resolve_worktree_target,
+)
 
 # Public API
 __all__ = [
@@ -67,14 +63,12 @@ __all__ = [
     "remove_worktree",
     "prune_worktrees",
     "list_archived_worktrees_sorted",
-    # Internal helpers (for backward compatibility)
+    # Internal helpers (for testing)
     "_config",
     "_get_repo_dir",
-    "_get_project_name",
+    "_get_worktree_base",
     "_worktree_base_dir",
     "_resolve_worktree_target",
-    "_get_worktree_base",
     "_git_is_healthy",
     "_git_list_worktrees",
-    "_CONFIG",
 ]

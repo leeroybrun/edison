@@ -36,7 +36,8 @@ class TestNextPackageStructure:
         from pathlib import Path
 
         next_dir = Path(__file__).parent.parent.parent / "src" / "edison" / "core" / "session" / "next"
-        required_modules = ["__init__.py", "compute.py", "actions.py", "rules.py", "status.py", "utils.py"]
+        # Note: status.py was merged into actions.py for consolidation
+        required_modules = ["__init__.py", "compute.py", "actions.py", "rules.py", "utils.py", "output.py"]
 
         for module in required_modules:
             module_path = next_dir / module
@@ -75,8 +76,8 @@ class TestNextPackageStructure:
             from edison.core.session.next import compute
             from edison.core.session.next import actions
             from edison.core.session.next import rules
-            from edison.core.session.next import status
             from edison.core.session.next import utils
+            from edison.core.session.next import output
         except ImportError as e:
             pytest.fail(f"Circular import detected: {e}")
 
@@ -85,7 +86,8 @@ class TestNextPackageStructure:
         from pathlib import Path
 
         next_dir = Path(__file__).parent.parent.parent / "src" / "edison" / "core" / "session" / "next"
-        modules = ["compute.py", "actions.py", "rules.py", "status.py", "utils.py"]
+        # Note: status.py was merged into actions.py for consolidation
+        modules = ["compute.py", "actions.py", "rules.py", "utils.py", "output.py"]
 
         for module in modules:
             module_path = next_dir / module

@@ -10,7 +10,7 @@ import pytest
 from jsonschema import ValidationError
 
 
-from edison.core.orchestrator.config import OrchestratorConfig
+from edison.core.config.domains import OrchestratorConfig
 from edison.data import get_data_path
 
 

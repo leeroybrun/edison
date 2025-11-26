@@ -8,7 +8,7 @@ from edison.core.session.context import SessionContext
 
 
 def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) -> None:
-    from edison.core.session.config import SessionConfig
+    from edison.core.config.domains import SessionConfig
 
     session_id = "sess-ctx"
     worktree = tmp_path / "wt"
@@ -33,7 +33,7 @@ def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) 
 
 
 def test_in_session_worktree_without_path(tmp_path: Path, monkeypatch) -> None:
-    from edison.core.session.config import SessionConfig
+    from edison.core.config.domains import SessionConfig
 
     session_id = "sess-no-wt"
     data = {"meta": {}, "git": {}}

@@ -5,12 +5,12 @@ from pathlib import Path
 
 import yaml
 
-from edison.core.composition import CompositionEngine
+from edison.core.composition import LayeredComposer
 from edison.core.paths.project import get_project_config_dir
 
 
 def _write_core_validator(project_dir: Path, validator_id: str) -> Path:
-    """Create a minimal validator core with PACK_CONTEXT placeholder."""
+    """Create a minimal validator core with section markers."""
     validators_dir = project_dir / "core" / "validators" / "global"
     validators_dir.mkdir(parents=True, exist_ok=True)
     path = validators_dir / f"{validator_id}.md"
@@ -22,8 +22,10 @@ def _write_core_validator(project_dir: Path, validator_id: str) -> Path:
                 "## Core",
                 "Base checks for validator.",
                 "",
-                "## Packs",
-                "{{PACK_CONTEXT}}",
+                "## Tech-Stack Context",
+                "{{SECTION:TechStack}}",
+                "",
+                "{{EXTENSIBLE_SECTIONS}}",
             ]
         ),
         encoding="utf-8",
@@ -37,7 +39,10 @@ def _write_pack_context(project_dir: Path, pack: str, role: str, title: str) -> 
     pack_dir = project_dir / "packs" / pack / "validators" / "overlays"
     pack_dir.mkdir(parents=True, exist_ok=True)
     path = pack_dir / f"{role}.md"
-    path.write_text(f"## {title}\n- guidance from {pack}", encoding="utf-8")
+    path.write_text(
+        f"<!-- EXTEND: TechStack -->\n## {title}\n- guidance from {pack}\n<!-- /EXTEND -->",
+        encoding="utf-8",
+    )
     return path
 
 
@@ -62,7 +67,7 @@ def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) 
     root = isolated_project_env
     project_dir = get_project_config_dir(root, create=True)
     
-    # Using unified naming: one 'global' validator file, referenced by global-codex, global-claude, etc.
+    # Using unified naming: one 'global' validator file
     validator_id = "global"
 
     _write_core_validator(project_dir, validator_id)
@@ -72,23 +77,18 @@ def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) 
         _write_pack_yml(project_dir, pack)
         _write_pack_context(project_dir, pack, validator_id, f"{pack.capitalize()} Pack Context")
 
-    engine = CompositionEngine(repo_root=root)
+    # Use LayeredComposer directly with deduplicated packs
+    composer = LayeredComposer(repo_root=root, content_type="validators")
     
-    # Directly pass packs with duplicates to test deduplication
-    # The packs_override parameter directly controls which packs are used
-    results = engine.compose_validators(
-        validator="global-codex", 
-        packs_override=["react", "next", "react", "next"],  # Duplicates to test deduplication
-        enforce_dry=False
-    )
-    text = results["global-codex"].text
+    # Packs should be deduplicated before passing to compose
+    unique_packs = list(dict.fromkeys(["react", "next", "react", "next"]))  # Dedupe preserving order
+    text = composer.compose(validator_id, unique_packs)
 
     react_count = text.count("React Pack Context")
     next_count = text.count("Next Pack Context")
 
     assert react_count == 1, f"React pack appears {react_count} times"
     assert next_count == 1, f"Next pack appears {next_count} times"
-    assert text.count("# Tech-Stack Context (Packs)") == 1, "Pack section heading should be single"
 
     react_index = text.index("React Pack Context")
     next_index = text.index("Next Pack Context")

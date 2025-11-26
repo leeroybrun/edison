@@ -2,8 +2,8 @@ import pytest
 import yaml
 from pathlib import Path
 from typing import Any, Dict, Optional
-from edison.core.config import (
-    workflow, 
+from edison.core.config.domains import workflow
+from edison.core.config.domains.workflow import (
     load_workflow_config, 
     get_task_states, 
     get_qa_states,

@@ -10,10 +10,8 @@ defined in ``.project/qa/EDISON_NO_LEGACY_POLICY.md``.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
-
-from .paths import PathResolver, EdisonPathError
-
 
 LEGACY_ROOT_MARKERS = ("project-pre-edison",)
 
@@ -21,6 +19,28 @@ LEGACY_ROOT_MARKERS = ("project-pre-edison",)
 def _is_legacy_root(root: Path) -> bool:
     text = str(root)
     return any(marker in text for marker in LEGACY_ROOT_MARKERS)
+
+
+def _resolve_project_root_lightweight() -> Path | None:
+    """Lightweight project root resolution without importing PathResolver.
+    
+    This avoids circular imports when called at module load time.
+    Returns None if project root cannot be determined.
+    """
+    # Check environment variable first (most common case)
+    env_root = os.environ.get("AGENTS_PROJECT_ROOT")
+    if env_root:
+        return Path(env_root).resolve()
+    
+    # Fall back to cwd-based detection
+    cwd = Path.cwd()
+    
+    # Look for .agents or .project directory as marker
+    for parent in [cwd, *cwd.parents]:
+        if (parent / ".agents").exists() or (parent / ".project").exists():
+            return parent
+    
+    return None
 
 
 def enforce_no_legacy_project_root(module_name: str) -> None:
@@ -33,11 +53,10 @@ def enforce_no_legacy_project_root(module_name: str) -> None:
         RuntimeError: When the resolved project root path contains a known
             legacy marker such as ``project-pre-edison``.
     """
-    try:
-        root = PathResolver.resolve_project_root()
-    except EdisonPathError:
-        # When the project root cannot be resolved, do not add additional
-        # failure modes here; callers will surface the underlying error.
+    root = _resolve_project_root_lightweight()
+    
+    if root is None:
+        # Cannot determine project root - don't add failure modes
         return
 
     if _is_legacy_root(root):

@@ -12,7 +12,7 @@ from . import store
 from . import worktree
 from .context import SessionContext
 from ..file_io.utils import ensure_dir
-from ..orchestrator.config import OrchestratorConfig
+from ..config.domains import OrchestratorConfig
 from ..orchestrator.launcher import (
     OrchestratorLauncher,
     OrchestratorError,
@@ -242,21 +242,24 @@ class SessionAutoStart:
         return base / "orchestrator.log"
 
     def _ensure_orchestrator_config(self, repo_root: Path) -> None:
-        """Ensure orchestrator config exists; bootstrap from core defaults when missing."""
+        """Ensure orchestrator config exists; bootstrap from bundled defaults when missing."""
         from edison.core.file_io.utils import dump_yaml_string
 
-        cfg_dir = get_project_config_dir(repo_root) / "core" / "config"
+        cfg_dir = get_project_config_dir(repo_root) / "config"
         ensure_dir(cfg_dir)
         cfg_path = cfg_dir / "orchestrator.yaml"
         if cfg_path.exists():
             return
 
-        # Prefer copying from the current repo's core config
-        source_root = Path(__file__).resolve().parents[4]
-        source_cfg = get_project_config_dir(source_root, create=False) / "core" / "config" / "orchestrator.yaml"
-        if source_cfg.exists():
-            shutil.copy(source_cfg, cfg_path)
-            return
+        # Prefer copying from bundled edison.data package
+        try:
+            from edison.data import get_data_path
+            bundled_cfg = get_data_path("config", "orchestrator.yaml")
+            if bundled_cfg.exists():
+                shutil.copy(bundled_cfg, cfg_path)
+                return
+        except Exception:
+            pass
 
         # Minimal fallback using available orchestrator binaries
         available = [name for name in ("claude", "codex", "gemini") if shutil.which(name)]

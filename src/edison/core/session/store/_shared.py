@@ -1,15 +1,17 @@
 """Shared utilities for session store operations."""
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
-from ...paths.resolver import PathResolver
-from ..config import SessionConfig
+from .._config import get_config, reset_config_cache
+from ..id import validate_session_id, normalize_session_id
 
-# Initialize config once
-_CONFIG = SessionConfig()
+if TYPE_CHECKING:
+    from ...paths.resolver import PathResolver
+
+# Re-export for backward compatibility
+sanitize_session_id = validate_session_id
 
 
 def reset_session_store_cache() -> None:
@@ -19,21 +21,22 @@ def reset_session_store_cache() -> None:
     when environment variables or config files change.
     In production, this should rarely be needed.
     """
-    global _CONFIG
-    _CONFIG = SessionConfig()
+    reset_config_cache()
 
 
 def _sessions_root() -> Path:
     """Return the absolute sessions root directory path."""
+    # Lazy import to avoid circular dependency
+    from ...paths.resolver import PathResolver
     root = PathResolver.resolve_project_root()
-    rel_path = _CONFIG.get_session_root_path()
+    rel_path = get_config().get_session_root_path()
     return (root / rel_path).resolve()
 
 
 def _session_dir(state: str, session_id: str) -> Path:
     """Directory for a session in a given state."""
     # Map state to directory name via config
-    state_map = _CONFIG.get_session_states()
+    state_map = get_config().get_session_states()
     dir_name = state_map.get(state.lower(), state.lower())
     return _sessions_root() / dir_name / session_id
 
@@ -43,45 +46,20 @@ def _session_state_order(state: Optional[str] = None) -> List[str]:
     if state:
         return [str(state).lower()]
     # Prefer explicit lookup order from configuration; fall back to configured state keys.
-    order = _CONFIG.get_session_lookup_order()
+    config = get_config()
+    order = config.get_session_lookup_order()
     if order:
         seq = [str(s).lower() for s in order]
     else:
-        states = _CONFIG.get_session_states()
+        states = config.get_session_states()
         seq = [k.lower() for k in states.keys()] if states else ["draft", "active", "done", "validated", "closing"]
     if "wip" not in seq:
         seq.append("wip")
     return seq
 
 
-def sanitize_session_id(session_id: str) -> str:
-    """Sanitize a user-supplied session identifier."""
-    if not session_id:
-        raise ValueError("Session ID cannot be empty")
-
-    # Prevent path traversal
-    if ".." in session_id or "/" in session_id or "\\" in session_id:
-        raise ValueError("Session ID contains path traversal or separators")
-
-    # Config-driven validation
-    regex = _CONFIG.get_id_regex()
-    if not re.fullmatch(regex, session_id):
-        raise ValueError("Session ID contains invalid characters")
-
-    max_len = _CONFIG.get_max_id_length()
-    if len(session_id) > max_len:
-        raise ValueError(f"Session ID too long (max {max_len} chars)")
-
-    return session_id
-
-
-def normalize_session_id(session_id: str) -> str:
-    """Public helper to normalize user-supplied session identifiers."""
-    return sanitize_session_id(session_id)
-
-
 def _session_filename(session_id: str) -> str:
-    return f"{sanitize_session_id(session_id)}.json"
+    return f"{validate_session_id(session_id)}.json"
 
 
 def _session_json_path(session_dir: Path) -> Path:
@@ -91,11 +69,11 @@ def _session_json_path(session_dir: Path) -> Path:
 
 def _session_json_candidates(session_id: str, *, states: Optional[List[str]] = None) -> List[Path]:
     """Return candidate JSON paths for a session across layouts."""
-    sid = sanitize_session_id(session_id)
+    sid = validate_session_id(session_id)
     state_list = states or _session_state_order()
     root = _sessions_root()
     candidates: List[Path] = []
-    state_map = _CONFIG.get_session_states()
+    state_map = get_config().get_session_states()
 
     for s in state_list:
         s_norm = str(s).lower()

@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 import json
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 from edison.core.paths.project import get_project_config_dir
 from edison.core.paths.resolver import PathResolver
 

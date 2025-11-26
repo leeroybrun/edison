@@ -28,9 +28,9 @@ import yaml  # type: ignore
 
 from ...paths import PathResolver
 from ...paths.project import get_project_config_dir
-from ...composition import agents as _agents
+from ...composition.registries import agents as _agents
 from ...config import ConfigManager
-from ...composition.guidelines import GuidelineRegistry
+from ...composition import GuidelineRegistry
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
 from edison.core.file_io.utils import write_json_safe, ensure_dir

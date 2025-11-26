@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from edison.core.config import ConfigManager
-import edison.core.composition.constitution as constitution
+from edison.core.composition.registries import constitutions as constitution
 
 
 def _write_yaml(path: Path, data: dict) -> None:

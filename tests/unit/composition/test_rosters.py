@@ -4,8 +4,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from edison.core.composition.agents import AgentRegistry
-from edison.core.composition.rosters import generate_available_agents
+from edison.core.composition import AgentRegistry, generate_available_agents
 
 
 def _read(path: Path) -> str:

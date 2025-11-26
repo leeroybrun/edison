@@ -13,7 +13,7 @@ from typing import Optional, Union
 
 from edison.core.session import store as session_store
 from edison.core.session import database as session_database
-from edison.core.utils.project_config import get_project_name
+from edison.core.config.domains.project import get_project_name
 
 
 # Re-export from canonical store module

@@ -16,7 +16,7 @@ from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...exceptions import SessionNotFoundError, SessionStateError
 from ...paths.resolver import PathResolver
 
-from . import _shared
+from .._config import get_config
 from ._shared import (
     _session_json_candidates,
     _sessions_root,
@@ -65,31 +65,9 @@ def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]
                 ) from exc
         return data
 
-    # T-016 Analysis: This is NOT a legacy fallback - it's legitimate runtime robustness
-    #
-    # Purpose: Graceful recovery when lookupOrder config is incomplete or customized
-    #
-    # Example scenario:
-    #   - User customizes lookupOrder: ["draft", "done"] (omits "active")
-    #   - Session exists at .project/sessions/active/my-session/session.json
-    #   - Primary search (lines 154-174) misses it (only checks draft/ and done/)
-    #   - This fallback finds it by searching active/ directory
-    #
-    # Why it's LEGITIMATE (not legacy):
-    #   1. Searches SAME file format (session.json), not deprecated files
-    #   2. Config-driven (active_dirname from get_session_states())
-    #   3. Runtime discovery robustness, not build-time backward compatibility
-    #   4. No better alternative (strict validation = sessions become invisible on config error)
-    #   5. Active use case: sessions CAN be in "active" state
-    #
-    # Differs from removed patterns (T-016):
-    #   - Pattern 1 (REMOVED): ORCHESTRATOR_GUIDE.md fallback (deprecated file format)
-    #   - Pattern 2A (REMOVED): safe_include() shim (legacy syntax conversion)
-    #   - Pattern 3 (REMOVED): Hardcoded workflow defaults (NO HARDCODED VALUES principle)
-    #   - Pattern 4 (THIS - KEPT): Session discovery (same format, alternate location)
-    #
     # Fallback: search by directory name under active sessions when lookup order misses it
-    active_dirname = _shared._CONFIG.get_session_states().get("active", "active")
+    # This is runtime discovery robustness (NOT legacy), searches same format in alternate location
+    active_dirname = get_config().get_session_states().get("active", "active")
     active_root = _sessions_root() / active_dirname
     fallback_json = active_root / sid / "session.json"
     if fallback_json.exists():
@@ -109,12 +87,12 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
     from .discovery import get_session_json_path
 
     sid = sanitize_session_id(session_id)
-    # If session exists, use its current path. If not, default to Wip/new-layout
+    # If session exists, use its current path. If not, default to initial state
     try:
         j = get_session_json_path(sid)
     except SessionNotFoundError:
         # Create new in initial state using configured layout
-        initial_state = _shared._CONFIG.get_initial_session_state()
+        initial_state = get_config().get_initial_session_state()
         j = _session_dir(initial_state, sid) / "session.json"
 
     ensure_directory(j.parent)
@@ -123,7 +101,7 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
 
 
 def _ensure_session_dirs() -> None:
-    states = _shared._CONFIG.get_session_states()
+    states = get_config().get_session_states()
     for dirname in states.values():
         ensure_directory(_sessions_root() / dirname)
     ensure_directory(_sessions_root() / "wip")
@@ -132,8 +110,9 @@ def _ensure_session_dirs() -> None:
 def _read_template() -> Dict[str, Any]:
     """Load the session template JSON."""
     # Config-driven template paths
-    primary_path = Path(_shared._CONFIG.get_template_path("primary"))
-    repo_path = Path(_shared._CONFIG.get_template_path("repo"))
+    config = get_config()
+    primary_path = Path(config.get_template_path("primary"))
+    repo_path = Path(config.get_template_path("repo"))
 
     candidates = []
     for candidate in (primary_path, repo_path):
@@ -159,7 +138,7 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
     except Exception:
         # Minimal skeleton for new sessions (kept intentionally small)
         # Use new layout by default
-        initial_state = _shared._CONFIG.get_initial_session_state()
+        initial_state = get_config().get_initial_session_state()
         sess_dir = _session_dir(initial_state, sid)
         ensure_directory(sess_dir)
         path = sess_dir / "session.json"

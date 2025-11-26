@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from edison.core.file_io.utils import ensure_dir
-from ...composition.output_config import OutputConfigLoader
+from ...composition.output import OutputConfigLoader
 from ..base import PromptAdapter
 
 

@@ -46,9 +46,9 @@ def auto_activate_packs(
     if pack_root is not None:
         base = pack_root
     elif root is not None:
-        # Use unified path resolver for consistent path resolution
-        from ..unified import UnifiedPathResolver
-        path_resolver = UnifiedPathResolver(root)
+        # Use composition path resolver for consistent path resolution
+        from ..core import CompositionPathResolver
+        path_resolver = CompositionPathResolver(root)
         base = path_resolver.packs_dir
     else:
         base = None

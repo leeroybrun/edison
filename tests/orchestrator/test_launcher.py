@@ -6,7 +6,7 @@ from typing import Dict
 import pytest
 import yaml
 
-from edison.core.orchestrator.config import OrchestratorConfig
+from edison.core.config.domains import OrchestratorConfig
 from edison.core.orchestrator.launcher import (
     OrchestratorLauncher,
     OrchestratorNotFoundError,

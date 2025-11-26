@@ -9,7 +9,7 @@ import yaml
 
 from edison.core.config import ConfigManager
 from edison.core.session import database
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 
 
 def _write_database_defaults(repo_root: Path, *, url: str | None, enabled: bool = True) -> Path:

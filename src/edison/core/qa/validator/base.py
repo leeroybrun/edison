@@ -35,9 +35,8 @@ def validate_dimension_weights(config: Dict[str, Any]) -> None:
         except Exception:
             raise ValueError(
                 f"dimension '{key}' must be an integer, got {value!r}. "
-                "Define validation.dimensions in your project overlays "
-                "(<project_config_dir>/config/*.yml) or adjust "
-                ".edison/core/config/defaults.yaml."
+                "Define validation.dimensions in your project config "
+                "(.edison/config/*.yml)."
             )
         if iv < 0 or iv > 100:
             raise ValueError(
@@ -109,18 +108,34 @@ def process_validator_template(template_or_text: str, context: Optional[Dict[str
 def run_validator(validator_markdown_path: str, session_id: str, validator_name: str | None = None) -> str:
     validator_name = validator_name or Path(validator_markdown_path).stem
     repo_root = PathResolver.resolve_project_root()
-    standard_path = get_project_config_dir(repo_root, create=False) / "core" / "validators" / "_report-template.md"
-    header = (
-        standard_path.read_text(encoding="utf-8")
-        if standard_path.exists()
-        else (
+
+    # Look for report template in: 1) project validators, 2) bundled templates
+    header: str | None = None
+
+    # Priority 1: Project-specific template
+    project_template = get_project_config_dir(repo_root, create=False) / "validators" / "_report-template.md"
+    if project_template.exists():
+        header = project_template.read_text(encoding="utf-8")
+
+    # Priority 2: Bundled template from edison.data
+    if header is None:
+        try:
+            from edison.data import get_data_path
+            bundled_template = get_data_path("templates", "_report-template.md")
+            if bundled_template.exists():
+                header = bundled_template.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Fallback: inline default
+    if header is None:
+        header = (
             f"# {{ validator_name }} Validation Report\n\n"
             "## Executive Summary\n\n"
             "## Dimension Scores\n\n"
             "## Findings\n\n"
             "## Validation Pass/Fail\n\n"
         )
-    )
 
     body = process_validator_template(validator_markdown_path, context={
         "session_id": session_id,

@@ -3,7 +3,7 @@ import os
 import pytest
 import json
 from pathlib import Path
-from edison.core.session.config import SessionConfig
+from edison.core.config.domains import SessionConfig
 from edison.core.paths.project import get_project_config_dir
 
 class TestSessionConfigPaths:

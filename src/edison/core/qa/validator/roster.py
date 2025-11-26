@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from ... import task  # type: ignore
 from ...session import manager as session_manager
-from .. import config as qa_config
+from edison.core.config.domains import qa as qa_config
 from edison.core.utils.subprocess import run_with_timeout
 
 __all__ = ["build_validator_roster", "_detect_validators_from_git_diff", "_files_for_task", "_primary_files_from_doc", "_task_type_from_doc"]

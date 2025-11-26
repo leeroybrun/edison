@@ -4,7 +4,7 @@ import fnmatch
 from typing import Any, Dict, List, Optional, Tuple
 
 from ... import task  # type: ignore
-from .. import config as qa_config
+from edison.core.config.domains import qa as qa_config
 from .roster import _primary_files_from_doc, _task_type_from_doc
 
 __all__ = ["simple_delegation_hint", "enhance_delegation_hint"]

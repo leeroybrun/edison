@@ -69,14 +69,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Compose artifacts - delegates to composition engine."""
-    from edison.core.composition import CompositionEngine
-    from edison.core.composition.constitution import generate_all_constitutions
-    from edison.core.composition.rosters import (
+    """Compose artifacts - delegates to composition registries."""
+    from edison.core.composition import (
+        generate_all_constitutions,
         generate_available_agents,
         generate_available_validators,
+        generate_state_machine_doc,
+        GuidelineRegistry,
+        LayeredComposer,
     )
-    from edison.core.composition.state_machine import generate_state_machine_doc
     from edison.core.config import ConfigManager
     from edison.core.paths import resolve_project_root
     from edison.core.paths.project import get_project_config_dir
@@ -84,12 +85,14 @@ def main(args: argparse.Namespace) -> int:
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
         config_dir = get_project_config_dir(repo_root)
-        engine = CompositionEngine(repo_root=repo_root)
+        cfg_mgr = ConfigManager(repo_root)
+        config = cfg_mgr.load_config(validate=False)
+        active_packs = (config.get("packs", {}) or {}).get("active", []) or []
 
         results = {}
 
         # Determine what to compose
-        compose_all = not any([
+        compose_all_types = not any([
             args.validators,
             args.guidelines,
             args.constitutions,
@@ -103,8 +106,7 @@ def main(args: argparse.Namespace) -> int:
             return 0
 
         # Generate rosters + constitutions (constitutions depend on rosters)
-        if compose_all or args.constitutions:
-            cfg_mgr = ConfigManager(repo_root)
+        if compose_all_types or args.constitutions:
             output_path = config_dir / "_generated"
 
             # Generate rosters first so constitutions can reference them
@@ -124,22 +126,39 @@ def main(args: argparse.Namespace) -> int:
             ]
             results["state_machine"] = str(output_path / "STATE_MACHINE.md")
 
-        if compose_all or args.guidelines:
-            guideline_files = engine.compose_guidelines()
+        if compose_all_types or args.guidelines:
+            # Use GuidelineRegistry for concatenate + dedupe composition
+            guideline_registry = GuidelineRegistry(repo_root=repo_root)
+            guideline_names = guideline_registry.all_names(active_packs)
+            guideline_files = []
+            generated_guidelines_dir = config_dir / "_generated" / "guidelines"
+            generated_guidelines_dir.mkdir(parents=True, exist_ok=True)
+            
+            for name in guideline_names:
+                try:
+                    result = guideline_registry.compose(name, active_packs)
+                    output_file = generated_guidelines_dir / f"{name}.md"
+                    output_file.write_text(result.text, encoding="utf-8")
+                    guideline_files.append(output_file)
+                except Exception:
+                    pass  # Skip guidelines that fail to compose
+            
             results["guidelines"] = [str(f) for f in guideline_files]
 
-        if compose_all or args.validators:
-            validator_results = engine.compose_validators()
-            results["validators"] = {
-                vid: str(result.cache_path)
-                for vid, result in validator_results.items()
-            }
-            # Also write validators to .agents/_generated/validators/
+        if compose_all_types or args.validators:
+            # Use LayeredComposer for section-based validator composition
+            validator_composer = LayeredComposer(repo_root=repo_root, content_type="validators")
+            validator_results = validator_composer.compose_all(active_packs)
+            
+            # Write validators to .agents/_generated/validators/
             generated_validators_dir = config_dir / "_generated" / "validators"
             generated_validators_dir.mkdir(parents=True, exist_ok=True)
-            for vid, result in validator_results.items():
+            
+            results["validators"] = {}
+            for vid, text in validator_results.items():
                 output_file = generated_validators_dir / f"{vid}.md"
-                output_file.write_text(result.text, encoding="utf-8")
+                output_file.write_text(text, encoding="utf-8")
+                results["validators"][vid] = str(output_file)
 
         # Sync to clients
         if args.claude:

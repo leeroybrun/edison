@@ -4,13 +4,17 @@ Edison Framework Configuration Management (YAML-only, no legacy fallbacks).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 import os
 import json
 import re
 
-from edison.core.paths import PathResolver, EdisonPathError
-from edison.core.paths.project import get_project_config_dir
+from edison.core.utils.merge import deep_merge as _deep_merge, merge_arrays
+
+# Lazy imports to avoid circular dependencies
+# These are imported at runtime inside methods that need them
+if TYPE_CHECKING:
+    from edison.core.paths import PathResolver, EdisonPathError
 
 try:  # Optional: Present in Edison core Python env
     import yaml  # type: ignore
@@ -25,59 +29,42 @@ except Exception as err:  # pragma: no cover - surfaced at import time
 
 class ConfigManager:
     """Load, merge, and validate Edison configuration.
+
+    Configuration sources (highest to lowest priority):
+    1. Environment variables: EDISON_*
+    2. Project config: .edison/config/*.yaml
+    3. Bundled defaults: edison.data package
     """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = repo_root or self._find_repo_root()
+        
+        # Lazy import to avoid circular dependencies
+        from edison.core.paths.project import get_project_config_dir
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
 
-        core_config_dir = project_root_dir / "core" / "config"
-        if core_config_dir.exists():
-            self.core_config_dir = core_config_dir
-        else:
-            from edison.data import get_data_path
-            self.core_config_dir = get_data_path("config")
-
+        # Bundled defaults from edison.data package (always available)
+        from edison.data import get_data_path
+        self.core_config_dir = get_data_path("config")
         self.core_defaults_path = self.core_config_dir / "defaults.yaml"
+
+        # Project-specific config overrides
         self.project_config_dir = project_root_dir / "config"
 
-        edison_schemas_dir = project_root_dir / "core" / "schemas"
-        if edison_schemas_dir.exists():
-            self.schemas_dir = edison_schemas_dir
-        else:
-            from edison.data import get_data_path
-            self.schemas_dir = get_data_path("config") / "schemas"
+        # Schemas from bundled data
+        self.schemas_dir = get_data_path("schemas")
 
     def _find_repo_root(self) -> Path:
+        # Lazy import to avoid circular dependencies
+        from edison.core.paths import PathResolver, EdisonPathError
         try:
             return PathResolver.resolve_project_root()
         except EdisonPathError as exc:
             raise RuntimeError(str(exc)) from exc
 
     def deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        result: Dict[str, Any] = dict(base)
-        for key, value in (override or {}).items():
-            if key in result:
-                if isinstance(result[key], dict) and isinstance(value, dict):
-                    result[key] = self.deep_merge(result[key], value)
-                elif isinstance(result[key], list) and isinstance(value, list):
-                    result[key] = self._merge_arrays(result[key], value)
-                else:
-                    result[key] = value
-            else:
-                result[key] = value
-        return result
-
-    def _merge_arrays(self, base: List[Any], override: List[Any]) -> List[Any]:
-        if not override:
-            return base
-        first = override[0]
-        if isinstance(first, str):
-            if first.startswith("+"):
-                return [*base, *override[1:]]
-            if first == "=":
-                return list(override[1:])
-        return list(override)
+        """Recursively merge dictionaries. Delegates to shared implementation."""
+        return _deep_merge(base, override)
 
     def load_yaml(self, path: Path) -> Dict[str, Any]:
         from edison.core.file_io.utils import read_yaml_safe

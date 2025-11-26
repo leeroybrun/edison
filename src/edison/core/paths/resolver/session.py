@@ -13,12 +13,9 @@ from edison.core.paths.resolver.project import resolve_project_root
 
 def _validate_session_id(session_id: str) -> str:
     """Validate session ID format.
-
-    Session IDs must:
-    - Be non-empty
-    - Contain only alphanumeric, dash, and underscore characters
-    - Not contain path traversal sequences
-    - Be 64 characters or less
+    
+    This is a standalone validation that doesn't depend on session module
+    to avoid circular imports.
 
     Args:
         session_id: Session ID to validate
@@ -31,25 +28,25 @@ def _validate_session_id(session_id: str) -> str:
     """
     if not session_id:
         raise EdisonPathError("Session ID cannot be empty")
-
-    if len(session_id) > 64:
-        raise EdisonPathError(
-            f"Session ID too long: {len(session_id)} characters (max 64)"
-        )
-
-    # Check for path traversal
+    
+    # Prevent path traversal
     if ".." in session_id or "/" in session_id or "\\" in session_id:
         raise EdisonPathError(
             f"Session ID contains path traversal or separators: {session_id}"
         )
-
-    # Check for valid characters (alphanumeric, dash, underscore)
-    if not re.match(r"^[a-zA-Z0-9_-]+$", session_id):
+    
+    # Basic format validation - alphanumeric, hyphens, underscores
+    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", session_id):
         raise EdisonPathError(
-            f"Session ID contains invalid characters: {session_id}. "
-            "Only alphanumeric, dash, and underscore allowed."
+            f"Session ID contains invalid characters: {session_id}"
         )
-
+    
+    # Max length check
+    if len(session_id) > 128:
+        raise EdisonPathError(
+            f"Session ID too long: {len(session_id)} characters (max 128)"
+        )
+    
     return session_id
 
 

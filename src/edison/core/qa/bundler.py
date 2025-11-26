@@ -10,7 +10,7 @@ from ..file_io.utils import (
     read_json_safe as io_read_json_safe,
     ensure_dir,
 )
-from . import config as qa_config
+from edison.core.config.domains import qa as qa_config
 from . import evidence
 
 
