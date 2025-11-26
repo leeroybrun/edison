@@ -11,7 +11,7 @@ import pytest
 from tests.integration.test_session_autostart import AutoStartEnv
 from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
 from edison.core.session.manager import SessionManager
-from edison.core.session.naming import SessionNamingStrategy
+from edison.core.session.naming import generate_session_id, reset_session_naming_counter
 from edison.core.orchestrator.config import OrchestratorConfig
 from edison.core.process.inspector import infer_session_id
 
@@ -118,12 +118,10 @@ class TestFinalAcceptance:
         assert len(sessions) == 3
 
     def test_requirement_6_pid_based_naming(self):
-        session_id = SessionNamingStrategy({"strategy": "legacy"}).generate(
-            process="REQ-6", owner="claude", existing_sessions=["legacy"]
-        )
+        reset_session_naming_counter()
+        session_id = generate_session_id()
 
         assert session_id == infer_session_id()
-        assert "-pid-" in session_id
 
     def test_requirement_7_atomic_rollback(self, acceptance_env: AutoStartEnv):
         bad_profiles = {

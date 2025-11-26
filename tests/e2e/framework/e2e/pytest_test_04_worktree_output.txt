@@ -1,7 +1,7 @@
 [1m============================= test session starts ==============================[0m
 platform darwin -- Python 3.9.6, pytest-8.4.2, pluggy-1.6.0 -- /Applications/Xcode.app/Contents/Developer/usr/bin/python3
 cachedir: .pytest_cache
-rootdir: ${PROJECT_ROOT}/.agents/scripts/tests/e2e
+rootdir: ${PROJECT_ROOT}/tests/e2e/framework/e2e
 configfile: pytest.ini
 [1mcollecting ... [0mcollected 16 items
 
@@ -153,7 +153,7 @@ scenarios/test_04_worktree_integration.py::test_worktree_detect_prisma_schema [
 [1m[31mE   fatal: failed to write commit object[0m
 [33m=============================== warnings summary ===============================[0m
 helpers/test_env.py:17
-  ${PROJECT_ROOT}/.agents/scripts/tests/e2e/helpers/test_env.py:17: PytestCollectionWarning: cannot collect test class 'TestProjectDir' because it has a __init__ constructor (from: scenarios/test_04_worktree_integration.py)
+  ${PROJECT_ROOT}/tests/e2e/framework/e2e/helpers/test_env.py:17: PytestCollectionWarning: cannot collect test class 'TestProjectDir' because it has a __init__ constructor (from: scenarios/test_04_worktree_integration.py)
     class TestProjectDir:
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

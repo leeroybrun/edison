@@ -24,7 +24,7 @@ A comprehensive end-to-end test suite has been created for the project project m
   - Assertions (assert_worktree_exists, assert_branch_exists, etc.)
 
 **File: `helpers/command_runner.py`** (140 lines)
-- `run_script()`: Execute scripts from `.agents/scripts/`
+- `run_script()`: Execute edison CLI commands (legacy script names mapped automatically)
 - `assert_command_success()`: Verify command succeeded
 - `assert_command_failure()`: Verify command failed
 - `assert_output_contains()`: Check command output
@@ -227,33 +227,33 @@ pip install pytest pytest-cov pytest-xdist
 ### Run All Tests
 ```bash
 cd ${PROJECT_ROOT}
-pytest .agents/scripts/tests/e2e/ -v
+pytest tests/e2e/framework/e2e/ -v
 ```
 
 ### Run Specific Categories
 ```bash
 # Fast tests only
-pytest .agents/scripts/tests/e2e/ -m fast
+pytest tests/e2e/framework/e2e/ -m fast
 
 # Worktree tests
-pytest .agents/scripts/tests/e2e/ -m worktree
+pytest tests/e2e/framework/e2e/ -m worktree
 
 # Integration tests
-pytest .agents/scripts/tests/e2e/ -m integration
+pytest tests/e2e/framework/e2e/ -m integration
 
 # Edge cases
-pytest .agents/scripts/tests/e2e/ -m edge_case
+pytest tests/e2e/framework/e2e/ -m edge_case
 ```
 
 ### Run with Coverage
 ```bash
-pytest .agents/scripts/tests/e2e/ --cov=.agents/scripts --cov-report=html --cov-report=term
+pytest tests/e2e/framework/e2e/ --cov=edison --cov-report=html --cov-report=term
 open htmlcov/index.html
 ```
 
 ### Run in Parallel (Faster)
 ```bash
-pytest .agents/scripts/tests/e2e/ -n auto
+pytest tests/e2e/framework/e2e/ -n auto
 ```
 
 ## ✨ Key Features

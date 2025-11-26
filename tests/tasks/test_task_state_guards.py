@@ -12,7 +12,7 @@ from helpers.test_env import TestProjectDir
 
 @pytest.fixture()
 def project(tmp_path: Path) -> TestProjectDir:
-    # Determine repo root (tests live at .agents/scripts/tests)
+    # Determine repo root (tests live under repository tests/ tree)
     repo_root = Path(__file__).resolve().parents[4]
     proj = TestProjectDir(tmp_path, repo_root)
     # Ensure task and QA templates exist for CLI scripts

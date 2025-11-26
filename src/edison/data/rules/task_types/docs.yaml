@@ -1,0 +1,20 @@
+task_type: docs
+title: Documentation
+applies_when:
+  - "The primary output is documentation: READMEs, runbooks, ADRs, API docs, or inline developer guides."
+  - "Product behavior, architecture decisions, or operational steps need to be captured or corrected."
+  - "New features require usage examples, migration notes, or onboarding guides."
+validation_criteria:
+  - "Content matches current behavior and configuration; examples are executable or copy-pastable."
+  - "Impacted commands, endpoints, flags, and config keys are enumerated with defaults sourced from YAML, not hardcoded guesses."
+  - "Links, anchors, and references resolve; diagrams or code samples compile where applicable."
+  - "Audience, scope, and last-updated metadata are included if the doc type supports them."
+delegation_guidance:
+  - "Prefer claude/gemini for narrative clarity; pair with owning sub-agent (api-builder/component-builder/feature-implementer) for accuracy."
+  - "Supply delegates with canonical sources (specs, configs, schemas) and recent behavior changes to avoid drift."
+  - "Keep docs close to code: update adjacent README or docstrings rather than creating new silos."
+definition_of_done:
+  - "Docs build/lint cleanly (markdown lint, link checks if available) and render correctly."
+  - "Examples reflect current APIs/CLI flags, including versioned paths where relevant."
+  - "Changelog or release notes mention documentation updates when user-facing."
+  - "Owners are identified for future maintenance if not already clear."

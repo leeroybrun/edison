@@ -43,12 +43,12 @@ python3 -m pip install --user tiktoken --break-system-packages
 cd /path/to/{PROJECT_NAME}
 
 # Full analysis (recommended first run)
-python3 .agents/scripts/tests/context/context_impact_analyzer.py
+python3 tests/context/context_impact_analyzer.py
 
 # Or use the wrapper script
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from context_impact_analyzer import ContextImpactAnalyzer
 
 analyzer = ContextImpactAnalyzer()
@@ -58,7 +58,7 @@ EOF
 # Baseline only
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from baseline_profiler import BaselineProfiler
 
 profiler = BaselineProfiler()
@@ -68,7 +68,7 @@ EOF
 # Bloat detection only
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from bloat_detector import BloatDetector
 
 detector = BloatDetector()
@@ -79,7 +79,7 @@ EOF
 ## 📁 Module Structure
 
 ```
-.agents/scripts/tests/context/
+tests/context/
 ├── README.md                      # This file
 ├── __init__.py                    # Package exports
 ├── analyze                        # CLI wrapper script
@@ -304,7 +304,7 @@ The comprehensive report includes:
 
 ```bash
 # Run unit tests
-python3 -m pytest .agents/scripts/tests/context/test_*.py
+python3 -m pytest tests/context/test_*.py
 ```
 
 ### Integration Test
@@ -332,7 +332,7 @@ jobs:
         run: pip install tiktoken
       - name: Run Context Analyzer
         run: |
-          python3 .agents/scripts/tests/context/context_impact_analyzer.py \
+          python3 tests/context/context_impact_analyzer.py \
             --ci-mode \
             --threshold 80000 \
             --output context-report.md
@@ -364,7 +364,7 @@ A: Yes, but it requires a valid session structure. Currently skipped in isolated
 
 To add new analysis features:
 
-1. Create a new module in `.agents/scripts/tests/context/`
+1. Create a new module in `tests/context/`
 2. Import it in `context_impact_analyzer.py`
 3. Add to `run_full_analysis()` method
 4. Update this README
@@ -375,5 +375,5 @@ Same as project application repository.
 
 ## 📞 Support
 
-Issues: See `.agents/scripts/tests/context/` module docstrings
+Issues: See `tests/context/` module docstrings
 Questions: Review generated reports for insights

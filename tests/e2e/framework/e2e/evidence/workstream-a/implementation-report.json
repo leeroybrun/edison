@@ -10,9 +10,9 @@
       "name": "Fix QA Guard Bypass",
       "priority": "P0",
       "status": "completed",
-      "testFile": ".agents/scripts/tests/e2e/scenarios/test_10_edge_cases.py",
+      "testFile": "tests/e2e/framework/e2e/scenarios/scenarios/test_10_edge_cases.py",
       "testFunction": "test_qa_guard_bypass_via_tasks_status",
-      "implementationFile": ".agents/scripts/tasks/status",
+      "implementationFile": "src/edison/cli/task/status.py",
       "linesChanged": "217-222",
       "tddPhase": "complete",
       "testResult": "PASSED",
@@ -31,9 +31,9 @@
       "name": "Enforce Cross-Session Safety",
       "priority": "P0",
       "status": "test_written",
-      "testFile": ".agents/scripts/tests/e2e/scenarios/test_04_worktree_integration.py",
+      "testFile": "tests/e2e/framework/e2e/scenarios/scenarios/test_04_worktree_integration.py",
       "testFunction": "test_cross_session_isolation_enforced",
-      "implementationFile": ".agents/scripts/lib/task.py",
+      "implementationFile": "src/edison/core/task/__init__.py",
       "targetFunction": "find_record",
       "linesToModify": "153-193",
       "tddPhase": "red",
@@ -47,7 +47,7 @@
       "taskId": "P0-3",
       "name": "Fix Session Restore Fail-Closed",
       "priority": "P0",
-      "targetFile": ".agents/scripts/lib/sessionlib.py",
+      "targetFile": "src/edison/core/session/__init__.py",
       "targetFunction": "restore_tasks_to_main_dirs",
       "lines": "445-472",
       "description": "Wrap restore operations in transaction-like pattern with rollback on failure"
@@ -56,7 +56,7 @@
       "taskId": "P1-1",
       "name": "Fix Timestamp Format",
       "priority": "P1",
-      "targetFile": ".agents/scripts/lib/task.py",
+      "targetFile": "src/edison/core/task/__init__.py",
       "targetFunction": "utc_timestamp",
       "lines": "83-85",
       "currentFormat": "YYYY-MM-DD HH:MM UTC",
@@ -68,10 +68,10 @@
       "name": "Implement Continuation ID",
       "priority": "P1",
       "affectedFiles": [
-        ".agents/scripts/lib/task.py",
-        ".agents/scripts/tasks/new",
-        ".agents/scripts/qa/new",
-        ".agents/scripts/validators/validate"
+        "src/edison/core/task/__init__.py",
+        "src/edison/cli/task/new.py",
+        "src/edison/cli/qa/new.py",
+        "src/edison/cli/validators/validate.py"
       ],
       "description": "Add --continuation-id flag, store in task/QA/session JSON, pass to validators"
     },
@@ -79,28 +79,28 @@
       "taskId": "P2-1",
       "name": "Add QA Tracking Tests",
       "priority": "P2",
-      "targetFile": ".agents/scripts/tests/e2e/scenarios/test_06_tracking_system.py",
+      "targetFile": "tests/e2e/framework/e2e/scenarios/scenarios/test_06_tracking_system.py",
       "description": "Add QA lifecycle tests (waiting→todo→wip→done)"
     },
     {
       "taskId": "P2-2",
       "name": "Centralize ID Validation",
       "priority": "P2",
-      "targetFile": ".agents/scripts/lib/task.py",
+      "targetFile": "src/edison/core/task/__init__.py",
       "description": "Create single validate_task_id() function, use in all CLIs"
     },
     {
       "taskId": "P2-3",
       "name": "Add Session-Scoped Directory Tests",
       "priority": "P2",
-      "targetFile": ".agents/scripts/tests/e2e/scenarios/test_04_worktree_integration.py",
+      "targetFile": "tests/e2e/framework/e2e/scenarios/scenarios/test_04_worktree_integration.py",
       "description": "Test tasks move to session dirs on claim, restore on complete"
     },
     {
       "taskId": "P2-4",
       "name": "Add Archival Lifecycle Test",
       "priority": "P2",
-      "targetFile": ".agents/scripts/tests/e2e/scenarios/test_04_worktree_integration.py",
+      "targetFile": "tests/e2e/framework/e2e/scenarios/scenarios/test_04_worktree_integration.py",
       "description": "Test worktree moves to _archived on session complete"
     }
   ],
@@ -119,10 +119,10 @@
   },
 
   "mandatoryGuidelinesLoaded": {
-    ".agents/manifest.json": true,
-    ".agents/guidelines/TDD.md": true,
-    ".agents/implementation/IMPLEMENTER_WORKFLOW.md": true,
-    ".agents/rules/registry.json": true
+    "src/edison/data/config/defaults.yaml": true,
+    "src/edison/data/guidelines/shared/TDD.md": true,
+    "src/edison/data/guidelines/agents/MANDATORY_WORKFLOW.md": true,
+    "src/edison/data/rules/registry.yml": true
   },
 
   "evidenceGenerated": {

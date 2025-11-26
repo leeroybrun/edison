@@ -24,18 +24,18 @@ User approved "Option 1: Complete Rewrite" to create tests that execute REAL CLI
 
 1. **command_runner.py Environment Variables** ✅
    - Changed from `DATA_ROOT` to `project_ROOT` and `project_PROJECT_ROOT`
-   - File: `.agents/scripts/tests/e2e/helpers/command_runner.py:44-45`
+   - File: `tests/e2e/framework/e2e/helpers/command_runner.py:44-45`
 
 2. **test_env.py Session Paths** ✅
    - Changed sessions from `.agents/sessions/` to `.project/sessions/`
-   - File: `.agents/scripts/tests/e2e/helpers/test_env.py:366-367`
+   - File: `tests/e2e/framework/e2e/helpers/test_env.py:366-367`
 
 3. **Deprecated Mock Data Methods** ✅
    - Added deprecation warnings to:
      - `create_task()` - line 301-302
      - `create_session()` - line 352-353
      - `create_mock_evidence()` - line 403-404
-   - File: `.agents/scripts/tests/e2e/helpers/test_env.py`
+   - File: `tests/e2e/framework/e2e/helpers/test_env.py`
 
 4. **Python Package Structure** ✅
    - Created `__init__.py` files for proper imports
@@ -160,17 +160,17 @@ This is a common testing pattern and doesn't harm production use (falls back to 
 ## Files Modified
 
 ### Infrastructure
-- `.agents/scripts/tests/e2e/helpers/command_runner.py` - Fixed env vars
-- `.agents/scripts/tests/e2e/helpers/test_env.py` - Fixed paths, added deprecation warnings
-- `.agents/scripts/tests/e2e/pytest.ini` - Added golden_path marker
-- `.agents/scripts/tests/e2e/conftest.py` - Fixed imports
-- `.agents/scripts/tests/__init__.py` - Created
-- `.agents/scripts/tests/e2e/__init__.py` - Created
-- `.agents/scripts/tests/e2e/helpers/__init__.py` - Created
-- `.agents/scripts/tests/e2e/scenarios/__init__.py` - Created
+- `tests/e2e/framework/e2e/helpers/command_runner.py` - Fixed env vars
+- `tests/e2e/framework/e2e/helpers/test_env.py` - Fixed paths, added deprecation warnings
+- `tests/e2e/framework/e2e/pytest.ini` - Added golden_path marker
+- `tests/e2e/framework/e2e/conftest.py` - Fixed imports
+- `tests/e2e/framework/e2e/__init__.py` - Created
+- `tests/e2e/framework/e2e/__init__.py` - Created
+- `tests/e2e/framework/e2e/helpers/__init__.py` - Created
+- `tests/e2e/framework/e2e/scenarios/__init__.py` - Created
 
 ### Tests
-- `.agents/scripts/tests/e2e/scenarios/test_00_golden_path_examples.py` - Created ✅
+- `tests/e2e/framework/e2e/scenarios/test_00_golden_path_examples.py` - Created ✅
 
 ### Tests Requiring Rewrite (146 tests total)
 - `test_01_session_management.py` (12 tests) - ❌ Uses mock data

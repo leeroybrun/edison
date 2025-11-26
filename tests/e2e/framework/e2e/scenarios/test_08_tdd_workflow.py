@@ -11,7 +11,7 @@ Covers Workstream 2 fixes:
  - Test-before-implementation timing validated
 
 Design notes:
- - Uses the real `.agents/scripts/tasks/ready` guard via run_script()
+- Uses the real `edison tasks ready` guard via run_script()
  - Creates minimal implementation-report.json in round-1
  - Provides local wrappers under `<tmp>/scripts/*` when required
 """

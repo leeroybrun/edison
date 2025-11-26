@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from textwrap import dedent
@@ -17,7 +18,7 @@ import time
 from edison.core.session.manager import SessionManager
 from edison.core.session import store
 from edison.core.session import worktree
-from edison.core.session.naming import SessionNamingStrategy
+from edison.core.session.naming import reset_session_naming_counter
 from edison.core.orchestrator.config import OrchestratorConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.process.inspector import infer_session_id
@@ -85,6 +86,11 @@ class AutoStartEnv:
                 "installDeps": False,
             },
             "paths": {"project_config_dir": ".edison"},
+            "file_locking": {
+                "timeout_seconds": 10.0,
+                "poll_interval_seconds": 0.1,
+                "fail_open": False,
+            },
         }
         (self.config_dir / "defaults.yaml").write_text(yaml.safe_dump(defaults), encoding="utf-8")
 
@@ -336,6 +342,7 @@ def test_autostart_rollback_on_orchestrator_failure(autostart_env: AutoStartEnv)
 
 
 def test_autostart_uses_pid_based_naming(autostart_env: AutoStartEnv) -> None:
+    reset_session_naming_counter()
     autostart_env.write_session_config(naming_strategy="owner")
     script, _ = autostart_env.make_orchestrator_script("claude")
     autostart_env.write_orchestrator_config(
@@ -405,7 +412,7 @@ def test_autostart_cli_start_command(autostart_env: AutoStartEnv) -> None:
     )
     autostart_env.reload_configs()
 
-    cmd = ["uv", "run", "edison", "session", "create", "--session-id", "TASK-CLI", "--no-worktree"]
+    cmd = [sys.executable, "-m", "edison", "session", "create", "--session-id", "TASK-CLI", "--no-worktree"]
 
     run_with_timeout(cmd, cwd=autostart_env.root, check=True)
 

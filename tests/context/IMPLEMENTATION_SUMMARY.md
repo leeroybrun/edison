@@ -146,7 +146,7 @@ Works seamlessly in any environment.
 ## 📁 File Structure
 
 ```
-.agents/scripts/tests/context/
+tests/context/
 ├── README.md                      # Complete usage guide (11 KB)
 ├── IMPLEMENTATION_SUMMARY.md      # This file
 ├── __init__.py                    # Package exports
@@ -173,7 +173,7 @@ cd /path/to/{PROJECT_NAME}
 # Full analysis
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from context_impact_analyzer import ContextImpactAnalyzer
 
 analyzer = ContextImpactAnalyzer()
@@ -192,7 +192,7 @@ EOF
 ```bash
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from baseline_profiler import BaselineProfiler
 
 profiler = BaselineProfiler()
@@ -205,7 +205,7 @@ EOF
 ```bash
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '.agents/scripts/tests/context')
+sys.path.insert(0, 'tests/context')
 from bloat_detector import BloatDetector
 
 detector = BloatDetector()
@@ -335,7 +335,7 @@ jobs:
         run: |
           python3 << 'EOF'
           import sys
-          sys.path.insert(0, '.agents/scripts/tests/context')
+          sys.path.insert(0, 'tests/context')
           from context_impact_analyzer import ContextImpactAnalyzer
 
           analyzer = ContextImpactAnalyzer()

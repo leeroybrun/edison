@@ -17,7 +17,7 @@ This test suite validates the complete workflow including:
 ## 🏗️ Architecture
 
 ```
-.agents/scripts/tests/e2e/
+tests/e2e/framework/e2e/
 ├── conftest.py                    # Pytest fixtures & configuration
 ├── pytest.ini                     # Pytest settings
 ├── helpers/                       # Test utilities
@@ -103,50 +103,50 @@ def test_example(combined_env):
 
 ### Run all tests
 ```bash
-pytest .agents/scripts/tests/e2e/ -v
+pytest tests/e2e/framework/e2e/ -v
 ```
 
 ### Run specific test file
 ```bash
-pytest .agents/scripts/tests/e2e/scenarios/test_01_session_management.py -v
+pytest tests/e2e/framework/e2e/scenarios/test_01_session_management.py -v
 ```
 
 ### Run specific test
 ```bash
-pytest .agents/scripts/tests/e2e/scenarios/test_01_session_management.py::test_create_basic_session -v
+pytest tests/e2e/framework/e2e/scenarios/test_01_session_management.py::test_create_basic_session -v
 ```
 
 ### Run by marker
 
 ```bash
 # Only fast tests
-pytest .agents/scripts/tests/e2e/ -m fast
+pytest tests/e2e/framework/e2e/ -m fast
 
 # Skip slow tests
-pytest .agents/scripts/tests/e2e/ -m "not slow"
+pytest tests/e2e/framework/e2e/ -m "not slow"
 
 # Only worktree tests
-pytest .agents/scripts/tests/e2e/ -m worktree
+pytest tests/e2e/framework/e2e/ -m worktree
 
 # Only integration tests
-pytest .agents/scripts/tests/e2e/ -m integration
+pytest tests/e2e/framework/e2e/ -m integration
 
 # Only edge case tests
-pytest .agents/scripts/tests/e2e/ -m edge_case
+pytest tests/e2e/framework/e2e/ -m edge_case
 ```
 
 ### Run in parallel (faster)
 
 ```bash
 # Requires: pip install pytest-xdist
-pytest .agents/scripts/tests/e2e/ -n auto
+pytest tests/e2e/framework/e2e/ -n auto
 ```
 
 ### Run with coverage
 
 ```bash
 # Requires: pip install pytest-cov
-pytest .agents/scripts/tests/e2e/ --cov=../../ --cov-report=html --cov-report=term
+pytest tests/e2e/framework/e2e/ --cov=../../ --cov-report=html --cov-report=term
 
 # Open coverage report
 open htmlcov/index.html
@@ -156,19 +156,19 @@ open htmlcov/index.html
 
 ```bash
 # Session management tests
-pytest .agents/scripts/tests/e2e/ -m session -v
+pytest tests/e2e/framework/e2e/ -m session -v
 
 # Task lifecycle tests
-pytest .agents/scripts/tests/e2e/ -m task -v
+pytest tests/e2e/framework/e2e/ -m task -v
 
 # Git worktree tests
-pytest .agents/scripts/tests/e2e/ -m worktree -v
+pytest tests/e2e/framework/e2e/ -m worktree -v
 
 # Context7 tests
-pytest .agents/scripts/tests/e2e/ -m context7 -v
+pytest tests/e2e/framework/e2e/ -m context7 -v
 
 # QA workflow tests
-pytest .agents/scripts/tests/e2e/ -m qa -v
+pytest tests/e2e/framework/e2e/ -m qa -v
 ```
 
 ## 📊 Test Markers
@@ -304,27 +304,27 @@ def test_context7_cross_check_git_diff(combined_env):
 
 ### Verbose output
 ```bash
-pytest .agents/scripts/tests/e2e/ -vv
+pytest tests/e2e/framework/e2e/ -vv
 ```
 
 ### Show print statements
 ```bash
-pytest .agents/scripts/tests/e2e/ -s
+pytest tests/e2e/framework/e2e/ -s
 ```
 
 ### Drop into debugger on failure
 ```bash
-pytest .agents/scripts/tests/e2e/ --pdb
+pytest tests/e2e/framework/e2e/ --pdb
 ```
 
 ### Run last failed tests
 ```bash
-pytest .agents/scripts/tests/e2e/ --lf
+pytest tests/e2e/framework/e2e/ --lf
 ```
 
 ### Show test durations
 ```bash
-pytest .agents/scripts/tests/e2e/ --durations=10
+pytest tests/e2e/framework/e2e/ --durations=10
 ```
 
 ## 📦 Dependencies
@@ -366,7 +366,7 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          cd .agents/scripts/tests/e2e
+          cd tests/e2e/framework/e2e
           pytest -v --cov=../../ --cov-report=xml -n auto
 
       - name: Upload coverage
@@ -393,7 +393,7 @@ When adding new features:
 2. Add tests to appropriate scenario file
 3. Use relevant markers
 4. Update this README if needed
-5. Ensure tests pass: `pytest .agents/scripts/tests/e2e/ -v`
+5. Ensure tests pass: `pytest tests/e2e/framework/e2e/ -v`
 6. Check coverage: `pytest --cov=../../ --cov-report=term`
 
 ## 📚 Additional Resources

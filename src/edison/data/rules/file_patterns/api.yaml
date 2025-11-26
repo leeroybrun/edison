@@ -1,0 +1,9 @@
+id: FILE_PATTERN.API
+title: API route files trigger api validator
+patterns:
+  - "**/*.api.ts"
+  - "**/route.ts"
+validators:
+  - api
+rationale: >-
+  API entrypoints need validation for request schemas, error handling, and security, so they must trigger the api validator.

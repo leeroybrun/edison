@@ -1,0 +1,20 @@
+task_type: chore
+title: Maintenance Chore
+applies_when:
+  - "Non-feature maintenance such as dependency bumps, lint/format upgrades, CI/CD plumbing, or repository hygiene is required."
+  - "Operational tasks like rotating keys, cleaning logs/artifacts, or updating automation scripts are in scope."
+  - "No product behavior change is intended beyond maintenance impact."
+validation_criteria:
+  - "Change risk is assessed (breaking changes, migrations, tooling shifts) and mitigated with rollout steps."
+  - "Tooling/lint/CI updates run successfully across the codebase; regenerated files are committed or reproducible."
+  - "Configuration stays YAML-driven; no new hardcoded paths, tokens, or counts are introduced."
+  - "Operational tasks leave systems in a clean, monitored state (alerts, dashboards, jobs)."
+delegation_guidance:
+  - "Route platform/build changes to feature-implementer or api-builder; UI build/tooling tweaks may involve component-builder."
+  - "Use codex for precise dependency or tooling edits; claude/gemini for broader migration notes."
+  - "Provide delegates with current CI logs, lockfiles, and target versions to avoid guesswork."
+definition_of_done:
+  - "CI pipelines pass with updated tooling; local bootstrap instructions remain accurate."
+  - "Lockfiles, scripts, and docs are synchronized; no stray caches or temporary files remain."
+  - "Operational cleanups verified (e.g., old artifacts removed, rotations completed) with evidence captured."
+  - "Changelog or maintenance log captures the scope and potential impacts."

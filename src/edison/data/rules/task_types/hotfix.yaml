@@ -1,0 +1,20 @@
+task_type: hotfix
+title: Hotfix
+applies_when:
+  - "An urgent production or customer-impacting issue requires immediate mitigation outside normal release cadence."
+  - "Rollback, patch, or config toggle is needed to restore service health or SLA compliance."
+  - "Scope is tightly focused on the incident surface; no opportunistic changes piggyback."
+validation_criteria:
+  - "Incident is reproducible with concrete signals (logs, metrics, failing requests) and a failing check captures it."
+  - "Fix is verified in an environment mirroring production (staging, canary, or shadow) before full rollout."
+  - "Automated regression or smoke tests cover the incident path; manual validation steps are scripted when automation is insufficient."
+  - "Rollback plan, kill-switch/config flags, and monitoring checks are documented and exercised when feasible."
+delegation_guidance:
+  - "Assign to the domain-owning sub-agent; favor codex for precision patches and safe diffs, with claude/gemini assisting on impact analysis."
+  - "Keep changes minimal and isolate via flags or targeted patches; avoid refactors or broad updates."
+  - "Communicate blast radius, rollback steps, and release vehicle (hotfix branch, patch tag) in the delegation brief."
+definition_of_done:
+  - "Production symptoms are cleared and validated via the same signals that detected the incident."
+  - "Hotfix tests and monitors are in place to prevent regression; flags/toggles tracked for removal."
+  - "Post-incident note created with timeline, root cause, and follow-up tasks assigned."
+  - "Release artifacts (tags, changelog, deployment notes) reflect the hotfix and its scope."

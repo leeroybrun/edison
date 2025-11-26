@@ -2,7 +2,10 @@ from __future__ import annotations
 
 """Workflow loop instructions for orchestrators.
 
-Loads workflow instructions from configuration instead of hardcoding them.
+T-016: NO LEGACY - Only loads from composition.yaml (NO hardcoded fallbacks).
+
+Fail-fast design: Raises clear errors when configuration is missing or invalid.
+Users must provide explicit workflowLoop configuration in composition.yaml.
 """
 
 from typing import Dict
@@ -16,40 +19,61 @@ except ImportError:
 def get_workflow_loop_instructions() -> Dict:
     """Return workflow loop instructions for orchestrators.
 
-    Loads from composition.yaml config if available, falls back to
-    hardcoded defaults for backward compatibility.
+    T-016: NO LEGACY - Only loads from composition.yaml (NO hardcoded fallbacks).
+
+    Raises:
+        FileNotFoundError: If composition.yaml is missing
+        ValueError: If composition.yaml is invalid or missing workflowLoop key
+        ImportError: If yaml module is not available
 
     Returns:
         Dict with command, frequency, and readOrder instructions
     """
-    # Try to load from config first
+    # T-016: NO LEGACY - Require explicit configuration
     from edison.data import get_data_path
+
+    if yaml is None:
+        raise ImportError(
+            "yaml module required for workflow configuration. "
+            "Install with: pip install pyyaml"
+        )
 
     composition_config_path = get_data_path("config", "composition.yaml")
 
-    if composition_config_path.exists() and yaml is not None:
-        try:
-            config_data = yaml.safe_load(composition_config_path.read_text(encoding="utf-8"))
-            if config_data and isinstance(config_data, dict):
-                composition_cfg = config_data.get("composition", {})
-                if isinstance(composition_cfg, dict):
-                    workflow_cfg = composition_cfg.get("workflowLoop")
-                    if isinstance(workflow_cfg, dict):
-                        return workflow_cfg
-        except Exception:
-            pass  # Fall back to defaults
+    if not composition_config_path.exists():
+        raise FileNotFoundError(
+            f"composition.yaml not found at {composition_config_path}\n"
+            "T-016: NO LEGACY - Hardcoded fallbacks removed.\n"
+            "Create composition.yaml with workflowLoop configuration."
+        )
 
-    # Hardcoded fallback (backward compatibility)
-    return {
-        "command": "scripts/session next <session-id>",
-        "frequency": "Before EVERY action",
-        "readOrder": [
-            "1. 📋 APPLICABLE RULES (read FIRST)",
-            "2. 🎯 RECOMMENDED ACTIONS (read AFTER rules)",
-            "3. 🤖 DELEGATION HINT (follow priority chain)",
-            "4. 🔍 VALIDATORS (auto-detected from git diff)",
-        ],
-    }
+    try:
+        config_data = yaml.safe_load(composition_config_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise ValueError(f"Failed to parse composition.yaml: {e}")
+
+    if not config_data or not isinstance(config_data, dict):
+        raise ValueError("composition.yaml is empty or invalid")
+
+    composition_cfg = config_data.get("composition", {})
+    if not isinstance(composition_cfg, dict):
+        raise ValueError("composition.yaml missing 'composition' key")
+
+    workflow_cfg = composition_cfg.get("workflowLoop")
+    if not isinstance(workflow_cfg, dict):
+        raise ValueError(
+            "composition.yaml missing 'composition.workflowLoop' key\n"
+            "T-016: NO LEGACY - Hardcoded fallbacks removed.\n"
+            "Add workflowLoop configuration to composition.yaml"
+        )
+
+    # Validate required keys
+    required_keys = ["command", "frequency", "readOrder"]
+    missing = [k for k in required_keys if k not in workflow_cfg]
+    if missing:
+        raise ValueError(f"workflowLoop missing required keys: {missing}")
+
+    return workflow_cfg
 
 
 __all__ = [

@@ -766,7 +766,29 @@ Machine-readable JSON report (required):
 
 **Performance matters and blocks shipping until acceptable.**
 
-{{PACK_CONTEXT}}
+## Pack-Specific Performance Context
+
+**Load pack performance rules before validating.** Packs surface their own performance guidance through YAML registries created in T-032.
+
+- Core registry: `.edison/core/rules/registry.yml`
+- Pack registry: `.edison/packs/<pack>/rules/registry.yml`
+- Compose both with `RulesRegistry.compose(packs=["nextjs", ...])`; validators must merge core + pack performance rules when reviewing a task.
+
+### How to load pack-specific performance rules
+1. Read the active packs from ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`).
+2. Call `RulesRegistry.compose(packs=[...])` to pull the pack performance rules alongside core rules. Composition loads the core rule bodies first, then appends pack guidance, carries forward `blocking` flags, and records `origins` (e.g., `pack:nextjs`).
+3. Fail fast if a referenced pack registry is missing or unreadable; the validator is BLOCKED until the pack registry exists.
+
+### Pack rule registries to consult
+- **Next.js pack**: `RULE.NEXTJS.SERVER_FIRST` (RSC by default, keep `use client` boundaries small), route handler/cache guidance, and server actions for mutations to avoid client bundle bloat.
+- **React pack**: `RULE.REACT.SERVER_CLIENT_BOUNDARY` for choosing server vs client components, plus composition and memoization rules to limit re-render work.
+- **Prisma pack**: `RULE.PRISMA.QUERY_OPTIMIZATION` and `RULE.PRISMA.INDEXES_AND_CONSTRAINTS` for pagination, indexing, and query planning in hot paths.
+- **Tailwind pack**: `RULE.TAILWIND.CLEAR_CACHE_AFTER_CSS_CHANGES` to prevent stale CSS caches from skewing runtime metrics; tokenized styles avoid custom CSS bloat.
+
+### Applying pack context during validation
+1. Start with the core Performance Checklist (bundle size, server/client execution, caching, etc.).
+2. Overlay pack performance rules from the registries above and verify the code follows both layers (e.g., Next.js RSC boundaries for bundle size, Prisma pagination/indexing for query efficiency).
+3. Document which rules came from core vs pack in the validation report; surfaced pack findings must be blocking when the merged rule is blocking.
 
 ## Edison validation guards (current)
 - Validate only against bundles emitted by `edison validators bundle <root-task>`; block/return `BLOCKED` if the manifest or parent `bundle-approved.json` is missing.

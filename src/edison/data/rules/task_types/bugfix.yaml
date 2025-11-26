@@ -1,0 +1,20 @@
+task_type: bugfix
+title: Bug Fix
+applies_when:
+  - "Existing behavior is incorrect, unstable, or degraded relative to expected/previous behavior."
+  - "A reproducible defect, failing scenario, or logged incident exists in production, staging, or tests."
+  - "No net-new product capability is being added—scope is to restore intended behavior."
+validation_criteria:
+  - "Root cause is identified and documented, including why it escaped previous checks."
+  - "A failing automated test captures the reproduction before the fix and passes after."
+  - "Regression coverage is added around the defect surface (logic, boundary conditions, and integration points)."
+  - "No new warnings, leaks, or performance regressions are introduced; observability signals remain healthy."
+delegation_guidance:
+  - "Route to the sub-agent most familiar with the affected layer (api-builder for backend/API, component-builder for UI, feature-implementer for cross-layer)."
+  - "Prefer codex for precision surgical patches and schema migrations; claude/gemini may assist with root-cause analysis context."
+  - "Share reproduction steps, failing logs, inputs/outputs, and the expected behavior with the delegate."
+definition_of_done:
+  - "Failing reproduction test now passes; related smoke/regression tests remain green."
+  - "Root cause and fix rationale captured in changelog or incident note; follow-up hardening items recorded as tasks if needed."
+  - "Monitoring/alerts linked to the defect surface show normal levels after the fix."
+  - "No feature flags or temporary toggles left enabled beyond the intended window."

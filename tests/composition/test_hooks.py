@@ -228,13 +228,15 @@ def test_generate_settings_json_section(tmp_path: Path) -> None:
     composer.compose_hooks()  # ensure scripts exist
     hooks_section = composer.generate_settings_json_hooks_section()
 
-    assert "hooks" in hooks_section
-    pre = hooks_section["hooks"]["PreToolUse"][0]
+    # hooks_section is now the direct mapping of event types (no double nesting)
+    # This gets assigned to settings["hooks"] to produce the correct Claude Code structure
+    assert "PreToolUse" in hooks_section
+    pre = hooks_section["PreToolUse"][0]
     assert pre["matcher"] == "Write|Edit"
     assert pre["hooks"][0]["type"] == "command"
     assert pre["hooks"][0]["command"].endswith(".claude/hooks/remind.sh")
 
-    prompt = hooks_section["hooks"]["UserPromptSubmit"][0]["hooks"][0]
+    prompt = hooks_section["UserPromptSubmit"][0]["hooks"][0]
     assert prompt["type"] == "prompt"
     assert prompt["prompt"].endswith(".claude/hooks/inject.sh")
 

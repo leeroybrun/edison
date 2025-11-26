@@ -834,6 +834,29 @@ Machine-readable JSON report (required):
 
 ## Pack Context
 
+### Pack-aware security rules
+
+- Load **pack-specific security rules** with `RulesRegistry` / `compose_rules(packs=[...])` so the validator sees both the core registry and any pack overlays.
+- Pack rule registries (added in **T-032**) live at `.edison/packs/<pack>/rules/registry.yml`; each pack can register additional security rules or extend core rules.
+- When a pack shares a rule id with core, **merge core + pack security rules**: the pack can append guidance, add contexts, and elevate `blocking` to `True` while keeping the core text intact.
+- Use pack guidance that is security-heavy (e.g., an auth-centric pack like **better-auth** adds MFA/session rules; a data pack like **prisma** adds query-hardening guidance) to review code paths touched by the task.
+
+### How to load pack-specific security rules
+
+```bash
+# Inside the validator process (Python)
+from edison.core.rules import RulesRegistry
+
+rules = RulesRegistry().compose(packs=["nextjs", "prisma"])  # include active packs
+security_rules = [r for r in rules["rules"].values() if "security" in r.get("category", "").lower()]
+```
+
+- Core registry path: `.edison/core/rules/registry.yml`
+- Pack registries: `.edison/packs/<pack>/rules/registry.yml`
+- Project overrides (highest priority): `.edison/rules/registry.yml`
+
+Validators MUST read from the composed registry output above (never hardcode rules) before evaluating security changes.
+
 {{PACK_CONTEXT}}
 
 **This section is populated by the composition engine with framework-specific security guidelines:**

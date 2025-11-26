@@ -1,0 +1,20 @@
+task_type: feature
+title: Feature Implementation
+applies_when:
+  - "A new capability, user story, or acceptance criteria set is requested and not yet present in the product."
+  - "Work introduces new flows, endpoints, data models, UI, or integration points rather than modifying existing behavior only."
+  - "Non-functional targets (performance, security, accessibility) accompany the feature scope."
+validation_criteria:
+  - "Acceptance criteria are mapped to concrete checks (tests or instrumentation) that fail before implementation and pass after."
+  - "New behavior is covered by automated tests across the touched layers (unit, integration, and, where relevant, contract/e2e)."
+  - "Configuration, permissions, and rollout/flags are defined in YAML or existing config—not embedded literals."
+  - "Security, performance, and accessibility considerations are addressed for the new surfaces."
+delegation_guidance:
+  - "Prefer multi-model implementation: UI flows to component-builder/claude, backend/api or schema changes to api-builder/codex."
+  - "If the feature spans UI + backend, split work so each sub-agent owns its layer; orchestrator coordinates contracts and shared types."
+  - "Ensure delegation notes include acceptance criteria, config keys, rollout/flag plan, and test expectations."
+definition_of_done:
+  - "Feature behavior is implemented and demonstrable with passing automated tests that cover acceptance criteria."
+  - "Rollout/flag strategy and configuration keys are documented in YAML with sane defaults."
+  - "Security/performance considerations are documented (threat model, rate limits, payload/DB impacts) and verified where feasible."
+  - "User-visible documentation or release notes are added/updated, including screenshots or API examples when applicable."

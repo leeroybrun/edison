@@ -36,7 +36,7 @@ def _ensure_guard_wrappers(tmp_root: Path, repo_root: Path) -> None:
     """Create minimal wrappers under `<tmp>/scripts/*` that real guards expect.
 
     tasks/ready invokes top‑level scripts under `scripts/` in the current
-    AGENTS_PROJECT_ROOT. Our test environment only has `.agents/scripts/*` in the
+    AGENTS_PROJECT_ROOT. Our test environment only calls edison CLI commands in the
     repository. These wrappers bridge the paths without mocking data.
     """
     scripts_dir = tmp_root / "scripts"
@@ -45,13 +45,13 @@ def _ensure_guard_wrappers(tmp_root: Path, repo_root: Path) -> None:
 
     impl_validate = scripts_dir / "implementation" / "validate"
     impl_validate.write_text(
-        f"#!/usr/bin/env bash\npython3 '{repo_root}/.agents/scripts/implementation/validate' \"$@\"\n"
+        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
     )
     impl_validate.chmod(0o755)
 
     ensure_followups = scripts_dir / "tasks" / "ensure-followups"
     ensure_followups.write_text(
-        f"#!/usr/bin/env bash\npython3 '{repo_root}/.agents/scripts/tasks/ensure-followups' \"$@\"\n"
+        "#!/usr/bin/env bash\nedison task ensure_followups \"$@\"\n"
     )
     ensure_followups.chmod(0o755)
 
@@ -447,7 +447,7 @@ def test_validator_bundle_approval(test_project_dir: TestProjectDir):
     validators_dir.mkdir(parents=True, exist_ok=True)
     validators_validate = validators_dir / "validate"
     validators_validate.write_text(
-        f"#!/usr/bin/env bash\npython3 '{test_project_dir.repo_root}/.agents/scripts/validators/validate' \"$@\"\n"
+        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
     )
     validators_validate.chmod(0o755)
 
@@ -537,7 +537,7 @@ def test_validator_bundle_one_blocking_fails(test_project_dir: TestProjectDir):
     validators_dir.mkdir(parents=True, exist_ok=True)
     validators_validate = validators_dir / "validate"
     validators_validate.write_text(
-        f"#!/usr/bin/env bash\npython3 '{test_project_dir.repo_root}/.agents/scripts/validators/validate' \"$@\"\n"
+        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
     )
     validators_validate.chmod(0o755)
 

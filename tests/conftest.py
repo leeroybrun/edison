@@ -340,7 +340,7 @@ def isolated_project_env(tmp_path, monkeypatch):
 
     # Provide a project-local tasks/ready wrapper so tests that invoke the CLI
     # via AGENTS_PROJECT_ROOT exercise the same implementation as the repo-level
-    # .agents/scripts/tasks/ready shim.
+    # edison tasks ready shim.
     ready_wrapper_src = REPO_ROOT / ".agents" / "scripts" / "tasks" / "ready"
     ready_wrapper_dst = agents_root / "scripts" / "tasks" / "ready"
     ready_wrapper_dst.parent.mkdir(parents=True, exist_ok=True)

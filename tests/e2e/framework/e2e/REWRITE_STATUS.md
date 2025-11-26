@@ -15,7 +15,7 @@ Test execution flow:
 1. ✅ Test creates isolated tmp environment with AGENTS_PROJECT_ROOT override
 2. ✅ Test executes REAL `tasks/new` CLI script via run_script()
 3. ✅ CLI respects AGENTS_PROJECT_ROOT and operates on test environment
-4. ✅ CLI imports lib modules successfully from copied `.agents/scripts/lib/`
+4. ✅ CLI imports lib modules successfully from the Edison package (no copied legacy libs)
 5. ✅ Test validates stdout output from CLI
 6. ✅ Test verifies file created by CLI exists
 7. ✅ Test checks file contents match REAL template format
@@ -61,25 +61,25 @@ REPO_ROOT = Path(os.environ.get("AGENTS_PROJECT_ROOT", Path(__file__).resolve().
 
 ### 2. Test Environment Setup (✅ Complete)
 
-**File:** `.agents/scripts/tests/e2e/helpers/test_env.py`
+**File:** `tests/e2e/framework/e2e/helpers/test_env.py`
 
 **Changes:**
-- ✅ Create `.agents/scripts/lib/` in test tmp_path
+- ✅ Expose Edison CLI library modules in test tmp_path
 - ✅ Copy real lib directory from repo (sessionlib, task)
-- ✅ Sessions created in `.project/sessions/` not `.agents/sessions/`
+- ✅ Sessions created in `.project/sessions/` not the legacy agents/sessions path
 - ✅ Deprecated mock data methods with warnings
 
 ### 3. Command Runner (✅ Complete)
 
-**File:** `.agents/scripts/tests/e2e/helpers/command_runner.py`
+**File:** `tests/e2e/framework/e2e/helpers/command_runner.py`
 
 **Changes:**
 - ✅ Set `AGENTS_PROJECT_ROOT=cwd` (not project_ROOT/DATA_ROOT)
-- ✅ run_script() executes real CLI scripts from `.agents/scripts/`
+- ✅ run_script() executes real Edison CLI commands
 
 ### 4. Golden-Path Examples (✅ Complete)
 
-**File:** `.agents/scripts/tests/e2e/scenarios/test_00_golden_path_examples.py`
+**File:** `tests/e2e/framework/e2e/scenarios/test_00_golden_path_examples.py`
 
 **Tests Created:**
 - ✅ test_create_task_via_cli_success - PASSES!
@@ -241,21 +241,21 @@ REPO_ROOT = Path(os.environ.get("AGENTS_PROJECT_ROOT", Path(__file__).resolve().
 
 ```bash
 # Run single passing test
-PYTHONPATH=${PROJECT_ROOT}/.agents/scripts/tests/e2e:$PYTHONPATH \
+PYTHONPATH=${PROJECT_ROOT}/tests/e2e/framework/e2e:$PYTHONPATH \
 python3 -m pytest \
-${PROJECT_ROOT}/.agents/scripts/tests/e2e/scenarios/test_00_golden_path_examples.py::TestTaskCreationRealCLI::test_create_task_via_cli_success \
+${PROJECT_ROOT}/tests/e2e/framework/e2e/scenarios/test_00_golden_path_examples.py::TestTaskCreationRealCLI::test_create_task_via_cli_success \
 -v
 
 # Run all golden-path tests
-PYTHONPATH=${PROJECT_ROOT}/.agents/scripts/tests/e2e:$PYTHONPATH \
+PYTHONPATH=${PROJECT_ROOT}/tests/e2e/framework/e2e:$PYTHONPATH \
 python3 -m pytest \
-${PROJECT_ROOT}/.agents/scripts/tests/e2e/scenarios/test_00_golden_path_examples.py \
+${PROJECT_ROOT}/tests/e2e/framework/e2e/scenarios/test_00_golden_path_examples.py \
 -v
 
 # Run with full output
-PYTHONPATH=${PROJECT_ROOT}/.agents/scripts/tests/e2e:$PYTHONPATH \
+PYTHONPATH=${PROJECT_ROOT}/tests/e2e/framework/e2e:$PYTHONPATH \
 python3 -m pytest \
-${PROJECT_ROOT}/.agents/scripts/tests/e2e/scenarios/test_00_golden_path_examples.py \
+${PROJECT_ROOT}/tests/e2e/framework/e2e/scenarios/test_00_golden_path_examples.py \
 -vv --tb=long
 ```
 

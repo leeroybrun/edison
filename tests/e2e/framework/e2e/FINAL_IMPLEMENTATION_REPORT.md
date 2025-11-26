@@ -117,14 +117,14 @@ edge_case             # Error handling
 
 ### Install Dependencies
 ```bash
-.agents/scripts/tests/e2e/install-deps.sh
+tests/e2e/framework/e2e/install-deps.sh
 # OR
 pip install pytest pytest-cov pytest-xdist pytest-timeout
 ```
 
 ### Run All Tests
 ```bash
-cd .agents/scripts/tests/e2e
+cd tests/e2e/framework/e2e
 pytest -v
 ```
 

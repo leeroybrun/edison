@@ -122,8 +122,12 @@ class HookComposer:
 
         return results
 
-    def generate_settings_json_hooks_section(self) -> Dict[str, Any]:
-        """Summarize hooks for inclusion in settings.json."""
+    def generate_settings_json_hooks_section(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Summarize hooks for inclusion in settings.json.
+
+        Returns the hooks grouped by lifecycle event type (e.g., PreToolUse, PostToolUse).
+        The caller should assign this directly to settings["hooks"].
+        """
         scripts = self.compose_hooks()
         definitions = self.load_definitions()
 
@@ -142,7 +146,7 @@ class HookComposer:
                 entry["hooks"].append({"type": "command", "command": path_str})
             grouped.setdefault(hook_def.type, []).append(entry)
 
-        return {"hooks": grouped}
+        return grouped
 
     # ----- Helpers -----
     def _hooks_cfg(self) -> Dict:

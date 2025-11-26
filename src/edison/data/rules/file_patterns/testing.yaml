@@ -1,0 +1,9 @@
+id: FILE_PATTERN.TESTING
+title: Testing files trigger testing validator
+patterns:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+validators:
+  - testing
+rationale: >-
+  Testing files must be validated to enforce TDD coverage, meaningful assertions, and regression protection.

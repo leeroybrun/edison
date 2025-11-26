@@ -14,3 +14,8 @@ Helper scripts (run from project root):
 CLI entrypoint:
 
 - `.edison/core/scripts/rules` – list/show/locate rules by ID, and `show-for-context <transition|task-type|guidance> <value>` to surface applicable rules before acting.
+
+Task-type rules:
+
+- `task_types/*.yaml` – YAML-backed task type definitions (applies when, validation criteria, delegation guidance, and definition of done) for orchestrator/sub-agent routing and QA checks.
+- `file_patterns/*.yaml` – File pattern trigger rules that map glob patterns to validator(s) with rationale for why the pattern matters.

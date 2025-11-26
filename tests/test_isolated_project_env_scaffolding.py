@@ -9,8 +9,8 @@ def test_isolated_project_env_has_complete_scaffolding(isolated_project_env: Pat
 
     Verifies:
     - Core .project templates exist (tasks + QA)
-    - Core .agents session template and workflow spec exist
-    - TDD wrapper for tasks/ready is present under .agents/scripts
+    - Core .edison session template and workflow spec exist
+    - TDD wrapper for tasks/ready is present under .edison/scripts
     """
     root = isolated_project_env
 
@@ -29,7 +29,7 @@ def test_isolated_project_env_has_complete_scaffolding(isolated_project_env: Pat
     assert "Status:" in qa_text, "QA template should include status field"
 
     # Session template + workflow
-    session_tpl = root / ".agents" / "sessions" / "TEMPLATE.json"
+    session_tpl = root / ".edison" / "sessions" / "TEMPLATE.json"
     assert session_tpl.is_file(), f"Missing session template: {session_tpl}"
     session_data = json.loads(session_tpl.read_text(encoding="utf-8"))
     assert isinstance(session_data, dict), "Session template must be a JSON object"
@@ -38,7 +38,7 @@ def test_isolated_project_env_has_complete_scaffolding(isolated_project_env: Pat
     for key in ("sessionId", "owner", "mode", "status", "createdAt", "lastActive"):
         assert key in meta, f"Session template meta missing required key: {key}"
 
-    workflow_path = root / ".agents" / "session-workflow.json"
+    workflow_path = root / ".edison" / "session-workflow.json"
     assert workflow_path.is_file(), f"Missing session workflow spec: {workflow_path}"
     workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
     session_cfg = (workflow.get("session") or {})
@@ -46,6 +46,5 @@ def test_isolated_project_env_has_complete_scaffolding(isolated_project_env: Pat
     assert {"active", "closing", "validated"} <= states, "Session workflow must include canonical states"
 
     # TDD wrapper for tasks/ready in project sandbox
-    ready_wrapper = root / ".agents" / "scripts" / "tasks" / "ready"
+    ready_wrapper = root / ".edison" / "scripts" / "tasks" / "ready"
     assert ready_wrapper.is_file(), f"Missing tasks/ready wrapper in isolated project env: {ready_wrapper}"
-

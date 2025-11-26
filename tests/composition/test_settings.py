@@ -152,3 +152,49 @@ def test_backup_existing_settings(tmp_path: Path) -> None:
     new_data = json.loads(written.read_text(encoding="utf-8"))
     assert new_data["env"]["EDISON_ACTIVE"] == "true"
     assert written == target
+
+
+def test_edison_internal_keys_stripped(tmp_path: Path) -> None:
+    """Edison internal control flags are stripped from final output.
+
+    Keys like 'enabled', 'generate', 'preserve_custom', 'backup_before', and
+    'platforms' are Edison's internal control flags used during generation but
+    should NOT appear in the final Claude Code settings.json.
+    """
+    # Core settings with internal control flags
+    core_with_internal = {
+        "settings": {
+            "claude": {
+                "enabled": True,  # Should be stripped
+                "generate": True,  # Should be stripped
+                "preserve_custom": True,  # Should be stripped
+                "backup_before": True,  # Should be stripped
+                "platforms": ["claude"],  # Should be stripped
+                "permissions": {
+                    "allow": ["Read(./**)"],
+                    "deny": [],
+                    "ask": [],
+                },
+                "env": {"EDISON_ACTIVE": "true"},
+                "enableAllProjectMcpServers": True,  # Valid key - should remain
+                "cleanupPeriodDays": 90,  # Valid key - should remain
+            }
+        }
+    }
+    _write_yaml(tmp_path / ".edison/core/config/settings.yaml", core_with_internal)
+
+    composer = SettingsComposer(config={}, repo_root=tmp_path)
+    settings = composer.compose_settings()
+
+    # Verify internal keys are stripped
+    assert "enabled" not in settings
+    assert "generate" not in settings
+    assert "preserve_custom" not in settings
+    assert "backup_before" not in settings
+    assert "platforms" not in settings
+
+    # Verify valid keys remain
+    assert settings["permissions"]["allow"] == ["Read(./**)"]
+    assert settings["env"]["EDISON_ACTIVE"] == "true"
+    assert settings["enableAllProjectMcpServers"] is True
+    assert settings["cleanupPeriodDays"] == 90

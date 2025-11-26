@@ -1,0 +1,10 @@
+architecture:
+  path: ".edison/guidelines/wilson-architecture.md"
+  required_headings:
+    - "Project Structure Overview"
+    - "Key Architectural Decisions"
+    - "Component Relationships"
+    - "Data Flow"
+    - "Conclusion"
+  min_lines: 60
+  conclusion_marker: "This document will be kept current as the Wilson architecture evolves."

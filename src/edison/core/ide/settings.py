@@ -5,12 +5,22 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from ..config import ConfigManager
 from ..paths.project import get_project_config_dir
 from ..composition.includes import _repo_root, _REPO_ROOT_OVERRIDE
 from edison.core.file_io.utils import write_json_safe
+
+# Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
+# These are used for Edison's generation/merge logic but are not valid Claude Code settings
+EDISON_INTERNAL_KEYS: Set[str] = {
+    "enabled",
+    "generate",
+    "preserve_custom",
+    "backup_before",
+    "platforms",
+}
 
 
 def merge_permissions(base: Dict, overlay: Dict) -> Dict:
@@ -127,9 +137,9 @@ class SettingsComposer:
             except Exception:
                 pass
 
-        # Strip control keys
-        settings.pop("generate", None)
-        settings.pop("backup_before", None)
+        # Strip Edison internal control keys that are not valid Claude Code settings
+        for key in EDISON_INTERNAL_KEYS:
+            settings.pop(key, None)
 
         # Flatten explicit data payload if provided
         if isinstance(settings.get("data"), dict):

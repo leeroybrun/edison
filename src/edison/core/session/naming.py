@@ -58,9 +58,6 @@ class SessionNamingError(Exception):
     """Raised when session naming fails."""
 
 
-
-
-
 def generate_session_id() -> str:
     """
     Generate a session ID by inspecting the process tree.
@@ -87,4 +84,3 @@ def generate_session_id() -> str:
 
 
 __all__ = ["SessionNamingError", "reset_session_naming_counter", "generate_session_id"]
-

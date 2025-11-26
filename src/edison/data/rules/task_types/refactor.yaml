@@ -1,0 +1,20 @@
+task_type: refactor
+title: Code Refactor
+applies_when:
+  - "Structure, readability, or maintainability needs improvement without changing externally observable behavior."
+  - "Technical debt reduction such as decomposition, naming clarity, dead code removal, or dependency pruning is required."
+  - "Performance or reliability improvements are achieved via equivalent outputs (no product change)."
+validation_criteria:
+  - "Before/after functional behavior is identical; golden tests or representative fixtures remain stable."
+  - "Test coverage is maintained or improved, especially around refactored seams and public interfaces."
+  - "Cyclomatic complexity, duplication, or dependency count decreases measurably where applicable."
+  - "Public contracts (APIs, schemas, component props) remain backward compatible unless explicitly in scope."
+delegation_guidance:
+  - "Prefer codex for mechanical refactors, large-scale renames, and type migrations; involve component-builder for UI-only refactors."
+  - "If the refactor spans layers, coordinate sequencing and contract checks between responsible sub-agents."
+  - "Document invariants and non-goals in the delegation brief to avoid accidental behavior shifts."
+definition_of_done:
+  - "Tests pass with unchanged expectations; no new TODOs or temporary shims remain."
+  - "Refactored modules are simpler to navigate (smaller functions, clearer boundaries, reduced duplication)."
+  - "Dependencies and configs are updated consistently (imports, DI wiring, typing, build/test tooling)."
+  - "Change log notes the refactor scope and confirms no functional changes."

@@ -25,25 +25,25 @@
   },
   "filesModified": [
     {
-      "path": ".agents/validators/config.json",
+      "path": "src/edison/data/config/validators.yaml",
       "linesChanged": 25,
       "changeType": "add",
       "description": "Added prisma entry to postTrainingPackages with triggers, validatorIds, and enforcement level"
     },
     {
-      "path": ".agents/scripts/tasks/ready",
+      "path": "src/edison/cli/task/ready.py",
       "linesChanged": 40,
       "changeType": "refactor",
       "description": "Refactored _file_matches_package_pattern() to load patterns from config instead of hardcoding"
     },
     {
-      "path": ".agents/scripts/tests/e2e/scenarios/test_05_git_based_detection.py",
+      "path": "tests/e2e/framework/e2e/scenarios/test_05_git_based_detection.py",
       "linesChanged": 75,
       "changeType": "add",
       "description": "Added 3 tests for prisma schema, migrations, and seeds detection"
     },
     {
-      "path": ".agents/scripts/tests/e2e/scenarios/test_07_context7_enforcement.py",
+      "path": "tests/e2e/framework/e2e/scenarios/test_07_context7_enforcement.py",
       "linesChanged": 129,
       "changeType": "add",
       "description": "Added 3 tests for prisma Context7 enforcement (schema, migrations, seeds)"
@@ -71,8 +71,8 @@
       }
     },
     "testFiles": [
-      ".agents/scripts/tests/e2e/scenarios/test_05_git_based_detection.py",
-      ".agents/scripts/tests/e2e/scenarios/test_07_context7_enforcement.py"
+      "tests/e2e/framework/e2e/scenarios/test_05_git_based_detection.py",
+      "tests/e2e/framework/e2e/scenarios/test_07_context7_enforcement.py"
     ]
   },
   "implementation": {

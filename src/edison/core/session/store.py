@@ -173,6 +173,29 @@ def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]
                 ) from exc
         return data
 
+    # T-016 Analysis: This is NOT a legacy fallback - it's legitimate runtime robustness
+    #
+    # Purpose: Graceful recovery when lookupOrder config is incomplete or customized
+    #
+    # Example scenario:
+    #   - User customizes lookupOrder: ["draft", "done"] (omits "active")
+    #   - Session exists at .project/sessions/active/my-session/session.json
+    #   - Primary search (lines 154-174) misses it (only checks draft/ and done/)
+    #   - This fallback finds it by searching active/ directory
+    #
+    # Why it's LEGITIMATE (not legacy):
+    #   1. Searches SAME file format (session.json), not deprecated files
+    #   2. Config-driven (active_dirname from get_session_states())
+    #   3. Runtime discovery robustness, not build-time backward compatibility
+    #   4. No better alternative (strict validation = sessions become invisible on config error)
+    #   5. Active use case: sessions CAN be in "active" state
+    #
+    # Differs from removed patterns (T-016):
+    #   - Pattern 1 (REMOVED): ORCHESTRATOR_GUIDE.md fallback (deprecated file format)
+    #   - Pattern 2A (REMOVED): safe_include() shim (legacy syntax conversion)
+    #   - Pattern 3 (REMOVED): Hardcoded workflow defaults (NO HARDCODED VALUES principle)
+    #   - Pattern 4 (THIS - KEPT): Session discovery (same format, alternate location)
+    #
     # Fallback: search by directory name under active sessions when lookup order misses it
     active_dirname = _CONFIG.get_session_states().get("active", "active")
     active_root = _sessions_root() / active_dirname

@@ -88,66 +88,10 @@ def test_docs_align_with_state_machine_terms():
 
 @pytest.mark.worktree
 @pytest.mark.requires_git
-@pytest.mark.skip(reason="Test references deprecated .agents/ structure - needs update for .edison/")
+@pytest.mark.skip(reason="Pending rewrite for edison CLI session sync-git coverage")
 def test_status_read_only_and_sync_git(tmp_path: Path):
-    """Status must not create worktrees; sync-git performs creation.
-
-    Steps:
-      1) Create isolated repo + project structure with worktrees.enabled=false
-      2) session new (no worktree created)
-      3) session status --json (must NOT create worktree)
-      4) session sync-git (creates worktree + updates session JSON)
-    """
-    repo_root = tmp_path
-    # Initialize a real git repo
-    def _git(*args: str) -> subprocess.CompletedProcess:
-        return run_with_timeout(["git", *args], cwd=repo_root, capture_output=True, text=True)
-
-    # Minimal .project layout
-    for p in [
-        ".project/tasks/todo", ".project/tasks/wip", ".project/tasks/done", ".project/tasks/validated", ".project/tasks/blocked",
-        ".project/qa/waiting", ".project/qa/todo", ".project/qa/wip", ".project/qa/done", ".project/qa/validated",
-        ".project/sessions/wip", ".project/sessions/done", ".project/sessions/validated",
-        ".agents/sessions", ".agents/validators", ".agents/scripts/lib", ".agents/scripts/tests/e2e/helpers",
-    ]:
-        (repo_root / p).mkdir(parents=True, exist_ok=True)
-
-    # Copy required scripts + libs from real repo
-    real = REPO_ROOT
-    for rel in [
-        ".agents/scripts/session",
-        ".agents/scripts/lib/task.py",
-        ".agents/scripts/lib/sessionlib.py",
-        ".agents/sessions/TEMPLATE.json",
-        ".agents/sessions/session.schema.json",
-        ".agents/session-workflow.json",
-    ]:
-        src = real / rel
-        dest = repo_root / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(src.read_bytes())
-
-    # Manifest override: disable auto worktrees so session new doesn't create one
-    manifest = json.loads((real / ".agents" / "manifest.json").read_text())
-    manifest.setdefault("worktrees", {})
-    manifest["worktrees"].update({"enabled": False})
-    (repo_root / ".agents" / "manifest.json").write_text(json.dumps(manifest, indent=2))
-
-    env = os.environ.copy()
-    env.update({"project_ROOT": str(repo_root)})
-
-    def _run(args: list[str]) -> subprocess.CompletedProcess:
-        # Always invoke via python3 to avoid exec permission issues in temp repos
-        return run_with_timeout(["python3", *args], cwd=repo_root, env=env, capture_output=True, text=True)
-
-    sid = "test-sync-git"
-    # 2) Create session in a non-git directory (so no worktree is auto-created)
-    r = _run([str(repo_root / ".agents" / "scripts" / "session"), "new", "--owner", "tester", "--session-id", sid, "--mode", "start"])
-    assert r.returncode == 0, r.stderr
-    sess_path = repo_root / ".project" / "sessions" / "wip" / f"{sid}.json"
-    data = json.loads(sess_path.read_text())
-    wt_hint_str = data.get("git", {}).get("worktreePath") or str(repo_root / ".worktrees" / sid)
-    wt_hint = Path(wt_hint_str)
+    """Placeholder for edison session sync-git behavior (legacy .agents flow removed)."""
+    pytest.skip("Rewrite with edison session CLI once sync-git behavior is defined")
     # Initialize git repo AFTER session creation so status runs inside a repo
     cp = _git("init", "-b", "main")
     assert cp.returncode == 0, cp.stderr

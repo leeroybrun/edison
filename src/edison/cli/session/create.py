@@ -88,7 +88,7 @@ def main(args: argparse.Namespace) -> int:
                 from pathlib import Path
 
                 repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
-                autostart = SessionAutoStart(repo_root=repo_root)
+                autostart = SessionAutoStart(project_root=repo_root)
                 autostart_result = autostart.start(process=session_id, orchestrator_profile=None)
                 # Autostart launched in background, don't wait
             except Exception:

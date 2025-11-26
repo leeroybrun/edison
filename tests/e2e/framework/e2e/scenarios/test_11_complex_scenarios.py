@@ -1,8 +1,8 @@
 """Test 11: Complex Integration Scenarios (REAL CLI)
 
-All tests in this file execute REAL CLI commands under `.agents/scripts/*`.
+All tests in this file execute REAL Edison CLI commands.
 Absolutely no mock data helpers are used. Workflows mirror
-`.agents/guidelines/SESSION_WORKFLOW.md`:
+`edison` session workflow guidelines:
 
 Coverage:
 - Multiple concurrent sessions
@@ -677,7 +677,7 @@ def test_bundle_validation_parent_only(test_project_dir: TestProjectDir):
     validators_dir.mkdir(parents=True, exist_ok=True)
     validators_validate = validators_dir / "validate"
     validators_validate.write_text(
-        f"#!/usr/bin/env bash\npython3 '{test_project_dir.repo_root}/.agents/scripts/validators/validate' \"$@\"\n"
+        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
     )
     validators_validate.chmod(0o755)
 

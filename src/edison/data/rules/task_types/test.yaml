@@ -1,0 +1,20 @@
+task_type: test
+title: Test Authoring
+applies_when:
+  - "Work is limited to creating, improving, or stabilizing automated tests for existing functionality."
+  - "Coverage gaps exist in critical paths, regressions, or newly added behavior."
+  - "Flaky or brittle tests need hardening without altering product logic."
+validation_criteria:
+  - "New tests fail when the targeted defect or gap is present and pass after fixes."
+  - "Tests are deterministic, isolated, and avoid external dependencies except sanctioned fixtures."
+  - "Coverage improves on high-risk areas (boundary conditions, error paths, security/permissions)."
+  - "CI execution time remains within budget; heavy suites are batched or parametrized appropriately."
+delegation_guidance:
+  - "Delegate to test-engineer for suite design, harness setup, and reliability work; prefer codex for precise assertions and type-heavy fixtures."
+  - "Provide production-like inputs, fixtures, and acceptance criteria to the delegate; avoid mocks unless existing approved fixtures require them."
+  - "Coordinate with owning sub-agent (api-builder/component-builder) when tests touch their contracts."
+definition_of_done:
+  - "Tests are added to the appropriate suite (unit/integration/e2e) and run green locally and in CI."
+  - "Flakiness mitigations (retries, timeouts, seeds) are justified and documented if used."
+  - "Test data and fixtures live in shared, reusable helpers with no hardcoded secrets or ids."
+  - "Documentation updated (README or contributing guide) describing how to run the new/changed tests."

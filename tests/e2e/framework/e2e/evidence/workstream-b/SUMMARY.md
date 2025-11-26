@@ -6,7 +6,7 @@ Replace stubbed E2E tests with real CLI validation and add comprehensive test co
 ## Tasks Completed
 
 ### P0 Task: Replace Stubbed Bundle Validation Test ✅
-**File:** `.agents/scripts/tests/e2e/scenarios/test_09_evidence_system.py` (lines 376-460)
+**File:** `tests/e2e/framework/e2e/scenarios/test_09_evidence_system.py` (lines 376-460)
 
 **Before:**
 - Test created a FAKE validators/validate wrapper
@@ -15,14 +15,14 @@ Replace stubbed E2E tests with real CLI validation and add comprehensive test co
 
 **After:**
 - Test creates schema-compliant validator report JSON files
-- Calls REAL `.agents/scripts/validators/validate` CLI
+- Calls REAL `edison validate` CLI
 - Verifies bundle-approved.json structure from actual CLI output
 - Sets proper AGENTS_PROJECT_ROOT environment variable
 
 **Result:** ✅ PASSED - Real validation tested
 
 ### P1 Task: Add Consensus Test Cases ✅
-**File:** `.agents/scripts/tests/e2e/scenarios/test_09_evidence_system.py` (lines 463-542)
+**File:** `tests/e2e/framework/e2e/scenarios/test_09_evidence_system.py` (lines 463-542)
 
 **New Test:** `test_validator_bundle_one_blocking_fails`
 - Tests real CLI with one blocking validator rejecting
@@ -33,7 +33,7 @@ Replace stubbed E2E tests with real CLI validation and add comprehensive test co
 **Result:** ✅ PASSED - Consensus logic verified
 
 ### P1 Task: Add Dependency Blocking Test ✅
-**File:** `.agents/scripts/tests/e2e/scenarios/test_11_complex_scenarios.py` (lines 489-537)
+**File:** `tests/e2e/framework/e2e/scenarios/test_11_complex_scenarios.py` (lines 489-537)
 
 **New Test:** `test_parent_blocked_by_child_in_wip`
 - Tests RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN enforcement
@@ -44,7 +44,7 @@ Replace stubbed E2E tests with real CLI validation and add comprehensive test co
 **Result:** ✅ PASSED - Dependency blocking verified
 
 ### P1 Task: Add Bundle-on-Parent-Only Test ✅
-**File:** `.agents/scripts/tests/e2e/scenarios/test_11_complex_scenarios.py` (lines 540-676)
+**File:** `tests/e2e/framework/e2e/scenarios/test_11_complex_scenarios.py` (lines 540-676)
 
 **New Test:** `test_bundle_validation_parent_only`
 - Tests bundle validation triggered by parent + session
@@ -78,11 +78,11 @@ Total: 4 passed in 2.80s
 
 ## Files Modified
 
-1. `.agents/scripts/tests/e2e/scenarios/test_09_evidence_system.py`
+1. `tests/e2e/framework/e2e/scenarios/test_09_evidence_system.py`
    - Lines 376-460: Replaced stubbed test with real validation
    - Lines 463-542: Added consensus test
 
-2. `.agents/scripts/tests/e2e/scenarios/test_11_complex_scenarios.py`
+2. `tests/e2e/framework/e2e/scenarios/test_11_complex_scenarios.py`
    - Lines 489-537: Added dependency blocking test
    - Lines 540-676: Added bundle-on-parent test
 
@@ -90,7 +90,7 @@ Total: 4 passed in 2.80s
 
 ## Evidence Files Generated
 
-All required evidence files created in `.agents/scripts/tests/e2e/evidence/workstream-b/`:
+All required evidence files created in `tests/e2e/framework/e2e/evidence/workstream-b/`:
 
 1. ✅ `cmd-1-test-run.log` - Test execution output
 2. ✅ `cmd-2-implementation.log` - Implementation details
