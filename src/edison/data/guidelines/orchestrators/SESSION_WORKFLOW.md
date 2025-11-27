@@ -153,7 +153,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `.edison/delegation/config.json`:**
+**Delegate according to `.edison/config/delegation.yaml`:**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
@@ -233,7 +233,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 > **💡 CRITICAL WORKFLOW AID:** After every action (claim, delegate, status change), run `edison session next <session-id>` to see the next steps and stay "on rails." This enhanced orchestration helper:
 > - Shows ALL applicable rules BEFORE actions (proactive, not just at enforcement)
 > - Displays complete validator roster with model bindings (prevents forgetting validators or using wrong models)
-> - Shows delegation suggestions with detailed reasoning from `.edison/delegation/config.json`
+> - Shows delegation suggestions with detailed reasoning from `.edison/config/delegation.yaml`
 > - Lists related tasks (parent/child/sibling) for context
 > - Provides decision points (concurrency cap, wave batching, optional validators)
 > - Returns precise commands with rule references so you never miss a step
@@ -540,5 +540,5 @@ scripts/track stale
 - `.edison/guidelines/VALIDATION.md` – validator gate specifics
 - `.edison/guidelines/TDD.md` – RED/GREEN/REFACTOR protocol
 - `.edison/guidelines/HONEST_STATUS.md` – directory semantics + reporting rules
-- `.edison/delegation/config.json` – sub-agent decision tables
+- `.edison/config/delegation.yaml` – sub-agent decision tables
 - `.edison/validators/config.json` – validator triggers + block/allow list

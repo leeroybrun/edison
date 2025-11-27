@@ -16,7 +16,7 @@ class DelegationSchemaAlignmentTests(unittest.TestCase):
         # There must be exactly one delegation-config.schema.json and it must be the canonical path
         matches = list(REPO_ROOT.rglob("delegation-config.schema.json"))
         self.assertGreaterEqual(len(matches), 1, "No delegation-config.schema.json found")
-        canonical = REPO_ROOT / ".edison" / "core" / "schemas" / "delegation-config.schema.json"
+        canonical = REPO_ROOT / ".edison" / "core" / "schemas" / "config" / "delegation-config.schema.json"
         # Expect exactly one and it is canonical
         self.assertEqual(
             [p.relative_to(REPO_ROOT).as_posix() for p in matches],
@@ -26,7 +26,7 @@ class DelegationSchemaAlignmentTests(unittest.TestCase):
 
     def test_schema_enum_excludes_none(self) -> None:
         # Load canonical schema and assert that no enum contains 'none'
-        schema_path = REPO_ROOT / ".edison" / "core" / "schemas" / "delegation-config.schema.json"
+        schema_path = REPO_ROOT / ".edison" / "core" / "schemas" / "config" / "delegation-config.schema.json"
         schema = json.loads(schema_path.read_text())
 
         def walk(o: object) -> list[list[str]]:
@@ -51,8 +51,8 @@ class DelegationSchemaAlignmentTests(unittest.TestCase):
         cfg = json.loads(cfg_path.read_text())
         self.assertIn("$schema", cfg, "config.json missing $schema")
         self.assertTrue(
-            str(cfg["$schema"]).endswith("/schemas/delegation-config.schema.json")
-            or str(cfg["$schema"]).endswith("../schemas/delegation-config.schema.json"),
+            str(cfg["$schema"]).endswith("/schemas/config/delegation-config.schema.json")
+            or str(cfg["$schema"]).endswith("../schemas/config/delegation-config.schema.json"),
             f"$schema should point to canonical schema, got: {cfg.get('$schema')}",
         )
 

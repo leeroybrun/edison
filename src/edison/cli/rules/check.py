@@ -53,28 +53,36 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Check rules for context - delegates to RulesEngine."""
     from edison.core.rules import RulesEngine
+    from edison.core.config import ConfigManager
     from edison.core.utils.paths import resolve_project_root
 
     try:
         repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
-        engine = RulesEngine(repo_root)
+        cfg_mgr = ConfigManager(repo_root)
+        config = cfg_mgr.load_config(validate=False)
+        engine = RulesEngine(config)
 
         # Determine what to check
         if not args.context and not args.transition:
             print("Error: Must specify --context or --transition", file=sys.stderr)
             return 1
 
-        # Build check parameters
-        check_params = {}
+        # Get applicable rules based on context
+        applicable_rules = []
         if args.context:
-            check_params["contexts"] = args.context
-        if args.transition:
-            check_params["transition"] = args.transition
-        if args.task_id:
-            check_params["task_id"] = args.task_id
-
-        # Get applicable rules
-        applicable_rules = engine.check_rules(**check_params)
+            for ctx in args.context:
+                rules = engine.get_rules_for_context(ctx)
+                for rule in rules:
+                    rule_dict = {
+                        "id": rule.id,
+                        "description": rule.description,
+                        "blocking": rule.blocking,
+                        "enforced": rule.enforced,
+                        "contexts": (rule.config or {}).get("contexts", []),
+                        "priority": (rule.config or {}).get("priority", "normal"),
+                    }
+                    if rule_dict not in applicable_rules:
+                        applicable_rules.append(rule_dict)
 
         # Sort by priority
         priority_order = {"critical": 0, "high": 1, "normal": 2, "low": 3}

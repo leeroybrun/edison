@@ -2,33 +2,58 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Mapping, Optional
 
+from .registry import GuardRegistryBase, DomainRegistry
 
-class GuardRegistry:
-    """Registry of guard functions keyed by name."""
+
+class GuardRegistry(GuardRegistryBase):
+    """Registry of guard functions keyed by name.
+    
+    Extends GuardRegistryBase to maintain backward compatibility while
+    supporting domain-prefixed lookups for multi-entity state machines.
+    """
 
     def __init__(self, *, preload_defaults: bool = False) -> None:
-        self._guards: Dict[str, Callable[[Mapping[str, Any]], bool]] = {}
-        if preload_defaults:
-            self.register_defaults()
+        # Initialize with parent's init (which handles preload_defaults)
+        super().__init__(preload_defaults=preload_defaults)
 
-    def register(self, name: str, guard_fn: Callable[[Mapping[str, Any]], bool]) -> None:
-        if not callable(guard_fn):
-            raise TypeError("guard_fn must be callable")
-        self._guards[name] = guard_fn
+    def register(
+        self, 
+        name: str, 
+        guard_fn: Callable[[Mapping[str, Any]], bool],
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> None:
+        """Register a guard function.
+        
+        Args:
+            name: Guard name
+            guard_fn: Guard function that returns bool
+            domain: Domain identifier (default: shared)
+        """
+        super().register(name, guard_fn, domain)
 
     def register_defaults(self) -> None:
+        """Register default guard functions."""
         for name, fn in _DEFAULT_GUARDS.items():
-            self._guards.setdefault(name, fn)
+            if not self.has(name):
+                self.register(name, fn)
 
-    def reset(self) -> None:
-        self._guards.clear()
-        self.register_defaults()
-
-    def check(self, name: str, context: Optional[Mapping[str, Any]] = None) -> bool:
-        if name not in self._guards:
-            raise ValueError(f"Unknown guard: {name}")
-        ctx = context or {}
-        return bool(self._guards[name](ctx))
+    def check(
+        self, 
+        name: str, 
+        context: Optional[Mapping[str, Any]] = None,
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> bool:
+        """Check a guard condition.
+        
+        Args:
+            name: Guard name
+            context: Context dict for guard evaluation
+            domain: Domain for guard lookup (default: shared)
+            
+        Returns:
+            Guard result (bool)
+        """
+        return super().check(name, context, domain)
 
 
 # Built-in guards used by default configuration. They are intentionally light-

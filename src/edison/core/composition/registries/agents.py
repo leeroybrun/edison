@@ -14,16 +14,20 @@ Agent-specific responsibilities:
 - Roster generation
 
 Uses the core composition system with HTML comment markers for overlays.
+
+Architecture:
+    BaseEntityManager
+    └── BaseRegistry
+        └── AgentRegistry (this module)
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from edison.core.entity import BaseRegistry
 from edison.core.utils.io import parse_yaml_string
 from edison.core.utils.text import dry_duplicate_report, render_conditional_includes
-from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_project_config_dir
 from ..path_utils import resolve_project_dir_placeholders
 
 # Import from core composition system - ALL discovery and composition
@@ -84,30 +88,66 @@ class PackOverlay:
         return cls(pack=pack_name, path=source.path)
 
 
-class AgentRegistry:
+class AgentRegistry(BaseRegistry[CoreAgent]):
     """Discover and compose Edison agents using the core composition system.
     
+    Extends BaseRegistry with agent-specific functionality:
+    - Constitution header injection
+    - Conditional includes processing
+    - Front matter metadata extraction
+    
     ALL discovery is delegated to LayeredComposer.
-    Agent-specific logic: constitution headers, conditional includes, metadata.
     """
+    
+    entity_type: str = "agent"
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
-        self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
-        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+        super().__init__(repo_root)
+        # Alias for compatibility
+        self.repo_root = self.project_root
         
         # Use unified composer for ALL discovery
-        self._composer = LayeredComposer(repo_root=self.repo_root, content_type="agents")
+        self._composer = LayeredComposer(repo_root=self.project_root, content_type="agents")
+    
+    # ------- BaseRegistry Interface Implementation -------
+    
+    def discover_core(self) -> Dict[str, CoreAgent]:
+        """Discover core agents via LayeredComposer."""
+        sources = self._composer.discover_core()
+        return {name: CoreAgent.from_layer_source(src) for name, src in sources.items()}
+    
+    def discover_packs(self, packs: List[str]) -> Dict[str, CoreAgent]:
+        """Discover agents from packs (both new and overlays)."""
+        result: Dict[str, CoreAgent] = {}
+        existing = set(self._composer.discover_core().keys())
+        
+        for pack in packs:
+            # Get pack-new agents
+            pack_new = self._composer.discover_pack_new(pack, existing)
+            for name, source in pack_new.items():
+                result[name] = CoreAgent.from_layer_source(source)
+            existing.update(pack_new.keys())
+        
+        return result
+    
+    def discover_project(self) -> Dict[str, CoreAgent]:
+        """Discover project-level agents."""
+        existing = set(self._composer.discover_core().keys())
+        project_new = self._composer.discover_project_new(existing)
+        return {name: CoreAgent.from_layer_source(src) for name, src in project_new.items()}
 
     # ------- Discovery (delegated to unified system) ------- 
     
     def discover_core_agents(self) -> Dict[str, CoreAgent]:
-        """Discover core agents via unified LayeredComposer."""
-        sources = self._composer.discover_core()
-        return {name: CoreAgent.from_layer_source(src) for name, src in sources.items()}
+        """Discover core agents via unified LayeredComposer.
+        
+        Alias for discover_core() for backward compatibility.
+        """
+        return self.discover_core()
 
     def resolve_core_agent(self, name: str) -> CoreAgent:
         """Resolve a specific core agent."""
-        agents = self.discover_core_agents()
+        agents = self.discover_core()
         if name not in agents:
             raise AgentNotFoundError(
                 f"Core agent '{name}' not found. Available: {sorted(agents.keys())}"
@@ -118,8 +158,20 @@ class AgentRegistry:
         """Check if an agent exists in the registry."""
         return name in self._composer.discover_core()
 
-    def get(self, name: str) -> Dict:
-        """Get agent metadata by name."""
+    def get(self, name: str) -> Optional[CoreAgent]:
+        """Get an agent by name.
+        
+        Returns:
+            CoreAgent if found, None otherwise
+        """
+        agents = self.discover_core()
+        return agents.get(name)
+    
+    def get_metadata(self, name: str) -> Dict:
+        """Get agent metadata dict by name.
+        
+        For backward compatibility with code expecting dict return.
+        """
         agent = self.resolve_core_agent(name)
         return {
             "name": agent.name,
@@ -301,10 +353,20 @@ This constitution contains:
         data = parse_yaml_string(parts[1], default={})
         return data if isinstance(data, dict) else {}
 
-    def get_all(self) -> List[Dict[str, Any]]:
-        """Return metadata for all core agents."""
+    def get_all(self) -> List[CoreAgent]:
+        """Return all core agents.
+        
+        Implements BaseRegistry interface.
+        """
+        return list(self.discover_core().values())
+    
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """Return metadata for all core agents.
+        
+        For backward compatibility with code expecting list of metadata dicts.
+        """
         agents: List[Dict[str, Any]] = []
-        for core_agent in self.discover_core_agents().values():
+        for core_agent in self.discover_core().values():
             meta = self._read_front_matter(core_agent.core_path)
             agents.append(
                 {
@@ -333,3 +395,6 @@ __all__ = [
     "PackOverlay",
     "compose_agent",
 ]
+
+
+

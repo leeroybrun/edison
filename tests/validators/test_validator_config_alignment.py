@@ -81,7 +81,7 @@ validation:
 
     def test_schema_tracking_requires_completedAt(self) -> None:
         # Assert canonical schema declares tracking.completedAt as required
-        schema_path = get_data_path("schemas", "validator-report.schema.json")
+        schema_path = get_data_path("schemas", "reports/validator-report.schema.json")
         schema = json.loads(schema_path.read_text())
         tracking_props = schema.get("properties", {}).get("tracking", {})
         required = set(tracking_props.get("required", []))

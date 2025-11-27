@@ -161,3 +161,6 @@ class SettingsComposer(IDEComposerBase):
 
 
 __all__ = ["SettingsComposer", "merge_permissions"]
+
+
+

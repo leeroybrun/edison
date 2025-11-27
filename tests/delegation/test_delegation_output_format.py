@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 class DelegationOutputFormatTests(unittest.TestCase):
     def setUp(self) -> None:
         self.doc_path = REPO_ROOT / ".edison" / "core" / "delegation" / "OUTPUT_FORMAT.md"
-        self.schema_path = REPO_ROOT / ".edison" / "core" / "schemas" / "delegation-report.schema.json"
+        self.schema_path = REPO_ROOT / ".edison" / "core" / "schemas" / "reports" / "delegation-report.schema.json"
         self.impl_report_path = REPO_ROOT / ".agents" / "implementation" / "OUTPUT_FORMAT.md"
 
     def test_doc_header_and_schema_reference(self) -> None:
@@ -27,7 +27,7 @@ class DelegationOutputFormatTests(unittest.TestCase):
         # Must be about Delegation, not Implementation
         self.assertRegex(text.splitlines()[0].strip(), r"^#\s+Delegation Report Output Format")
         # Must reference the correct schema path
-        self.assertIn(".edison/core/schemas/delegation-report.schema.json", text)
+        self.assertIn(".edison/core/schemas/reports/delegation-report.schema.json", text)
 
     def test_schema_fields_match_implementation_delegations(self) -> None:
         """Schema must align with `scripts/implementation/report --add-delegation` format.

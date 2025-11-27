@@ -24,10 +24,6 @@ class ValidationResult:
     normalized: Optional[PackMetadata] = None
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml(path, default={})
-
-
 def validate_pack(
     pack_path: Path, schema_path: Optional[Path] = None
 ) -> ValidationResult:
@@ -37,10 +33,10 @@ def validate_pack(
             False, [ValidationIssue("pack.yml", "missing", "pack.yml not found")]
         )
 
-    data = _load_yaml(pack_path / "pack.yml")
+    data = read_yaml(pack_path / "pack.yml", default={})
     # 1) JSON Schema validation
     if schema_path is None:
-        schema_path = get_data_path("schemas") / "pack.schema.json"
+        schema_path = get_data_path("schemas") / "config" / "pack.schema.json"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
         from edison.core.utils.io import read_json as _io_read_json

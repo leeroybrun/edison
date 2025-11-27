@@ -5,8 +5,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
-from edison.data import read_yaml
-from edison.core.utils.io import read_yaml
+from edison.core.utils.io import read_yaml as read_yaml_file
+from edison.data import read_yaml as read_bundled_yaml
 from edison.core.utils.paths import get_project_config_dir
 from ..includes import _repo_root
 
@@ -22,6 +22,9 @@ class PackManifest:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
+    """Load YAML from a file path, returning empty dict if file doesn't exist."""
+    if not path.exists():
+        return {}
     return read_yaml(path, default={})
 
 
@@ -42,7 +45,7 @@ def _pack_dir(repo_root: Path, name: str) -> Path:
 def _pack_defaults_catalog() -> Dict[str, Dict[str, Any]]:
     """Load pack defaults from the canonical config defaults.yaml."""
     try:
-        cfg = read_yaml("config", "defaults.yaml") or {}
+        cfg = read_bundled_yaml("config", "defaults.yaml") or {}
     except Exception:
         return {}
     packs_cfg = cfg.get("packs") or {}
@@ -70,9 +73,9 @@ def load_pack(repo_root: Path, name: str) -> PackManifest:
             "Use src/edison/data/config/defaults.yaml as the canonical source."
         )
     if not defaults and defaults_path.exists():
-        defaults = _load_yaml(defaults_path)
+        defaults = read_yaml_file(defaults_path, default={})
 
-    deps_yaml = _load_yaml(pdir / "pack-dependencies.yaml")
+    deps_yaml = read_yaml_file(pdir / "pack-dependencies.yaml", default={})
     deps = deps_yaml.get("dependencies") or {}
     dev_deps = deps_yaml.get("devDependencies") or {}
     req = deps_yaml.get("requiredPacks") or []

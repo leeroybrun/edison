@@ -2,33 +2,57 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Mapping, MutableMapping, Optional
 
+from .registry import ActionRegistryBase, DomainRegistry
 
-class ActionRegistry:
-    """Registry of post-transition actions."""
+
+class ActionRegistry(ActionRegistryBase):
+    """Registry of post-transition actions.
+    
+    Extends ActionRegistryBase to maintain backward compatibility while
+    supporting domain-prefixed lookups for multi-entity state machines.
+    """
 
     def __init__(self, *, preload_defaults: bool = False) -> None:
-        self._actions: Dict[str, Callable[[MutableMapping[str, Any]], Any]] = {}
-        if preload_defaults:
-            self.register_defaults()
+        super().__init__(preload_defaults=preload_defaults)
 
-    def register(self, name: str, action_fn: Callable[[MutableMapping[str, Any]], Any]) -> None:
-        if not callable(action_fn):
-            raise TypeError("action_fn must be callable")
-        self._actions[name] = action_fn
+    def register(
+        self, 
+        name: str, 
+        action_fn: Callable[[MutableMapping[str, Any]], Any],
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> None:
+        """Register an action function.
+        
+        Args:
+            name: Action name
+            action_fn: Action function
+            domain: Domain identifier (default: shared)
+        """
+        super().register(name, action_fn, domain)
 
     def register_defaults(self) -> None:
+        """Register default action functions."""
         for name, fn in _DEFAULT_ACTIONS.items():
-            self._actions.setdefault(name, fn)
+            if not self.has(name):
+                self.register(name, fn)
 
-    def reset(self) -> None:
-        self._actions.clear()
-        self.register_defaults()
-
-    def execute(self, name: str, context: Optional[MutableMapping[str, Any]] = None) -> Any:
-        if name not in self._actions:
-            raise ValueError(f"Unknown action: {name}")
-        ctx = context or {}
-        return self._actions[name](ctx)
+    def execute(
+        self, 
+        name: str, 
+        context: Optional[MutableMapping[str, Any]] = None,
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> Any:
+        """Execute an action.
+        
+        Args:
+            name: Action name
+            context: Context dict for action execution
+            domain: Domain for action lookup (default: shared)
+            
+        Returns:
+            Action result
+        """
+        return super().execute(name, context, domain)
 
 
 def _record_action(context: MutableMapping[str, Any], label: str) -> None:

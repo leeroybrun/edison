@@ -2,6 +2,7 @@
 
 import os as os_module
 import subprocess as subprocess_module
+from pathlib import Path
 
 from .config import TaskConfig
 from .io import (
@@ -22,9 +23,27 @@ from .io import (
     next_child_id,
     utc_timestamp,
     claim_task_with_lock,
+    _task_filename,
 )
-from .store import tasks_root, qa_root, task_filename
 from .locking import file_lock, is_locked, safe_move_file, transactional_move
+
+
+# Public wrappers for backward compatibility (previously in store.py shim)
+def tasks_root() -> Path:
+    """Get the tasks root directory."""
+    config = TaskConfig()
+    return config.tasks_root()
+
+
+def qa_root() -> Path:
+    """Get the QA root directory."""
+    config = TaskConfig()
+    return config.qa_root()
+
+
+def task_filename(task_id: str) -> str:
+    """Get filename for a task ID."""
+    return _task_filename(task_id)
 from .finder import RecordMeta, RecordType, find_record, list_records, detect_record_type, normalize_record_id, infer_status_from_path
 from .record_metadata import (
     TYPE_INFO,

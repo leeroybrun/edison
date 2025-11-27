@@ -62,21 +62,28 @@ def _json_writer(data: Any, cfg: Dict[str, Any]) -> Callable[[Any], None]:
     return _writer
 
 
-def read_json(file_path: Path | str) -> Any:
-    """Read JSON with shared lock; raises FileNotFoundError on missing files.
+_MISSING = object()  # Sentinel for unset default
+
+
+def read_json(file_path: Path | str, *, default: Any = _MISSING) -> Any:
+    """Read JSON with shared lock.
 
     Args:
         file_path: Path to JSON file
+        default: Value to return if file doesn't exist (optional).
+                 If not provided, FileNotFoundError is raised.
 
     Returns:
-        Parsed JSON data
+        Parsed JSON data, or ``default`` if file doesn't exist
 
     Raises:
-        FileNotFoundError: If the file does not exist
+        FileNotFoundError: If the file does not exist and no default is provided
     """
     path = Path(file_path)
     cfg = _cfg()
     if not path.exists():
+        if default is not _MISSING:
+            return default
         raise FileNotFoundError(f"JSON file not found: {path}")
 
     with open(path, "r", encoding=cfg["encoding"]) as f:
@@ -164,3 +171,6 @@ __all__ = [
     "write_json_atomic",
     "update_json",
 ]
+
+
+

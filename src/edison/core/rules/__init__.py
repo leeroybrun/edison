@@ -3,41 +3,38 @@ Edison Rules Engine and Rules Composition.
 
 This module contains two related systems:
 
-1. RulesRegistry / compose_rules:
+1. RulesRegistry / compose_rules (in composition.registries.rules):
    - Load rule metadata from YAML registries (core + packs)
    - Resolve guideline anchors (<!-- ANCHOR: name --> ... <!-- END ANCHOR: name -->)
    - Apply include resolution via the composition engine
    - Produce a composed, machine-readable rules view for CLIs and tooling
 
-2. RulesEngine:
+2. RulesEngine (in this module):
    - Enforce per-project rules at task state transitions based on project config overlays
 
-This package is split into focused modules:
-  - errors: Exception classes (AnchorNotFoundError, RulesCompositionError, RuleViolationError)
-  - models: Data models (Rule, RuleViolation)
-  - helpers: Utility functions (extract_anchor_content)
-  - registry: RulesRegistry class for loading and composing rules
-  - engine: RulesEngine class for enforcing rules at runtime
+Composition components have been moved to composition.registries for architectural
+coherence. This module re-exports them for convenience.
 """
 from __future__ import annotations
 
-# Import all public symbols from submodules
-from .errors import (
-    AnchorNotFoundError,
-    RulesCompositionError,
-    RuleViolationError,
-)
-from .models import (
-    Rule,
-    RuleViolation,
-)
-from .registry import (
+# Runtime enforcement (stays in this module)
+from .errors import RuleViolationError
+from .models import Rule, RuleViolation
+from .engine import RulesEngine
+
+# Composition components (re-exported from new locations)
+from edison.core.composition.registries.rules import (
     RulesRegistry,
     compose_rules,
+    extract_anchor_content,
+    load_bundled_rules,
+    get_rules_for_role,
+    filter_rules,
 )
-from .file_patterns import FilePatternRegistry
-from .engine import (
-    RulesEngine,
+from edison.core.composition.registries.file_patterns import FilePatternRegistry
+from edison.core.composition.core.errors import (
+    AnchorNotFoundError,
+    RulesCompositionError,
 )
 
 # Re-export all public symbols
@@ -49,10 +46,14 @@ __all__ = [
     # Models
     "Rule",
     "RuleViolation",
-    # Registry
+    # Registry (composition)
     "RulesRegistry",
     "compose_rules",
+    "extract_anchor_content",
+    "load_bundled_rules",
+    "get_rules_for_role",
+    "filter_rules",
     "FilePatternRegistry",
-    # Engine
+    # Engine (runtime)
     "RulesEngine",
 ]

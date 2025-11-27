@@ -21,10 +21,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 class TestSchemaLoading:
     """Test schema loading functionality."""
 
-    def _install_test_schema(self, root: Path, schema_name: str) -> Path:
+    def _install_test_schema(self, root: Path, schema_name: str, subfolder: str = "") -> Path:
         """Copy a schema from src/edison/data/schemas to test .edison directory."""
         schema_src_dir = REPO_ROOT / "src" / "edison" / "data" / "schemas"
+        if subfolder:
+            schema_src_dir = schema_src_dir / subfolder
         schema_dst_dir = root / ".edison" / "core" / "schemas"
+        if subfolder:
+            schema_dst_dir = schema_dst_dir / subfolder
         schema_dst_dir.mkdir(parents=True, exist_ok=True)
 
         src = schema_src_dir / schema_name
@@ -36,9 +40,9 @@ class TestSchemaLoading:
     def test_load_schema_success(self, isolated_project_env: Path) -> None:
         """load_schema returns parsed schema dictionary for valid schema."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
-        schema = load_schema("claude-agent.schema.json", repo_root=root)
+        schema = load_schema("adapters/claude-agent.schema.json", repo_root=root)
 
         assert isinstance(schema, dict)
         assert "$schema" in schema or "type" in schema
@@ -47,9 +51,9 @@ class TestSchemaLoading:
     def test_load_schema_without_extension(self, isolated_project_env: Path) -> None:
         """load_schema accepts schema name without .json extension."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
-        schema = load_schema("claude-agent.schema", repo_root=root)
+        schema = load_schema("adapters/claude-agent.schema", repo_root=root)
 
         assert isinstance(schema, dict)
         assert schema  # Not empty
@@ -79,10 +83,14 @@ class TestSchemaLoading:
 class TestPayloadValidation:
     """Test payload validation functionality."""
 
-    def _install_test_schema(self, root: Path, schema_name: str) -> Path:
+    def _install_test_schema(self, root: Path, schema_name: str, subfolder: str = "") -> Path:
         """Copy a schema from src/edison/data/schemas to test .edison directory."""
         schema_src_dir = REPO_ROOT / "src" / "edison" / "data" / "schemas"
+        if subfolder:
+            schema_src_dir = schema_src_dir / subfolder
         schema_dst_dir = root / ".edison" / "core" / "schemas"
+        if subfolder:
+            schema_dst_dir = schema_dst_dir / subfolder
         schema_dst_dir.mkdir(parents=True, exist_ok=True)
 
         src = schema_src_dir / schema_name
@@ -94,7 +102,7 @@ class TestPayloadValidation:
     def test_validate_payload_success(self, isolated_project_env: Path) -> None:
         """validate_payload succeeds for valid payload."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
         payload = {
             "name": "test-agent",
@@ -109,12 +117,12 @@ class TestPayloadValidation:
         }
 
         # Should not raise
-        validate_payload(payload, "claude-agent.schema.json", repo_root=root)
+        validate_payload(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
     def test_validate_payload_missing_required_field_raises(self, isolated_project_env: Path) -> None:
         """validate_payload raises SchemaValidationError for missing required field."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
         # Missing 'sections' field
         payload = {
@@ -124,7 +132,7 @@ class TestPayloadValidation:
         }
 
         with pytest.raises(SchemaValidationError) as excinfo:
-            validate_payload(payload, "claude-agent.schema.json", repo_root=root)
+            validate_payload(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
         error_msg = str(excinfo.value)
         assert "sections" in error_msg.lower() or "required" in error_msg.lower()
@@ -132,7 +140,7 @@ class TestPayloadValidation:
     def test_validate_payload_wrong_type_raises(self, isolated_project_env: Path) -> None:
         """validate_payload raises SchemaValidationError for wrong type."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent-config.schema.json")
+        self._install_test_schema(root, "claude-agent-config.schema.json", "adapters")
 
         # 'model' should be string, not number
         payload = {
@@ -141,7 +149,7 @@ class TestPayloadValidation:
         }
 
         with pytest.raises(SchemaValidationError) as excinfo:
-            validate_payload(payload, "claude-agent-config.schema.json", repo_root=root)
+            validate_payload(payload, "adapters/claude-agent-config.schema.json", repo_root=root)
 
         error_msg = str(excinfo.value)
         assert "model" in error_msg.lower() or "type" in error_msg.lower()
@@ -149,7 +157,7 @@ class TestPayloadValidation:
     def test_validate_payload_empty_role_raises(self, isolated_project_env: Path) -> None:
         """validate_payload raises SchemaValidationError for empty role section."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
         payload = {
             "name": "test-agent",
@@ -164,7 +172,7 @@ class TestPayloadValidation:
         }
 
         with pytest.raises(SchemaValidationError) as excinfo:
-            validate_payload(payload, "claude-agent.schema.json", repo_root=root)
+            validate_payload(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
         error_msg = str(excinfo.value)
         assert "role" in error_msg.lower()
@@ -173,10 +181,14 @@ class TestPayloadValidation:
 class TestSafePayloadValidation:
     """Test safe payload validation that returns error messages."""
 
-    def _install_test_schema(self, root: Path, schema_name: str) -> Path:
+    def _install_test_schema(self, root: Path, schema_name: str, subfolder: str = "") -> Path:
         """Copy a schema from src/edison/data/schemas to test .edison directory."""
         schema_src_dir = REPO_ROOT / "src" / "edison" / "data" / "schemas"
+        if subfolder:
+            schema_src_dir = schema_src_dir / subfolder
         schema_dst_dir = root / ".edison" / "core" / "schemas"
+        if subfolder:
+            schema_dst_dir = schema_dst_dir / subfolder
         schema_dst_dir.mkdir(parents=True, exist_ok=True)
 
         src = schema_src_dir / schema_name
@@ -188,7 +200,7 @@ class TestSafePayloadValidation:
     def test_validate_payload_safe_valid_returns_empty(self, isolated_project_env: Path) -> None:
         """validate_payload_safe returns empty list for valid payload."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
         payload = {
             "name": "test-agent",
@@ -202,14 +214,14 @@ class TestSafePayloadValidation:
             },
         }
 
-        errors = validate_payload_safe(payload, "claude-agent.schema.json", repo_root=root)
+        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
         assert errors == []
 
     def test_validate_payload_safe_invalid_returns_errors(self, isolated_project_env: Path) -> None:
         """validate_payload_safe returns error messages for invalid payload."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent.schema.json")
+        self._install_test_schema(root, "claude-agent.schema.json", "adapters")
 
         # Missing required fields
         payload = {
@@ -217,7 +229,7 @@ class TestSafePayloadValidation:
             # Missing description, model, sections
         }
 
-        errors = validate_payload_safe(payload, "claude-agent.schema.json", repo_root=root)
+        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
         assert isinstance(errors, list)
         assert len(errors) > 0
@@ -226,7 +238,7 @@ class TestSafePayloadValidation:
     def test_validate_payload_safe_multiple_errors(self, isolated_project_env: Path) -> None:
         """validate_payload_safe returns all validation errors."""
         root = isolated_project_env
-        self._install_test_schema(root, "claude-agent-config.schema.json")
+        self._install_test_schema(root, "claude-agent-config.schema.json", "adapters")
 
         # Multiple issues: wrong type for model, invalid boolean
         payload = {
@@ -235,7 +247,7 @@ class TestSafePayloadValidation:
             "unknown_field": "value",  # Extra field (if schema has additionalProperties: false)
         }
 
-        errors = validate_payload_safe(payload, "claude-agent-config.schema.json", repo_root=root)
+        errors = validate_payload_safe(payload, "adapters/claude-agent-config.schema.json", repo_root=root)
 
         assert isinstance(errors, list)
         # Should have at least one error
@@ -254,7 +266,7 @@ class TestSchemaFallbackBehavior:
         monkeypatch.setattr(schemas_module, "jsonschema", None)
 
         payload = {"name": "test"}
-        errors = validate_payload_safe(payload, "claude-agent.schema.json", repo_root=root)
+        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.json", repo_root=root)
 
         # Should return empty (no validation performed)
         assert errors == []

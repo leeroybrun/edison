@@ -27,7 +27,7 @@ from jsonschema.exceptions import ValidationError
 # Use edison.data for bundled config/schema files
 from edison.data import get_data_path
 CONFIG = get_data_path("config", "delegation.yaml")
-SCHEMA = get_data_path("schemas", "delegation.schema.json")
+SCHEMA = get_data_path("schemas", "config/delegation.schema.json")
 
 
 def _load() -> tuple[dict, dict]:

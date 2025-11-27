@@ -42,7 +42,7 @@ def _load_state_machine(cfg_mgr: ConfigManager) -> Dict[str, Any]:
         merged_cfg = cfg_mgr.deep_merge(merged_cfg, project_cfg)
 
     # Validate against schema (silently skips if schema not found)
-    cfg_mgr.validate_schema(merged_cfg, "state-machine-rich.schema.json")
+    cfg_mgr.validate_schema(merged_cfg, "config/state-machine-rich.schema.json")
 
     statemachine = merged_cfg.get("statemachine") or {}
     if not statemachine:
@@ -224,3 +224,6 @@ def generate_state_machine_doc(output_path: Path, repo_root: Optional[Path] = No
 
 
 __all__ = ["generate_state_machine_doc"]
+
+
+

@@ -19,6 +19,8 @@ from .errors import (
     CompositionNotFoundError,
     CompositionShadowingError,
     CompositionSectionError,
+    AnchorNotFoundError,
+    RulesCompositionError,
 )
 from .modes import (
     CompositionMode,
@@ -29,7 +31,6 @@ from .modes import (
 )
 from .paths import (
     CompositionPathResolver,
-    UnifiedPathResolver,  # Backward compatibility alias
     ResolvedPaths,
     get_resolved_paths,
 )
@@ -56,6 +57,8 @@ __all__ = [
     "CompositionNotFoundError",
     "CompositionShadowingError",
     "CompositionSectionError",
+    "AnchorNotFoundError",
+    "RulesCompositionError",
     # Modes
     "CompositionMode",
     "ConcatenateComposer",
@@ -64,7 +67,6 @@ __all__ = [
     "get_composer",
     # Paths
     "CompositionPathResolver",
-    "UnifiedPathResolver",
     "ResolvedPaths",
     "get_resolved_paths",
     # Schema
@@ -77,3 +79,5 @@ __all__ = [
     "SectionMode",
     "ParsedSection",
 ]
+
+

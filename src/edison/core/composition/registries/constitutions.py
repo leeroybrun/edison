@@ -17,7 +17,7 @@ Templates use a small Handlebars-style syntax. Rendering covers:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional
 
 from edison.core.config import ConfigManager
 from edison.core.config.domains import PacksConfig
@@ -26,9 +26,7 @@ from edison.core.utils.time import utc_timestamp
 from edison.core.utils.paths import get_project_config_dir
 from ..output.headers import resolve_version
 from ..path_utils import resolve_project_dir_placeholders
-
-if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers
-    from edison.core.rules import RulesEngine
+from .rules import get_rules_for_role as _get_rules_for_role_api
 
 
 ROLE_MAP: Dict[str, Dict[str, str]] = {
@@ -117,10 +115,7 @@ def get_rules_for_role(role: str) -> List[Dict[str, Any]]:
     normalized = _normalize_role(role)
     rule_key = ROLE_MAP[normalized]["rules"]
 
-    # Local import prevents circular dependency during module import
-    from edison.core.rules import RulesEngine
-
-    rules = RulesEngine.get_rules_for_role(rule_key)
+    rules = _get_rules_for_role_api(rule_key)
     formatted: List[Dict[str, Any]] = []
     for rule in rules:
         entry = dict(rule)

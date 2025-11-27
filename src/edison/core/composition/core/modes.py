@@ -19,9 +19,8 @@ from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 
 from edison.core.utils.text import (
-    _strip_headings_and_code,
-    _tokenize,
-    _shingles,
+    _split_paragraphs,
+    _paragraph_shingles,
 )
 
 if TYPE_CHECKING:
@@ -57,28 +56,6 @@ def get_mode(mode_str: Optional[str]) -> CompositionMode:
 # ---------------------------------------------------------------------------
 # ConcatenateComposer - Guideline-style composition
 # ---------------------------------------------------------------------------
-
-def _split_paragraphs(text: str) -> List[str]:
-    """Split text into logical paragraphs."""
-    paragraphs: List[str] = []
-    buf: List[str] = []
-    for line in text.splitlines():
-        if line.strip() == "":
-            if buf:
-                paragraphs.append("\n".join(buf).rstrip())
-                buf = []
-        else:
-            buf.append(line.rstrip())
-    if buf:
-        paragraphs.append("\n".join(buf).rstrip())
-    return paragraphs
-
-
-def _paragraph_shingles(paragraph: str, *, k: int = 12) -> Set[Tuple[str, ...]]:
-    """Compute k-word shingles for a paragraph, ignoring headings/code."""
-    cleaned = _strip_headings_and_code(paragraph)
-    tokens = _tokenize(cleaned)
-    return _shingles(tokens, k=k)
 
 
 @dataclass
@@ -270,3 +247,6 @@ __all__ = [
     "ConcatenateComposer",
     "get_composer",
 ]
+
+
+

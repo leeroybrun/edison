@@ -20,3 +20,15 @@ class CompositionShadowingError(CompositionValidationError):
 class CompositionSectionError(CompositionValidationError):
     """Raised when section handling fails."""
     pass
+
+
+class AnchorNotFoundError(KeyError):
+    """Raised when a referenced guideline anchor cannot be found."""
+    pass
+
+
+class RulesCompositionError(RuntimeError):
+    """Raised when rule registry loading or composition fails."""
+    pass
+
+

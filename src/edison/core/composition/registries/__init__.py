@@ -1,7 +1,7 @@
 """Content-type specific registries.
 
 Each registry provides discovery, composition, and metadata access
-for a specific content type (agents, validators, guidelines, constitutions).
+for a specific content type (agents, validators, guidelines, constitutions, rules).
 """
 from __future__ import annotations
 
@@ -37,6 +37,21 @@ from .rosters import (
     generate_available_agents,
     generate_available_validators,
 )
+from .rules import (
+    RulesRegistry,
+    compose_rules,
+    extract_anchor_content,
+    load_bundled_rules,
+    get_rules_for_role as get_rules_for_role_api,
+    filter_rules,
+)
+from .file_patterns import (
+    FilePatternRegistry,
+)
+from ..core.errors import (
+    AnchorNotFoundError,
+    RulesCompositionError,
+)
 
 __all__ = [
     # Agents
@@ -66,4 +81,17 @@ __all__ = [
     # Rosters
     "generate_available_agents",
     "generate_available_validators",
+    # Rules
+    "RulesRegistry",
+    "compose_rules",
+    "extract_anchor_content",
+    "load_bundled_rules",
+    "get_rules_for_role_api",
+    "filter_rules",
+    "FilePatternRegistry",
+    "AnchorNotFoundError",
+    "RulesCompositionError",
 ]
+
+
+

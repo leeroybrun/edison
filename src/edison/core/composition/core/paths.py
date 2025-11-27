@@ -134,10 +134,6 @@ class CompositionPathResolver:
         return self._resolve()
 
 
-# Backward compatibility alias
-UnifiedPathResolver = CompositionPathResolver
-
-
 @lru_cache(maxsize=32)
 def get_resolved_paths(
     repo_root: Optional[Path] = None,
@@ -160,7 +156,9 @@ def get_resolved_paths(
 
 __all__ = [
     "CompositionPathResolver",
-    "UnifiedPathResolver",  # Backward compatibility
     "ResolvedPaths",
     "get_resolved_paths",
 ]
+
+
+

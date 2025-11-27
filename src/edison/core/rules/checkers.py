@@ -22,8 +22,13 @@ if TYPE_CHECKING:
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
     """Safely load JSON from a file, returning empty dict on error."""
+    import json
     from edison.core.utils.io import read_json
-    return read_json(path, default={})
+    try:
+        data = read_json(path, default={})
+        return data if isinstance(data, dict) else {}
+    except json.JSONDecodeError:
+        return {}
 
 
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:

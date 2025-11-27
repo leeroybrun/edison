@@ -288,3 +288,6 @@ def compose_hooks(config: Optional[Dict] = None, repo_root: Optional[Path] = Non
 
 
 __all__ = ["HookComposer", "HookDefinition", "compose_hooks", "ALLOWED_TYPES"]
+
+
+

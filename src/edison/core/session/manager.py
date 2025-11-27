@@ -8,17 +8,37 @@ from pathlib import Path
 
 from . import store
 from . import state as session_state
-from . import validation
 from . import worktree
 from ._config import get_config
+from .id import validate_session_id, SessionIdError
 from .naming import generate_session_id
+from .current import get_current_session, set_current_session, clear_current_session
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.io import ensure_directory
-from ..exceptions import SessionError
+from ..exceptions import SessionError, ValidationError
 from ..utils.time import utc_timestamp
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_session_id_format(session_id: str) -> bool:
+    """Validate session ID format, converting SessionIdError to ValidationError.
+    
+    Args:
+        session_id: The session ID to validate
+        
+    Returns:
+        True if validation passes
+        
+    Raises:
+        ValidationError: If validation fails
+    """
+    try:
+        validate_session_id(session_id)
+        return True
+    except SessionIdError as e:
+        raise ValidationError(str(e)) from e
 
 
 def _get_worktree_config():
@@ -34,7 +54,7 @@ def create_session(
     create_wt: bool = True
 ) -> Path:
     """Create a new session with optional worktree."""
-    validation.validate_session_id_format(session_id)
+    _validate_session_id_format(session_id)
     if store.session_exists(session_id):
         raise SessionError(f"Session {session_id} already exists", session_id=session_id)
 
@@ -234,7 +254,7 @@ def create_session_with_worktree(
     PermissionError -> propagate
     Other Exception -> log warning and continue without worktree
     """
-    validation.validate_session_id_format(session_id)
+    _validate_session_id_format(session_id)
 
     wt_path: Optional[Path] = None
     branch: Optional[str] = None

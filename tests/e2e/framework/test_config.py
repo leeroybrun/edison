@@ -117,7 +117,7 @@ def test_nested_env_deep_object(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 # C2: Schema Validation Gaps for secret rotation
 def test_schema_validation_secret_rotation(tmp_path: Path):
     from edison.data import get_data_path
-    schema_path = get_data_path("schemas", "config.schema.json")
+    schema_path = get_data_path("schemas", "config/config.schema.json")
     assert schema_path.exists(), f"Missing core config schema: {schema_path}"
 
     # Valid config should pass

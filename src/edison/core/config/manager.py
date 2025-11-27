@@ -271,7 +271,7 @@ class ConfigManager:
         self._apply_database_env_aliases(cfg)
         self.apply_env_overrides(cfg, strict=validate)
         if validate:
-            self.validate_schema(cfg, "config.schema.json")
+            self.validate_schema(cfg, "config/config.schema.json")
 
         return cfg
 

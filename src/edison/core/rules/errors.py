@@ -1,8 +1,10 @@
 """
-Exception classes for the Edison Rules system.
+Exception classes for the Edison Rules system (runtime).
 
-This module defines all exceptions raised by the rules engine,
-registry, and composition systems.
+This module defines runtime exceptions raised by the rules engine.
+
+Note: Composition errors (AnchorNotFoundError, RulesCompositionError) have been
+moved to edison.core.composition.core.errors for architectural coherence.
 """
 from __future__ import annotations
 
@@ -10,18 +12,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .models import RuleViolation
-
-
-class AnchorNotFoundError(KeyError):
-    """Raised when a referenced guideline anchor cannot be found."""
-
-    pass
-
-
-class RulesCompositionError(RuntimeError):
-    """Raised when rule registry loading or composition fails."""
-
-    pass
 
 
 class RuleViolationError(Exception):
@@ -33,7 +23,5 @@ class RuleViolationError(Exception):
 
 
 __all__ = [
-    "AnchorNotFoundError",
-    "RulesCompositionError",
     "RuleViolationError",
 ]

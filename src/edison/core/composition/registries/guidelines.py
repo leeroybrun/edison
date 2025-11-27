@@ -11,21 +11,24 @@ Features:
   - Discovery via core LayerDiscovery
   - Concatenate composition mode (Core → Packs → Project)
   - DRY enforcement using 12-word shingles (headings/code ignored)
+
+Architecture:
+    BaseEntityManager
+    └── BaseRegistry
+        └── GuidelineRegistry (this module)
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Tuple, Set
 
-from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_project_config_dir
+from edison.core.entity import BaseRegistry
 from ..includes import resolve_includes, ComposeError
 from edison.core.utils.text import (
     dry_duplicate_report,
     ENGINE_VERSION,
-    _strip_headings_and_code,
-    _tokenize,
-    _shingles,
+    _split_paragraphs,
+    _paragraph_shingles,
 )
 
 # Import core composition system
@@ -40,29 +43,6 @@ def _read_text(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(f"Guideline file not found: {path}")
     return path.read_text(encoding="utf-8")
-
-
-def _split_paragraphs(text: str) -> List[str]:
-    """Split text into logical paragraphs."""
-    paragraphs: List[str] = []
-    buf: List[str] = []
-    for line in text.splitlines():
-        if line.strip() == "":
-            if buf:
-                paragraphs.append("\n".join(buf).rstrip())
-                buf = []
-        else:
-            buf.append(line.rstrip())
-    if buf:
-        paragraphs.append("\n".join(buf).rstrip())
-    return paragraphs
-
-
-def _paragraph_shingles(paragraph: str, *, k: int = 12) -> Set[Tuple[str, ...]]:
-    """Compute 12‑word shingles for a paragraph, ignoring headings/code."""
-    cleaned = _strip_headings_and_code(paragraph)
-    tokens = _tokenize(cleaned)
-    return _shingles(tokens, k=k)
 
 
 @dataclass
@@ -80,22 +60,87 @@ class GuidelineCompositionResult:
     duplicate_report: Dict
 
 
-class GuidelineRegistry:
+class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
     """Registry for discovering and composing guidelines.
     
+    Extends BaseRegistry with guideline-specific functionality:
+    - Concatenate + dedupe composition mode
+    - DRY enforcement using shingles
+    
     Uses core LayerDiscovery for discovery.
-    Uses concatenate + dedupe composition mode (guideline-specific).
     """
+    
+    entity_type: str = "guideline"
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
-        self.repo_root = repo_root or PathResolver.resolve_project_root()
-        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+        super().__init__(repo_root)
+        # Alias for compatibility
+        self.repo_root = self.project_root
         self.project_guidelines_dir = self.project_dir / "guidelines"
         
         # Use core composer for discovery
-        self._composer = LayeredComposer(repo_root=self.repo_root, content_type="guidelines")
+        self._composer = LayeredComposer(repo_root=self.project_root, content_type="guidelines")
         self.core_dir = self._composer.core_dir / "guidelines"
         self.packs_dir = self._composer.packs_dir
+    
+    # ------- BaseRegistry Interface Implementation -------
+    
+    def discover_core(self) -> Dict[str, Path]:
+        """Discover core guidelines (returns paths)."""
+        result: Dict[str, Path] = {}
+        if self.core_dir.exists():
+            for f in self.core_dir.rglob("*.md"):
+                if f.is_file() and not f.stem.startswith("_"):
+                    result[f.stem] = f
+        return result
+    
+    def discover_packs(self, packs: List[str]) -> Dict[str, Path]:
+        """Discover guidelines from packs (returns paths)."""
+        result: Dict[str, Path] = {}
+        for pack in packs:
+            pdir = self.packs_dir / pack / "guidelines"
+            if not pdir.exists():
+                continue
+            for f in pdir.rglob("*.md"):
+                if f.is_file() and not f.stem.startswith("_"):
+                    if f.stem not in result:  # First occurrence wins
+                        result[f.stem] = f
+        return result
+    
+    def discover_project(self) -> Dict[str, Path]:
+        """Discover project guidelines (returns paths)."""
+        result: Dict[str, Path] = {}
+        if self.project_guidelines_dir.exists():
+            for f in self.project_guidelines_dir.rglob("*.md"):
+                if f.is_file() and not f.stem.startswith("_"):
+                    result[f.stem] = f
+        return result
+    
+    def exists(self, name: str) -> bool:
+        """Check if a guideline exists in any layer."""
+        return (
+            self.core_path(name) is not None or
+            name in self.discover_project()
+        )
+    
+    def get(self, name: str) -> Optional[Path]:
+        """Get the path to a guideline by name.
+        
+        Returns path from first layer where found (project > packs > core).
+        """
+        # Check project first
+        project_path = self.project_override_path(name)
+        if project_path:
+            return project_path
+        # Check core
+        core = self.core_path(name)
+        if core:
+            return core
+        return None
+    
+    def get_all(self) -> List[str]:
+        """Get all guideline names from core layer."""
+        return list(self.discover_core().keys())
 
     # ---------- Discovery ----------
     # Guidelines use 'concatenate' mode - same-name files are merged, not shadowed.
@@ -369,3 +414,6 @@ __all__ = [
     "compose_guideline",
     "ENGINE_VERSION",
 ]
+
+
+

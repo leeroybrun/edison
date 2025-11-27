@@ -20,7 +20,7 @@ def _schema(name: str) -> dict:
 
 
 def test_session_json_validates():
-    schema = _schema("session.schema.json")
+    schema = _schema("domain/session.schema.json")
     example = {
         "id": "session-123",
         "state": "Active",
@@ -38,7 +38,7 @@ def test_session_json_validates():
 
 
 def test_task_json_validates():
-    schema = _schema("task.schema.json")
+    schema = _schema("domain/task.schema.json")
     example = {
         "id": "task-42",
         "title": "Implement generic schema framework",
@@ -61,7 +61,7 @@ def test_task_json_validates():
 
 
 def test_config_yaml_validates():
-    schema = _schema("config.schema.json")
+    schema = _schema("config/config.schema.json")
     config_yaml = """
 project:
   name: my-project
@@ -82,9 +82,9 @@ validators:
 
 def test_task_status_enum_matches_state_machine():
     """Task.status enum must align with the canonical task state machine."""
-    schema = _schema("task.schema.json")
+    schema = _schema("domain/task.schema.json")
     status_enum = schema["properties"]["status"]["enum"]
-    assert status_enum, "task.schema.json must declare a non-empty status enum"
+    assert status_enum, "domain/task.schema.json must declare a non-empty status enum"
 
     assert STATE_MACHINE.exists(), "Missing state-machine.yaml in core config"
     sm = yaml.safe_load(STATE_MACHINE.read_text(encoding="utf-8")) or {}
@@ -109,7 +109,7 @@ def test_pack_scenario_edison_full_yaml_validates_against_config_schema():
     Pack scenario configs under fixtures/pack-scenarios must conform to the
     canonical config schema used for edison.yaml.
     """
-    schema = _schema("config.schema.json")
+    schema = _schema("config/config.schema.json")
     scenario_path = Path(
         ".edison/core/tests/fixtures/pack-scenarios/edison.full.yaml"
     )

@@ -200,3 +200,6 @@ class TestModeDispatcher:
         from edison.core.composition.core.modes import get_mode, DEFAULT_MODE
         
         assert get_mode("unknown_mode") == DEFAULT_MODE
+
+
+

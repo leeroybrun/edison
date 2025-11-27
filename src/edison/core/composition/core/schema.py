@@ -104,3 +104,6 @@ class CompositionSchema:
     def raw_data(self) -> Dict[str, Any]:
         """Access raw schema data."""
         return self._data
+
+
+

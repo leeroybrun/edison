@@ -21,12 +21,8 @@ class PackMetadata:
     examples: Optional[List[str]] = None
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
-    return read_yaml(path, default={})
-
-
 def load_pack_metadata(pack_path: Path) -> PackMetadata:
-    yml = _load_yaml(pack_path / "pack.yml")
+    yml = read_yaml(pack_path / "pack.yml", default={})
     raw_triggers = yml.get("triggers") or {}
     trigger_patterns: List[str] = []
     if isinstance(raw_triggers, dict):

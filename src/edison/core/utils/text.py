@@ -12,10 +12,12 @@ Contains:
   - DRY duplication detection (shingling)
   - Conditional include rendering
   - Text processing helpers
+  - Anchor content extraction
 """
 
 import re
-from typing import Dict, Iterable, List, Set, Tuple
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 # Engine constants
 ENGINE_VERSION = "2.5B-1"
@@ -41,6 +43,29 @@ def _shingles(words: List[str], k: int = 12) -> Set[Tuple[str, ...]]:
     if k <= 0 or len(words) < k:
         return set()
     return {tuple(words[i : i + k]) for i in range(0, len(words) - k + 1)}
+
+
+def _split_paragraphs(text: str) -> List[str]:
+    """Split text into logical paragraphs separated by blank lines."""
+    paragraphs: List[str] = []
+    buf: List[str] = []
+    for line in text.splitlines():
+        if line.strip() == "":
+            if buf:
+                paragraphs.append("\n".join(buf).rstrip())
+                buf = []
+        else:
+            buf.append(line.rstrip())
+    if buf:
+        paragraphs.append("\n".join(buf).rstrip())
+    return paragraphs
+
+
+def _paragraph_shingles(paragraph: str, *, k: int = 12) -> Set[Tuple[str, ...]]:
+    """Compute k-word shingles for a paragraph, ignoring headings/code."""
+    cleaned = _strip_headings_and_code(paragraph)
+    tokens = _tokenize(cleaned)
+    return _shingles(tokens, k=k)
 
 
 def dry_duplicate_report(sections: Dict[str, str], *, min_shingles: int = 2, k: int = 12) -> Dict:
@@ -151,11 +176,77 @@ def render_conditional_includes(
     return _INCLUDE_SPACE_RE.sub(lambda m: f"{{{{include:{(m.group(1) or '').strip()}}}}}", template)
 
 
+class AnchorNotFoundError(KeyError):
+    """Raised when a referenced guideline anchor cannot be found."""
+    pass
+
+
+def extract_anchor_content(source_file: Path, anchor: str) -> str:
+    """
+    Extract content between ANCHOR markers in a guideline file.
+
+    Supports both explicit END markers and implicit termination at the next
+    ANCHOR marker (or EOF when no END marker is present).
+
+    Args:
+        source_file: Path to the guideline file
+        anchor: Name of the anchor to extract
+
+    Returns:
+        The content between the anchor markers
+
+    Raises:
+        FileNotFoundError: If the source file doesn't exist
+        AnchorNotFoundError: If the anchor isn't found in the file
+    """
+    if not source_file.exists():
+        raise FileNotFoundError(f"Guideline file not found: {source_file}")
+
+    lines = source_file.read_text(encoding="utf-8").splitlines()
+    start_idx: Optional[int] = None
+    end_idx: Optional[int] = None
+
+    start_marker = f"<!-- ANCHOR: {anchor} -->"
+    end_marker = f"<!-- END ANCHOR: {anchor} -->"
+    # Any ANCHOR start (used to detect implicit end)
+    anchor_start_re = re.compile(r"<!--\s*ANCHOR:\s*.+?-->")
+
+    for i, line in enumerate(lines):
+        if start_marker in line:
+            start_idx = i + 1  # content begins after the marker
+            break
+
+    if start_idx is None:
+        raise AnchorNotFoundError(f"Anchor '{anchor}' not found in {source_file}")
+
+    for j in range(start_idx, len(lines)):
+        line = lines[j]
+        if end_marker in line:
+            end_idx = j
+            break
+        if anchor_start_re.search(line):
+            end_idx = j
+            break
+
+    if end_idx is None:
+        end_idx = len(lines)
+
+    body_lines = lines[start_idx:end_idx]
+    body = "\n".join(body_lines).rstrip()
+    if body:
+        body += "\n"
+    return body
+
+
 __all__ = [
     "ENGINE_VERSION",
     "dry_duplicate_report",
     "render_conditional_includes",
+    "extract_anchor_content",
+    "AnchorNotFoundError",
     "_strip_headings_and_code",
     "_tokenize",
     "_shingles",
+    "_split_paragraphs",
+    "_paragraph_shingles",
 ]

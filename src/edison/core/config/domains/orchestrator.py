@@ -83,7 +83,7 @@ class OrchestratorConfig(BaseDomainConfig):
         """Validate orchestrator config against schema and self-checks."""
         mgr = ConfigManager(self._repo_root)
         mgr.validate_schema(
-            self._orchestrator_config, "orchestrator-config.schema.json"
+            self._orchestrator_config, "config/orchestrator-config.schema.json"
         )
 
         default = self._orchestrator_config.get("default")
@@ -144,3 +144,6 @@ class OrchestratorConfig(BaseDomainConfig):
 
 
 __all__ = ["OrchestratorConfig"]
+
+
+

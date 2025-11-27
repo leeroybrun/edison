@@ -6,13 +6,18 @@ Collects validators from merged configuration (validation + validators sections)
 and handles roster merging, normalization, and metadata enrichment.
 
 Uses CompositionPathResolver for consistent path resolution.
+
+Architecture:
+    BaseEntityManager
+    └── BaseRegistry
+        └── ValidatorRegistry (this module)
 """
 
 import re
 from pathlib import Path
-from typing import Dict, List, Iterable, Optional
+from typing import Any, Dict, List, Iterable, Optional
 
-from edison.core.utils.paths import PathResolver
+from edison.core.entity import BaseRegistry
 from ..core import CompositionPathResolver
 
 
@@ -325,23 +330,53 @@ def collect_validators(
 # ValidatorRegistry
 # ---------------------------------------------------------------------------
 
-class ValidatorRegistry:
+class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
     """Discover and access Edison validators from configuration.
     
+    Extends BaseRegistry with config-based validator discovery.
     Uses CompositionPathResolver for consistent path resolution.
     """
+    
+    entity_type: str = "validator"
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         """Initialize validator registry with configuration discovery."""
-        self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
+        super().__init__(repo_root)
+        # Alias for compatibility
+        self.repo_root = self.project_root
 
         # Use composition path resolver (SINGLE SOURCE OF TRUTH)
-        path_resolver = CompositionPathResolver(self.repo_root, "validators")
+        path_resolver = CompositionPathResolver(self.project_root, "validators")
         self.core_dir = path_resolver.core_dir
         self.packs_dir = path_resolver.packs_dir
         self.project_dir = path_resolver.project_dir
         
         self._validators_cache: Optional[Dict[str, Dict]] = None
+    
+    # ------- BaseRegistry Interface Implementation -------
+    
+    def discover_core(self) -> Dict[str, Dict[str, Any]]:
+        """Discover core validators.
+        
+        Note: Validators are loaded from config, not discovered from files.
+        This returns an empty dict as validators are managed via config.
+        """
+        # Validators are config-based, not file-discovered
+        return {}
+    
+    def discover_packs(self, packs: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Discover validators from packs.
+        
+        Note: Validators are loaded from config, not discovered from files.
+        """
+        return {}
+    
+    def discover_project(self) -> Dict[str, Dict[str, Any]]:
+        """Discover project validators.
+        
+        Note: Validators are loaded from config, not discovered from files.
+        """
+        return {}
 
     def _load_validators(self) -> Dict[str, Dict]:
         """Load all validators from configuration."""
@@ -385,15 +420,38 @@ class ValidatorRegistry:
         validators = self._load_validators()
         return name in validators
 
-    def get(self, name: str) -> Dict:
-        """Get validator metadata by name."""
+    def get(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get validator metadata by name.
+        
+        Returns:
+            Validator metadata dict if found, None otherwise
+        """
+        validators = self._load_validators()
+        return validators.get(name)
+    
+    def get_or_raise(self, name: str) -> Dict[str, Any]:
+        """Get validator metadata by name, raising if not found."""
         validators = self._load_validators()
         if name not in validators:
-            raise ValueError(f"Validator '{name}' not found in registry")
+            from edison.core.entity import EntityNotFoundError
+            raise EntityNotFoundError(
+                f"Validator '{name}' not found in registry",
+                entity_type=self.entity_type,
+                entity_id=name,
+            )
         return validators[name]
 
-    def get_all(self) -> Dict[str, List[Dict]]:
+    def get_all(self) -> List[Dict[str, Any]]:
+        """Get all validators as a flat list.
+        
+        Implements BaseRegistry interface.
+        """
+        return list(self._load_validators().values())
+    
+    def get_all_grouped(self) -> Dict[str, List[Dict]]:
         """Get all validators grouped by tier (global, critical, specialized).
+
+        For backward compatibility with code expecting grouped results.
 
         Returns:
             Dict with keys 'global', 'critical', 'specialized', each containing
@@ -401,7 +459,7 @@ class ValidatorRegistry:
         """
         # Load configuration
         from edison.core.config import ConfigManager
-        cfg_mgr = ConfigManager(self.repo_root)
+        cfg_mgr = ConfigManager(self.project_root)
         try:
             config = cfg_mgr.load_config(validate=False)
         except FileNotFoundError:
@@ -415,7 +473,7 @@ class ValidatorRegistry:
         # Collect validators grouped by tier
         roster = collect_validators(
             config,
-            repo_root=self.repo_root,
+            repo_root=self.project_root,
             project_dir=self.project_dir,
             packs_dir=self.packs_dir,
             active_packs=packs,
@@ -433,3 +491,6 @@ __all__ = [
     # Registry
     "ValidatorRegistry",
 ]
+
+
+

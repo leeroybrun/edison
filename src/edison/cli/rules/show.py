@@ -49,7 +49,7 @@ def main(args: argparse.Namespace) -> int:
         registry = RulesRegistry(repo_root)
 
         # Load rules
-        rules = registry.load_rules()
+        rules = registry.load_composed_rules()
 
         # Filter by contexts
         matching = []

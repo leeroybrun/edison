@@ -23,7 +23,6 @@ from .core import (
     get_composer,
     # Paths
     CompositionPathResolver,
-    UnifiedPathResolver,
     ResolvedPaths,
     get_resolved_paths,
     # Schema
@@ -160,7 +159,6 @@ __all__ = [
     "get_composer",
     # Paths
     "CompositionPathResolver",
-    "UnifiedPathResolver",
     "ResolvedPaths",
     "get_resolved_paths",
     # Schema

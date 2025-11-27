@@ -200,3 +200,6 @@ class LayeredComposer:
                     results[entity_name] = source.path.read_text(encoding="utf-8")
         
         return results
+
+
+

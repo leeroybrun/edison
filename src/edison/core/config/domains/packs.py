@@ -52,9 +52,12 @@ class PacksConfig(BaseDomainConfig):
         Returns:
             List of available pack names.
         """
-        from edison.core.composition.packs import PackRegistry
-        registry = PackRegistry(repo_root=self._repo_root)
-        return registry.list_available()
+        from edison.core.composition.packs import discover_packs
+        packs = discover_packs(root=self._repo_root)
+        return [p.name for p in packs]
 
 
 __all__ = ["PacksConfig"]
+
+
+

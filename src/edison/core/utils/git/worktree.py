@@ -1,9 +1,11 @@
 """Git worktree detection and management utilities."""
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
+from edison.core.utils.subprocess import run_with_timeout, run_git_command
 from .repository import get_repo_root
 
 
@@ -20,8 +22,6 @@ def _git_dir_info(start_path: Path) -> tuple[Path, Path]:
     We intentionally run `git rev-parse` from the provided path (not the resolved
     repo root) so worktree detection honors the actual checkout we are inside.
     """
-    from edison.core.utils.subprocess import run_with_timeout
-
     git_dir = run_with_timeout(
         ["git", "rev-parse", "--path-format=absolute", "--git-dir"],
         cwd=start_path,
@@ -132,7 +132,39 @@ def _parse_worktree_list(stdout: str) -> List[Dict[str, Any]]:
     return worktrees
 
 
-def get_worktree_info(session_id: str, repo_root: Path) -> Optional[Dict[str, Any]]:
+def list_worktrees(repo_root: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """List all worktrees in the repository.
+    
+    Returns:
+        List of dicts with keys: path, head, branch, branch_ref.
+    """
+    root = repo_root or get_repo_root()
+    result = run_git_command(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return _parse_worktree_list(result.stdout)
+
+
+def check_worktree_health(path: Path) -> bool:
+    """Check if a worktree path is valid and healthy (inside git control)."""
+    try:
+        r = run_with_timeout(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=path,
+            capture_output=True,
+            text=True,
+            timeout=10  # Default reasonable timeout
+        )
+        return path.exists() and r.returncode == 0 and (r.stdout or "").strip() == "true"
+    except Exception:
+        return False
+
+
+def get_worktree_info(session_id: str, repo_root: Optional[Path] = None) -> Optional[Dict[str, Any]]:
     """Get worktree info for ``session_id`` if it exists.
 
     The lookup is tolerant and will match either:
@@ -146,18 +178,8 @@ def get_worktree_info(session_id: str, repo_root: Path) -> Optional[Dict[str, An
     Returns:
         A dictionary with ``path``, ``branch``, and ``head`` keys, or None.
     """
-    from edison.core.utils.subprocess import run_git_command
-
-    repo_root = Path(repo_root)
-
-    result = run_git_command(
-        ["git", "worktree", "list", "--porcelain"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    entries = _parse_worktree_list(result.stdout)
+    root = repo_root or get_repo_root()
+    entries = list_worktrees(root)
 
     for entry in entries:
         path_str = entry.get("path")
@@ -184,10 +206,57 @@ def get_worktree_info(session_id: str, repo_root: Path) -> Optional[Dict[str, An
     return None
 
 
+def get_existing_worktree_path(branch_name: str, repo_root: Optional[Path] = None) -> Optional[Path]:
+    """Return existing worktree path for a branch if present and healthy."""
+    entries = list_worktrees(repo_root)
+    
+    # First pass: check explicit branch matches in worktree list
+    for entry in entries:
+        p = Path(entry["path"])
+        br = entry.get("branch")
+        if br == branch_name and check_worktree_health(p):
+            return p
+
+    # Second pass: check actual checked out branch in worktree dir (in case list is stale/detached)
+    for entry in entries:
+        p = Path(entry["path"])
+        try:
+            cp = run_with_timeout(
+                ["git", "branch", "--show-current"],
+                cwd=p,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if cp.returncode == 0 and (cp.stdout or "").strip() == branch_name and check_worktree_health(p):
+                return p
+        except Exception:
+            continue
+            
+    return None
+
+
+def is_worktree_registered(path: Path, repo_root: Optional[Path] = None) -> bool:
+    """Check if a path is a registered worktree."""
+    target = path.resolve()
+    for entry in list_worktrees(repo_root):
+        try:
+            p = Path(entry["path"])
+            if p.resolve() == target:
+                return True
+        except Exception:
+            continue
+    return False
+
+
 __all__ = [
     "is_worktree",
     "get_worktree_parent",
     "get_worktree_info",
+    "list_worktrees",
+    "check_worktree_health",
+    "get_existing_worktree_path",
+    "is_worktree_registered",
     "_parse_worktree_list",
     "_git_dir_info",
     "_is_worktree_dir",

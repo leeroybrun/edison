@@ -117,11 +117,9 @@ def ensure_session(session_id: str, state: str = "Active") -> Path:
 
     Returns the session directory path.
     """
-    from ..validation import validate_session_id_format
-
+    # validate_session_id already validates the format
     sid = validate_session_id(session_id)
     target_state = state.lower()
-    validate_session_id_format(sid)
 
     sess_dir = _session_dir(target_state, sid)
     ensure_directory(sess_dir)

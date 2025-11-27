@@ -20,7 +20,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `.edison/delegation/config.json`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `.edison/config/delegation.yaml`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
 7. **Context7 first** – Query Context7 before coding against any package listed under `postTrainingPackages` in validator config. Never guess about post-training APIs.
 
@@ -60,7 +60,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 - `.edison/manifest.json` - Authoritative preload list (project-specific)
 - `.edison/validators/config.json` - Validator roster and triggers (project-specific)
-- `.edison/delegation/config.json` - Delegation model routing (project-specific)
+- `.edison/config/delegation.yaml` - Delegation model routing (project-specific)
 
 ### Project-Specific Client Rules (Conditional)
 
@@ -187,7 +187,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 - Session-scoped queues prevent race conditions
 
 ### Delegation
-- Route complex work through `.edison/delegation/config.json`
+- Route complex work through `.edison/config/delegation.yaml`
 - Match file patterns to model capabilities
 - Specialized implementers for frontend/backend/database/testing
 
@@ -224,7 +224,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 
 All in `.edison/core/guidelines/`:
 - `SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `DELEGATION.md` + `.edison/delegation/config.json` - Delegation routing
+- `DELEGATION.md` + `.edison/config/delegation.yaml` - Delegation routing
 - `TDD.md` - Test-driven development enforcement (RED→GREEN→REFACTOR)
 - `QUALITY.md` - Code quality standards and patterns
 - `HONEST_STATUS.md` - Status integrity and directory-name truth

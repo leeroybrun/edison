@@ -38,7 +38,7 @@ def _write_json_config(repo_root: Path) -> None:
 @pytest.fixture()
 def json_module(isolated_project_env: Path):
     _write_json_config(isolated_project_env)
-    import edison.core.utils.json_io as json_io  # type: ignore
+    import edison.core.utils.io.json as json_io  # type: ignore
 
     importlib.reload(json_io)
     return json_io

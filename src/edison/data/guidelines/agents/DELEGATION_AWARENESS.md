@@ -11,7 +11,7 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Config**: `.edison/delegation/config.json` (single source of truth for model selection)
+**Delegation Config**: `.edison/config/delegation.yaml` (single source of truth for model selection)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
@@ -22,7 +22,7 @@ The orchestrator uses this configuration to assign tasks to the most appropriate
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `.edison/delegation/config.json` to understand your scope
+1. **READ** `.edison/config/delegation.yaml` to understand your scope
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -82,7 +82,7 @@ Orchestrator → component-builder (UI work)
 
 ```pseudocode
 // Example: Reading your scope
-config = load_json('.edison/delegation/config.json')
+config = load_yaml('.edison/config/delegation.yaml')
 
 // Check file pattern rules
 filePatterns = config.filePatternRules
@@ -162,7 +162,7 @@ Or for MISMATCH:
 
 ```bash
 # View delegation config
-cat .edison/delegation/config.json
+cat .edison/config/delegation.yaml
 
 # Check which agent handles a file pattern (orchestrator tool)
 edison delegation check "<path-to-file>"
@@ -170,6 +170,8 @@ edison delegation check "<path-to-file>"
 # View agent scope (orchestrator tool)
 edison agents scope api-builder
 ```
+
+> **Note**: Delegation config has migrated from JSON to YAML format for consistency with other Edison configuration.
 
 ## References
 

@@ -1,18 +1,26 @@
-"""Tests for role-based rule filtering API in RulesEngine (T-005).
+"""Tests for role-based rule filtering API (T-005).
 
-These tests verify the classmethod APIs for loading and filtering rules by role
+These tests verify the APIs for loading and filtering rules by role
 from the bundled registry data.
+
+Note: The role-based APIs have been moved from RulesEngine to
+edison.core.composition.registries.rules for architectural coherence.
+They are still accessible via edison.core.rules for convenience.
 """
 from __future__ import annotations
 
 import pytest
 
-from edison.core.rules import RulesEngine
+from edison.core.rules import (
+    load_bundled_rules,
+    get_rules_for_role,
+    filter_rules,
+)
 
 
 def test_get_all_returns_all_rules_from_registry() -> None:
-    """get_all() should load all 37 rules from the bundled registry."""
-    rules = RulesEngine.get_all()
+    """load_bundled_rules() should load all 37 rules from the bundled registry."""
+    rules = load_bundled_rules()
 
     # T-003 added applies_to to all 37 rules
     assert len(rules) >= 37, "Expected at least 37 rules in registry"
@@ -27,7 +35,7 @@ def test_get_all_returns_all_rules_from_registry() -> None:
 
 def test_get_rules_for_role_orchestrator() -> None:
     """get_rules_for_role('orchestrator') should return only orchestrator rules."""
-    rules = RulesEngine.get_rules_for_role("orchestrator")
+    rules = get_rules_for_role("orchestrator")
 
     # All returned rules must include 'orchestrator' in applies_to
     for rule in rules:
@@ -40,7 +48,7 @@ def test_get_rules_for_role_orchestrator() -> None:
 
 def test_get_rules_for_role_agent() -> None:
     """get_rules_for_role('agent') should return only agent rules."""
-    rules = RulesEngine.get_rules_for_role("agent")
+    rules = get_rules_for_role("agent")
 
     # All returned rules must include 'agent' in applies_to
     for rule in rules:
@@ -53,7 +61,7 @@ def test_get_rules_for_role_agent() -> None:
 
 def test_get_rules_for_role_validator() -> None:
     """get_rules_for_role('validator') should return only validator rules."""
-    rules = RulesEngine.get_rules_for_role("validator")
+    rules = get_rules_for_role("validator")
 
     # All returned rules must include 'validator' in applies_to
     for rule in rules:
@@ -67,19 +75,19 @@ def test_get_rules_for_role_validator() -> None:
 def test_get_rules_for_role_invalid_role_raises_error() -> None:
     """get_rules_for_role() should raise ValueError for invalid roles."""
     with pytest.raises(ValueError, match="Invalid role.*Must be orchestrator, agent, or validator"):
-        RulesEngine.get_rules_for_role("invalid_role")
+        get_rules_for_role("invalid_role")
 
     with pytest.raises(ValueError, match="Invalid role.*Must be orchestrator, agent, or validator"):
-        RulesEngine.get_rules_for_role("admin")
+        get_rules_for_role("admin")
 
     with pytest.raises(ValueError, match="Invalid role.*Must be orchestrator, agent, or validator"):
-        RulesEngine.get_rules_for_role("")
+        get_rules_for_role("")
 
 
 def test_filter_rules_by_role() -> None:
     """filter_rules() should support role filtering."""
     # Get agent-specific rules via context
-    rules = RulesEngine.filter_rules({"role": "agent"})
+    rules = filter_rules({"role": "agent"})
 
     # All returned rules must include 'agent' in applies_to
     for rule in rules:
@@ -93,7 +101,7 @@ def test_filter_rules_by_role() -> None:
 def test_filter_rules_with_role_and_category() -> None:
     """filter_rules() should support combining role and category filters."""
     # Get validation rules for orchestrator
-    rules = RulesEngine.filter_rules({
+    rules = filter_rules({
         "role": "orchestrator",
         "category": "validation"
     })
@@ -108,16 +116,16 @@ def test_filter_rules_with_role_and_category() -> None:
 
 def test_filter_rules_empty_dict_returns_all() -> None:
     """filter_rules({}) with no filters should return all rules."""
-    rules = RulesEngine.filter_rules({})
+    rules = filter_rules({})
 
     # Should return all rules when no filters specified
-    all_rules = RulesEngine.get_all()
+    all_rules = load_bundled_rules()
     assert len(rules) == len(all_rules)
 
 
 def test_rules_have_expected_structure() -> None:
     """Verify that loaded rules have the expected data structure."""
-    rules = RulesEngine.get_all()
+    rules = load_bundled_rules()
 
     # Sample a few rules to verify structure
     for rule in rules[:5]:

@@ -15,7 +15,7 @@ class ValidatorConfigAlignmentTests(unittest.TestCase):
 
     def test_schema_tracking_requires_completedAt(self) -> None:
         # Assert canonical schema declares tracking.completedAt as required
-        schema = json.loads((DATA_DIR / "schemas" / "validator-report.schema.json").read_text())
+        schema = json.loads((DATA_DIR / "schemas" / "reports" / "validator-report.schema.json").read_text())
         tracking_props = schema.get("properties", {}).get("tracking", {})
         required = set(tracking_props.get("required", []))
         # RED/then GREEN: must include completedAt

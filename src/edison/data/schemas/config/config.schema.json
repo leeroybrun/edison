@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/config.schema.json",
+  "title": "Edison Config Schema (Generic)",
+  "description": "Configuration schema for defaults.yaml and edison.yaml.",
+  "type": "object",
+  "properties": {
+    "zen": {
+      "type": "object",
+      "properties": {
+        "secret_rotation": {
+          "type": "object",
+          "required": ["enabled", "check_interval_hours"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "check_interval_hours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 168
+            },
+            "notification_threshold_days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "project_config_dir": {
+          "type": "string",
+          "description": "Preferred project configuration directory name (e.g., .edison).",
+          "default": ".edison"
+        },
+        "legacy_project_config_dir": {
+          "type": "string",
+          "description": "Legacy project configuration directory name (e.g., .agents).",
+          "default": ".agents"
+        }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name used in placeholders",
+          "examples": ["{PROJECT_NAME}", "my-project"]
+        },
+        "owner": {
+          "description": "Default owner for tasks/sessions; overrides process detection when set",
+          "type": ["string", "null"],
+          "default": null
+        },
+        "audit_terms": {
+          "description": "Additional project-specific terms to ban from core/pack guidelines",
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "worktree": {
+          "type": "object",
+          "properties": {
+            "baseDirectory": {
+              "type": "string",
+              "description": "Base directory for session worktrees",
+              "default": "../{PROJECT_NAME}-worktrees",
+              "examples": ["../my-project-worktrees", "/var/lib/edison-worktrees"]
+            },
+            "timeouts": {
+              "type": "object",
+              "description": "Timeout values for worktree operations (in seconds)",
+              "properties": {
+                "health_check": { "type": "integer", "minimum": 1, "default": 10 },
+                "fetch": { "type": "integer", "minimum": 1, "default": 60 },
+                "checkout": { "type": "integer", "minimum": 1, "default": 30 },
+                "worktree_add": { "type": "integer", "minimum": 1, "default": 30 },
+                "clone": { "type": "integer", "minimum": 1, "default": 60 },
+                "install": { "type": "integer", "minimum": 1, "default": 300 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10080,
+          "default": 60
+        }
+      },
+      "additionalProperties": true
+    },
+    "orchestrators": {
+      "type": "object",
+      "description": "Configuration for orchestrator launch profiles.",
+      "properties": {
+        "default": { "type": "string" },
+        "profiles": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "delegation": {
+      "$ref": "#/$defs/delegation"
+    },
+    "validators": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of enabled validator names",
+          "examples": [["security", "performance"]]
+        }
+      },
+      "additionalProperties": false
+    },
+    "packs": {
+      "description": "Pack configuration. Supports legacy array or v2 object form.",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Pack engine (v2) configuration",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "directory": { "type": "string", "default": ".edison/packs" },
+            "compositionMode": { "type": "string", "enum": ["layered"], "default": "layered" },
+            "discoveryMode": { "type": "string", "enum": ["auto", "manual"], "default": "auto" },
+            "active": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+              "default": []
+            }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "source": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "delegation": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "capabilities": { "type": "array", "items": { "type": "string" } },
+              "constraints": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "mcp": {
+          "type": "object",
+          "properties": {
+            "endpoint": { "type": "string" },
+            "tokenRef": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

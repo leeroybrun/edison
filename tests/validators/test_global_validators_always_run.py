@@ -32,8 +32,8 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         (core_dst / "lib").mkdir(parents=True, exist_ok=True)
         shutil.copytree(core_src / "lib", core_dst / "lib", dirs_exist_ok=True)
         shutil.copyfile(core_src / "defaults.yaml", core_dst / "defaults.yaml")
-        (core_dst / "schemas").mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(core_src / "schemas" / "validator-report.schema.json", core_dst / "schemas" / "validator-report.schema.json")
+        (core_dst / "schemas" / "reports").mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(core_src / "schemas" / "reports" / "validator-report.schema.json", core_dst / "schemas" / "reports" / "validator-report.schema.json")
 
         agents_dst = self.temp_root / ".agents"
         agents_dst.mkdir(parents=True, exist_ok=True)

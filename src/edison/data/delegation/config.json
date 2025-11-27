@@ -1,5 +1,5 @@
 {
-  "$schema": "../schemas/delegation-config.schema.json",
+  "$schema": "../schemas/config/delegation-config.schema.json",
   "filePatternRules": {
     "**/app/api/**": {
       "preferredModel": "codex",

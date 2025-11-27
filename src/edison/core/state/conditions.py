@@ -2,33 +2,57 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Mapping, Optional
 
+from .registry import ConditionRegistryBase, DomainRegistry
 
-class ConditionRegistry:
-    """Registry of condition predicates."""
+
+class ConditionRegistry(ConditionRegistryBase):
+    """Registry of condition predicates.
+    
+    Extends ConditionRegistryBase to maintain backward compatibility while
+    supporting domain-prefixed lookups for multi-entity state machines.
+    """
 
     def __init__(self, *, preload_defaults: bool = False) -> None:
-        self._conditions: Dict[str, Callable[[Mapping[str, Any]], bool]] = {}
-        if preload_defaults:
-            self.register_defaults()
+        super().__init__(preload_defaults=preload_defaults)
 
-    def register(self, name: str, condition_fn: Callable[[Mapping[str, Any]], bool]) -> None:
-        if not callable(condition_fn):
-            raise TypeError("condition_fn must be callable")
-        self._conditions[name] = condition_fn
+    def register(
+        self, 
+        name: str, 
+        condition_fn: Callable[[Mapping[str, Any]], bool],
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> None:
+        """Register a condition function.
+        
+        Args:
+            name: Condition name
+            condition_fn: Condition function that returns bool
+            domain: Domain identifier (default: shared)
+        """
+        super().register(name, condition_fn, domain)
 
     def register_defaults(self) -> None:
+        """Register default condition functions."""
         for name, fn in _DEFAULT_CONDITIONS.items():
-            self._conditions.setdefault(name, fn)
+            if not self.has(name):
+                self.register(name, fn)
 
-    def reset(self) -> None:
-        self._conditions.clear()
-        self.register_defaults()
-
-    def check(self, name: str, context: Optional[Mapping[str, Any]] = None) -> bool:
-        if name not in self._conditions:
-            raise ValueError(f"Unknown condition: {name}")
-        ctx = context or {}
-        return bool(self._conditions[name](ctx))
+    def check(
+        self, 
+        name: str, 
+        context: Optional[Mapping[str, Any]] = None,
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> bool:
+        """Check a condition.
+        
+        Args:
+            name: Condition name
+            context: Context dict for condition evaluation
+            domain: Domain for condition lookup (default: shared)
+            
+        Returns:
+            Condition result (bool)
+        """
+        return super().check(name, context, domain)
 
 
 # Built-in conditions aligned with the rich state machine config.

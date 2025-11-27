@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from edison.core.task import io, locking, record_metadata, paths
+from edison.core.utils.io import write_json_atomic
 
 
 def test_paths_session_state_dir_returns_path() -> None:
@@ -15,7 +16,7 @@ def test_io_atomic_write_json_roundtrip(tmp_path: Path) -> None:
     target = tmp_path / "data.json"
     payload = {"hello": "world", "n": 1}
 
-    io.atomic_write_json(target, payload, indent=2)
+    write_json_atomic(target, payload, indent=2)
 
     result = json.loads(target.read_text(encoding="utf-8"))
     assert result == payload

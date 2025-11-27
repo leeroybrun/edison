@@ -62,25 +62,36 @@ def test_rules_package_exports_error_classes():
 
 
 def test_rules_package_module_files_exist():
-    """Verify all expected module files exist in the rules/ package."""
+    """Verify all expected module files exist in the rules/ package.
+
+    Note: registry.py, helpers.py, and file_patterns.py have been moved to
+    composition/registries/ for architectural coherence. The rules package
+    now only contains runtime enforcement components.
+    """
     from edison.core import rules
 
     package_path = Path(rules.__file__).parent
 
-    # Check all expected module files exist
+    # Check all expected module files exist (runtime components only)
     expected_files = {
         '__init__.py',
-        'registry.py',
         'engine.py',
         'models.py',
         'errors.py',
-        'helpers.py',
+        'checkers.py',
     }
 
     existing_files = {f.name for f in package_path.iterdir() if f.is_file() and f.suffix == '.py'}
 
     missing = expected_files - existing_files
     assert not missing, f"Missing expected module files: {missing}"
+
+    # Verify composition components are in their new location
+    from edison.core.composition.registries import rules as rules_registry
+    from edison.core.composition.registries import file_patterns as file_patterns_module
+    assert rules_registry.RulesRegistry is not None
+    assert rules_registry.compose_rules is not None
+    assert file_patterns_module.FilePatternRegistry is not None
 
 
 def test_no_legacy_rules_py_file():

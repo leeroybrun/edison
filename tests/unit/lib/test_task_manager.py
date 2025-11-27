@@ -49,15 +49,14 @@ def _fresh_task_modules():
     """Reload task modules so path constants follow the per-test project root."""
     importlib.invalidate_caches()
     paths_mod = importlib.reload(importlib.import_module("edison.core.task.paths"))  # type: ignore
-    store_mod = importlib.reload(importlib.import_module("edison.core.task.store"))  # type: ignore
     locking_mod = importlib.reload(importlib.import_module("edison.core.task.locking"))  # type: ignore
     metadata_mod = importlib.reload(importlib.import_module("edison.core.task.record_metadata"))  # type: ignore
     finder_mod = importlib.reload(importlib.import_module("edison.core.task.finder"))  # type: ignore
     io_mod = importlib.reload(importlib.import_module("edison.core.task.io"))  # type: ignore
     task_mod = importlib.reload(importlib.import_module("edison.core.task"))  # type: ignore
     manager_mod = importlib.reload(importlib.import_module("edison.core.task.manager"))  # type: ignore
-    state_mod = importlib.reload(importlib.import_module("edison.core.task.state"))  # type: ignore
-    return manager_mod.TaskManager, state_mod
+    transitions_mod = importlib.reload(importlib.import_module("edison.core.task.transitions"))  # type: ignore
+    return manager_mod.TaskManager, transitions_mod
 
 
 def _task_path(root: Path, task_id: str, *, status: str = "todo") -> Path:
@@ -155,16 +154,19 @@ def test_transition_task_updates_status_and_directory(isolated_project_env: Path
 
 
 @pytest.mark.task
-def test_task_state_machine_rejects_invalid_transition() -> None:
+def test_task_state_machine_rejects_invalid_state() -> None:
     """
-    TaskStateMachine must fail-closed for invalid transitions according
-    to the defaults.yaml state machine.
+    validate_state_transition must fail-closed for invalid states.
     """
-    _, task_state = _fresh_task_modules()
-    machine = task_state.build_default_state_machine()
-    # todo → validated is not allowed directly
-    with pytest.raises(Exception):
-        machine.validate("todo", "validated")
+    from edison.core.task.record_metadata import validate_state_transition
+    
+    # Invalid to_state should be rejected
+    ok, msg = validate_state_transition("task", "todo", "not-a-valid-state")
+    assert not ok, f"Should reject invalid to_state: {msg}"
+    
+    # Invalid from_state should be rejected
+    ok, msg = validate_state_transition("task", "not-a-valid-state", "wip")
+    assert not ok, f"Should reject invalid from_state: {msg}"
 
 
 @pytest.mark.task

@@ -13,7 +13,6 @@ from typing import Dict, List, Iterable, Set
 from edison.core.utils import io as io_utils
 from .packs import yaml
 from .validators import collect_validators
-from .workflow import get_workflow_loop_instructions
 
 
 def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], project_dir: Path) -> Dict[str, List[str]]:
@@ -101,5 +100,4 @@ __all__ = [
     "collect_agents",
     "collect_packs",
     "collect_validators",
-    "get_workflow_loop_instructions",
 ]

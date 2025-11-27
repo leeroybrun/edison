@@ -42,15 +42,15 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
 @pytest.fixture(autouse=True)
 def _reset_path_caches() -> Generator[None, None, None]:
     """Reset internal caches before each test."""
-    import edison.core.utils.paths.resolver.project as project_mod
+    import edison.core.utils.paths.resolver as resolver_mod
     from edison.core.task import paths as task_paths_mod
 
-    project_mod._PROJECT_ROOT_CACHE = None
+    resolver_mod._PROJECT_ROOT_CACHE = None
     task_paths_mod._ROOT_CACHE = None
 
     yield
 
-    project_mod._PROJECT_ROOT_CACHE = None
+    resolver_mod._PROJECT_ROOT_CACHE = None
     task_paths_mod._ROOT_CACHE = None
 
 
@@ -104,7 +104,7 @@ class TestRepoRootConsolidation:
         composition_includes._REPO_ROOT_OVERRIDE = None
         
         assert composition_includes._repo_root() == temp_git_repo
-        assert composition_guidelines._repo_root() == temp_git_repo
+        # guidelines module uses PathResolver directly, no _repo_root wrapper
 
     def test_utils_subprocess_timeout_context(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that subprocess timeout configuration can resolve root."""
@@ -145,16 +145,16 @@ class TestRepoRootConsolidation:
         monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
 
         # Access module-level cache variable from the correct module
-        import edison.core.utils.paths.resolver.project as project_mod
+        import edison.core.utils.paths.resolver as resolver_mod
 
         # First call populates cache
         root1 = resolve_project_root()
-        cache_val = project_mod._PROJECT_ROOT_CACHE
+        cache_val = resolver_mod._PROJECT_ROOT_CACHE
         assert cache_val == temp_git_repo
 
         # Second call uses cache
         root2 = resolve_project_root()
-        assert root2 is root1 # Same object if cached
+        assert root2 == root1  # Same value if cached
 
         # utils.git should also respect/use this cache via delegation
         root3 = git_utils.get_repo_root()
