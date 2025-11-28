@@ -7,9 +7,10 @@ SUMMARY: Restore archived worktree
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag
 
 SUMMARY = "Restore archived worktree"
 
@@ -31,25 +32,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         type=str,
         help="Base branch to use (default: main)",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be restored without restoring it",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_dry_run_flag(parser)
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Restore archived worktree - delegates to worktree library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session import worktree
 
     try:
@@ -70,25 +61,22 @@ def main(args: argparse.Namespace) -> int:
         }
 
         if args.json:
-            print(json.dumps(result, indent=2))
+            formatter.json_output(result)
         else:
             if args.dry_run:
-                print(f"Would restore worktree:")
-                print(f"  Session: {args.session_id}")
-                print(f"  Path: {restored_path}")
-                print(f"  Branch: {branch_name}")
+                formatter.text(f"Would restore worktree:")
+                formatter.text(f"  Session: {args.session_id}")
+                formatter.text(f"  Path: {restored_path}")
+                formatter.text(f"  Branch: {branch_name}")
             else:
-                print(f"Restored worktree for session: {args.session_id}")
-                print(f"  Path: {restored_path}")
-                print(f"  Branch: {branch_name}")
+                formatter.text(f"Restored worktree for session: {args.session_id}")
+                formatter.text(f"  Path: {restored_path}")
+                formatter.text(f"  Branch: {branch_name}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="worktree_restore_error")
         return 1
 
 if __name__ == "__main__":

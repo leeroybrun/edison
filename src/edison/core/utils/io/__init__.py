@@ -25,7 +25,11 @@ from .json import (
 from .locking import (
     LockTimeoutError,
     acquire_file_lock,
+    file_lock,
     get_file_locking_config,
+    is_locked,
+    safe_move_file,
+    write_text_locked,
 )
 from .yaml import (
     HAS_YAML,
@@ -58,4 +62,8 @@ __all__ = [
     "acquire_file_lock",
     "LockTimeoutError",
     "get_file_locking_config",
+    "file_lock",
+    "is_locked",
+    "safe_move_file",
+    "write_text_locked",
 ]

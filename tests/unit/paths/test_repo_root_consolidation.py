@@ -15,7 +15,7 @@ from edison.core.utils.paths import (
 # We'll import the modules we're refactoring to ensure they still work/redirect
 from edison.core.utils import git as git_utils
 from edison.core.utils import subprocess as subprocess_utils
-from edison.core.task import paths as task_paths
+from edison.core.task.paths import _get_root as task_paths_get_root
 from edison.core.composition import includes as composition_includes
 from edison.core.composition.registries import guidelines as composition_guidelines
 # from edison.core.adapters.sync import zen as zen_adapter
@@ -43,7 +43,7 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
 def _reset_path_caches() -> Generator[None, None, None]:
     """Reset internal caches before each test."""
     import edison.core.utils.paths.resolver as resolver_mod
-    from edison.core.task import paths as task_paths_mod
+    import edison.core.task.paths as task_paths_mod
 
     resolver_mod._PROJECT_ROOT_CACHE = None
     task_paths_mod._ROOT_CACHE = None
@@ -83,17 +83,17 @@ class TestRepoRootConsolidation:
         """Test that AGENTS_PROJECT_ROOT override works consistently across accessors."""
         fake_root = tmp_path / "fake_root"
         fake_root.mkdir()
-        
+
         monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(fake_root))
-        
+
         # Canonical
         assert resolve_project_root() == fake_root
-        
+
         # utils.git
         assert git_utils.get_repo_root() == fake_root
-        
+
         # task.paths (ensure it picks up the override via canonical)
-        assert task_paths._get_root() == fake_root
+        assert task_paths_get_root() == fake_root
 
     def test_composition_wrappers_use_canonical(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that composition modules' _repo_root wrappers work."""

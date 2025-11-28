@@ -1,33 +1,21 @@
-import sys
-from pathlib import Path
-import yaml
+"""Test that __pycache__ directories are not committed to git.
 
-# Prevent Python from creating new __pycache__ directories during this test run.
-sys.dont_write_bytecode = True
+This test verifies that __pycache__ directories are properly gitignored,
+NOT that they don't exist locally (they're expected to exist during development).
+"""
+import subprocess
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _load_pycache_config() -> dict:
-    config_path = Path(__file__).parent.parent / "data" / "config" / "no_pycache.yaml"
-    with config_path.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
-
-
-def _find_pycache_dirs(repo_root: Path, relative_targets: list[str]) -> list[Path]:
-    pycache_dirs: list[Path] = []
-    for rel in relative_targets:
-        target = (repo_root / rel).resolve()
-        if target.exists():
-            pycache_dirs.extend([p for p in target.rglob("__pycache__") if p.is_dir()])
-    return pycache_dirs
-
-
-def test_no_pycache_directories_in_src():
-    config = _load_pycache_config()
-    targets = config.get("targets", [])
-    repo_root = REPO_ROOT
-
-    pycache_dirs = _find_pycache_dirs(repo_root, targets)
-
-    assert not pycache_dirs, f"__pycache__ directories present: {pycache_dirs}"
+def test_no_pycache_directories_tracked_in_git():
+    """__pycache__ directories should not be tracked in git."""
+    result = subprocess.run(
+        ["git", "ls-files", "--cached", "**/__pycache__/*"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    tracked_pycache = [f for f in result.stdout.strip().split("\n") if f]
+    assert not tracked_pycache, f"__pycache__ files tracked in git: {tracked_pycache}"

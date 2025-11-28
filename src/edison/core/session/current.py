@@ -51,9 +51,10 @@ def _get_session_id_file() -> Optional[Path]:
         return None
     
     try:
-        from edison.core.utils.paths import PathResolver
+        from edison.core.utils.paths import PathResolver, get_management_paths
         project_root = PathResolver.resolve_project_root()
-        return project_root / ".project" / _SESSION_ID_FILENAME
+        mgmt = get_management_paths(project_root)
+        return mgmt.get_management_root() / _SESSION_ID_FILENAME
     except Exception:
         return None
 
@@ -116,29 +117,38 @@ def _delete_session_id_file(path: Path) -> None:
 
 def _session_exists(session_id: str) -> bool:
     """Check if a session exists.
-    
+
     Args:
         session_id: Session ID to check.
-        
+
     Returns:
         True if the session exists.
     """
     try:
-        from .store.discovery import session_exists
-        return session_exists(session_id)
+        from .repository import SessionRepository
+        repo = SessionRepository()
+        return repo.exists(session_id)
     except Exception:
         return False
 
 
 def _auto_session_for_owner() -> Optional[str]:
     """Get session ID using PID-based inference.
-    
+
     Returns:
         Session ID from process tree inference, or None.
     """
     try:
-        from .store.discovery import auto_session_for_owner
-        return auto_session_for_owner(owner=None)
+        from .repository import SessionRepository
+        from edison.core.utils.process import get_current_owner
+        repo = SessionRepository()
+        owner = get_current_owner()
+        sessions = repo.find_by_owner(owner)
+        # Return first session in 'wip' state
+        for sess in sessions:
+            if sess.state == "wip":
+                return sess.id
+        return None
     except Exception:
         return None
 

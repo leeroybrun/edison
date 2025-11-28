@@ -2,13 +2,19 @@ import pytest
 import yaml
 from pathlib import Path
 from edison.core.session import manager
-from edison.core.session import store
+from edison.core.session.repository import SessionRepository
+from edison.core.session.id import validate_session_id
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
 import edison.core.utils.paths.resolver as path_resolver
+
+def session_exists(session_id: str) -> bool:
+    """Check if a session exists."""
+    repo = SessionRepository()
+    return repo.exists(session_id)
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
@@ -89,12 +95,7 @@ def project_root(tmp_path, monkeypatch):
     path_resolver._PROJECT_ROOT_CACHE = None
     clear_all_caches()
     reset_config_cache()
-    store.reset_session_store_cache()
-    
-    # Reset state machine
-    from edison.core.session import state as session_state
-    session_state._STATE_MACHINE = None
-    
+
     yield tmp_path
 
     # Cleanup
@@ -116,7 +117,7 @@ def test_create_session(project_root):
     assert sess["state"].lower() == "active"
     
     # Verify it exists on disk
-    assert store.session_exists(sid)
+    assert session_exists(sid)
 
 def test_get_session(project_root):
     """Test retrieving a session."""

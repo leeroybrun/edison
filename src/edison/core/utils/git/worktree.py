@@ -157,7 +157,7 @@ def check_worktree_health(path: Path) -> bool:
             cwd=path,
             capture_output=True,
             text=True,
-            timeout=10  # Default reasonable timeout
+            timeout_type="git_operations"
         )
         return path.exists() and r.returncode == 0 and (r.stdout or "").strip() == "true"
     except Exception:
@@ -226,7 +226,7 @@ def get_existing_worktree_path(branch_name: str, repo_root: Optional[Path] = Non
                 cwd=p,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout_type="git_operations"
             )
             if cp.returncode == 0 and (cp.stdout or "").strip() == branch_name and check_worktree_health(p):
                 return p

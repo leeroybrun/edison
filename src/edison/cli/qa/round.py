@@ -7,9 +7,10 @@ SUMMARY: Manage QA rounds
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Manage QA rounds"
 
@@ -42,26 +43,20 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Show current round number",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Manage QA rounds - delegates to QA library."""
-    from edison.core.qa import rounds, evidence
-    from edison.core.utils.paths import resolve_project_root
+    from edison.core.qa.evidence import EvidenceService
     from edison.core.utils.io import write_json_atomic
 
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
+        ev_svc = EvidenceService(args.task_id, project_root=repo_root)
 
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
@@ -96,23 +91,20 @@ def main(args: argparse.Namespace) -> int:
             with open(qa_file, 'a') as f:
                 f.write(round_entry)
 
-            if args.json:
-                print(json.dumps({
-                    "taskId": args.task_id,
-                    "round": next_round,
-                    "status": args.status or 'pending',
-                }))
-            else:
-                print(f"Appended round {next_round} for {args.task_id}")
+            result = {
+                "taskId": args.task_id,
+                "round": next_round,
+                "status": args.status or 'pending',
+            }
+            formatter.json_output(result) if formatter.json_mode else formatter.text(f"Appended round {next_round} for {args.task_id}")
 
         elif args.new:
             # Create new round
-            round_num = rounds.next_round(args.task_id)
-            round_path = rounds.round_dir(args.task_id, round_num)
-            round_path.mkdir(parents=True, exist_ok=True)
+            round_path = ev_svc.create_next_round()
+            round_num = ev_svc.get_current_round()
 
             # Update metadata
-            evidence_dir = evidence.get_evidence_dir(args.task_id)
+            evidence_dir = ev_svc.get_evidence_root()
             metadata_path = evidence_dir / "metadata.json"
             metadata = {
                 "task_id": args.task_id,
@@ -121,23 +113,19 @@ def main(args: argparse.Namespace) -> int:
             }
             write_json_atomic(metadata_path, metadata)
 
-            if args.json:
-                print(json.dumps({
-                    "created": str(round_path),
-                    "round": round_num,
-                }))
-            else:
-                print(f"Created round {round_num} for {args.task_id}")
-                print(f"  Path: {round_path}")
+            result = {
+                "created": str(round_path),
+                "round": round_num,
+            }
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Created round {round_num} for {args.task_id}\n  Path: {round_path}"
+            )
 
         elif args.list:
             # List all rounds
-            evidence_dir = evidence.get_evidence_dir(args.task_id)
+            evidence_dir = ev_svc.get_evidence_root()
             if not evidence_dir.exists():
-                if args.json:
-                    print(json.dumps({"rounds": []}))
-                else:
-                    print(f"No rounds found for {args.task_id}")
+                formatter.json_output({"rounds": []}) if formatter.json_mode else formatter.text(f"No rounds found for {args.task_id}")
                 return 0
 
             round_dirs = sorted([
@@ -146,37 +134,34 @@ def main(args: argparse.Namespace) -> int:
                 if p.is_dir() and p.name.split("-")[1].isdigit()
             ])
 
-            if args.json:
-                print(json.dumps({"rounds": round_dirs}))
+            if formatter.json_mode:
+                formatter.json_output({"rounds": round_dirs})
             else:
                 if round_dirs:
-                    print(f"Rounds for {args.task_id}:")
+                    formatter.text(f"Rounds for {args.task_id}:")
                     for r in round_dirs:
-                        print(f"  - round-{r}")
+                        formatter.text(f"  - round-{r}")
                 else:
-                    print(f"No rounds found for {args.task_id}")
+                    formatter.text(f"No rounds found for {args.task_id}")
 
         else:
             # Default: show current round
-            current = rounds.latest_round(args.task_id)
-            if args.json:
-                print(json.dumps({
+            current = ev_svc.get_current_round()
+            if formatter.json_mode:
+                formatter.json_output({
                     "task_id": args.task_id,
                     "current_round": current,
-                }))
+                })
             else:
                 if current is not None:
-                    print(f"Current round for {args.task_id}: {current}")
+                    formatter.text(f"Current round for {args.task_id}: {current}")
                 else:
-                    print(f"No rounds found for {args.task_id}")
+                    formatter.text(f"No rounds found for {args.task_id}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="round_error")
         return 1
 
 if __name__ == "__main__":

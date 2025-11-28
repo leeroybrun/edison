@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from edison.core.session import manager as session_manager
-from edison.core.session import store as session_store
+from edison.core.session.manager import get_session
+from edison.core.session.graph import save_session
 from edison.core.utils import git as git_utils
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.mcp import format_clink_cli_command, resolve_working_directory
@@ -35,9 +36,9 @@ def test_mcp_call_includes_working_directory_when_in_worktree(repo_with_commit: 
     assert git_utils.is_worktree(worktree_path) is True
 
     session_manager.create_session(session_id, owner="tester", create_wt=False)
-    session = session_store.load_session(session_id)
+    session = get_session(session_id)
     session.setdefault("git", {})["worktreePath"] = str(worktree_path)
-    session_store.save_session(session_id, session)
+    save_session(session_id, session)
 
     cmd = format_clink_cli_command(
         cli_name="codex",

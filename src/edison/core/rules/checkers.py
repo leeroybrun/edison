@@ -17,7 +17,7 @@ from .models import Rule, RuleViolation
 from .errors import RuleViolationError
 
 if TYPE_CHECKING:
-    from ..qa.evidence import EvidenceManager
+    from ..qa.evidence import EvidenceService
 
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
@@ -91,8 +91,12 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
             return True
         try:
             # Lazy import to avoid circular dependency
-            from ..qa.evidence import EvidenceManager
-            latest_round = EvidenceManager.get_latest_round_dir(str(task_id))
+            from ..qa.evidence import EvidenceService
+            svc = EvidenceService(str(task_id))
+            current_round = svc.get_current_round()
+            if current_round is None:
+                raise FileNotFoundError(f"No evidence rounds found for {task_id}")
+            latest_round = svc.ensure_round(current_round)
         except FileNotFoundError:
             # No evidence directory or no round-* dirs present.
             root = PathResolver.resolve_project_root()

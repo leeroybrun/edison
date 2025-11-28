@@ -1,7 +1,11 @@
 """File locking utilities for atomic I/O operations."""
 from __future__ import annotations
 
+import errno
 import fcntl
+import os
+import shutil
+import tempfile
 import threading
 import time
 from contextlib import contextmanager
@@ -161,7 +165,123 @@ def get_file_locking_config() -> Dict[str, Any]:
         return dict(result)
 
 
-__all__ = ["acquire_file_lock", "LockTimeoutError", "get_file_locking_config"]
+__all__ = ["acquire_file_lock", "LockTimeoutError", "get_file_locking_config", "file_lock", "is_locked", "safe_move_file", "write_text_locked"]
+
+
+def is_locked(target: Path) -> bool:
+    """Return True when a lock file exists for target."""
+    target = Path(target)
+    lock_path = target.with_suffix(target.suffix + ".lock")
+    return lock_path.exists()
+
+
+@contextmanager
+def file_lock(target: Path, timeout: float = 10.0) -> Iterator[Path]:
+    """Create an exclusive lock for the target using sidecar .lock file.
+    
+    This is a simplified wrapper around acquire_file_lock that yields the
+    target path on success and raises SystemExit on timeout.
+    
+    Args:
+        target: File path to lock
+        timeout: Maximum seconds to wait for lock
+        
+    Yields:
+        The target path (for convenience)
+        
+    Raises:
+        SystemExit: If lock cannot be acquired within timeout
+    """
+    try:
+        with acquire_file_lock(Path(target), timeout=timeout):
+            yield target
+    except LockTimeoutError as e:
+        raise SystemExit(f"File is locked: {target}") from e
+
+
+def safe_move_file(src: Path, dest: Path, repo_root: Optional[Path] = None) -> Path:
+    """Atomically move a file, preferring git mv when available.
+    
+    Args:
+        src: Source file path
+        dest: Destination file path
+        repo_root: Repository root for git operations (auto-detected if None)
+        
+    Returns:
+        The destination path
+    """
+    src = Path(src)
+    dest = Path(dest)
+    ensure_directory(dest.parent)
+    
+    # Try git mv first
+    if repo_root is None:
+        try:
+            from edison.core.utils.paths import PathResolver
+            repo_root = PathResolver.resolve_project_root()
+        except Exception:
+            repo_root = None
+    
+    if repo_root is not None:
+        try:
+            from edison.core.utils.subprocess import run_with_timeout
+            result = run_with_timeout(
+                ["git", "mv", "--", str(src), str(dest)],
+                cwd=repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return dest
+        except Exception:
+            pass
+    
+    # Fallback to os.replace
+    try:
+        os.replace(str(src), str(dest))
+        return dest
+    except OSError as e:
+        if e.errno == errno.EXDEV:
+            # Cross-device move: copy + verify + delete
+            shutil.copy2(str(src), str(dest))
+            # Verify by comparing content to detect corruption
+            src_content = src.read_bytes()
+            dest_content = dest.read_bytes()
+            if src_content != dest_content:
+                dest.unlink(missing_ok=True)
+                raise RuntimeError("Cross-device move verification failed - content mismatch") from e
+            src.unlink(missing_ok=True)
+            return dest
+        raise
+
+
+def write_text_locked(path: Path, content: str) -> None:
+    """Write text atomically while holding an exclusive lock on the target.
+    
+    Args:
+        path: Target file path
+        content: Text content to write
+    """
+    target = Path(path)
+    ensure_directory(target.parent)
+    tmp: Optional[Path] = None
+    with file_lock(target):
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w", encoding="utf-8", dir=str(target.parent), delete=False
+            ) as fh:
+                tmp = Path(fh.name)
+                fh.write(content)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(str(tmp), str(target))
+        finally:
+            if tmp is not None and tmp.exists():
+                try:
+                    tmp.unlink()
+                except Exception:
+                    pass
 
 
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Create a new Edison session"
 
@@ -43,26 +43,20 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Install dependencies in worktree (if creating worktree)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Create a new session - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    from edison.core.session.id import validate_session_id
     from edison.core.exceptions import SessionError
 
     try:
-        session_id = session_store.validate_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
 
         # Determine worktree creation
         create_wt = not args.no_worktree
@@ -84,10 +78,9 @@ def main(args: argparse.Namespace) -> int:
         if args.mode == "start":
             try:
                 from edison.core.session.autostart import SessionAutoStart
-                from edison.core.utils.paths import resolve_project_root
                 from pathlib import Path
 
-                repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+                repo_root = get_repo_root(args)
                 autostart = SessionAutoStart(project_root=repo_root)
                 autostart_result = autostart.start(process=session_id, orchestrator_profile=None)
                 # Autostart launched in background, don't wait
@@ -95,38 +88,32 @@ def main(args: argparse.Namespace) -> int:
                 # Autostart is optional; if it fails, session is still created
                 pass
 
-        if args.json:
+        if formatter.json_mode:
             output = {
                 "status": "created",
                 "session_id": session_id,
                 "path": str(sess_path),
                 "session": session,
             }
-            print(json.dumps(output, indent=2, default=str))
+            formatter.json_output(output)
         else:
-            print(f"✓ Created session: {session_id}")
-            print(f"  Path: {sess_path}")
-            print(f"  Owner: {args.owner}")
-            print(f"  Mode: {args.mode}")
+            formatter.text(f"✓ Created session: {session_id}")
+            formatter.text(f"  Path: {sess_path}")
+            formatter.text(f"  Owner: {args.owner}")
+            formatter.text(f"  Mode: {args.mode}")
             if session.get("git", {}).get("worktreePath"):
-                print(f"  Worktree: {session['git']['worktreePath']}")
+                formatter.text(f"  Worktree: {session['git']['worktreePath']}")
             if session.get("git", {}).get("branchName"):
-                print(f"  Branch: {session['git']['branchName']}")
+                formatter.text(f"  Branch: {session['git']['branchName']}")
 
         return 0
 
     except SessionError as e:
-        if args.json:
-            print(json.dumps({"error": "session_error", "message": str(e)}, indent=2))
-        else:
-            print(f"Error: {e}")
+        formatter.error(e, error_code="session_error")
         return 1
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": "unexpected_error", "message": str(e)}, indent=2))
-        else:
-            print(f"Error: {e}")
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

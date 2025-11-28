@@ -1,15 +1,17 @@
 """Follow-up loading logic."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from edison.core.utils.io import read_json
-from .helpers import _latest_round_dir
+from .service import EvidenceService
 
 
 def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
     """Load follow-up tasks from implementation-report.json for latest round."""
-    rd = _latest_round_dir(task_id)
+    ev_svc = EvidenceService(task_id)
+    rd = ev_svc.get_current_round_dir()
     if not rd:
         return []
     rp = rd / "implementation-report.json"
@@ -35,7 +37,8 @@ def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
 
 def load_bundle_followups(task_id: str) -> List[Dict[str, Any]]:
     """Load non-blocking follow-ups from bundle-approved.json for latest round."""
-    rd = _latest_round_dir(task_id)
+    ev_svc = EvidenceService(task_id)
+    rd = ev_svc.get_current_round_dir()
     if not rd:
         return []
     bp = rd / "bundle-approved.json"

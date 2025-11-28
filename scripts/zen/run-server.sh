@@ -74,12 +74,36 @@ export ZEN_WORKING_DIR
 
 # Locate Zen MCP server installation
 # Priority:
-#  1) ZEN_MCP_SERVER_DIR (if set in .mcp.json - for custom/development setups)
-#  2) ~/zen-mcp-server (standard clone location from zen-mcp-server README Option A)
-#  3) uvx instant setup (Option B from zen-mcp-server README)
-#  4) FAIL with helpful message
+#  1) .edison/tools/zen-mcp-server (local project installation - highest priority)
+#  2) ZEN_MCP_SERVER_DIR (if set in .mcp.json - for custom/development setups)
+#  3) ~/zen-mcp-server (standard clone location from zen-mcp-server README Option A)
+#  4) uvx instant setup (Option B from zen-mcp-server README)
+#  5) FAIL with helpful message
 
-if [[ -n "${ZEN_MCP_SERVER_DIR:-}" ]]; then
+# Check for local .edison/tools/zen-mcp-server FIRST (relocatable setup)
+EDISON_ROOT="${PROJECT_ROOT}/.edison"
+if [[ -d "${EDISON_ROOT}/tools/zen-mcp-server" ]]; then
+  SERVER_DIR="${EDISON_ROOT}/tools/zen-mcp-server"
+
+  # Activate venv and launch from local .edison location
+  if [[ ! -f "${SERVER_DIR}/.venv/bin/activate" ]]; then
+    echo "❌ Missing virtualenv at ${SERVER_DIR}/.venv. Run: ${EDISON_ROOT}/scripts/zen/setup.sh" >&2
+    exit 1
+  fi
+  source "${SERVER_DIR}/.venv/bin/activate"
+  export PYTHONPATH="${SERVER_DIR}:${PYTHONPATH:-}"
+
+  if [[ -x "${SERVER_DIR}/.venv/bin/python" ]]; then
+    PY_BIN="${SERVER_DIR}/.venv/bin/python"
+  elif [[ -x "${SERVER_DIR}/.venv/bin/python3" ]]; then
+    PY_BIN="${SERVER_DIR}/.venv/bin/python3"
+  else
+    echo "❌ No python found in ${SERVER_DIR}/.venv" >&2
+    exit 1
+  fi
+  exec "${PY_BIN}" "${SERVER_DIR}/server.py" "$@"
+
+elif [[ -n "${ZEN_MCP_SERVER_DIR:-}" ]]; then
   # User explicitly set ZEN_MCP_SERVER_DIR (e.g., in .mcp.json)
   if [[ ! -d "${ZEN_MCP_SERVER_DIR}" ]]; then
     echo "❌ ZEN_MCP_SERVER_DIR is set but directory does not exist: ${ZEN_MCP_SERVER_DIR}" >&2

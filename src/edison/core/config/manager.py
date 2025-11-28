@@ -263,7 +263,10 @@ class ConfigManager:
                 cfg = self.deep_merge(cfg, module_cfg)
 
         if self.project_config_dir.exists():
-            for path in sorted(self.project_config_dir.glob("*.yml")):
+            # Support both .yml and .yaml extensions for project overrides
+            yml_files = list(self.project_config_dir.glob("*.yml"))
+            yaml_files = list(self.project_config_dir.glob("*.yaml"))
+            for path in sorted(yml_files + yaml_files):
                 mod_cfg = self.load_yaml(path)
                 cfg = self.deep_merge(cfg, mod_cfg)
 

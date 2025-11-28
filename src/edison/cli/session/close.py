@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Validate and transition a session into closing/archival"
 
@@ -30,57 +30,48 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Skip guard checks and move directly to closing (not recommended)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Close session - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    from edison.core.session.id import validate_session_id
     from edison.core.session.verify import verify_session_health
 
     try:
-        session_id = session_store.validate_session_id(args.session_id)
+        session_id = validate_session_id(args.session_id)
 
         # Run verification unless explicitly skipped
         if not args.skip_validation:
             health = verify_session_health(session_id)
 
             if not health.get("ok") and not args.force:
-                if args.json:
-                    print(json.dumps({"error": "verification_failed", "health": health}, indent=2))
+                if formatter.json_mode:
+                    formatter.json_output({"error": "verification_failed", "health": health})
                 else:
-                    print(f"Session {session_id} failed verification:")
+                    formatter.text(f"Session {session_id} failed verification:")
                     for detail in health.get("details", []):
-                        print(f"  - {detail}")
-                    print("\nUse --force to close anyway or fix the issues first.")
+                        formatter.text(f"  - {detail}")
+                    formatter.text("\nUse --force to close anyway or fix the issues first.")
                 return 1
 
         # Transition to closing
         session_manager.transition_session(session_id, "closing")
 
-        if args.json:
+        if formatter.json_mode:
             session = session_manager.get_session(session_id)
-            print(json.dumps({"sessionId": session_id, "status": "closing", "session": session}, indent=2, default=str))
+            formatter.json_output({"sessionId": session_id, "status": "closing", "session": session})
         else:
-            print(f"Session {session_id} transitioned to closing.")
+            formatter.text(f"Session {session_id} transitioned to closing.")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2))
-        else:
-            print(f"Error: {e}")
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

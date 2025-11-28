@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.utils.paths import PathResolver
-from .evidence import EvidenceManager
+from .evidence import EvidenceService
+from .evidence.rounds import resolve_round_dir
 from edison.core.config.domains import QAConfig
 
 
@@ -59,8 +60,8 @@ class QAManager:
             >>> round_1 = mgr.create_round("task-100")
             >>> assert round_1.name == "round-1"
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
-        return mgr.create_next_round_dir()
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        return svc.create_next_round()
 
     def get_latest_round(self, task_id: str) -> Optional[int]:
         """Get the latest round number for a task.
@@ -77,11 +78,8 @@ class QAManager:
             >>> if latest:
             ...     print(f"Latest round: {latest}")
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
-        latest_dir = mgr._get_latest_round_dir()
-        if latest_dir is None:
-            return None
-        return mgr.get_round_number(latest_dir)
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        return svc.get_current_round()
 
     def get_round_dir(self, task_id: str, round_num: Optional[int] = None) -> Optional[Path]:
         """Get path to evidence round directory.
@@ -98,8 +96,9 @@ class QAManager:
             >>> round_2 = mgr.get_round_dir("task-100", round_num=2)
             >>> latest = mgr.get_round_dir("task-100")  # Get latest
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
-        return mgr._resolve_round_dir(round_num)
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        base_dir = svc.get_evidence_root()
+        return resolve_round_dir(base_dir, round_num)
 
     def list_rounds(self, task_id: str) -> List[Path]:
         """List all evidence round directories for a task.
@@ -116,8 +115,8 @@ class QAManager:
             >>> for round_dir in rounds:
             ...     print(round_dir.name)
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
-        return mgr.list_rounds()
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        return svc.list_rounds()
 
     def write_report(
         self,
@@ -146,16 +145,16 @@ class QAManager:
             >>> mgr.write_report("task-100", "bundle", {"approved": True})
             >>> mgr.write_report("task-100", "validator", {...}, validator_name="claude")
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
+        svc = EvidenceService(task_id, project_root=self.project_root)
 
         if report_type == "bundle":
-            mgr.write_bundle_summary(data, round=round_num)
+            svc.write_bundle(data, round_num=round_num)
         elif report_type == "implementation":
-            mgr.write_implementation_report(data, round=round_num)
+            svc.write_implementation_report(data, round_num=round_num)
         elif report_type == "validator":
             if validator_name is None:
                 raise ValueError("validator_name required for validator report type")
-            mgr.write_validator_report(validator_name, data, round=round_num)
+            svc.write_validator_report(validator_name, data, round_num=round_num)
         else:
             raise ValueError(f"Unknown report_type: {report_type}")
 
@@ -187,16 +186,16 @@ class QAManager:
             >>> bundle = mgr.read_report("task-100", "bundle")
             >>> validator = mgr.read_report("task-100", "validator", validator_name="claude")
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
+        svc = EvidenceService(task_id, project_root=self.project_root)
 
         if report_type == "bundle":
-            return mgr._read_bundle_summary(round=round_num)
+            return svc.read_bundle(round_num=round_num)
         elif report_type == "implementation":
-            return mgr._read_implementation_report(round=round_num)
+            return svc.read_implementation_report(round_num=round_num)
         elif report_type == "validator":
             if validator_name is None:
                 raise ValueError("validator_name required for validator report type")
-            return mgr.read_validator_report(validator_name, round=round_num)
+            return svc.read_validator_report(validator_name, round_num=round_num)
         else:
             raise ValueError(f"Unknown report_type: {report_type}")
 
@@ -216,8 +215,8 @@ class QAManager:
             >>> for report in reports:
             ...     print(report.name)
         """
-        mgr = EvidenceManager(task_id, project_root=self.project_root)
-        return mgr.list_validator_reports(round=round_num)
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        return svc.list_validator_reports(round_num=round_num)
 
 
 __all__ = ["QAManager"]

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Link parent-child tasks"
 
@@ -34,66 +34,67 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Remove link instead of creating it",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """Link tasks - delegates to core library."""
-    from edison.core import task
-    from pathlib import Path
+    """Link tasks - delegates to core library using entity-based API."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.task import TaskRepository, normalize_record_id
 
     try:
+        # Resolve project root
+        project_root = get_repo_root(args)
+
         # Normalize the task IDs
-        parent_id = task.normalize_record_id("task", args.parent_id)
-        child_id = task.normalize_record_id("task", args.child_id)
+        parent_id = normalize_record_id("task", args.parent_id)
+        child_id = normalize_record_id("task", args.child_id)
 
-        # Find both tasks
-        parent_path = task.find_record(parent_id, "task")
-        child_path = task.find_record(child_id, "task")
+        # Get both tasks using repository
+        task_repo = TaskRepository(project_root=project_root)
+        parent_entity = task_repo.get(parent_id)
+        child_entity = task_repo.get(child_id)
 
-        # Load metadata
-        parent_meta = task.read_metadata(parent_path, "task")
-        child_meta = task.read_metadata(child_path, "task")
+        if not parent_entity:
+            raise ValueError(f"Parent task not found: {parent_id}")
+        if not child_entity:
+            raise ValueError(f"Child task not found: {child_id}")
 
         if args.unlink:
             # Remove link - update metadata files
             # This requires updating the task markdown frontmatter
             # For now, print instruction
-            if args.json:
-                print(json.dumps({
-                    "action": "unlink",
-                    "parent_id": parent_id,
-                    "child_id": child_id,
-                    "status": "not_implemented",
-                    "message": "Unlinking requires metadata update - use task metadata editing",
-                }, indent=2))
-            else:
-                print(f"Unlink not yet implemented")
-                print(f"To unlink {child_id} from {parent_id}:")
-                print(f"  Edit {child_path} and remove parent reference")
+            formatter.json_output({
+                "action": "unlink",
+                "parent_id": parent_id,
+                "child_id": child_id,
+                "status": "not_implemented",
+                "message": "Unlinking requires metadata update - use task metadata editing",
+            }) if formatter.json_mode else formatter.text(
+                f"Unlink not yet implemented\n"
+                f"To unlink {child_id} from {parent_id}:\n"
+                f"  Edit the child task file and remove parent reference"
+            )
             return 1
         else:
             # Create link - update session if provided
             if args.session:
-                from edison.core.session import store as session_store
+                from edison.core.session import validate_session_id
+                from edison.core.session.repository import SessionRepository
                 from edison.core.utils.paths import PathResolver
-                from edison.core.utils.io import read_json, write_json_atomic
+                from edison.core.utils.io import write_json_atomic
 
-                session_id = session_store.validate_session_id(args.session)
+                session_id = validate_session_id(args.session)
 
                 # Find or create session
-                try:
-                    session = session_store.load_session(session_id)
-                except:
+                session_repo = SessionRepository(project_root=PathResolver.resolve_project_root())
+                session_entity = session_repo.get(session_id)
+
+                if session_entity:
+                    session = session_entity.to_dict()
+                else:
                     # Create new session in draft state
                     session = {
                         "id": session_id,
@@ -116,7 +117,9 @@ def main(args: argparse.Namespace) -> int:
 
                 # Save session
                 try:
-                    session_store.save_session(session_id, session)
+                    from edison.core.session.models import Session
+                    session_entity = Session.from_dict(session)
+                    session_repo.save(session_entity)
                 except:
                     # Create session directory structure
                     session_dir = PathResolver.resolve_project_root() / ".project" / "sessions" / "draft" / session_id
@@ -124,30 +127,26 @@ def main(args: argparse.Namespace) -> int:
                     write_json_atomic(session_dir / "session.json", session)
 
             # Output result
-            if args.json:
-                result = {
-                    "action": "link",
-                    "parentId": parent_id,
-                    "childId": child_id,
-                    "status": "success",
-                }
-                if args.session:
-                    result["sessionId"] = args.session
-                print(json.dumps(result, indent=2))
-            else:
-                print(f"Linked {child_id} to parent {parent_id}")
-                if args.session:
-                    print(f"Session: {args.session}")
-                print(f"\nTo persist this link, add to {child_path}:")
-                print(f"  parent: {parent_id}")
+            result = {
+                "action": "link",
+                "parentId": parent_id,
+                "childId": child_id,
+                "status": "success",
+            }
+            if args.session:
+                result["sessionId"] = args.session
+
+            link_text = f"Linked {child_id} to parent {parent_id}"
+            if args.session:
+                link_text += f"\nSession: {args.session}"
+            link_text += f"\n\nTo persist this link, add to the child task file:\n  parent: {parent_id}"
+
+            formatter.json_output(result) if formatter.json_mode else formatter.text(link_text)
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, file=sys.stderr, indent=2))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="link_error")
         return 1
 
 if __name__ == "__main__":

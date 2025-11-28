@@ -4,17 +4,40 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from .. import task
+from ..task import TaskManager
 from ..utils.time import utc_timestamp as io_utc_timestamp
-from ..qa.evidence import EvidenceManager
+from ..qa.evidence import EvidenceService
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
-from .store import (
-    _load_or_create_session,
-    save_session,
-    validate_session_id,
-)
-from .models import TaskEntry, QAEntry
+from .id import validate_session_id
+from .repository import SessionRepository
+from .models import TaskEntry, QAEntry, Session
+
+
+def _load_or_create_session(session_id: str) -> Dict[str, Any]:
+    """Load session or create minimal session dict if not found."""
+    sid = validate_session_id(session_id)
+    repo = SessionRepository()
+    sess = repo.get(sid)
+    if sess:
+        return sess.to_dict()
+    # Return minimal session structure for creation
+    return {
+        "id": sid,
+        "state": "wip",
+        "tasks": {},
+        "qa": {},
+        "meta": {},
+    }
+
+
+def save_session(session_id: str, data: Dict[str, Any]) -> None:
+    """Save session data."""
+    sid = validate_session_id(session_id)
+    repo = SessionRepository()
+    entity = Session.from_dict({**data, "id": sid})
+    repo.save(entity)
+
 
 def _upsert_task_entry(
     session: Dict[str, Any],
@@ -113,8 +136,11 @@ def register_qa(
     """Register or update a QA entry in the session graph."""
     sess = _load_or_create_session(session_id)
     entry = _upsert_qa_entry(sess, qa_id, task_id, status=status, round_no=round_no)
-    # Ensure task entry points at this QA id
-    _upsert_task_entry(sess, task_id, owner=sess.get("meta", {}).get("owner", "_unassigned_"), status=status, qa_id=entry["recordId"])
+    # Ensure task entry points at this QA id (preserve existing task status)
+    tasks = sess.get("tasks", {})
+    existing_task = tasks.get(task_id, {})
+    task_status = existing_task.get("status", "unknown") if isinstance(existing_task, dict) else "unknown"
+    _upsert_task_entry(sess, task_id, owner=sess.get("meta", {}).get("owner", "_unassigned_"), status=task_status, qa_id=entry["recordId"])
     save_session(session_id, sess)
 
 def update_record_status(
@@ -213,27 +239,29 @@ def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
         # Resolve task/QA paths (prefer session scope, fall back to global)
         t_path: Optional[Path]
         qa_path: Optional[Path]
+
+        # Use TaskRepository to find task path
         try:
-            t_path = task.find_record(task_id, "task", session_id=sid)
+            from ..task import TaskRepository
+            task_repo = TaskRepository()
+            t_path = task_repo._find_entity_path(task_id)
         except Exception:
-            try:
-                t_path = task.find_record(task_id, "task", session_id=None)
-            except Exception:
-                t_path = None
+            t_path = None
+
+        # Use QARepository to find QA path
         try:
-            qa_path = task.find_record(task_id, "qa", session_id=sid)
+            from ..qa.repository import QARepository
+            qa_repo = QARepository()
+            qa_path = qa_repo._find_entity_path(task_id)
         except Exception:
-            try:
-                qa_path = task.find_record(task_id, "qa", session_id=None)
-            except Exception:
-                qa_path = None
+            qa_path = None
 
         qa_status = qa_path.parent.name if qa_path is not None else "missing"
 
         # Evidence directory (base dir for round-* dirs); tolerate missing evidence
         try:
-            mgr = EvidenceManager(task_id)
-            evidence_dir = str(mgr.base_dir)
+            svc = EvidenceService(task_id)
+            evidence_dir = str(svc.get_evidence_root())
         except Exception:
             # Fallback to conventional location
             root = PathResolver.resolve_project_root()
@@ -270,9 +298,10 @@ def create_merge_task(session_id: str, branch_name: str, base_branch: str) -> st
         f"- **Base:** {base_branch}\\n"
     )
     
-    # Create task file using task
-    task.create_task(task_id, title, desc)
-    
+    # Create task file using TaskManager
+    task_mgr = TaskManager()
+    task_mgr.create_task(task_id, title, desc)
+
     # Register in session graph
     register_task(session_id, task_id, owner="_unassigned_", status="todo")
     

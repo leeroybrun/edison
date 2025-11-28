@@ -1,23 +1,27 @@
-"""Session manager facade."""
+"""Session manager facade.
+
+This module provides the SessionManager class that consolidates session
+lifecycle operations including creation, state transitions, and queries.
+
+The module-level functions provide a functional API for CLI and scripts.
+"""
 from __future__ import annotations
 
 import logging
-import subprocess
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from . import store
-from . import state as session_state
-from . import worktree
-from ._config import get_config
 from .id import validate_session_id, SessionIdError
 from .naming import generate_session_id
 from .current import get_current_session, set_current_session, clear_current_session
+from .models import Session
+from .repository import SessionRepository
+from ._config import get_config
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_management_paths
-from edison.core.utils.io import ensure_directory
+from edison.core.config.domains.session import SessionConfig
+from edison.core.state.validator import StateValidator
+from edison.core.state import StateTransitionError
 from ..exceptions import SessionError, ValidationError
-from ..utils.time import utc_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -42,139 +46,230 @@ def _validate_session_id_format(session_id: str) -> bool:
 
 
 def _get_worktree_config():
-    """Get worktree config lazily to avoid module-level evaluation."""
+    from ._config import get_config
+
     return get_config().get_worktree_config()
 
 def create_session(
-    session_id: str, 
-    owner: str, 
-    mode: str = "start", 
+    session_id: str,
+    owner: str,
+    mode: str = "start",
     install_deps: Optional[bool] = None,
     *,
     create_wt: bool = True
 ) -> Path:
     """Create a new session with optional worktree."""
     _validate_session_id_format(session_id)
-    if store.session_exists(session_id):
+    project_root = PathResolver.resolve_project_root()
+    repo = SessionRepository(project_root=project_root)
+    config = SessionConfig(repo_root=project_root)
+
+    if repo.exists(session_id):
         raise SessionError(f"Session {session_id} already exists", session_id=session_id)
 
-    initial_state = "active"
-    sess = {
-        "id": session_id,
-        "state": initial_state,
-        "meta": {
-            "sessionId": session_id,
-            "owner": owner,
-            "mode": mode,
-            "createdAt": utc_timestamp(),
-            "lastActive": utc_timestamp(),
-            "status": "wip",
-        },
-        "tasks": {},
-        "qa": {},
-        "activityLog": [
-            {
-                "timestamp": utc_timestamp(),
-                "message": "Session created",
-            }
-        ],
-    }
+    # Create session entity
+    sid = validate_session_id(session_id)
+    initial_state = config.get_initial_session_state()
+    entity = Session.create(sid, owner=owner, state=initial_state)
+    repo.create(entity)
+
+    sess = repo.get(session_id)
+    if not sess:
+        raise SessionError("Failed to create session", session_id=session_id)
 
     # Handle worktree creation if configured or requested
-    # We use ensure_worktree_materialized logic but we can call create_worktree directly
-    # or let the script handle it?
-    # The original sessionlib.create_session_with_worktree called create_worktree.
-    
-    # If we are in a git repo, we might want to create a worktree.
-    # But let's delegate to worktree module.
-    # We can use ensure_worktree_materialized which calls create_worktree.
-    
-    # But wait, ensure_worktree_materialized returns git meta dict.
-    # We should update sess["git"] with it.
-    
-    sess.setdefault("git", {})
-    wt_cfg = _get_worktree_config()
-    base_branch = wt_cfg.get("baseBranch", "main") if isinstance(wt_cfg, dict) else "main"
-    sess["git"].setdefault("baseBranch", base_branch)
+    # Delegate to worktree module for all git operations
 
-    repo_dir = PathResolver.resolve_project_root()
-    in_git_repo = (repo_dir / ".git").exists()
+    data = sess.to_dict()
+    data.setdefault("git", {})
+    wt_cfg = _get_worktree_config()
+    base_branch = wt_cfg.get("baseBranch")
+    if base_branch:
+        data["git"].setdefault("baseBranch", base_branch)
+
+    in_git_repo = (project_root / ".git").exists()
 
     if create_wt and in_git_repo:
         try:
+            from . import worktree
+
             wt_path, branch = worktree.create_worktree(session_id, install_deps=install_deps)
-            if wt_path:
-                sess["git"]["worktreePath"] = str(wt_path)
-            if branch:
-                sess["git"]["branchName"] = branch
+            if wt_path and branch:
+                # Use centralized helper to construct git metadata
+                git_meta = worktree.prepare_session_git_metadata(session_id, wt_path, branch)
+                data["git"].update(git_meta)
         except Exception as exc:
             raise SessionError(f"Failed to create worktree for session {session_id}: {exc}", session_id=session_id) from exc
-    else:
-        sess["git"].setdefault("worktreePath", None)
-        sess["git"].setdefault("branchName", None)
 
-    sess["git"].setdefault("worktreePath", None)
-    sess["git"].setdefault("branchName", None)
-
-    # Persist new session in active/wip directory layout
-    sess_dir = store._session_dir(initial_state, session_id)
-    ensure_directory(sess_dir)
-    path = sess_dir / "session.json"
-    store._write_json(path, sess)  # type: ignore[attr-defined]
-    return path
+    repo.save(Session.from_dict(data))
+    return repo.get_session_json_path(session_id)
 
 def get_session(session_id: str) -> Dict[str, Any]:
     """Get a session by ID."""
-    return store.load_session(session_id)
+    project_root = PathResolver.resolve_project_root()
+    repo = SessionRepository(project_root=project_root)
+    session = repo.get(session_id)
+    if not session:
+        raise SessionError(f"Session {session_id} not found", session_id=session_id)
+    return session.to_dict()
 
 def list_sessions(state: Optional[str] = None) -> List[str]:
     """List sessions, optionally filtered by state."""
-    # store._list_active_sessions only lists active.
-    # We might need a better list function in store or iterate directories.
-    # For now, if state="active", use store._list_active_sessions.
-    if state == "active" or state is None:
-         return store._list_active_sessions()
-    # TODO: Implement listing for other states in store
-    return []
+    project_root = PathResolver.resolve_project_root()
+    repo = SessionRepository(project_root=project_root)
+    if state:
+        return [s.id for s in repo.list_by_state(state)]
+    return [s.id for s in repo.get_all()]
 
 def transition_session(session_id: str, target_state: str) -> None:
     """Transition a session to a new state."""
-    sess = get_session(session_id)
-    current_state = sess.get("state", "unknown")
+    project_root = PathResolver.resolve_project_root()
+    repo = SessionRepository(project_root=project_root)
+    validator = StateValidator(repo_root=project_root)
 
-    # Default readiness to true to satisfy state-machine conditions when unset
-    sess.setdefault("ready", True)
+    sid = validate_session_id(session_id)
+    entity = repo.get(sid)
+    if entity is None:
+        raise FileNotFoundError(f"Session {sid} not found")
 
-    session_state.validate_transition(current_state, target_state, context={"session": sess})
+    current = str(entity.state).lower()
+    target = str(target_state).lower()
 
-    # Update state in JSON
-    sess["state"] = target_state
-    store.save_session(session_id, sess)
-    
-    # Move directory if needed
-    # store._move_session_json_to handles moving
-    store._move_session_json_to(target_state, session_id)
+    # Validate via unified state validator
+    validator.ensure_transition("session", current, target)
+
+    entity.record_transition(current, target)
+    entity.state = target
+    repo.save(entity)
 
 def touch_session(session_id: str) -> None:
     """Update session lastActive timestamp."""
     try:
-        sess = store.load_session(session_id)
-        sess.setdefault("meta", {})["lastActive"] = utc_timestamp()
-        store.save_session(session_id, sess)
+        project_root = PathResolver.resolve_project_root()
+        repo = SessionRepository(project_root=project_root)
+        sess = repo.get(session_id)
+        if sess:
+            sess.add_activity("touched")
+            repo.save(sess)
     except Exception:
         pass
 
 def render_markdown(session: Dict[str, Any], state_spec: Optional[Dict[str, Any]] = None) -> str:
     """Render session as markdown summary."""
-    return store.render_markdown(session, state_spec)
+    meta = session.get("meta", {})
+    sid = meta.get("sessionId", session.get("id", "unknown"))
+    owner = meta.get("owner", "unknown")
+    status = meta.get("status", session.get("state", "unknown"))
+    last_active = meta.get("lastActive", "never")
+
+    lines = [
+        f"# Session {sid}",
+        "",
+        f"- **Owner:** {owner}",
+        f"- **Status:** {status}",
+        f"- **Last Active:** {last_active}",
+        "",
+        "## Tasks",
+    ]
+
+    tasks = session.get("tasks", {})
+    if not tasks:
+        lines.append("_No tasks registered._")
+    else:
+        for tid, t in tasks.items():
+            t_status = t.get("status", "unknown") if isinstance(t, dict) else "unknown"
+            lines.append(f"- **{tid}**: {t_status}")
+
+    lines.append("")
+    lines.append("## QA")
+    qa = session.get("qa", {})
+    if not qa:
+        lines.append("_No QA registered._")
+    else:
+        for qid, q in qa.items():
+            q_status = q.get("status", "unknown") if isinstance(q, dict) else "unknown"
+            lines.append(f"- **{qid}**: {q_status}")
+
+    return "\n".join(lines)
 
 
 class SessionManager:
-    """Minimal OO wrapper mirroring legacy sessionlib behavior for tests."""
+    """Consolidated session manager for lifecycle operations.
+
+    Provides high-level session operations including:
+    - Creating sessions with validation
+    - State transitions with state machine validation
+    - Session queries
+
+    Uses SessionRepository for persistence and StateValidator for transitions.
+    """
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
         self.project_root = project_root or PathResolver.resolve_project_root()
         self._config = get_config(self.project_root)
+        self._session_config = SessionConfig(repo_root=self.project_root)
+        self._repo = SessionRepository(project_root=self.project_root)
+        self._validator = StateValidator(repo_root=self.project_root)
+
+    @property
+    def repo(self) -> SessionRepository:
+        """Get the underlying repository (for direct access when needed)."""
+        return self._repo
+
+    def create(
+        self,
+        session_id: str,
+        *,
+        owner: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Path:
+        """Create a new session.
+
+        Args:
+            session_id: Session identifier
+            owner: Session owner
+            metadata: Additional metadata
+
+        Returns:
+            Path to session.json file
+        """
+        sid = validate_session_id(session_id)
+        initial_state = self._session_config.get_initial_session_state()
+
+        entity = Session.create(sid, owner=owner, state=initial_state)
+        self._repo.create(entity)
+        return self._repo.get_session_json_path(sid)
+
+    def transition(self, session_id: str, to_state: str) -> Path:
+        """Transition a session to a new state.
+
+        Args:
+            session_id: Session identifier
+            to_state: Target state
+
+        Returns:
+            Path to session.json file
+
+        Raises:
+            FileNotFoundError: If session not found
+            StateTransitionError: If transition is invalid
+        """
+        sid = validate_session_id(session_id)
+        entity = self._repo.get(sid)
+        if entity is None:
+            raise FileNotFoundError(f"Session {sid} not found")
+
+        current = str(entity.state).lower()
+        target = str(to_state).lower()
+
+        # Validate via unified state validator
+        self._validator.ensure_transition("session", current, target)
+
+        entity.record_transition(current, target)
+        entity.state = target
+        self._repo.save(entity)
+
+        return self._repo.get_session_json_path(sid)
 
     def create_session(
         self,
@@ -185,47 +280,68 @@ class SessionManager:
         owner: Optional[str] = None,
         naming_strategy: Optional[str] = None,
     ) -> Path:
+        """Create a new session with auto-generated ID if not provided.
+
+        This method provides a higher-level API that handles ID generation.
+
+        Args:
+            session_id: Optional session ID (auto-generated if not provided)
+            metadata: Additional metadata
+            process: Process name (unused, for backward compat)
+            owner: Session owner
+            naming_strategy: Naming strategy (unused, for backward compat)
+
+        Returns:
+            Path to session.json file
+        """
         sid = session_id or self._generate_session_id(
             process=process, owner=owner, naming_strategy=naming_strategy
         )
 
-        path = store.ensure_session(sid, state="Active")
-        data = store.load_session(sid)
-        data["state"] = str(data.get("state", "active")).lower()
-        meta = data.setdefault("meta", {})
+        path = self.create(session_id=sid, owner=owner, metadata=metadata)
 
-        if metadata:
-            data["metadata"] = metadata
-            if isinstance(metadata, dict):
-                meta.update(metadata)
-
-        # Record naming strategy + orchestrator profile for downstream consumers
-        strategy_used = naming_strategy or self._config.get_naming_config().get("strategy")
-        if strategy_used:
-            meta["namingStrategy"] = strategy_used
-        if owner:
-            meta["orchestratorProfile"] = owner
-
-        store.save_session(sid, data)
-        return path / "session.json"
+        # Update naming strategy metadata for downstream consumers
+        session = self._repo.get(sid)
+        if session:
+            meta = session.to_dict().get("meta", {})
+            strategy_used = naming_strategy or self._config.get_naming_config().get("strategy")
+            if strategy_used:
+                meta["namingStrategy"] = strategy_used
+            if owner:
+                meta["orchestratorProfile"] = owner
+            session_dict = session.to_dict()
+            session_dict["meta"] = meta
+            self._repo.save(Session.from_dict(session_dict))
+        return path
 
     def get_session(self, session_id: str) -> Dict[str, Any]:
-        """Load a session by ID."""
-        return store.load_session(session_id)
+        """Load a session by ID.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Session data as dictionary
+
+        Raises:
+            SessionError: If session not found
+        """
+        session = self._repo.get(session_id)
+        if not session:
+            raise SessionError(f"Session {session_id} not found", session_id=session_id)
+        return session.to_dict()
 
     def transition_state(self, session_id: str, to_state: str) -> Path:
-        # Ensure readiness flag for state machine conditions
-        try:
-            data = store.load_session(session_id)
-            data.setdefault("ready", True)
-            store.save_session(session_id, data)
-        except Exception:
-            pass
+        """Transition a session to a new state (alias for transition).
 
-        store.transition_state(session_id, to_state)
-        updated = store.load_session(session_id, state=to_state)
-        updated["state"] = to_state
-        return store.get_session_json_path(session_id)
+        Args:
+            session_id: Session identifier
+            to_state: Target state
+
+        Returns:
+            Path to session.json file
+        """
+        return self.transition(session_id, to_state)
 
     # --- Internal helpers -------------------------------------------------
     def _generate_session_id(
@@ -235,58 +351,5 @@ class SessionManager:
         owner: Optional[str],
         naming_strategy: Optional[str],
     ) -> str:
-        # The parameters process, owner, and naming_strategy are now ignored
-        # as the generate_session_id function does not use them.
-        # This method is effectively a wrapper for backward compatibility.
+        """Generate a new session ID."""
         return generate_session_id()
-
-
-
-def create_session_with_worktree(
-    session_id: str,
-    owner: str,
-    mode: str = "start",
-    install_deps: Optional[bool] = None,
-) -> Path:
-    """Create a session and its git worktree with strict error handling.
-
-    CalledProcessError -> RuntimeError with clear message (fail fast)
-    PermissionError -> propagate
-    Other Exception -> log warning and continue without worktree
-    """
-    _validate_session_id_format(session_id)
-
-    wt_path: Optional[Path] = None
-    branch: Optional[str] = None
-    had_noncritical_error = False
-    try:
-        wt_path, branch = worktree.create_worktree(session_id, install_deps=install_deps)
-    except PermissionError:
-        logger.error("Permission denied creating session worktree for %s", session_id, exc_info=True)
-        raise
-    except subprocess.CalledProcessError as exc:
-        logger.error("Git operation failed creating worktree for %s", session_id, exc_info=True)
-        raise RuntimeError("Session git setup failed") from exc
-    except Exception:
-        logger.warning("Unexpected git error while creating worktree for %s; continuing without worktree", session_id, exc_info=True)
-        had_noncritical_error = True
-
-    path = create_session(
-        session_id,
-        owner,
-        mode=mode,
-        install_deps=install_deps,
-        create_wt=False,
-    )
-
-    if wt_path and branch:
-        sess = store.load_session(session_id)
-        sess.setdefault("git", {})
-        sess["git"]["worktreePath"] = str(wt_path)
-        sess["git"]["branchName"] = branch
-        store.save_session(session_id, sess)
-
-    if had_noncritical_error:
-        return path
-
-    return path

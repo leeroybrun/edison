@@ -126,8 +126,8 @@ def test_compose_with_hooks_section(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         def generate_settings_json_hooks_section(self) -> Dict:
             return {"PreToolUse": ["echo from hook"]}
 
-    # Mock the HookComposer in the ide.hooks module
-    monkeypatch.setattr("edison.core.ide.hooks.HookComposer", MockHookComposer)
+    # Mock the HookComposer in the composition.ide.hooks module
+    monkeypatch.setattr("edison.core.composition.ide.hooks.HookComposer", MockHookComposer)
 
     composer = SettingsComposer(config={"hooks": {"enabled": True}}, repo_root=tmp_path)
     settings = composer.compose_settings()

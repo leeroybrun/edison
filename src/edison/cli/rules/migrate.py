@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from edison.core.utils.paths import get_project_config_dir
+from edison.cli import OutputFormatter
 
 
 def rules_migrate_registry_paths() -> int:
@@ -20,6 +21,8 @@ def rules_migrate_registry_paths() -> int:
 
     This fixes paths that reference the old .agents directory structure.
     """
+    formatter = OutputFormatter(json_mode=False)
+
     try:
         # Find project root
         cwd = Path.cwd()
@@ -27,7 +30,10 @@ def rules_migrate_registry_paths() -> int:
         registry_path = config_dir / "core" / "rules" / "registry.json"
 
         if not registry_path.exists():
-            print(f"Registry not found: {registry_path}", file=sys.stderr)
+            formatter.error(
+                Exception(f"Registry not found: {registry_path}"),
+                error_code="error"
+            )
             return 1
 
         # Load registry
@@ -44,19 +50,19 @@ def rules_migrate_registry_paths() -> int:
                 new_path = new_path.replace(".agents/validators/", ".edison/core/validators/")
                 rule["sourcePath"] = new_path
                 modified = True
-                print(f"Migrated: {source_path} -> {new_path}")
+                formatter.text(f"Migrated: {source_path} -> {new_path}")
 
         if modified:
             # Write back
             registry_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-            print(f"\n✓ Updated {registry_path}")
+            formatter.text(f"\n✓ Updated {registry_path}")
         else:
-            print("No paths needed migration")
+            formatter.text("No paths needed migration")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 
@@ -66,6 +72,8 @@ def rules_json_to_yaml_migration() -> int:
 
     Creates registry.yml from registry.json with version bump and enriched metadata.
     """
+    formatter = OutputFormatter(json_mode=False)
+
     try:
         # Find project root
         cwd = Path.cwd()
@@ -74,7 +82,10 @@ def rules_json_to_yaml_migration() -> int:
         yaml_path = config_dir / "core" / "rules" / "registry.yml"
 
         if not json_path.exists():
-            print(f"JSON registry not found: {json_path}", file=sys.stderr)
+            formatter.error(
+                Exception(f"JSON registry not found: {json_path}"),
+                error_code="error"
+            )
             return 1
 
         # Load JSON
@@ -133,14 +144,14 @@ def rules_json_to_yaml_migration() -> int:
             encoding="utf-8"
         )
 
-        print(f"✓ Created {yaml_path}")
-        print(f"  Version: {data['version']}")
-        print(f"  Rules: {len(data.get('rules', []))}")
+        formatter.text(f"✓ Created {yaml_path}")
+        formatter.text(f"  Version: {data['version']}")
+        formatter.text(f"  Rules: {len(data.get('rules', []))}")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         import traceback
         traceback.print_exc()
         return 1
@@ -152,6 +163,8 @@ def rules_verify_anchors() -> int:
 
     Checks that each rule's sourcePath anchor exists in the source file.
     """
+    formatter = OutputFormatter(json_mode=False)
+
     try:
         # Find project root
         cwd = Path.cwd()
@@ -159,7 +172,10 @@ def rules_verify_anchors() -> int:
         yaml_path = config_dir / "core" / "rules" / "registry.yml"
 
         if not yaml_path.exists():
-            print(f"YAML registry not found: {yaml_path}", file=sys.stderr)
+            formatter.error(
+                Exception(f"YAML registry not found: {yaml_path}"),
+                error_code="error"
+            )
             return 1
 
         # Load YAML
@@ -189,14 +205,17 @@ def rules_verify_anchors() -> int:
                     failures.append(f"{rule_id}: End anchor not found: {end_marker}")
 
         if failures:
-            print("Anchor verification failures:", file=sys.stderr)
+            formatter.error(
+                Exception("Anchor verification failures"),
+                error_code="error"
+            )
             for failure in failures:
-                print(f"  - {failure}", file=sys.stderr)
+                formatter.text(f"  - {failure}")
             return 1
 
-        print(f"✓ All {len(data.get('rules', []))} rule anchors verified")
+        formatter.text(f"✓ All {len(data.get('rules', []))} rule anchors verified")
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1

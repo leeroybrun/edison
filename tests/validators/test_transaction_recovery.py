@@ -83,7 +83,7 @@ for e in entries:
         "sessionId": e.get("sessionId"),
         "txDir": str(e.get("txDir")),
     })
-print(json.dumps(payload))
+sys.stdout.write(json.dumps(payload))
 """
 
     res = run_with_timeout(
@@ -122,12 +122,12 @@ from edison.core.session.recovery import recover_incomplete_validation_transacti
 
 # First run: should recover at least one transaction
 count1 = recover_incomplete_validation_transactions("sess-cli")
-print(f"Recovered: {count1}")
+sys.stdout.write(f"Recovered: {count1}\n")
 assert count1 > 0, "Should recover at least one transaction"
 
 # Second run: idempotent, nothing to recover and no error
 count2 = recover_incomplete_validation_transactions("sess-cli")
-print(f"Second run recovered: {count2}")
+sys.stdout.write(f"Second run recovered: {count2}\n")
 assert count2 == 0, "Second run should find nothing to recover"
 """
 

@@ -15,23 +15,25 @@ from edison.core.entity import (
     PersistenceError,
     EntityNotFoundError,
 )
+from edison.core.legacy_guard import enforce_no_legacy_project_root
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
 
 from .models import Session
 from ._config import get_config
 
+enforce_no_legacy_project_root("session.repository")
+
 
 class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
     """File-based repository for session entities.
-    
-    Sessions are stored as JSON files in state-based directories:
+
+    Sessions are stored as JSON files in state-based directories using NESTED layout:
     - .project/sessions/wip/{session_id}/session.json
     - .project/sessions/done/{session_id}/session.json
     - .project/sessions/validated/{session_id}/session.json
-    
-    Each session has its own directory containing the session.json
-    file and potentially other session-related files.
+
+    Each session has its own directory containing session.json and related files (tasks, qa, etc).
     """
     
     entity_type: str = "session"
@@ -68,20 +70,20 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         return self._config.get_session_lookup_order()
     
     def _resolve_entity_path(
-        self, 
-        entity_id: EntityId, 
+        self,
+        entity_id: EntityId,
         state: Optional[str] = None,
     ) -> Path:
         """Resolve path for a session file.
-        
+
         Sessions are stored as: {state_dir}/{session_id}/session.json
-        
+
         Args:
             entity_id: Session identifier
             state: Session state
-            
+
         Returns:
-            Path to session.json file
+            Path to session JSON file
         """
         if state:
             state_dir = self._get_state_dir(state)
@@ -89,11 +91,11 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
             # Default to initial state
             initial = self._config.get_initial_session_state()
             state_dir = self._get_state_dir(initial)
-        
+
         return state_dir / entity_id / "session.json"
     
     def _get_entity_filename(self, entity_id: EntityId) -> str:
-        """Sessions use a fixed filename."""
+        """Get the filename for a session entity."""
         return "session.json"
     
     def _find_entity_path(self, entity_id: EntityId) -> Optional[Path]:
@@ -109,14 +111,14 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
     def _do_create(self, entity: Session) -> Session:
         """Create a new session."""
         path = self._resolve_entity_path(entity.id, entity.state)
-        
-        # Ensure session directory exists
+
+        # Ensure state directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Write session JSON
         data = entity.to_dict()
         write_json_atomic(path, data, acquire_lock=False)
-        
+
         return entity
     
     def _do_get(self, entity_id: EntityId) -> Optional[Session]:
@@ -135,24 +137,29 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         """Save a session."""
         current_path = self._find_entity_path(entity.id)
         target_path = self._resolve_entity_path(entity.id, entity.state)
-        
+
         if current_path is None:
             # New session - create it
             self._do_create(entity)
             return
-        
+
         # Check if state changed (need to move directory)
         if current_path != target_path:
-            # Move entire session directory to new state
-            current_dir = current_path.parent
-            target_dir = target_path.parent
-            
-            target_dir.parent.mkdir(parents=True, exist_ok=True)
-            current_dir.rename(target_dir)
-            
+            # With nested layout, we need to move the entire session directory
+            # current_path: .project/sessions/wip/session-id/session.json
+            # target_path: .project/sessions/done/session-id/session.json
+            current_session_dir = current_path.parent
+            target_session_dir = target_path.parent
+
+            # Ensure target state directory exists
+            target_session_dir.parent.mkdir(parents=True, exist_ok=True)
+
+            # Move entire session directory (preserves tasks, qa, etc.)
+            current_session_dir.rename(target_session_dir)
+
             # Update path for writing
             current_path = target_path
-        
+
         # Write updated content
         data = entity.to_dict()
         write_json_atomic(current_path, data, acquire_lock=False)
@@ -162,11 +169,9 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         path = self._find_entity_path(entity_id)
         if path is None:
             return False
-        
-        # Delete entire session directory
-        import shutil
-        session_dir = path.parent
-        shutil.rmtree(session_dir)
+
+        # Delete session file
+        path.unlink()
         return True
     
     def _do_exists(self, entity_id: EntityId) -> bool:
@@ -196,23 +201,24 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         state_dir = self._get_state_dir(state)
         if not state_dir.exists():
             return []
-        
+
         sessions: List[Session] = []
+        # With nested layout, each session has its own directory with session.json
         for session_dir in state_dir.iterdir():
             if not session_dir.is_dir():
                 continue
-            
+
             json_path = session_dir / "session.json"
             if not json_path.exists():
                 continue
-            
+
             try:
                 data = read_json(json_path)
                 session = Session.from_dict(data)
                 sessions.append(session)
             except Exception:
                 continue
-        
+
         return sessions
     
     def _do_list_all(self) -> List[Session]:
@@ -235,21 +241,21 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         return self._do_find(owner=owner)
     
     def ensure_session(self, session_id: str, state: str = "active") -> Path:
-        """Ensure a session directory exists.
-        
+        """Ensure a session file exists.
+
         Creates the session if it doesn't exist.
-        
+
         Args:
             session_id: Session identifier
             state: Initial state for new sessions
-            
+
         Returns:
-            Path to session directory
+            Path to session state directory
         """
         path = self._find_entity_path(session_id)
         if path:
             return path.parent
-        
+
         # Create new session
         session = Session.create(session_id, state=state.lower())
         self.create(session)

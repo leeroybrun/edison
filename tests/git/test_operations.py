@@ -79,7 +79,7 @@ class TestGitOperations:
             text=True,
         )
 
-        from edison.core.git import operations 
+        from edison.core.utils import git as operations
         changed = operations.get_changed_files(repo_root, base_branch="main")
         rel_paths = {p.as_posix() for p in changed}
 
@@ -111,7 +111,7 @@ class TestGitOperations:
             text=True,
         )
 
-        from edison.core.git import operations 
+        from edison.core.utils import git as operations
         changed = operations.get_changed_files(
             repo_root,
             base_branch="main",
@@ -129,7 +129,7 @@ class TestGitOperations:
         session_id = "session-456"
         worktree = _create_worktree(repo_root, session_id)
 
-        from edison.core.git import operations 
+        from edison.core.utils import git as operations
         info = operations.get_worktree_info(session_id, repo_root)
         assert info is not None
         assert info.get("branch") in {f"session/{session_id}", session_id}
@@ -140,6 +140,6 @@ class TestGitOperations:
         repo_root.mkdir()
         _init_git_repo(repo_root)
 
-        from edison.core.git import operations 
+        from edison.core.utils import git as operations
         info = operations.get_worktree_info("does-not-exist", repo_root)
         assert info is None

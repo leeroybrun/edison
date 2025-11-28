@@ -7,6 +7,9 @@ SUMMARY: Validate project configuration
 from __future__ import annotations
 
 import argparse
+import sys
+
+from edison.cli import OutputFormatter
 
 SUMMARY = "Validate project configuration"
 
@@ -22,10 +25,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Validate configuration."""
+    formatter = OutputFormatter(json_mode=False)
+
     # TODO: Import from edison.core.config once imports are converted
     mode = "strict" if args.strict else "normal"
-    print(f"Validating configuration ({mode} mode)...")
-    print("Configuration: placeholder (import conversion pending)")
+    formatter.text(f"Validating configuration ({mode} mode)...")
+    formatter.text("Configuration: placeholder (import conversion pending)")
     return 0
 
 if __name__ == "__main__":

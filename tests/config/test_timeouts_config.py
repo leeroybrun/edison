@@ -96,7 +96,7 @@ def test_json_io_uses_configured_lock_timeout(monkeypatch, isolated_project_env:
     monkeypatch.setenv("EDISON_JSON_IO_LOCK_TIMEOUT", "0.3")  # Legacy env should NOT control behavior
     monkeypatch.setenv("EDISON_timeouts__json_io_lock_seconds", "0.05")
 
-    import edison.core.utils.json_io as json_io
+    from edison.core.utils.io import json as json_io
     from edison.core.utils.io import locking as locklib
 
     importlib.reload(json_io)

@@ -64,11 +64,19 @@ def test_worktree_path_uses_project_name_from_config(monkeypatch, isolated_proje
 
     from edison.core.session import worktree
     from edison.core.config.domains import SessionConfig
-
-    # Ensure module uses fresh config bound to isolated repo
-    worktree._CONFIG = SessionConfig(repo_root=isolated_project_env)
-
-    target, branch = worktree.resolve_worktree_target("sess-123")
+    from edison.core.session._config import reset_config_cache
+    
+    # Reset config cache and create fresh config for isolated repo
+    reset_config_cache()
+    
+    # Use monkeypatch to set project root for this test
+    import os
+    os.environ["AGENTS_PROJECT_ROOT"] = str(isolated_project_env)
+    
+    try:
+        target, branch = worktree.resolve_worktree_target("sess-123")
+    finally:
+        del os.environ["AGENTS_PROJECT_ROOT"]
 
     expected_base = (isolated_project_env.parent / "demo-proj-custom" / "sess-123").resolve()
     assert target == expected_base
@@ -99,16 +107,15 @@ def test_purity_uses_project_terms_from_config(isolated_project_env: Path) -> No
 
 
 def test_default_owner_prefers_config_owner(monkeypatch, isolated_project_env: Path) -> None:
-    """default_owner should use configured project.owner before process detection."""
+    """get_project_owner should use configured project.owner before falling back to system user."""
     _write_overlay(
         isolated_project_env,
         "project",
         {"project": {"name": "owner-proj", "owner": "config-owner"}},
     )
 
-    from edison.core.task import io as task_io
+    from edison.core.config.domains.project import get_project_owner
 
-    reload(task_io)
-
-    owner = task_io.default_owner(process_finder=lambda: ("detected-owner", 9999))
+    # Pass the isolated project root to ensure config is loaded from the right location
+    owner = get_project_owner(repo_root=isolated_project_env)
     assert owner == "config-owner"

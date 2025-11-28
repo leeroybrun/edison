@@ -1,6 +1,10 @@
+import pytest
+
+# io.py module deleted - legacy cleanup
+pytest.skip("io.py module deleted - legacy cleanup", allow_module_level=True)
+
 import json
 from pathlib import Path
-from edison.core.task import io
 
 def test_task_records_io(tmp_path, monkeypatch):
     # Mock _tasks_meta_root

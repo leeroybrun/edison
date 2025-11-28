@@ -7,15 +7,30 @@ SUMMARY: Audit guidelines quality
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Audit guidelines quality"
 
 
+def _get_cli_threshold_default() -> float:
+    """Load CLI threshold default from config (NO HARDCODED VALUES principle)."""
+    try:
+        from edison.core.config import ConfigManager
+        cfg = ConfigManager().load_config(validate=False)
+        dry_config = cfg.get("composition", {}).get("dryDetection", {})
+        # Try cliThreshold first, then threshold, then fallback
+        return dry_config.get("cliThreshold") or dry_config.get("threshold") or 0.3
+    except Exception:
+        return 0.3  # Fallback only if config loading fails
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
+    threshold_default = _get_cli_threshold_default()
+
     parser.add_argument(
         "--path",
         type=str,
@@ -41,31 +56,24 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.3,
-        help="Duplication threshold (0.0-1.0, default: 0.3)",
+        default=threshold_default,
+        help=f"Duplication threshold (0.0-1.0, default: {threshold_default})",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON (same as --format=json)",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Audit guidelines - delegates to guideline_audit library."""
     from edison.core.composition import audit as guideline_audit
-    from edison.core.utils.paths import resolve_project_root
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
 
         # Force JSON format if --json flag is used
-        output_format = "json" if args.json else args.format
+        output_format = "json" if formatter.json_mode else args.format
 
         # Discover all guidelines
         guidelines = guideline_audit.discover_guidelines(repo_root)
@@ -76,10 +84,7 @@ def main(args: argparse.Namespace) -> int:
             guidelines = [g for g in guidelines if g.path == path_filter or path_filter in g.path.parents]
 
         if not guidelines:
-            if output_format == "json":
-                print(json.dumps({"error": "No guidelines found"}))
-            else:
-                print("No guidelines found", file=sys.stderr)
+            formatter.error("No guidelines found", error_code="no_guidelines")
             return 1
 
         results = {
@@ -111,7 +116,7 @@ def main(args: argparse.Namespace) -> int:
                     score = item["similarity"]
                     rel1 = path1.relative_to(repo_root) if path1.is_relative_to(repo_root) else path1
                     rel2 = path2.relative_to(repo_root) if path2.is_relative_to(repo_root) else path2
-                    print(f"{score:.2f}\t{rel1}\t{rel2}")
+                    formatter.text(f"{score:.2f}\t{rel1}\t{rel2}")
                 return 0
 
             # Add high-duplication pairs to issues
@@ -156,48 +161,45 @@ def main(args: argparse.Namespace) -> int:
 
         # Output results
         if output_format == "json":
-            print(json.dumps(results, indent=2))
+            formatter.json_output(results)
         else:
             # Text output
-            print(f"Guideline Audit Results")
-            print(f"=" * 50)
-            print(f"Total guidelines: {results['total_guidelines']}")
-            print(f"\nBy category:")
+            formatter.text(f"Guideline Audit Results")
+            formatter.text(f"=" * 50)
+            formatter.text(f"Total guidelines: {results['total_guidelines']}")
+            formatter.text(f"\nBy category:")
             for cat, count in sorted(results["by_category"].items()):
-                print(f"  {cat}: {count}")
+                formatter.text(f"  {cat}: {count}")
 
             if "duplication" in results:
                 dup = results["duplication"]
-                print(f"\nDuplication check:")
-                print(f"  Threshold: {dup['threshold']}")
-                print(f"  Pairs found: {dup['pairs_found']}")
+                formatter.text(f"\nDuplication check:")
+                formatter.text(f"  Threshold: {dup['threshold']}")
+                formatter.text(f"  Pairs found: {dup['pairs_found']}")
 
             if "purity" in results:
                 purity = results["purity"]
-                print(f"\nPurity check:")
-                print(f"  Violations found: {purity['violations_found']}")
+                formatter.text(f"\nPurity check:")
+                formatter.text(f"  Violations found: {purity['violations_found']}")
 
             if results["issues"]:
-                print(f"\nIssues found: {len(results['issues'])}")
+                formatter.text(f"\nIssues found: {len(results['issues'])}")
                 for issue in results["issues"][:10]:  # Show first 10
-                    print(f"  - [{issue['severity']}] {issue['type']}")
+                    formatter.text(f"  - [{issue['severity']}] {issue['type']}")
                     if issue["type"] == "duplication":
-                        print(f"    Score: {issue['score']}")
+                        formatter.text(f"    Score: {issue['score']}")
                     elif issue["type"] == "purity_violation":
-                        print(f"    File: {issue['file']}")
-                        print(f"    Terms: {', '.join(issue['terms'][:5])}")
+                        formatter.text(f"    File: {issue['file']}")
+                        formatter.text(f"    Terms: {', '.join(issue['terms'][:5])}")
                 if len(results["issues"]) > 10:
-                    print(f"  ... and {len(results['issues']) - 10} more")
+                    formatter.text(f"  ... and {len(results['issues']) - 10} more")
             else:
-                print(f"\nNo issues found!")
+                formatter.text(f"\nNo issues found!")
 
         return 0
 
     except Exception as e:
-        if args.json or args.format == "json":
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="audit_error")
         return 1
 
 if __name__ == "__main__":

@@ -65,7 +65,28 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "integration: Integration tests (multiple components working together)",
+    "e2e: End-to-end tests (full system tests)",
+    "slow: Tests taking more than 2 seconds",
+    "fast: Fast tests (under 1 second)",
+    "requires_git: Tests that require git operations and git to be installed",
+    "requires_subprocess: Tests that spawn subprocesses",
+    "requires_pnpm: Tests that require pnpm/node",
+    "worktree: Tests related to git worktree functionality",
+    "session: Tests related to session management",
+    "task: Tests related to task lifecycle",
+    "qa: Tests related to QA/validation",
+    "context7: Tests related to Context7 enforcement",
+    "golden_path: Golden-path example tests showing correct patterns",
+    "scenario: High-level scenario coverage tests",
+    "edge_case: Edge case and error handling tests",
+    "taskstate: Tests that validate task state coverage",
+    "guards: Tests focused on guard and state-machine validation",
+    "bundle: Bundle/aggregate validation tests",
+    "security: Tests focused on security and invariant enforcement",
+]
 
 [tool.mypy]
 python_version = "3.10"

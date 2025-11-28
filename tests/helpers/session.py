@@ -1,26 +1,40 @@
 """Test helper functions for session operations.
 
-This module provides convenience functions for tests. It delegates to the
-canonical edison.core.session.store module (DRY principle).
-
-Note: These are thin wrappers around production code for test convenience.
+This module provides convenience functions for tests using the new
+SessionRepository and SessionService APIs.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
-from edison.core.session import store as session_store
-from edison.core.session import database as session_database
-from edison.core.config.domains.project import get_project_name
+from edison.core.session.repository import SessionRepository
+from edison.core.session.manager import SessionManager
+from edison.core.session.worktree.config_helpers import _get_worktree_base
+from edison.core.session.transaction import validation_transaction
+from edison.core.session.recovery import recover_incomplete_validation_transactions
 
 
-# Re-export from canonical store module
-ensure_session = session_store.ensure_session
-load_session = session_store.load_session
-transition_state = session_store.transition_state
-_get_worktree_base = session_store._get_worktree_base
+def ensure_session(session_id: str, state: str = "active") -> Path:
+    """Ensure a session exists, creating it if necessary."""
+    repo = SessionRepository()
+    return repo.ensure_session(session_id, state=state)
+
+
+def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]:
+    """Load a session by ID."""
+    repo = SessionRepository()
+    session = repo.get(session_id)
+    if session is None:
+        raise ValueError(f"Session {session_id} not found")
+    return session.to_dict()
+
+
+def transition_state(session_id: str, to_state: str, reason: Optional[str] = None) -> Path:
+    """Transition a session to a new state."""
+    mgr = SessionManager()
+    return mgr.transition_state(session_id, to_state)
 
 
 def _get_project_name() -> str:
@@ -36,14 +50,18 @@ def _get_database_url() -> str:
 
 def close_session(session_id: str) -> Path:
     """Close a session (transition to closing state)."""
-    session_store.transition_state(session_id, "closing")
-    return session_store.get_session_json_path(session_id).parent
+    mgr = SessionManager()
+    mgr.transition_state(session_id, "closing")
+    repo = SessionRepository()
+    return repo.get_session_json_path(session_id).parent
 
 
 def validate_session(session_id: str) -> Path:
     """Validate a session (transition to validated state)."""
-    session_store.transition_state(session_id, "validated")
-    return session_store.get_session_json_path(session_id).parent
+    mgr = SessionManager()
+    mgr.transition_state(session_id, "validated")
+    repo = SessionRepository()
+    return repo.get_session_json_path(session_id).parent
 
 
 def get_session_state(session_dir: Path) -> str:
@@ -65,5 +83,7 @@ def handle_timeout(session_dir: Path) -> Path:
     """Move a session to recovery state on timeout."""
     sess_dir = Path(session_dir).resolve()
     sid = sess_dir.name
-    session_store.transition_state(sid, "recovery", reason="timeout")
-    return session_store.get_session_json_path(sid).parent
+    mgr = SessionManager()
+    mgr.transition_state(sid, "recovery")
+    repo = SessionRepository()
+    return repo.get_session_json_path(sid).parent

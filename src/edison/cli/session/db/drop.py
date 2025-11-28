@@ -6,8 +6,9 @@ SUMMARY: Drop session database
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Drop session database"
 
@@ -23,22 +24,16 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Force drop without confirmation",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Drop session database - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session.database import drop_session_database
-    from edison.core.session.store import validate_session_id
+    from edison.core.session.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)
@@ -46,10 +41,10 @@ def main(args: argparse.Namespace) -> int:
         if not args.force:
             response = input(f"Drop database for session {session_id}? (y/N): ")
             if response.lower() != 'y':
-                if args.json:
-                    print(json.dumps({"status": "cancelled"}, indent=2))
+                if formatter.json_mode:
+                    formatter.json_output({"status": "cancelled"})
                 else:
-                    print("Operation cancelled")
+                    formatter.text("Operation cancelled")
                 return 0
 
         drop_session_database(session_id)
@@ -59,18 +54,15 @@ def main(args: argparse.Namespace) -> int:
             "status": "dropped"
         }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
-            print(f"✓ Dropped database for session {session_id}")
+            formatter.text(f"✓ Dropped database for session {session_id}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

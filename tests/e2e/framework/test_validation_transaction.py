@@ -59,8 +59,8 @@ def test_validation_tx_commit_success(monkeypatch, tmp_path: Path):
     final_ev = _evidence_paths(project_root, task_id)
     assert final_ev.exists(), "Expected committed evidence directory to exist"
     assert (final_ev / "validator-global-codex-report.json").exists(), "Committed artifact missing"
-    # Log exists
-    tx_log = project_root / ".project" / "sessions" / sid / "validation-transactions.log"
+    # Log exists in wip state directory
+    tx_log = project_root / ".project" / "sessions" / "wip" / sid / "validation-transactions.log"
     assert tx_log.exists(), "Transaction log not created"
     log_text = tx_log.read_text()
     assert "commit" in log_text and "started" in log_text, "Commit not logged"

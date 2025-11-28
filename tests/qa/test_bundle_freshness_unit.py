@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 from edison.core.qa import promoter
+from tests.helpers.timeouts import SHORT_SLEEP
 def test_should_revalidate_bundle_fresh(tmp_path: Path):
     # Create fake evidence structure
     evidence = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1" / "round-1"
@@ -35,7 +36,7 @@ def test_should_revalidate_bundle_stale_by_report(tmp_path: Path):
     report = evidence / "validator-security-report.json"
     report.write_text("{\n \"validatorId\": \"security\", \"verdict\": \"approve\"\n}\n")
     # Make report newer than summary
-    time.sleep(0.01)
+    time.sleep(SHORT_SLEEP)
     os.utime(report, None)
 
     need = promoter.should_revalidate_bundle(summary, [report], [])
@@ -53,7 +54,7 @@ def test_should_revalidate_bundle_stale_by_task_file(tmp_path: Path):
     task_file.parent.mkdir(parents=True, exist_ok=True)
     task_file.write_text("- **Status:** done\n")
     # Make task file newer than summary
-    time.sleep(0.01)
+    time.sleep(SHORT_SLEEP)
     os.utime(task_file, None)
 
     need = promoter.should_revalidate_bundle(summary, [report], [task_file])

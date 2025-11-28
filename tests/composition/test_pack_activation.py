@@ -5,10 +5,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[4]
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition import (  # type: ignore  # noqa: E402
-    auto_activate_packs,
-    render_conditional_includes,
-)
+from edison.core.composition import auto_activate_packs  # type: ignore  # noqa: E402
+from edison.core.utils.text import render_conditional_includes  # noqa: E402
 
 
 def test_auto_activate_packs_for_prisma_files() -> None:

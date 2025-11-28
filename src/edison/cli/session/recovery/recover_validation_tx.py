@@ -6,8 +6,9 @@ SUMMARY: Recover stuck validation transactions
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Recover stuck validation transactions"
 
@@ -18,22 +19,16 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "session_id",
         help="Session identifier (e.g., sess-001)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Recover stuck validation transactions - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session.recovery import recover_incomplete_validation_transactions
-    from edison.core.session.store import validate_session_id
+    from edison.core.session.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)
@@ -45,21 +40,18 @@ def main(args: argparse.Namespace) -> int:
             "status": "completed"
         }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
             if recovered_count > 0:
-                print(f"✓ Recovered {recovered_count} validation transaction(s) for session {session_id}")
+                formatter.text(f"✓ Recovered {recovered_count} validation transaction(s) for session {session_id}")
             else:
-                print(f"No stuck validation transactions found for session {session_id}")
+                formatter.text(f"No stuck validation transactions found for session {session_id}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

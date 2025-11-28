@@ -8,6 +8,7 @@ Available domain configs:
 - CompositionConfig: Content composition settings
 - SessionConfig: Session management and state machine
 - QAConfig: QA and validation settings
+- TaskConfig: Task management and state machine
 - OrchestratorConfig: Orchestrator profiles
 - ProjectConfig: Project metadata (name, owner, audit terms)
 - TimeoutsConfig: Operation timeouts
@@ -15,13 +16,16 @@ Available domain configs:
 - DatabaseConfig: Database connection and isolation
 
 Usage:
-    from edison.core.config.domains import PacksConfig, SessionConfig
+    from edison.core.config.domains import PacksConfig, SessionConfig, TaskConfig
 
     packs = PacksConfig(repo_root=Path("/path/to/project"))
     active = packs.active_packs
 
     session = SessionConfig(repo_root=Path("/path/to/project"))
     states = session.get_states("task")
+
+    task = TaskConfig(repo_root=Path("/path/to/project"))
+    task_states = task.task_states()
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ from .packs import PacksConfig
 from .composition import CompositionConfig
 from .session import SessionConfig
 from .qa import QAConfig
+from .task import TaskConfig
 from .orchestrator import OrchestratorConfig
 from .project import ProjectConfig
 from .timeouts import TimeoutsConfig
@@ -40,6 +45,7 @@ __all__: list[str] = [
     "CompositionConfig",
     "SessionConfig",
     "QAConfig",
+    "TaskConfig",
     "OrchestratorConfig",
     "ProjectConfig",
     "TimeoutsConfig",

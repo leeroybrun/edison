@@ -18,7 +18,7 @@ constitution: constitutions/AGENTS.md
 metadata:
   version: "1.0.0"
   last_updated: "2025-01-26"
-  approx_lines: 515
+  approx_lines: 489
   content_hash: "5475fad3"
 ---
 

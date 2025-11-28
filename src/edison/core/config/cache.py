@@ -6,9 +6,10 @@ All domain configs should use this module's caching instead of implementing thei
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from .manager import ConfigManager
+if TYPE_CHECKING:
+    from .manager import ConfigManager
 
 # ---------------------------------------------------------------------------
 # Global Cache Registry
@@ -41,6 +42,8 @@ def get_cached_config(
     key = _cache_key(repo_root)
 
     if key not in _config_cache:
+        # Lazy import to avoid circular dependency
+        from .manager import ConfigManager
         manager = ConfigManager(repo_root=repo_root)
         _config_cache[key] = manager.load_config(validate=validate)
 

@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 from edison.core import task
 from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
-from edison.core.session import store as session_store
+from edison.core.session.id import validate_session_id
 from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
 from edison.core.utils.io import read_json as io_read_json_safe
 
@@ -53,18 +53,14 @@ def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     import edison.core.task as _task  # type: ignore
     import edison.core.session.transaction as _session_transaction  # type: ignore
-    import edison.core.session.store as _session_store  # type: ignore
 
     importlib.reload(_task)
     importlib.reload(_session_transaction)
-    importlib.reload(_session_store)
 
     global task  # type: ignore
     global session_transaction  # type: ignore
-    global session_store  # type: ignore
     task = _task
     session_transaction = _session_transaction
-    session_store = _session_store
 
     yield tmp_path
 
@@ -83,16 +79,16 @@ def test_session_transaction_commit_and_rollback(sandbox_env: Path):
         from_status="todo",
         to_status="wip",
     ) as tx_id:
-        tx_file = session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id}.json"
+        tx_file = session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id}.json"
         assert tx_file.exists()
         data = io_read_json_safe(tx_file)
         assert data.get("txId") == tx_id
-        assert data.get("sessionId") == session_store.sanitize_session_id(sid)
+        assert data.get("sessionId") == validate_session_id(sid)
         assert data.get("finalizedAt") is None
         assert data.get("abortedAt") is None
 
     data = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id}.json"
+        session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id}.json"
     )
     assert data.get("finalizedAt") is not None
     assert data.get("abortedAt") is None
@@ -107,12 +103,12 @@ def test_session_transaction_commit_and_rollback(sandbox_env: Path):
             from_status="wip",
             to_status="blocked",
         ) as tx2:
-            tx_file2 = session_transaction._tx_dir(session_store.sanitize_session_id(sid2)) / f"{tx2}.json"
+            tx_file2 = session_transaction._tx_dir(validate_session_id(sid2)) / f"{tx2}.json"
             assert tx_file2.exists()
             raise RuntimeError("force rollback")
 
     data2 = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid2)) / f"{tx2}.json"
+        session_transaction._tx_dir(validate_session_id(sid2)) / f"{tx2}.json"
     )
     assert data2.get("abortedAt") is not None
     assert data2.get("finalizedAt") is None
@@ -126,16 +122,16 @@ def test_session_transaction_nested_transactions(sandbox_env: Path):
 
     with session_transaction.session_transaction(sid, domain="task", record_id="outer", from_status="todo", to_status="wip") as outer_tx:
         with session_transaction.session_transaction(sid, domain="task", record_id="inner", from_status="wip", to_status="done") as inner_tx:
-            outer_file = session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{outer_tx}.json"
-            inner_file = session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{inner_tx}.json"
+            outer_file = session_transaction._tx_dir(validate_session_id(sid)) / f"{outer_tx}.json"
+            inner_file = session_transaction._tx_dir(validate_session_id(sid)) / f"{inner_tx}.json"
             assert outer_file.exists()
             assert inner_file.exists()
 
     outer_data = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{outer_tx}.json"
+        session_transaction._tx_dir(validate_session_id(sid)) / f"{outer_tx}.json"
     )
     inner_data = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{inner_tx}.json"
+        session_transaction._tx_dir(validate_session_id(sid)) / f"{inner_tx}.json"
     )
     assert outer_data.get("finalizedAt") is not None
     assert inner_data.get("finalizedAt") is not None
@@ -153,7 +149,7 @@ def test_commit_and_rollback_tx_respect_locks(sandbox_env: Path):
         from_status="todo",
         to_status="wip",
     )
-    tx_file = session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id}.json"
+    tx_file = session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id}.json"
     assert tx_file.exists()
 
     # Hold lock and ensure commit_tx propagates LockTimeoutError (raw locklib behavior)
@@ -175,13 +171,13 @@ def test_commit_and_rollback_support_crash_recovery(sandbox_env: Path):
         from_status="todo",
         to_status="wip",
     )
-    tx_file = session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id}.json"
+    tx_file = session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id}.json"
     assert tx_file.exists()
 
     # Crash recovery via commit_tx using only tx_id
     session_transaction.commit_tx(tx_id)
     data = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id}.json"
+        session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id}.json"
     )
     assert data.get("finalizedAt") is not None
 
@@ -195,6 +191,6 @@ def test_commit_and_rollback_support_crash_recovery(sandbox_env: Path):
     )
     session_transaction.rollback_tx(tx_id2)
     data2 = io_read_json_safe(
-        session_transaction._tx_dir(session_store.sanitize_session_id(sid)) / f"{tx_id2}.json"
+        session_transaction._tx_dir(validate_session_id(sid)) / f"{tx_id2}.json"
     )
     assert data2.get("abortedAt") is not None

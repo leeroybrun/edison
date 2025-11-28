@@ -4,6 +4,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("jinja2")
+
 from jinja2 import Template
 from edison.data import get_data_path
 

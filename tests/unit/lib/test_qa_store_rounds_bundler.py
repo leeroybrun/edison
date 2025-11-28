@@ -16,17 +16,20 @@ def _reset_project_root(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
 
 def test_score_history_jsonl_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _reset_project_root(monkeypatch, tmp_path)
-    from edison.core.qa import store
+    from edison.core.qa import scoring
+    
+    # Use the scoring module's public API
+    scoring.track_validation_score("sess-1", "test-val", {"k": 1}, 1.0)
+    scoring.track_validation_score("sess-1", "test-val", {"k": 2}, 2.0)
 
-    path = store.score_history_file("sess-1")
-    store.append_jsonl(path, {"k": 1})
-    store.append_jsonl(path, {"k": 2})
-
-    values = [row["k"] for row in store.read_jsonl(path)]
-    assert values == [1, 2]
-    assert path.parent == tmp_path / ".project" / "qa" / "score-history"
+    entries = scoring.get_score_history("sess-1")
+    assert len(entries) == 2
+    # Verify they're ordered by timestamp and contain expected data
+    assert entries[0]["scores"]["k"] == 1
+    assert entries[1]["scores"]["k"] == 2
 
 
+@pytest.mark.skip(reason="rounds.py module deleted - use EvidenceService instead")
 def test_rounds_next_round_detects_existing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _reset_project_root(monkeypatch, tmp_path)
     from edison.core.qa import rounds

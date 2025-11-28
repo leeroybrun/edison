@@ -26,8 +26,7 @@ from edison.core.utils.cli.arguments import parse_common_args
 from edison.core.utils.cli.output import output_json
 from edison.core.session._config import get_config
 from edison.core.session import manager as session_manager
-from edison.core.session import store as session_store
-from edison.core.session import graph as session_graph
+from edison.core.session.id import validate_session_id as session_store_validate_session_id
 from edison.core.session.context import SessionContext
 from edison.core import task
 from edison.core.qa import validator as qa_validator
@@ -56,8 +55,10 @@ from edison.core.session.next.output import format_human_readable
 
 
 load_session = session_manager.get_session
-build_validation_bundle = session_graph.build_validation_bundle
-validate_session_id = session_store.validate_session_id
+validate_session_id = session_store_validate_session_id
+
+# Import build_validation_bundle from graph module (will be migrated)
+from edison.core.session.graph import build_validation_bundle
 
 
 def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str, Any]:

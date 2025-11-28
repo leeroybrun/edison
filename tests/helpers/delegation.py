@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict, Optional, List
-from datetime import datetime, timezone
 
 from edison.core.config import ConfigManager
 from edison.core.utils.time import utc_timestamp

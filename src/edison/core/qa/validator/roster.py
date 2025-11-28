@@ -2,10 +2,11 @@ from __future__ import annotations
 import fnmatch
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from ... import task  # type: ignore
+from edison.core.task import TaskRepository
 from ...session import manager as session_manager
 from edison.core.config.domains import qa as qa_config
 from edison.core.utils.subprocess import run_with_timeout
+from edison.core.qa._utils import parse_primary_files
 
 __all__ = ["build_validator_roster", "_detect_validators_from_git_diff", "_files_for_task", "_primary_files_from_doc", "_task_type_from_doc"]
 
@@ -16,40 +17,27 @@ def _task_type_from_doc(text: str) -> Optional[str]:
     return None
 
 def _primary_files_from_doc(text: str) -> List[str]:
-    capture = False
-    files: List[str] = []
-    for line in text.splitlines():
-        if line.strip().startswith("- **Primary Files"):
-            capture = True
-            continue
-        if capture:
-            if line.startswith("## "):
-                break
-            if line.strip().startswith("-"):
-                files.append(line.split("-", 1)[1].strip())
-    return files
+    """Extract primary files from task markdown text.
+
+    This is a thin wrapper around the shared parse_primary_files() utility
+    for backward compatibility with existing callers.
+    """
+    return parse_primary_files(text)
 
 def _files_for_task(task_id: str) -> List[str]:
+    """Extract primary files from a task by ID.
+
+    This function finds the task file, reads its content, and extracts
+    the primary files using the shared parse_primary_files() utility.
+    """
     try:
-        p = task.find_record(task_id, "task")
+        task_repo = TaskRepository()
+        p = task_repo.get_path(task_id)
         txt = p.read_text(errors="ignore")
     except FileNotFoundError:
         return []
-    files: List[str] = []
-    capture = False
-    for line in txt.splitlines():
-        if "Primary Files / Areas" in line:
-            capture = True
-            parts = line.split(":", 1)
-            if len(parts) > 1 and parts[1].strip():
-                files.extend([f.strip() for f in parts[1].split(",") if f.strip()])
-            continue
-        if capture:
-            if line.startswith("## "):
-                break
-            if line.strip().startswith("-"):
-                files.append(line.split("-", 1)[1].strip())
-    return files
+
+    return parse_primary_files(txt)
 
 def _detect_validators_from_git_diff(session_id: str) -> List[str]:
     try:

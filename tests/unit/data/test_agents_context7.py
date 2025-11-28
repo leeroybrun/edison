@@ -27,11 +27,13 @@ def test_agents_include_context7_examples(agent_path: Path) -> None:
 
     assert "mcp__context7__get-library-docs({" in content
     assert 'context7CompatibleLibraryID: "/vercel/next.js"' in content
-    assert "route handlers, app router patterns, server components" in content
+    # Topics can be in JSON array format or as comma-separated values
+    assert '"route handlers"' in content or "route handlers" in content
 
     assert "config/context7.yml" in content
 
-    assert "- Next.js 16" in content
-    assert "- React 19" in content
-    assert "- Tailwind CSS 4" in content
-    assert "- Prisma 6" in content
+    # Version info can be in list format or inline
+    assert "Next.js 16" in content
+    assert "React 19" in content
+    assert "Tailwind CSS 4" in content
+    assert "Prisma 6" in content

@@ -1,9 +1,10 @@
 import pytest
 import yaml
-from edison.core.session import state
+from edison.core.state.validator import StateValidator
+from edison.core.config.domains.session import SessionConfig
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches
-from edison.core.exceptions import SessionStateError
+from edison.core.state import StateTransitionError
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
@@ -71,41 +72,44 @@ def session_config(tmp_path, monkeypatch):
     path_resolver._PROJECT_ROOT_CACHE = None
     clear_all_caches()
     reset_config_cache()
-    state._STATE_MACHINE = None
-    
+
     yield tmp_path
 
     # Cleanup
     path_resolver._PROJECT_ROOT_CACHE = None
     clear_all_caches()
     reset_config_cache()
-    state._STATE_MACHINE = None
 
 def test_validate_transition(session_config):
     """Test validating state transitions."""
-    # Valid transitions
-    assert state.validate_transition("active", "closing") is True
-    assert state.validate_transition("closing", "closed", context={"session": {"ready": True}}) is True
-    assert state.validate_transition("active", "active") is True
+    validator = StateValidator(repo_root=session_config)
+
+    # Valid transitions - ensure_transition doesn't raise
+    validator.ensure_transition("session", "active", "closing")
+    validator.ensure_transition("session", "closing", "closed", context={"session": {"ready": True}})
+    validator.ensure_transition("session", "active", "active")
 
     # Invalid transitions
-    with pytest.raises(SessionStateError):
-        state.validate_transition("active", "closed") # Skip closing
-        
-    with pytest.raises(SessionStateError):
-        state.validate_transition("closed", "active") # Backwards
+    with pytest.raises(StateTransitionError):
+        validator.ensure_transition("session", "active", "closed")  # Skip closing
+
+    with pytest.raises(StateTransitionError):
+        validator.ensure_transition("session", "closed", "active")  # Backwards
 
 def test_get_initial_state(session_config):
     """Test getting the initial state."""
-    assert state.get_initial_state() == "active"
+    config = SessionConfig(repo_root=session_config)
+    assert config.get_initial_state("session") == "active"
 
 def test_is_final_state(session_config):
     """Test checking final state."""
-    assert state.is_final_state("closed") is True
-    assert state.is_final_state("active") is False
+    config = SessionConfig(repo_root=session_config)
+    assert config.is_final_state("session", "closed") is True
+    assert config.is_final_state("session", "active") is False
 
 
 def test_condition_failure_blocks_transition(session_config):
     """Closing requires condition to be true."""
-    with pytest.raises(SessionStateError):
-        state.validate_transition("closing", "closed", context={"session": {"ready": False}})
+    validator = StateValidator(repo_root=session_config)
+    with pytest.raises(StateTransitionError):
+        validator.ensure_transition("session", "closing", "closed", context={"session": {"ready": False}})

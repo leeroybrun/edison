@@ -70,6 +70,11 @@ validation:
     performance: 10
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
+  requiredEvidenceFiles:
+    - command-type-check.txt
+    - command-lint.txt
+    - command-test.txt
+    - command-build.txt
   roster:
     global:
       - id: codex-global
@@ -557,6 +562,16 @@ tasks:
 orchestration:
   maxConcurrentAgents: 5
 
+orchestrators:
+  default: "claude"
+  profiles:
+    mock:
+      command: "echo"
+      args: ["mock-orchestrator"]
+      cwd: "."
+      initial_prompt:
+        enabled: false
+
 timeouts:
   git_operations_seconds: 60.0
   db_operations_seconds: 30.0
@@ -624,3 +639,19 @@ time:
     timespec: "seconds"
     use_z_suffix: true
     strip_microseconds: true
+
+zen:
+  retry:
+    max_attempts: 3
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+  secret_rotation:
+    enabled: false
+    check_interval_hours: 24
+
+quality:
+  coverage:
+    overall: 80
+    changed: 100
+  allowSkip: false
+  blockOnFailingTests: true

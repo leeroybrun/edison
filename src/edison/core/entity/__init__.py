@@ -54,6 +54,7 @@ from .file_repository import (
     FileRepositoryMixin,
     FileLockMixin,
 )
+from .session_scoped import SessionScopedMixin
 
 __all__ = [
     # Protocols
@@ -87,6 +88,8 @@ __all__ = [
     "BaseRepository",
     "FileRepositoryMixin",
     "FileLockMixin",
+    # Session-scoped records
+    "SessionScopedMixin",
 ]
 
 

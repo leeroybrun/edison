@@ -89,16 +89,25 @@ class SessionConfig(BaseDomainConfig):
 
     # --- Session Paths & Validation ---
     def get_session_root_path(self) -> str:
-        """Get relative path to sessions root (e.g. '.project/sessions')."""
-        return self.section.get("paths", {}).get("root", ".project/sessions")
+        """Get relative path to sessions root (must be configured in YAML)."""
+        path = self.section.get("paths", {}).get("root")
+        if not path:
+            raise ValueError("session.paths.root not configured")
+        return str(path)
 
     def get_archive_root_path(self) -> str:
-        """Get relative path to archive root (e.g. '.project/archive')."""
-        return self.section.get("paths", {}).get("archive", ".project/archive")
+        """Get relative path to archive root (must be configured in YAML)."""
+        path = self.section.get("paths", {}).get("archive")
+        if not path:
+            raise ValueError("session.paths.archive not configured")
+        return str(path)
 
     def get_tx_root_path(self) -> str:
-        """Get relative path to transaction root (e.g. '.project/sessions/_tx')."""
-        return self.section.get("paths", {}).get("tx", ".project/sessions/_tx")
+        """Get relative path to transaction root (must be configured in YAML)."""
+        path = self.section.get("paths", {}).get("tx")
+        if not path:
+            raise ValueError("session.paths.tx not configured")
+        return str(path)
 
     def get_template_path(self, key: str) -> str:
         """Get expanded path to a template (e.g. 'primary', 'repo')."""
@@ -146,20 +155,11 @@ class SessionConfig(BaseDomainConfig):
         return int(val)
 
     def get_session_states(self) -> Dict[str, str]:
-        """Get mapping of session states to directory names."""
-        return self.section.get(
-            "states",
-            {
-                "draft": "draft",
-                "active": "wip",
-                "wip": "wip",
-                "done": "done",
-                "closing": "done",
-                "validated": "validated",
-                "recovery": "recovery",
-                "archived": "archived",
-            },
-        )
+        """Get mapping of session states to directory names (no defaults)."""
+        states = self.section.get("states") if isinstance(self.section, dict) else None
+        if not isinstance(states, dict) or not states:
+            raise ValueError("session.states not configured")
+        return {str(k): str(v) for k, v in states.items()}
 
     def get_initial_session_state(self) -> str:
         """Get the default initial state for a new session."""
@@ -176,22 +176,19 @@ class SessionConfig(BaseDomainConfig):
                     return str(name)
         # 3) first configured session state if present
         sess_states = self.get_session_states()
-        if isinstance(sess_states, dict) and sess_states:
+        if sess_states:
             return next(iter(sess_states.keys()))
-        # 4) sane default
-        return "active"
+        raise ValueError("session.initialState not configured")
 
     def get_session_lookup_order(self) -> List[str]:
         """Get the order of states to check when looking up a session."""
         order = self.section.get("lookupOrder")
         if isinstance(order, list) and order:
             return [str(s) for s in order]
-        # Fallback to the explicit states map if order not provided
         states = self.get_session_states()
-        if isinstance(states, dict) and states:
+        if states:
             return list(states.keys())
-        # Final fallback to sane defaults aligned with YAML
-        return ["wip", "active", "done", "validated", "closing", "recovery", "archived", "draft"]
+        raise ValueError("session.lookupOrder not configured and no states available")
 
     def get_naming_config(self) -> Dict[str, Any]:
         """Return naming strategy configuration with defaults applied."""
@@ -254,6 +251,5 @@ class SessionConfig(BaseDomainConfig):
 
 
 __all__ = ["SessionConfig"]
-
 
 

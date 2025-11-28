@@ -11,6 +11,15 @@ import pytest
 from edison.core.rules import RulesEngine, RuleViolationError
 
 
+@pytest.fixture(autouse=True)
+def clear_path_caches():
+    """Clear path singleton cache before each test."""
+    from edison.core.utils.paths import management
+    management._paths_instance = None
+    yield
+    management._paths_instance = None
+
+
 def _cfg(require: bool = True, max_age_days: int = 7) -> dict:
     return {
         "rules": {

@@ -65,41 +65,51 @@ class EntityTransitionError(StateTransitionError):
 
 def _get_state_machine_for_entity(entity_type: str) -> Optional[RichStateMachine]:
     """Get state machine configuration for an entity type.
-    
+
     This is a lazy loader that avoids circular imports by importing
     config modules only when needed.
-    
+
     Args:
         entity_type: Entity type ("task", "session", "qa")
-        
+
     Returns:
         RichStateMachine instance or None if not configured
     """
     # Import config lazily to avoid circular imports
     try:
         if entity_type == "task":
-            from edison.core.task.config import TaskConfig
+            from edison.core.config.domains import TaskConfig
             cfg = TaskConfig()
-            spec = (cfg._state_machine() if hasattr(cfg, "_state_machine") else {})
+            spec = (cfg._state_machine if hasattr(cfg, "_state_machine") else {})
             task_spec = (spec.get("task") if isinstance(spec, dict) else {}) or {}
             return RichStateMachine(
                 "task", task_spec, guard_registry, condition_registry, action_registry
             )
         elif entity_type == "session":
-            from edison.core.session.state import _machine
-            return _machine()
+            # Build session state machine directly from config, avoiding circular import
+            from edison.core.config.domains.session import SessionConfig
+            cfg = SessionConfig()
+            state_config = cfg._state_config or {}
+            session_spec = state_config.get("session", {})
+            return RichStateMachine(
+                "session",
+                session_spec,
+                guard_registry,
+                condition_registry,
+                action_registry,
+            )
         elif entity_type == "qa":
             # QA uses task state machine by default
-            from edison.core.task.config import TaskConfig
+            from edison.core.config.domains import TaskConfig
             cfg = TaskConfig()
-            spec = (cfg._state_machine() if hasattr(cfg, "_state_machine") else {})
+            spec = (cfg._state_machine if hasattr(cfg, "_state_machine") else {})
             qa_spec = (spec.get("qa") if isinstance(spec, dict) else {}) or {}
             return RichStateMachine(
                 "qa", qa_spec, guard_registry, condition_registry, action_registry
             )
     except ImportError:
         pass
-    
+
     return None
 
 
@@ -111,16 +121,20 @@ def validate_transition(
     context: Optional[Mapping[str, Any]] = None,
 ) -> tuple[bool, str]:
     """Validate a state transition without executing it.
-    
+
     Args:
         entity_type: Entity type ("task", "session", "qa")
         from_state: Current state
         to_state: Target state
         context: Optional context for guard/condition evaluation
-        
+
     Returns:
         Tuple of (is_valid, error_message)
     """
+    # Check for missing current state
+    if not from_state or from_state.strip() == "":
+        return False, "Missing current status"
+
     if from_state == to_state:
         return True, ""
     

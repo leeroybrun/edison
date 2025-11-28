@@ -7,9 +7,10 @@ SUMMARY: Create or inspect QA validation bundle
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Create or inspect QA validation bundle"
 
@@ -45,35 +46,27 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Mark bundle as rejected",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Bundle management - delegates to QA library."""
-    from edison.core.qa import bundler, rounds
-    from edison.core.utils.paths import resolve_project_root
+    from edison.core.qa import bundler
+    from edison.core.qa.evidence import EvidenceService
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
 
-        # Determine round number
+        # Determine round number using EvidenceService
         round_num = args.round
         if round_num is None:
-            round_num = rounds.latest_round(args.task_id)
+            svc = EvidenceService(args.task_id, project_root=repo_root)
+            round_num = svc.get_current_round()
             if round_num is None:
-                if args.json:
-                    print(json.dumps({"error": "No rounds found for task"}))
-                else:
-                    print(f"Error: No rounds found for task {args.task_id}", file=sys.stderr)
+                formatter.error("No rounds found for task", error_code="no_rounds")
                 return 1
 
         # Load or create bundle
@@ -85,44 +78,32 @@ def main(args: argparse.Namespace) -> int:
                 "validators": {},
             }
             path = bundler.write_bundle_summary(args.task_id, round_num, summary)
-            if args.json:
-                print(json.dumps({"created": str(path), "summary": summary}))
-            else:
-                print(f"Created bundle: {path}")
+            formatter.json_output({"created": str(path), "summary": summary}) if formatter.json_mode else formatter.text(f"Created bundle: {path}")
         elif args.approve or args.reject:
             summary = bundler.load_bundle_summary(args.task_id, round_num)
             if not summary:
-                if args.json:
-                    print(json.dumps({"error": "Bundle not found"}))
-                else:
-                    print("Error: Bundle not found", file=sys.stderr)
+                formatter.error("Bundle not found", error_code="bundle_not_found")
                 return 1
             summary["status"] = "approved" if args.approve else "rejected"
             path = bundler.write_bundle_summary(args.task_id, round_num, summary)
-            if args.json:
-                print(json.dumps({"updated": str(path), "summary": summary}))
-            else:
-                print(f"Updated bundle status to: {summary['status']}")
+            formatter.json_output({"updated": str(path), "summary": summary}) if formatter.json_mode else formatter.text(f"Updated bundle status to: {summary['status']}")
         else:
             # Default: inspect
             summary = bundler.load_bundle_summary(args.task_id, round_num)
-            if args.json:
-                print(json.dumps(summary if summary else {"error": "Bundle not found"}))
+            if formatter.json_mode:
+                formatter.json_output(summary if summary else {"error": "Bundle not found"})
             else:
                 if summary:
-                    print(f"Bundle for {args.task_id} round {round_num}:")
-                    print(f"  Status: {summary.get('status', 'unknown')}")
-                    print(f"  Validators: {len(summary.get('validators', {}))}")
+                    formatter.text(f"Bundle for {args.task_id} round {round_num}:")
+                    formatter.text(f"  Status: {summary.get('status', 'unknown')}")
+                    formatter.text(f"  Validators: {len(summary.get('validators', {}))}")
                 else:
-                    print(f"No bundle found for {args.task_id} round {round_num}")
+                    formatter.text(f"No bundle found for {args.task_id} round {round_num}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="bundle_error")
         return 1
 
 if __name__ == "__main__":

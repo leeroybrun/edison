@@ -1,4 +1,8 @@
-"""Evidence path resolution logic."""
+"""Evidence path resolution logic.
+
+This module provides high-level evidence path resolution using task IDs.
+Core round directory logic is delegated to qa.evidence.rounds module.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,6 +10,12 @@ from typing import List, Optional
 
 from .management import get_management_paths
 from .resolver import EdisonPathError, resolve_project_root
+
+
+def _get_round_functions():
+    """Lazy import to avoid circular dependency."""
+    from edison.core.qa.evidence.rounds import list_round_dirs, resolve_round_dir
+    return list_round_dirs, resolve_round_dir
 
 
 def find_evidence_round(
@@ -35,29 +45,20 @@ def find_evidence_round(
     if not evidence_base.exists():
         raise EdisonPathError(f"Evidence directory does not exist: {evidence_base}")
 
-    # If specific round requested, return it
-    if round is not None:
-        round_dir = evidence_base / f"round-{round}"
-        if not round_dir.exists():
+    # Delegate to canonical round resolution (lazy import to avoid circular dependency)
+    _, resolve_round_dir = _get_round_functions()
+    round_dir = resolve_round_dir(evidence_base, round_num=round)
+
+    if round_dir is None:
+        if round is not None:
             raise EdisonPathError(
-                f"Evidence round-{round} not found for task {task_id}: {round_dir}"
+                f"Evidence round-{round} not found for task {task_id}"
             )
-        return round_dir
-
-    # Find latest round
-    rounds = sorted(
-        [p for p in evidence_base.glob("round-*") if p.is_dir()],
-        key=lambda p: int(p.name.split("-")[1])
-        if p.name.split("-")[1].isdigit()
-        else 0,
-    )
-
-    if not rounds:
         raise EdisonPathError(
             f"No evidence rounds found for task {task_id} in {evidence_base}"
         )
 
-    return rounds[-1]
+    return round_dir
 
 
 def list_evidence_rounds(task_id: str) -> List[Path]:
@@ -73,17 +74,9 @@ def list_evidence_rounds(task_id: str) -> List[Path]:
     mgmt_paths = get_management_paths(root)
     evidence_base = mgmt_paths.get_qa_root() / "validation-evidence" / task_id
 
-    if not evidence_base.exists():
-        return []
-
-    rounds = sorted(
-        [p for p in evidence_base.glob("round-*") if p.is_dir()],
-        key=lambda p: int(p.name.split("-")[1])
-        if p.name.split("-")[1].isdigit()
-        else 0,
-    )
-
-    return rounds
+    # Delegate to canonical round listing (lazy import to avoid circular dependency)
+    list_round_dirs, _ = _get_round_functions()
+    return list_round_dirs(evidence_base)
 
 
 __all__ = [

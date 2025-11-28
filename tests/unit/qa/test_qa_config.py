@@ -24,8 +24,8 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
     repo = tmp_path
     (repo / ".git").mkdir()
 
-    # Core config placed under .edison/core/config inside the temp repo
-    config_dir = repo / ".edison" / "core" / "config"
+    # Project config placed under .edison/config (not .edison/core/config)
+    config_dir = repo / ".edison" / "config"
     _write_yaml(
         config_dir / "defaults.yaml",
         {
@@ -66,15 +66,18 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     repo = tmp_path
     (repo / ".git").mkdir()
 
-    config_dir = repo / ".edison" / "core" / "config"
+    # Project config placed under .edison/config (not .edison/core/config)
+    config_dir = repo / ".edison" / "config"
     _write_yaml(
         config_dir / "defaults.yaml",
         {
             "validation": {
                 "dimensions": {
-                    "correctness": 40,
-                    "completeness": 30,
-                    "clarity": 30,
+                    "functionality": 30,
+                    "reliability": 25,
+                    "security": 20,
+                    "maintainability": 15,
+                    "performance": 10,
                 },
                 "roster": {
                     "global": [
@@ -101,7 +104,9 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     validation = cfg.get_validation_config()
     assert isinstance(validation, dict)
     assert "dimensions" in validation
-    assert validation["dimensions"]["correctness"] == 40
+    assert validation["dimensions"]["functionality"] == 30
+    assert validation["dimensions"]["reliability"] == 25
+    assert validation["dimensions"]["security"] == 20
     assert "roster" in validation
 
 
@@ -111,12 +116,13 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
     repo = tmp_path
     (repo / ".git").mkdir()
 
-    config_dir = repo / ".edison" / "core" / "config"
+    # Project config placed under .edison/config (not .edison/core/config)
+    config_dir = repo / ".edison" / "config"
     _write_yaml(
         config_dir / "defaults.yaml",
         {
             "orchestration": {
-                "maxConcurrentAgents": 8,
+                "maxConcurrentAgents": 3,
             },
         },
     )
@@ -132,20 +138,26 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
 
     max_concurrent = cfg.max_concurrent_validators()
     assert isinstance(max_concurrent, int)
-    assert max_concurrent == 8
+    assert max_concurrent == 3
 
 
 @pytest.mark.qa
-def test_qa_config_class_raises_on_missing_max_concurrent(tmp_path: Path, monkeypatch):
-    """QAConfig must raise RuntimeError when maxConcurrentAgents is missing."""
+def test_qa_config_class_falls_back_to_bundled_defaults(tmp_path: Path, monkeypatch):
+    """QAConfig falls back to bundled defaults when project config is empty.
+
+    The system is designed to always provide sensible defaults from bundled config,
+    so even with an empty project config, maxConcurrentAgents should be available.
+    This test verifies that bundled defaults are properly loaded.
+    """
     repo = tmp_path
     (repo / ".git").mkdir()
 
-    config_dir = repo / ".edison" / "core" / "config"
+    # Project config placed under .edison/config (not .edison/core/config)
+    config_dir = repo / ".edison" / "config"
     _write_yaml(
         config_dir / "defaults.yaml",
         {
-            # No orchestration section
+            # Empty config - should fall back to bundled defaults
         },
     )
 
@@ -158,5 +170,7 @@ def test_qa_config_class_raises_on_missing_max_concurrent(tmp_path: Path, monkey
 
     cfg = QAConfig(repo_root=repo)
 
-    with pytest.raises(RuntimeError, match="orchestration.maxConcurrentAgents missing"):
-        cfg.max_concurrent_validators()
+    # Should get value from bundled defaults (currently 5 in defaults.yaml)
+    max_concurrent = cfg.max_concurrent_validators()
+    assert isinstance(max_concurrent, int)
+    assert max_concurrent > 0  # Should have a sensible default

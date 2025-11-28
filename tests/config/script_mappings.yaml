@@ -1,0 +1,165 @@
+# Script Mappings Configuration
+# Maps legacy script paths to new CLI commands (domain + command)
+# Used by tests/helpers/command_runner.py to translate script calls
+
+mappings:
+  # Task commands
+  tasks/ready:
+    domain: task
+    command: ready
+    
+  tasks/new:
+    domain: task
+    command: new
+    
+  tasks/status:
+    domain: task
+    command: status
+    
+  tasks/claim:
+    domain: task
+    command: claim
+    
+  tasks/link:
+    domain: task
+    command: link
+    
+  tasks/split:
+    domain: task
+    command: split
+    
+  tasks/allocate-id:
+    domain: task
+    command: allocate_id
+    
+  tasks/ensure-followups:
+    domain: task
+    command: ensure_followups
+    
+  tasks/cleanup-stale-locks:
+    domain: task
+    command: cleanup_stale_locks
+    
+  tasks/mark-delegated:
+    domain: task
+    command: mark_delegated
+    
+  tasks/list:
+    domain: task
+    command: list
+    
+  # Session commands
+  session:
+    domain: session
+    command: null  # Special handling - subcommand in args
+    
+  session/next:
+    domain: session
+    command: next
+    
+  session/start:
+    domain: session
+    command: start
+    
+  session/close:
+    domain: session
+    command: close
+    
+  session/create:
+    domain: session
+    command: create
+    
+  session/heartbeat:
+    domain: session
+    command: track  # heartbeat is now track
+    
+  session/track:
+    domain: session
+    command: track
+    
+  # Tracking commands (aliased to session track)
+  track:
+    domain: session
+    command: track
+    
+  # QA commands
+  qa/new:
+    domain: qa
+    command: new
+    
+  qa/promote:
+    domain: qa
+    command: promote
+    
+  qa/validate:
+    domain: qa
+    command: validate
+    
+  qa/round:
+    domain: qa
+    command: round
+    
+  # Validators (aliases)
+  validators/validate:
+    domain: qa
+    command: validate
+    
+  validation/validate:
+    domain: qa
+    command: validate
+    
+  # Compose commands
+  prompts/compose:
+    domain: compose
+    command: all
+    
+  compose/all:
+    domain: compose
+    command: all
+    
+  # Config commands
+  config/show:
+    domain: config
+    command: show
+    
+  # Git worktree commands
+  git/worktree-create:
+    domain: git
+    command: worktree_create
+    
+  git/worktree-cleanup:
+    domain: git
+    command: worktree_cleanup
+    
+  git/worktree-archive:
+    domain: git
+    command: worktree_archive
+    
+  git/worktree-list:
+    domain: git
+    command: worktree_list
+    
+  # Rules commands
+  rules/show-for-context:
+    domain: rules
+    command: show_for_context
+
+# Session subcommand mappings
+# Used when command is null and subcommand is in args
+session_subcommands:
+  new: create
+  status: status
+  complete: close
+  next: next
+  start: start
+  close: close
+  heartbeat: track
+  track: track
+
+# Track subcommands
+# Valid subcommands for session track command
+track_subcommands:
+  - heartbeat
+  - start
+  - complete
+  - active

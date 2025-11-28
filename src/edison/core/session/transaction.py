@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.io.locking import acquire_file_lock
+from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
     read_json as io_read_json,
@@ -22,7 +22,7 @@ from edison.core.utils.io import (
 )
 from ..utils.time import utc_timestamp as io_utc_timestamp
 from ..exceptions import SessionError
-from .store import validate_session_id
+from .id import validate_session_id
 from edison.core.utils.paths import get_management_paths
 from ._config import get_config
 
@@ -43,7 +43,7 @@ def _tx_dir(session_id: str) -> Path:
     return d
 
 def _sid_dir(session_id: str) -> Path:
-    # This should probably use store._session_dir logic or similar, 
+    # This should probably use store._session_dir logic or similar,
     # but for now we can use the configured session root.
     # Or better, import _session_dir from store?
     # store._session_dir requires state.
@@ -58,17 +58,18 @@ def _sid_dir(session_id: str) -> Path:
     # So we MUST know the state or search for it.
     # But _append_tx_log doesn't take state.
     # We might need to search for the session.
-    from .store import get_session_json_path
+    from .repository import SessionRepository
     try:
-        json_path = get_session_json_path(session_id)
+        repo = SessionRepository()
+        json_path = repo.get_session_json_path(session_id)
         return json_path.parent
     except Exception:
-        # Fallback or error?
-        # If session doesn't exist, we can't log to it.
-        # But maybe we are creating it?
-        # For transactions, session usually exists.
-        # Let's assume it exists.
-        raise
+        # Fallback: If session doesn't exist yet, use default "wip" state location
+        # This allows validation transactions to work even before session is fully initialized
+        mgmt_paths = get_management_paths(PathResolver.resolve_project_root())
+        default_dir = mgmt_paths.get_session_state_dir("wip") / validate_session_id(session_id)
+        ensure_directory(default_dir)
+        return default_dir
 
 def _tx_validation_dir(session_id: str, tx_id: str) -> Path:
     d = _get_tx_root() / validate_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id
@@ -261,6 +262,13 @@ class ValidationTransaction:
             self._mgmt_rel = Path(mgmt_paths.get_management_root().name)
         self._committed = False
         self._aborted = False
+        # Acquire lock to prevent concurrent transactions on same session
+        self._lock_path = _tx_dir(self.session_id) / ".validation.lock"
+        self._lock_cm = acquire_file_lock(self._lock_path)
+        try:
+            self._lock_cm.__enter__()
+        except LockTimeoutError as e:
+            raise SystemExit(f"Could not acquire validation transaction lock: {e}") from e
         # Initialize directories
         ensure_directory(self.staging_root / self._mgmt_rel)
         ensure_directory(self.snapshot_root)
@@ -343,6 +351,11 @@ class ValidationTransaction:
         meta["finalizedAt"] = io_utc_timestamp()
         io_write_json_atomic(self.meta_path, meta)
         _append_tx_log(self.session_id, self.tx_id, "committed", wave=self.wave)
+        # Release lock
+        try:
+            self._lock_cm.__exit__(None, None, None)
+        except Exception:
+            pass
 
     def abort(self, reason: str = "") -> None:
         if self._committed or self._aborted:
@@ -353,12 +366,17 @@ class ValidationTransaction:
             shutil.rmtree(self.staging_root, ignore_errors=True)
         if self.snapshot_root.exists():
             shutil.rmtree(self.snapshot_root, ignore_errors=True)
-            
+
         meta = io_read_json(self.meta_path)
         meta["abortedAt"] = io_utc_timestamp()
         meta["reason"] = reason
         io_write_json_atomic(self.meta_path, meta)
         _append_tx_log(self.session_id, self.tx_id, "aborted", f"reason={reason}", wave=self.wave)
+        # Release lock
+        try:
+            self._lock_cm.__exit__(None, None, None)
+        except Exception:
+            pass
 
     def rollback(self) -> None:
         self.abort("rollback")

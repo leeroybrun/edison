@@ -6,8 +6,9 @@ SUMMARY: Migrate session database
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Migrate session database"
 
@@ -23,21 +24,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         type=str,
         help="Target migration version",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Migrate session database - delegates to core library."""
-    from edison.core.session.store import validate_session_id
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.session.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)
@@ -53,20 +48,17 @@ def main(args: argparse.Namespace) -> int:
         if args.target:
             result["target_version"] = args.target
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
-            print(f"✓ Migrated database for session {session_id}")
+            formatter.text(f"✓ Migrated database for session {session_id}")
             if args.target:
-                print(f"  Target version: {args.target}")
+                formatter.text(f"  Target version: {args.target}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

@@ -1,132 +1,102 @@
-"""Task domain package."""
+"""Task domain package.
 
-import os as os_module
-import subprocess as subprocess_module
-from pathlib import Path
+This module provides the core task management functionality through:
+- TaskRepository: Entity-based task persistence
+- Task models: Task entity definitions
+- TaskManager: High-level task management operations
+- TaskQAWorkflow: Task-QA workflow orchestration
 
-from .config import TaskConfig
-from .io import (
-    create_task,
-    create_qa_brief,
-    claim_task,
-    ready_task,
-    qa_progress,
-    move_to_status,
-    write_json_atomic,
-    default_owner,
-    write_text_locked,
-    record_tdd_evidence,
+Note: TaskConfig has been moved to edison.core.config.domains.TaskConfig
+"""
+
+import getpass
+import os
+from typing import Callable, Optional, Tuple
+
+from .manager import TaskManager
+from .models import Task
+from .repository import TaskRepository
+from .workflow import TaskQAWorkflow
+from .paths import safe_relative
+
+# Compatibility layer for legacy task record API
+from .compat import (
     create_task_record,
     load_task_record,
     update_task_record,
     set_task_result,
-    next_child_id,
-    utc_timestamp,
-    claim_task_with_lock,
-    _task_filename,
 )
-from .locking import file_lock, is_locked, safe_move_file, transactional_move
+
+# State validation function
+from edison.core.state.transitions import validate_transition as validate_state_transition
 
 
-# Public wrappers for backward compatibility (previously in store.py shim)
-def tasks_root() -> Path:
-    """Get the tasks root directory."""
-    config = TaskConfig()
-    return config.tasks_root()
+def default_owner(
+    process_finder: Optional[Callable[[], Tuple[str, int]]] = None
+) -> str:
+    """Determine the default owner for tasks.
+
+    Resolution order:
+    1. Process detection via process_finder (returns process name)
+    2. AGENTS_OWNER environment variable
+    3. Current username via getpass.getuser()
+
+    Args:
+        process_finder: Optional callable that returns (process_name, pid).
+                       Defaults to inspector.find_topmost_process.
+
+    Returns:
+        Owner string
+    """
+    # Try process detection first
+    if process_finder is None:
+        from edison.core.utils.process import inspector
+        process_finder = inspector.find_topmost_process
+
+    try:
+        process_name, _pid = process_finder()
+        return process_name
+    except Exception:
+        pass
+
+    # Fall back to environment variable
+    env_owner = os.environ.get("AGENTS_OWNER")
+    if env_owner:
+        return env_owner
+
+    # Final fallback to username
+    return getpass.getuser()
 
 
-def qa_root() -> Path:
-    """Get the QA root directory."""
-    config = TaskConfig()
-    return config.qa_root()
+def normalize_record_id(record_type: str, record_id: str) -> str:
+    """Normalize a record ID by removing file extensions.
 
+    Args:
+        record_type: Type of record ('task' or 'qa')
+        record_id: Record identifier, possibly with .md extension
 
-def task_filename(task_id: str) -> str:
-    """Get filename for a task ID."""
-    return _task_filename(task_id)
-from .finder import RecordMeta, RecordType, find_record, list_records, detect_record_type, normalize_record_id, infer_status_from_path
-from .record_metadata import (
-    TYPE_INFO,
-    read_metadata,
-    update_line,
-    ensure_session_block,
-    validate_state_transition,
-)
-from .paths import (
-    ROOT,
-    TASK_ROOT,
-    QA_ROOT,
-    SESSIONS_ROOT,
-    SESSION_DIRS,
-    TASK_DIRS,
-    QA_DIRS,
-    OWNER_PREFIX_TASK,
-    OWNER_PREFIX_QA,
-    STATUS_PREFIX,
-    CLAIMED_PREFIX,
-    LAST_ACTIVE_PREFIX,
-    CONTINUATION_PREFIX,
-    safe_relative,
-)
-from .transitions import transition_task  # existing orchestrated transition helper
+    Returns:
+        Normalized record ID without extension
+    """
+    # Remove .md extension if present
+    if record_id.endswith('.md'):
+        return record_id[:-3]
+    return record_id
 
-# Legacy accessors kept for tests that monkeypatch low-level OS calls
-os = os_module
-subprocess = subprocess_module
 
 __all__ = [
-    "TaskConfig",
-    "tasks_root",
-    "qa_root",
-    "task_filename",
-    "create_task",
-    "create_qa_brief",
-    "safe_relative",
-    "safe_move_file",
-    "write_text_locked",
-    "transactional_move",
-    "move_to_status",
-    "write_json_atomic",
-    "record_tdd_evidence",
-    "RecordMeta",
-    "RecordType",
-    "find_record",
-    "list_records",
-    "detect_record_type",
+    "Task",
+    "TaskRepository",
+    "TaskManager",
+    "TaskQAWorkflow",
     "normalize_record_id",
-    "infer_status_from_path",
-    "update_line",
-    "ensure_session_block",
-    "read_metadata",
-    "validate_state_transition",
-    "ready_task",
-    "qa_progress",
-    "transition_task",
     "default_owner",
-    "claim_task",
-    "claim_task_with_lock",
-    "file_lock",
-    "is_locked",
+    "safe_relative",
+    # Compatibility layer functions
     "create_task_record",
     "load_task_record",
     "update_task_record",
     "set_task_result",
-    "ROOT",
-    "TASK_ROOT",
-    "QA_ROOT",
-    "SESSIONS_ROOT",
-    "SESSION_DIRS",
-    "TASK_DIRS",
-    "QA_DIRS",
-    "TYPE_INFO",
-    "CLAIMED_PREFIX",
-    "LAST_ACTIVE_PREFIX",
-    "CONTINUATION_PREFIX",
-    "OWNER_PREFIX_TASK",
-    "OWNER_PREFIX_QA",
-    "STATUS_PREFIX",
-    "utc_timestamp",
-    "next_child_id",
-    "os",
-    "subprocess",
+    # State validation
+    "validate_state_transition",
 ]

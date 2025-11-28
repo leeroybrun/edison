@@ -18,9 +18,13 @@ from .repository import (
     is_git_repository,
 )
 from .worktree import (
+    check_worktree_health,
+    get_existing_worktree_path,
     get_worktree_info,
     get_worktree_parent,
     is_worktree,
+    is_worktree_registered,
+    list_worktrees,
 )
 
 __all__ = [
@@ -32,6 +36,10 @@ __all__ = [
     "is_worktree",
     "get_worktree_parent",
     "get_worktree_info",
+    "list_worktrees",
+    "check_worktree_health",
+    "get_existing_worktree_path",
+    "is_worktree_registered",
     # diff
     "get_current_branch",
     "is_clean_working_tree",

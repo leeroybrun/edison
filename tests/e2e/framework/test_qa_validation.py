@@ -14,32 +14,59 @@ if _CORE_ROOT is None:
     _CORE_ROOT = _THIS_FILE.parents[4]
 
 CORE_ROOT = _CORE_ROOT
-from tests.helpers.session import ensure_session 
-from edison.core.task import create_task, ready_task, qa_progress 
+
+from tests.helpers.session import ensure_session
+from edison.core.task import TaskRepository, TaskQAWorkflow
+from edison.core.qa.repository import QARepository
+
+
 def test_qa_checklist_and_validation_workflow(tmp_path):
     """Ensures QA brief pairing and state transitions across the QA pipeline."""
     sid = 'sess-qa-1'
     ensure_session(sid)
     task_id = 'T3001'
-    create_task(task_id, title='Feature Y')
-    # Claim then ready the task → QA goes waiting -> todo
-    from edison.core.task import claim_task  # local import to avoid unused in file
-    claim_task(task_id, sid)
-    ready_task(task_id, sid)
-    # QA files are session-scoped, organized within the session's state directory
-    # Session is in "wip" state, QA files are in .../wip/sess-qa-1/qa/<qa_state>/
-    qa_todo = Path('.project/sessions/wip') / sid / 'qa' / 'todo' / f'{task_id}-qa.md'
-    assert qa_todo.exists()
 
-    # Progress QA: todo -> wip -> done -> validated (session-scoped)
-    qa_progress(task_id, 'todo', 'wip', session_id=sid)
-    qa_wip = Path('.project/sessions/wip') / sid / 'qa' / 'wip' / f'{task_id}-qa.md'
-    assert qa_wip.exists()
+    # Clean up any existing task from previous runs
+    task_repo = TaskRepository()
+    qa_repo = QARepository()
+    workflow = TaskQAWorkflow()
+    if task_repo.exists(task_id):
+        task_repo.delete(task_id)
+    qa_id = f'{task_id}-qa'
+    if qa_repo.exists(qa_id):
+        qa_repo.delete(qa_id)
 
-    qa_progress(task_id, 'wip', 'done', session_id=sid)
-    qa_done = Path('.project/sessions/wip') / sid / 'qa' / 'done' / f'{task_id}-qa.md'
-    assert qa_done.exists()
+    # Create task using TaskQAWorkflow
+    task = workflow.create_task(task_id, title='Feature Y', create_qa=True)
 
-    qa_progress(task_id, 'done', 'validated', session_id=sid)
-    qa_val = Path('.project/sessions/wip') / sid / 'qa' / 'validated' / f'{task_id}-qa.md'
-    assert qa_val.exists()
+    # Claim then complete the task → QA goes waiting -> todo
+    workflow.claim_task(task_id, sid)
+    workflow.complete_task(task_id, sid)
+
+    # Progress QA: todo -> wip -> done -> validated
+    # Use repository to verify QA state transitions
+    qa_repo = QARepository()
+    qa_id = f'{task_id}-qa'
+
+    # Verify QA is in todo state after task completion
+    qa = qa_repo.get(qa_id)
+    assert qa is not None
+    assert qa.state == 'todo'
+
+    # Advance to wip
+    qa_repo.advance_state(qa_id, 'wip', session_id=sid)
+    qa = qa_repo.get(qa_id)
+    assert qa is not None
+    assert qa.state == 'wip'
+
+    # Advance to done
+    qa_repo.advance_state(qa_id, 'done', session_id=sid)
+    qa = qa_repo.get(qa_id)
+    assert qa is not None
+    assert qa.state == 'done'
+
+    # Advance to validated
+    qa_repo.advance_state(qa_id, 'validated', session_id=sid)
+    qa = qa_repo.get(qa_id)
+    assert qa is not None
+    assert qa.state == 'validated'

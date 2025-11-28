@@ -5,8 +5,8 @@ from typing import Any, Dict
 
 import pytest
 
-from edison.core import task  # type: ignore
-from edison.core.qa import validator 
+from edison.core.task import TaskQAWorkflow
+from edison.core.qa import validator
 def test_simple_delegation_hint_uses_task_type_rules(
     isolated_project_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -19,9 +19,12 @@ def test_simple_delegation_hint_uses_task_type_rules(
     # isolated_project_env fixture already sets AGENTS_PROJECT_ROOT and resets caches
 
     task_id = "9000-delegation-ui-component"
-    # Create a real task file via task
-    task.create_task(task_id, "Delegation smoke test")  # type: ignore[attr-defined]
-    task_path = task.find_record(task_id, "task")  # type: ignore[attr-defined]
+    # Create a real task file via TaskQAWorkflow
+    workflow = TaskQAWorkflow(project_root=isolated_project_env)
+    workflow.create_task(task_id, "Delegation smoke test", create_qa=False)
+    task_repo = workflow._task_repo
+    task_entity = task_repo.get(task_id)
+    task_path = task_repo._find_entity_path(task_id)
 
     # Append a minimal Task Type stanza expected by the parser
     original = task_path.read_text(encoding="utf-8")
@@ -59,8 +62,10 @@ def test_build_validator_roster_categorizes_validators(
 
     # Create a simple task with primary files that will trigger specialized validators
     task_id = "9001-validator-roster"
-    task.create_task(task_id, "Validator roster smoke test")  # type: ignore[attr-defined]
-    task_path = task.find_record(task_id, "task")  # type: ignore[attr-defined]
+    workflow = TaskQAWorkflow(project_root=isolated_project_env)
+    workflow.create_task(task_id, "Validator roster smoke test", create_qa=False)
+    task_repo = workflow._task_repo
+    task_path = task_repo._find_entity_path(task_id)
     original = task_path.read_text(encoding="utf-8")
     task_path.write_text(
         original

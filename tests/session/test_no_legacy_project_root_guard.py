@@ -7,7 +7,7 @@ import sys
 import pytest
 
 import edison.core.utils.paths.resolver as resolver
-import edison.core.session.store as session_store
+import edison.core.session.repository
 import edison.core.task as task
 import edison.core.config.domains.qa as qa_config
 
@@ -25,12 +25,12 @@ def _set_legacy_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 @pytest.mark.session
-def test_session_store_fails_fast_for_pre_edison_project_root(
+def test_session_repository_fails_fast_for_pre_edison_project_root(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     legacy_root = _set_legacy_root(monkeypatch, tmp_path)
     with pytest.raises(RuntimeError) as excinfo:
-        importlib.reload(session_store)
+        importlib.reload(edison.core.session.repository)
     msg = str(excinfo.value)
     assert "project-pre-edison" in msg
     assert str(legacy_root) in msg

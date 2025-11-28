@@ -51,17 +51,7 @@ def test_claim_strict_wrapper_detection(tmp_path):
     - With wrappers   → Strict Wrappers → yes
     """
     # Arrange isolated test project
-    # Use robust repo root detection (prefer outermost git root when nested)
-    def get_repo_root() -> Path:
-        current = Path(__file__).resolve()
-        last_git_root: Path | None = None
-        while current != current.parent:
-            if (current / ".git").exists():
-                last_git_root = current
-            current = current.parent
-        if last_git_root is None:
-            raise RuntimeError("Could not find repository root")
-        return last_git_root
+    from tests.helpers.paths import get_repo_root
 
     repo_root = get_repo_root()
     proj = TestProjectDir(tmp_path, repo_root)

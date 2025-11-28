@@ -166,22 +166,34 @@ class BaseRepository(BaseEntityManager[T]):
     
     def find(self, **criteria: Any) -> List[T]:
         """Find entities matching criteria.
-        
+
         Args:
             **criteria: Key-value pairs to match
-            
+
         Returns:
             List of matching entities
         """
         return self._do_find(**criteria)
-    
-    @abstractmethod
+
     def _do_find(self, **criteria: Any) -> List[T]:
-        """Implementation of find operation.
-        
-        Subclasses must implement this method.
+        """Default find implementation using attribute matching.
+
+        Filters entities by matching all criteria against entity attributes.
+        Subclasses can override for optimized queries.
+
+        Args:
+            **criteria: Key-value pairs to match against entity attributes
+
+        Returns:
+            List of entities where all criteria match
         """
-        pass
+        if not criteria:
+            return self._do_list_all()
+
+        return [
+            entity for entity in self._do_list_all()
+            if all(getattr(entity, k, None) == v for k, v in criteria.items())
+        ]
     
     def list_by_state(self, state: str) -> List[T]:
         """List entities in a given state.
@@ -223,68 +235,79 @@ class BaseRepository(BaseEntityManager[T]):
     # ---------- State Transition ----------
     
     def transition(
-        self, 
-        entity_id: EntityId, 
+        self,
+        entity_id: EntityId,
         to_state: str,
         *,
         context: Optional[Dict[str, Any]] = None,
     ) -> T:
         """Transition an entity to a new state.
-        
+
         This method:
         1. Gets the entity
-        2. Validates the transition
-        3. Updates the state
-        4. Records history
-        5. Persists changes
-        
+        2. Validates the transition (via transition_entity)
+        3. Executes configured actions (via transition_entity)
+        4. Updates the state
+        5. Records history
+        6. Persists changes
+
         Args:
             entity_id: Entity identifier
             to_state: Target state
             context: Optional context for transition
-            
+
         Returns:
             Updated entity
-            
+
         Raises:
             EntityNotFoundError: If entity not found
             EntityStateError: If transition not allowed
         """
-        from edison.core.state.transitions import validate_transition
-        
+        from edison.core.state.transitions import transition_entity, EntityTransitionError
+
         entity = self.get_or_raise(entity_id)
         from_state = entity.state
-        
-        # Validate transition
-        valid, error = validate_transition(
-            self.entity_type,
-            from_state,
-            to_state,
-            context=context,
-        )
-        if not valid:
+
+        # Use unified transition system with full validation and action execution
+        try:
+            result = transition_entity(
+                entity_type=self.entity_type,
+                entity_id=str(entity_id),
+                to_state=to_state,
+                current_state=from_state,
+                context=context,
+                record_history=True,
+            )
+        except EntityTransitionError as e:
             raise EntityStateError(
-                error or f"Cannot transition from {from_state} to {to_state}",
+                str(e),
                 entity_type=self.entity_type,
                 entity_id=entity_id,
                 from_state=from_state,
                 to_state=to_state,
-            )
-        
-        # Update state
-        entity.state = to_state
-        
-        # Record history if entity supports it
-        if hasattr(entity, "record_transition"):
-            entity.record_transition(from_state, to_state)
-        elif hasattr(entity, "state_history"):
-            from .base import StateHistoryEntry
-            entry = StateHistoryEntry.create(from_state, to_state)
-            entity.state_history.append(entry)
-        
+            ) from e
+
+        # Update entity state from transition result
+        entity.state = result["state"]
+
+        # Record history if entity supports it and we have a history entry
+        if "history_entry" in result:
+            if hasattr(entity, "record_transition"):
+                entity.record_transition(
+                    from_state=result["history_entry"]["from"],
+                    to_state=result["history_entry"]["to"],
+                )
+            elif hasattr(entity, "state_history"):
+                from .base import StateHistoryEntry
+                entry = StateHistoryEntry.create(
+                    from_state=result["history_entry"]["from"],
+                    to_state=result["history_entry"]["to"],
+                )
+                entity.state_history.append(entry)
+
         # Persist
         self.save(entity)
-        
+
         return entity
 
 

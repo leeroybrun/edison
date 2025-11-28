@@ -4,34 +4,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from tests.helpers.path_utils import resolve_expected_path as _resolve_expected_path
+from tests.helpers.json_utils import traverse_json_path
+
 
 def resolve_expected_path(path: Path) -> Path:
     """Resolve a possibly-global path to the actual location (session-aware).
 
     If the exact path exists, return it. Otherwise, search under
     .project/sessions/wip/*/{tasks,qa}/**/<basename> and return the first match.
+
+    Note: This is a compatibility wrapper. New code should use
+    path_utils.resolve_expected_path directly.
     """
-    if path.exists():
-        return path
-    # Only try to resolve for .project paths
-    try:
-        parts = list(path.parts)
-        if ".project" not in parts:
-            return path
-        idx = parts.index(".project")
-        root = Path(*parts[: idx + 1])
-        sessions_root = root / "sessions" / "wip"
-        if not sessions_root.exists():
-            return path
-        domain = "tasks" if "/tasks/" in str(path) else ("qa" if "/qa/" in str(path) else None)
-        if not domain:
-            return path
-        for candidate in sessions_root.glob(f"*/{domain}/**/{path.name}"):
-            if candidate.is_file():
-                return candidate
-    except Exception:
-        return path
-    return path
+    return _resolve_expected_path(path)
 
 
 def read_file(path: Path) -> str:
@@ -139,17 +125,11 @@ def assert_json_field(
     Raises:
         AssertionError: If field doesn't match expected value
     """
-    # Support dot notation for nested fields
-    current = data
-    parts = field.split(".")
-    for part in parts[:-1]:
-        assert part in current, f"Field path {field} not found in JSON"
-        current = current[part]
+    try:
+        actual = traverse_json_path(data, field)
+    except KeyError as e:
+        raise AssertionError(str(e))
 
-    field_name = parts[-1]
-    assert field_name in current, f"Field {field} not found in JSON"
-
-    actual = current[field_name]
     if message is None:
         message = f"Field {field}: expected {expected}, got {actual}"
     assert actual == expected, message
@@ -170,15 +150,12 @@ def assert_json_has_field(
     Raises:
         AssertionError: If field doesn't exist
     """
-    # Support dot notation for nested fields
-    current = data
-    parts = field.split(".")
-    for i, part in enumerate(parts):
+    try:
+        traverse_json_path(data, field)
+    except KeyError as e:
         if message is None:
-            path = ".".join(parts[:i+1])
-            message = f"Field {path} not found in JSON data: {data}"
-        assert part in current, message
-        current = current[part]
+            message = str(e)
+        raise AssertionError(message)
 
 
 def assert_json_array_contains(
@@ -198,12 +175,10 @@ def assert_json_array_contains(
     Raises:
         AssertionError: If array doesn't contain item
     """
-    assert_json_has_field(data, field)
-
-    # Get array value
-    current = data
-    for part in field.split("."):
-        current = current[part]
+    try:
+        current = traverse_json_path(data, field)
+    except KeyError as e:
+        raise AssertionError(str(e))
 
     assert isinstance(current, list), f"Field {field} is not an array"
 

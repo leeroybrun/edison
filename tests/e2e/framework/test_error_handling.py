@@ -23,8 +23,8 @@ from edison.core.utils import resilience  # type: ignore
 from edison.core.config import ConfigManager 
 def test_missing_project_name_raises(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("PROJECT_NAME", raising=False)
-    # Clear config resolution path
-    monkeypatch.setattr("lib.sessionlib._load_config", lambda: {}, raising=False)
+    # Mock get_project_name in tests.helpers.session to return empty string to trigger ValueError
+    monkeypatch.setattr("tests.helpers.session.get_project_name", lambda **kwargs: "")
     with pytest.raises(ValueError):
         sessionlib._get_project_name()
 

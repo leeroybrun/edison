@@ -13,60 +13,30 @@ from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import get_data_path
-
-def get_repo_root() -> Path:
-    current = Path(__file__).resolve()
-    while current != current.parent:
-        if (current / ".git").exists():
-            return current
-        current = current.parent
-    raise RuntimeError("Could not find repository root")
+from tests.helpers.paths import get_repo_root, get_core_root
+from tests.e2e.base import E2ETestCase
 
 
-class CrossSessionClaimTests(unittest.TestCase):
+class CrossSessionClaimTests(E2ETestCase):
     def setUp(self) -> None:
-        self.temp_root = Path(tempfile.mkdtemp(prefix="project-cross-claim-"))
-        self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
+        # Call parent setUp to get standard E2E environment
+        super().setUp()
 
         # Get repo root and scripts directory
         self.repo_root = get_repo_root()
         self.scripts_dir = get_data_path("scripts")
 
-        # Minimal project layout
-        for d in [
-            ".project/tasks/todo",
-            ".project/tasks/wip",
-            ".project/tasks/blocked",
-            ".project/tasks/done",
-            ".project/tasks/validated",
-            ".project/qa/waiting",
-            ".project/qa/todo",
-            ".project/qa/wip",
-            ".project/qa/done",
-            ".project/qa/validated",
-            ".project/qa/validation-evidence",
-            ".project/sessions/wip",
-            ".project/sessions/done",
-            ".project/sessions/validated",
-            ".agents/sessions",
-        ]:
-            (self.temp_root / d).mkdir(parents=True, exist_ok=True)
-
-        # Templates referenced by CLIs
-        shutil.copyfile(self.repo_root / ".agents" / "sessions" / "TEMPLATE.json", self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")
-        shutil.copyfile(self.repo_root / ".project" / "qa" / "TEMPLATE.md", self.temp_root / ".project" / "qa" / "TEMPLATE.md")
-        shutil.copyfile(self.repo_root / ".project" / "tasks" / "TEMPLATE.md", self.temp_root / ".project" / "tasks" / "TEMPLATE.md")
-
-        self.env = os.environ.copy()
+        # Override owner for this test
         self.env.update({
-            "project_ROOT": str(self.temp_root),
-            "AGENTS_PROJECT_ROOT": str(self.temp_root),
             "project_OWNER": "claude-pid-1111",
-            "PYTHONUNBUFFERED": "1",
         })
 
+        # Add script paths for convenience
         self.session_cli = self.scripts_dir / "session"
         self.tasks_claim = self.scripts_dir / "tasks" / "claim"
+
+        # Rename self.tmp to self.temp_root for compatibility with existing test code
+        self.temp_root = self.tmp
 
     def run_cli(self, *argv: str | Path, check: bool = True) -> subprocess.CompletedProcess[str]:
         cmd = ["python3", *[str(a) for a in argv]]

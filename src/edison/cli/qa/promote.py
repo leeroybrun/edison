@@ -7,9 +7,10 @@ SUMMARY: Promote QA brief between states
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Promote QA brief between states"
 
@@ -36,40 +37,29 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Skip validation checks",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Promote QA brief - delegates to QA library."""
-    from edison.core.qa import promoter, bundler, rounds
-    from edison.core.utils.paths import resolve_project_root
+    from edison.core.qa import promoter, bundler
+    from edison.core.qa.evidence import EvidenceService
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
 
         if not args.status:
-            if args.json:
-                print(json.dumps({"error": "--status is required"}))
-            else:
-                print("Error: --status is required", file=sys.stderr)
+            formatter.error("--status is required", error_code="missing_status")
             return 1
 
-        # Get latest round
-        round_num = rounds.latest_round(args.task_id)
+        # Get latest round using EvidenceService
+        svc = EvidenceService(args.task_id, project_root=repo_root)
+        round_num = svc.get_current_round()
         if round_num is None:
-            if args.json:
-                print(json.dumps({"error": "No rounds found for task"}))
-            else:
-                print(f"Error: No rounds found for task {args.task_id}", file=sys.stderr)
+            formatter.error("No rounds found for task", error_code="no_rounds")
             return 1
 
         # Check if revalidation is needed (unless forced)
@@ -79,13 +69,7 @@ def main(args: argparse.Namespace) -> int:
             task_files = promoter.collect_task_files([args.task_id], args.session)
 
             if promoter.should_revalidate_bundle(bundle_path, reports, task_files):
-                if args.json:
-                    print(json.dumps({
-                        "error": "Revalidation required",
-                        "message": "Bundle is stale, run validation first",
-                    }))
-                else:
-                    print("Error: Bundle is stale, run validation first", file=sys.stderr)
+                formatter.error("Bundle is stale, run validation first", error_code="revalidation_required")
                 return 1
 
         # Perform promotion (simplified - actual implementation would be more complex)
@@ -97,18 +81,12 @@ def main(args: argparse.Namespace) -> int:
             "promoted": True,
         }
 
-        if args.json:
-            print(json.dumps(result))
-        else:
-            print(f"Promoted {args.task_id} to status: {args.status}")
+        formatter.json_output(result) if formatter.json_mode else formatter.text(f"Promoted {args.task_id} to status: {args.status}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="promote_error")
         return 1
 
 if __name__ == "__main__":

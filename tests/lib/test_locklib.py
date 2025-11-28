@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
+from tests.helpers.timeouts import SHORT_SLEEP, LOCK_TIMEOUT, THREAD_JOIN_TIMEOUT
 
 
 def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:
@@ -16,21 +17,21 @@ def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:
     holder_done = threading.Event()
 
     def _holder() -> None:
-        with acquire_file_lock(target, timeout=0.5):
+        with acquire_file_lock(target, timeout=LOCK_TIMEOUT):
             holder_ready.set()
-            time.sleep(0.3)
+            time.sleep(SHORT_SLEEP * 6)  # Hold lock for a bit
             holder_done.set()
 
     thread = threading.Thread(target=_holder)
     thread.start()
 
-    assert holder_ready.wait(timeout=1)
+    assert holder_ready.wait(timeout=THREAD_JOIN_TIMEOUT)
     start = time.monotonic()
 
-    with acquire_file_lock(target, timeout=0.05, fail_open=True):
+    with acquire_file_lock(target, timeout=SHORT_SLEEP, fail_open=True):
         elapsed = time.monotonic() - start
         # Fail-open should return quickly instead of blocking for holder duration
-        assert elapsed < 0.2
+        assert elapsed < (SHORT_SLEEP * 4)
         target.write_text("ok", encoding="utf-8")
 
     thread.join()
@@ -41,9 +42,9 @@ def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:
 def test_acquire_file_lock_times_out_without_fail_open(tmp_path: Path) -> None:
     target = tmp_path / "guard.json"
 
-    with acquire_file_lock(target, timeout=0.5):
+    with acquire_file_lock(target, timeout=LOCK_TIMEOUT):
         with pytest.raises(LockTimeoutError):
-            with acquire_file_lock(target, timeout=0.05, fail_open=False):
+            with acquire_file_lock(target, timeout=SHORT_SLEEP, fail_open=False):
                 target.write_text("should not happen", encoding="utf-8")
 
 
@@ -54,8 +55,8 @@ def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch,
         "\n".join(
             [
                 "file_locking:",
-                "  timeout_seconds: 0.05",
-                "  poll_interval_seconds: 0.005",
+                f"  timeout_seconds: {SHORT_SLEEP}",
+                f"  poll_interval_seconds: {SHORT_SLEEP / 10}",
                 "  fail_open: true",
             ]
         ),
@@ -67,23 +68,23 @@ def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch,
     holder_ready = threading.Event()
 
     def _holder() -> None:
-        with acquire_file_lock(target, timeout=1.0):
+        with acquire_file_lock(target, timeout=LOCK_TIMEOUT):
             holder_ready.set()
-            time.sleep(0.25)
+            time.sleep(SHORT_SLEEP * 5)
 
     thread = threading.Thread(target=_holder, daemon=True)
     thread.start()
 
-    assert holder_ready.wait(timeout=1.0)
+    assert holder_ready.wait(timeout=THREAD_JOIN_TIMEOUT)
     start = time.monotonic()
 
     with acquire_file_lock(target) as fh:
         elapsed = time.monotonic() - start
         # Should respect config timeout+fail_open and return quickly without the lock.
-        assert elapsed < 0.15
+        assert elapsed < (SHORT_SLEEP * 3)
         assert fh is None
 
-    thread.join(timeout=1.0)
+    thread.join(timeout=THREAD_JOIN_TIMEOUT)
     assert not thread.is_alive()
 
 
@@ -105,7 +106,7 @@ def test_file_locking_config_exposes_yaml_values(monkeypatch: pytest.MonkeyPatch
 
     # Reload to ensure the module observes the temp project root and config
     import importlib
-    import edison.core.file_io.locking as locking
+    from edison.core.utils.io import locking
 
     locking = importlib.reload(locking)
 

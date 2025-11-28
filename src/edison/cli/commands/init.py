@@ -15,6 +15,8 @@ from edison.core.utils.paths import get_project_config_dir
 from edison.data import get_data_path
 from edison.core.mcp.config import configure_mcp_json
 
+from edison.cli import OutputFormatter
+
 SUMMARY = "Initialize an Edison project (creates config + MCP setup)"
 
 
@@ -86,7 +88,7 @@ def _copy_mcp_scripts(config_root: Path) -> None:
             shutil.copy2(script, dest)
 
 
-def _configure_mcp(project_root: Path, *, use_script: bool) -> tuple[bool, str | None]:
+def _configure_mcp(project_root: Path, *, use_script: bool, formatter: OutputFormatter) -> tuple[bool, str | None]:
     """Configure MCP entries; returns (success, warning_message)."""
 
     warning: str | None = None
@@ -99,14 +101,14 @@ def _configure_mcp(project_root: Path, *, use_script: bool) -> tuple[bool, str |
         )
         added = result.get("_meta", {}).get("added")
         if added:
-            print("✅ Configured .mcp.json with managed servers")
+            formatter.text("✅ Configured .mcp.json with managed servers")
         else:
-            print("ℹ️  MCP servers already configured in .mcp.json")
+            formatter.text("ℹ️  MCP servers already configured in .mcp.json")
         return True, warning
     except Exception as exc:
         warning = f"⚠️  Warning: Could not configure .mcp.json: {exc}"
-        print(warning)
-        print("   Run 'edison mcp configure' manually.")
+        formatter.text(warning)
+        formatter.text("   Run 'edison mcp configure' manually.")
         return False, warning
 
 
@@ -137,31 +139,33 @@ def _run_initial_composition(project_root: Path) -> None:
 def main(args: argparse.Namespace) -> int:
     """Initialize Edison in the given project directory."""
 
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     project_root = Path(args.project_path).expanduser().resolve()
 
     try:
         config_root = _ensure_structure(project_root)
         _seed_config_files(config_root)
         _copy_mcp_scripts(config_root)
-        print(f"✅ Created {config_root} structure")
+        formatter.text(f"✅ Created {config_root} structure")
 
         if not args.skip_mcp:
-            success, warning = _configure_mcp(project_root, use_script=args.mcp_script)
+            success, warning = _configure_mcp(project_root, use_script=args.mcp_script, formatter=formatter)
         else:
-            print("ℹ️  Skipped MCP setup (--skip-mcp)")
+            formatter.text("ℹ️  Skipped MCP setup (--skip-mcp)")
 
-        print("\nRunning initial composition...")
+        formatter.text("\nRunning initial composition...")
         _run_initial_composition(project_root)
 
-        print("\n✅ Edison initialized successfully!")
-        print("\nNext steps:")
-        print("  1. Review .edison/config/*.yml")
-        print("  2. Run 'edison compose all' after adjusting configuration")
-        print("  3. Start a session: edison session create <session-id>")
+        formatter.text("\n✅ Edison initialized successfully!")
+        formatter.text("\nNext steps:")
+        formatter.text("  1. Review .edison/config/*.yml")
+        formatter.text("  2. Run 'edison compose all' after adjusting configuration")
+        formatter.text("  3. Start a session: edison session create <session-id>")
         return 0
 
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        formatter.error(exc, error_code="error")
         return 1
 
 

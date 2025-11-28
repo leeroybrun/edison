@@ -1,6 +1,15 @@
 validation:
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
+  requiredEvidenceFiles:
+    - command-type-check.txt
+    - command-lint.txt
+    - command-test.txt
+    - command-build.txt
+  execution:
+    mode: parallel        # parallel | sequential
+    concurrency: 4        # max parallel validators when mode=parallel
+    timeout: 300          # per-validator timeout in seconds
   roster:
     global:
       # Three validators using the SAME prompt but different models for multiple perspectives

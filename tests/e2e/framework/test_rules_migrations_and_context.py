@@ -9,23 +9,11 @@ import unittest
 
 import yaml
 from edison.core.utils.subprocess import run_with_timeout
-
-
-def get_repo_root() -> Path:
-    """Return the outermost git repository root (project root, not nested .edison)."""
-    current = Path(__file__).resolve()
-    last_git_root: Path | None = None
-    while current != current.parent:
-        if (current / ".git").exists():
-            last_git_root = current
-        current = current.parent
-    if last_git_root is None:
-        raise RuntimeError("Could not find repository root")
-    return last_git_root
+from tests.helpers.paths import get_repo_root, get_core_root
 
 
 REPO_ROOT = get_repo_root()
-SCRIPTS_ROOT = REPO_ROOT / ".edison" / "core" / "scripts"
+SCRIPTS_ROOT = get_core_root() / "scripts"
 
 
 def _copy_minimal_repo(dst_root: Path) -> None:

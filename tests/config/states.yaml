@@ -1,0 +1,87 @@
+# Canonical state machine definitions for test fixtures
+# Based on src/edison/data/config/state-machine.yaml and session.yaml
+#
+# This file defines the single source of truth for state names and directory
+# mappings used across ALL conftest.py files to ensure consistency.
+
+session:
+  states:
+    # Canonical state names (internal representation)
+    draft: "draft"
+    active: "wip"          # active maps to wip directory
+    wip: "wip"
+    done: "done"
+    closing: "done"        # closing maps to done directory
+    validated: "validated"
+    recovery: "recovery"
+    archived: "archived"
+
+  # Directory structure under .project/sessions/
+  directories:
+    # Map state names to actual directory names
+    draft: "draft"
+    active: "wip"          # active state uses wip directory
+    wip: "wip"
+    done: "done"
+    closing: "done"        # closing state uses done directory
+    validated: "validated"
+    recovery: "recovery"
+    archived: "archived"
+
+  # All unique directory names that must be created for tests
+  unique_dirs:
+    - "draft"
+    - "wip"
+    - "done"
+    - "validated"
+    - "recovery"
+    - "archived"
+
+task:
+  states:
+    todo: "todo"
+    wip: "wip"
+    blocked: "blocked"
+    done: "done"
+    validated: "validated"
+
+  directories:
+    todo: "todo"
+    wip: "wip"
+    blocked: "blocked"
+    done: "done"
+    validated: "validated"
+
+  unique_dirs:
+    - "todo"
+    - "wip"
+    - "blocked"
+    - "done"
+    - "validated"
+
+qa:
+  states:
+    waiting: "waiting"
+    todo: "todo"
+    wip: "wip"
+    done: "done"
+    validated: "validated"
+
+  directories:
+    waiting: "waiting"
+    todo: "todo"
+    wip: "wip"
+    done: "done"
+    validated: "validated"
+
+  unique_dirs:
+    - "waiting"
+    - "todo"
+    - "wip"
+    - "done"
+    - "validated"
+
+# Additional paths required for tests
+additional_paths:
+  qa:
+    - "qa/validation-evidence"

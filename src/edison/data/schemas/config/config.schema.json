@@ -8,6 +8,25 @@
     "zen": {
       "type": "object",
       "properties": {
+        "retry": {
+          "type": "object",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "initial_delay_seconds": {
+              "type": "number",
+              "minimum": 0.1
+            },
+            "backoff_factor": {
+              "type": "number",
+              "minimum": 1.0
+            }
+          },
+          "additionalProperties": false
+        },
         "secret_rotation": {
           "type": "object",
           "required": ["enabled", "check_interval_hours"],
@@ -89,7 +108,9 @@
                 "checkout": { "type": "integer", "minimum": 1, "default": 30 },
                 "worktree_add": { "type": "integer", "minimum": 1, "default": 30 },
                 "clone": { "type": "integer", "minimum": 1, "default": 60 },
-                "install": { "type": "integer", "minimum": 1, "default": 300 }
+                "install": { "type": "integer", "minimum": 1, "default": 300 },
+                "branch_check": { "type": "integer", "minimum": 1, "default": 10 },
+                "prune": { "type": "integer", "minimum": 1, "default": 10 }
               },
               "additionalProperties": false
             }
@@ -125,6 +146,41 @@
           "items": { "type": "string" },
           "description": "List of enabled validator names",
           "examples": [["security", "performance"]]
+        }
+      },
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "description": "Quality control and test coverage configuration",
+      "properties": {
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "overall": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Minimum overall code coverage percentage"
+            },
+            "changed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Minimum coverage for changed lines"
+            }
+          },
+          "additionalProperties": false
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "description": "Allow skipping tests",
+          "default": false
+        },
+        "blockOnFailingTests": {
+          "type": "boolean",
+          "description": "Block operations when tests fail",
+          "default": true
         }
       },
       "additionalProperties": false

@@ -1,0 +1,87 @@
+# Test Defaults Configuration
+# All default values used in test helpers and fixtures
+# Used to avoid hardcoded default values in test code
+
+version: "1.0.0"
+
+# Git defaults
+git:
+  baseBranch: "main"
+  branchPrefix: "session/"
+  initial_branch: "main"
+
+# Worktree defaults
+worktrees:
+  baseDirectory: ".worktrees"
+  archiveDirectory: ".worktrees/_archived"
+  pathTemplate: ".worktrees/{sessionId}"
+
+# Timeout defaults (in seconds)
+timeouts:
+  timeout_seconds: 120
+  poll_interval_seconds: 0.1
+  git_operations: 60
+  test_execution: 300
+  build_operations: 600
+  ai_calls: 120
+  file_operations: 10
+  session_timeout_hours: 8
+
+# Session defaults
+session:
+  state: "wip"
+  with_worktree: false
+  workflow_initial: "session-init"
+  workflow_active: "session-active"
+  workflow_complete: "session-complete"
+
+# Task defaults
+task:
+  state: "todo"
+  wave: "wave1"
+  slug: "test-task"
+  owner: null
+  primary_files: []
+
+# QA defaults
+qa:
+  state: "waiting"
+  round_num: 1
+  evidence_files:
+    - "command-type-check.txt"
+    - "command-lint.txt"
+    - "command-test.txt"
+    - "command-build.txt"
+
+# Evidence defaults
+evidence:
+  exit_code: 0
+  content: "Mock evidence\nExit code: 0\n"
+
+# TDD evidence defaults
+tdd:
+  red_offset_seconds: 0
+  green_offset_seconds: 5
+  refactor_offset_seconds: 10
+
+# File locking defaults
+file_locking:
+  timeout_seconds: 10.0
+  poll_interval_seconds: 0.1
+  fail_open: false
+
+# Project structure defaults
+project:
+  name: "project"
+  owner: null
+
+# Test user defaults
+test_user:
+  name: "Test User"
+  email: "test@example.com"
+
+# Mock data defaults
+mock:
+  task_description: "Test task for E2E testing."
+  qa_description: "Test QA for E2E testing."
+  session_description: "Test session for E2E testing."

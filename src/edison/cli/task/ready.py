@@ -1,17 +1,17 @@
 """
 Edison task ready command.
 
-SUMMARY: List tasks ready to be claimed or check task readiness
+SUMMARY: List tasks ready to be claimed or mark task as ready (complete)
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
 
-SUMMARY = "List tasks ready to be claimed or check task readiness"
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+
+SUMMARY = "List tasks ready to be claimed or mark task as ready (complete)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -19,91 +19,84 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "record_id",
         nargs="?",
-        help="Task ID to check readiness (if omitted, lists all ready tasks)",
+        help="Task ID to mark as ready/complete (if omitted, lists all ready tasks)",
     )
     parser.add_argument(
         "--session",
-        dest="session_id",
         help="Filter by session",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """List ready tasks or check readiness - delegates to core library."""
-    from edison.core import task
+    """List ready tasks or mark task as ready - delegates to core library using entity-based API."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
     from edison.core.session import manager as session_manager
+    from edison.core.config import get_semantic_state
 
     try:
+        # Resolve project root
+        project_root = get_repo_root(args)
+
         if args.record_id:
-            # Ready a specific task (move from wip -> done)
-            # Normalize the record ID
-            record_id = task.normalize_record_id("task", args.record_id)
+            # Ready/complete a specific task (move from wip -> done)
+            record_id = normalize_record_id("task", args.record_id)
 
             # Get session ID
-            session_id = args.session_id
+            session_id = args.session
             if not session_id:
                 session_id = session_manager.get_current_session()
 
             if not session_id:
                 raise ValueError("No session specified and no current session found. Use --session to specify one.")
 
-            # Ready the task (core function signature: task_id, session_id)
-            src_path, dst_path = task.ready_task(record_id, session_id)
+            # Use TaskQAWorkflow.complete_task() to move from wip -> done
+            workflow = TaskQAWorkflow(project_root=project_root)
+            task_entity = workflow.complete_task(record_id, session_id)
 
-            if args.json:
-                print(json.dumps({
-                    "record_id": record_id,
-                    "ready": True,
-                    "source_path": str(src_path),
-                    "destination_path": str(dst_path),
-                }, indent=2, default=str))
-            else:
-                print(f"Task {record_id} marked as ready (moved to done).")
-                print(f"Moved: {src_path} -> {dst_path}")
+            formatter.json_output({
+                "record_id": record_id,
+                "ready": True,
+                "state": task_entity.state,
+                "session_id": session_id,
+            }) if formatter.json_mode else formatter.text(
+                f"Task {record_id} marked as ready (moved to {task_entity.state})."
+            )
             return 0
 
         else:
             # List all ready tasks (tasks in todo status)
-            records = task.list_records("task")
-            ready_tasks = []
+            repo = TaskRepository(project_root=project_root)
+            todo_state = get_semantic_state("task", "todo")
+            tasks = repo.list_by_state(todo_state)
 
-            for record in records:
-                # Filter for todo status
-                if record.status == "todo":
-                    ready_tasks.append({
-                        "id": record.record_id,
-                        "path": str(record.path),
-                        "status": record.status,
-                    })
+            ready_tasks = [
+                {
+                    "id": t.id,
+                    "title": t.title,
+                    "state": t.state,
+                }
+                for t in tasks
+            ]
 
-            if args.json:
-                print(json.dumps({"tasks": ready_tasks}, indent=2))
+            if ready_tasks:
+                list_text = f"Ready tasks ({len(ready_tasks)}):\n" + "\n".join(
+                    f"  - {t['id']}: {t['title']}" for t in ready_tasks
+                )
             else:
-                if ready_tasks:
-                    print(f"Ready tasks ({len(ready_tasks)}):")
-                    for t in ready_tasks:
-                        print(f"  - {t['id']}")
-                else:
-                    print("No tasks ready to claim.")
+                list_text = "No tasks ready to claim."
+
+            formatter.json_output({"tasks": ready_tasks}) if formatter.json_mode else formatter.text(list_text)
 
             return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, file=sys.stderr, indent=2))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="ready_error")
         return 1
+
 
 if __name__ == "__main__":
     import argparse

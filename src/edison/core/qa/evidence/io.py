@@ -8,9 +8,9 @@ from edison.core.utils.io import read_json, write_json_atomic
 from .exceptions import EvidenceError
 
 
-def read_bundle_summary(round_dir: Path) -> Dict[str, Any]:
-    """Read bundle-approved.json from round directory."""
-    bundle_path = round_dir / "bundle-approved.json"
+def read_bundle_summary(round_dir: Path, filename: str = "bundle-approved.json") -> Dict[str, Any]:
+    """Read bundle summary from round directory."""
+    bundle_path = round_dir / filename
     if not bundle_path.exists():
         return {}
     try:
@@ -20,9 +20,9 @@ def read_bundle_summary(round_dir: Path) -> Dict[str, Any]:
         return {}
 
 
-def read_implementation_report(round_dir: Path) -> Dict[str, Any]:
-    """Read implementation-report.json from round directory."""
-    report_path = round_dir / "implementation-report.json"
+def read_implementation_report(round_dir: Path, filename: str = "implementation-report.json") -> Dict[str, Any]:
+    """Read implementation report from round directory."""
+    report_path = round_dir / filename
     if not report_path.exists():
         return {}
     try:
@@ -33,6 +33,7 @@ def read_implementation_report(round_dir: Path) -> Dict[str, Any]:
 
 def read_validator_report(round_dir: Path, validator_name: str) -> Dict[str, Any]:
     """Read validator-{name}-report.json from round directory."""
+    # Note: validator filename pattern is currently fixed in this helper
     if validator_name.startswith("validator-"):
         report_path = round_dir / f"{validator_name}-report.json"
     else:
@@ -46,9 +47,9 @@ def read_validator_report(round_dir: Path, validator_name: str) -> Dict[str, Any
         return {}
 
 
-def write_bundle_summary(round_dir: Path, data: Dict[str, Any]) -> None:
-    """Write bundle-approved.json to round directory."""
-    bundle_path = round_dir / "bundle-approved.json"
+def write_bundle_summary(round_dir: Path, data: Dict[str, Any], filename: str = "bundle-approved.json") -> None:
+    """Write bundle summary to round directory."""
+    bundle_path = round_dir / filename
     try:
         write_json_atomic(bundle_path, data)
     except Exception as e:
@@ -57,9 +58,9 @@ def write_bundle_summary(round_dir: Path, data: Dict[str, Any]) -> None:
         ) from e
 
 
-def write_implementation_report(round_dir: Path, data: Dict[str, Any]) -> None:
-    """Write implementation-report.json to round directory."""
-    report_path = round_dir / "implementation-report.json"
+def write_implementation_report(round_dir: Path, data: Dict[str, Any], filename: str = "implementation-report.json") -> None:
+    """Write implementation report to round directory."""
+    report_path = round_dir / filename
     try:
         write_json_atomic(report_path, data)
     except Exception as e:

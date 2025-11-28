@@ -2,7 +2,7 @@ import pytest
 import json
 import yaml
 from pathlib import Path
-from edison.core.task.context7 import load_validator_config
+from edison.core.qa.context7 import load_validator_config
 from edison.core.utils.paths.resolver import PathResolver
 
 def test_load_validator_config_json(tmp_path, monkeypatch):

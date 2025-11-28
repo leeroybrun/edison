@@ -25,6 +25,7 @@ import pytest
 
 from edison.core.utils.subprocess import run_with_timeout
 from helpers.env import TestGitRepo, TestProjectDir
+from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT
 
 try:  # Will fail RED phase until autostart is implemented (expected)
     from edison.core.session.autostart import SessionAutoStart
@@ -87,9 +88,9 @@ def _find_log(repo_root: Path, session_id: str) -> Optional[Path]:
 
 def _load_session(repo_root: Path, session_id: str) -> Dict[str, Any]:
     candidates = [
-        repo_root / ".project" / "sessions" / "wip" / session_id / "session.json",
-        repo_root / ".project" / "sessions" / "active" / session_id / "session.json",
-        repo_root / ".project" / "sessions" / "done" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "wip" / f"{session_id}.json",
+        repo_root / ".project" / "sessions" / "active" / f"{session_id}.json",
+        repo_root / ".project" / "sessions" / "done" / f"{session_id}.json",
     ]
     session_path = next((p for p in candidates if p.exists()), None)
     assert session_path is not None, f"session.json not found for {session_id}"
@@ -185,7 +186,7 @@ class TestRealOrchestratorIntegration:
         assert proc.poll() is None, "orchestrator terminated prematurely"
         proc.terminate()
         try:
-            proc.wait(timeout=10)
+            proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
         except Exception:
             proc.kill()
 
@@ -218,7 +219,7 @@ class TestRealOrchestratorIntegration:
         assert proc.poll() is None
         proc.terminate()
         try:
-            proc.wait(timeout=10)
+            proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
         except Exception:
             proc.kill()
 
@@ -251,7 +252,7 @@ class TestRealOrchestratorIntegration:
         assert proc.poll() is None
         proc.terminate()
         try:
-            proc.wait(timeout=10)
+            proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
         except Exception:
             proc.kill()
 
@@ -344,6 +345,6 @@ class TestRealOrchestratorIntegration:
         if proc is not None and proc.poll() is None:
             proc.terminate()
             try:
-                proc.wait(timeout=10)
+                proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
             except Exception:
                 proc.kill()

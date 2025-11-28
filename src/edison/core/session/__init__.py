@@ -25,10 +25,11 @@ from ._config import get_config, reset_config_cache
 # Session ID validation
 from .id import validate_session_id, SessionIdError
 
-# Submodules
-from . import state as _state  # noqa: F401
-from . import models as _models  # noqa: F401
-from . import store as _store  # noqa: F401
+# Repository (persistence layer)
+from .repository import SessionRepository
+
+# Path resolution utilities
+from .paths import get_session_bases, resolve_session_record_path
 
 __all__ = [
     # Manager
@@ -47,13 +48,9 @@ __all__ = [
     # ID validation
     "validate_session_id",
     "SessionIdError",
-    # Submodules
-    "state",
-    "models",
-    "store",
+    # Repository
+    "SessionRepository",
+    # Path resolution
+    "get_session_bases",
+    "resolve_session_record_path",
 ]
-
-# Re-export submodules under predictable names
-state = _state
-models = _models
-store = _store

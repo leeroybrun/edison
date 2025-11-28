@@ -8,14 +8,23 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.timeouts import SHORT_SLEEP, THREAD_JOIN_TIMEOUT
+
 
 # Locate repo root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 from edison.core import task
 from edison.core.session import manager as session_manager
-from edison.core.session import store as session_store
 from edison.core.session import recovery as session_recovery
+from edison.core.session.repository import SessionRepository
+from edison.core.session.graph import save_session
+from edison.core.utils.time import utc_timestamp
+
+def get_session_json_path(session_id: str):
+    """Get path to session.json file."""
+    repo = SessionRepository()
+    return repo.get_session_json_path(session_id)
 
 
 def _bootstrap_minimal_project(tmp_root: Path) -> None:
@@ -51,20 +60,16 @@ def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import importlib
     import edison.core.task as _task  # type: ignore
     import edison.core.session.manager as _session_manager  # type: ignore
-    import edison.core.session.store as _session_store  # type: ignore
     import edison.core.session.recovery as _session_recovery  # type: ignore
     importlib.reload(_task)
     importlib.reload(_session_manager)
-    importlib.reload(_session_store)
     importlib.reload(_session_recovery)
     # Reflect reloaded modules in our local names
     global task  # type: ignore
     global session_manager  # type: ignore
-    global session_store  # type: ignore
     global session_recovery  # type: ignore
     task = _task
     session_manager = _session_manager
-    session_store = _session_store
     session_recovery = _session_recovery
     yield tmp_path
 
@@ -81,7 +86,7 @@ def test_concurrent_session_writes_no_corruption(sandbox_env: Path, monkeypatch:
     sid = "atomic-race"
     monkeypatch.setenv("PROJECT_NAME", "test-project")
     session_manager.create_session(sid, owner="tester")
-    dest = session_store.get_session_json_path(sid)
+    dest = get_session_json_path(sid)
 
     # Guard: ensure file exists and is valid JSON
     assert dest.exists()
@@ -97,7 +102,7 @@ def test_concurrent_session_writes_no_corruption(sandbox_env: Path, monkeypatch:
                 f.write(text[:half])
                 f.flush()
                 os.fsync(f.fileno())
-                time.sleep(0.002)  # Small window to trigger read of partial JSON
+                time.sleep(SHORT_SLEEP)  # Small window to trigger read of partial JSON
                 f.write(text[half:])
                 f.flush()
                 os.fsync(f.fileno())
@@ -123,7 +128,7 @@ def test_concurrent_session_writes_no_corruption(sandbox_env: Path, monkeypatch:
                     except SystemExit as e:
                         # File currently locked by another writer
                         if "File is locked" in str(e):
-                            time.sleep(0.001)
+                            time.sleep(SHORT_SLEEP / 10)  # Very short retry delay
                             continue
                         raise
                 else:
@@ -135,7 +140,7 @@ def test_concurrent_session_writes_no_corruption(sandbox_env: Path, monkeypatch:
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=10)
+        t.join(timeout=THREAD_JOIN_TIMEOUT)
 
     # After the fix, there should be no JSONDecodeError or corruption
     assert not errors, f"Encountered concurrency errors: {errors!r}"
@@ -154,7 +159,7 @@ def test_atomic_write_survives_interruption(sandbox_env: Path, monkeypatch: pyte
     sid = "atomic-interrupt"
     monkeypatch.setenv("PROJECT_NAME", "test-project")
     session_manager.create_session(sid, owner="tester")
-    dest = session_store.get_session_json_path(sid)
+    dest = get_session_json_path(sid)
     original = dest.read_text()
 
     class InjectedFailure(Exception):
@@ -175,8 +180,8 @@ def test_atomic_write_survives_interruption(sandbox_env: Path, monkeypatch: pyte
     with pytest.raises(InjectedFailure):
         data = json.loads(original)
         # Tweak a small field and save
-        data["created_at"] = task.utc_timestamp()
-        session_store.save_session(sid, data)
+        data["created_at"] = utc_timestamp()
+        save_session(sid, data)
 
     # After the fix, the original content should remain valid JSON
     # and not be left as a partial write.

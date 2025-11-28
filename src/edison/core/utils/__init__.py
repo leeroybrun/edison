@@ -235,4 +235,8 @@ __all__ = [
     # Merge
     "deep_merge",
     "merge_arrays",
+    # Config - import from edison.core.utils.config directly when needed
+    # Functions available: load_config_section, get_states_for_domain,
+    # get_initial_state, get_active_state, get_completed_state,
+    # get_final_state, get_semantic_state
 ]

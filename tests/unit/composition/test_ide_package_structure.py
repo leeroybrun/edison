@@ -1,11 +1,11 @@
-"""Test that IDE-specific modules are properly organized in ide/ package.
+"""Test that IDE-specific modules are properly organized in composition/ide/ subpackage.
 
 This test validates the coherent organization of IDE-related composition modules:
 - commands.py (IDE slash commands)
 - hooks.py (IDE lifecycle hooks)
 - settings.py (IDE settings.json)
 
-These modules should be in edison.core.ide, NOT edison.core.composition.
+These modules live in edison.core.composition.ide (NOT edison.core.ide).
 """
 
 from __future__ import annotations
@@ -16,12 +16,12 @@ from pathlib import Path
 
 
 def test_ide_package_exists() -> None:
-    """The edison.core.ide package should exist."""
+    """The edison.core.composition.ide package should exist."""
     try:
-        import edison.core.ide
-        assert edison.core.ide is not None
+        import edison.core.composition.ide
+        assert edison.core.composition.ide is not None
     except ImportError as e:
-        raise AssertionError(f"edison.core.ide package should exist: {e}")
+        raise AssertionError(f"edison.core.composition.ide package should exist: {e}")
 
 
 def test_ide_commands_module_exists() -> None:
@@ -89,33 +89,34 @@ def test_ide_package_exports_all_composers() -> None:
         raise AssertionError(f"IDE package should export all composers: {e}")
 
 
-def test_ide_modules_not_exported_from_composition() -> None:
-    """Composition package should NOT re-export IDE modules (backward compatibility removed)."""
-    try:
-        from edison.core.composition import CommandComposer, HookComposer, SettingsComposer
-        raise AssertionError("IDE modules should NOT be importable from composition package")
-    except ImportError:
-        # Expected: IDE modules should only be imported from edison.core.composition.ide
-        pass
+def test_ide_modules_also_exported_from_composition_root() -> None:
+    """Composition package root re-exports IDE modules for convenience."""
+    # IDE modules are available from both locations:
+    # - edison.core.composition.ide (canonical location)
+    # - edison.core.composition (convenience re-export)
+    from edison.core.composition import CommandComposer, HookComposer, SettingsComposer
+    assert CommandComposer is not None
+    assert HookComposer is not None
+    assert SettingsComposer is not None
 
 
-def test_no_ide_modules_in_composition_directory() -> None:
-    """IDE modules should NOT exist as files in composition/ directory."""
+def test_no_ide_modules_in_composition_root_directory() -> None:
+    """IDE modules should NOT exist as files directly in composition/ root directory."""
     repo_root = Path(__file__).resolve().parents[3]
     composition_dir = repo_root / "src" / "edison" / "core" / "composition"
 
-    # These files should NOT exist in composition/
+    # These files should NOT exist directly in composition/ (they should be in composition/ide/)
     for filename in ["commands.py", "hooks.py", "settings.py"]:
         file_path = composition_dir / filename
-        assert not file_path.exists(), f"{filename} should NOT exist in composition/ - it should be in ide/"
+        assert not file_path.exists(), f"{filename} should NOT exist in composition/ root - it should be in composition/ide/"
 
 
-def test_ide_modules_exist_in_ide_directory() -> None:
-    """IDE modules SHOULD exist as files in ide/ directory."""
+def test_ide_modules_exist_in_composition_ide_directory() -> None:
+    """IDE modules SHOULD exist as files in composition/ide/ directory."""
     repo_root = Path(__file__).resolve().parents[3]
-    ide_dir = repo_root / "src" / "edison" / "core" / "ide"
+    ide_dir = repo_root / "src" / "edison" / "core" / "composition" / "ide"
 
-    # These files SHOULD exist in ide/
+    # These files SHOULD exist in composition/ide/
     for filename in ["__init__.py", "commands.py", "hooks.py", "settings.py"]:
         file_path = ide_dir / filename
-        assert file_path.exists(), f"{filename} should exist in ide/"
+        assert file_path.exists(), f"{filename} should exist in composition/ide/"

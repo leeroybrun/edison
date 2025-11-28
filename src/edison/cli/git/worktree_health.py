@@ -7,9 +7,10 @@ SUMMARY: Check worktree health
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
 
 SUMMARY = "Check worktree health"
 
@@ -27,20 +28,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Attempt to fix unhealthy worktrees",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Check worktree health - delegates to worktree library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session import worktree
 
     try:
@@ -49,11 +44,11 @@ def main(args: argparse.Namespace) -> int:
             worktree_path, branch_name = worktree.resolve_worktree_target(args.session_id)
 
             # Check if worktree is registered
-            is_registered = worktree.is_registered_worktree(worktree_path)
+            is_registered = worktree.is_worktree_registered(worktree_path)
 
             # Check if path exists and is healthy
-            from edison.core.session.worktree import _git_is_healthy
-            is_healthy = _git_is_healthy(worktree_path) if worktree_path.exists() else False
+            from edison.core.utils.git.worktree import check_worktree_health
+            is_healthy = check_worktree_health(worktree_path) if worktree_path.exists() else False
 
             result = {
                 "session_id": args.session_id,
@@ -65,14 +60,14 @@ def main(args: argparse.Namespace) -> int:
             }
 
             if args.json:
-                print(json.dumps(result, indent=2))
+                formatter.json_output(result)
             else:
-                print(f"Worktree health for session: {args.session_id}")
-                print(f"  Path: {worktree_path}")
-                print(f"  Branch: {branch_name}")
-                print(f"  Exists: {'✓' if worktree_path.exists() else '✗'}")
-                print(f"  Registered: {'✓' if is_registered else '✗'}")
-                print(f"  Healthy: {'✓' if is_healthy else '✗'}")
+                formatter.text(f"Worktree health for session: {args.session_id}")
+                formatter.text(f"  Path: {worktree_path}")
+                formatter.text(f"  Branch: {branch_name}")
+                formatter.text(f"  Exists: {'✓' if worktree_path.exists() else '✗'}")
+                formatter.text(f"  Registered: {'✓' if is_registered else '✗'}")
+                formatter.text(f"  Healthy: {'✓' if is_healthy else '✗'}")
 
             return 0 if is_healthy else 1
 
@@ -86,21 +81,18 @@ def main(args: argparse.Namespace) -> int:
             }
 
             if args.json:
-                print(json.dumps(result, indent=2))
+                formatter.json_output(result)
             else:
-                print(f"Worktree system health: {'✓ Healthy' if is_healthy else '✗ Unhealthy'}")
+                formatter.text(f"Worktree system health: {'✓ Healthy' if is_healthy else '✗ Unhealthy'}")
                 if notes:
-                    print("\nDetails:")
+                    formatter.text("\nDetails:")
                     for note in notes:
-                        print(f"  {note}")
+                        formatter.text(f"  {note}")
 
             return 0 if is_healthy else 1
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="worktree_health_error")
         return 1
 
 if __name__ == "__main__":

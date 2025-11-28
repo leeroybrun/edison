@@ -368,17 +368,6 @@ class TestAntiPatterns:
     """Examples of WRONG patterns to avoid."""
 
     @pytest.mark.skip(reason="Example of WRONG pattern - do not use")
-    def test_wrong_create_task_directly(self, test_project_dir: TestProjectDir):
-        """❌ WRONG: Creating task file directly instead of using CLI."""
-        task_id = "150-wave1-wrong"
-
-        # ❌ WRONG - bypasses real CLI
-        task_path = test_project_dir.create_task(task_id, wave="wave1", state="todo")
-
-        # This test provides false confidence - CLI might be broken
-        assert task_path.exists()
-
-    @pytest.mark.skip(reason="Example of WRONG pattern - do not use")
     def test_wrong_no_output_validation(self, test_project_dir: TestProjectDir):
         """❌ WRONG: Not validating command output."""
         task_id = "150-wave1-no-validation"

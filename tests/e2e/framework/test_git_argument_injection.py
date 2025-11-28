@@ -2,18 +2,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
-
-
-def get_repo_root() -> Path:
-    current = Path(__file__).resolve()
-    while current != current.parent:
-        if (current / ".git").exists():
-            return current
-        current = current.parent
-    raise RuntimeError("Could not find repository root")
+from tests.helpers.paths import get_repo_root
 
 REPO_ROOT = get_repo_root()
 
@@ -108,7 +101,7 @@ def test_task_id_with_dash(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     src.write_text("# test\n- **Owner:** u\n- **Status:** wip\n")
 
     # Ensure safe git mv is used; fake move to succeed
-    monkeypatch.setattr(task.subprocess, "run", _fake_ok_move, raising=True)
+    monkeypatch.setattr(subprocess, "run", _fake_ok_move, raising=True)
 
     dst = task.move_to_status(src, "task", "done")
     assert dst.exists()

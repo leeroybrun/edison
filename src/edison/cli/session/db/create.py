@@ -6,8 +6,9 @@ SUMMARY: Create session database
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Create session database"
 
@@ -18,22 +19,16 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "session_id",
         help="Session identifier (e.g., sess-001)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Create session database - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session.database import create_session_database
-    from edison.core.session.store import validate_session_id
+    from edison.core.session.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)
@@ -46,11 +41,11 @@ def main(args: argparse.Namespace) -> int:
                 "status": "created"
             }
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print(f"✓ Created database for session {session_id}")
-                print(f"  Database URL: {db_url}")
+                formatter.text(f"✓ Created database for session {session_id}")
+                formatter.text(f"  Database URL: {db_url}")
         else:
             result = {
                 "session_id": session_id,
@@ -58,18 +53,15 @@ def main(args: argparse.Namespace) -> int:
                 "message": "Database isolation not enabled"
             }
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print(f"Database isolation not enabled for session {session_id}")
+                formatter.text(f"Database isolation not enabled for session {session_id}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

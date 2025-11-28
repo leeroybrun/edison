@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import yaml
 
-from edison.core.setup.component_discovery import SetupDiscovery
-from edison.core.setup.questionnaire import SetupQuestionnaire
+from edison.cli.setup.component_discovery import SetupDiscovery
+from edison.cli.setup.questionnaire import SetupQuestionnaire
 
 
 def _write_yaml(path: Path, data: dict) -> None:

@@ -9,11 +9,13 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from datetime import datetime
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.path_utils import find_in_states, get_record_state
+from tests.helpers.file_utils import copy_if_different, copy_tree_if_different
+from tests.helpers.markdown_utils import parse_task_metadata, parse_qa_metadata
+from tests.config import get_task_states, get_qa_states, get_session_states, load_paths, get_env_var_name
 
 
 class TestProjectDir:
@@ -40,22 +42,23 @@ class TestProjectDir:
 
     def _setup_directories(self) -> None:
         """Create .project and .agents directory structure."""
-        # .project structure
-        (self.project_root / "tasks" / "todo").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "tasks" / "wip").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "tasks" / "done").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "tasks" / "validated").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "tasks" / "blocked").mkdir(parents=True, exist_ok=True)
+        # Load states from YAML config (NO hardcoded values)
+        task_states = get_task_states()
+        qa_states = get_qa_states()
+        session_states = get_session_states()
+        
+        # .project structure - tasks
+        for state in task_states:
+            (self.project_root / "tasks" / state).mkdir(parents=True, exist_ok=True)
 
-        (self.project_root / "qa" / "todo").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "qa" / "wip").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "qa" / "done").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "qa" / "waiting").mkdir(parents=True, exist_ok=True)
+        # .project structure - qa
+        for state in qa_states:
+            (self.project_root / "qa" / state).mkdir(parents=True, exist_ok=True)
         (self.project_root / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
 
-        (self.project_root / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "sessions" / "done").mkdir(parents=True, exist_ok=True)
-        (self.project_root / "sessions" / "validated").mkdir(parents=True, exist_ok=True)
+        # .project structure - sessions
+        for state in session_states:
+            (self.project_root / "sessions" / state).mkdir(parents=True, exist_ok=True)
 
         # .agents structure
         (self.agents_root / "sessions").mkdir(parents=True, exist_ok=True)
@@ -73,20 +76,18 @@ class TestProjectDir:
         src_manifest = self.repo_root / ".agents" / "manifest.json"
         if src_manifest.exists():
             dst_manifest = self.agents_root / "manifest.json"
-            if src_manifest.resolve() != dst_manifest.resolve():
-                shutil.copy(src_manifest, dst_manifest)
+            copy_if_different(src_manifest, dst_manifest)
 
         # Copy project .agents/config.yml (legacy) and modular overlays so
         # ConfigManager in tests sees the same configuration as the real project.
         src_config = self.repo_root / ".agents" / "config.yml"
         if src_config.exists():
             dst_config = self.agents_root / "config.yml"
-            if src_config.resolve() != dst_config.resolve():
-                shutil.copy(src_config, dst_config)
+            copy_if_different(src_config, dst_config)
 
         src_config_dir = self.repo_root / ".agents" / "config"
         if src_config_dir.exists():
-            shutil.copytree(src_config_dir, self.agents_root / "config", dirs_exist_ok=True)
+            copy_tree_if_different(src_config_dir, self.agents_root / "config")
 
         # Copy validators config (required for postTrainingPackages detection)
         src_validators = self.repo_root / ".agents" / "validators" / "config.json"
@@ -94,15 +95,13 @@ class TestProjectDir:
             validators_dir = self.agents_root / "validators"
             validators_dir.mkdir(parents=True, exist_ok=True)
             dst_validators = validators_dir / "config.json"
-            if src_validators.resolve() != dst_validators.resolve():
-                shutil.copy(src_validators, dst_validators)
+            copy_if_different(src_validators, dst_validators)
 
         # Copy session workflow config if it exists
         src_workflow = self.repo_root / ".agents" / "session-workflow.json"
         if src_workflow.exists():
             dst_workflow = self.agents_root / "session-workflow.json"
-            if src_workflow.resolve() != dst_workflow.resolve():
-                shutil.copy(src_workflow, dst_workflow)
+            copy_if_different(src_workflow, dst_workflow)
         else:
             # Create minimal workflow config
             workflow = {
@@ -117,33 +116,50 @@ class TestProjectDir:
                 json.dumps(workflow, indent=2)
             )
 
-        # Copy task template if exists
+        # Copy task template if exists, otherwise create minimal fallback
         src_template = self.repo_root / ".project" / "tasks" / "TEMPLATE.md"
+        dst_template = self.project_root / "tasks" / "TEMPLATE.md"
         if src_template.exists():
-            dst_template = self.project_root / "tasks" / "TEMPLATE.md"
             if src_template.resolve() != dst_template.resolve():
                 shutil.copy(src_template, dst_template)
+        else:
+            # Fallback: create minimal task template for tests
+            dst_template.write_text(
+                "# Task Template\n\n"
+                "## Metadata\n"
+                "- **Task ID:** example-id\n"
+                "- **Status:** todo\n",
+                encoding="utf-8",
+            )
 
-        # Copy QA template if exists
+        # Copy QA template if exists, otherwise create minimal fallback
         src_qa_template = self.repo_root / ".project" / "qa" / "TEMPLATE.md"
+        dst_qa_template = self.project_root / "qa" / "TEMPLATE.md"
         if src_qa_template.exists():
-            dst_qa_template = self.project_root / "qa" / "TEMPLATE.md"
             if src_qa_template.resolve() != dst_qa_template.resolve():
                 shutil.copy(src_qa_template, dst_qa_template)
+        else:
+            # Fallback: create minimal QA template for tests
+            dst_qa_template.write_text(
+                "# QA Template\n\n"
+                "## Metadata\n"
+                "- **Validator Owner:** _unassigned_\n"
+                "- **Status:** waiting\n",
+                encoding="utf-8",
+            )
 
         # Copy session template from bundled data
         from edison.data import get_data_path
         src_session_template = get_data_path("templates", "session.template.json")
         if src_session_template.exists():
             dst_session_template = self.agents_root / "sessions" / "TEMPLATE.json"
-            if src_session_template.resolve() != dst_session_template.resolve():
-                shutil.copy(src_session_template, dst_session_template)
+            copy_if_different(src_session_template, dst_session_template)
 
         # Copy lib directory (required for CLI scripts to import sessionlib, task)
         src_lib = self.repo_root / ".agents" / "scripts" / "lib"
         if src_lib.exists():
             dst_lib = self.agents_root / "scripts" / "lib"
-            shutil.copytree(src_lib, dst_lib, dirs_exist_ok=True)
+            copy_tree_if_different(src_lib, dst_lib)
 
         # Copy task scripts directory (ensure-followups is called by tasks/ready)
         src_tasks = self.repo_root / ".agents" / "scripts" / "tasks"
@@ -205,11 +221,7 @@ class TestProjectDir:
         Returns:
             Path to task file, or None if not found
         """
-        for state_dir in ["todo", "wip", "done", "validated", "blocked"]:
-            task_path = self.project_root / "tasks" / state_dir / f"{task_id}.md"
-            if task_path.exists():
-                return task_path
-        return None
+        return find_in_states(self.project_root, task_id, "tasks", suffix=".md")
 
     def get_task_state(self, task_id: str) -> Optional[str]:
         """Get current state of a task.
@@ -220,10 +232,7 @@ class TestProjectDir:
         Returns:
             State name (todo/wip/done/validated/blocked) or None if not found
         """
-        task_path = self.get_task_path(task_id)
-        if task_path:
-            return task_path.parent.name
-        return None
+        return get_record_state(self.project_root, task_id, "tasks", suffix=".md")
 
     def get_task_json(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Parse task file as structured data.
@@ -240,33 +249,15 @@ class TestProjectDir:
 
         # Parse markdown frontmatter and content
         content = task_path.read_text()
-        metadata = {"id": task_id, "state": self.get_task_state(task_id)}
-
-        # Extract key fields from markdown
-        for line in content.split("\n"):
-            if line.startswith("- **Owner:**"):
-                metadata["owner"] = line.split(":", 1)[1].strip()
-            elif line.startswith("- **Wave:**"):
-                metadata["wave"] = line.split(":", 1)[1].strip()
-            elif line.startswith("- **Status:**"):
-                metadata["status"] = line.split(":", 1)[1].strip()
-
-        return metadata
+        return parse_task_metadata(content, task_id, self.get_task_state(task_id))
 
     def get_qa_path(self, qa_id: str) -> Optional[Path]:
         """Find QA file by ID across all state directories."""
-        for state_dir in ["todo", "wip", "done", "waiting"]:
-            qa_path = self.project_root / "qa" / state_dir / f"{qa_id}-qa.md"
-            if qa_path.exists():
-                return qa_path
-        return None
+        return find_in_states(self.project_root, qa_id, "qa", suffix="-qa.md")
 
     def get_qa_state(self, qa_id: str) -> Optional[str]:
         """Get current state of a QA file."""
-        qa_path = self.get_qa_path(qa_id)
-        if qa_path:
-            return qa_path.parent.name
-        return None
+        return get_record_state(self.project_root, qa_id, "qa", suffix="-qa.md")
 
     def get_qa_json(self, qa_id: str) -> Optional[Dict[str, Any]]:
         """Parse QA file as structured data."""
@@ -275,21 +266,13 @@ class TestProjectDir:
             return None
 
         content = qa_path.read_text()
-        metadata = {"id": qa_id, "state": self.get_qa_state(qa_id)}
-
-        # Extract validators if present
-        if "## Validators" in content:
-            validators_section = content.split("## Validators")[1].split("##")[0]
-            metadata["validators"] = []
-            for line in validators_section.split("\n"):
-                if line.strip().startswith("- "):
-                    metadata["validators"].append(line.strip()[2:])
-
-        return metadata
+        return parse_qa_metadata(content, qa_id, self.get_qa_state(qa_id))
 
     def get_session_path(self, session_id: str) -> Optional[Path]:
         """Find session file by ID."""
-        for state_dir in ["wip", "done", "validated"]:
+        # Load session states from YAML config (NO hardcoded values)
+        session_states = get_session_states()
+        for state_dir in session_states:
             # Check both .project/sessions and .agents/sessions
             for base in [self.project_root, self.agents_root]:
                 session_path = base / "sessions" / state_dir / f"{session_id}.json"
@@ -349,151 +332,6 @@ class TestProjectDir:
 
     # === Test Data Creation ===
 
-    def create_task(
-        self,
-        task_id: str,
-        wave: str = "wave1",
-        slug: str = "test-task",
-        state: str = "todo",
-        owner: Optional[str] = None,
-        primary_files: Optional[List[str]] = None,
-        **kwargs
-    ) -> Path:
-        """Create a task file with metadata.
-
-        DEPRECATED: This method creates mock data instead of using real CLI.
-        Use run_script("tasks/new", args) from command_runner.py instead.
-
-        Args:
-            task_id: Task ID (e.g., "150-wave1-auth")
-            wave: Wave identifier
-            slug: Short kebab-case name
-            state: Initial state (todo/wip/done/validated)
-            owner: Owner session ID
-            primary_files: List of primary files changed
-            **kwargs: Additional metadata
-
-        Returns:
-            Path to created task file
-        """
-        task_dir = self.project_root / "tasks" / state
-        task_path = task_dir / f"{task_id}.md"
-
-        # Build task content
-        content = f"""# Task: {task_id}
-
-## Metadata
-- **ID:** {task_id}
-- **Wave:** {wave}
-- **Slug:** {slug}
-- **Status:** {state}
-"""
-        if owner:
-            content += f"- **Owner:** {owner}\n"
-
-        if primary_files:
-            content += "\n## Primary Files\n"
-            for file in primary_files:
-                content += f"- `{file}`\n"
-
-        content += "\n## Description\nTest task for E2E testing.\n"
-
-        # Add any additional metadata
-        for key, value in kwargs.items():
-            content += f"\n## {key.replace('_', ' ').title()}\n{value}\n"
-
-        task_path.write_text(content)
-        return task_path
-
-    def create_session(
-        self,
-        session_id: str,
-        state: str = "wip",
-        with_worktree: bool = False,
-        worktree_path: Optional[Path] = None,
-        **kwargs
-    ) -> Path:
-        """Create a session JSON file.
-
-        DEPRECATED: This method creates mock data instead of using real CLI.
-        Use run_script("session", args) from command_runner.py instead.
-
-        Args:
-            session_id: Session ID
-            state: Initial state (wip/done/validated)
-            with_worktree: Whether to include worktree metadata
-            worktree_path: Path to worktree (if with_worktree=True)
-            **kwargs: Additional session metadata
-
-        Returns:
-            Path to created session file
-        """
-        # Real sessions go in .project/sessions/, not .agents/sessions/
-        session_dir = self.project_root / "sessions" / state
-        session_dir.mkdir(parents=True, exist_ok=True)
-        session_path = session_dir / f"{session_id}.json"
-
-        # Build session data
-        session_data = {
-            "sessionId": session_id,
-            "state": state,
-            "createdAt": datetime.utcnow().isoformat() + "Z",
-            "tasks": [],
-            "qa": [],
-            **kwargs
-        }
-
-        if with_worktree:
-            if worktree_path is None:
-                worktree_path = self.tmp_path / ".worktrees" / session_id
-            session_data["git"] = {
-                "worktreePath": str(worktree_path),
-                "branch": f"session/{session_id}",
-                "baseBranch": "main"
-            }
-
-        session_path.write_text(json.dumps(session_data, indent=2))
-        return session_path
-
-    def create_mock_evidence(
-        self,
-        task_id: str,
-        round_num: int = 1,
-        evidence_files: Optional[List[str]] = None
-    ) -> Path:
-        """Create mock evidence files for a task.
-
-        DEPRECATED: This method creates mock data instead of using real CLI.
-        Real evidence should be created by running actual validation commands.
-
-        Args:
-            task_id: Task ID
-            round_num: Round number
-            evidence_files: List of evidence filenames to create
-
-        Returns:
-            Path to evidence directory
-        """
-        if evidence_files is None:
-            evidence_files = [
-                "command-type-check.txt",
-                "command-lint.txt",
-                "command-test.txt",
-                "command-build.txt"
-            ]
-
-        evidence_dir = (
-            self.project_root / "qa" / "validation-evidence" /
-            task_id / f"round-{round_num}"
-        )
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-
-        for filename in evidence_files:
-            evidence_file = evidence_dir / filename
-            evidence_file.write_text(f"Mock evidence for {filename}\nExit code: 0\n")
-
-        return evidence_dir
-
     def add_context7_evidence(
         self,
         task_id: str,
@@ -542,10 +380,14 @@ def create_tdd_evidence(
     Files are written under:
     .project/sessions/wip/{session_id}/tasks/{task_id}/evidence/tdd/round-1
     """
+    # Load default session state from config (NO hardcoded values)
+    from tests.config import get_default_value
+    default_state = get_default_value("session", "state")
+    
     evidence_dir = (
         project.project_root
         / "sessions"
-        / "wip"
+        / default_state
         / session_id
         / "tasks"
         / task_id

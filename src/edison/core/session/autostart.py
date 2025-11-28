@@ -6,14 +6,16 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .manager import SessionManager
+from .manager import SessionManager, get_session
 from .naming import generate_session_id
-from . import store
+from .graph import save_session
 from . import worktree
 from .context import SessionContext
+from ._config import get_config
 from edison.core.utils.io import ensure_directory
+from edison.core.utils.paths import PathResolver
 from ..config.domains import OrchestratorConfig
-from ..orchestrator.launcher import (
+from edison.cli.orchestrator.launcher import (
     OrchestratorLauncher,
     OrchestratorError,
 )
@@ -147,16 +149,15 @@ class SessionAutoStart:
                     if dry_run:
                         ensure_directory(worktree_path)
                         ensure_directory(worktree_path / ".git")
-                    session = store.load_session(session_id)
-                    git_meta = session.setdefault("git", {}) if isinstance(session, dict) else {}
-                    git_meta["worktreePath"] = str(worktree_path)
-                    if branch_name:
-                        git_meta["branchName"] = branch_name
-                    git_meta.setdefault("baseBranch", wt_cfg.get("baseBranch", "main"))
-                    store.save_session(session_id, session)
+                    # Use centralized helper to construct git metadata
+                    session = get_session(session_id)
+                    git_meta = worktree.prepare_session_git_metadata(session_id, worktree_path, branch_name)
+                    if isinstance(session, dict):
+                        session.setdefault("git", {}).update(git_meta)
+                        save_session(session_id, session)
 
             # Prepare session context for launcher
-            session = store.load_session(session_id)
+            session = get_session(session_id)
             ctx = SessionContext()
             ctx.session_id = session_id
             ctx.session = session
@@ -206,7 +207,9 @@ class SessionAutoStart:
     def _rollback_session(self, session_id: str) -> None:
         """Remove session metadata across known state directories."""
         try:
-            roots = store._sessions_root()  # type: ignore[attr-defined]
+            cfg = get_config()
+            root_rel = cfg.get_session_root_path()
+            roots = (PathResolver.resolve_project_root() / root_rel).resolve()
             for path in roots.glob(f"**/{session_id}/session.json"):
                 shutil.rmtree(path.parent, ignore_errors=True)
             for flat in roots.glob(f"**/{session_id}.json"):
@@ -218,14 +221,17 @@ class SessionAutoStart:
             pass
 
     def _rollback_worktree(self, worktree_path: Path, branch_name: Optional[str]) -> None:
+        """Rollback worktree creation by delegating to worktree.remove_worktree.
+
+        The remove_worktree function already handles all cleanup logic including
+        fallback removal if git commands fail.
+        """
         try:
             worktree.remove_worktree(worktree_path, branch_name)
         except Exception:
-            try:
-                if worktree_path.exists():
-                    worktree_path.unlink()
-            except Exception:
-                pass
+            # remove_worktree already tries multiple cleanup strategies
+            # If it still fails, we've done our best - suppress error
+            pass
 
     def _read_prompt_file(self, path: Path) -> str:
         if not path.exists():

@@ -5,10 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.utils.paths import PathResolver 
-from edison.core.session.manager import SessionManager 
-from edison.core.session import state as session_state 
+from edison.core.utils.paths import PathResolver
+from edison.core.session.manager import SessionManager
 from edison.core.config.domains import SessionConfig
+from edison.core.state import RichStateMachine
+from edison.core.state.guards import registry as guard_registry
+from edison.core.state.conditions import registry as condition_registry
+from edison.core.state.actions import registry as action_registry
 
 def _session_json_path(root: Path, session_id: str, state: str = "active") -> Path:
     """
@@ -55,7 +58,7 @@ def test_create_session_creates_active_session_json(isolated_project_env: Path, 
     mgr = SessionManager()
     sid = "sess-manager-001"
 
-    path = mgr.create_session(sid, metadata={"owner": "tester"})
+    path = mgr.create_session(sid, owner="tester")
     assert isinstance(path, Path)
     assert path.exists()
 
@@ -66,7 +69,8 @@ def test_create_session_creates_active_session_json(isolated_project_env: Path, 
     assert data["id"] == sid
     # State is stored with canonical casing but must represent "active"
     assert str(data.get("state", "")).lower() == "active"
-    assert (data.get("metadata") or {}).get("owner") == "tester"
+    # Owner is stored in meta.owner
+    assert (data.get("meta") or {}).get("owner") == "tester"
 
 
 @pytest.mark.session
@@ -77,7 +81,17 @@ def test_state_machine_rejects_invalid_transition(isolated_project_env: Path, mo
     """
     monkeypatch.setenv("PROJECT_NAME", "test-project")
 
-    machine = session_state.build_default_state_machine()
+    # Build session state machine directly from config
+    config = SessionConfig(repo_root=isolated_project_env)
+    state_config = config._state_config or {}
+    session_spec = state_config.get("session", {})
+    machine = RichStateMachine(
+        "session",
+        session_spec,
+        guard_registry,
+        condition_registry,
+        action_registry,
+    )
     # active → validated is not allowed directly; helper should raise
     with pytest.raises(Exception):
         machine.validate("active", "validated")

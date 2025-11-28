@@ -14,6 +14,7 @@ from edison.core.session.manager import SessionManager
 from edison.core.session.naming import generate_session_id, reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.process.inspector import infer_session_id
+from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT
 
 
 @pytest.fixture
@@ -74,7 +75,7 @@ class TestFinalAcceptance:
         assert proc.poll() is None
         proc.terminate()
         try:
-            proc.wait(timeout=5)
+            proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
         except Exception:
             proc.kill()
 
@@ -97,7 +98,7 @@ class TestFinalAcceptance:
         if proc and proc.poll() is None:
             proc.terminate()
             try:
-                proc.wait(timeout=5)
+                proc.wait(timeout=PROCESS_WAIT_TIMEOUT)
             except Exception:
                 proc.kill()
 
@@ -118,6 +119,8 @@ class TestFinalAcceptance:
         assert len(sessions) == 3
 
     def test_requirement_6_pid_based_naming(self):
+        # Note: reset_session_naming_counter is now called by autouse fixture in test_session_autostart.py
+        # But this is a standalone test, so we need to reset here
         reset_session_naming_counter()
         session_id = generate_session_id()
 

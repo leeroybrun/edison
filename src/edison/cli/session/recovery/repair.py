@@ -6,8 +6,9 @@ SUMMARY: Repair session
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Repair session"
 
@@ -38,33 +39,31 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Fix all issues",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Repair session - delegates to core library."""
-    from edison.core.session.store import validate_session_id, load_session, save_session
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.session.id import validate_session_id
+    from edison.core.session.repository import SessionRepository
     from edison.core.session.worktree import worktree_health_check
     from edison.core.utils.time import utc_timestamp
 
     try:
         session_id = validate_session_id(args.session_id)
         fixes_applied = []
+        repo = SessionRepository()
 
         if args.all or args.fix_state:
             # Fix state inconsistencies
-            session = load_session(session_id)
-            # Placeholder for state fixing logic
-            fixes_applied.append("state")
+            session_entity = repo.get(session_id)
+            if session_entity:
+                session = session_entity.to_dict()
+                # Placeholder for state fixing logic
+                fixes_applied.append("state")
 
         if args.all or args.fix_records:
             # Fix record inconsistencies
@@ -79,13 +78,18 @@ def main(args: argparse.Namespace) -> int:
 
         # Update session metadata
         if fixes_applied:
-            session = load_session(session_id)
+            session_entity = repo.get(session_id)
+            if not session_entity:
+                raise ValueError(f"Session {session_id} not found")
+            session = session_entity.to_dict()
             session.setdefault("meta", {})["repairedAt"] = utc_timestamp()
             session.setdefault("activityLog", []).insert(0, {
                 "timestamp": utc_timestamp(),
                 "message": f"Session repaired: {', '.join(fixes_applied)}"
             })
-            save_session(session_id, session)
+            from edison.core.session.models import Session
+            updated_entity = Session.from_dict(session)
+            repo.save(updated_entity)
 
         result = {
             "session_id": session_id,
@@ -93,22 +97,19 @@ def main(args: argparse.Namespace) -> int:
             "status": "repaired"
         }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
             if fixes_applied:
-                print(f"✓ Repaired session {session_id}")
-                print(f"  Fixes applied: {', '.join(fixes_applied)}")
+                formatter.text(f"✓ Repaired session {session_id}")
+                formatter.text(f"  Fixes applied: {', '.join(fixes_applied)}")
             else:
-                print(f"No repairs needed for session {session_id}")
+                formatter.text(f"No repairs needed for session {session_id}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

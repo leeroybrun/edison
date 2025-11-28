@@ -1,9 +1,9 @@
-"""Pytest configuration and fixtures for E2E workflow tests.
+"""Pytest configuration for E2E workflow tests.
 
-Fixtures:
-    - test_project_dir: Isolated .project directory for testing
-    - test_git_repo: Isolated git repository with worktree support
-    - repo_root: Path to actual repository root
+Fixtures (repo_root, test_project_dir, test_git_repo, combined_env) are now
+consolidated in tests/conftest.py to avoid duplication.
+
+This file only contains E2E-specific marker configuration and collection hooks.
 """
 from __future__ import annotations
 
@@ -11,86 +11,7 @@ import sys
 import pytest
 from pathlib import Path
 
-# Add tests directory to path so tests can import from helpers.*
-TESTS_ROOT = Path(__file__).resolve().parent.parent
-if str(TESTS_ROOT) not in sys.path:
-    sys.path.insert(0, str(TESTS_ROOT))
-
-from helpers.env import TestProjectDir, TestGitRepo
 from edison.core.utils.subprocess import run_with_timeout
-
-
-@pytest.fixture
-def repo_root() -> Path:
-    """Get path to repository root.
-
-    Returns:
-        Path to repository root
-    """
-    # Robust detection: ascend until .git is found
-    current = Path(__file__).resolve()
-    while current != current.parent:
-        if (current / ".git").exists():
-            # Skip the nested .edison git worktree; use project root instead.
-            if current.name == ".edison" and (current.parent / ".git").exists():
-                current = current.parent
-                continue
-            return current
-        current = current.parent
-    raise RuntimeError("Could not find repository root")
-
-
-@pytest.fixture
-def test_project_dir(tmp_path: Path, repo_root: Path) -> TestProjectDir:
-    """Create isolated .project directory for testing.
-
-    Args:
-        tmp_path: pytest tmp_path fixture
-        repo_root: Path to repository root
-
-    Returns:
-        TestProjectDir instance with isolated environment
-    """
-    return TestProjectDir(tmp_path, repo_root)
-
-
-@pytest.fixture
-def test_git_repo(tmp_path: Path) -> TestGitRepo:
-    """Create isolated git repository for testing.
-
-    Args:
-        tmp_path: pytest tmp_path fixture
-
-    Returns:
-        TestGitRepo instance with initialized git repository
-    """
-    return TestGitRepo(tmp_path)
-
-
-@pytest.fixture
-def combined_env(tmp_path: Path, repo_root: Path):
-    """Combined fixture with both TestProjectDir and TestGitRepo.
-
-    This fixture provides a unified testing environment with:
-    - Initialized git repository
-    - Isolated .project directory
-    - Both classes configured to work together
-
-    Args:
-        tmp_path: pytest tmp_path fixture
-        repo_root: Path to repository root
-
-    Returns:
-        Tuple of (TestProjectDir, TestGitRepo)
-    """
-    git_root = tmp_path / "git"
-    proj_root = tmp_path / "proj"
-    git_root.mkdir(parents=True, exist_ok=True)
-    proj_root.mkdir(parents=True, exist_ok=True)
-
-    git_repo = TestGitRepo(git_root)
-    project_dir = TestProjectDir(proj_root, repo_root)
-    return project_dir, git_repo
 
 
 # Pytest markers for test categorization

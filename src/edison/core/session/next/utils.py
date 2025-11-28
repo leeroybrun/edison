@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Tuple
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.git import get_repo_root
 from edison.core.utils.paths import get_management_paths
-from edison.core import task
+from edison.core.task.paths import get_root
+from edison.core.task import TaskRepository
 
 
 def project_cfg_dir() -> Path:
@@ -46,7 +47,7 @@ def stem_to_slug(stem: str) -> str:
 
 def all_task_files() -> List[Path]:
     """Get all task files across all states."""
-    mgmt_paths = get_management_paths(task.ROOT)
+    mgmt_paths = get_management_paths(get_root())
     root = mgmt_paths.get_tasks_root()
     files: List[Path] = []
     for st in ["todo", "wip", "blocked", "done", "validated"]:
@@ -76,7 +77,8 @@ def similar_tasks(title: str, *, top: int = 3, threshold: float = 0.6) -> List[D
 def extract_wave_and_base_id(task_id: str) -> tuple[str, str]:
     """Return (wave, baseId) from a task filename, defaulting sensibly."""
     try:
-        p = task.find_record(task_id, "task")
+        task_repo = TaskRepository()
+        p = task_repo.get_path(task_id)
         name = p.name  # e.g., 150-wave1-foo.md or 201.2-wave2-bar.md
         base = name.split("-", 1)[0]  # e.g., 150 or 201.2
         wave = name.split("-", 2)[1]  # e.g., wave1
@@ -87,7 +89,7 @@ def extract_wave_and_base_id(task_id: str) -> tuple[str, str]:
 
 def allocate_child_id(base_id: str) -> str:
     """Find the next available base_id.N by scanning .project/tasks across states."""
-    mgmt_paths = get_management_paths(task.ROOT)
+    mgmt_paths = get_management_paths(get_root())
     root = mgmt_paths.get_tasks_root()
     states = ["todo","wip","blocked","done","validated"]
     existing = set()

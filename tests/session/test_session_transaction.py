@@ -4,9 +4,30 @@ import yaml
 import json
 from pathlib import Path
 from edison.core.session import transaction
-from edison.core.session import store
+from edison.core.session.repository import SessionRepository
+from edison.core.session.id import validate_session_id
+from edison.core.session._config import reset_config_cache, get_config
 from edison.core.config.domains import SessionConfig
 from edison.core.exceptions import SessionError
+from edison.core.utils.paths import PathResolver
+
+def _ensure_session_dirs():
+    """Ensure session directories exist."""
+    cfg = get_config()
+    root = PathResolver.resolve_project_root()
+    sessions_root = root / cfg.get_session_root_path()
+    state_map = cfg.get_session_states()
+    for state, dirname in state_map.items():
+        (sessions_root / dirname).mkdir(parents=True, exist_ok=True)
+
+def _session_dir(state: str, session_id: str) -> Path:
+    """Get session directory."""
+    cfg = get_config()
+    root = PathResolver.resolve_project_root()
+    sessions_root = root / cfg.get_session_root_path()
+    state_map = cfg.get_session_states()
+    dirname = state_map.get(state, state)
+    return sessions_root / dirname / session_id
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
@@ -54,11 +75,11 @@ def project_root(tmp_path, monkeypatch):
     # Set env vars
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-    
+
     # Reload configs
-    store._CONFIG = SessionConfig()
+    reset_config_cache()
     transaction._CONFIG = SessionConfig()
-    
+
     return tmp_path
 
 def test_transaction_lifecycle(project_root):
@@ -66,8 +87,8 @@ def test_transaction_lifecycle(project_root):
     sid = "sess-tx"
     
     # Create session
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     (sess_dir / "session.json").write_text("{}")
     
@@ -97,8 +118,8 @@ def test_transaction_lifecycle(project_root):
 def test_session_transaction_context(project_root):
     """Test context manager."""
     sid = "sess-ctx"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     (sess_dir / "session.json").write_text("{}")
     
@@ -114,8 +135,8 @@ def test_session_transaction_context(project_root):
 def test_session_transaction_rollback(project_root):
     """Test context manager rollback on error."""
     sid = "sess-rollback"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     (sess_dir / "session.json").write_text("{}")
     
@@ -136,26 +157,31 @@ def test_session_transaction_rollback(project_root):
 def test_validation_transaction(project_root):
     """Test ValidationTransaction class."""
     sid = "sess-val"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
-    sess_dir.mkdir(parents=True, exist_ok=True)
-    (sess_dir / "session.json").write_text("{}")
-    
+    _ensure_session_dirs()
+
+    # Create session using repository to ensure proper structure
+    repo = SessionRepository()
+    from edison.core.session.models import Session
+    sess = Session.create(sid, state="active")
+    repo.create(sess)
+    sess_path = repo.get_session_json_path(sid)
+    sess_dir = sess_path.parent
+
     vt = transaction.ValidationTransaction(sid, wave="w1")
     assert vt.tx_id
     assert vt.staging_root.exists()
-    
+
     # Stage a file
     (vt.staging_root / "test.txt").write_text("staged content")
-    
+
     # Commit
     vt.commit()
-    
+
     # Verify applied to project root
     final_path = project_root / "test.txt"
     assert final_path.exists()
     assert final_path.read_text() == "staged content"
-    
+
     # Verify log
     log_path = sess_dir / "validation-transactions.log"
     assert log_path.exists()

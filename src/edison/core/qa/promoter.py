@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
-from . import evidence
+from .evidence import EvidenceService
+from .evidence.rounds import list_round_dirs
 
 
 enforce_no_legacy_project_root("lib.qa.promoter")
@@ -37,25 +38,29 @@ def should_revalidate_bundle(bundle_path: Path, validator_reports: Iterable[Path
 def collect_validator_reports(task_ids: Iterable[str]) -> List[Path]:
     reports: List[Path] = []
     for tid in task_ids:
-        base = evidence.get_evidence_dir(tid)
+        ev_svc = EvidenceService(tid)
+        base = ev_svc.get_evidence_root()
         if not base.exists():
             continue
-        for rd in sorted([p for p in base.glob("round-*") if p.is_dir()], key=lambda p: p.name):
+        for rd in list_round_dirs(base):
             reports.extend(sorted(rd.glob("validator-*-report.json")))
     return reports
 
 
 def collect_task_files(task_ids: Iterable[str], session_id: Optional[str] = None) -> List[Path]:
-    from .. import task  # type: ignore
+    from edison.core.task import TaskRepository
+    from edison.core.qa import QARepository
 
+    task_repo = TaskRepository()
+    qa_repo = QARepository()
     files: List[Path] = []
     for tid in task_ids:
         try:
-            files.append(task.find_record(tid, "task", session_id=session_id))
+            files.append(task_repo.get_path(tid))
         except FileNotFoundError:
             pass
         try:
-            files.append(task.find_record(tid, "qa", session_id=session_id))
+            files.append(qa_repo.get_path(tid))
         except FileNotFoundError:
             pass
     return files

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, OutputFormatter
 
 SUMMARY = "Display current session status"
 
@@ -21,22 +21,20 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         help="Session ID (optional, uses current session if not specified)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
+    add_json_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Display session status - delegates to core library."""
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    from edison.core.session.id import validate_session_id
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         session_id = args.session_id
         if session_id:
-            session_id = session_store.validate_session_id(session_id)
+            session_id = validate_session_id(session_id)
             session = session_manager.get_session(session_id)
         else:
             # Get current/active session
@@ -46,27 +44,27 @@ def main(args: argparse.Namespace) -> int:
                 session = active[0]
                 session_id = session.get("id", "unknown")
             else:
-                print("No active session found.")
+                formatter.error("No active session found.", error_code="no_session")
                 return 1
 
-        if args.json:
-            print(json.dumps(session, indent=2, default=str))
+        if formatter.json_mode:
+            formatter.json_output(session)
         else:
-            print(f"Session: {session_id}")
-            print(f"Status: {session.get('status', 'unknown')}")
+            formatter.text(f"Session: {session_id}")
+            formatter.text(f"Status: {session.get('status', 'unknown')}")
             if session.get("task"):
-                print(f"Task: {session.get('task')}")
+                formatter.text(f"Task: {session.get('task')}")
             if session.get("owner"):
-                print(f"Owner: {session.get('owner')}")
+                formatter.text(f"Owner: {session.get('owner')}")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}")
+        formatter.error(e, error_code="status_error")
         return 1
 
+
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
     register_args(parser)
     args = parser.parse_args()

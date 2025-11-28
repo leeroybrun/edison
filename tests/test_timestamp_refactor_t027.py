@@ -7,7 +7,7 @@ from datetime import datetime
 import re
 
 from edison.core.config.domains import OrchestratorConfig
-from edison.core.orchestrator.launcher import OrchestratorLauncher
+from edison.cli.orchestrator.launcher import OrchestratorLauncher
 from edison.core.session.context import SessionContext
 from edison.core.session.recovery import handle_timeout
 from edison.core.utils.time import utc_timestamp
@@ -35,8 +35,7 @@ def test_orchestrator_config_timestamp_format(valid_repo):
     tokens = config._build_tokens({})
     
     ts = tokens["timestamp"]
-    print(f"Config timestamp: {ts}")
-    
+
     # Canonical format check: should end with Z (if configured) and no microseconds
     # Based on our probe, we expect Z.
     assert ts.endswith("Z"), f"Timestamp {ts} should end with Z"
@@ -54,8 +53,7 @@ def test_orchestrator_config_timestamp_format(valid_repo):
 def test_orchestrator_launcher_log_timestamp(valid_repo):
     """Test that launcher logs use canonical timestamp."""
     config = OrchestratorConfig(repo_root=valid_repo)
-    print(f"Profiles: {config.list_profiles()}")
-    
+
     if "test" not in config.list_profiles():
         pytest.skip("Test profile 'test' not found in loaded configuration (env config overrides local?)")
 
@@ -75,8 +73,7 @@ def test_orchestrator_launcher_log_timestamp(valid_repo):
     
     # Check log content
     content = log_path.read_text()
-    print(f"Log content: {content}")
-    
+
     # Extract timestamp: [launch] TIMESTAMP profile=test
     match = re.search(r"\[launch\] (.*?) profile=", content)
     assert match, "Could not find timestamp in log"
@@ -131,8 +128,7 @@ def test_session_recovery_timestamp(tmp_path):
         import json
         data = json.loads(recovery_json.read_text())
         ts = data["captured_at"]
-        print(f"Recovery timestamp: {ts}")
-        
+
         # Currently: .replace(microsecond=0).isoformat() -> +00:00
         # Expect: Z
         assert ts.endswith("Z"), f"Recovery timestamp {ts} should end with Z"

@@ -88,21 +88,15 @@ def _validate_refactor_cycle(
     last_msg = (last.get("message") or "").strip()
     if last_msg.startswith("[REFACTOR]"):
         if len(commits) < 2:
-            print("ERROR: REFACTOR must follow at least one GREEN commit")
             return False
         prev = commits[-2]
         prev_msg = (prev.get("message") or "").strip()
         if not prev_msg.startswith("[GREEN]"):
-            print("ERROR: REFACTOR must follow GREEN commit")
-            # Show brief context without leaking long messages
-            if prev_msg:
-                print(f"  Found: {prev_msg[:50]}")
-            print("  Expected: [GREEN] ...")
             return False
 
     return True
 
 
 __all__ = [
-    "_validate_refactor_cycle",
+    "CommitProvider",
 ]

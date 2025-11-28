@@ -7,9 +7,10 @@ SUMMARY: List all git worktrees
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
 
 SUMMARY = "List all git worktrees"
 
@@ -26,20 +27,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Include archived worktrees",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """List git worktrees - delegates to worktree library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session import worktree
 
     try:
@@ -85,31 +80,28 @@ def main(args: argparse.Namespace) -> int:
         }
 
         if args.json:
-            print(json.dumps(result, indent=2))
+            formatter.json_output(result)
         else:
             if worktree_list:
-                print(f"Active worktrees ({len(worktree_list)}):")
+                formatter.text(f"Active worktrees ({len(worktree_list)}):")
                 for wt in worktree_list:
                     status = "✓" if wt["exists"] else "✗"
-                    print(f"  {status} {wt['branch']}")
-                    print(f"     {wt['path']}")
+                    formatter.text(f"  {status} {wt['branch']}")
+                    formatter.text(f"     {wt['path']}")
             else:
-                print("No active worktrees found")
+                formatter.text("No active worktrees found")
 
             if archived:
-                print(f"\nArchived worktrees ({len(archived)}):")
+                formatter.text(f"\nArchived worktrees ({len(archived)}):")
                 for wt in archived:
                     status = "✓" if wt["exists"] else "✗"
-                    print(f"  {status} {Path(wt['path']).name}")
-                    print(f"     {wt['path']}")
+                    formatter.text(f"  {status} {Path(wt['path']).name}")
+                    formatter.text(f"     {wt['path']}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="worktree_list_error")
         return 1
 
 if __name__ == "__main__":

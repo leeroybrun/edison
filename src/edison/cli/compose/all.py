@@ -7,9 +7,10 @@ SUMMARY: Compose all artifacts (validators, constitutions, guidelines)
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 
 SUMMARY = "Compose all artifacts (validators, constitutions, guidelines)"
 
@@ -51,25 +52,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Sync to Zen MCP after composing",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without writing files",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_dry_run_flag(parser)
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Compose artifacts - delegates to composition registries."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.composition import (
         generate_all_constitutions,
         generate_available_agents,
@@ -79,11 +70,10 @@ def main(args: argparse.Namespace) -> int:
         LayeredComposer,
     )
     from edison.core.config import ConfigManager
-    from edison.core.utils.paths import resolve_project_root
     from edison.core.utils.paths import get_project_config_dir
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
         config_dir = get_project_config_dir(repo_root)
         cfg_mgr = ConfigManager(repo_root)
         config = cfg_mgr.load_config(validate=False)
@@ -100,9 +90,9 @@ def main(args: argparse.Namespace) -> int:
 
         if args.dry_run:
             if args.json:
-                print(json.dumps({"status": "dry-run", "repo_root": str(repo_root)}))
+                formatter.json_output({"status": "dry-run", "repo_root": str(repo_root)})
             else:
-                print(f"[dry-run] Would compose artifacts in {repo_root}")
+                formatter.text(f"[dry-run] Would compose artifacts in {repo_root}")
             return 0
 
         # Generate rosters + constitutions (constitutions depend on rosters)
@@ -181,21 +171,18 @@ def main(args: argparse.Namespace) -> int:
             results["zen_sync"] = [str(f) for f in changed]
 
         if args.json:
-            print(json.dumps(results, indent=2))
+            formatter.json_output(results)
         else:
             for key, files in results.items():
                 if isinstance(files, list):
-                    print(f"{key}: {len(files)} files")
+                    formatter.text(f"{key}: {len(files)} files")
                 elif isinstance(files, dict):
-                    print(f"{key}: {files}")
+                    formatter.text(f"{key}: {files}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="compose_error")
         return 1
 
 if __name__ == "__main__":

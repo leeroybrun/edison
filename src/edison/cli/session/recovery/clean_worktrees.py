@@ -6,8 +6,9 @@ SUMMARY: Clean orphaned worktrees
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Clean orphaned worktrees"
 
@@ -19,20 +20,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Show what would be cleaned without actually cleaning",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Clean orphaned worktrees - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session.worktree import prune_worktrees, list_worktrees
 
     try:
@@ -51,22 +46,19 @@ def main(args: argparse.Namespace) -> int:
             "status": "completed"
         }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
             if args.dry_run:
-                print(f"Dry run: Would clean {result['cleaned']} orphaned worktrees")
+                formatter.text(f"Dry run: Would clean {result['cleaned']} orphaned worktrees")
             else:
-                print(f"✓ Cleaned {result['cleaned']} orphaned worktrees")
-                print(f"  Total worktrees: {result['total_worktrees']}")
+                formatter.text(f"✓ Cleaned {result['cleaned']} orphaned worktrees")
+                formatter.text(f"  Total worktrees: {result['total_worktrees']}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

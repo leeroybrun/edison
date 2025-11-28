@@ -7,34 +7,25 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
 from pathlib import Path
 from textwrap import dedent
 
 import pytest
 import yaml
-import time
 
 from edison.core.session.manager import SessionManager
-from edison.core.session import store
+from edison.core.session.id import validate_session_id
+from edison.core.session.repository import SessionRepository
 from edison.core.session import worktree
 from edison.core.session.naming import reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.process.inspector import infer_session_id
+from tests.helpers.timeouts import wait_for_file, medium_sleep
 
 
 # Import target under test (implementation added in this task)
 from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
-
-
-def _wait_for_file(path: Path, timeout: float = 5.0) -> bool:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if path.exists():
-            return True
-        time.sleep(0.05)
-    return path.exists()
 
 
 class AutoStartEnv:
@@ -71,6 +62,35 @@ class AutoStartEnv:
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.schemas_dir = self.root / ".edison" / "core" / "schemas"
         self.schemas_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create guides directory and START.SESSION.md for autostart tests
+        guides_dir = self.root / ".edison" / "core" / "guides"
+        guides_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy START_NEW_SESSION.md as START.SESSION.md (required by orchestrator.yaml)
+        from edison.data import get_data_path
+        start_session_src = get_data_path("start", "START_NEW_SESSION.md")
+        start_session_dst = guides_dir / "START.SESSION.md"
+
+        if start_session_src.exists():
+            start_session_dst.write_text(start_session_src.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            # Fallback: minimal session start template
+            start_session_dst.write_text(
+                "# Start Session\n\n"
+                "## Session Initialization\n\n"
+                "Run the session start command:\n"
+                "```bash\n"
+                "edison session start\n"
+                "```\n\n"
+                "## Begin Work\n\n"
+                "1. Claim task\n"
+                "2. Implement following TDD\n"
+                "3. Mark ready\n"
+                "4. Run validators\n"
+                "5. Complete task\n",
+                encoding="utf-8",
+            )
 
     # --- Config + script helpers -------------------------------------------------
     def write_defaults(self, *, base_directory: Path | None = None, worktrees_enabled: bool = True) -> None:
@@ -156,17 +176,33 @@ class AutoStartEnv:
     def reload_configs(self) -> None:
         """Reset module-level SessionConfig singletons to this repo root."""
         from edison.core.session import manager as session_manager
-
-        worktree._CONFIG = worktree.SessionConfig(repo_root=self.root)
-        store._CONFIG = store.SessionConfig(repo_root=self.root)
-        session_manager._CONFIG = session_manager.SessionConfig(repo_root=self.root)
-        session_manager._WT_CFG = session_manager._CONFIG.get_worktree_config()
+        from edison.core.config.domains import SessionConfig
+        from edison.core.session._config import reset_config_cache
+        
+        # Reset config cache to pick up new project root
+        reset_config_cache()
+        
+        # Create new configs for this test root
+        new_config = SessionConfig(repo_root=self.root)
+        session_manager._CONFIG = new_config
+        session_manager._WT_CFG = new_config.get_worktree_config()
 
     def build_autostart(self) -> SessionAutoStart:
         self.reload_configs()
         mgr = SessionManager(project_root=self.root)
         orch_cfg = OrchestratorConfig(repo_root=self.root)
         return SessionAutoStart(mgr, orch_cfg)
+
+
+@pytest.fixture(autouse=True)
+def reset_naming_counter():
+    """Reset session naming counter before and after each test.
+
+    This fixture prevents global state mutation from affecting other tests.
+    """
+    reset_session_naming_counter()
+    yield
+    reset_session_naming_counter()
 
 
 @pytest.fixture
@@ -238,7 +274,7 @@ def test_autostart_launches_orchestrator(autostart_env: AutoStartEnv) -> None:
     result = autostart.start(process="TASK-123", orchestrator_profile="mock")
 
     assert result["orchestrator_pid"] > 0
-    assert _wait_for_file(log)
+    assert wait_for_file(log)
     assert "pid=" in log.read_text()
 
 
@@ -264,7 +300,7 @@ def test_autostart_with_initial_prompt(autostart_env: AutoStartEnv, tmp_path: Pa
         initial_prompt_path=prompt_file,
     )
 
-    assert _wait_for_file(log)
+    assert wait_for_file(log)
     log_text = log.read_text()
     assert "prompt:HELLO WORLD" in log_text
 
@@ -285,8 +321,8 @@ def test_autostart_with_detach(autostart_env: AutoStartEnv) -> None:
     result = autostart.start(process="TASK-DETACH", orchestrator_profile="mock", detach=True)
 
     assert result["orchestrator_pid"] is None
-    time.sleep(0.2)
-    assert _wait_for_file(log)
+    medium_sleep()
+    assert wait_for_file(log)
 
 
 def test_autostart_with_no_worktree(autostart_env: AutoStartEnv) -> None:
@@ -347,7 +383,7 @@ def test_autostart_rollback_on_orchestrator_failure(autostart_env: AutoStartEnv)
 
 
 def test_autostart_uses_pid_based_naming(autostart_env: AutoStartEnv) -> None:
-    reset_session_naming_counter()
+    # Note: reset_session_naming_counter is now called by autouse fixture
     autostart_env.write_session_config(naming_strategy="owner")
     script, _ = autostart_env.make_orchestrator_script("claude")
     autostart_env.write_orchestrator_config(
@@ -373,7 +409,7 @@ def test_autostart_uses_config_default_orchestrator(autostart_env: AutoStartEnv)
 
     autostart.start(process="TASK-123")
 
-    assert _wait_for_file(log_default)
+    assert wait_for_file(log_default)
     assert "pid=" in log_default.read_text()
 
 
@@ -389,7 +425,7 @@ def test_autostart_override_orchestrator(autostart_env: AutoStartEnv) -> None:
 
     autostart.start(process="TASK-123", orchestrator_profile="override")
 
-    assert _wait_for_file(log_override)
+    assert wait_for_file(log_override)
     assert "pid=" in log_override.read_text()
     assert not log_default.exists()
 
@@ -421,6 +457,6 @@ def test_autostart_cli_start_command(autostart_env: AutoStartEnv) -> None:
 
     run_with_timeout(cmd, cwd=autostart_env.root, check=True)
 
-    assert _wait_for_file(log)
-    sessions = list((autostart_env.root / ".project" / "sessions" / "wip").glob("*/session.json"))
+    assert wait_for_file(log)
+    sessions = list((autostart_env.root / ".project" / "sessions" / "wip").glob("*.json"))
     assert sessions

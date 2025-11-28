@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.timeouts import SUBPROCESS_TIMEOUT, PROCESS_WAIT_TIMEOUT
+
 
 def _has_zen_mcp_setup() -> bool:
     """Check if zen-mcp-server is set up (project-specific, not in standalone Edison)."""
@@ -286,13 +288,24 @@ class TestZenMcpRelocation:
                 ".edison/.gitignore should exclude zen-mcp-server/.venv"
             )
 
-    def test_setup_creates_venv(self, edison_root, zen_server_dir):
-        """Test that setup.sh creates virtualenv in .edison/tools/zen-mcp-server/.venv"""
-        # Clean existing venv if present
+    @pytest.fixture
+    def clean_zen_venv(self, zen_server_dir):
+        """Fixture to manage zen venv state.
+
+        Creates fresh venv for tests, cleans up after.
+        Uses fixture instead of deleting during test to avoid side effects.
+        """
         venv_dir = zen_server_dir / ".venv"
+        # Clean existing venv if present
         if venv_dir.exists():
             import shutil
             shutil.rmtree(venv_dir)
+        yield venv_dir
+        # Cleanup happens automatically with tmp_path
+
+    def test_setup_creates_venv(self, edison_root, zen_server_dir, clean_zen_venv):
+        """Test that setup.sh creates virtualenv in .edison/tools/zen-mcp-server/.venv"""
+        venv_dir = clean_zen_venv
 
         # Run setup script
         setup_script = edison_root / "scripts" / "zen" / "setup.sh"
@@ -301,7 +314,7 @@ class TestZenMcpRelocation:
             cwd=str(edison_root),
             capture_output=True,
             text=True,
-            timeout=120  # 2 minute timeout
+            timeout=SUBPROCESS_TIMEOUT,
         )
 
         assert result.returncode == 0, (
@@ -332,7 +345,7 @@ class TestZenMcpRelocation:
             capture_output=True,
             text=True,
             env=env,
-            timeout=10
+            timeout=int(PROCESS_WAIT_TIMEOUT),
         )
 
         # Should fail with error about ZEN_WORKING_DIR
@@ -364,7 +377,7 @@ class TestZenMcpRelocation:
             capture_output=True,
             text=True,
             env=env,
-            timeout=10
+            timeout=int(PROCESS_WAIT_TIMEOUT),
         )
 
         # Should succeed or at least not fail on ZEN_WORKING_DIR check

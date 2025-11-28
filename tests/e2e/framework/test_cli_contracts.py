@@ -6,25 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 from edison.core.utils.subprocess import run_with_timeout
-
-
-def get_repo_root() -> Path:
-    """Resolve the outer project git root for CLI contract tests.
-
-    When running inside the nested `.edison` git repository, prefer the
-    parent project root so `.project/` and `.agents/` resolve correctly.
-    """
-    current = Path(__file__).resolve()
-    candidate: Optional[Path] = None
-    while current != current.parent:
-        if (current / ".git").exists():
-            candidate = current
-        current = current.parent
-    if candidate is None:
-        raise RuntimeError("Could not find repository root")
-    if candidate.name == ".edison" and (candidate.parent / ".git").exists():
-        return candidate.parent
-    return candidate
+from tests.helpers.paths import get_repo_root
 
 
 REPO_ROOT = get_repo_root()
@@ -34,6 +16,9 @@ def run(cli: list[str], cwd: Optional[Path] = None):
     env = os.environ.copy()
     # Ensure scripts resolve repo-relative paths in tests
     env["AGENTS_PROJECT_ROOT"] = str(REPO_ROOT)
+    # Convert "edison" to module invocation to avoid PATH issues
+    if cli and cli[0] == "edison":
+        cli = [sys.executable, "-m", "edison"] + cli[1:]
     proc = run_with_timeout(cli, cwd=cwd or REPO_ROOT, capture_output=True, text=True, env=env)
     return proc.returncode, proc.stdout, proc.stderr
 

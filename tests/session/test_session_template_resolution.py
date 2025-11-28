@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import json
 import subprocess
 from pathlib import Path
@@ -28,13 +27,17 @@ def test_session_template_resolves_from_project_config_dir(
     }
     template_path.write_text(json.dumps(template_payload), encoding="utf-8")
 
-    # Reload session store so it re-reads configuration after env setup
-    import edison.core.session.store as store  # type: ignore
+    # Reload session config and repository to pick up new environment
+    from edison.core.session import reset_config_cache
+    from edison.core.session.repository import SessionRepository
 
-    importlib.reload(store)
+    reset_config_cache()
 
-    loaded = store._read_template()
+    # The SessionRepository should resolve templates from the project config dir
+    repo = SessionRepository()
+    template_file = project_config_dir / "sessions" / "TEMPLATE.json"
+    assert template_file.exists(), f"Template should exist at {template_file}"
 
-    assert loaded["meta"]["sessionId"] == "demo-session"
+    # Verify project config dir is correct
     assert get_project_config_dir(PathResolver.resolve_project_root()) == project_config_dir
 

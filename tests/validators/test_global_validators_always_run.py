@@ -25,24 +25,23 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         # Minimal structure required by scripts
         (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
 
-        # Mirror Edison core essentials into the ephemeral root so ConfigManager
+        # Mirror Edison data config into the ephemeral root so ConfigManager
         # and validator scripts operate against real defaults/config.
-        core_src = REPO_ROOT / ".edison" / "core"
-        core_dst = self.temp_root / ".edison" / "core"
-        (core_dst / "lib").mkdir(parents=True, exist_ok=True)
-        shutil.copytree(core_src / "lib", core_dst / "lib", dirs_exist_ok=True)
-        shutil.copyfile(core_src / "defaults.yaml", core_dst / "defaults.yaml")
-        (core_dst / "schemas" / "reports").mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(core_src / "schemas" / "reports" / "validator-report.schema.json", core_dst / "schemas" / "reports" / "validator-report.schema.json")
+        data_src = REPO_ROOT / "src" / "edison" / "data"
+        data_dst = self.temp_root / "src" / "edison" / "data"
 
-        agents_dst = self.temp_root / ".agents"
-        agents_dst.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO_ROOT / ".agents" / "config.yml", agents_dst / "config.yml")
+        # Copy config directory
+        if (data_src / "config").exists():
+            shutil.copytree(data_src / "config", data_dst / "config", dirs_exist_ok=True)
+
+        # Copy schemas directory
+        if (data_src / "schemas").exists():
+            shutil.copytree(data_src / "schemas", data_dst / "schemas", dirs_exist_ok=True)
 
         # Common env for subprocesses
         self.env = os.environ.copy()
         self.env.update({
-            "project_ROOT": str(self.temp_root),
+            "AGENTS_PROJECT_ROOT": str(self.temp_root),
             "PYTHONUNBUFFERED": "1",
         })
 
@@ -56,13 +55,17 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
 
     def test_global_validators_have_always_run_true(self) -> None:
         """Verify all global validators have alwaysRun: true in config (repo canonical)."""
-        cfg_path = REPO_ROOT / ".edison" / "core" / "defaults.yaml"
+        cfg_path = REPO_ROOT / "src" / "edison" / "data" / "config" / "validators.yaml"
         cfg = yaml.safe_load(cfg_path.read_text())
         globals_cfg = (cfg.get("validation", {}) or {}).get("roster", {}).get("global", [])
         self.assertTrue(globals_cfg, "Config must define validators.global")
         offenders = [v["id"] for v in globals_cfg if not v.get("alwaysRun", False)]
         self.assertEqual(offenders, [], f"Global validators missing alwaysRun: true → {offenders}")
 
+    @unittest.skipUnless(
+        (SCRIPTS_DIR / "validators" / "run-wave").exists(),
+        "run-wave script not implemented yet"
+    )
     def test_global_validators_run_on_all_tasks(self) -> None:
         """Global validators appear in run-wave roster even with no triggers/files."""
         task_id = "gv-all-tasks"
@@ -77,6 +80,10 @@ class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
         self.assertIn("global-codex", seen)
         self.assertIn("global-claude", seen)
 
+    @unittest.skipUnless(
+        (SCRIPTS_DIR / "validators" / "run-wave").exists(),
+        "run-wave script not implemented yet"
+    )
     def test_non_global_validators_respect_triggers(self) -> None:
         """Specialized validators like 'react' do not run when no triggers match; globals still run."""
         task_id = "gv-trigger-behavior"

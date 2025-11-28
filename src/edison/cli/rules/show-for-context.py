@@ -7,9 +7,10 @@ SUMMARY: Show rules applicable to specific contexts
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_repo_root_flag
 
 SUMMARY = "Show rules applicable to specific contexts"
 
@@ -27,20 +28,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default="short",
         help="Output format (default: short)",
     )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Show rules for given contexts."""
-    from edison.core.rules import RulesRegistry
-    from edison.core.utils.paths import PathResolver
+    json_mode = args.format == "json"
+    formatter = OutputFormatter(json_mode=json_mode)
 
+    from edison.core.rules import RulesRegistry
+    
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else PathResolver.resolve_project_root()
+        repo_root = get_repo_root(args)
         registry = RulesRegistry(repo_root)
 
         # Compose all rules that match any of the contexts
@@ -84,40 +83,37 @@ def main(args: argparse.Namespace) -> int:
 
         # Output
         if args.format == "json":
-            print(json.dumps(matching, indent=2))
+            formatter.json_output(matching)
         elif args.format == "full":
-            print(f"Applicable Rules for {' '.join(args.contexts)}\n")
+            formatter.text(f"Applicable Rules for {' '.join(args.contexts)}\n")
             for rule in matching:
-                print(f"RULE: {rule['id']}")
-                print(f"  Title: {rule.get('title', 'N/A')}")
-                print(f"  Category: {rule.get('category', 'N/A')}")
-                print(f"  Guidance: {rule.get('guidance', 'N/A')}")
-                print(f"  Blocking: {rule.get('blocking', False)}")
+                formatter.text(f"RULE: {rule['id']}")
+                formatter.text(f"  Title: {rule.get('title', 'N/A')}")
+                formatter.text(f"  Category: {rule.get('category', 'N/A')}")
+                formatter.text(f"  Guidance: {rule.get('guidance', 'N/A')}")
+                formatter.text(f"  Blocking: {rule.get('blocking', False)}")
                 if rule.get("content"):
-                    print(f"  Content: {rule['content'][:200]}...")
-                print()
+                    formatter.text(f"  Content: {rule['content'][:200]}...")
+                formatter.text("")
         elif args.format == "markdown":
-            print(f"# Applicable Rules for {' '.join(args.contexts)}\n")
+            formatter.text(f"# Applicable Rules for {' '.join(args.contexts)}\n")
             for rule in matching:
-                print(f"## {rule['id']}")
-                print(f"\n**Title**: {rule.get('title', 'N/A')}")
-                print(f"**Category**: {rule.get('category', 'N/A')}")
-                print(f"**Guidance**: {rule.get('guidance', 'N/A')}\n")
-                print(rule.get("content", ""))
-                print()
+                formatter.text(f"## {rule['id']}")
+                formatter.text(f"\n**Title**: {rule.get('title', 'N/A')}")
+                formatter.text(f"**Category**: {rule.get('category', 'N/A')}")
+                formatter.text(f"**Guidance**: {rule.get('guidance', 'N/A')}\n")
+                formatter.text(rule.get("content", ""))
+                formatter.text("")
         else:
-            print(f"Applicable Rules for {' '.join(args.contexts)}\n")
+            formatter.text(f"Applicable Rules for {' '.join(args.contexts)}\n")
             for rule in matching:
-                print(f"  {rule['id']}")
-                print(f"    {rule.get('title', 'N/A')}")
+                formatter.text(f"  {rule['id']}")
+                formatter.text(f"    {rule.get('title', 'N/A')}")
 
         return 0
 
     except Exception as e:
-        if args.format == "json":
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 

@@ -8,8 +8,7 @@ from typing import Dict, List
 
 from ..legacy_guard import enforce_no_legacy_project_root
 from edison.core.utils.paths import EdisonPathError, PathResolver
-from ..config.domains import SessionConfig
-from .config import TaskConfig
+from edison.core.config.domains import SessionConfig, TaskConfig
 
 
 # Cache holders for lazy initialization - reset by conftest.py for test isolation
@@ -80,13 +79,33 @@ def _get_sessions_root() -> Path:
 
 
 def _get_task_states() -> List[str]:
-    """Get task states from config or defaults."""
-    return _get_task_config().task_states() or ["todo", "wip", "blocked", "done", "validated"]
+    """Get task states from config.
+
+    Returns:
+        List of task states from configuration
+
+    Raises:
+        ValueError: If config doesn't provide task states (fail-fast)
+    """
+    states = _get_task_config().task_states()
+    if not states:
+        raise ValueError("Configuration must define task states (statemachine.task.states)")
+    return states
 
 
 def _get_qa_states() -> List[str]:
-    """Get QA states from config or defaults."""
-    return _get_task_config().qa_states() or ["waiting", "todo", "wip", "done", "validated"]
+    """Get QA states from config.
+
+    Returns:
+        List of QA states from configuration
+
+    Raises:
+        ValueError: If config doesn't provide QA states (fail-fast)
+    """
+    states = _get_task_config().qa_states()
+    if not states:
+        raise ValueError("Configuration must define QA states (statemachine.qa.states)")
+    return states
 
 
 def _get_task_dirs() -> Dict[str, Path]:
@@ -107,37 +126,91 @@ def _get_qa_dirs() -> Dict[str, Path]:
     return _QA_DIRS_CACHE
 
 
-# For backward compatibility, expose module-level variables
-# that are resolved lazily via __getattr__
-def __getattr__(name: str):
-    """Lazy module attribute access for backward compatibility."""
-    if name == "ROOT":
-        return _get_root()
-    if name == "TASK_ROOT":
-        return _get_task_root()
-    if name == "QA_ROOT":
-        return _get_qa_root()
-    if name == "SESSIONS_ROOT":
-        return _get_sessions_root()
-    if name == "TASK_DIRS":
-        return _get_task_dirs()
-    if name == "QA_DIRS":
-        return _get_qa_dirs()
-    if name == "SESSION_DIRS":
-        return _get_session_dirs()
-    if name == "_SESSION_CONFIG":
-        return _get_session_config()
-    if name == "_TASK_CONFIG":
-        return _get_task_config()
-    if name == "_TASK_STATES":
-        return _get_task_states()
-    if name == "_QA_STATES":
-        return _get_qa_states()
-    # Prefix constants - lazily resolved from config
-    if name in ("OWNER_PREFIX_TASK", "OWNER_PREFIX_QA", "STATUS_PREFIX",
-                "CLAIMED_PREFIX", "LAST_ACTIVE_PREFIX", "CONTINUATION_PREFIX"):
-        return _get_prefix_cache()[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+# Public accessor functions (replace __getattr__ magic with explicit functions)
+
+def get_root() -> Path:
+    """Get the project root directory."""
+    return _get_root()
+
+
+def get_task_root() -> Path:
+    """Get the task root directory."""
+    return _get_task_root()
+
+
+def get_qa_root() -> Path:
+    """Get the QA root directory."""
+    return _get_qa_root()
+
+
+def get_sessions_root() -> Path:
+    """Get the sessions root directory."""
+    return _get_sessions_root()
+
+
+def get_task_dirs() -> Dict[str, Path]:
+    """Get mapping of task states to their directory paths."""
+    return _get_task_dirs()
+
+
+def get_qa_dirs() -> Dict[str, Path]:
+    """Get mapping of QA states to their directory paths."""
+    return _get_qa_dirs()
+
+
+def get_session_dirs() -> Dict[str, Path]:
+    """Get mapping of session states to their directory paths."""
+    return _get_session_dirs()
+
+
+def get_session_config() -> SessionConfig:
+    """Get the cached SessionConfig instance."""
+    return _get_session_config()
+
+
+def get_task_config() -> TaskConfig:
+    """Get the cached TaskConfig instance."""
+    return _get_task_config()
+
+
+def get_task_states() -> List[str]:
+    """Get task states from configuration."""
+    return _get_task_states()
+
+
+def get_qa_states() -> List[str]:
+    """Get QA states from configuration."""
+    return _get_qa_states()
+
+
+def get_owner_prefix_task() -> str:
+    """Get the owner prefix for tasks."""
+    return _get_prefix_cache()["OWNER_PREFIX_TASK"]
+
+
+def get_owner_prefix_qa() -> str:
+    """Get the owner prefix for QA records."""
+    return _get_prefix_cache()["OWNER_PREFIX_QA"]
+
+
+def get_status_prefix() -> str:
+    """Get the status prefix."""
+    return _get_prefix_cache()["STATUS_PREFIX"]
+
+
+def get_claimed_prefix() -> str:
+    """Get the claimed timestamp prefix."""
+    return _get_prefix_cache()["CLAIMED_PREFIX"]
+
+
+def get_last_active_prefix() -> str:
+    """Get the last active timestamp prefix."""
+    return _get_prefix_cache()["LAST_ACTIVE_PREFIX"]
+
+
+def get_continuation_prefix() -> str:
+    """Get the continuation ID prefix."""
+    return _get_prefix_cache()["CONTINUATION_PREFIX"]
 
 
 _SESSION_DIRS_CACHE: Dict[str, Path] | None = None
@@ -176,8 +249,9 @@ def _session_tasks_dir(session_id: str, state: str) -> Path:
     """
     # Find the session's actual location (by session state, not task state)
     try:
-        from edison.core.session import store as session_store
-        session_json_path = session_store.get_session_json_path(session_id)
+        from edison.core.session.repository import SessionRepository
+        repo = SessionRepository()
+        session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent
     except Exception:
         # Fallback: assume session is in wip (active) state
@@ -198,8 +272,9 @@ def _session_qa_dir(session_id: str, state: str) -> Path:
     """
     # Find the session's actual location (by session state, not QA state)
     try:
-        from edison.core.session import store as session_store
-        session_json_path = session_store.get_session_json_path(session_id)
+        from edison.core.session.repository import SessionRepository
+        repo = SessionRepository()
+        session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent
     except Exception:
         # Fallback: assume session is in wip (active) state
@@ -229,26 +304,6 @@ def _get_prefix_cache() -> Dict[str, str]:
     return _PREFIX_CACHE
 
 
-def get_pack_context() -> List[str]:
-    """Return active packs from merged configuration."""
-    try:
-        from ..config import ConfigManager  # type: ignore
-
-        cfg = ConfigManager().load_config(validate=False)
-        packs = (cfg.get("packs") or {}).get("active") or []
-        return [str(x) for x in packs if isinstance(x, str)]
-    except Exception:
-        return []
-
-
-def _tasks_root() -> Path:
-    return _get_task_root()
-
-
-def _qa_root() -> Path:
-    return _get_qa_root()
-
-
 def safe_relative(path: Path) -> str:
     """Return path relative to project root, falling back to absolute on error."""
     try:
@@ -258,24 +313,28 @@ def safe_relative(path: Path) -> str:
 
 
 __all__ = [
-    "ROOT",
-    "TASK_ROOT",
-    "QA_ROOT",
-    "SESSIONS_ROOT",
-    "SESSION_DIRS",
-    "TASK_DIRS",
-    "QA_DIRS",
-    "OWNER_PREFIX_TASK",
-    "OWNER_PREFIX_QA",
-    "STATUS_PREFIX",
-    "CLAIMED_PREFIX",
-    "LAST_ACTIVE_PREFIX",
-    "CONTINUATION_PREFIX",
+    # Public getter functions (explicit, type-safe)
+    "get_root",
+    "get_task_root",
+    "get_qa_root",
+    "get_sessions_root",
+    "get_task_dirs",
+    "get_qa_dirs",
+    "get_session_dirs",
+    "get_session_config",
+    "get_task_config",
+    "get_task_states",
+    "get_qa_states",
+    "get_owner_prefix_task",
+    "get_owner_prefix_qa",
+    "get_status_prefix",
+    "get_claimed_prefix",
+    "get_last_active_prefix",
+    "get_continuation_prefix",
+    # Path resolution helpers
     "_session_tasks_dir",
     "_session_qa_dir",
-    "_tasks_root",
-    "_qa_root",
     "session_state_dir",
-    "get_pack_context",
+    # Utility functions
     "safe_relative",
 ]

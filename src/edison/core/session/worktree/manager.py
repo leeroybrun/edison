@@ -9,8 +9,8 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
-from .config_helpers import _config, _get_repo_dir, _resolve_worktree_target
-from .git_ops import get_existing_worktree_for_branch
+from .config_helpers import _config, _get_repo_dir, _resolve_worktree_target, _resolve_archive_directory
+from edison.core.utils.git.worktree import get_existing_worktree_path
 
 
 def resolve_worktree_target(session_id: str) -> tuple[Path, str]:
@@ -39,7 +39,7 @@ def create_worktree(
     worktree_path, branch_name = _resolve_worktree_target(session_id, config)
     base_branch_value = base_branch or config.get("baseBranch", "main")
 
-    existing_wt = get_existing_worktree_for_branch(branch_name)
+    existing_wt = get_existing_worktree_path(branch_name)
     if existing_wt is not None:
         return (existing_wt.resolve(), branch_name)
 
@@ -87,23 +87,23 @@ def create_worktree(
         try:
             run_with_timeout(["git", "fetch", "--all", "--prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_fetch)
 
-            r = run_with_timeout(["git", "show-ref", "--verify", f"refs/heads/{branch_name}"], cwd=repo_dir, capture_output=True, text=True, timeout=5)
+            r = run_with_timeout(["git", "show-ref", "--verify", f"refs/heads/{branch_name}"], cwd=repo_dir, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("branch_check", 10))
             if r.returncode != 0:
                 run_with_timeout(["git", "checkout", base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_checkout)
                 run_with_timeout(["git", "pull", "--ff-only"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_checkout)
-                run_with_timeout(["git", "branch", branch_name, base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=5)
+                run_with_timeout(["git", "branch", branch_name, base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("branch_check", 10))
 
             run_with_timeout(["git", "worktree", "add", "--", str(worktree_path), branch_name], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_add)
             break
         except subprocess.CalledProcessError as e:
             last_err = e
-            run_with_timeout(["git", "worktree", "prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=10)
+            run_with_timeout(["git", "worktree", "prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("prune", 10))
             run_with_timeout(["git", "fetch", "--all", "--prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_fetch)
             if attempt == 1:
                 try:
                     ensure_directory(worktree_path.parent)
                     run_with_timeout(["git", "clone", "--local", "--no-hardlinks", "--", str(repo_dir), str(worktree_path)], check=True, capture_output=True, text=True, timeout=t_clone)
-                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=10)
+                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=t_checkout)
                     last_err = None
                     break
                 except Exception as ce:
@@ -138,7 +138,7 @@ def create_worktree(
                         shutil.rmtree(worktree_path, ignore_errors=True)
                     ensure_directory(worktree_path.parent)
                     run_with_timeout(["git", "clone", "--local", "--no-hardlinks", "--", str(repo_dir), str(worktree_path)], check=True, capture_output=True, text=True, timeout=t_clone)
-                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=10)
+                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=t_checkout)
                 except subprocess.CalledProcessError as e:
                     raise RuntimeError(f"Worktree pointer verification failed and clone fallback failed: {e.stderr or e}")
     except Exception as e:
@@ -148,15 +148,18 @@ def create_worktree(
 
 
 def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_run: bool = False) -> Path:
-    """Restore a worktree from archive directory back to active worktrees."""
+    """Restore a worktree from archive directory back to active worktrees.
+
+    Note: Since archive_worktree removes the worktree from git's tracking,
+    we need to delete the archived directory and re-create the worktree
+    using create_worktree. This ensures proper git registration.
+    """
     repo_dir = _get_repo_dir()
     config_obj = _config()
     cfg = config_obj.get_worktree_config()
 
     worktree_path, branch_name = _resolve_worktree_target(session_id, cfg)
-    archive_dir_value = cfg.get("archiveDirectory", ".worktrees/archive")
-    archive_root = Path(archive_dir_value)
-    archive_full = archive_root if archive_root.is_absolute() else (repo_dir.parent / archive_dir_value).resolve()
+    archive_full = _resolve_archive_directory(cfg, repo_dir)
     src = archive_full / session_id
     if not src.exists():
         raise RuntimeError(f"Archived worktree not found: {src}")
@@ -164,25 +167,22 @@ def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_
     if dry_run:
         return worktree_path
 
-    ensure_directory(worktree_path.parent)
-    shutil.move(str(src), str(worktree_path))
+    # Remove the archived directory - we'll recreate the worktree fresh
+    # This is necessary because archive_worktree calls git worktree remove,
+    # which destroys the git metadata in the parent repo
+    shutil.rmtree(src, ignore_errors=True)
 
-    t_add = config_obj.get_worktree_timeout("worktree_add", 30)
-    t_checkout = config_obj.get_worktree_timeout("checkout", 30)
-    base_branch_value = base_branch or cfg.get("baseBranch", "main")
-
-    r = run_with_timeout(
-        ["git", "show-ref", "--verify", f"refs/heads/{branch_name}"],
-        cwd=repo_dir,
-        capture_output=True,
-        text=True,
-        timeout=5,
+    # Re-create the worktree using the standard creation flow
+    # This ensures it's properly registered with git
+    created_path, created_branch = create_worktree(
+        session_id=session_id,
+        base_branch=base_branch,
+        dry_run=False
     )
-    if r.returncode != 0:
-        run_with_timeout(["git", "checkout", base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_checkout)
-        run_with_timeout(["git", "branch", branch_name, base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=5)
 
-    run_with_timeout(["git", "worktree", "add", "--", str(worktree_path), branch_name], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_add)
+    if created_path != worktree_path:
+        raise RuntimeError(f"Restored worktree path mismatch: expected {worktree_path}, got {created_path}")
+
     return worktree_path
 
 
@@ -216,3 +216,44 @@ def ensure_worktree_materialized(session_id: str) -> Dict[str, Any]:
             # The caller might merge this with existing session git meta.
         }
     return {}
+
+
+def prepare_session_git_metadata(
+    session_id: str,
+    worktree_path: Optional[Path] = None,
+    branch_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Prepare git metadata dict for session from worktree information.
+
+    This centralizes git metadata construction to avoid duplication across
+    manager.py and autostart.py.
+
+    Args:
+        session_id: Session identifier
+        worktree_path: Path to worktree (if None, will be computed)
+        branch_name: Branch name (if None, will be computed)
+
+    Returns:
+        Dict with worktreePath, branchName, and baseBranch from config
+    """
+    cfg = _config().get_worktree_config()
+
+    # Compute path and branch if not provided
+    if worktree_path is None or branch_name is None:
+        computed_path, computed_branch = resolve_worktree_target(session_id)
+        worktree_path = worktree_path or computed_path
+        branch_name = branch_name or computed_branch
+
+    git_meta: Dict[str, Any] = {}
+
+    if worktree_path:
+        git_meta["worktreePath"] = str(worktree_path)
+
+    if branch_name:
+        git_meta["branchName"] = branch_name
+
+    # Always include baseBranch from config
+    base_branch = cfg.get("baseBranch", "main")
+    git_meta["baseBranch"] = base_branch
+
+    return git_meta

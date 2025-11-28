@@ -131,16 +131,6 @@ from .ide import (
     merge_permissions,
 )
 
-# Utils re-exports for backward compatibility
-from ..utils.text import (
-    dry_duplicate_report,
-    render_conditional_includes,
-    ENGINE_VERSION,
-    _strip_headings_and_code,
-    _tokenize,
-    _shingles,
-)
-
 __all__ = [
     # Core
     "LayeredComposer",
@@ -229,13 +219,6 @@ __all__ = [
     "project_terms",
     "DEFAULT_PROJECT_TERMS",
     "PACK_TECH_TERMS",
-    # Utils
-    "dry_duplicate_report",
-    "render_conditional_includes",
-    "ENGINE_VERSION",
-    "_strip_headings_and_code",
-    "_tokenize",
-    "_shingles",
     # IDE
     "CommandArg",
     "CommandDefinition",

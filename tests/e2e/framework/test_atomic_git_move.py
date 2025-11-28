@@ -7,20 +7,13 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.helpers.paths import get_repo_root, get_core_root
 
-
-# Ensure script lib path importable
-def get_repo_root() -> Path:
-    current = Path(__file__).resolve()
-    while current != current.parent:
-        if (current / ".git").exists():
-            return current
-        current = current.parent
-    raise RuntimeError("Could not find repository root")
 
 REPO_ROOT = get_repo_root()
-SCRIPTS_ROOT = REPO_ROOT / ".edison" / "core"
+SCRIPTS_ROOT = get_core_root()
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
+from edison.core.utils.io.locking import safe_move_file
 
 
 @pytest.fixture()
@@ -44,10 +37,10 @@ def test_atomic_move_no_duplicates(tmp_files, monkeypatch: pytest.MonkeyPatch):
     src, dst = tmp_files
 
     # Disable git mv so fallback is exercised
-    monkeypatch.setattr(task.subprocess, "run", _fail_git_mv)
+    monkeypatch.setattr(subprocess, "run", _fail_git_mv)
 
     # Perform move
-    task.safe_move_file(src, dst)
+    safe_move_file(src, dst)
 
     # Only destination should exist
     assert dst.exists()
@@ -59,7 +52,7 @@ def test_cross_device_move_verified(tmp_files, monkeypatch: pytest.MonkeyPatch):
     src, dst = tmp_files
 
     # Force git mv failure
-    monkeypatch.setattr(task.subprocess, "run", _fail_git_mv)
+    monkeypatch.setattr(subprocess, "run", _fail_git_mv)
 
     # Force EXDEV on atomic replace
     def exdev_replace(s, d):
@@ -67,7 +60,7 @@ def test_cross_device_move_verified(tmp_files, monkeypatch: pytest.MonkeyPatch):
         err.errno = errno.EXDEV
         raise err
 
-    monkeypatch.setattr(task.os, "replace", exdev_replace)
+    monkeypatch.setattr(os, "replace", exdev_replace)
 
     # Spy on read_bytes calls to ensure verification happened
     real_read = Path.read_bytes
@@ -80,7 +73,7 @@ def test_cross_device_move_verified(tmp_files, monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(Path, "read_bytes", traced_read, raising=True)
 
-    task.safe_move_file(src, dst)
+    safe_move_file(src, dst)
 
     # Destination exists, source removed, and both were read for verification
     assert dst.exists()
@@ -93,14 +86,14 @@ def test_failed_verification_cleans_up(tmp_files, monkeypatch: pytest.MonkeyPatc
     src, dst = tmp_files
 
     # Force git mv failure and EXDEV path
-    monkeypatch.setattr(task.subprocess, "run", _fail_git_mv)
+    monkeypatch.setattr(subprocess, "run", _fail_git_mv)
 
     def exdev_replace(s, d):
         err = OSError("cross-device move")
         err.errno = errno.EXDEV
         raise err
 
-    monkeypatch.setattr(task.os, "replace", exdev_replace)
+    monkeypatch.setattr(os, "replace", exdev_replace)
 
     # Corrupt destination verification by altering read_bytes for dst only
     real_read = Path.read_bytes
@@ -114,7 +107,7 @@ def test_failed_verification_cleans_up(tmp_files, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(Path, "read_bytes", corrupted_read, raising=True)
 
     with pytest.raises(RuntimeError):
-        task.safe_move_file(src, dst)
+        safe_move_file(src, dst)
 
     # Destination cleaned up; source preserved
     assert not dst.exists()
@@ -143,9 +136,9 @@ def test_git_mv_preferred_when_available(tmp_files, monkeypatch: pytest.MonkeyPa
             return P()
         raise AssertionError("Unexpected subprocess.run call in test")
 
-    monkeypatch.setattr(task.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
-    task.safe_move_file(src, dst)
+    safe_move_file(src, dst)
 
     assert calls["git_mv"] == 1
     assert dst.exists() and not src.exists()

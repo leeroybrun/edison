@@ -4,6 +4,35 @@
 version: "1.0.0"
 trainingCutoff: "2025-01"
 
+# File pattern triggers for automatic package detection
+triggers:
+  react:
+    - "*.tsx"
+    - "*.jsx"
+    - "**/components/**/*"
+  next:
+    - "app/**/*"
+    - "**/route.ts"
+    - "**/layout.tsx"
+    - "**/page.tsx"
+  zod:
+    - "**/*.schema.ts"
+    - "**/*.validation.ts"
+    - "**/*schema.ts"
+  prisma:
+    - "**/*.prisma"
+    - "**/prisma/schema.*"
+    - "**/prisma/migrations/**/*"
+    - "**/prisma/seeds/**/*"
+
+# Package name aliases for normalization
+aliases:
+  react-dom: "react"
+  next/router: "next"
+  nextjs: "next"
+  "@prisma/client": "prisma"
+  prisma-client: "prisma"
+
 packages:
   next:
     version: "16.0.0"

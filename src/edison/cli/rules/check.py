@@ -7,9 +7,10 @@ SUMMARY: Check rules applicable to a specific context or transition
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
 
 SUMMARY = "Check rules applicable to a specific context or transition"
 
@@ -38,33 +39,26 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default="short",
         help="Output format (default: short)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Check rules for context - delegates to RulesEngine."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.rules import RulesEngine
     from edison.core.config import ConfigManager
-    from edison.core.utils.paths import resolve_project_root
-
+    
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
         cfg_mgr = ConfigManager(repo_root)
         config = cfg_mgr.load_config(validate=False)
         engine = RulesEngine(config)
 
         # Determine what to check
         if not args.context and not args.transition:
-            print("Error: Must specify --context or --transition", file=sys.stderr)
+            formatter.error("Must specify --context or --transition", error_code="error")
             return 1
 
         # Get applicable rules based on context
@@ -89,49 +83,45 @@ def main(args: argparse.Namespace) -> int:
         applicable_rules.sort(key=lambda r: priority_order.get(r.get("priority", "normal"), 2))
 
         if args.json:
-            print(json.dumps({
+            formatter.json_output({
                 "rules": applicable_rules,
                 "count": len(applicable_rules),
-                "check_params": check_params,
-            }, indent=2))
+            })
         elif args.format == "full":
-            print(f"Applicable rules ({len(applicable_rules)}):")
-            print()
+            formatter.text(f"Applicable rules ({len(applicable_rules)}):")
+            formatter.text("")
             for rule in applicable_rules:
-                print(f"RULE.{rule['id'].upper()}")
-                print(f"  Priority: {rule.get('priority', 'normal')}")
-                print(f"  Contexts: {', '.join(rule.get('contexts', []))}")
+                formatter.text(f"RULE.{rule['id'].upper()}")
+                formatter.text(f"  Priority: {rule.get('priority', 'normal')}")
+                formatter.text(f"  Contexts: {', '.join(rule.get('contexts', []))}")
                 if rule.get("content"):
-                    print(f"  Content:\n    {rule['content'][:300]}...")
-                print()
+                    formatter.text(f"  Content:\n    {rule['content'][:300]}...")
+                formatter.text("")
         elif args.format == "markdown":
-            print("# Applicable Rules")
-            print()
+            formatter.text("# Applicable Rules")
+            formatter.text("")
             for rule in applicable_rules:
-                print(f"## RULE.{rule['id'].upper()}")
-                print(f"**Priority**: {rule.get('priority', 'normal')}")
-                print(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
+                formatter.text(f"## RULE.{rule['id'].upper()}")
+                formatter.text(f"**Priority**: {rule.get('priority', 'normal')}")
+                formatter.text(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
                 if rule.get("content"):
-                    print(f"\n{rule['content']}\n")
-                print("---")
-                print()
+                    formatter.text(f"\n{rule['content']}\n")
+                formatter.text("---")
+                formatter.text("")
         else:  # short format
             if applicable_rules:
-                print(f"Applicable rules ({len(applicable_rules)}):")
+                formatter.text(f"Applicable rules ({len(applicable_rules)}):")
                 for rule in applicable_rules:
                     priority = rule.get('priority', 'normal')
                     priority_marker = "🔴" if priority == "critical" else "🟡" if priority == "high" else "⚪"
-                    print(f"  {priority_marker} RULE.{rule['id'].upper()}")
+                    formatter.text(f"  {priority_marker} RULE.{rule['id'].upper()}")
             else:
-                print("No applicable rules found.")
+                formatter.text("No applicable rules found.")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

@@ -2,12 +2,60 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
 from edison.core.utils.time import utc_timestamp
-from . import store
+from edison.core.utils.io import ensure_directory
+from edison.core.utils.paths import PathResolver, get_management_paths
 
+
+# ---------- Score History Path Helpers ----------
+
+def _qa_root(project_root: Path | None = None) -> Path:
+    """Get the QA root directory."""
+    root = project_root or PathResolver.resolve_project_root()
+    mgmt_paths = get_management_paths(root)
+    return mgmt_paths.get_qa_root()
+
+
+def _score_history_dir(project_root: Path | None = None) -> Path:
+    """Get the score history directory."""
+    return _qa_root(project_root) / "score-history"
+
+
+def _score_history_file(session_id: str, project_root: Path | None = None) -> Path:
+    """Get the score history file path for a session."""
+    return _score_history_dir(project_root) / f"{session_id}.jsonl"
+
+
+# ---------- JSONL I/O ----------
+
+def _append_jsonl(path: Path, obj: Dict[str, Any]) -> None:
+    """Append a JSON object as a line to a JSONL file."""
+    ensure_directory(path.parent)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+
+def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    """Read all JSON objects from a JSONL file."""
+    if not path.exists():
+        return []
+    out: List[Dict[str, Any]] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return out
+
+
+# ---------- Scoring Functions ----------
 
 def track_validation_score(
     session_id: str,
@@ -23,12 +71,12 @@ def track_validation_score(
         "scores": scores,
         "overall_score": float(overall_score),
     }
-    store.append_jsonl(store.score_history_file(session_id), entry)
+    _append_jsonl(_score_history_file(session_id), entry)
 
 
 def get_score_history(session_id: str) -> List[Dict[str, Any]]:
     """Return score history for ``session_id`` ordered by timestamp."""
-    entries = list(store.read_jsonl(store.score_history_file(session_id)))
+    entries = _read_jsonl(_score_history_file(session_id))
     entries.sort(key=lambda x: x.get("timestamp", ""))  # ISO-8601 sortable
     return entries
 

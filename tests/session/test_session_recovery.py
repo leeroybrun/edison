@@ -5,10 +5,35 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from edison.core.session import recovery
-from edison.core.session import store
-from edison.core.session._config import reset_config_cache
+from edison.core.session.repository import SessionRepository
+from edison.core.session.id import validate_session_id
+from edison.core.session._config import reset_config_cache, get_config
 from edison.core.config.cache import clear_all_caches
 import edison.core.utils.paths.resolver as path_resolver
+from edison.core.utils.paths import PathResolver
+
+def reset_session_store_cache():
+    """Reset session store cache."""
+    reset_config_cache()
+    clear_all_caches()
+
+def _ensure_session_dirs():
+    """Ensure session directories exist."""
+    cfg = get_config()
+    root = PathResolver.resolve_project_root()
+    sessions_root = root / cfg.get_session_root_path()
+    state_map = cfg.get_session_states()
+    for state, dirname in state_map.items():
+        (sessions_root / dirname).mkdir(parents=True, exist_ok=True)
+
+def _session_dir(state: str, session_id: str) -> Path:
+    """Get session directory."""
+    cfg = get_config()
+    root = PathResolver.resolve_project_root()
+    sessions_root = root / cfg.get_session_root_path()
+    state_map = cfg.get_session_states()
+    dirname = state_map.get(state, state)
+    return sessions_root / dirname / session_id
 
 @pytest.fixture
 def project_root(tmp_path, monkeypatch):
@@ -58,8 +83,8 @@ def project_root(tmp_path, monkeypatch):
     path_resolver._PROJECT_ROOT_CACHE = None
     clear_all_caches()
     reset_config_cache()
-    store.reset_session_store_cache()
-    
+    reset_session_store_cache()
+
     yield tmp_path
 
     # Cleanup
@@ -70,8 +95,8 @@ def project_root(tmp_path, monkeypatch):
 def test_is_session_expired(project_root):
     """Test session expiration logic."""
     sid = "sess-expired"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     
     # Case 1: No meta -> expired
@@ -97,8 +122,8 @@ def test_is_session_expired(project_root):
 def test_check_timeout(project_root):
     """Test check_timeout function."""
     sid = "sess-timeout"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     
     now = datetime.now(timezone.utc)
@@ -117,8 +142,8 @@ def test_check_timeout(project_root):
 def test_handle_timeout(project_root):
     """Test handle_timeout moves session to recovery."""
     sid = "sess-handle-timeout"
-    store._ensure_session_dirs()
-    sess_dir = store._session_dir("active", sid)
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
     sess_dir.mkdir(parents=True, exist_ok=True)
     (sess_dir / "session.json").write_text('{"state": "active"}')
     

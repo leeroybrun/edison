@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Mark task as delegated"
 
@@ -29,99 +29,75 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--session",
         help="Session ID for context",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """Mark task as delegated - delegates to core library."""
-    from edison.core import task
-    from edison.core.session import store as session_store
+    """Mark task as delegated - delegates to core library using entity-based API."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.task import TaskRepository, normalize_record_id
+    from edison.core.session import validate_session_id
 
     try:
+        # Resolve project root
+        project_root = get_repo_root(args)
+
         # Normalize the task ID
-        task_id = task.normalize_record_id("task", args.task_id)
+        task_id = normalize_record_id("task", args.task_id)
 
         # Normalize session ID if provided
         session_id = None
         if args.session:
-            session_id = session_store.validate_session_id(args.session)
+            session_id = validate_session_id(args.session)
 
-        # Find the task
-        task_path = task.find_record(task_id, "task")
-        metadata = task.read_metadata(task_path, "task")
+        # Get the task using repository
+        task_repo = TaskRepository(project_root=project_root)
+        task_entity = task_repo.get(task_id)
+        if not task_entity:
+            raise ValueError(f"Task not found: {task_id}")
 
-        # Update metadata to mark as delegated
-        # This requires updating the task markdown frontmatter
-        # For now, we'll use the update_line function to add delegation metadata
-        from edison.core.task import update_line, OWNER_PREFIX_TASK
-
-        # Add delegation metadata after owner line
-        delegation_line = f"delegated_to: {args.delegated_to}"
-        if session_id:
-            delegation_line += f"\ndelegated_in_session: {session_id}"
-
-        # Read current content
-        with open(task_path, 'r') as f:
-            content = f.read()
-
-        # Check if already delegated
-        if "delegated_to:" in content:
-            if args.json:
-                print(json.dumps({
-                    "status": "already_delegated",
-                    "task_id": task_id,
-                    "message": "Task already marked as delegated",
-                }, indent=2))
-            else:
-                print(f"Task {task_id} is already marked as delegated")
+        # Check if already delegated (via metadata or entity field)
+        if hasattr(task_entity, "delegated_to") and task_entity.delegated_to:
+            formatter.json_output({
+                "status": "already_delegated",
+                "task_id": task_id,
+                "message": "Task already marked as delegated",
+            }) if formatter.json_mode else formatter.text(
+                f"Task {task_id} is already marked as delegated"
+            )
             return 1
 
-        # Insert delegation metadata
-        lines = content.split('\n')
-        new_lines = []
-        inserted = False
-        for line in lines:
-            new_lines.append(line)
-            # Insert after Primary Model line or at beginning
-            if not inserted and ("**Primary Model:**" in line or line.startswith(OWNER_PREFIX_TASK)):
-                new_lines.append(f"  - **Delegated To:** {args.delegated_to}")
-                if session_id:
-                    new_lines.append(f"  - **Delegated In Session:** {session_id}")
-                inserted = True
-
-        # Write back
-        with open(task_path, 'w') as f:
-            f.write('\n'.join(new_lines))
-
-        if args.json:
-            print(json.dumps({
-                "delegated": True,
-                "taskId": task_id,
-                "delegatedTo": args.delegated_to,
-                "sessionId": session_id,
-            }, indent=2))
-        else:
-            print(f"Marked task {task_id} as delegated to {args.delegated_to}")
+        # Update task entity with delegation info
+        # Store delegation info in metadata.extra if available
+        if task_entity.metadata and hasattr(task_entity.metadata, "extra"):
+            if task_entity.metadata.extra is None:
+                task_entity.metadata.extra = {}
+            task_entity.metadata.extra["delegated_to"] = args.delegated_to
             if session_id:
-                print(f"Session: {session_id}")
+                task_entity.metadata.extra["delegated_in_session"] = session_id
+
+        # Save updated task
+        task_repo.save(task_entity)
+
+        result_text = f"Marked task {task_id} as delegated to {args.delegated_to}"
+        if session_id:
+            result_text += f"\nSession: {session_id}"
+
+        formatter.json_output({
+            "delegated": True,
+            "taskId": task_id,
+            "delegatedTo": args.delegated_to,
+            "sessionId": session_id,
+        }) if formatter.json_mode else formatter.text(result_text)
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, file=sys.stderr, indent=2))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="delegation_error")
         return 1
+
 
 if __name__ == "__main__":
     import argparse

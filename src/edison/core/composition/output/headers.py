@@ -59,7 +59,7 @@ def build_generated_header(
 
     replacements = {
         "{{version}}": version,
-        "{{template_name}}": template_name,
+        "{{template}}": template_name,
         "{{timestamp}}": timestamp,
     }
     project_dir = cfg_mgr.project_config_dir.parent

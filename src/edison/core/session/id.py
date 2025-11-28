@@ -155,15 +155,8 @@ def detect_session_id(
     return None
 
 
-# Aliases for backward compatibility
-sanitize_session_id = validate_session_id
-normalize_session_id = validate_session_id
-
-
 __all__ = [
     "SessionIdError",
     "validate_session_id",
-    "sanitize_session_id",
-    "normalize_session_id",
     "detect_session_id",
 ]

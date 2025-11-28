@@ -7,9 +7,10 @@ SUMMARY: Compose IDE settings files from configuration
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 
 SUMMARY = "Compose IDE settings files from configuration"
 
@@ -31,31 +32,20 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         type=str,
         help="Output directory for composed settings",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without writing files",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_dry_run_flag(parser)
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Compose IDE settings - delegates to composition engine."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.composition.ide.settings import SettingsComposer
-    from edison.core.utils.paths import resolve_project_root
     from edison.core.config import ConfigManager
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
         config_mgr = ConfigManager(repo_root=repo_root)
         config = config_mgr.load_config()
 
@@ -63,9 +53,9 @@ def main(args: argparse.Namespace) -> int:
 
         if args.dry_run:
             if args.json:
-                print(json.dumps({"status": "dry-run", "repo_root": str(repo_root)}))
+                formatter.json_output({"status": "dry-run", "repo_root": str(repo_root)})
             else:
-                print(f"[dry-run] Would compose settings from {repo_root}")
+                formatter.text(f"[dry-run] Would compose settings from {repo_root}")
             return 0
 
         # Determine which settings to compose
@@ -82,22 +72,19 @@ def main(args: argparse.Namespace) -> int:
             written_files.append(str(settings_path))
 
         if args.json:
-            print(json.dumps({
+            formatter.json_output({
                 "settings": written_files,
                 "targets": targets,
-            }, indent=2))
+            })
         else:
-            print(f"Composed settings for {len(targets)} platform(s)")
+            formatter.text(f"Composed settings for {len(targets)} platform(s)")
             for path in written_files:
-                print(f"  - {path}")
+                formatter.text(f"  - {path}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="compose_settings_error")
         return 1
 
 if __name__ == "__main__":

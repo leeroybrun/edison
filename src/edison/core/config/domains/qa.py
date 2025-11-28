@@ -42,6 +42,31 @@ class QAConfig(BaseDomainConfig):
         """Return the ``validation`` section from configuration."""
         return self.validation_config
 
+    def get_required_evidence_files(self) -> list[str]:
+        """Return the list of required evidence files from configuration.
+
+        Returns:
+            List of required evidence filenames. Returns default list if not configured.
+
+        Default files:
+            - command-type-check.txt
+            - command-lint.txt
+            - command-test.txt
+            - command-build.txt
+        """
+        default_files = [
+            "command-type-check.txt",
+            "command-lint.txt",
+            "command-test.txt",
+            "command-build.txt",
+        ]
+        files = self.validation_config.get("requiredEvidenceFiles")
+        if files is None:
+            return default_files
+        if not isinstance(files, list):
+            return default_files
+        return files
+
     def get_max_concurrent_validators(self) -> int:
         """Return the global validator concurrency cap from configuration."""
         orchestration = self._config.get("orchestration", {}) or {}

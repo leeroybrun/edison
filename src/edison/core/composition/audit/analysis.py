@@ -58,9 +58,16 @@ def duplication_matrix(
     recs = list(records)
 
     if k is None or min_similarity is None:
+        import os
         from ...config import ConfigManager
 
-        cfg = ConfigManager().load_config(validate=False)
+        # Respect AGENTS_PROJECT_ROOT for test isolation
+        repo_root = None
+        agents_root = os.environ.get("AGENTS_PROJECT_ROOT")
+        if agents_root:
+            repo_root = Path(agents_root)
+
+        cfg = ConfigManager(repo_root=repo_root).load_config(validate=False)
         dry_config = cfg.get("composition", {}).get("dryDetection", {})
 
         if k is None:

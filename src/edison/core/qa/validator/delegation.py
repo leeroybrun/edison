@@ -3,7 +3,7 @@ from __future__ import annotations
 import fnmatch
 from typing import Any, Dict, List, Optional, Tuple
 
-from ... import task  # type: ignore
+from edison.core.task import TaskRepository
 from edison.core.config.domains import qa as qa_config
 from .roster import _primary_files_from_doc, _task_type_from_doc
 
@@ -21,7 +21,8 @@ def simple_delegation_hint(
         return None
 
     try:
-        task_path = task.find_record(task_id, "task")
+        task_repo = TaskRepository()
+        task_path = task_repo.get_path(task_id)
         text = task_path.read_text(errors="ignore")
     except FileNotFoundError:
         return None
@@ -106,7 +107,8 @@ def enhance_delegation_hint(
     cfg = delegation_cfg if delegation_cfg is not None else qa_config.load_delegation_config()
 
     try:
-        task_path = task.find_record(task_id, "task")
+        task_repo = TaskRepository()
+        task_path = task_repo.get_path(task_id)
         text = task_path.read_text(errors="ignore")
     except Exception:
         return basic_hint

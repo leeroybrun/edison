@@ -7,9 +7,10 @@ SUMMARY: Show current configuration
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
 
 SUMMARY = "Show current configuration"
 
@@ -27,25 +28,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default="table",
         help="Output format (default: table)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON (alias for --format=json)",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Show configuration - delegates to ConfigManager."""
-    from edison.core.config import ConfigManager
-    from edison.core.utils.paths import resolve_project_root
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
+    from edison.core.config import ConfigManager
+    
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
         config_manager = ConfigManager(repo_root)
 
         config_data = config_manager.get_all()
@@ -54,41 +48,38 @@ def main(args: argparse.Namespace) -> int:
         if args.key:
             value = config_manager.get(args.key)
             if args.json:
-                print(json.dumps({args.key: value}, indent=2))
+                formatter.json_output({args.key: value})
             else:
-                print(f"{args.key}: {value}")
+                formatter.text(f"{args.key}: {value}")
             return 0
 
         # Handle full config display
         output_format = "json" if args.json else args.format
 
         if output_format == "json":
-            print(json.dumps(config_data, indent=2))
+            formatter.json_output(config_data)
         elif output_format == "yaml":
             try:
                 import yaml
-                print(yaml.dump(config_data, default_flow_style=False))
+                formatter.text(yaml.dump(config_data, default_flow_style=False))
             except ImportError:
-                print("PyYAML not installed, falling back to JSON")
-                print(json.dumps(config_data, indent=2))
+                formatter.text("PyYAML not installed, falling back to JSON")
+                formatter.json_output(config_data)
         else:  # table format
-            print("Configuration:")
-            print("-" * 60)
+            formatter.text("Configuration:")
+            formatter.text("-" * 60)
             for key, value in config_data.items():
                 if isinstance(value, dict):
-                    print(f"{key}:")
+                    formatter.text(f"{key}:")
                     for sub_key, sub_value in value.items():
-                        print(f"  {sub_key}: {sub_value}")
+                        formatter.text(f"  {sub_key}: {sub_value}")
                 else:
-                    print(f"{key}: {value}")
+                    formatter.text(f"{key}: {value}")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="config_show_error")
         return 1
 
 if __name__ == "__main__":

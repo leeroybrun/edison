@@ -63,7 +63,7 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
 
 def test_questionnaire_defaults_pick_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    from edison.core.setup.questionnaire import SetupQuestionnaire
+    from edison.cli.setup.questionnaire import SetupQuestionnaire
 
     q = SetupQuestionnaire(repo_root=repo, edison_core=Path(__file__).resolve().parents[2])
     ctx = q._context_with_defaults({})
@@ -81,10 +81,10 @@ def test_resolver_project_path_uses_management_dir(mgmt_repo: Tuple[Path, Path])
 
 def test_qa_store_root_uses_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.qa.store as store
+    from edison.core.utils.paths.management import get_management_paths
 
-    importlib.reload(store)
-    assert store.qa_root(repo) == mgmt / "qa"
+    mgmt_paths = get_management_paths(repo)
+    assert mgmt_paths.get_qa_root() == mgmt / "qa"
 
 
 @pytest.mark.skip(reason="Legacy _audit_log function removed during Wave 7 module cleanup")
@@ -95,15 +95,13 @@ def test_sessionlib_audit_log_writes_under_management_logs(mgmt_repo: Tuple[Path
     pass
 
 
+@pytest.mark.skip(reason="record_tdd_evidence removed - legacy io.py deleted in cleanup")
 def test_task_io_records_evidence_in_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.task.paths as task_paths
-    import edison.core.task.io as task_io
-
-    importlib.reload(task_paths)
-    importlib.reload(task_io)
-    path = task_io.record_tdd_evidence("42", "red", note="failing first")
-    assert str(path).startswith(str((mgmt / "qa" / "validation-evidence" / "tasks").resolve()))
+    # This test validated that record_tdd_evidence wrote to the correct management dir.
+    # The function was removed as part of legacy task.io cleanup.
+    # Evidence recording is now handled by edison.core.qa.evidence.service
+    pass
 
 
 def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> None:
@@ -113,7 +111,7 @@ def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> N
     task_file.write_text("# Task\n\n## Primary Files / Areas\n- src/app.py\n", encoding="utf-8")
 
     import edison.core.task.paths as task_paths
-    import edison.core.task.context7 as ctx7
+    import edison.core.qa.context7 as ctx7
 
     importlib.reload(task_paths)
     importlib.reload(ctx7)
@@ -121,21 +119,27 @@ def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> N
     assert "src/app.py" in candidates
 
 
-def test_evidence_manager_base_dir_under_management_root(mgmt_repo: Tuple[Path, Path]) -> None:
+def test_evidence_service_root_under_management_root(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.qa.evidence as evidence
+    import edison.core.utils.paths.management as mgmt_pkg
+    import edison.core.qa.evidence.service as evidence_service
 
-    importlib.reload(evidence)
-    mgr = evidence.EvidenceManager("task-9")
-    assert str(mgr.base_dir).startswith(str(mgmt / "qa" / "validation-evidence"))
+    # Reset singleton to pick up new config
+    mgmt_pkg._paths_instance = None
+    
+    importlib.reload(evidence_service)
+    
+    svc = evidence_service.EvidenceService("task-9", project_root=repo)
+    assert str(svc.get_evidence_root()).startswith(str(mgmt / "qa" / "validation-evidence"))
 
 
 def test_session_validation_transaction_stages_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.session.store as session_store
     import edison.core.session.transaction as session_tx
+    import edison.core.session._config as session_config
 
-    importlib.reload(session_store)
+    # Clear the config cache to pick up new configuration
+    session_config.get_config.cache_clear()
     importlib.reload(session_tx)
     tx = session_tx.ValidationTransaction("sess-1", "task-1")
     assert str(tx.staging_root).startswith(str(mgmt))
@@ -172,10 +176,8 @@ def test_session_autostart_logs_under_management_dir(mgmt_repo: Tuple[Path, Path
 
 def test_qa_validation_transaction_staging_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.session.store as session_store
     import edison.core.qa.transaction as qa_tx
 
-    importlib.reload(session_store)
     importlib.reload(qa_tx)
     tx = qa_tx.ValidationTransaction("task-2", 1)
     tx.begin()

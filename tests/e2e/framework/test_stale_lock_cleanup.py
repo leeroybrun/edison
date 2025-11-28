@@ -18,13 +18,7 @@ from helpers.env import TestProjectDir
 
 @pytest.fixture()
 def project(tmp_path: Path) -> TestProjectDir:
-    def get_repo_root() -> Path:
-        current = Path(__file__).resolve()
-        while current != current.parent:
-            if (current / ".git").exists():
-                return current
-            current = current.parent
-        raise RuntimeError("Could not find repository root")
+    from tests.helpers.paths import get_repo_root
 
     repo_root = get_repo_root()
     return TestProjectDir(tmp_path, repo_root)

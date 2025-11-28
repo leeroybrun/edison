@@ -6,8 +6,9 @@ SUMMARY: Track implementation/validation work with heartbeats
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Track implementation/validation work with heartbeats"
 
@@ -28,31 +29,32 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     start_parser.add_argument("--model", help="Model name for validation")
     start_parser.add_argument("--validator", help="Validator name")
     start_parser.add_argument("--round", type=int, help="Validation round number")
-    start_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    start_parser.add_argument("--repo-root", type=str, help="Override repository root path")
+    add_json_flag(start_parser)
+    add_repo_root_flag(start_parser)
 
     # heartbeat subcommand
     heartbeat_parser = subparsers.add_parser("heartbeat", help="Send heartbeat")
     heartbeat_parser.add_argument("--task", required=True, help="Task ID")
-    heartbeat_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    heartbeat_parser.add_argument("--repo-root", type=str, help="Override repository root path")
+    add_json_flag(heartbeat_parser)
+    add_repo_root_flag(heartbeat_parser)
 
     # complete subcommand
     complete_parser = subparsers.add_parser("complete", help="Mark work as complete")
     complete_parser.add_argument("--task", required=True, help="Task ID")
-    complete_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    complete_parser.add_argument("--repo-root", type=str, help="Override repository root path")
+    add_json_flag(complete_parser)
+    add_repo_root_flag(complete_parser)
 
     # active subcommand
     active_parser = subparsers.add_parser("active", help="List active tracking sessions")
-    active_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    active_parser.add_argument("--repo-root", type=str, help="Override repository root path")
+    add_json_flag(active_parser)
+    add_repo_root_flag(active_parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Track session work - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.qa.scoring import track_validation_score
-    from edison.core.session.store import load_session, save_session
     from edison.core.utils.time import utc_timestamp
 
     try:
@@ -72,10 +74,10 @@ def main(args: argparse.Namespace) -> int:
             if args.round:
                 result["round"] = args.round
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print(f"Started tracking {args.type} for task {args.task}")
+                formatter.text(f"Started tracking {args.type} for task {args.task}")
 
         elif args.subcommand == "heartbeat":
             # Send heartbeat
@@ -85,10 +87,10 @@ def main(args: argparse.Namespace) -> int:
                 "status": "active"
             }
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print(f"Heartbeat sent for task {args.task}")
+                formatter.text(f"Heartbeat sent for task {args.task}")
 
         elif args.subcommand == "complete":
             # Mark work as complete
@@ -98,10 +100,10 @@ def main(args: argparse.Namespace) -> int:
                 "status": "completed"
             }
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print(f"Marked work complete for task {args.task}")
+                formatter.text(f"Marked work complete for task {args.task}")
 
         elif args.subcommand == "active":
             # List active tracking sessions
@@ -110,18 +112,15 @@ def main(args: argparse.Namespace) -> int:
                 "queried_at": utc_timestamp()
             }
 
-            if args.json:
-                print(json.dumps(result, indent=2))
+            if formatter.json_mode:
+                formatter.json_output(result)
             else:
-                print("No active tracking sessions found")
+                formatter.text("No active tracking sessions found")
 
         return 0
 
     except Exception as e:
-        if getattr(args, "json", False):
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

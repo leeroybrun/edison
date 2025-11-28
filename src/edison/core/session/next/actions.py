@@ -12,20 +12,20 @@ from edison.core.qa.evidence import (
     read_validator_jsons,
     load_impl_followups,
     load_bundle_followups,
-    get_evidence_dir,
-    get_latest_round,
-    get_implementation_report_path,
+    EvidenceService,
 )
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.utils.io import read_json as io_read_json
-from edison.core import task
+from edison.core.task import TaskRepository, safe_relative
+from edison.core.qa import QARepository
 
 
 def infer_task_status(task_id: str) -> str:
     """Infer task status from filesystem location."""
     try:
-        p = task.find_record(task_id, "task")
-        return task.infer_status_from_path(p, "task") or "unknown"
+        task_repo = TaskRepository()
+        p = task_repo.get_path(task_id)
+        return p.parent.name or "unknown"
     except FileNotFoundError:
         return "missing"
 
@@ -33,8 +33,9 @@ def infer_task_status(task_id: str) -> str:
 def infer_qa_status(task_id: str) -> str:
     """Infer QA status from filesystem location."""
     try:
-        p = task.find_record(task_id, "qa")
-        return task.infer_status_from_path(p, "qa") or "missing"
+        qa_repo = QARepository()
+        p = qa_repo.get_path(task_id)
+        return p.parent.name or "missing"
     except FileNotFoundError:
         return "missing"
 
@@ -133,12 +134,13 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         # Implementation Report JSON required for ALL tasks
         try:
-            ev_root = get_evidence_dir(task_id)
-            latest_round = get_latest_round(task_id)
+            ev_svc = EvidenceService(task_id)
+            latest_round = ev_svc.get_current_round()
             if latest_round is not None:
-                impl_report = get_implementation_report_path(task_id, latest_round)
-                if not impl_report.exists():
-                    rel_path = task.safe_relative(impl_report)
+                impl_data = ev_svc.read_implementation_report(latest_round)
+                if not impl_data:  # Empty dict means report doesn't exist
+                    impl_path = ev_svc.get_evidence_root() / f"round-{latest_round}" / "implementation-report.json"
+                    rel_path = safe_relative(impl_path)
                     reports_missing.append({
                         "taskId": task_id,
                         "type": "implementation",
@@ -162,7 +164,8 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
 
             def _files_for_task(tid: str) -> List[str]:
                 try:
-                    p = task.find_record(tid, "task")
+                    task_repo = TaskRepository()
+                    p = task_repo.get_path(tid)
                     txt = p.read_text(errors="ignore")
                 except FileNotFoundError:
                     return []
@@ -202,9 +205,10 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             files = _files_for_task(task_id)
             used = {pkg for pkg in pkgs for f in files if _matches(f, pkg)}
             if used:
-                ev_root = get_evidence_dir(task_id)
-                latest_round = get_latest_round(task_id)
-                latest = ev_root / f"round-{latest_round}" if latest_round is not None else None
+                ev_svc_ctx7 = EvidenceService(task_id)
+                ev_root = ev_svc_ctx7.get_evidence_root()
+                latest_round_ctx7 = ev_svc_ctx7.get_current_round()
+                latest = ev_root / f"round-{latest_round_ctx7}" if latest_round_ctx7 is not None else None
                 missing_pkgs: List[str] = []
                 for pkg in used:
                     if not latest or (

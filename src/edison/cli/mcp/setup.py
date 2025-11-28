@@ -7,13 +7,13 @@ SUMMARY: Configure and validate MCP server entries from mcp.yml
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import sys
 from pathlib import Path
 from typing import Sequence
 
 from edison.core.mcp.config import build_mcp_servers, configure_mcp_json
+from edison.cli import OutputFormatter, add_dry_run_flag
 
 SUMMARY = "Setup MCP servers defined in mcp.yml (no mocks, YAML-driven)"
 
@@ -38,11 +38,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Only validate requirements; do not attempt installation",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show resulting configuration without writing",
-    )
+    add_dry_run_flag(parser)
     parser.add_argument(
         "--config-file",
         type=str,
@@ -68,13 +64,15 @@ def _find_missing_commands(requirements: Sequence[str]) -> list[str]:
 def main(args: argparse.Namespace) -> int:
     """Configure .mcp.json and validate required binaries."""
 
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     project_root = Path(args.project_path).expanduser().resolve()
     server_ids = _normalize_servers(args.servers)
 
     try:
         target_path, servers, setup = build_mcp_servers(project_root)
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        formatter.error(exc, error_code="error")
         return 1
 
     if server_ids is not None:
@@ -82,7 +80,7 @@ def main(args: argparse.Namespace) -> int:
         setup = {sid: meta for sid, meta in setup.items() if sid in servers}
 
     if not servers:
-        print("Error: No MCP servers match selection", file=sys.stderr)
+        formatter.error("No MCP servers match selection", error_code="error")
         return 1
 
     # Validate command requirements from YAML (no hardcoded defaults)
@@ -92,9 +90,13 @@ def main(args: argparse.Namespace) -> int:
         if missing:
             msg = f"❌ Missing required commands for {server_id}: {', '.join(sorted(missing))}"
             if args.check:
-                print(msg)
+                formatter.text(msg)
             else:
-                print(msg, file=sys.stderr)
+                formatter.error(
+                    Exception(msg),
+                    message=msg,
+                    error_code="error"
+                )
 
     result = configure_mcp_json(
         project_root=project_root,
@@ -105,12 +107,12 @@ def main(args: argparse.Namespace) -> int:
     )
 
     if args.dry_run:
-        print(json.dumps(result, indent=2, sort_keys=True))
+        formatter.json_output(result)
         return 0
 
     meta = result.get("_meta", {})
     target = meta.get("path", target_path)
-    print(f"✅ Configured MCP servers at: {target}")
+    formatter.text(f"✅ Configured MCP servers at: {target}")
     return 0
 
 

@@ -1,54 +1,133 @@
-
+import os
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from edison.core.orchestrator.launcher import OrchestratorLauncher, OrchestratorConfig, SessionContext
+import yaml
 
-@pytest.fixture
-def mock_context(tmp_path):
-    ctx = MagicMock(spec=SessionContext)
-    ctx.project_root = tmp_path
-    ctx.session_id = "sess-123"
-    ctx.session = {}
+from edison.cli.orchestrator.launcher import OrchestratorLauncher
+from edison.core.config.domains import OrchestratorConfig
+from edison.core.config.cache import clear_all_caches
+from edison.core.session.context import SessionContext
+
+
+def _write_orchestrator_config(repo_root: Path, profiles: dict, default: str) -> None:
+    """Helper to write orchestrator.yaml into the isolated repo.
+
+    Writes to .edison/config/ (project config overrides), not .edison/core/config/
+    (which is for bundled defaults).
+    """
+    config_dir = repo_root / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    data = {"orchestrators": {"default": default, "profiles": profiles}}
+    (config_dir / "orchestrator.yaml").write_text(
+        yaml.safe_dump(data, sort_keys=False), encoding="utf-8"
+    )
+
+
+def _session_context(session_id: str, project_root: Path, worktree: Path) -> SessionContext:
+    """Create a SessionContext with session metadata attached."""
+    worktree.mkdir(parents=True, exist_ok=True)
+    ctx = SessionContext()
+    ctx.session_id = session_id  # type: ignore[attr-defined]
+    ctx.session_worktree = worktree  # type: ignore[attr-defined]
+    ctx.project_root = project_root  # type: ignore[attr-defined]
     return ctx
 
-@pytest.fixture
-def mock_config(tmp_path):
-    cfg = MagicMock(spec=OrchestratorConfig)
-    cfg.repo_root = tmp_path
-    
-    # Setup get_profile return value
-    cfg.get_profile.return_value = {
-        "command": "echo",
-        "args": ["hello"],
-        "cwd": "custom_cwd"
-    }
-    return cfg
 
-def test_launcher_log_path_mkdir(tmp_path, mock_context, mock_config):
-    launcher = OrchestratorLauncher(mock_config, mock_context)
+def _make_mock_bin(bin_dir: Path, name: str, content: str) -> Path:
+    """Create an executable script for testing."""
+    path = bin_dir / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def test_launcher_log_path_mkdir(tmp_path: Path, isolated_project_env: Path, monkeypatch) -> None:
+    """Test that launcher creates log directory and file when launching."""
+    bin_dir = tmp_path / "bin"
+
+    # Create a simple executable that exits immediately
+    script = "#!/bin/bash\nexit 0\n"
+    mock_bin = _make_mock_bin(bin_dir, "test-logger", script)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    # Configure orchestrator profile
+    profiles = {
+        "test-profile": {
+            "command": mock_bin.name,
+            "args": ["hello"],
+            "cwd": "custom_cwd",
+            "initial_prompt": {"enabled": False},
+        }
+    }
+    _write_orchestrator_config(tmp_path, profiles, default="test-profile")
+
+    # Clear cache to ensure fresh config load
+    clear_all_caches()
+
+    # Create launcher with real config (validate=False to avoid schema requirement)
+    config = OrchestratorConfig(repo_root=tmp_path, validate=False)
+    context = _session_context("sess-123", tmp_path, tmp_path / "wt-logtest")
+    launcher = OrchestratorLauncher(config, context)
+
+    # Set up log path in directory that doesn't exist yet
     log_path = tmp_path / "logs" / "orch.log"
-    
-    # Ensure log dir doesn't exist
+
+    # Ensure log dir doesn't exist before launch
     assert not log_path.parent.exists()
-    
-    with patch("subprocess.Popen") as mock_popen:
-        mock_popen.return_value.poll.return_value = 0
-        launcher.launch("default", log_path=log_path)
-    
+
+    # Launch process with log path
+    process = launcher.launch("test-profile", log_path=log_path)
+    process.wait(timeout=5)
+
+    # Verify that log directory and file were created
     assert log_path.parent.exists()
     assert log_path.exists()
 
-def test_launcher_cwd_mkdir(tmp_path, mock_context, mock_config):
-    launcher = OrchestratorLauncher(mock_config, mock_context)
+    # Verify log file has content
+    log_content = log_path.read_text(encoding="utf-8")
+    assert "[launch]" in log_content
+    assert "profile=test-profile" in log_content
+
+
+def test_launcher_cwd_mkdir(tmp_path: Path, isolated_project_env: Path, monkeypatch) -> None:
+    """Test that launcher creates cwd directory when specified in profile."""
+    bin_dir = tmp_path / "bin"
+
+    # Create a simple executable that exits immediately
+    script = "#!/bin/bash\nexit 0\n"
+    mock_bin = _make_mock_bin(bin_dir, "test-cwd", script)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    # Configure orchestrator profile with custom cwd
+    profiles = {
+        "test-profile": {
+            "command": mock_bin.name,
+            "args": ["hello"],
+            "cwd": "custom_cwd",  # Relative path that doesn't exist yet
+            "initial_prompt": {"enabled": False},
+        }
+    }
+    _write_orchestrator_config(tmp_path, profiles, default="test-profile")
+
+    # Clear cache to ensure fresh config load
+    clear_all_caches()
+
+    # Create launcher with real config (validate=False to avoid schema requirement)
+    config = OrchestratorConfig(repo_root=tmp_path, validate=False)
+    context = _session_context("sess-123", tmp_path, tmp_path / "wt-cwdtest")
+    launcher = OrchestratorLauncher(config, context)
+
+    # Resolve expected cwd path (relative to project_root)
     cwd_path = tmp_path / "custom_cwd"
-    
-    # Ensure cwd doesn't exist
+
+    # Ensure cwd doesn't exist before launch
     assert not cwd_path.exists()
-    
-    with patch("subprocess.Popen") as mock_popen:
-        mock_popen.return_value.poll.return_value = 0
-        launcher.launch("default")
-    
+
+    # Launch process
+    process = launcher.launch("test-profile")
+    process.wait(timeout=5)
+
+    # Verify that cwd directory was created
     assert cwd_path.exists()
     assert cwd_path.is_dir()

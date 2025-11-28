@@ -1,0 +1,75 @@
+# Test Paths Configuration
+# All path definitions for test directories, subdirectories, and file patterns
+# Used by test helpers to avoid hardcoded path strings
+
+base_directories:
+  # Legacy project structure (still in use)
+  project_root: ".project"
+  
+  # New unified structure
+  edison_root: ".edison"
+  
+  # Agents directory (legacy, aliased to .edison)
+  agents_root: ".agents"
+
+subdirectories:
+  # Under .project/
+  project:
+    tasks: "tasks"
+    qa: "qa"
+    sessions: "sessions"
+    
+  # Under .edison/ or .agents/
+  edison:
+    sessions: "sessions"
+    rules: "rules"
+    scripts: "scripts"
+    config: "config"
+    validators: "validators"
+    
+  # Under scripts/
+  scripts:
+    lib: "lib"
+    tasks: "tasks"
+    
+  # Under qa/
+  qa:
+    validation_evidence: "validation-evidence"
+
+file_patterns:
+  task:
+    filename: "{task_id}.md"
+    template: "TEMPLATE.md"
+    
+  qa:
+    filename: "{qa_id}-qa.md"
+    template: "TEMPLATE.md"
+    
+  session:
+    filename: "{session_id}.json"
+    template: "TEMPLATE.json"
+    
+  evidence:
+    directory: "{task_id}/round-{round_num}"
+    patterns:
+      - "command-*.txt"
+      - "context7-*.txt"
+      - "test-*.txt"
+      - "red-timestamp.txt"
+      - "green-timestamp.txt"
+      - "refactor-timestamp.txt"
+      - "test-commit.txt"
+      - "impl-commit.txt"
+      - "refactor-commit.txt"
+
+git:
+  worktrees_base: ".worktrees"
+  archived_worktrees: ".worktrees/_archived"
+  branch_prefix: "session/"
+
+config_files:
+  manifest: "manifest.json"
+  legacy_config: "config.yml"
+  modular_config_dir: "config"
+  validators_config: "validators/config.json"
+  session_workflow: "session-workflow.json"

@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 # Keep the repository free of Python bytecode and __pycache__ artifacts during tests.
 sys.dont_write_bytecode = True
@@ -43,6 +44,36 @@ from edison.core.utils.subprocess import run_with_timeout
 REPO_ROOT = PathResolver.resolve_project_root()
 
 
+def _load_test_states() -> dict:
+    """Load canonical state definitions from tests/config/states.yaml."""
+    states_file = Path(__file__).resolve().parent / "config" / "states.yaml"
+    if not states_file.exists():
+        # Fallback to minimal defaults if config not found
+        return {
+            "session": {
+                "unique_dirs": ["wip", "done", "validated"],
+                "directories": {
+                    "active": "wip",
+                    "wip": "wip",
+                    "done": "done",
+                    "closing": "done",
+                    "validated": "validated"
+                }
+            },
+            "task": {
+                "unique_dirs": ["todo", "wip", "done", "validated", "blocked"]
+            },
+            "qa": {
+                "unique_dirs": ["waiting", "todo", "wip", "done", "validated"]
+            },
+            "additional_paths": {
+                "qa": ["qa/validation-evidence"]
+            }
+        }
+    with open(states_file, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
 def _reset_all_global_caches() -> None:
     """Reset ALL global caches in Edison modules to ensure test isolation."""
     # Path resolver cache
@@ -68,15 +99,8 @@ def _reset_all_global_caches() -> None:
     except Exception:
         pass
 
-    # State machine caches AND SessionConfig which loads at module import
-    try:
-        import edison.core.session.state as session_state  # type: ignore
-        session_state._STATE_MACHINE = None  # type: ignore[attr-defined]
-        # Critical: SessionConfig is created at module load, must be reset
-        if hasattr(session_state, '_CONFIG'):
-            session_state._CONFIG = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    # State machine caches - session state machine now built from config on-demand
+    # No need to clear session.state cache as it's been removed
 
     # Clear ALL config caches (central cache.py)
     try:
@@ -94,7 +118,7 @@ def _reset_all_global_caches() -> None:
     
     # Session store cache
     try:
-        from edison.core.session.store import reset_session_store_cache
+        from edison.core.session._config import reset_config_cache as reset_session_store_cache
         reset_session_store_cache()
     except Exception:
         pass
@@ -135,6 +159,13 @@ def _reset_all_global_caches() -> None:
         from edison.core.utils import project_config  # type: ignore
 
         project_config.reset_project_config_cache()
+    except Exception:
+        pass
+
+    # Management paths singleton cache - CRITICAL for test isolation
+    try:
+        import edison.core.utils.paths.management as management  # type: ignore
+        management._paths_instance = None  # type: ignore[attr-defined]
     except Exception:
         pass
 
@@ -209,29 +240,63 @@ def isolated_project_env(tmp_path, monkeypatch):
     (tmp_path / ".edison" / "core" / "rules").mkdir(parents=True, exist_ok=True)
     (tmp_path / ".edison" / "core" / "guidelines").mkdir(parents=True, exist_ok=True)
 
+    # Copy START.SESSION.md for autostart tests
+    # The orchestrator.yaml config references .edison/core/guides/START.SESSION.md
+    guides_dir = tmp_path / ".edison" / "core" / "guides"
+    guides_dir.mkdir(parents=True, exist_ok=True)
+
+    # Source: bundled START_NEW_SESSION.md from edison.data.start
+    from edison.data import get_data_path
+    start_session_src = get_data_path("start", "START_NEW_SESSION.md")
+    start_session_dst = guides_dir / "START.SESSION.md"
+
+    if start_session_src.exists():
+        start_session_dst.write_text(start_session_src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        # Fallback: minimal session start template
+        start_session_dst.write_text(
+            "# Start Session\n\n"
+            "## Session Initialization\n\n"
+            "Run the session start command:\n"
+            "```bash\n"
+            "edison session start\n"
+            "```\n\n"
+            "## Begin Work\n\n"
+            "1. Claim task\n"
+            "2. Implement following TDD\n"
+            "3. Mark ready\n"
+            "4. Run validators\n"
+            "5. Complete task\n",
+            encoding="utf-8",
+        )
+
     # Create necessary project structure mirroring Edison conventions
     project_root = tmp_path / ".project"
     # We map the .agents directory to .edison for tests to verify migration
     agents_root = tmp_path / ".edison"
 
-    # Core .project layout (tasks, QA, sessions)
-    for rel in [
-        "tasks/todo",
-        "tasks/wip",
-        "tasks/done",
-        "tasks/validated",
-        "tasks/blocked",
-        "qa/waiting",
-        "qa/todo",
-        "qa/wip",
-        "qa/done",
-        "qa/validated",
-        "qa/validation-evidence",
-        "sessions/wip",
-        "sessions/done",
-        "sessions/validated",
-    ]:
-        (project_root / rel).mkdir(parents=True, exist_ok=True)
+    # Core .project layout (tasks, QA, sessions) - loaded from canonical config
+    states_config = _load_test_states()
+
+    # Create task directories
+    task_unique_dirs = states_config.get("task", {}).get("unique_dirs", [])
+    for dir_name in task_unique_dirs:
+        (project_root / "tasks" / dir_name).mkdir(parents=True, exist_ok=True)
+
+    # Create QA directories
+    qa_unique_dirs = states_config.get("qa", {}).get("unique_dirs", [])
+    for dir_name in qa_unique_dirs:
+        (project_root / "qa" / dir_name).mkdir(parents=True, exist_ok=True)
+
+    # Create additional QA paths
+    qa_additional = states_config.get("additional_paths", {}).get("qa", [])
+    for rel_path in qa_additional:
+        (project_root / rel_path).mkdir(parents=True, exist_ok=True)
+
+    # Create session directories
+    session_unique_dirs = states_config.get("session", {}).get("unique_dirs", [])
+    for dir_name in session_unique_dirs:
+        (project_root / "sessions" / dir_name).mkdir(parents=True, exist_ok=True)
 
     # Core .agents layout (sessions, scripts, validators, config overlays)
     for rel in [
@@ -289,11 +354,11 @@ def isolated_project_env(tmp_path, monkeypatch):
                         "sessionId": "_placeholder_",
                         "owner": "_placeholder_",
                         "mode": "start",
-                        "status": "wip",
+                        "status": states_config.get("session", {}).get("states", {}).get("wip", "wip"),
                         "createdAt": "_placeholder_",
                         "lastActive": "_placeholder_",
                     },
-                    "state": "active",
+                    "state": states_config.get("session", {}).get("states", {}).get("active", "active"),
                     "tasks": {},
                     "qa": {},
                     "git": {
@@ -322,16 +387,23 @@ def isolated_project_env(tmp_path, monkeypatch):
             workflow_dst.write_text(candidate.read_text(encoding="utf-8"), encoding="utf-8")
             break
     else:
+        # Build workflow from canonical state config
+        session_dirs = states_config.get("session", {}).get("directories", {})
+        workflow_states = []
+        workflow_directories = {}
+
+        # Build state list and directory mappings from canonical config
+        for state_name, dir_name in session_dirs.items():
+            if state_name not in workflow_states:
+                workflow_states.append(state_name)
+            workflow_directories[state_name] = f".project/sessions/{dir_name}"
+
         workflow_dst.write_text(
             json.dumps(
                 {
                     "session": {
-                        "states": ["active", "closing", "validated"],
-                        "directories": {
-                            "active": ".project/sessions/wip",
-                            "closing": ".project/sessions/done",
-                            "validated": ".project/sessions/validated",
-                        },
+                        "states": workflow_states,
+                        "directories": workflow_directories,
                         "transitions": {},
                     }
                 },
@@ -400,3 +472,60 @@ def isolated_project_env(tmp_path, monkeypatch):
         pass
 
     # Cleanup is automatic (tmp_path)
+
+
+# -----------------------------------------------------------------------------
+# Consolidated fixtures (moved from tests/task/, tests/qa/, tests/e2e/)
+# -----------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def repo_root() -> Path:
+    """Get repository root path for tests.
+
+    Scope: session (immutable value, no per-test isolation needed)
+    """
+    return REPO_ROOT
+
+
+@pytest.fixture
+def test_project_dir(tmp_path: Path, repo_root: Path):
+    """Create isolated .project directory for testing.
+
+    This fixture uses TestProjectDir helper for managing test project structure.
+    """
+    from helpers.env import TestProjectDir
+    return TestProjectDir(tmp_path, repo_root)
+
+
+@pytest.fixture
+def test_git_repo(tmp_path: Path):
+    """Create isolated git repository for testing.
+
+    Uses TestGitRepo helper for worktree-capable git operations.
+    """
+    from helpers.env import TestGitRepo
+    return TestGitRepo(tmp_path)
+
+
+@pytest.fixture
+def combined_env(tmp_path: Path, repo_root: Path):
+    """Combined fixture with both TestProjectDir and TestGitRepo.
+
+    Useful for tests that need both project structure and git operations.
+    """
+    from helpers.env import TestProjectDir, TestGitRepo
+
+    git_root = tmp_path / "git"
+    proj_root = tmp_path / "proj"
+    git_root.mkdir(parents=True, exist_ok=True)
+    proj_root.mkdir(parents=True, exist_ok=True)
+
+    git_repo = TestGitRepo(git_root)
+    project_dir = TestProjectDir(proj_root, repo_root)
+    return project_dir, git_repo
+
+
+@pytest.fixture
+def project_env(isolated_project_env):
+    """Alias for isolated_project_env for backward compatibility."""
+    return isolated_project_env

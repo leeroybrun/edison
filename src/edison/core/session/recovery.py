@@ -9,20 +9,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from edison.core.utils.paths import PathResolver
-from .. import task
-from edison.core.utils.io import ensure_directory
+from edison.core.config.domains import TaskConfig
+from edison.core.task.paths import get_task_dirs, get_qa_dirs
+from edison.core.utils.io import ensure_directory, read_json, write_json_atomic, is_locked, safe_move_file
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
-from .store import (
-    load_session,
-    save_session,
-    _move_session_json_to,
-    _list_active_sessions,
-    _session_json_path,
-    _sessions_root,
-    validate_session_id,
-    _read_json,
-    _write_json,
-)
+from .id import validate_session_id
+from .repository import SessionRepository
 from .transaction import begin_tx, finalize_tx, abort_tx
 from ._config import get_config
 
@@ -33,10 +25,27 @@ def _get_repo_dir() -> Path:
     """Get the repository directory lazily."""
     return PathResolver.resolve_project_root()
 
+def _get_sessions_root() -> Path:
+    """Get the sessions root directory."""
+    cfg = get_config()
+    root_rel = cfg.get_session_root_path()
+    return (PathResolver.resolve_project_root() / root_rel).resolve()
+
 def _session_dir_map() -> Dict[str, Path]:
-    base = _sessions_root()
+    """Get mapping of session states to their directory paths."""
+    base = _get_sessions_root()
     states = get_config().get_session_states()
     return {state: (base / dirname).resolve() for state, dirname in states.items()}
+
+def _list_active_sessions() -> List[str]:
+    """List all active session IDs."""
+    repo = SessionRepository()
+    sessions = repo.list_by_state("active")
+    return [s.id for s in sessions]
+
+def _session_json_path(sess_dir: Path) -> Path:
+    """Get path to session.json within a session directory."""
+    return sess_dir / "session.json"
 
 def _parse_iso_utc(ts: str) -> Optional[datetime]:
     """Parse 'YYYY-MM-DDTHH:MM:SSZ' or with '+00:00' into aware UTC datetime."""
@@ -66,7 +75,11 @@ def _effective_activity_time(session: dict) -> Optional[datetime]:
 def is_session_expired(session_id: str) -> bool:
     """Return True when a session exceeded inactivity timeout."""
     try:
-        sess = load_session(session_id)
+        repo = SessionRepository()
+        session_entity = repo.get(session_id)
+        if not session_entity:
+            return True
+        sess = session_entity.to_dict()
     except Exception:
         return True
     ref = _effective_activity_time(sess)
@@ -89,13 +102,19 @@ def is_session_expired(session_id: str) -> bool:
 def append_session_log(session_id: str, message: str) -> None:
     """Append a message to the session activity log."""
     try:
-        sess = load_session(session_id)
+        repo = SessionRepository()
+        session_entity = repo.get(session_id)
+        if not session_entity:
+            return
+        sess = session_entity.to_dict()
         sess.setdefault("activityLog", [])
         sess["activityLog"].insert(0, {
             "timestamp": io_utc_timestamp(),
             "message": message
         })
-        save_session(session_id, sess)
+        from .models import Session
+        updated_entity = Session.from_dict(sess)
+        repo.save(updated_entity)
     except Exception:
         pass
 
@@ -113,10 +132,11 @@ def restore_records_to_global_transactional(session_id: str) -> int:
         raise SessionNotFoundError(f"session directory not found for {sid}", context={"sessionId": sid})
 
     def _state_dirs_for(record_type: str, base: Path) -> List[Path]:
+        config = TaskConfig()
         if record_type == "task":
-            allowed = task.TYPE_INFO["task"]["allowed_statuses"] or ["todo", "wip", "blocked", "done", "validated"]
+            allowed = config.task_states()
         else:
-            allowed = task.TYPE_INFO["qa"]["allowed_statuses"] or ["waiting", "todo", "wip", "done", "validated"]
+            allowed = config.qa_states()
         return [(base / state).resolve() for state in allowed]
 
     records: List[Dict[str, Any]] = []
@@ -129,11 +149,11 @@ def restore_records_to_global_transactional(session_id: str) -> int:
             if not state_dir.exists():
                 continue
             for path in sorted(state_dir.glob("*.md")):
-                record_id = task.normalize_record_id("task" if rtype == "task" else "qa", path.name)
+                record_id = path.stem  # Use filename stem as record_id
                 if rtype == "task":
-                    dest_base = task.TASK_DIRS.get(state_dir.name)
+                    dest_base = get_task_dirs().get(state_dir.name)
                 else:
-                    dest_base = task.QA_DIRS.get(state_dir.name)
+                    dest_base = get_qa_dirs().get(state_dir.name)
                 if dest_base is None:
                     continue
                 dest = (dest_base / path.name).resolve()
@@ -162,10 +182,10 @@ def restore_records_to_global_transactional(session_id: str) -> int:
             dest: Path = rec["dest"]
             status: str = rec["status"]
 
-            if task.is_locked(dest):
+            if is_locked(dest):
                 raise RuntimeError(f"Destination locked for restore: {dest}")
 
-            new_path = task.safe_move_file(src, dest)
+            new_path = safe_move_file(src, dest)
             moved.append({"type": rec["type"], "src": src, "dest": new_path, "status": status})
 
         finalize_tx(sid, tx_id)
@@ -176,7 +196,7 @@ def restore_records_to_global_transactional(session_id: str) -> int:
                 # move file back to its original session-scoped path
                 ensure_directory(rec["dest"].parent)
                 ensure_directory(rec["src"].parent)
-                moved_back = task.safe_move_file(rec["dest"], rec["src"])
+                moved_back = safe_move_file(rec["dest"], rec["src"])
                 logger.warning("Rollback restored %s to %s", rec["dest"], moved_back)
             except Exception as e:
                 logger.error("Rollback failed for %s: %s", rec["dest"], e)
@@ -199,15 +219,21 @@ def cleanup_expired_sessions() -> List[str]:
                 restore_records_to_global_transactional(sid)
             except Exception as e:
                 logger.error("Restore failed for %s: %s", sid, e)
-            sess = load_session(sid)
+            repo = SessionRepository()
+            session_entity = repo.get(sid)
+            if not session_entity:
+                continue
+            sess = session_entity.to_dict()
             sess["state"] = "closing"
             sess_meta = sess.get("meta", {})
             sess_meta["expiredAt"] = io_utc_timestamp()
             sess_meta.setdefault("lastActive", io_utc_timestamp())
             sess["meta"] = sess_meta
             append_session_log(sid, "Session expired due to inactivity; records restored to global queues")
-            save_session(sid, sess)
-            _move_session_json_to("closing", sid)
+            from .models import Session
+            updated_entity = Session.from_dict(sess)
+            repo.save(updated_entity)
+            # Note: save moves the session directory to the new state
             cleaned.append(sid)
         except SystemExit:
             raise
@@ -219,17 +245,17 @@ def check_timeout(sess_dir: Path, threshold_minutes: int = 60) -> bool:
     p = _session_json_path(sess_dir)
     if not p.exists():
         raise ValueError('missing session.json')
-    data = _read_json(p)
-    ts = data.get('last_active_at') # Note: original code used last_active_at, but meta uses lastActive. 
+    data = read_json(p)
+    ts = data.get('last_active_at') # Note: original code used last_active_at, but meta uses lastActive.
     # I should check if sessionlib uses both.
     # Line 2559: ts = data.get('last_active_at')
     if not ts:
         # Fallback to meta.lastActive?
         ts = (data.get("meta") or {}).get("lastActive")
-    
+
     if not ts:
         raise ValueError('last_active_at missing')
-    
+
     # _parse_iso is not defined here, I'll use _parse_iso_utc
     last = _parse_iso_utc(str(ts))
     if not last:
@@ -243,23 +269,23 @@ def handle_timeout(sess_dir: Path) -> Path:
     # Move to recovery and annotate metadata
     orig = {}
     try:
-        orig = _read_json(_session_json_path(sess_dir))
+        orig = read_json(_session_json_path(sess_dir))
     except Exception:
         orig = {}
-    
-    rec_dir = _sessions_root() / 'recovery' / sess_dir.name
+
+    rec_dir = _get_sessions_root() / 'recovery' / sess_dir.name
     ensure_directory(rec_dir.parent)
     if rec_dir.exists():
         shutil.rmtree(rec_dir)
     shutil.move(str(sess_dir), str(rec_dir))
-    
+
     # Update session state
-    meta = _read_json(_session_json_path(rec_dir))
+    meta = read_json(_session_json_path(rec_dir))
     meta['state'] = 'Recovery'
-    _write_json(_session_json_path(rec_dir), meta)
-    
+    write_json_atomic(_session_json_path(rec_dir), meta)
+
     # Write recovery reason
-    _write_json(rec_dir / 'recovery.json', {
+    write_json_atomic(rec_dir / 'recovery.json', {
         'reason': 'timeout exceeded',
         'original_path': str(sess_dir),
         'captured_at': io_utc_timestamp(),

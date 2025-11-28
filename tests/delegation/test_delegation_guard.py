@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
+from edison.data import get_data_path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SESSION_CLI = REPO_ROOT / ".agents" / "scripts" / "session"
@@ -21,7 +22,8 @@ class ImplementationReportGuardTests(unittest.TestCase):
         for d in ["tasks/wip", "qa/waiting", "qa/validation-evidence", "sessions/wip"]:
             (self.temp_root / ".project" / d).mkdir(parents=True, exist_ok=True)
         # Templates
-        shutil.copyfile(REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json", self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")
+        (self.temp_root / ".agents" / "sessions").mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(get_data_path("templates", "session.template.json"), self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")
         shutil.copyfile(REPO_ROOT / ".project" / "qa" / "TEMPLATE.md", self.temp_root / ".project" / "qa" / "TEMPLATE.md")
         self.env = os.environ.copy()
         self.env.update({"project_ROOT": str(self.temp_root), "project_OWNER": "claude-pid-111"})

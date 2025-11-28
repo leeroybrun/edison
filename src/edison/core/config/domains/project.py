@@ -80,13 +80,21 @@ class ProjectConfig(BaseDomainConfig):
             return [text] if text else []
 
     def get_owner_or_user(self) -> str:
-        """Get owner, falling back to current system user.
+        """Get owner, falling back to process name then current system user.
 
         Returns:
-            Owner string or current username.
+            Owner string, process name, or current username.
         """
         if self.owner:
             return self.owner
+        # Try process-based detection before username fallback
+        try:
+            from edison.core.utils.process.inspector import find_topmost_process
+            process_name, _ = find_topmost_process()
+            if process_name:
+                return process_name
+        except Exception:
+            pass
         return getpass.getuser()
 
     def get_project_terms(self) -> List[str]:

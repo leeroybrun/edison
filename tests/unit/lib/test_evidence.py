@@ -10,17 +10,17 @@ import pytest
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-from edison.core.qa.evidence import EvidenceManager  # type: ignore  # noqa: E402
+from edison.core.qa.evidence import EvidenceService
 
 
-class TestEvidenceManagerStatics:
-    def test_get_latest_round_dir(self, isolated_project_env: Path) -> None:
-        """Static helper resolves latest evidence round and fails when missing."""
+class TestEvidenceService:
+    def test_get_current_round(self, isolated_project_env: Path) -> None:
+        """Service resolves latest evidence round or returns None."""
         task_id = "task-100"
+        svc = EvidenceService(task_id, project_root=isolated_project_env)
 
-        # No evidence yet -> FileNotFoundError
-        with pytest.raises(FileNotFoundError):
-            EvidenceManager.get_latest_round_dir(task_id)  # type: ignore[attr-defined]
+        # No evidence yet -> None
+        assert svc.get_current_round() is None
 
         # Create multiple rounds under isolated project
         evidence_base = (
@@ -33,17 +33,20 @@ class TestEvidenceManagerStatics:
         (evidence_base / "round-1").mkdir(parents=True, exist_ok=True)
         (evidence_base / "round-2").mkdir(parents=True, exist_ok=True)
 
-        latest = EvidenceManager.get_latest_round_dir(task_id)  # type: ignore[attr-defined]
-        assert latest.name == "round-2"
-        assert latest.parent == evidence_base
+        latest_num = svc.get_current_round()
+        assert latest_num == 2
+        
+        latest_dir = svc.ensure_round(latest_num)
+        assert latest_dir.name == "round-2"
+        assert latest_dir.parent == evidence_base
 
     def test_read_bundle_summary(self, isolated_project_env: Path) -> None:
-        """Static helper reads bundle-approved.json from latest round."""
+        """Service reads bundle-approved.json from latest round."""
         task_id = "task-200"
+        svc = EvidenceService(task_id, project_root=isolated_project_env)
 
-        # Missing evidence directory -> FileNotFoundError
-        with pytest.raises(FileNotFoundError):
-            EvidenceManager.read_bundle_summary(task_id)  # type: ignore[attr-defined]
+        # Missing bundle file -> returns empty dict
+        assert svc.read_bundle() == {}
 
         evidence_base = (
             isolated_project_env
@@ -59,16 +62,17 @@ class TestEvidenceManagerStatics:
         bundle_path = round_dir / "bundle-approved.json"
         bundle_path.write_text(json.dumps(payload), encoding="utf-8")
 
-        data = EvidenceManager.read_bundle_summary(task_id)  # type: ignore[attr-defined]
+        data = svc.read_bundle()
         assert data["approved"] is True
         assert data["taskId"] == task_id
 
     def test_read_implementation_report(self, isolated_project_env: Path) -> None:
-        """Static helper reads implementation-report.json from latest round."""
+        """Service reads implementation-report.json from latest round."""
         task_id = "task-300"
+        svc = EvidenceService(task_id, project_root=isolated_project_env)
 
-        with pytest.raises(FileNotFoundError):
-            EvidenceManager.read_implementation_report(task_id)  # type: ignore[attr-defined]
+        # Missing report -> returns empty dict
+        assert svc.read_implementation_report() == {}
 
         evidence_base = (
             isolated_project_env
@@ -84,7 +88,6 @@ class TestEvidenceManagerStatics:
         report_path = round_dir / "implementation-report.json"
         report_path.write_text(json.dumps(payload), encoding="utf-8")
 
-        data = EvidenceManager.read_implementation_report(task_id)  # type: ignore[attr-defined]
+        data = svc.read_implementation_report()
         assert data["implementer"] == "test-agent"
         assert data["taskId"] == task_id
-

@@ -71,20 +71,27 @@ class FileRepositoryMixin(Generic[T]):
     
     def _get_states_to_search(self) -> List[str]:
         """Get list of states to search when finding entities.
-        
-        Override in subclass for custom state lists.
-        
+
+        Subclasses should override this method to provide domain-specific states
+        from configuration. The default implementation requires override.
+
         Returns:
             List of state names
+
+        Raises:
+            NotImplementedError: If subclass doesn't override this method
         """
-        return ["todo", "wip", "done", "validated"]
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must override _get_states_to_search() "
+            "to provide domain-specific states from configuration"
+        )
     
     def _find_entity_path(self, entity_id: EntityId) -> Optional[Path]:
         """Find an entity file by searching state directories.
-        
+
         Args:
             entity_id: Entity identifier
-            
+
         Returns:
             Path to entity file if found, None otherwise
         """
@@ -93,6 +100,27 @@ class FileRepositoryMixin(Generic[T]):
             if path.exists():
                 return path
         return None
+
+    def get_path(self, entity_id: EntityId) -> Path:
+        """Get the file path for an entity.
+
+        This is the public API for finding entity paths.
+        Unlike _find_entity_path, this raises FileNotFoundError if not found.
+
+        Args:
+            entity_id: Entity identifier
+
+        Returns:
+            Path to entity file
+
+        Raises:
+            FileNotFoundError: If entity not found
+        """
+        path = self._find_entity_path(entity_id)
+        if path is None:
+            entity_type = getattr(self, "entity_type", "entity")
+            raise FileNotFoundError(f"{entity_type.title()} {entity_id} not found")
+        return path
     
     def _read_file(self, path: Path) -> Dict[str, Any]:
         """Read and parse a JSON file.
@@ -263,24 +291,29 @@ class FileLockMixin:
         exclusive: bool = True,
     ) -> Any:
         """Acquire a file lock.
-        
+
         Args:
             path: File to lock
             timeout: Lock timeout in seconds
             exclusive: If True, acquire exclusive lock
-            
+
         Returns:
             Lock handle (file object)
-            
+
         Raises:
             LockError: If lock cannot be acquired
         """
         import fcntl
         import time
-        
+        from edison.core.utils.io.locking import get_file_locking_config
+
         lock_path = path.with_suffix(f"{path.suffix}.lock")
         lock_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
+        # Get poll interval from config
+        config = get_file_locking_config()
+        poll_interval = config.get("poll_interval_seconds", 0.1)
+
         start = time.time()
         while True:
             try:
@@ -292,7 +325,7 @@ class FileLockMixin:
             except (IOError, OSError):
                 if time.time() - start > timeout:
                     raise LockError(f"Cannot acquire lock on {path} after {timeout}s")
-                time.sleep(0.1)
+                time.sleep(poll_interval)
     
     def _release_lock(self, lock_handle: Any) -> None:
         """Release a file lock.

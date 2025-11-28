@@ -6,8 +6,8 @@ import yaml
 
 import pytest
 
-from edison.core.setup.component_discovery import SetupDiscovery
-from edison.core.setup.questionnaire import SetupQuestionnaire
+from edison.cli.setup.component_discovery import SetupDiscovery
+from edison.cli.setup.questionnaire import SetupQuestionnaire
 
 
 FULL_SETUP = {

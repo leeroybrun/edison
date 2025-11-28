@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-import json
-import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Create a new task file using the project template"
 
@@ -42,7 +42,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--session",
-        dest="session_id",
         help="Session to create task in (creates in session todo queue)",
     )
     parser.add_argument(
@@ -53,21 +52,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--continuation-id",
         help="Continuation ID for downstream tools",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """Create new task - delegates to core library."""
-    from edison.core import task
+    """Create new task - delegates to TaskManager."""
+    from edison.core.task.manager import TaskManager
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         # Build task ID from components
@@ -81,45 +74,45 @@ def main(args: argparse.Namespace) -> int:
         task_type = args.task_type or "feature"
         title = f"{task_type.capitalize()}: {args.slug.replace('-', ' ')}"
 
-        # Create the task using the actual function signature
-        # Signature: create_task(task_id: str, title: str, description: str = "") -> Path
+        # Build description
         description = ""
         if args.owner:
             description += f"Owner: {args.owner}\n"
         if args.parent:
             description += f"Parent: {args.parent}\n"
-        if args.session_id:
-            description += f"Session: {args.session_id}\n"
+        if args.session:
+            description += f"Session: {args.session}\n"
         if args.continuation_id:
             description += f"Continuation ID: {args.continuation_id}\n"
 
-        result = task.create_task(
+        # Create task using TaskManager (uses TaskRepository.create_task)
+        repo_root = get_repo_root(args)
+        manager = TaskManager(project_root=repo_root)
+        task_entity = manager.create_task(
             task_id=task_id,
             title=title,
             description=description.strip(),
+            session_id=args.session,
+            owner=args.owner,
         )
 
-        if args.json:
-            print(json.dumps({
-                "status": "created",
-                "task_id": task_id,
-                "path": str(result) if result else None,
-                "title": title,
-            }, indent=2, default=str))
-        else:
-            print(str(result))
+        formatter.json_output({
+            "status": "created",
+            "task_id": task_entity.id,
+            "state": task_entity.state,
+            "title": task_entity.title,
+        }) if formatter.json_mode else formatter.text(
+            f"Created task: {task_entity.id} ({task_entity.state})"
+        )
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="create_error")
         return 1
 
+
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
     register_args(parser)
     args = parser.parse_args()

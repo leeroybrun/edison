@@ -7,12 +7,12 @@ SUMMARY: Configure .mcp.json entries for all managed MCP servers
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Sequence
 
 from edison.core.mcp.config import configure_mcp_json
+from edison.cli import OutputFormatter, add_dry_run_flag
 
 SUMMARY = "Configure .mcp.json for all MCP servers"
 
@@ -26,11 +26,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default=".",
         help="Target project path (defaults to current directory)",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show resulting configuration without writing",
-    )
+    add_dry_run_flag(parser)
     parser.add_argument(
         "--config-file",
         type=str,
@@ -54,6 +50,8 @@ def _normalize_servers(raw: Sequence[str] | None) -> list[str] | None:
 def main(args: argparse.Namespace) -> int:
     """Configure .mcp.json with Edison-managed MCP server entries."""
 
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     project_root = Path(args.project_path).expanduser().resolve()
     server_ids = _normalize_servers(args.servers)
 
@@ -66,19 +64,19 @@ def main(args: argparse.Namespace) -> int:
         )
 
         if args.dry_run:
-            print(json.dumps(result, indent=2, sort_keys=True))
+            formatter.json_output(result)
             return 0
 
         meta = result.get("_meta", {})
         target = meta.get("path", project_root / ".mcp.json")
-        print(f"✅ Configured .mcp.json at: {target}")
+        formatter.text(f"✅ Configured .mcp.json at: {target}")
         return 0
 
     except ValueError as exc:
-        print(f"Error: invalid configuration - {exc}", file=sys.stderr)
+        formatter.error(exc, message=f"invalid configuration - {exc}", error_code="error")
         return 1
     except Exception as exc:  # pragma: no cover - defensive catch-all
-        print(f"Error: {exc}", file=sys.stderr)
+        formatter.error(exc, error_code="error")
         return 1
 
 

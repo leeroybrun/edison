@@ -1,0 +1,111 @@
+# Environment Variables Configuration
+# All environment variable definitions used in tests
+# Used by test helpers to avoid hardcoded env var names
+
+# Primary environment variables
+primary:
+  agents_project_root:
+    name: AGENTS_PROJECT_ROOT
+    description: "Override for repository root path in tests"
+    type: string
+    required: false
+    test_usage: "Set to point to test repository root for CLI scripts"
+    
+  project_name:
+    name: PROJECT_NAME
+    description: "Project name used in path templates"
+    type: string
+    required: false
+    default: "project"
+    
+  debug_context7:
+    name: DEBUG_CONTEXT7
+    description: "Enable debug output for Context7 operations"
+    type: boolean
+    required: false
+    default: false
+    
+  pythonunbuffered:
+    name: PYTHONUNBUFFERED
+    description: "Force Python to use unbuffered output"
+    type: boolean
+    required: false
+    default: true
+    test_value: "1"
+
+# Edison-specific environment variables
+edison:
+  assume_yes:
+    name: EDISON_ASSUME_YES
+    description: "Skip all confirmation prompts"
+    type: boolean
+    required: false
+    
+  database_url:
+    name: DATABASE_URL
+    description: "Database connection URL (also checked as EDISON_database__url)"
+    type: string
+    required: false
+    
+  config_overrides:
+    prefix: EDISON_
+    description: "Override config values using EDISON_section__key format"
+    examples:
+      - EDISON_project__name
+      - EDISON_database__url
+      - EDISON_worktrees__enabled
+
+# Git-specific environment variables
+git:
+  author_name:
+    name: GIT_AUTHOR_NAME
+    description: "Git author name for test commits"
+    type: string
+    test_value: "Test User"
+    
+  author_email:
+    name: GIT_AUTHOR_EMAIL
+    description: "Git author email for test commits"
+    type: string
+    test_value: "test@example.com"
+    
+  committer_name:
+    name: GIT_COMMITTER_NAME
+    description: "Git committer name for test commits"
+    type: string
+    test_value: "Test User"
+    
+  committer_email:
+    name: GIT_COMMITTER_EMAIL
+    description: "Git committer email for test commits"
+    type: string
+    test_value: "test@example.com"
+
+# Test-specific environment variables
+test:
+  pytest_current_test:
+    name: PYTEST_CURRENT_TEST
+    description: "Current test being run (set by pytest)"
+    type: string
+    
+  ci:
+    name: CI
+    description: "Indicates running in CI environment"
+    type: boolean
+    required: false
+
+# Environment variable fallback chains
+fallbacks:
+  repo_root:
+    description: "Fallback chain for repository root detection"
+    chain:
+      - AGENTS_PROJECT_ROOT
+      - PROJECT_ROOT
+      - "detect from git"
+      
+  database_url:
+    description: "Fallback chain for database URL"
+    chain:
+      - DATABASE_URL
+      - EDISON_database__url
+      - "null (disabled)"

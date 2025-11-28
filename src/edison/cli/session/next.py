@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
+
 SUMMARY = "Compute recommended next actions for a session"
 
 
@@ -29,20 +31,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         choices=["tasks", "qa", "session"],
         help="Restrict planning to a specific domain",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Compute next actions - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     # Build argv for the core library's main()
     fwd_argv = [
         "session-next",
@@ -52,7 +48,7 @@ def main(args: argparse.Namespace) -> int:
         fwd_argv.extend(["--limit", str(args.limit)])
     if args.scope:
         fwd_argv.extend(["--scope", args.scope])
-    if args.json:
+    if getattr(args, "json", False):
         fwd_argv.append("--json")
     if getattr(args, "repo_root", None):
         fwd_argv.extend(["--repo-root", args.repo_root])
@@ -64,7 +60,7 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.session import next as session_next
         session_next.main()
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
     finally:
         sys.argv = original_argv

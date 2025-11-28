@@ -49,4 +49,6 @@ def test_in_session_worktree_without_path(tmp_path: Path, monkeypatch) -> None:
     (store_dir / "session.json").write_text(json.dumps(data), encoding="utf-8")
 
     with SessionContext.in_session_worktree(session_id) as sess:
-        assert sess["git"] == {}
+        # Session model provides default GitInfo with None worktreePath
+        assert sess["git"]["worktreePath"] is None
+        assert sess["git"]["baseBranch"] == "main"

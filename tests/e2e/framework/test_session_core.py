@@ -11,6 +11,39 @@ from typing import Any, Dict
 
 import pytest
 
+# Import session functions at module level for test convenience
+from edison.core.session.id import validate_session_id
+from edison.core.session.graph import save_session
+from edison.core.session.manager import get_session as load_session
+from edison.core.session.repository import SessionRepository
+from edison.core.session._config import get_config
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.io import file_lock
+
+def session_exists(session_id: str) -> bool:
+    """Check if a session exists."""
+    repo = SessionRepository()
+    return repo.exists(session_id)
+
+def get_session_json_path(session_id: str):
+    """Get path to session.json file."""
+    repo = SessionRepository()
+    return repo.get_session_json_path(session_id)
+
+def acquire_session_lock(session_id: str):
+    """Acquire session lock."""
+    repo = SessionRepository()
+    path = repo.get_session_json_path(session_id)
+    return file_lock(path)
+
+def _session_dir(state: str, session_id: str) -> Path:
+    """Get session directory."""
+    cfg = get_config()
+    root = PathResolver.resolve_project_root()
+    sessions_root = root / cfg.get_session_root_path()
+    state_map = cfg.get_session_states()
+    dirname = state_map.get(state, state)
+    return sessions_root / dirname / session_id
 
 # Make `.edison/core` importable as top-level so `from edison.core import ...` works
 _THIS_FILE = Path(__file__).resolve()
@@ -46,7 +79,7 @@ def test_session_task_linking_session_side(tmp_path: Path):
     # Import lazily to allow RED phase to fail clearly if missing
     # Import lazily to allow RED phase to fail clearly if missing
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     task_id = "t-001"
     session_id = "sess-001"
@@ -63,7 +96,7 @@ def test_session_task_linking_session_side(tmp_path: Path):
     
     sess = session_manager.get_session(session_id)
     sess["parent_task_id"] = task_id
-    session_store.save_session(session_id, sess)
+    save_session(session_id, sess)
 
     assert isinstance(session_path, Path)
 
@@ -79,7 +112,7 @@ def test_session_id_sanitization_blocks_path_traversal():
 
     Validates that sanitize_session_id rejects path traversal and separators.
     """
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     malicious_ids = [
         "../../etc/passwd",
@@ -91,16 +124,16 @@ def test_session_id_sanitization_blocks_path_traversal():
     ]
     for bad in malicious_ids:
         with pytest.raises(ValueError, match=r"path traversal|invalid|characters"):
-            session_store.sanitize_session_id(bad)
+            validate_session_id(bad)
 
 
 def test_session_id_sanitization_allows_valid():
     """S2: Valid IDs pass and map to expected path under .project/sessions."""
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     valid_ids = ["sess-001", "task_123", "SESS_ABC-123"]
     for sid in valid_ids:
-        clean = session_store.sanitize_session_id(sid)
+        clean = validate_session_id(sid)
         assert re.fullmatch(r"[A-Za-z0-9_-]+", clean)
 
 
@@ -109,7 +142,7 @@ def test_session_id_sanitization_allows_valid():
 def test_concurrent_session_updates():
     """S3: Parallel updates do not corrupt session data (requires locking)."""
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     session_manager.create_session("concurrent-test", owner="tester")
 
@@ -119,7 +152,7 @@ def test_concurrent_session_updates():
             # Or we can use a helper if available.
             # For now, let's simulate update
             # Actually, sessionlib.update_session was likely a helper.
-            # We should use session_store.save_session which handles locking?
+            # We should use save_session which handles locking?
             # No, save_session writes the file.
             # We need to acquire lock, read, update, write.
             # But wait, this test is about concurrent updates.
@@ -132,12 +165,12 @@ def test_concurrent_session_updates():
             # The original sessionlib.update_session probably handled this.
             # Let's implement a safe update here using locklib directly if needed, or just skip/remove if it's testing legacy behavior.
             # But we want to ensure the new system is safe.
-            # Let's use session_store.acquire_session_lock.
+            # Let's use acquire_session_lock.
             try:
-                with session_store.acquire_session_lock("concurrent-test"):
+                with acquire_session_lock("concurrent-test"):
                     sess = session_manager.get_session("concurrent-test")
                     sess[f"w{idx}"] = i
-                    session_store.save_session("concurrent-test", sess)
+                    save_session("concurrent-test", sess)
             except Exception:
                 pass
 
@@ -158,10 +191,10 @@ def test_file_lock_timeout(tmp_path: Path):
     from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
     from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     session_manager.create_session("lock-test", owner="tester")
-    sess_path = session_store.get_session_json_path("lock-test")
+    sess_path = get_session_json_path("lock-test")
 
     with acquire_file_lock(sess_path, timeout=2):
         def try_lock():
@@ -179,13 +212,13 @@ def test_file_lock_timeout(tmp_path: Path):
 def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
     """S4: Session recovery functionality validates and repairs corrupted session files."""
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
     from edison.core.session import recovery as session_recovery
 
     sid = "corrupt-test"
     session_manager.create_session(sid, owner="tester")
     # Overwrite with bad JSON
-    bad = session_store.get_session_json_path(sid)
+    bad = get_session_json_path(sid)
     bad.write_text("{bad json", encoding="utf-8")
 
     # Use Python module instead of CLI script
@@ -206,7 +239,7 @@ def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
 def test_session_metadata_timestamps():
     """S6: Sessions include created_at (UTC ISO8601); updates set updated_at."""
     from edison.core.session import manager as session_manager
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     session_manager.create_session("ts-test", owner="tester")
     doc = session_manager.get_session("ts-test")
@@ -216,11 +249,11 @@ def test_session_metadata_timestamps():
 
     # Update session
     doc["k"] = "v"
-    session_store.save_session("ts-test", doc)
+    save_session("ts-test", doc)
     
     doc2 = session_manager.get_session("ts-test")
     # updated_at might not be automatically set by save_session unless we do it manually or it's in save_session logic.
-    # Checking session/store.py, save_session does NOT automatically update a timestamp.
+    # Checking session/session_store_py, save_session does NOT automatically update a timestamp.
     # sessionlib.update_session did.
     # So this test expectation might fail if we rely on implicit behavior.
     # But we are testing the new modules.
@@ -240,11 +273,11 @@ def test_archive_preserves_structure(tmp_path: Path):
     """S7: archive_session() produces tar.gz preserving full session directory tree."""
     from edison.core.session import manager as session_manager
     from edison.core.session import archive as session_archive
-    from edison.core.session import store as session_store
+    # session_store import removed - using module-level functions
 
     sid = "archive-001"
     session_manager.create_session(sid, owner="tester")
-    d = session_store._session_dir("active", sid)
+    d = _session_dir("active", sid)
     nested = d / "files" / "deep" / "branch" / "leaf.txt"
     nested.parent.mkdir(parents=True, exist_ok=True)
     nested.write_text("hello", encoding="utf-8")

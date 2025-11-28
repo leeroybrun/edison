@@ -9,7 +9,7 @@ from edison.core.utils.paths import resolve_project_root
 
 from ._config import get_config
 from .id import validate_session_id
-from .store import get_session_json_path
+from .repository import SessionRepository
 
 
 def _archive_root_dir() -> Path:
@@ -29,7 +29,8 @@ def archive_session(session_id: str) -> Path:
     """
     sid = validate_session_id(session_id)
     # Archive the directory containing the session JSON, regardless of layout.
-    j = get_session_json_path(sid)
+    repo = SessionRepository()
+    j = repo.get_session_json_path(sid)
     d = j.parent
 
     archive_path = _archive_path_for_session(sid)

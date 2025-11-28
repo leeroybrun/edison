@@ -7,9 +7,10 @@ SUMMARY: Validate composition configuration and outputs
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
 
 SUMMARY = "Validate composition configuration and outputs"
 
@@ -26,26 +27,19 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Enable strict validation mode",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Validate composition - delegates to composition validator."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.composition import validate_composition
-    from edison.core.utils.paths import resolve_project_root
     from edison.core.utils.paths import get_project_config_dir
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
 
         # For now, just do basic validation that the repo structure exists
         config_dir = get_project_config_dir(repo_root, create=False)
@@ -67,28 +61,28 @@ def main(args: argparse.Namespace) -> int:
                 validation_result["issues"].append(f"Missing required directory: {dir_path}")
 
         if args.json:
-            print(json.dumps(validation_result, indent=2))
+            formatter.json_output(validation_result)
         else:
             if validation_result["valid"]:
-                print("✓ Composition validation passed")
+                formatter.text("✓ Composition validation passed")
             else:
-                print("✗ Composition validation failed")
+                formatter.text("✗ Composition validation failed")
                 for issue in validation_result.get("issues", []):
-                    severity = issue.get("severity", "error")
-                    print(f"  [{severity}] {issue['message']}")
-                    if issue.get("file"):
-                        print(f"    File: {issue['file']}")
+                    if isinstance(issue, str):
+                        formatter.text(f"  [error] {issue}")
+                    else:
+                        severity = issue.get("severity", "error")
+                        formatter.text(f"  [{severity}] {issue['message']}")
+                        if issue.get("file"):
+                            formatter.text(f"    File: {issue['file']}")
 
             if args.fix and "fixes_applied" in validation_result:
-                print(f"\nApplied {len(validation_result['fixes_applied'])} fix(es)")
+                formatter.text(f"\nApplied {len(validation_result['fixes_applied'])} fix(es)")
 
         return 0 if validation_result["valid"] else 1
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="compose_validation_error")
         return 1
 
 if __name__ == "__main__":

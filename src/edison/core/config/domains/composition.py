@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from ..base import BaseDomainConfig
-from ..manager import ConfigManager
+
+if TYPE_CHECKING:
+    from ..manager import ConfigManager
 
 
 class CompositionConfig(BaseDomainConfig):
@@ -42,6 +44,8 @@ class CompositionConfig(BaseDomainConfig):
             from edison.data import get_data_path
             composition_yaml_path = get_data_path("config") / "composition.yaml"
             if composition_yaml_path.exists():
+                # Lazy import to avoid circular dependency
+                from ..manager import ConfigManager
                 mgr = ConfigManager(self._repo_root)
                 self._cached_composition_yaml = mgr.load_yaml(composition_yaml_path)
             else:

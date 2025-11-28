@@ -156,10 +156,12 @@ def test_q4_score_tracking_and_ordering(tmp_path: Path):
     if hist_file.exists():
         hist_file.unlink()
 
+    from tests.helpers.timeouts import SHORT_SLEEP
+
     for _ in range(3):
         scores = {"functionality": 8, "reliability": 7}
         track_validation_score(session_id, "test-validator", scores, overall_score=7.5)
-        time.sleep(0.05)
+        time.sleep(SHORT_SLEEP)
 
     history = get_score_history(session_id)
     assert len(history) == 3, f"expected 3 history entries, got {len(history)}"

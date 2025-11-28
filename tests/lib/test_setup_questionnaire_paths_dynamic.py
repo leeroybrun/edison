@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from edison.core.setup.questionnaire import SetupQuestionnaire
+from edison.cli.setup.questionnaire import SetupQuestionnaire
 from edison.core.utils.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
 
 def test_questionnaire_defaults_to_edison_config_dir(tmp_path):
@@ -24,7 +24,7 @@ def test_questionnaire_defaults_to_edison_config_dir(tmp_path):
 
     # Assert - Check via the public API (render_modular_configs uses context internally)
     # We use the context module's build_context_with_defaults to verify
-    from edison.core.setup.questionnaire.context import build_context_with_defaults
+    from edison.cli.setup.questionnaire.context import build_context_with_defaults
     context = build_context_with_defaults(q, {})
 
     assert context["project_config_dir"] == DEFAULT_PROJECT_CONFIG_PRIMARY

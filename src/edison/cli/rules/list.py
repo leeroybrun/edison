@@ -7,9 +7,10 @@ SUMMARY: List all available rules
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
 
 SUMMARY = "List all available rules"
 
@@ -32,25 +33,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default="short",
         help="Output format (default: short)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """List rules - delegates to rules library."""
-    from edison.core.rules import RulesRegistry
-    from edison.core.utils.paths import resolve_project_root
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
+    from edison.core.rules import RulesRegistry
+    
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
         registry = RulesRegistry(repo_root)
 
         # Load all rules
@@ -64,51 +58,48 @@ def main(args: argparse.Namespace) -> int:
             rules = [r for r in rules if r.get("priority") == args.priority]
 
         if args.json:
-            print(json.dumps({
+            formatter.json_output({
                 "rules": rules,
                 "count": len(rules),
-            }, indent=2))
+            })
         elif args.format == "full":
             for rule in rules:
-                print(f"RULE.{rule['id'].upper()}")
-                print(f"  Contexts: {', '.join(rule.get('contexts', []))}")
-                print(f"  Priority: {rule.get('priority', 'normal')}")
+                formatter.text(f"RULE.{rule['id'].upper()}")
+                formatter.text(f"  Contexts: {', '.join(rule.get('contexts', []))}")
+                formatter.text(f"  Priority: {rule.get('priority', 'normal')}")
                 if rule.get("anchor"):
-                    print(f"  Anchor: {rule['anchor']}")
+                    formatter.text(f"  Anchor: {rule['anchor']}")
                 if rule.get("file"):
-                    print(f"  File: {rule['file']}")
+                    formatter.text(f"  File: {rule['file']}")
                 if rule.get("content"):
                     # Truncate long content
                     content = rule['content'][:200]
                     if len(rule['content']) > 200:
                         content += "..."
-                    print(f"  Content:\n    {content}")
-                print()
+                    formatter.text(f"  Content:\n    {content}")
+                formatter.text("")
         elif args.format == "markdown":
-            print("# Edison Rules")
-            print()
+            formatter.text("# Edison Rules")
+            formatter.text("")
             for rule in rules:
-                print(f"## RULE.{rule['id'].upper()}")
-                print(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
-                print(f"**Priority**: {rule.get('priority', 'normal')}")
+                formatter.text(f"## RULE.{rule['id'].upper()}")
+                formatter.text(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
+                formatter.text(f"**Priority**: {rule.get('priority', 'normal')}")
                 if rule.get("content"):
-                    print(f"\n{rule['content']}\n")
-                print("---")
-                print()
+                    formatter.text(f"\n{rule['content']}\n")
+                formatter.text("---")
+                formatter.text("")
         else:  # short format
-            print(f"Rules ({len(rules)}):")
+            formatter.text(f"Rules ({len(rules)}):")
             for rule in rules:
                 contexts = ', '.join(rule.get('contexts', []))
                 priority = rule.get('priority', 'normal')
-                print(f"  RULE.{rule['id'].upper()} [{contexts}] (priority: {priority})")
+                formatter.text(f"  RULE.{rule['id'].upper()} [{contexts}] (priority: {priority})")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

@@ -6,8 +6,9 @@ SUMMARY: Recover timed-out sessions
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Recover timed-out sessions"
 
@@ -25,20 +26,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Show what would be recovered without actually recovering",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Recover timed-out sessions - delegates to core library."""
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
     from edison.core.session.recovery import cleanup_expired_sessions
 
     try:
@@ -61,26 +56,23 @@ def main(args: argparse.Namespace) -> int:
                 "status": "completed"
             }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
             if args.dry_run:
-                print(f"Dry run: Would recover {len(result['timed_out_sessions'])} timed-out session(s)")
+                formatter.text(f"Dry run: Would recover {len(result['timed_out_sessions'])} timed-out session(s)")
             else:
                 if result["recovered_count"] > 0:
-                    print(f"✓ Recovered {result['recovered_count']} timed-out session(s)")
+                    formatter.text(f"✓ Recovered {result['recovered_count']} timed-out session(s)")
                     for session_id in result["timed_out_sessions"]:
-                        print(f"  - {session_id}")
+                        formatter.text(f"  - {session_id}")
                 else:
-                    print("No timed-out sessions found")
+                    formatter.text("No timed-out sessions found")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

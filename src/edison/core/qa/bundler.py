@@ -11,7 +11,7 @@ from edison.core.utils.io import (
     ensure_directory,
 )
 from edison.core.config.domains import qa as qa_config
-from . import evidence
+from .evidence import EvidenceService
 
 
 enforce_no_legacy_project_root("lib.qa.bundler")
@@ -32,7 +32,8 @@ def bundle_summary_filename(config: Optional[Dict[str, Any]] = None) -> str:
 
 def bundle_summary_path(task_id: str, round_num: int, *, config: Optional[Dict[str, Any]] = None) -> Path:
     filename = bundle_summary_filename(config)
-    base = evidence.get_evidence_dir(task_id)
+    ev_svc = EvidenceService(task_id)
+    base = ev_svc.get_evidence_root()
     return base / f"round-{int(round_num)}" / filename
 
 

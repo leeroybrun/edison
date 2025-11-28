@@ -6,8 +6,9 @@ SUMMARY: Clear stale locks
 from __future__ import annotations
 
 import argparse
-import json
 import sys
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
 
 SUMMARY = "Clear stale locks"
 
@@ -24,21 +25,15 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Force clear all locks",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Clear stale locks - delegates to core library."""
-    from edison.core.session.store import validate_session_id
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    from edison.core.session.id import validate_session_id
     from pathlib import Path
     from edison.core.utils.paths import PathResolver
 
@@ -68,23 +63,20 @@ def main(args: argparse.Namespace) -> int:
             "status": "completed"
         }
 
-        if args.json:
-            print(json.dumps(result, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(result)
         else:
             if cleared:
-                print(f"✓ Cleared {len(cleared)} stale lock(s)")
+                formatter.text(f"✓ Cleared {len(cleared)} stale lock(s)")
                 for lock in cleared:
-                    print(f"  - {lock}")
+                    formatter.text(f"  - {lock}")
             else:
-                print("No stale locks found")
+                formatter.text("No stale locks found")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="error")
         return 1
 
 if __name__ == "__main__":

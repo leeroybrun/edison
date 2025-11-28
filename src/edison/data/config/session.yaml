@@ -40,3 +40,5 @@ session:
       worktree_add: 30
       clone: 60
       install: 300
+      branch_check: 10
+      prune: 10

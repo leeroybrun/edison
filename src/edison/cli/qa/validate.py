@@ -7,9 +7,10 @@ SUMMARY: Run validators against a task bundle
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
+
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Run validators against a task bundle"
 
@@ -40,25 +41,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Only run blocking validators",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON",
-    )
-    parser.add_argument(
-        "--repo-root",
-        type=str,
-        help="Override repository root path",
-    )
+    add_json_flag(parser)
+    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
     """Run validators - delegates to QA library."""
     from edison.core.qa import validator
-    from edison.core.utils.paths import resolve_project_root
+
+    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        repo_root = Path(args.repo_root) if args.repo_root else resolve_project_root()
+        repo_root = get_repo_root(args)
 
         # Build validator roster
         roster = validator.build_validator_roster(
@@ -90,21 +84,18 @@ def main(args: argparse.Namespace) -> int:
             "status": "pending",
         }
 
-        if args.json:
-            print(json.dumps(results, indent=2))
+        if formatter.json_mode:
+            formatter.json_output(results)
         else:
-            print(f"Validation roster for {args.task_id}:")
-            print(f"  Always required: {len(roster.get('alwaysRequired', []))} validators")
-            print(f"  Triggered blocking: {len(roster.get('triggeredBlocking', []))} validators")
-            print(f"  Triggered optional: {len(roster.get('triggeredOptional', []))} validators")
+            formatter.text(f"Validation roster for {args.task_id}:")
+            formatter.text(f"  Always required: {len(roster.get('alwaysRequired', []))} validators")
+            formatter.text(f"  Triggered blocking: {len(roster.get('triggeredBlocking', []))} validators")
+            formatter.text(f"  Triggered optional: {len(roster.get('triggeredOptional', []))} validators")
 
         return 0
 
     except Exception as e:
-        if args.json:
-            print(json.dumps({"error": str(e)}))
-        else:
-            print(f"Error: {e}", file=sys.stderr)
+        formatter.error(e, error_code="validate_error")
         return 1
 
 if __name__ == "__main__":

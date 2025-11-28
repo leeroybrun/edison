@@ -7,26 +7,31 @@ from pathlib import Path
 
 from edison.core.session.next import compute_next
 from edison.core.session import manager as session_manager
-from edison.core.session import store as session_store
+from edison.core.session.id import validate_session_id
 from edison.core.session.context import SessionContext
-from edison.core import task  # type: ignore
+from edison.core.session import graph
+from edison.core.task import TaskRepository
+from edison.core.qa import QARepository
+from edison.core import task  # for read_metadata
 from edison.core.config import get_task_states, get_qa_states
 from edison.core.utils.io import read_json as io_read_json
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
 from edison.core.utils.cli.arguments import parse_common_args
-from edison.core.utils.cli.output import output_json, error, success 
+from edison.core.utils.cli.output import output_json, error, success
+
+
 def _latest_round_dir(task_id: str) -> Path | None:
     """Return the latest evidence round directory for ``task_id``."""
-    ev_root = qa_evidence.get_evidence_dir(task_id)
-    latest_round = qa_evidence.get_latest_round(task_id)
+    ev_svc = qa_evidence.EvidenceService(task_id)
+    latest_round = ev_svc.get_current_round()
     if latest_round is None:
         return None
-    return ev_root / f"round-{latest_round}"
+    return ev_svc.get_evidence_root() / f"round-{latest_round}"
 
 
 def verify_session_health(session_id: str) -> dict:
-    session_id = session_store.validate_session_id(session_id)
+    session_id = validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
         session = session_manager.get_session(session_id)
 
@@ -45,9 +50,11 @@ def verify_session_health(session_id: str) -> dict:
         "details": [],
     }
     # Detect manual moves: metadata status must match directory status
+    task_repo = TaskRepository()
+    qa_repo = QARepository()
     for task_id in session.get("tasks", {}):
         try:
-            p = task.find_record(task_id, "task")
+            p = task_repo.get_path(task_id)
             meta = task.read_metadata(p, "task")
             dir_status = p.parent.name
             if meta.status and meta.status != dir_status:
@@ -61,7 +68,7 @@ def verify_session_health(session_id: str) -> dict:
     for qa_id, qa in session.get("qa", {}).items():
         task_id = qa.get("taskId") if isinstance(qa, dict) else qa_id.rstrip("-qa")
         try:
-            p = task.find_record(task_id, "qa")
+            p = qa_repo.get_path(task_id)
             meta = task.read_metadata(p, "qa")
             dir_status = p.parent.name
             if meta.status and meta.status != dir_status:
@@ -74,7 +81,7 @@ def verify_session_health(session_id: str) -> dict:
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": "missing"})
     for task_id in session.get("tasks", {}):
         try:
-            p = task.find_record(task_id, "task")
+            p = task_repo.get_path(task_id)
             status = p.parent.name
         except FileNotFoundError:
             msg = f"Task {task_id} missing on disk"
@@ -88,7 +95,7 @@ def verify_session_health(session_id: str) -> dict:
     for qa_id, qa in session.get("qa", {}).items():
         task_id = qa.get("taskId") if isinstance(qa, dict) else qa_id.rstrip("-qa")
         try:
-            p = task.find_record(task_id, "qa")
+            p = qa_repo.get_path(task_id)
             status = p.parent.name
         except FileNotFoundError:
             status = "missing"
@@ -100,13 +107,13 @@ def verify_session_health(session_id: str) -> dict:
     # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle-approved.json approved=true
     for task_id, task_entry in session.get("tasks", {}).items():
         try:
-            tpath = task.find_record(task_id, "task")
+            tpath = task_repo.get_path(task_id)
         except FileNotFoundError:
             continue
         if tpath.parent.name == "done":
             # QA must be done/validated
             try:
-                qpath = task.find_record(task_id, "qa")
+                qpath = qa_repo.get_path(task_id)
                 qstate = qpath.parent.name
             except FileNotFoundError:
                 qpath = None
@@ -147,7 +154,7 @@ def verify_session_health(session_id: str) -> dict:
     session["state"] = "closing"
     # Keep filesystem layout (sessions/wip) but update metadata timestamps
     session.setdefault("meta", {})["lastActive"] = io_utc_timestamp()
-    session_store.save_session(session_id, session)
+    graph.save_session(session_id, session)
 
     return health
 
@@ -182,4 +189,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    import sys
     sys.exit(main())

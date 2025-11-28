@@ -7,13 +7,15 @@ from __future__ import annotations
 import copy
 import random
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, TYPE_CHECKING
 
 from jsonschema import ValidationError
 
 from ..base import BaseDomainConfig
-from ..manager import ConfigManager
 from edison.core.utils.time import utc_timestamp
+
+if TYPE_CHECKING:
+    from ..manager import ConfigManager
 
 
 class _SafeDict(dict):
@@ -81,6 +83,8 @@ class OrchestratorConfig(BaseDomainConfig):
 
     def validate(self) -> None:
         """Validate orchestrator config against schema and self-checks."""
+        # Lazy import to avoid circular dependency
+        from ..manager import ConfigManager
         mgr = ConfigManager(self._repo_root)
         mgr.validate_schema(
             self._orchestrator_config, "config/orchestrator-config.schema.json"

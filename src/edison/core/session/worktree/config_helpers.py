@@ -72,12 +72,35 @@ def _resolve_worktree_target(session_id: str, cfg: Dict[str, Any]) -> tuple[Path
     return worktree_path, branch_name
 
 
+def _resolve_archive_directory(cfg: Dict[str, Any], repo_dir: Path) -> Path:
+    """Resolve the worktree archive directory from configuration.
+
+    This is the canonical implementation of archive directory resolution.
+    It consolidates the logic previously duplicated in cleanup.py and manager.py.
+
+    Args:
+        cfg: Worktree configuration dictionary
+        repo_dir: Repository root directory
+
+    Returns:
+        Resolved path to archive directory
+    """
+    raw = cfg.get("archiveDirectory", ".worktrees/archive")
+    raw_path = Path(raw)
+    if raw_path.is_absolute():
+        return raw_path
+    # Paths starting with ".worktrees" are anchored to repo_dir
+    # All other relative paths are anchored to repo_dir.parent
+    anchor = repo_dir if str(raw).startswith(".worktrees") else repo_dir.parent
+    return (anchor / raw).resolve()
+
+
 def _get_worktree_base() -> Path:
     """Compute worktree base directory using centralized config.
-    
+
     This is the canonical function for getting the worktree base directory.
     All other code should import and use this function.
-    
+
     Returns:
         Resolved path to worktree base directory
     """
