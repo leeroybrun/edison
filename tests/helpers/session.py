@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
-from edison.core.session.repository import SessionRepository
-from edison.core.session.manager import SessionManager
+from edison.core.session.persistence.repository import SessionRepository
+from edison.core.session.lifecycle.manager import SessionManager
 
 
 def ensure_session(session_id: str, state: str = "active") -> Path:

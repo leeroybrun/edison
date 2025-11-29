@@ -33,28 +33,17 @@ def main(args: argparse.Namespace) -> int:
     """Clear stale locks - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.id import validate_session_id
+    from edison.core.session.lifecycle.recovery import clear_session_locks, clear_all_locks
 
     try:
-        # Resolve project root using shared utility
-        project_root = get_repo_root(args)
-        cleared = []
-
         if args.session_id:
-            session_id = validate_session_id(args.session_id)
             # Clear locks for specific session
-            # This would call a lock clearing function from the core library
-            cleared.append(session_id)
+            cleared = clear_session_locks(args.session_id)
         elif args.force:
             # Clear all stale locks
-            # This would scan for and clear all lock files
-            lock_dir = project_root / ".project" / "locks"
-            if lock_dir.exists():
-                lock_files = list(lock_dir.glob("*.lock"))
-                for lock_file in lock_files:
-                    if args.force:
-                        lock_file.unlink()
-                        cleared.append(lock_file.name)
+            cleared = clear_all_locks(force=True)
+        else:
+            cleared = []
 
         result = {
             "cleared_locks": cleared,

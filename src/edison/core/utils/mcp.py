@@ -7,7 +7,7 @@ import shlex
 from pathlib import Path
 from typing import Dict, Optional
 
-from edison.core.session.context import SessionContext
+from edison.core.session.core.context import SessionContext
 from edison.core.utils import git as git_utils
 
 

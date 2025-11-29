@@ -88,8 +88,8 @@ def test_get_session_bases_without_session_id_finds_all_sessions(session_path_en
 def test_get_session_bases_with_session_id_finds_specific_session(session_path_env):
     """Test get_session_bases with session_id finds specific session directory."""
     # Setup: Create session in wip
-    from edison.core.session.repository import SessionRepository
-    from edison.core.session.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
 
     repo = SessionRepository(project_root=session_path_env)
     session = Session.create("test-session-001", state="wip")
@@ -117,8 +117,8 @@ def test_get_session_bases_with_nonexistent_session_returns_candidates(session_p
 def test_get_session_bases_handles_session_entity_data(session_path_env):
     """Test get_session_bases uses SessionRepository to get session metadata."""
     # Setup: Create session via repository
-    from edison.core.session.repository import SessionRepository
-    from edison.core.session.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
 
     repo = SessionRepository(project_root=session_path_env)
     session = Session.create("test-session-002", state="wip")
@@ -136,8 +136,8 @@ def test_get_session_bases_handles_session_entity_data(session_path_env):
 def test_resolve_session_record_path_uses_session_repository(session_path_env):
     """Test resolve_session_record_path uses SessionRepository to find session."""
     # Setup: Create session
-    from edison.core.session.repository import SessionRepository
-    from edison.core.session.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
 
     repo = SessionRepository(project_root=session_path_env)
     session = Session.create("test-session-003", state="wip")
@@ -198,8 +198,8 @@ def test_resolve_session_record_path_defaults_to_wip(session_path_env):
 def test_resolve_session_record_path_supports_task_record_type(session_path_env):
     """Test resolve_session_record_path works with task record type."""
     # Setup: Create session
-    from edison.core.session.repository import SessionRepository
-    from edison.core.session.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
 
     repo = SessionRepository(project_root=session_path_env)
     session = Session.create("task-session", state="wip")
@@ -222,8 +222,8 @@ def test_resolve_session_record_path_supports_task_record_type(session_path_env)
 def test_resolve_session_record_path_ensures_session_id_in_path(session_path_env):
     """Test resolve_session_record_path ensures session_id is in the final path."""
     # Setup: Create session
-    from edison.core.session.repository import SessionRepository
-    from edison.core.session.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
 
     repo = SessionRepository(project_root=session_path_env)
     session = Session.create("id-test-session", state="wip")

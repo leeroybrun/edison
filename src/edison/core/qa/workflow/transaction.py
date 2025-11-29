@@ -8,10 +8,10 @@ from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
     ensure_directory as io_ensure_directory,
 )
-from ..session import transaction as _session_transaction
+from ...session.lifecycle import transaction as _session_transaction
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.paths import PathResolver
-from ._utils import read_json_safe
+from .._utils import read_json_safe
 
 
 class ValidationTransaction:

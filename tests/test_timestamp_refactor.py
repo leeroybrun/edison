@@ -8,8 +8,8 @@ import re
 
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.orchestrator import OrchestratorLauncher
-from edison.core.session.context import SessionContext
-from edison.core.session.recovery import handle_timeout
+from edison.core.session.core.context import SessionContext
+from edison.core.session.lifecycle.recovery import handle_timeout
 from edison.core.utils.time import utc_timestamp
 
 # Helper to create a valid repo environment

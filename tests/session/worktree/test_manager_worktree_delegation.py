@@ -5,7 +5,7 @@ Following TDD: These tests define the expected behavior BEFORE implementation.
 import pytest
 import yaml
 from pathlib import Path
-from edison.core.session.manager import create_session
+from edison.core.session.lifecycle.manager import create_session
 from edison.core.session import SessionManager
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches
@@ -169,7 +169,7 @@ def test_no_direct_subprocess_calls_in_manager(session_git_repo_path):
     GREEN: Should only delegate to worktree module, no subprocess imports needed.
     """
     # This is a meta-test that checks the code structure
-    from edison.core.session import manager
+    from edison.core.session import lifecycle
     import inspect
 
     source = inspect.getsource(manager)

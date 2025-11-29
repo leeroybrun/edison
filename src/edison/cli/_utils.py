@@ -57,7 +57,7 @@ def get_repository(
         ValueError: If record_type is invalid
     """
     if record_type == "qa":
-        from edison.core.qa.repository import QARepository
+        from edison.core.qa.workflow.repository import QARepository
 
         return QARepository(project_root=project_root)
     elif record_type == "task":

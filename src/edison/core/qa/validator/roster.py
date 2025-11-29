@@ -3,7 +3,7 @@ import fnmatch
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from edison.core.task import TaskRepository
-from ...session import manager as session_manager
+from ...session.lifecycle import manager as session_manager
 from edison.core.config.domains.qa import QAConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.qa._utils import parse_primary_files

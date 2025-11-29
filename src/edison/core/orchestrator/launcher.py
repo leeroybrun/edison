@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from edison.core.config.domains import OrchestratorConfig
-from edison.core.session.context import SessionContext
+from edison.core.session.core.context import SessionContext
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
 from .utils import SafeDict

@@ -20,8 +20,8 @@ from edison.core.utils.paths import PathResolver
 from edison.core.utils.text import parse_html_comment, format_html_comment, parse_title
 from edison.core.config.domains import TaskConfig
 
-from .models import QARecord
-from ._utils import get_qa_root_path
+from ..models import QARecord
+from .._utils import get_qa_root_path
 
 
 class QARepository(

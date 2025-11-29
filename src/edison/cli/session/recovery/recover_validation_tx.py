@@ -26,8 +26,8 @@ def main(args: argparse.Namespace) -> int:
     """Recover stuck validation transactions - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.recovery import recover_incomplete_validation_transactions
-    from edison.core.session.id import validate_session_id
+    from edison.core.session.lifecycle.recovery import recover_incomplete_validation_transactions
+    from edison.core.session.core.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)

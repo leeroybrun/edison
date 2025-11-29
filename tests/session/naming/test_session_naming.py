@@ -10,7 +10,7 @@ multiple sessions are created in the same process (e.g., python-pid-123-seq-1).
 
 import pytest
 
-from edison.core.session.naming import (
+from edison.core.session.core.naming import (
     SessionNamingError,
     reset_session_naming_counter,
     generate_session_id,

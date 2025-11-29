@@ -56,7 +56,7 @@ class TaskQAWorkflow:
     def qa_repo(self):
         """Get or create QARepository (lazy initialization)."""
         if self._qa_repo is None:
-            from edison.core.qa.repository import QARepository
+            from edison.core.qa.workflow.repository import QARepository
             self._qa_repo = QARepository(self.project_root)
         return self._qa_repo
 
@@ -119,7 +119,7 @@ class TaskQAWorkflow:
 
         # Register task in session if session_id provided
         if session_id:
-            from edison.core.session.graph import register_task
+            from edison.core.session.persistence.graph import register_task
             register_task(
                 session_id,
                 task_id,
@@ -180,7 +180,7 @@ class TaskQAWorkflow:
         self.task_repo.save(task)
 
         # 4. Register task in session
-        from edison.core.session.graph import register_task
+        from edison.core.session.persistence.graph import register_task
         register_task(
             session_id,
             task_id,
@@ -246,7 +246,7 @@ class TaskQAWorkflow:
         self.task_repo.save(task)
 
         # 4. Update task status in session
-        from edison.core.session.graph import update_record_status
+        from edison.core.session.persistence.graph import update_record_status
         update_record_status(session_id, task_id, "task", done_state)
 
         # 5. Advance QA
@@ -289,7 +289,7 @@ class TaskQAWorkflow:
 
         # Register QA in session if task has session_id
         if task.session_id:
-            from edison.core.session.graph import register_qa
+            from edison.core.session.persistence.graph import register_qa
             register_qa(
                 task.session_id,
                 task.id,
@@ -308,7 +308,7 @@ class TaskQAWorkflow:
             self.qa_repo.save(qa)
 
             # Register QA in session if not already registered
-            from edison.core.session.graph import register_qa
+            from edison.core.session.persistence.graph import register_qa
             register_qa(
                 session_id,
                 task_id,
@@ -330,7 +330,7 @@ class TaskQAWorkflow:
             self.qa_repo.advance_state(qa_id, todo_state, session_id)
 
             # Update QA status in session
-            from edison.core.session.graph import update_record_status
+            from edison.core.session.persistence.graph import update_record_status
             update_record_status(session_id, qa_id, "qa", todo_state)
 
 

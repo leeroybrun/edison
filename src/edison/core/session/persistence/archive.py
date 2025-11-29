@@ -7,8 +7,8 @@ from pathlib import Path
 from edison.core.utils import ensure_directory, utc_now
 from edison.core.utils.paths import resolve_project_root
 
-from ._config import get_config
-from .id import validate_session_id
+from .._config import get_config
+from ..core.id import validate_session_id
 from .repository import SessionRepository
 
 

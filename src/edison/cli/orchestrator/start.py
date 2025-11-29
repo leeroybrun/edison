@@ -59,7 +59,7 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        from edison.core.session.autostart import SessionAutoStart
+        from edison.core.session.lifecycle.autostart import SessionAutoStart
 
         repo_root = get_repo_root(args)
 

@@ -19,8 +19,8 @@ from edison.core.legacy_guard import enforce_no_legacy_project_root
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
 
-from .models import Session
-from ._config import get_config
+from ..core.models import Session
+from .._config import get_config
 
 enforce_no_legacy_project_root("session.repository")
 

@@ -39,7 +39,7 @@ def test_session_module_no_legacy_exports():
 def test_validate_session_id_is_from_id_module():
     """validate_session_id comes from session.id module."""
     from edison.core import session
-    from edison.core.session.id import validate_session_id as id_validate
+    from edison.core.session.core.id import validate_session_id as id_validate
 
     # They should be the same function
     assert session.validate_session_id is id_validate
@@ -48,7 +48,7 @@ def test_validate_session_id_is_from_id_module():
 def test_session_id_error_is_from_id_module():
     """SessionIdError comes from session.id module."""
     from edison.core import session
-    from edison.core.session.id import SessionIdError as id_error
+    from edison.core.session.core.id import SessionIdError as id_error
 
     # They should be the same class
     assert session.SessionIdError is id_error

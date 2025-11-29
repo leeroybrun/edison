@@ -34,7 +34,7 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     from edison.core.session import validate_session_id
-    from edison.core.session.verify import verify_session_health
+    from edison.core.session.lifecycle.verify import verify_session_health
 
     try:
         session_id = validate_session_id(args.session_id)

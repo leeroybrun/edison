@@ -36,7 +36,7 @@ def main(args: argparse.Namespace) -> int:
     """Recover timed-out sessions - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.recovery import cleanup_expired_sessions
+    from edison.core.session.lifecycle.recovery import cleanup_expired_sessions
 
     try:
         if args.dry_run:

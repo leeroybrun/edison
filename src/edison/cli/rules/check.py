@@ -48,8 +48,9 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     from edison.core.rules import RulesEngine
+    from edison.core.rules.checker import get_rules_for_context_formatted, format_rules_output
     from edison.core.config import ConfigManager
-    
+
     try:
         repo_root = get_repo_root(args)
         cfg_mgr = ConfigManager(repo_root)
@@ -61,62 +62,20 @@ def main(args: argparse.Namespace) -> int:
             formatter.error("Must specify --context or --transition", error_code="error")
             return 1
 
-        # Get applicable rules based on context
-        applicable_rules = []
-        if args.context:
-            for ctx in args.context:
-                rules = engine.get_rules_for_context(ctx)
-                for rule in rules:
-                    rule_dict = {
-                        "id": rule.id,
-                        "description": rule.description,
-                        "blocking": rule.blocking,
-                        "enforced": rule.enforced,
-                        "contexts": (rule.config or {}).get("contexts", []),
-                        "priority": (rule.config or {}).get("priority", "normal"),
-                    }
-                    if rule_dict not in applicable_rules:
-                        applicable_rules.append(rule_dict)
-
-        # Sort by priority
-        priority_order = {"critical": 0, "high": 1, "normal": 2, "low": 3}
-        applicable_rules.sort(key=lambda r: priority_order.get(r.get("priority", "normal"), 2))
+        # Get formatted rules data from core
+        rules_data = get_rules_for_context_formatted(
+            engine=engine,
+            contexts=args.context,
+            transition=args.transition,
+            task_id=args.task_id,
+        )
 
         if args.json:
-            formatter.json_output({
-                "rules": applicable_rules,
-                "count": len(applicable_rules),
-            })
-        elif args.format == "full":
-            formatter.text(f"Applicable rules ({len(applicable_rules)}):")
-            formatter.text("")
-            for rule in applicable_rules:
-                formatter.text(f"RULE.{rule['id'].upper()}")
-                formatter.text(f"  Priority: {rule.get('priority', 'normal')}")
-                formatter.text(f"  Contexts: {', '.join(rule.get('contexts', []))}")
-                if rule.get("content"):
-                    formatter.text(f"  Content:\n    {rule['content'][:300]}...")
-                formatter.text("")
-        elif args.format == "markdown":
-            formatter.text("# Applicable Rules")
-            formatter.text("")
-            for rule in applicable_rules:
-                formatter.text(f"## RULE.{rule['id'].upper()}")
-                formatter.text(f"**Priority**: {rule.get('priority', 'normal')}")
-                formatter.text(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
-                if rule.get("content"):
-                    formatter.text(f"\n{rule['content']}\n")
-                formatter.text("---")
-                formatter.text("")
-        else:  # short format
-            if applicable_rules:
-                formatter.text(f"Applicable rules ({len(applicable_rules)}):")
-                for rule in applicable_rules:
-                    priority = rule.get('priority', 'normal')
-                    priority_marker = "🔴" if priority == "critical" else "🟡" if priority == "high" else "⚪"
-                    formatter.text(f"  {priority_marker} RULE.{rule['id'].upper()}")
-            else:
-                formatter.text("No applicable rules found.")
+            formatter.json_output(rules_data)
+        else:
+            # Use core formatting logic
+            output = format_rules_output(rules_data, format_mode=args.format)
+            formatter.text(output)
 
         return 0
 

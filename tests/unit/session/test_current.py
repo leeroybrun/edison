@@ -25,7 +25,7 @@ from edison.core.session.current import (
     _SESSION_ID_FILENAME,
 )
 from edison.core.exceptions import SessionError
-from edison.core.session.id import SessionIdError
+from edison.core.session.core.id import SessionIdError
 from edison.core.utils.subprocess import run_with_timeout
 
 

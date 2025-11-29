@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..exceptions import SessionError
-from .id import validate_session_id, SessionIdError
+from .core.id import validate_session_id, SessionIdError
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ def _session_exists(session_id: str) -> bool:
         True if the session exists.
     """
     try:
-        from .repository import SessionRepository
+        from .persistence.repository import SessionRepository
         repo = SessionRepository()
         return repo.exists(session_id)
     except Exception:
@@ -139,7 +139,7 @@ def _auto_session_for_owner() -> Optional[str]:
         Session ID from process tree inference, or None.
     """
     try:
-        from .repository import SessionRepository
+        from .persistence.repository import SessionRepository
         from edison.core.utils.process import get_current_owner
         repo = SessionRepository()
         owner = get_current_owner()

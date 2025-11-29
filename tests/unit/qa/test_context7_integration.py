@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.qa.context7 import _normalize, _merge_triggers, _load_triggers, _load_aliases
+from edison.core.qa.context.context7 import _normalize, _merge_triggers, _load_triggers, _load_aliases
 
 
 def test_load_triggers_returns_dict():

@@ -11,7 +11,7 @@ import os
 import re
 from typing import Optional
 
-from ._config import get_config
+from .._config import get_config
 
 
 class SessionIdError(ValueError):

@@ -9,7 +9,8 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
-from .config_helpers import _config, _get_repo_dir, _resolve_worktree_target, _resolve_archive_directory
+from .config_helpers import _config, _resolve_worktree_target, _resolve_archive_directory
+from .._utils import get_repo_dir
 from edison.core.utils.git.worktree import get_existing_worktree_path
 
 
@@ -30,7 +31,7 @@ def create_worktree(
     When ``dry_run`` is True, only compute the target path/branch and return
     without mutating git state.
     """
-    repo_dir = _get_repo_dir()
+    repo_dir = get_repo_dir()
     config_obj = _config()
     config = config_obj.get_worktree_config()
     if not config.get("enabled", False):
@@ -155,7 +156,7 @@ def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_
     we need to delete the archived directory and re-create the worktree
     using create_worktree. This ensures proper git registration.
     """
-    repo_dir = _get_repo_dir()
+    repo_dir = get_repo_dir()
     config_obj = _config()
     cfg = config_obj.get_worktree_config()
 

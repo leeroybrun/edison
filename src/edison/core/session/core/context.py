@@ -8,8 +8,6 @@ from typing import Iterator, Optional, Dict
 
 from edison.core.utils.paths import PathResolver
 
-from .manager import get_session
-
 
 class SessionContext:
     """Manage execution within a session's worktree if configured."""
@@ -39,6 +37,8 @@ class SessionContext:
         require_worktree: bool = True,
     ) -> Dict[str, str]:
         """Return an environment dict with ZEN_WORKING_DIR bound to the session worktree."""
+        # Lazy import to avoid circular dependency with lifecycle.manager
+        from edison.core.session.lifecycle.manager import get_session
         session = get_session(session_id)
         worktree_path = SessionContext._extract_worktree_path(session)
 
@@ -60,6 +60,8 @@ class SessionContext:
     @staticmethod
     @contextmanager
     def in_session_worktree(session_id: str) -> Iterator[dict]:
+        # Lazy import to avoid circular dependency with lifecycle.manager
+        from edison.core.session.lifecycle.manager import get_session
         session = get_session(session_id)
         worktree_path = SessionContext._extract_worktree_path(session)
         original_cwd = os.getcwd()

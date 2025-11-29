@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.session import manager as session_manager
-from edison.core.session.manager import get_session
-from edison.core.session.graph import save_session
+from edison.core.session import lifecycle as session_manager
+from edison.core.session.lifecycle.manager import get_session
+from edison.core.session.persistence.graph import save_session
 from edison.core.utils import git as git_utils
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.mcp import format_clink_cli_command, resolve_working_directory

@@ -24,7 +24,7 @@ REPO_ROOT = get_repo_root()
 SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
 from edison.core import task  # type: ignore  # noqa: E402
 from edison.data import get_data_path
-from edison.core.session import manager as session_manager
+from edison.core.session import lifecycle as session_manager
 from edison.core.session import worktree as session_worktree
 
 

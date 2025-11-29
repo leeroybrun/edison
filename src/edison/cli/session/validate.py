@@ -46,9 +46,9 @@ def main(args: argparse.Namespace) -> int:
     """Validate session health - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.verify import verify_session_health
-    from edison.core.session.id import validate_session_id
-    from edison.core.qa.scoring import track_validation_score
+    from edison.core.session.lifecycle.verify import verify_session_health
+    from edison.core.session.core.id import validate_session_id
+    from edison.core.qa.scoring.scoring import track_validation_score
 
     try:
         session_id = validate_session_id(args.session_id)

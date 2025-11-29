@@ -58,7 +58,7 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     from edison.core.task import TaskQAWorkflow, normalize_record_id
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     from edison.core.session import validate_session_id
     from edison.core.config.domains.project import ProjectConfig
 
@@ -108,7 +108,7 @@ def main(args: argparse.Namespace) -> int:
             )
         else:
             # QA claim - use QA repository directly
-            from edison.core.qa.repository import QARepository
+            from edison.core.qa.workflow.repository import QARepository
             from edison.core.config.domains.workflow import WorkflowConfig
 
             qa_repo = QARepository(project_root=project_root)

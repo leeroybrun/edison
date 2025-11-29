@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.session.repository import SessionRepository
-from edison.core.session.manager import SessionManager
-from edison.core.session.models import Session
+from edison.core.session.persistence.repository import SessionRepository
+from edison.core.session.lifecycle.manager import SessionManager
+from edison.core.session.core.models import Session
 
 
 @pytest.mark.session

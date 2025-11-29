@@ -6,7 +6,7 @@ import pytest
 from helpers.io_utils import write_yaml
 import importlib
 from pathlib import Path
-from edison.core.qa.repository import QARepository
+from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.qa.models import QARecord
 

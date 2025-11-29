@@ -6,10 +6,10 @@ import os
 from pathlib import Path
 
 from edison.core.session.next import compute_next
-from edison.core.session import manager as session_manager
-from edison.core.session.id import validate_session_id
-from edison.core.session.context import SessionContext
-from edison.core.session import graph
+from edison.core.session.lifecycle import manager as session_manager
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.core.context import SessionContext
+from edison.core.session import persistence as graph
 from edison.core.task import TaskRepository
 from edison.core.qa import QARepository
 from edison.core import task  # for read_metadata

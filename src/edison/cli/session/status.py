@@ -26,8 +26,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Display session status - delegates to core library."""
-    from edison.core.session import manager as session_manager
-    from edison.core.session.id import validate_session_id
+    from edison.core.session import lifecycle as session_manager
+    from edison.core.session.core.id import validate_session_id
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

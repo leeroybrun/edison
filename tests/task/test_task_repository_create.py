@@ -13,7 +13,7 @@ import importlib
 from pathlib import Path
 from edison.core.task.workflow import TaskQAWorkflow
 from edison.core.task.repository import TaskRepository
-from edison.core.qa.repository import QARepository
+from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.task.models import Task
 from edison.core.qa.models import QARecord

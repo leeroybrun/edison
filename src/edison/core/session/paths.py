@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.utils.paths import PathResolver
-from .layout import get_session_base_path
+from .core.layout import get_session_base_path
 
 
 def get_session_bases(
@@ -51,7 +51,7 @@ def get_session_bases(
 
         # Try to get session from repository
         try:
-            from edison.core.session.repository import SessionRepository
+            from edison.core.session.persistence.repository import SessionRepository
             session_repo = SessionRepository(project_root=project_root)
             session_entity = session_repo.get(session_id)
             if session_entity:
@@ -158,7 +158,7 @@ def resolve_session_record_path(
 
     # 1. Try SessionRepository first (most reliable)
     try:
-        from edison.core.session.repository import SessionRepository
+        from edison.core.session.persistence.repository import SessionRepository
         session_repo = SessionRepository(project_root=project_root)
         path = session_repo.get_session_json_path(session_id)
         if path:

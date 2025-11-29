@@ -13,11 +13,11 @@ from textwrap import dedent
 import pytest
 import yaml
 
-from edison.core.session.manager import SessionManager
-from edison.core.session.id import validate_session_id
-from edison.core.session.repository import SessionRepository
+from edison.core.session.lifecycle.manager import SessionManager
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session import worktree
-from edison.core.session.naming import reset_session_naming_counter
+from edison.core.session.core.naming import reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.process.inspector import infer_session_id
@@ -25,7 +25,7 @@ from tests.helpers.timeouts import wait_for_file, medium_sleep
 
 
 # Import target under test (implementation added in this task)
-from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
+from edison.core.session.lifecycle.autostart import SessionAutoStart, SessionAutoStartError
 
 
 class AutoStartEnv:
@@ -175,7 +175,7 @@ class AutoStartEnv:
 
     def reload_configs(self) -> None:
         """Reset module-level SessionConfig singletons to this repo root."""
-        from edison.core.session import manager as session_manager
+        from edison.core.session import lifecycle as session_manager
         from edison.core.config.domains import SessionConfig
         from edison.core.session._config import reset_config_cache
         

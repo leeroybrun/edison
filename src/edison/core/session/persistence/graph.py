@@ -4,14 +4,14 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from ..task import TaskManager
-from ..utils.time import utc_timestamp as io_utc_timestamp
-from ..qa.evidence import EvidenceService
+from ...task import TaskManager
+from ...utils.time import utc_timestamp as io_utc_timestamp
+from ...qa.evidence import EvidenceService
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
-from .id import validate_session_id
+from ..core.id import validate_session_id
 from .repository import SessionRepository
-from .models import TaskEntry, QAEntry, Session
+from ..core.models import TaskEntry, QAEntry, Session
 
 
 def _load_or_create_session(session_id: str) -> Dict[str, Any]:
@@ -242,7 +242,7 @@ def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
 
         # Use TaskRepository to find task path
         try:
-            from ..task import TaskRepository
+            from ...task import TaskRepository
             task_repo = TaskRepository()
             t_path = task_repo._find_entity_path(task_id)
         except Exception:
@@ -250,7 +250,7 @@ def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
 
         # Use QARepository to find QA path
         try:
-            from ..qa.repository import QARepository
+            from ...qa.repository import QARepository
             qa_repo = QARepository()
             qa_path = qa_repo._find_entity_path(task_id)
         except Exception:

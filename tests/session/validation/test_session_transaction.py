@@ -3,7 +3,7 @@ import yaml
 import json
 from pathlib import Path
 from edison.core.session import transaction
-from edison.core.session.repository import SessionRepository
+from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session._config import reset_config_cache, get_config
 from edison.core.config.domains import SessionConfig
 from edison.core.exceptions import SessionError
@@ -149,7 +149,7 @@ def test_validation_transaction(project_root):
 
     # Create session using repository to ensure proper structure
     repo = SessionRepository()
-    from edison.core.session.models import Session
+    from edison.core.session.core.models import Session
     sess = Session.create(sid, state="active")
     repo.create(sess)
     sess_path = repo.get_session_json_path(sid)

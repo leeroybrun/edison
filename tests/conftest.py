@@ -47,7 +47,7 @@ from edison.core.utils.paths.resolver import PathResolver
 from edison.core.utils.subprocess import run_with_timeout
 
 # Import centralized config loader (SINGLE source of truth)
-from config.loader import load_test_states
+from config import load_states as load_test_states
 
 # Repository root (resolved via PathResolver for relocatability)
 REPO_ROOT = PathResolver.resolve_project_root()

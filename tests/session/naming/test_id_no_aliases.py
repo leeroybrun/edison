@@ -43,7 +43,7 @@ def test_session_id_public_api():
 
 def test___all___does_not_export_aliases():
     """Verify __all__ doesn't export the removed aliases."""
-    from edison.core.session.id import __all__
+    from edison.core.session.core.id import __all__
 
     assert 'validate_session_id' in __all__
     assert 'detect_session_id' in __all__

@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 
 from edison.core.utils.process.inspector import find_topmost_process, infer_session_id
-from edison.core.session.id import validate_session_id
-from edison.core.session.repository import SessionRepository
-from edison.core.session.models import Session
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.persistence.repository import SessionRepository
+from edison.core.session.core.models import Session
 from edison.core.config.domains.project import get_project_owner
 
 

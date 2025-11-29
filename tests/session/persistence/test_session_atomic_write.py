@@ -16,10 +16,10 @@ from tests.helpers.timeouts import SHORT_SLEEP, THREAD_JOIN_TIMEOUT, MEDIUM_SLEE
 REPO_ROOT = get_repo_root()
 
 from edison.core import task
-from edison.core.session import manager as session_manager
+from edison.core.session import lifecycle as session_manager
 from edison.core.session import recovery as session_recovery
-from edison.core.session.repository import SessionRepository
-from edison.core.session.graph import save_session
+from edison.core.session.persistence.repository import SessionRepository
+from edison.core.session.persistence.graph import save_session
 from edison.core.utils.time import utc_timestamp
 
 def get_session_json_path(session_id: str):

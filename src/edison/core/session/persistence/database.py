@@ -8,7 +8,7 @@ from pathlib import Path
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
-from ._config import get_config, reset_config_cache
+from .._config import get_config, reset_config_cache
 
 
 def _session_config():

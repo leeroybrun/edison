@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
-from ._utils import get_qa_root_path
+from .._utils import get_qa_root_path
 
 
 # ---------- Score History Path Helpers ----------

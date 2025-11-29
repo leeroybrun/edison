@@ -37,9 +37,9 @@ def main(args: argparse.Namespace) -> int:
     """Close session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import manager as session_manager
-    from edison.core.session.id import validate_session_id
-    from edison.core.session.verify import verify_session_health
+    from edison.core.session import lifecycle as session_manager
+    from edison.core.session.core.id import validate_session_id
+    from edison.core.session.lifecycle.verify import verify_session_health
 
     try:
         session_id = validate_session_id(args.session_id)

@@ -12,11 +12,11 @@ from edison.core.config.domains import TaskConfig
 from edison.core.task.paths import get_task_dirs, get_qa_dirs
 from edison.core.utils.io import ensure_directory, read_json, write_json_atomic, is_locked, safe_move_file
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
-from .id import validate_session_id
-from .repository import SessionRepository
+from ..core.id import validate_session_id
+from ..persistence.repository import SessionRepository
 from .transaction import begin_tx, finalize_tx, abort_tx
-from ._config import get_config
-from ._utils import get_sessions_root
+from .._config import get_config
+from .._utils import get_sessions_root
 
 logger = logging.getLogger(__name__)
 
@@ -443,3 +443,72 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
             logger.error("Failed to abort recovered tx %s: %s", tx_id, e)
 
     return recovered
+
+
+def clear_session_locks(session_id: str) -> List[str]:
+    """Clear locks for a specific session.
+
+    Args:
+        session_id: Session identifier
+
+    Returns:
+        List of cleared lock file names
+    """
+    from edison.core.utils.paths import PathResolver
+
+    sid = validate_session_id(session_id)
+    try:
+        root = PathResolver.resolve_project_root()
+    except Exception:
+        return []
+
+    lock_dir = root / ".project" / "locks"
+    if not lock_dir.exists():
+        return []
+
+    cleared = []
+    # Look for session-specific lock files
+    for lock_file in lock_dir.glob(f"{sid}*.lock"):
+        try:
+            lock_file.unlink()
+            cleared.append(lock_file.name)
+        except Exception as e:
+            logger.warning("Failed to clear lock %s: %s", lock_file.name, e)
+
+    return cleared
+
+
+def clear_all_locks(force: bool = False) -> List[str]:
+    """Clear all stale locks.
+
+    Args:
+        force: If True, force clear all locks regardless of staleness
+
+    Returns:
+        List of cleared lock file names
+    """
+    from edison.core.utils.paths import PathResolver
+
+    try:
+        root = PathResolver.resolve_project_root()
+    except Exception:
+        return []
+
+    lock_dir = root / ".project" / "locks"
+    if not lock_dir.exists():
+        return []
+
+    cleared = []
+    for lock_file in lock_dir.glob("*.lock"):
+        try:
+            if force:
+                lock_file.unlink()
+                cleared.append(lock_file.name)
+            else:
+                # TODO: Implement staleness check based on lock age
+                # For now, only clear if force=True
+                pass
+        except Exception as e:
+            logger.warning("Failed to clear lock %s: %s", lock_file.name, e)
+
+    return cleared

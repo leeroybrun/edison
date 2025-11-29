@@ -44,7 +44,7 @@ def test_qarecord_import_from_canonical_location():
 
 def test_qarepository_import_from_canonical_location():
     """QARepository should be importable from its canonical location."""
-    from edison.core.qa.repository import QARepository
+    from edison.core.qa.workflow.repository import QARepository
 
     # Should be able to import from canonical location
     assert QARepository is not None

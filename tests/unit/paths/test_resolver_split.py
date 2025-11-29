@@ -48,7 +48,7 @@ def test_utils_git_public_api():
 
 def test_session_id_detection_moved():
     """Test that session ID detection is available in session/id.py."""
-    from edison.core.session.id import (
+    from edison.core.session.core.id import (
         validate_session_id,
         detect_session_id,
         SessionIdError,

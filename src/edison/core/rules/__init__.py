@@ -21,6 +21,7 @@ from __future__ import annotations
 from .errors import RuleViolationError
 from .models import Rule, RuleViolation
 from .engine import RulesEngine
+from .checker import get_rules_for_context_formatted, format_rules_output
 
 # Composition components (re-exported from new locations)
 from edison.core.composition.registries.rules import (
@@ -56,4 +57,7 @@ __all__ = [
     "FilePatternRegistry",
     # Engine (runtime)
     "RulesEngine",
+    # Checker (runtime)
+    "get_rules_for_context_formatted",
+    "format_rules_output",
 ]

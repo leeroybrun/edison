@@ -54,7 +54,7 @@ def main(args: argparse.Namespace) -> int:
     """Track session work - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.qa.scoring import track_validation_score
+    from edison.core.qa.scoring.scoring import track_validation_score
     from edison.core.utils.time import utc_timestamp
 
     try:

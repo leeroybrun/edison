@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.session.layout import detect_layout, get_session_base_path
+from edison.core.session.core.layout import detect_layout, get_session_base_path
 
 
 def test_detect_flat_when_parent_contains_session_id():

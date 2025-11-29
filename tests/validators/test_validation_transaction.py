@@ -63,7 +63,7 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
+from edison.core.qa.workflow.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
 round_num = int(os.environ["ROUND_NUM"])
@@ -124,7 +124,7 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
+from edison.core.qa.workflow.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
 round_num = int(os.environ["ROUND_NUM"])
@@ -194,7 +194,7 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
+from edison.core.qa.workflow.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 
 task_id = os.environ["TASK_ID"]
 round_num = int(os.environ["ROUND_NUM"])
@@ -253,7 +253,7 @@ from pathlib import Path
 
 repo_root = Path(os.environ["REPO_ROOT"])
 core_root = repo_root / ".edison" / "core"
-from edison.core.qa.transaction import ValidationTransaction  # type: ignore  # noqa: E402
+from edison.core.qa.workflow.transaction import ValidationTransaction  # type: ignore  # noqa: E402
 from edison.core.utils.subprocess import run_with_timeout
 
 task_id = os.environ["TASK_ID"]

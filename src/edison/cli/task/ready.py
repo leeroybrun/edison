@@ -34,7 +34,7 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     from edison.core.config.domains.workflow import WorkflowConfig
 
     try:

@@ -19,10 +19,10 @@ from edison.core.config.cache import clear_all_caches
 from edison.core.state.validator import StateValidator, MissingStateMachine
 from edison.core.state.transitions import validate_transition, EntityTransitionError
 from edison.core.state import StateTransitionError
-from edison.core.session.repository import SessionRepository
+from edison.core.session.persistence.repository import SessionRepository
 from edison.core.task.repository import TaskRepository
-from edison.core.qa.repository import QARepository
-from edison.core.session.models import Session
+from edison.core.qa.workflow.repository import QARepository
+from edison.core.session.core.models import Session
 from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
 from edison.core.entity import EntityMetadata, EntityStateError

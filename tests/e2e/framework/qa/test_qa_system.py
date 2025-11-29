@@ -151,7 +151,7 @@ def test_q3_validators_render_with_standard_sections(tmp_path: Path):
 # -------------------------
 def test_q4_score_tracking_and_ordering(tmp_path: Path):
     """Q4: Score history should append entries and remain chronologically ordered."""
-    from edison.core.qa.scoring import track_validation_score, get_score_history 
+    from edison.core.qa.scoring.scoring import track_validation_score, get_score_history 
     session_id = "qa-score-track-test"
     # Ensure clean slate
     hist_file = Path(f".project/qa/score-history/{session_id}.jsonl")
@@ -173,7 +173,7 @@ def test_q4_score_tracking_and_ordering(tmp_path: Path):
 
 def test_q4_score_history_scalability(tmp_path: Path):
     """Q4: Score tracking should handle many runs without degradation (smoke for 1k)."""
-    from edison.core.qa.scoring import track_validation_score, get_score_history 
+    from edison.core.qa.scoring.scoring import track_validation_score, get_score_history 
     session_id = "qa-score-scale-test"
     hist_file = Path(f".project/qa/score-history/{session_id}.jsonl")
     if hist_file.exists():
@@ -191,7 +191,7 @@ def test_q4_score_history_scalability(tmp_path: Path):
 # -------------------------
 def test_q5_regression_detection_thresholds():
     """Q5: detect_regression flags significant score drops and ignores minor deltas."""
-    from edison.core.qa.scoring import track_validation_score, detect_regression 
+    from edison.core.qa.scoring.scoring import track_validation_score, detect_regression 
     session_id = "qa-regression-test"
     # Seed two prior runs
     track_validation_score(session_id, "test-validator", {"functionality": 8}, overall_score=8.0)

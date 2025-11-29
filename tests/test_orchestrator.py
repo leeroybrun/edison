@@ -6,7 +6,7 @@ import yaml
 from edison.core.orchestrator import OrchestratorLauncher
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.config.cache import clear_all_caches
-from edison.core.session.context import SessionContext
+from edison.core.session.core.context import SessionContext
 from tests.helpers.io_utils import write_orchestrator_config
 
 

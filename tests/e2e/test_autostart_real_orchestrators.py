@@ -29,7 +29,7 @@ from tests.helpers.paths import get_repo_root
 from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT
 
 try:  # Will fail RED phase until autostart is implemented (expected)
-    from edison.core.session.autostart import SessionAutoStart
+    from edison.core.session.lifecycle.autostart import SessionAutoStart
 except Exception as exc:  # pragma: no cover - explicit RED failure path
     SessionAutoStart = None
     AUTOSTART_IMPORT_ERROR = exc

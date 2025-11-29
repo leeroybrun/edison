@@ -63,7 +63,7 @@ from tests.helpers.paths import get_repo_root
 # Add src to path so we can import edison
 repo_root = get_repo_root()
 
-from edison.core.session.recovery import detect_incomplete_transactions
+from edison.core.session.lifecycle.recovery import detect_incomplete_transactions
 
 entries = detect_incomplete_transactions()
 payload = []
@@ -108,7 +108,7 @@ from tests.helpers.paths import get_repo_root
 # Add src to path so we can import edison
 repo_root = get_repo_root()
 
-from edison.core.session.recovery import recover_incomplete_validation_transactions
+from edison.core.session.lifecycle.recovery import recover_incomplete_validation_transactions
 
 # First run: should recover at least one transaction
 count1 = recover_incomplete_validation_transactions("sess-cli")

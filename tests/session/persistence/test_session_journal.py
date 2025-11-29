@@ -19,7 +19,7 @@ import sys
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
 from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
-from edison.core.session.id import validate_session_id
+from edison.core.session.core.id import validate_session_id
 from edison.core.utils.io.locking import LockTimeoutError, file_lock
 
 

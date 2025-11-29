@@ -9,10 +9,10 @@ import pytest
 from pathlib import Path
 from typing import Any, Dict
 
-from edison.core.session.id import validate_session_id, SessionIdError
-from edison.core.session.repository import SessionRepository
+from edison.core.session.core.id import validate_session_id, SessionIdError
+from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session import SessionManager
-from edison.core.session.models import Session
+from edison.core.session.core.models import Session
 from edison.core.entity import EntityNotFoundError
 
 

@@ -20,11 +20,11 @@ from edison.core.utils.io import (
     read_json as io_read_json,
     ensure_directory,
 )
-from ..utils.time import utc_timestamp as io_utc_timestamp
-from ..exceptions import SessionError
-from .id import validate_session_id
+from ...utils.time import utc_timestamp as io_utc_timestamp
+from ...exceptions import SessionError
+from ..core.id import validate_session_id
 from edison.core.utils.paths import get_management_paths
-from ._config import get_config
+from .._config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def _sid_dir(session_id: str) -> Path:
     # So we MUST know the state or search for it.
     # But _append_tx_log doesn't take state.
     # We might need to search for the session.
-    from .repository import SessionRepository
+    from ..persistence.repository import SessionRepository
     try:
         repo = SessionRepository()
         json_path = repo.get_session_json_path(session_id)

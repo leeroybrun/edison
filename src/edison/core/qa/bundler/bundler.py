@@ -4,14 +4,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ..legacy_guard import enforce_no_legacy_project_root
+from ...legacy_guard import enforce_no_legacy_project_root
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
     read_json as io_read_json,
     ensure_directory,
 )
 from edison.core.config.domains.qa import QAConfig
-from .evidence import EvidenceService
+from ..evidence import EvidenceService
 
 
 enforce_no_legacy_project_root("lib.qa.bundler")

@@ -34,7 +34,7 @@ def main(args: argparse.Namespace) -> int:
     """Show/update session identity - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     from edison.core.session import validate_session_id
 
     try:

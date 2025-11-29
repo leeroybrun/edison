@@ -203,7 +203,7 @@ class PathResolver:
     ) -> Optional[str]:
         """Canonical session ID detection with validation."""
         # Lazy import - session ID detection is in session module
-        from edison.core.session.id import detect_session_id
+        from edison.core.session.core.id import detect_session_id
 
         return detect_session_id(explicit=explicit, owner=owner)
 
@@ -211,7 +211,7 @@ class PathResolver:
     def _validate_session_id(session_id: str) -> str:
         """Validate session ID format."""
         # Lazy import - session ID validation is in session module
-        from edison.core.session.id import validate_session_id
+        from edison.core.session.core.id import validate_session_id
 
         return validate_session_id(session_id)
 

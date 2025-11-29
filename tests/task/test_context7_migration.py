@@ -2,7 +2,7 @@ import pytest
 import json
 import yaml
 from pathlib import Path
-from edison.core.qa.context7 import load_validator_config
+from edison.core.qa.context.context7 import load_validator_config
 
 def test_load_validator_config_json(isolated_project_env):
     """Test loading validator config from JSON."""

@@ -82,7 +82,7 @@ def main(args: argparse.Namespace) -> int:
             # Create link - update session if provided
             if args.session:
                 from edison.core.session import validate_session_id
-                from edison.core.session.repository import SessionRepository
+                from edison.core.session.persistence.repository import SessionRepository
                 from edison.core.utils.io import write_json_atomic
 
                 session_id = validate_session_id(args.session)
@@ -116,7 +116,7 @@ def main(args: argparse.Namespace) -> int:
 
                 # Save session
                 try:
-                    from edison.core.session.models import Session
+                    from edison.core.session.core.models import Session
                     session_entity = Session.from_dict(session)
                     session_repo.save(session_entity)
                 except:

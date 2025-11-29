@@ -8,8 +8,8 @@ import pytest
 from pathlib import Path
 
 from edison.core.task.workflow import TaskQAWorkflow
-from edison.core.session.repository import SessionRepository
-from edison.core.session.models import Session
+from edison.core.session.persistence.repository import SessionRepository
+from edison.core.session.core.models import Session
 
 
 def test_create_task_registers_in_session(isolated_project_env):

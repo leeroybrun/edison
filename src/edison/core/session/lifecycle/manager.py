@@ -11,17 +11,17 @@ import logging
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from .id import validate_session_id, SessionIdError
-from .naming import generate_session_id
-from .current import get_current_session, set_current_session, clear_current_session
-from .models import Session
-from .repository import SessionRepository
-from ._config import get_config
+from ..core.id import validate_session_id, SessionIdError
+from ..core.naming import generate_session_id
+from ..current import get_current_session, set_current_session, clear_current_session
+from ..core.models import Session
+from ..persistence.repository import SessionRepository
+from .._config import get_config
 from edison.core.utils.paths import PathResolver
 from edison.core.config.domains.session import SessionConfig
 from edison.core.state.validator import StateValidator
 from edison.core.state import StateTransitionError
-from ..exceptions import SessionError, ValidationError
+from ...exceptions import SessionError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def create_session(
 
     if create_wt and in_git_repo:
         try:
-            from . import worktree
+            from .. import worktree
 
             wt_path, branch = worktree.create_worktree(session_id, install_deps=install_deps)
             if wt_path and branch:

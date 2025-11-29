@@ -3,7 +3,7 @@ from ..config.domains import qa as config
 from ..legacy_guard import enforce_no_legacy_project_root
 from .manager import QAManager
 from .models import QARecord
-from .repository import QARepository
+from .workflow import QARepository
 
 enforce_no_legacy_project_root("lib.qa")
 

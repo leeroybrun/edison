@@ -9,9 +9,9 @@ import sys
 import pytest
 
 from tests.integration.test_session_autostart import AutoStartEnv
-from edison.core.session.autostart import SessionAutoStart, SessionAutoStartError
-from edison.core.session.manager import SessionManager
-from edison.core.session.naming import generate_session_id, reset_session_naming_counter
+from edison.core.session.lifecycle.autostart import SessionAutoStart, SessionAutoStartError
+from edison.core.session.lifecycle.manager import SessionManager
+from edison.core.session.core.naming import generate_session_id, reset_session_naming_counter
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.process.inspector import infer_session_id
 from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT

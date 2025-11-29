@@ -83,7 +83,7 @@ def test_task_repository_no_hardcoded_project_paths(isolated_project_env):
 
 def test_qa_repository_no_hardcoded_project_paths(isolated_project_env):
     """Test QARepository uses config-driven paths, not hardcoded .project."""
-    from edison.core.qa.repository import QARepository
+    from edison.core.qa.workflow.repository import QARepository
     from edison.core.utils.paths import get_management_paths
 
     # Use isolated project environment with real directory structure

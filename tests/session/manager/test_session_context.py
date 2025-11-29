@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 import os
 
-from edison.core.session.context import SessionContext
+from edison.core.session.core.context import SessionContext
 
 
 def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) -> None:

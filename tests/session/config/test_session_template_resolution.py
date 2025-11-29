@@ -29,7 +29,7 @@ def test_session_template_resolves_from_project_config_dir(
 
     # Reload session config and repository to pick up new environment
     from edison.core.session import reset_config_cache
-    from edison.core.session.repository import SessionRepository
+    from edison.core.session.persistence.repository import SessionRepository
 
     reset_config_cache()
 

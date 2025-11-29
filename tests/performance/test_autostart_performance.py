@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 from tests.integration.test_session_autostart import AutoStartEnv
-from edison.core.session.autostart import SessionAutoStart
+from edison.core.session.lifecycle.autostart import SessionAutoStart
 
 
 def test_autostart_performance_benchmark(tmp_path: Path, monkeypatch) -> None:

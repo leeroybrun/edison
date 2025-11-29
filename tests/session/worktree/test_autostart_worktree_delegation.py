@@ -7,7 +7,7 @@ import yaml
 import re
 import inspect
 from pathlib import Path
-from edison.core.session.autostart import SessionAutoStart
+from edison.core.session.lifecycle.autostart import SessionAutoStart
 from edison.core.session import SessionManager
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches

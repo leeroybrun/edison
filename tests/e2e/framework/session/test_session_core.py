@@ -12,10 +12,10 @@ from typing import Any, Dict
 import pytest
 
 # Import session functions at module level for test convenience
-from edison.core.session.id import validate_session_id
-from edison.core.session.graph import save_session
-from edison.core.session.manager import get_session as load_session
-from edison.core.session.repository import SessionRepository
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.persistence.graph import save_session
+from edison.core.session.lifecycle.manager import get_session as load_session
+from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session._config import get_config
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.io import file_lock
@@ -81,7 +81,7 @@ def test_session_task_linking_session_side(tmp_path: Path):
     """
     # Import lazily to allow RED phase to fail clearly if missing
     # Import lazily to allow RED phase to fail clearly if missing
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     # session_store import removed - using module-level functions
 
     task_id = "t-001"
@@ -144,7 +144,7 @@ def test_session_id_sanitization_allows_valid():
 
 def test_concurrent_session_updates():
     """S3: Parallel updates do not corrupt session data (requires locking)."""
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     # session_store import removed - using module-level functions
 
     session_manager.create_session("concurrent-test", owner="tester")
@@ -193,7 +193,7 @@ def test_file_lock_timeout(tmp_path: Path):
     # Import directly from new locklib
     from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
     from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError 
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     # session_store import removed - using module-level functions
 
     session_manager.create_session("lock-test", owner="tester")
@@ -214,7 +214,7 @@ def test_file_lock_timeout(tmp_path: Path):
 
 def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
     """S4: Session recovery functionality validates and repairs corrupted session files."""
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     # session_store import removed - using module-level functions
     from edison.core.session import recovery as session_recovery
 
@@ -241,7 +241,7 @@ def test_session_recovery_cli_repairs_corrupted_session(tmp_path: Path):
 
 def test_session_metadata_timestamps():
     """S6: Sessions include created_at (UTC ISO8601); updates set updated_at."""
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     # session_store import removed - using module-level functions
 
     session_manager.create_session("ts-test", owner="tester")
@@ -274,7 +274,7 @@ def test_session_metadata_timestamps():
 
 def test_archive_preserves_structure(tmp_path: Path):
     """S7: archive_session() produces tar.gz preserving full session directory tree."""
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     from edison.core.session import archive as session_archive
     # session_store import removed - using module-level functions
 
@@ -298,7 +298,7 @@ def test_archive_preserves_structure(tmp_path: Path):
 
 def test_session_validation_error_messages_are_informative(tmp_path: Path):
     """S8: Validation and state errors raise SessionError with context."""
-    from edison.core.session import manager as session_manager
+    from edison.core.session import lifecycle as session_manager
     from edison.core.exceptions import SessionError
 
     # Create directory but remove session.json to trigger validation error

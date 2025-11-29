@@ -249,7 +249,7 @@ def _session_tasks_dir(session_id: str, state: str) -> Path:
     """
     # Find the session's actual location (by session state, not task state)
     try:
-        from edison.core.session.repository import SessionRepository
+        from edison.core.session.persistence.repository import SessionRepository
         repo = SessionRepository()
         session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent
@@ -272,7 +272,7 @@ def _session_qa_dir(session_id: str, state: str) -> Path:
     """
     # Find the session's actual location (by session state, not QA state)
     try:
-        from edison.core.session.repository import SessionRepository
+        from edison.core.session.persistence.repository import SessionRepository
         repo = SessionRepository()
         session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent

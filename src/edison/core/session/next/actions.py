@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from edison.core.session import manager as session_manager
+from edison.core.session import lifecycle as session_manager
 from edison.core.qa.evidence import (
     missing_evidence_blockers,
     read_validator_jsons,

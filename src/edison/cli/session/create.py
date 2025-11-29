@@ -51,8 +51,8 @@ def main(args: argparse.Namespace) -> int:
     """Create a new session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import manager as session_manager
-    from edison.core.session.id import validate_session_id
+    from edison.core.session import lifecycle as session_manager
+    from edison.core.session.core.id import validate_session_id
     from edison.core.exceptions import SessionError
 
     try:
@@ -77,7 +77,7 @@ def main(args: argparse.Namespace) -> int:
         # Trigger autostart if mode is "start"
         if args.mode == "start":
             try:
-                from edison.core.session.autostart import SessionAutoStart
+                from edison.core.session.lifecycle.autostart import SessionAutoStart
                 from pathlib import Path
 
                 repo_root = get_repo_root(args)

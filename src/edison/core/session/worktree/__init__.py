@@ -40,11 +40,11 @@ from .manager import (
 # Import config helpers
 from .config_helpers import (
     _config,
-    _get_repo_dir,
     _get_worktree_base,
     _worktree_base_dir,
     _resolve_worktree_target,
 )
+from .._utils import get_repo_dir
 
 
 def list_worktrees() -> List[Dict[str, Any]]:
@@ -58,7 +58,7 @@ def list_worktrees() -> List[Dict[str, Any]]:
 
 def list_worktrees_porcelain() -> str:
     """Return git worktree list output in porcelain format."""
-    repo_dir = _get_repo_dir()
+    repo_dir = get_repo_dir()
     timeout = _config().get_worktree_timeout("health_check", 10)
     cp = run_with_timeout(
         ["git", "worktree", "list", "--porcelain"],
@@ -115,8 +115,9 @@ __all__ = [
     "list_archived_worktrees_sorted",
     # Config helpers
     "_config",
-    "_get_repo_dir",
     "_get_worktree_base",
     "_worktree_base_dir",
     "_resolve_worktree_target",
+    # Utilities
+    "get_repo_dir",
 ]

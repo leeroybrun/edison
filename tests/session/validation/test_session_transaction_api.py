@@ -23,7 +23,7 @@ REPO_ROOT = get_repo_root()
 from edison.core import task
 from edison.data import get_data_path
 from edison.core.session import transaction as session_transaction
-from edison.core.session.id import validate_session_id
+from edison.core.session.core.id import validate_session_id
 from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
 from edison.core.utils.io import read_json as io_read_json_safe
 

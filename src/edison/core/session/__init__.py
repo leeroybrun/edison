@@ -7,7 +7,7 @@ operations, state machine helpers and related data models.
 from __future__ import annotations
 
 # Core session management
-from .manager import (
+from .lifecycle.manager import (
     SessionManager,
     create_session,
     get_session,
@@ -23,13 +23,16 @@ from .manager import (
 from ._config import get_config, reset_config_cache
 
 # Session ID validation
-from .id import validate_session_id, SessionIdError
+from .core.id import validate_session_id, SessionIdError
 
 # Repository (persistence layer)
-from .repository import SessionRepository
+from .persistence.repository import SessionRepository
 
 # Path resolution utilities
 from .paths import get_session_bases, resolve_session_record_path
+
+# Session context (worktree environment management)
+from .core.context import SessionContext
 
 __all__ = [
     # Manager
@@ -53,4 +56,6 @@ __all__ = [
     # Path resolution
     "get_session_bases",
     "resolve_session_record_path",
+    # Session context
+    "SessionContext",
 ]

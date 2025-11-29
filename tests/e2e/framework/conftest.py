@@ -5,7 +5,7 @@ import pytest
 
 # Import centralized config loader (SINGLE source of truth)
 # sys.path is already set up by tests/conftest.py
-from config.loader import load_test_states
+from config import load_states as load_test_states
 
 
 @pytest.fixture

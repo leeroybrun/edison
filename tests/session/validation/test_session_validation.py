@@ -1,7 +1,7 @@
 import pytest
 import yaml
 from pathlib import Path
-from edison.core.session.id import validate_session_id, SessionIdError
+from edison.core.session.core.id import validate_session_id, SessionIdError
 from edison.core.exceptions import ValidationError
 
 

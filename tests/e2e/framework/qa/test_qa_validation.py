@@ -19,7 +19,7 @@ CORE_ROOT = _CORE_ROOT
 
 from tests.helpers.session import ensure_session
 from edison.core.task import TaskRepository, TaskQAWorkflow
-from edison.core.qa.repository import QARepository
+from edison.core.qa.workflow.repository import QARepository
 
 
 def test_qa_checklist_and_validation_workflow(tmp_path):

@@ -53,7 +53,7 @@ def test_close_cli_can_import_validate_session_id():
 
 def test_validate_session_id_direct_import_from_id():
     """Test that validate_session_id can be imported directly from id module."""
-    from edison.core.session.id import validate_session_id
+    from edison.core.session.core.id import validate_session_id
 
     # Verify it works correctly
     assert validate_session_id("test-session-001") == "test-session-001"

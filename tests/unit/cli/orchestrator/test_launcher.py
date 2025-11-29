@@ -11,7 +11,7 @@ from edison.core.orchestrator import (
     OrchestratorLauncher,
     OrchestratorNotFoundError,
 )
-from edison.core.session.context import SessionContext
+from edison.core.session.core.context import SessionContext
 from tests.helpers.io_utils import write_orchestrator_config
 
 
