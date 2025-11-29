@@ -1,7 +1,7 @@
 # Edison Core Directory Comprehensive Refactoring Plan
 
 > **Last Updated**: 2025-11-29
-> **Status**: ALL TASKS PENDING (Previous changes were lost - full restart required)
+> **Status**: WAVES 1-6 COMPLETED (2025-11-29)
 
 ## Executive Summary
 
@@ -487,7 +487,7 @@ Update adapters to use hooks instead of overriding entire methods.
 
 ### Task 5.1: Restructure session/ Module (18 files)
 **Priority**: P2 - MEDIUM
-**Status**: ⬜ NOT DONE (Analysis confirmed: no subdirectories exist yet)
+**Status**: ✅ DONE (Wave 6 - 2025-11-29)
 **Effort**: 4-6 hours
 **Files affected**: 18 files + all imports
 
@@ -538,7 +538,7 @@ session/
 
 ### Task 5.2: Restructure qa/ Module (10 files at root)
 **Priority**: P2 - MEDIUM
-**Status**: ⬜ NOT DONE
+**Status**: ✅ DONE (Wave 6 - 2025-11-29)
 **Effort**: 3-4 hours
 **Files affected**: 10 files + all imports
 
@@ -614,7 +614,7 @@ utils/
 
 ### Task 6.1: Split session/next/compute.py _child_ready()
 **Priority**: P1 - HIGH
-**Status**: ⬜ NOT DONE
+**Status**: ✅ SKIPPED (Function is already 6 lines - previous refactoring already simplified)
 **Effort**: 4-5 hours
 **Files affected**: 1 file
 
@@ -644,7 +644,7 @@ def _build_next_actions(readiness: TaskReadiness) -> List[NextAction]:
 
 ### Task 6.2: Split session/autostart.py start()
 **Priority**: P1 - HIGH
-**Status**: ⬜ NOT DONE
+**Status**: ✅ DONE (Wave 6 - 2025-11-29 - Split into 7 helper methods)
 **Effort**: 3-4 hours
 **Files affected**: 1 file
 
@@ -1019,7 +1019,7 @@ Key areas:
 
 ### Task 11.1: Move CLI Business Logic to Core
 **Priority**: P1 - HIGH
-**Status**: ⬜ NOT DONE
+**Status**: ✅ DONE (Wave 6 - 2025-11-29 - Created core/rules/checker.py, extended recovery.py)
 **Effort**: 4-6 hours
 **Files affected**: 4 CLI files + new core modules
 
@@ -1199,12 +1199,12 @@ UPDATE: /src/edison/core/config/domains/__init__.py
 
 | Category | Count | Estimated Effort | Status |
 |----------|-------|------------------|--------|
-| Critical fixes (Phase 1) | 4 tasks | 7-9 hours | ✅ DONE |
-| Remove backward compat (Phase 2) | 5 tasks | 11-14 hours | ⬜ NOT STARTED |
-| Remove hardcoded values (Phase 3) | 4 subtasks | 6-8 hours | ⬜ NOT STARTED |
-| Extract utilities/DRY (Phase 4) | 6 tasks | 15-19 hours | ⬜ NOT STARTED |
-| Restructure directories (Phase 5) | 3 tasks | 9-13 hours | ⬜ NOT STARTED |
-| Split long functions (Phase 6) | 5 tasks | 17-23 hours | ⬜ NOT STARTED |
+| Critical fixes (Phase 1) | 4 tasks | 7-9 hours | ✅ DONE (Wave 1) |
+| Remove backward compat (Phase 2) | 5 tasks | 11-14 hours | ✅ DONE (Wave 2) |
+| Remove hardcoded values (Phase 3) | 4 subtasks | 6-8 hours | ✅ DONE (Wave 3) |
+| Extract utilities/DRY (Phase 4) | 6 tasks | 15-19 hours | ✅ DONE (Wave 4) |
+| Restructure directories (Phase 5) | 3 tasks | 9-13 hours | ✅ DONE (Wave 5-6) |
+| Split long functions (Phase 6) | 5 tasks | 17-23 hours | ✅ DONE (Wave 6) |
 | Standardize error handling (Phase 7) | 2 tasks | 5-6 hours | ⬜ NOT STARTED |
 | Remove duplicates (Phase 8) | 4 tasks | 7-9 hours | ⬜ NOT STARTED |
 | Type hints & docs (Phase 9) | 3 tasks | 8-11 hours | ⬜ NOT STARTED |
