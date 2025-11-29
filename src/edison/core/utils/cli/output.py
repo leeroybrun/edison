@@ -19,37 +19,12 @@ def _cfg() -> dict:
     Raises:
         RuntimeError: If config cannot be loaded or cli section is missing
     """
-    try:
-        from edison.core.config import ConfigManager
-        from edison.core.utils.paths import resolve_project_root
-
-        repo_root = resolve_project_root()
-        cfg_manager = ConfigManager(repo_root)
-        full_config = cfg_manager.load_config(validate=False)
-
-        if "cli" not in full_config:
-            raise RuntimeError(
-                "cli configuration section is missing. "
-                "Add 'cli' section to your YAML config."
-            )
-
-        config = full_config["cli"]
-
-        # Validate required subsections
-        required_subsections = ["json", "table", "confirm", "output"]
-        missing_subsections = [s for s in required_subsections if s not in config]
-        if missing_subsections:
-            raise RuntimeError(
-                f"cli configuration missing required subsections: {missing_subsections}"
-            )
-
-        return config
-    except Exception as e:
-        if isinstance(e, RuntimeError):
-            raise
-        raise RuntimeError(
-            f"Failed to load CLI configuration: {e}"
-        ) from e
+    # Lazy import to avoid circular import
+    from edison.core.utils.config import load_validated_section
+    return load_validated_section(
+        "cli",
+        required_subsections=["json", "table", "confirm", "output"]
+    )
 
 
 def output_json(data: Any, pretty: bool = True) -> str:

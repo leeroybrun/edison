@@ -4,7 +4,83 @@ This module contains helper functions used across the QA module to avoid duplica
 """
 from __future__ import annotations
 
-from typing import List
+import json
+from pathlib import Path
+from typing import Any, Iterable, List, Optional
+
+
+def get_qa_root_path(project_root: Optional[Path] = None) -> Path:
+    """Get QA root directory - single source of truth.
+
+    This is the canonical way to resolve the QA root directory across
+    all QA module components.
+
+    Args:
+        project_root: Optional project root path. If None, resolves automatically.
+
+    Returns:
+        Path to QA root directory (.project/qa or equivalent)
+    """
+    from edison.core.utils.paths import PathResolver, get_management_paths
+
+    root = project_root or PathResolver.resolve_project_root()
+    paths = get_management_paths(root)
+    return paths.get_qa_root()
+
+
+def sort_round_dirs(dirs: Iterable[Path]) -> List[Path]:
+    """Sort round directories by numeric suffix.
+
+    Handles round-N directory names and sorts them numerically.
+    Invalid names are sorted to the beginning with value -1.
+
+    Args:
+        dirs: Iterable of Path objects representing round directories
+
+    Returns:
+        Sorted list of Path objects
+
+    Examples:
+        >>> dirs = [Path("round-3"), Path("round-1"), Path("round-2")]
+        >>> sort_round_dirs(dirs)
+        [Path("round-1"), Path("round-2"), Path("round-3")]
+    """
+    def round_key(p: Path) -> int:
+        try:
+            parts = p.name.split("-")
+            if len(parts) >= 2 and parts[-1].isdigit():
+                return int(parts[-1])
+            return -1
+        except (ValueError, IndexError, AttributeError):
+            return -1
+    return sorted(dirs, key=round_key)
+
+
+def read_json_safe(path: Path, default: Any = None) -> Any:
+    """Safely read JSON with sensible defaults.
+
+    Handles FileNotFoundError and JSONDecodeError gracefully by returning
+    a default value instead of raising exceptions.
+
+    Args:
+        path: Path to JSON file
+        default: Default value to return on error. If None, returns {}
+
+    Returns:
+        Parsed JSON data or default value
+
+    Examples:
+        >>> read_json_safe(Path("missing.json"))
+        {}
+        >>> read_json_safe(Path("missing.json"), default=[])
+        []
+    """
+    from edison.core.utils.io import read_json
+
+    try:
+        return read_json(path)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return default if default is not None else {}
 
 
 def parse_primary_files(content: str) -> List[str]:
@@ -72,4 +148,9 @@ def parse_primary_files(content: str) -> List[str]:
     return files
 
 
-__all__ = ["parse_primary_files"]
+__all__ = [
+    "get_qa_root_path",
+    "sort_round_dirs",
+    "read_json_safe",
+    "parse_primary_files",
+]

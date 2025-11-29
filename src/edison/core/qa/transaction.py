@@ -6,12 +6,12 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
-    read_json as io_read_json,
     ensure_directory as io_ensure_directory,
 )
 from ..session import transaction as _session_transaction
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.paths import PathResolver
+from ._utils import read_json_safe
 
 
 class ValidationTransaction:
@@ -78,10 +78,7 @@ class ValidationTransaction:
         # parent directory as the journal path and enrich with task/round.
         meta_path: Path = self._tx.meta_path  # type: ignore[assignment]
         self.journal_path = meta_path.parent
-        try:
-            meta = io_read_json(meta_path) or {}
-        except Exception:
-            meta = {}
+        meta = read_json_safe(meta_path, default={})
         if "taskId" not in meta:
             meta["taskId"] = self.task_id
         if "round" not in meta:

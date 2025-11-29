@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.paths.management import get_management_paths
+from .._utils import get_qa_root_path
 from . import reports, rounds
 from .exceptions import EvidenceError
 
@@ -15,10 +15,10 @@ class EvidenceService:
     def __init__(self, task_id: str, project_root: Optional[Path] = None) -> None:
         self.task_id = task_id
         self.project_root = project_root
-        
-        # Resolve evidence root
-        pm_paths = get_management_paths(project_root)
-        self.evidence_root = pm_paths.get_qa_root() / "validation-evidence" / task_id
+
+        # Resolve evidence root using shared utility
+        qa_root = get_qa_root_path(project_root)
+        self.evidence_root = qa_root / "validation-evidence" / task_id
 
     def get_evidence_root(self) -> Path:
         """Return the root evidence directory for this task."""

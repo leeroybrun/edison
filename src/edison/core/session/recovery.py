@@ -8,7 +8,6 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from edison.core.utils.paths import PathResolver
 from edison.core.config.domains import TaskConfig
 from edison.core.task.paths import get_task_dirs, get_qa_dirs
 from edison.core.utils.io import ensure_directory, read_json, write_json_atomic, is_locked, safe_move_file
@@ -17,23 +16,13 @@ from .id import validate_session_id
 from .repository import SessionRepository
 from .transaction import begin_tx, finalize_tx, abort_tx
 from ._config import get_config
+from ._utils import get_sessions_root
 
 logger = logging.getLogger(__name__)
 
-
-def _get_repo_dir() -> Path:
-    """Get the repository directory lazily."""
-    return PathResolver.resolve_project_root()
-
-def _get_sessions_root() -> Path:
-    """Get the sessions root directory."""
-    cfg = get_config()
-    root_rel = cfg.get_session_root_path()
-    return (PathResolver.resolve_project_root() / root_rel).resolve()
-
 def _session_dir_map() -> Dict[str, Path]:
     """Get mapping of session states to their directory paths."""
-    base = _get_sessions_root()
+    base = get_sessions_root()
     states = get_config().get_session_states()
     return {state: (base / dirname).resolve() for state, dirname in states.items()}
 
@@ -282,7 +271,7 @@ def handle_timeout(sess_dir: Path) -> Path:
     except Exception:
         orig = {}
 
-    rec_dir = _get_sessions_root() / 'recovery' / sess_dir.name
+    rec_dir = get_sessions_root() / 'recovery' / sess_dir.name
     ensure_directory(rec_dir.parent)
     if rec_dir.exists():
         shutil.rmtree(rec_dir)

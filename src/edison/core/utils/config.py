@@ -310,8 +310,127 @@ def get_semantic_state(domain: str, semantic_key: str, repo_root: Optional[Path]
     return semantic_key
 
 
+@lru_cache(maxsize=16)
+def _load_validated_section_impl(
+    section_path_str: str,
+    required_fields_str: str,
+    required_subsections_str: str,
+    repo_root_str: str
+) -> Dict[str, Any]:
+    """Internal implementation with string-based caching.
+
+    Args:
+        section_path_str: JSON-encoded section path (string or list of strings)
+        required_fields_str: JSON-encoded list of required field names
+        required_subsections_str: JSON-encoded list of required subsection names
+        repo_root_str: Project root path as string (empty for auto-detect)
+
+    Returns:
+        Validated config section dict
+
+    Raises:
+        RuntimeError: If section is missing or validation fails
+    """
+    import json as json_module
+
+    # Decode parameters
+    section_path = json_module.loads(section_path_str)
+    required_fields = json_module.loads(required_fields_str) if required_fields_str else None
+    required_subsections = json_module.loads(required_subsections_str) if required_subsections_str else None
+    repo_root = Path(repo_root_str) if repo_root_str else None
+
+    # Load config
+    config = get_cached_config(repo_root=repo_root)
+
+    # Navigate to section (handle both string and list paths)
+    path_parts = section_path if isinstance(section_path, list) else [section_path]
+    current = config
+    for part in path_parts:
+        if part not in current:
+            path_display = ".".join(path_parts)
+            raise RuntimeError(
+                f"{path_display} configuration section is missing. "
+                f"Add '{path_display}' section to your YAML config."
+            )
+        current = current[part]
+
+    # Validate required fields
+    if required_fields:
+        missing_fields = [f for f in required_fields if f not in current]
+        if missing_fields:
+            path_display = ".".join(path_parts)
+            raise RuntimeError(
+                f"{path_display} configuration missing required fields: {missing_fields}"
+            )
+
+    # Validate required subsections
+    if required_subsections:
+        missing_subsections = [s for s in required_subsections if s not in current]
+        if missing_subsections:
+            path_display = ".".join(path_parts)
+            raise RuntimeError(
+                f"{path_display} configuration missing required subsections: {missing_subsections}"
+            )
+
+    return current
+
+
+def load_validated_section(
+    section_path: str | List[str],
+    *,
+    required_fields: Optional[List[str]] = None,
+    required_subsections: Optional[List[str]] = None,
+    repo_root: Optional[Path] = None
+) -> Dict[str, Any]:
+    """Load and validate a config section with strict requirements.
+
+    This function provides a centralized way to load config sections with
+    validation, replacing duplicate _cfg() patterns across the codebase.
+
+    Args:
+        section_path: Section name or path (e.g., "cli" or ["time", "iso8601"])
+        required_fields: List of required field names in the section
+        required_subsections: List of required subsection names in the section
+        repo_root: Project root path (auto-detected if None)
+
+    Returns:
+        Validated config section dict
+
+    Raises:
+        RuntimeError: If section is missing or validation fails
+
+    Example:
+        >>> # Load time.iso8601 config with field validation
+        >>> cfg = load_validated_section(
+        ...     ["time", "iso8601"],
+        ...     required_fields=["timespec", "use_z_suffix", "strip_microseconds"]
+        ... )
+        >>>
+        >>> # Load cli config with subsection validation
+        >>> cfg = load_validated_section(
+        ...     "cli",
+        ...     required_subsections=["json", "table", "confirm", "output"]
+        ... )
+    """
+    import json as json_module
+
+    # Encode parameters for caching
+    section_path_str = json_module.dumps(section_path)
+    required_fields_str = json_module.dumps(required_fields) if required_fields else ""
+    required_subsections_str = json_module.dumps(required_subsections) if required_subsections else ""
+    repo_root_str = str(repo_root) if repo_root else ""
+
+    return _load_validated_section_impl(
+        section_path_str,
+        required_fields_str,
+        required_subsections_str,
+        repo_root_str
+    )
+
+
 __all__ = [
     "load_config_section",
+    "load_validated_section",
     "get_states_for_domain",
     "get_initial_state",
     "get_active_state",

@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
+from .._utils import sort_round_dirs
 from .exceptions import EvidenceError
 
 
@@ -12,10 +13,8 @@ def find_latest_round_dir(base_dir: Path) -> Optional[Path]:
     if not base_dir.exists():
         return None
 
-    rounds = sorted(
-        [p for p in base_dir.glob("round-*") if p.is_dir()],
-        key=lambda p: int(p.name.split("-")[1]) if p.name.split("-")[1].isdigit() else 0
-    )
+    round_dirs = [p for p in base_dir.glob("round-*") if p.is_dir()]
+    rounds = sort_round_dirs(round_dirs)
 
     return rounds[-1] if rounds else None
 
@@ -62,12 +61,8 @@ def list_round_dirs(base_dir: Path) -> List[Path]:
     if not base_dir.exists():
         return []
 
-    rounds = sorted(
-        [p for p in base_dir.glob("round-*") if p.is_dir()],
-        key=lambda p: int(p.name.split("-")[1]) if p.name.split("-")[1].isdigit() else 0
-    )
-
-    return rounds
+    round_dirs = [p for p in base_dir.glob("round-*") if p.is_dir()]
+    return sort_round_dirs(round_dirs)
 
 
 def resolve_round_dir(base_dir: Path, round_num: Optional[int] = None) -> Optional[Path]:

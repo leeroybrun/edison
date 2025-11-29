@@ -5,7 +5,6 @@ import errno
 import fcntl
 import os
 import shutil
-import tempfile
 import threading
 import time
 from contextlib import contextmanager
@@ -258,30 +257,23 @@ def safe_move_file(src: Path, dest: Path, repo_root: Optional[Path] = None) -> P
 
 def write_text_locked(path: Path, content: str) -> None:
     """Write text atomically while holding an exclusive lock on the target.
-    
+
+    Uses the existing atomic_write implementation from core module with
+    file_lock as the locking context manager to avoid code duplication.
+
     Args:
         path: Target file path
         content: Text content to write
     """
+    from .core import atomic_write
+    from typing import TextIO
+
     target = Path(path)
-    ensure_directory(target.parent)
-    tmp: Optional[Path] = None
-    with file_lock(target):
-        try:
-            with tempfile.NamedTemporaryFile(
-                "w", encoding="utf-8", dir=str(target.parent), delete=False
-            ) as fh:
-                tmp = Path(fh.name)
-                fh.write(content)
-                fh.flush()
-                os.fsync(fh.fileno())
-            os.replace(str(tmp), str(target))
-        finally:
-            if tmp is not None and tmp.exists():
-                try:
-                    tmp.unlink()
-                except Exception:
-                    pass
+
+    def _writer(f: TextIO) -> None:
+        f.write(content)
+
+    atomic_write(target, _writer, lock_cm=file_lock(target))
 
 
 

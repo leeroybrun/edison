@@ -4,9 +4,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 
-from edison.core.utils.paths import PathResolver
 from edison.core.config.domains.project import ProjectConfig
 from .._config import get_config
+from .._utils import get_repo_dir
 
 if TYPE_CHECKING:
     from edison.core.config.domains import SessionConfig
@@ -14,15 +14,10 @@ if TYPE_CHECKING:
 
 def _config() -> "SessionConfig":
     """Return the cached SessionConfig instance.
-    
+
     This is a convenience wrapper for worktree modules.
     """
     return get_config()
-
-
-def _get_repo_dir() -> Path:
-    """Get the repository root directory."""
-    return PathResolver.resolve_project_root()
 
 
 def _get_project_name() -> str:
@@ -51,15 +46,15 @@ def _worktree_base_dir(cfg: Dict[str, Any], repo_dir: Path) -> Path:
 
 def _resolve_worktree_target(session_id: str, cfg: Dict[str, Any]) -> tuple[Path, str]:
     """Compute worktree path and branch name from config and session id.
-    
+
     Args:
         session_id: Session identifier
         cfg: Worktree configuration dictionary
-        
+
     Returns:
         Tuple of (worktree_path, branch_name)
     """
-    repo_dir = _get_repo_dir()
+    repo_dir = get_repo_dir()
 
     base_dir_path = _worktree_base_dir(cfg, repo_dir)
     worktree_path = (base_dir_path / session_id).resolve()
@@ -102,5 +97,5 @@ def _get_worktree_base() -> Path:
         Resolved path to worktree base directory
     """
     cfg = get_config().get_worktree_config()
-    repo_dir = _get_repo_dir()
+    repo_dir = get_repo_dir()
     return _worktree_base_dir(cfg, repo_dir)

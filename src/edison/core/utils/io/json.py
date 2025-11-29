@@ -17,37 +17,12 @@ def _cfg() -> Dict[str, Any]:
     Raises:
         RuntimeError: If config cannot be loaded or json_io section is missing
     """
-    try:
-        from edison.core.config import ConfigManager
-        from edison.core.utils.paths import resolve_project_root
-
-        repo_root = resolve_project_root()
-        cfg_manager = ConfigManager(repo_root)
-        full_config = cfg_manager.load_config(validate=False)
-
-        if "json_io" not in full_config:
-            raise RuntimeError(
-                "json_io configuration section is missing. "
-                "Add 'json_io' section to your YAML config."
-            )
-
-        config = full_config["json_io"]
-
-        # Validate required fields
-        required_fields = ["indent", "sort_keys", "ensure_ascii", "encoding"]
-        missing_fields = [f for f in required_fields if f not in config]
-        if missing_fields:
-            raise RuntimeError(
-                f"json_io configuration missing required fields: {missing_fields}"
-            )
-
-        return config
-    except Exception as e:
-        if isinstance(e, RuntimeError):
-            raise
-        raise RuntimeError(
-            f"Failed to load JSON I/O configuration: {e}"
-        ) from e
+    # Lazy import to avoid circular import
+    from edison.core.utils.config import load_validated_section
+    return load_validated_section(
+        "json_io",
+        required_fields=["indent", "sort_keys", "ensure_ascii", "encoding"]
+    )
 
 
 def _lock_timeout_seconds() -> float:

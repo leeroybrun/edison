@@ -7,21 +7,14 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
-from edison.core.utils.paths import PathResolver, get_management_paths
+from ._utils import get_qa_root_path
 
 
 # ---------- Score History Path Helpers ----------
 
-def _qa_root(project_root: Path | None = None) -> Path:
-    """Get the QA root directory."""
-    root = project_root or PathResolver.resolve_project_root()
-    mgmt_paths = get_management_paths(root)
-    return mgmt_paths.get_qa_root()
-
-
 def _score_history_dir(project_root: Path | None = None) -> Path:
     """Get the score history directory."""
-    return _qa_root(project_root) / "score-history"
+    return get_qa_root_path(project_root) / "score-history"
 
 
 def _score_history_file(session_id: str, project_root: Path | None = None) -> Path:

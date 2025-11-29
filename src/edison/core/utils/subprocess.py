@@ -11,77 +11,10 @@ This module provides safe subprocess execution with:
 
 import shlex
 import subprocess
-from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
+from typing import Any, List, MutableMapping, Optional, Sequence
 
 from edison.core.config.domains.timeouts import TimeoutsConfig
-
-
-@lru_cache(maxsize=4)
-def _load_timeouts_impl(repo_root_str: str) -> Dict[str, float]:
-    """Load timeout configuration from YAML without fallbacks.
-
-    Args:
-        repo_root_str: Project root path as string
-
-    Returns:
-        Dict of timeout values keyed by timeout type
-
-    Raises:
-        RuntimeError: If config cannot be loaded or subprocess_timeouts section is missing
-    """
-    try:
-        from ..config import ConfigManager  # type: ignore
-
-        repo_root = Path(repo_root_str)
-        cfg = ConfigManager(repo_root).load_config(validate=False)  # type: ignore[arg-type]
-        configured = cfg.get("subprocess_timeouts")
-
-        if not configured:
-            raise RuntimeError(
-                "subprocess_timeouts configuration section is missing. "
-                "Add subprocess_timeouts to your YAML config."
-            )
-
-        timeouts: Dict[str, float] = {}
-        for key, value in configured.items():
-            try:
-                timeouts[key] = float(value)
-            except (ValueError, TypeError) as e:
-                raise RuntimeError(
-                    f"Invalid timeout value for '{key}': {value}. "
-                    f"Expected numeric value. Error: {e}"
-                )
-
-        # Ensure 'default' timeout exists
-        if "default" not in timeouts:
-            raise RuntimeError(
-                "subprocess_timeouts configuration must include a 'default' timeout value"
-            )
-
-        return timeouts
-    except Exception as e:
-        if isinstance(e, RuntimeError):
-            raise
-        raise RuntimeError(
-            f"Failed to load subprocess timeout configuration: {e}"
-        ) from e
-
-
-def _load_timeouts(repo_root: Path) -> Dict[str, float]:
-    """Load timeout configuration from YAML without fallbacks.
-
-    Args:
-        repo_root: Project root path
-
-    Returns:
-        Dict of timeout values keyed by timeout type
-
-    Raises:
-        RuntimeError: If config cannot be loaded or subprocess_timeouts section is missing
-    """
-    return _load_timeouts_impl(str(repo_root))
 
 
 def _flatten_cmd(cmd: Any) -> Sequence[str]:
@@ -110,22 +43,46 @@ def _infer_timeout_type(cmd: Any) -> str:
 
 
 def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | str | None = None) -> float:
+    """Get configured timeout for a command.
+
+    Args:
+        cmd: Command to get timeout for
+        timeout_type: Explicit timeout type (e.g., 'git_operations')
+        cwd: Working directory for context
+
+    Returns:
+        Timeout in seconds
+
+    Raises:
+        RuntimeError: If timeout cannot be determined
+    """
+    # Determine repo root from cwd or auto-detect
+    repo_root = None
     if cwd is not None:
         try:
             repo_root = Path(cwd).resolve()
         except Exception:
-            from edison.core.utils.paths import PathResolver
-            repo_root = PathResolver.resolve_project_root()
-    else:
-        from edison.core.utils.paths import PathResolver
-        repo_root = PathResolver.resolve_project_root()
+            pass
 
-    timeouts = _load_timeouts(repo_root)
+    # Get timeout config
+    timeout_config = TimeoutsConfig(repo_root=repo_root)
 
+    # Determine timeout type
     ttype = timeout_type or _infer_timeout_type(cmd)
-    timeout = timeouts.get(ttype, timeouts.get("default"))
+
+    # Map timeout type to TimeoutsConfig attribute
+    timeout_map = {
+        "git_operations": timeout_config.git_operations_seconds,
+        "test_execution": timeout_config.test_execution_seconds,
+        "build_operations": timeout_config.build_operations_seconds,
+        "default": timeout_config.default_seconds,
+    }
+
+    timeout = timeout_map.get(ttype)
     if timeout is None:
-        raise RuntimeError(f"Timeout not configured for type '{ttype}'")
+        # Fallback to default
+        timeout = timeout_config.default_seconds
+
     return float(timeout)
 
 
@@ -161,7 +118,11 @@ def check_output_with_timeout(cmd, timeout_type: str | None = None, **kwargs):
 
 
 def reset_subprocess_timeout_cache() -> None:
-    _load_timeouts_impl.cache_clear()
+    """Clear subprocess timeout configuration cache.
+
+    This clears the global config cache, which will reload timeout
+    configuration on the next access.
+    """
     from edison.core.config.cache import clear_all_caches
     clear_all_caches()
 

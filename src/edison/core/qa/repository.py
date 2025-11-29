@@ -21,6 +21,7 @@ from edison.core.utils.text import parse_html_comment, format_html_comment, pars
 from edison.core.config.domains import TaskConfig
 
 from .models import QARecord
+from ._utils import get_qa_root_path
 
 
 class QARepository(
@@ -56,16 +57,13 @@ class QARepository(
         super().__init__(project_root)
         self.project_root = project_root or PathResolver.resolve_project_root()
         self._config = TaskConfig(repo_root=self.project_root)
-    
+        self._qa_root = get_qa_root_path(self.project_root)
+
     # ---------- Path Resolution ----------
-    
-    def _get_qa_root(self) -> Path:
-        """Get the QA root directory."""
-        return self._config.qa_root()
-    
+
     def _get_state_dir(self, state: str) -> Path:
         """Get directory for a QA state."""
-        return self._get_qa_root() / state
+        return self._qa_root / state
     
     def _get_states_to_search(self) -> List[str]:
         """Get list of states to search from configuration.
