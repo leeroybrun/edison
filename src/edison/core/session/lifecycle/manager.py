@@ -8,7 +8,7 @@ The module-level functions provide a functional API for CLI and scripts.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 from ..core.id import validate_session_id, SessionIdError

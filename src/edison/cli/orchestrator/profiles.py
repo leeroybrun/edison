@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import (
+from edison.core.config.domains import OrchestratorConfig
     OutputFormatter,
     add_json_flag,
     add_repo_root_flag,
@@ -30,7 +31,6 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        from edison.core.config.domains import OrchestratorConfig
 
         repo_root = get_repo_root(args)
         config = OrchestratorConfig(repo_root)

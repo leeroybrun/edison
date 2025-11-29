@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.core.rules import RulesRegistry
 
 SUMMARY = "List all available rules"
 
@@ -41,7 +42,6 @@ def main(args: argparse.Namespace) -> int:
     """List rules - delegates to rules library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.rules import RulesRegistry
     
     try:
         repo_root = get_repo_root(args)

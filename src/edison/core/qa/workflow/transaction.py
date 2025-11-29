@@ -1,3 +1,14 @@
+"""QA validation transaction management.
+
+This module provides the ValidationTransaction class that wraps session-level
+transactions for QA validation workflows. It manages:
+- Task-specific validation staging directories
+- Evidence report persistence
+- Transaction lifecycle coordination with session transactions
+
+The ValidationTransaction integrates with the session transaction system
+to ensure atomic validation operations.
+"""
 from __future__ import annotations
 
 import os

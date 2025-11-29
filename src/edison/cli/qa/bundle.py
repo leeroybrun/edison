@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.qa import bundler
+from edison.core.qa.evidence import EvidenceService
 
 SUMMARY = "Create or inspect QA validation bundle"
 
@@ -52,8 +54,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Bundle management - delegates to QA library."""
-    from edison.core.qa import bundler
-    from edison.core.qa.evidence import EvidenceService
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

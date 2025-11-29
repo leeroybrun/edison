@@ -26,6 +26,7 @@ from edison.data import read_yaml as read_bundled_yaml
 
 from ..includes import resolve_includes, ComposeError
 from ..core.errors import AnchorNotFoundError, RulesCompositionError
+from edison.data import get_data_path
 
 
 def extract_anchor_content(source_file: Path, anchor: str) -> str:
@@ -122,7 +123,6 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
             self.core_registry_path = project_core_registry
         else:
             try:
-                from edison.data import get_data_path
                 self.core_registry_path = get_data_path("rules", "registry.yml")
             except Exception:
                 # Fallback for when package data unavailable

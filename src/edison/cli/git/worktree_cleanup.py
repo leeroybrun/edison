@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_force_flag
+from edison.core.session import worktree
 
 SUMMARY = "Clean up session worktree"
 
@@ -35,7 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Cleanup git worktree - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         # Resolve the worktree path and branch name for this session

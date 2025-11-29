@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.config.domains import TaskConfig
 
 SUMMARY = "Remove stale task locks"
 
@@ -39,7 +40,6 @@ def main(args: argparse.Namespace) -> int:
     """Cleanup stale locks - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.config.domains import TaskConfig
 
     try:
         # Resolve project root

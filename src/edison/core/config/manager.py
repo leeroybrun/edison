@@ -10,6 +10,7 @@ import json
 import re
 
 from edison.core.utils.merge import deep_merge as _deep_merge, merge_arrays
+from edison.data import get_data_path
 
 # Lazy imports to avoid circular dependencies
 # These are imported at runtime inside methods that need them
@@ -44,7 +45,6 @@ class ConfigManager:
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
 
         # Bundled defaults from edison.data package (always available)
-        from edison.data import get_data_path
         self.core_config_dir = get_data_path("config")
         self.core_defaults_path = self.core_config_dir / "defaults.yaml"
 

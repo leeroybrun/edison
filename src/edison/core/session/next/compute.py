@@ -59,6 +59,7 @@ validate_session_id = session_store_validate_session_id
 
 # Import build_validation_bundle from graph module (will be migrated)
 from edison.core.session.persistence.graph import build_validation_bundle
+import argparse
 
 
 def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str, Any]:
@@ -447,7 +448,6 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
 
 def main() -> None:  # CLI facade for direct execution
     """CLI entry point for compute_next."""
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("session_id")
     parse_common_args(parser)

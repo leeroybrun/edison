@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.core.rules import RulesEngine
+from edison.core.rules.checker import get_rules_for_context_formatted, format_rules_output
+from edison.core.config import ConfigManager
 
 SUMMARY = "Check rules applicable to a specific context or transition"
 
@@ -47,9 +50,6 @@ def main(args: argparse.Namespace) -> int:
     """Check rules for context - delegates to RulesEngine."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.rules import RulesEngine
-    from edison.core.rules.checker import get_rules_for_context_formatted, format_rules_output
-    from edison.core.config import ConfigManager
 
     try:
         repo_root = get_repo_root(args)

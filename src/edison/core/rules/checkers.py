@@ -20,6 +20,7 @@ from edison.core.utils.paths import get_management_paths
 
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
+import json
 
 if TYPE_CHECKING:
     from ..qa.evidence import EvidenceService
@@ -65,7 +66,6 @@ def get_checker(rule_id: str) -> Optional[RuleChecker]:
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
     """Safely load JSON from a file, returning empty dict on error."""
-    import json
     from edison.core.utils.io import read_json
     try:
         data = read_json(path, default={})

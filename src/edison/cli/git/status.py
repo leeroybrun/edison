@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.core.git import status as git_status
 
 SUMMARY = "Show Edison-aware git status"
 
@@ -35,7 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Show git status - delegates to git library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.git import status as git_status
     
     try:
         repo_root = get_repo_root(args)

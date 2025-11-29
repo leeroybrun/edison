@@ -10,6 +10,9 @@ import argparse
 import sys
 
 from edison.cli import OutputFormatter, add_repo_root_flag, get_repo_root
+from edison.core.setup import configure_project
+from edison.core.config import ConfigManager
+from pathlib import Path
 
 SUMMARY = "Interactive configuration menu"
 
@@ -33,9 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Interactive configuration - delegates to setup module."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.setup import configure_project
-    from edison.core.config import ConfigManager
-    from pathlib import Path
 
     try:
         repo_root = get_repo_root(args)

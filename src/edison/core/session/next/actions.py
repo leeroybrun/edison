@@ -18,6 +18,7 @@ from edison.core.session.next.utils import project_cfg_dir
 from edison.core.utils.io import read_json as io_read_json
 from edison.core.task import TaskRepository, safe_relative
 from edison.core.qa import QARepository
+import fnmatch
 
 
 def infer_task_status(task_id: str) -> str:
@@ -186,7 +187,6 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                 return files
 
             def _matches(file_path: str, pkg: str) -> bool:
-                import fnmatch
                 patterns = {
                     "next": ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx"],
                     "react": ["*.tsx", "*.jsx", "**/components/**/*"],

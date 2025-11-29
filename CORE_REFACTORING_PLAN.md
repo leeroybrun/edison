@@ -1205,8 +1205,8 @@ UPDATE: /src/edison/core/config/domains/__init__.py
 | Extract utilities/DRY (Phase 4) | 6 tasks | 15-19 hours | ✅ DONE (Wave 4) |
 | Restructure directories (Phase 5) | 3 tasks | 9-13 hours | ✅ DONE (Wave 5-6) |
 | Split long functions (Phase 6) | 5 tasks | 17-23 hours | ✅ DONE (Wave 6) |
-| Standardize error handling (Phase 7) | 2 tasks | 5-6 hours | ⬜ NOT STARTED |
-| Remove duplicates (Phase 8) | 4 tasks | 7-9 hours | ⬜ NOT STARTED |
+| Standardize error handling (Phase 7) | 2 tasks | 5-6 hours | ✅ DONE (Wave 7) |
+| Remove duplicates (Phase 8) | 4 tasks | 7-9 hours | ✅ DONE (Wave 7) |
 | Type hints & docs (Phase 9) | 3 tasks | 8-11 hours | ⬜ NOT STARTED |
 | Fix circular imports (Phase 10) | 1 task | 6-8 hours | ⬜ NOT STARTED |
 | CLI business logic migration (Phase 11) | 1 task | 4-6 hours | ⬜ NOT STARTED |

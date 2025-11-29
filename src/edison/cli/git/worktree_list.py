@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag
+from edison.core.session import worktree
 
 SUMMARY = "List all git worktrees"
 
@@ -34,7 +35,6 @@ def main(args: argparse.Namespace) -> int:
     """List git worktrees - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         # Get list of active worktrees

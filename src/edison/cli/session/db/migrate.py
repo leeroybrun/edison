@@ -9,6 +9,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.core.id import validate_session_id
 
 SUMMARY = "Migrate session database"
 
@@ -31,7 +32,6 @@ def main(args: argparse.Namespace) -> int:
     """Migrate session database - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.core.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from ..base import BaseDomainConfig
+from edison.data import get_data_path
 
 if TYPE_CHECKING:
     from ..manager import ConfigManager
@@ -41,7 +42,6 @@ class CompositionConfig(BaseDomainConfig):
     def _get_composition_yaml(self) -> dict:
         """Load composition.yaml with caching."""
         if self._cached_composition_yaml is None:
-            from edison.data import get_data_path
             composition_yaml_path = get_data_path("config") / "composition.yaml"
             if composition_yaml_path.exists():
                 # Lazy import to avoid circular dependency

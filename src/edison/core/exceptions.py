@@ -6,18 +6,22 @@ from typing import Any, Dict, Mapping
 class EdisonError(Exception):
     """Base exception for Edison framework."""
 
+    context: Dict[str, Any]
+
     def __init__(self, message: str = "", *, context: Mapping[str, Any] | None = None) -> None:
         super().__init__(message)
         if context is not None:
             # Store a shallow copy to avoid accidental mutation.
-            self.context = dict(context)  # type: ignore[attr-defined]
+            self.context = dict(context)
+        else:
+            self.context = {}
 
     def to_json_error(self) -> Dict[str, Any]:
         """Return a JSON-serializable error payload."""
         return {
             "message": str(self),
             "code": self.__class__.__name__,
-            "context": getattr(self, "context", {}),  # type: ignore[attr-defined]
+            "context": self.context,
         }
 
 

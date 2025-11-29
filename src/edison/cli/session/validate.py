@@ -9,6 +9,9 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.lifecycle.verify import verify_session_health
+from edison.core.session.core.id import validate_session_id
+from edison.core.qa.scoring.scoring import track_validation_score
 
 SUMMARY = "Validate session health and record scores"
 
@@ -46,9 +49,6 @@ def main(args: argparse.Namespace) -> int:
     """Validate session health - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.lifecycle.verify import verify_session_health
-    from edison.core.session.core.id import validate_session_id
-    from edison.core.qa.scoring.scoring import track_validation_score
 
     try:
         session_id = validate_session_id(args.session_id)

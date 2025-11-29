@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import (
+from edison.core.session.lifecycle.autostart import SessionAutoStart
     OutputFormatter,
     add_dry_run_flag,
     add_json_flag,
@@ -59,7 +60,6 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        from edison.core.session.lifecycle.autostart import SessionAutoStart
 
         repo_root = get_repo_root(args)
 

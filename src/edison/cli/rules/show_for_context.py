@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_repo_root_flag, get_repo_root
+from edison.core.rules import RulesRegistry
 
 SUMMARY = "Show rules applicable to specific contexts"
 
@@ -36,7 +37,6 @@ def main(args: argparse.Namespace) -> int:
     json_mode = args.format == "json"
     formatter = OutputFormatter(json_mode=json_mode)
 
-    from edison.core.rules import RulesRegistry
     
     try:
         repo_root = get_repo_root(args)

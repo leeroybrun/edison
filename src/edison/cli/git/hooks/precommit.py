@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.git import status as git_status
 
 SUMMARY = "Run pre-commit validations"
 
@@ -27,7 +28,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Run pre-commit hook validations."""
-    from edison.core.git import status as git_status
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
     repo_root = get_repo_root(args)

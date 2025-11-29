@@ -22,6 +22,7 @@ from edison.core.config.domains import TaskConfig
 
 from ..models import QARecord
 from .._utils import get_qa_root_path
+import json
 
 
 class QARepository(
@@ -239,7 +240,6 @@ class QARepository(
 
         Uses format_html_comment from utils/text for consistent metadata formatting.
         """
-        import json
         lines: List[str] = []
 
         # Metadata comments using shared utility

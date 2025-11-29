@@ -10,6 +10,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session import validate_session_id
+from edison.core.session.lifecycle.verify import verify_session_health
 
 SUMMARY = "Verify a session against closing-phase guards"
 
@@ -33,8 +35,6 @@ def main(args: argparse.Namespace) -> int:
     """Verify session health - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import validate_session_id
-    from edison.core.session.lifecycle.verify import verify_session_health
 
     try:
         session_id = validate_session_id(args.session_id)

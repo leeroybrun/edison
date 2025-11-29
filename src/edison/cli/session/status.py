@@ -10,6 +10,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session import lifecycle as session_manager
+from edison.core.session.core.id import validate_session_id
 
 SUMMARY = "Display current session status"
 
@@ -26,8 +28,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Display session status - delegates to core library."""
-    from edison.core.session import lifecycle as session_manager
-    from edison.core.session.core.id import validate_session_id
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

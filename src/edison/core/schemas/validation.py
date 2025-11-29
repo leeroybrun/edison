@@ -13,17 +13,44 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from edison.core.utils.io import read_json
 
-try:
-    import jsonschema  # type: ignore
-except Exception:  # pragma: no cover - surfaced via doctor script
-    jsonschema = None  # type: ignore[assignment]
+# jsonschema is an optional dependency without type stubs
+# We define a protocol for type checking and handle runtime import gracefully
+if TYPE_CHECKING:
+    class ValidationError(Exception):
+        """Protocol for jsonschema.ValidationError."""
+        message: str
+        path: List[Any]
+
+    class Validator(Protocol):
+        """Protocol for jsonschema validators."""
+        def iter_errors(self, instance: Any) -> Any: ...
+
+    class JsonSchemaModule(Protocol):
+        """Protocol for jsonschema module."""
+        def validate(self, instance: Any, schema: Dict[str, Any]) -> None: ...
+        ValidationError: type[ValidationError]
+
+    jsonschema: Optional[JsonSchemaModule]
+    Draft202012Validator: Optional[type[Validator]]
+else:
+    try:
+        import jsonschema
+    except Exception:  # pragma: no cover - surfaced via doctor script
+        jsonschema = None
+
+    # Import validator for better error messages if available
+    try:
+        from jsonschema import Draft202012Validator  # type: ignore[import-not-found]
+    except Exception:
+        Draft202012Validator = None
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
+from edison.data import get_data_path
 
 
 class SchemaValidationError(ValueError):
@@ -59,7 +86,6 @@ def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
 
     # Try packaged data location
     try:
-        from edison.data import get_data_path
         packaged_schemas = get_data_path("schemas")
         if packaged_schemas.exists():
             return packaged_schemas
@@ -136,14 +162,14 @@ def validate_payload(
         FileNotFoundError: If schema doesn't exist.
         json.JSONDecodeError: If schema is invalid JSON.
     """
-    if jsonschema is None:  # type: ignore[truthy-function]
+    if jsonschema is None:
         # jsonschema not available - skip validation
         return
 
     schema = load_schema(schema_name, repo_root=repo_root)
 
     try:
-        jsonschema.validate(instance=payload, schema=schema)  # type: ignore[no-untyped-call]
+        jsonschema.validate(instance=payload, schema=schema)
     except Exception as exc:
         # Wrap jsonschema validation error in our custom error
         raise SchemaValidationError(
@@ -170,7 +196,7 @@ def validate_payload_safe(
     Returns:
         List of error messages. Empty list if validation passes.
     """
-    if jsonschema is None:  # type: ignore[truthy-function]
+    if jsonschema is None:
         # jsonschema not available - return empty (no validation)
         return []
 
@@ -183,25 +209,25 @@ def validate_payload_safe(
     errors: List[str] = []
 
     try:
-        # Use Draft202012Validator for better error reporting
-        from jsonschema import Draft202012Validator  # type: ignore
+        # Use Draft202012Validator for better error reporting if available
+        if Draft202012Validator is not None:
+            validator = Draft202012Validator(schema)
 
-        validator = Draft202012Validator(schema)  # type: ignore[no-untyped-call]
-
-        for error in sorted(validator.iter_errors(payload), key=lambda e: str(e.path)):  # type: ignore[no-untyped-call]
-            # Build a readable error message with path
-            if error.path:  # type: ignore[attr-defined]
-                path_str = ".".join(str(p) for p in error.path)  # type: ignore[attr-defined]
-                errors.append(f"{path_str}: {error.message}")  # type: ignore[attr-defined]
-            else:
-                errors.append(error.message)  # type: ignore[attr-defined]
+            for error in sorted(validator.iter_errors(payload), key=lambda e: str(e.path)):
+                # Build a readable error message with path
+                if hasattr(error, 'path') and error.path:
+                    path_str = ".".join(str(p) for p in error.path)
+                    errors.append(f"{path_str}: {error.message}")
+                else:
+                    errors.append(error.message)
+        else:
+            # Fallback to basic validation
+            jsonschema.validate(instance=payload, schema=schema)
 
     except Exception as exc:
-        # Fallback to basic validation
-        try:
-            jsonschema.validate(instance=payload, schema=schema)  # type: ignore[no-untyped-call]
-        except Exception as e:
-            errors.append(str(e))
+        # Catch validation errors
+        if not errors:
+            errors.append(str(exc))
 
     return errors
 

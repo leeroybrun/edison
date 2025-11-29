@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag
+from edison.core.session import worktree
+from edison.core.utils.git.worktree import check_worktree_health
 
 SUMMARY = "Check worktree health"
 
@@ -35,7 +37,6 @@ def main(args: argparse.Namespace) -> int:
     """Check worktree health - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         if args.session_id:
@@ -46,7 +47,6 @@ def main(args: argparse.Namespace) -> int:
             is_registered = worktree.is_worktree_registered(worktree_path)
 
             # Check if path exists and is healthy
-            from edison.core.utils.git.worktree import check_worktree_health
             is_healthy = check_worktree_health(worktree_path) if worktree_path.exists() else False
 
             result = {

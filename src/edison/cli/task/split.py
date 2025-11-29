@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.task import TaskRepository, TaskQAWorkflow, normalize_record_id
 
 SUMMARY = "Split task into subtasks"
 
@@ -43,7 +44,6 @@ def main(args: argparse.Namespace) -> int:
     """Split task - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import TaskRepository, TaskQAWorkflow, normalize_record_id
 
     try:
         # Resolve project root

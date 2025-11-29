@@ -50,14 +50,14 @@ def _parse_iso_utc(ts: str) -> Optional[datetime]:
         logger.debug("Failed to parse timestamp '%s': %s", ts, e)
         return None
 
-def _session_meta_times(session: dict) -> tuple[Optional[datetime], Optional[datetime], Optional[datetime]]:
+def _session_meta_times(session: Dict[str, Any]) -> Tuple[Optional[datetime], Optional[datetime], Optional[datetime]]:
     meta = (session.get("meta") or {})
     created = _parse_iso_utc(str(meta.get("createdAt", "")))
     claimed = _parse_iso_utc(str(meta.get("claimedAt", "")))
     last_active = _parse_iso_utc(str(meta.get("lastActive", "")))
     return created, claimed, last_active
 
-def _effective_activity_time(session: dict) -> Optional[datetime]:
+def _effective_activity_time(session: Dict[str, Any]) -> Optional[datetime]:
     created, claimed, last_active = _session_meta_times(session)
     times = [t for t in (last_active, claimed, created) if t is not None]
     return max(times) if times else None

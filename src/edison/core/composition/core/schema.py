@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
+from edison.data import get_data_path
 
 
 @dataclass
@@ -67,7 +68,6 @@ class CompositionSchema:
             return cls._instance
         
         if path is None:
-            from edison.data import get_data_path
             path = Path(get_data_path("config")) / "composition.yaml"
         
         from edison.core.utils.io import read_yaml

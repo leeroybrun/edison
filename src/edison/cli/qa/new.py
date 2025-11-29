@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.qa.evidence import EvidenceService
+from edison.core.utils.io import write_json_atomic
 
 SUMMARY = "Create new QA brief for a task"
 
@@ -43,8 +45,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Create QA brief - delegates to QA library."""
-    from edison.core.qa.evidence import EvidenceService
-    from edison.core.utils.io import write_json_atomic
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

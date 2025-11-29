@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
+from edison.core.composition.ide.hooks import compose_hooks
 
 SUMMARY = "Compose git hooks from configuration"
 
@@ -36,7 +37,6 @@ def main(args: argparse.Namespace) -> int:
     """Compose git hooks - delegates to composition engine."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.composition.ide.hooks import compose_hooks
     
     try:
         repo_root = get_repo_root(args)

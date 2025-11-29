@@ -19,6 +19,7 @@ from typing import Optional
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
+from edison.data import get_data_path
 
 
 @dataclass(frozen=True)
@@ -78,7 +79,6 @@ class CompositionPathResolver:
             uses_bundled = False
         else:
             # Fall back to bundled data
-            from edison.data import get_data_path
             core_dir = Path(get_data_path(""))
             packs_dir = Path(get_data_path("packs"))
             uses_bundled = True

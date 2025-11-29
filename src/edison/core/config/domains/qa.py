@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..base import BaseDomainConfig
+from edison.data import read_yaml
 
 
 class QAConfig(BaseDomainConfig):
@@ -30,7 +31,6 @@ class QAConfig(BaseDomainConfig):
     @cached_property
     def _bundled_qa_config(self) -> Dict[str, Any]:
         """Load bundled QA configuration from qa.yml."""
-        from edison.data import read_yaml
         try:
             return read_yaml("config", "qa.yml") or {}
         except Exception:
@@ -39,7 +39,6 @@ class QAConfig(BaseDomainConfig):
     @cached_property
     def _legacy_validation_config(self) -> Dict[str, Any]:
         """Load legacy validation config from validators.yaml."""
-        from edison.data import read_yaml
         try:
             validators_cfg = read_yaml("config", "validators.yaml") or {}
             return validators_cfg.get("validation", {}) or {}

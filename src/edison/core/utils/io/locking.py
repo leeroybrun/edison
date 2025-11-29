@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
 from .core import ensure_directory
+from typing import TextIO
 
 _THREAD_MUTEXES: dict[str, threading.Lock] = {}
 _FILE_LOCK_CONFIG_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -266,7 +267,6 @@ def write_text_locked(path: Path, content: str) -> None:
         content: Text content to write
     """
     from .core import atomic_write
-    from typing import TextIO
 
     target = Path(path)
 

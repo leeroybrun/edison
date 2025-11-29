@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
+from edison.core.session import next as session_next
 
 SUMMARY = "Compute recommended next actions for a session"
 
@@ -57,7 +58,6 @@ def main(args: argparse.Namespace) -> int:
     original_argv = sys.argv
     try:
         sys.argv = fwd_argv
-        from edison.core.session import next as session_next
         session_next.main()
     except Exception as e:
         formatter.error(e, error_code="error")

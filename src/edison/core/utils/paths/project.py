@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Iterable
+from edison.data import get_data_path
 
 try:
     import yaml  # type: ignore  # noqa: F401
@@ -64,7 +65,6 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str:
 
     # Priority 2: Bundled defaults from edison.data package
     try:
-        from edison.data import get_data_path
 
         bundled_defaults = get_data_path("config", "defaults.yaml")
         if bundled_defaults.exists():

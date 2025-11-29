@@ -9,6 +9,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.session.lifecycle.recovery import clear_session_locks, clear_all_locks
 
 SUMMARY = "Clear stale locks"
 
@@ -33,7 +34,6 @@ def main(args: argparse.Namespace) -> int:
     """Clear stale locks - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.lifecycle.recovery import clear_session_locks, clear_all_locks
 
     try:
         if args.session_id:

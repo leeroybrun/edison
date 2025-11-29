@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 from .base import EntityId
 from .protocols import Entity
 from .exceptions import PersistenceError, LockError
+import fcntl
 
 T = TypeVar("T", bound=Entity)
 
@@ -333,7 +334,6 @@ class FileLockMixin:
         Args:
             lock_handle: Lock handle from _acquire_lock
         """
-        import fcntl
         
         if lock_handle:
             try:

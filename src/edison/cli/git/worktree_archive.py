@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_dry_run_flag
+from edison.core.session import worktree
 
 SUMMARY = "Archive session worktree"
 
@@ -35,7 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Archive git worktree - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         # Resolve the worktree path for this session

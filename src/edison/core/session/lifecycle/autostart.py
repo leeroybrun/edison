@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from .manager import SessionManager, get_session
 from ..core.naming import generate_session_id
@@ -21,6 +21,7 @@ from edison.core.orchestrator import (
 )
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.paths import get_project_config_dir
+from edison.data import get_data_path
 
 
 class SessionAutoStartError(Exception):
@@ -153,7 +154,7 @@ class SessionAutoStart:
         no_worktree: bool,
         dry_run: bool,
         launch_orchestrator: bool,
-    ) -> tuple[Optional[str], str, str, bool, bool]:
+    ) -> Tuple[Optional[str], str, str, bool, bool]:
         """Validate inputs and prepare configuration for session start.
 
         Returns:
@@ -236,7 +237,7 @@ class SessionAutoStart:
         session_id: str,
         do_worktree: bool,
         dry_run: bool,
-    ) -> tuple[Optional[Path], Optional[str]]:
+    ) -> Tuple[Optional[Path], Optional[str]]:
         """Set up git worktree for session.
 
         Returns:
@@ -419,7 +420,6 @@ class SessionAutoStart:
 
         # Prefer copying from bundled edison.data package
         try:
-            from edison.data import get_data_path
             bundled_cfg = get_data_path("config", "orchestrator.yaml")
             if bundled_cfg.exists():
                 shutil.copy(bundled_cfg, cfg_path)

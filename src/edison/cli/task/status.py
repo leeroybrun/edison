@@ -10,6 +10,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type, get_repository
+from edison.core.task import normalize_record_id
+from edison.core.state.transitions import validate_transition
 
 SUMMARY = "Inspect or transition task/QA status with state-machine guards"
 
@@ -48,8 +50,6 @@ def main(args: argparse.Namespace) -> int:
     """Task status - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import normalize_record_id
-    from edison.core.state.transitions import validate_transition
 
     try:
         # Resolve project root

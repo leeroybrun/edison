@@ -9,6 +9,10 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.lifecycle.recovery import restore_records_to_global_transactional
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.core.models import Session
+from edison.core.utils.time import utc_timestamp
 
 SUMMARY = "Recover damaged session"
 
@@ -33,11 +37,7 @@ def main(args: argparse.Namespace) -> int:
     """Recover damaged session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.lifecycle.recovery import restore_records_to_global_transactional
-    from edison.core.session.core.id import validate_session_id
     from edison.core.session.persistence.repository import SessionRepository
-    from edison.core.session.core.models import Session
-    from edison.core.utils.time import utc_timestamp
 
     try:
         session_id = validate_session_id(args.session_id)

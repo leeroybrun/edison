@@ -11,6 +11,17 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
+from edison.core.composition import (
+    generate_all_constitutions,
+    generate_available_agents,
+    generate_available_validators,
+    generate_state_machine_doc,
+    GuidelineRegistry,
+    LayeredComposer,
+)
+from edison.core.config import ConfigManager
+from edison.core.utils.paths import get_project_config_dir
+from edison.core.adapters import ClaudeSync, CursorSync, ZenSync
 
 SUMMARY = "Compose all artifacts (validators, constitutions, guidelines)"
 
@@ -60,17 +71,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def main(args: argparse.Namespace) -> int:
     """Compose artifacts - delegates to composition registries."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
-
-    from edison.core.composition import (
-        generate_all_constitutions,
-        generate_available_agents,
-        generate_available_validators,
-        generate_state_machine_doc,
-        GuidelineRegistry,
-        LayeredComposer,
-    )
-    from edison.core.config import ConfigManager
-    from edison.core.utils.paths import get_project_config_dir
 
     try:
         repo_root = get_repo_root(args)
@@ -152,20 +152,17 @@ def main(args: argparse.Namespace) -> int:
 
         # Sync to clients
         if args.claude:
-            from edison.core.adapters import ClaudeSync
             adapter = ClaudeSync(repo_root=repo_root)
             adapter.validate_claude_structure()
             changed = adapter.sync_agents_to_claude()
             results["claude_sync"] = [str(f) for f in changed]
 
         if args.cursor:
-            from edison.core.adapters import CursorSync
             adapter = CursorSync(repo_root=repo_root)
             changed = adapter.sync()
             results["cursor_sync"] = [str(f) for f in changed]
 
         if args.zen:
-            from edison.core.adapters import ZenSync
             adapter = ZenSync(repo_root=repo_root)
             changed = adapter.sync_all_prompts()
             results["zen_sync"] = [str(f) for f in changed]

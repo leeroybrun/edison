@@ -12,6 +12,7 @@ from edison.core.utils.subprocess import run_with_timeout
 from .config_helpers import _config, _resolve_worktree_target, _resolve_archive_directory
 from .._utils import get_repo_dir
 from edison.core.utils.git.worktree import get_existing_worktree_path
+import re as _re
 
 
 def resolve_worktree_target(session_id: str) -> tuple[Path, str]:
@@ -197,7 +198,6 @@ def update_worktree_env(worktree_path: Path, database_url: str) -> None:
         example_path = worktree_path / ".env.example"
         env_content = example_path.read_text() if example_path.exists() else ""
 
-    import re as _re
     if _re.search(r"^DATABASE_URL=", env_content, _re.MULTILINE):
         env_content = _re.sub(r"^DATABASE_URL=.*$", f"DATABASE_URL=\"{database_url}\"", env_content, flags=_re.MULTILINE)
     else:

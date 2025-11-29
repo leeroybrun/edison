@@ -10,6 +10,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session import lifecycle as session_manager
+from edison.core.session import validate_session_id
 
 SUMMARY = "Show or update current session identity/context"
 
@@ -34,8 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Show/update session identity - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import lifecycle as session_manager
-    from edison.core.session import validate_session_id
 
     try:
         if args.clear:

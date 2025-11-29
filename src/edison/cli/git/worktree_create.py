@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_dry_run_flag
+from edison.core.session import worktree
 
 SUMMARY = "Create git worktree for session"
 
@@ -45,7 +46,6 @@ def main(args: argparse.Namespace) -> int:
     """Create git worktree - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         worktree_path, branch_name = worktree.create_worktree(

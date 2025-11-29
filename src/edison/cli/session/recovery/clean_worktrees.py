@@ -9,6 +9,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.worktree import prune_worktrees, list_worktrees
 
 SUMMARY = "Clean orphaned worktrees"
 
@@ -27,7 +28,6 @@ def main(args: argparse.Namespace) -> int:
     """Clean orphaned worktrees - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.worktree import prune_worktrees, list_worktrees
 
     try:
         # List all worktrees first

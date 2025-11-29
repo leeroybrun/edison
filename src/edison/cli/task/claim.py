@@ -10,6 +10,11 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type
+from edison.core.task import TaskQAWorkflow, normalize_record_id
+from edison.core.session import lifecycle as session_manager
+from edison.core.session import validate_session_id
+from edison.core.config.domains.project import ProjectConfig
+from edison.core.config.domains.workflow import WorkflowConfig
 
 SUMMARY = "Claim task or QA into a session with guarded status updates"
 
@@ -57,10 +62,6 @@ def main(args: argparse.Namespace) -> int:
     """Claim task - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import TaskQAWorkflow, normalize_record_id
-    from edison.core.session import lifecycle as session_manager
-    from edison.core.session import validate_session_id
-    from edison.core.config.domains.project import ProjectConfig
 
     try:
         # Resolve project root
@@ -109,7 +110,6 @@ def main(args: argparse.Namespace) -> int:
         else:
             # QA claim - use QA repository directly
             from edison.core.qa.workflow.repository import QARepository
-            from edison.core.config.domains.workflow import WorkflowConfig
 
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)

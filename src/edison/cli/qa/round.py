@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.qa.evidence import EvidenceService
+from edison.core.utils.io import write_json_atomic
+from edison.core.utils.time import utc_timestamp
+from datetime import datetime
+import re
 
 SUMMARY = "Manage QA rounds"
 
@@ -49,8 +54,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Manage QA rounds - delegates to QA library."""
-    from edison.core.qa.evidence import EvidenceService
-    from edison.core.utils.io import write_json_atomic
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
@@ -61,8 +64,6 @@ def main(args: argparse.Namespace) -> int:
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
             # Append round entry to QA file
-            from edison.core.utils.time import utc_timestamp
-            from datetime import datetime
 
             # Find QA file
             qa_root = repo_root / ".project" / "qa"
@@ -78,7 +79,6 @@ def main(args: argparse.Namespace) -> int:
 
             # Determine next round number from file content
             content = qa_file.read_text()
-            import re
             round_matches = re.findall(r"## Round (\d+)", content)
             next_round = max([int(m) for m in round_matches], default=0) + 1
 

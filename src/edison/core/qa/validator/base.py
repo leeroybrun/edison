@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.paths import PathResolver
+from edison.data import get_data_path
 
 
 __all__ = [
@@ -120,7 +121,6 @@ def run_validator(validator_markdown_path: str, session_id: str, validator_name:
     # Priority 2: Bundled template from edison.data
     if header is None:
         try:
-            from edison.data import get_data_path
             bundled_template = get_data_path("templates", "_report-template.md")
             if bundled_template.exists():
                 header = bundled_template.read_text(encoding="utf-8")

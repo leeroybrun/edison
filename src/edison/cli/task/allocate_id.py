@@ -10,6 +10,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.task import TaskRepository, normalize_record_id
+from edison.core.config.domains import TaskConfig
 
 SUMMARY = "Allocate next available task ID"
 
@@ -34,7 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """Allocate task ID - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import TaskRepository, normalize_record_id
 
     try:
         # Resolve project root
@@ -46,7 +47,6 @@ def main(args: argparse.Namespace) -> int:
             parent_id = normalize_record_id("task", args.parent)
 
             # Look for existing child IDs in actual task directories
-            from edison.core.config.domains import TaskConfig
             config = TaskConfig(repo_root=project_root)
             tasks_root = config.tasks_root()
 

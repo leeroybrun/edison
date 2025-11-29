@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.qa import validator
 
 SUMMARY = "Run a specific validator"
 
@@ -46,7 +47,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Run validator - delegates to validation library."""
-    from edison.core.qa import validator
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

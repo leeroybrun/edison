@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.core.config import ConfigManager
+import yaml
 
 SUMMARY = "Show current configuration"
 
@@ -36,7 +38,6 @@ def main(args: argparse.Namespace) -> int:
     """Show configuration - delegates to ConfigManager."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.config import ConfigManager
     
     try:
         repo_root = get_repo_root(args)
@@ -60,7 +61,6 @@ def main(args: argparse.Namespace) -> int:
             formatter.json_output(config_data)
         elif output_format == "yaml":
             try:
-                import yaml
                 formatter.text(yaml.dump(config_data, default_flow_style=False))
             except ImportError:
                 formatter.text("PyYAML not installed, falling back to JSON")

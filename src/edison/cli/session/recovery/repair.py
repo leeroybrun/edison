@@ -9,6 +9,10 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.worktree import worktree_health_check
+from edison.core.utils.time import utc_timestamp
+from edison.core.session.core.models import Session
 
 SUMMARY = "Repair session"
 
@@ -46,10 +50,7 @@ def main(args: argparse.Namespace) -> int:
     """Repair session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.core.id import validate_session_id
     from edison.core.session.persistence.repository import SessionRepository
-    from edison.core.session.worktree import worktree_health_check
-    from edison.core.utils.time import utc_timestamp
 
     try:
         session_id = validate_session_id(args.session_id)
@@ -86,7 +87,6 @@ def main(args: argparse.Namespace) -> int:
                 "timestamp": utc_timestamp(),
                 "message": f"Session repaired: {', '.join(fixes_applied)}"
             })
-            from edison.core.session.core.models import Session
             updated_entity = Session.from_dict(session)
             repo.save(updated_entity)
 

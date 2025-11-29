@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.task.manager import TaskManager
 
 SUMMARY = "Create a new task file using the project template"
 
@@ -58,7 +59,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Create new task - delegates to TaskManager."""
-    from edison.core.task.manager import TaskManager
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

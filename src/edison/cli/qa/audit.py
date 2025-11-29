@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.composition import audit as guideline_audit
 
 SUMMARY = "Audit guidelines quality"
 
@@ -65,7 +66,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 def main(args: argparse.Namespace) -> int:
     """Audit guidelines - delegates to guideline_audit library."""
-    from edison.core.composition import audit as guideline_audit
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 

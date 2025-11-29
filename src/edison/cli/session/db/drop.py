@@ -9,6 +9,8 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.session.persistence.database import drop_session_database
+from edison.core.session.core.id import validate_session_id
 
 SUMMARY = "Drop session database"
 
@@ -31,8 +33,6 @@ def main(args: argparse.Namespace) -> int:
     """Drop session database - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session.persistence.database import drop_session_database
-    from edison.core.session.core.id import validate_session_id
 
     try:
         session_id = validate_session_id(args.session_id)

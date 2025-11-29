@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_dry_run_flag
+from edison.core.session import worktree
 
 SUMMARY = "Restore archived worktree"
 
@@ -40,7 +41,6 @@ def main(args: argparse.Namespace) -> int:
     """Restore archived worktree - delegates to worktree library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.session import worktree
 
     try:
         # Restore the worktree from archive

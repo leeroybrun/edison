@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from edison.core.session.next import compute_next
 from edison.core.session.lifecycle import manager as session_manager
@@ -19,9 +20,10 @@ from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
 from edison.core.utils.cli.arguments import parse_common_args
 from edison.core.utils.cli.output import output_json, error, success
+import argparse
 
 
-def _latest_round_dir(task_id: str) -> Path | None:
+def _latest_round_dir(task_id: str) -> Optional[Path]:
     """Return the latest evidence round directory for ``task_id``."""
     ev_svc = qa_evidence.EvidenceService(task_id)
     latest_round = ev_svc.get_current_round()
@@ -30,12 +32,12 @@ def _latest_round_dir(task_id: str) -> Path | None:
     return ev_svc.get_evidence_root() / f"round-{latest_round}"
 
 
-def verify_session_health(session_id: str) -> dict:
+def verify_session_health(session_id: str) -> Dict[str, Any]:
     session_id = validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
         session = session_manager.get_session(session_id)
 
-    failures: list[str] = []
+    failures: List[str] = []
     health = {
         "ok": True,
         "sessionId": session_id,
@@ -159,13 +161,12 @@ def verify_session_health(session_id: str) -> dict:
     return health
 
 
-def _apply_repo_root(repo_root: Path | None) -> None:
+def _apply_repo_root(repo_root: Optional[Path]) -> None:
     if repo_root:
         os.environ["AGENTS_PROJECT_ROOT"] = str(repo_root)
 
 
-def main(argv: list[str] | None = None) -> int:
-    import argparse
+def main(argv: Optional[List[str]] = None) -> int:
 
     parser = argparse.ArgumentParser(description="Verify session for phase guards")
     parse_common_args(parser)

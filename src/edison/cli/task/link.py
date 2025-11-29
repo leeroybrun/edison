@@ -10,6 +10,10 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.task import TaskRepository, normalize_record_id
+from edison.core.session import validate_session_id
+from edison.core.utils.io import write_json_atomic
+from edison.core.session.core.models import Session
 
 SUMMARY = "Link parent-child tasks"
 
@@ -42,7 +46,6 @@ def main(args: argparse.Namespace) -> int:
     """Link tasks - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import TaskRepository, normalize_record_id
 
     try:
         # Resolve project root
@@ -81,9 +84,7 @@ def main(args: argparse.Namespace) -> int:
         else:
             # Create link - update session if provided
             if args.session:
-                from edison.core.session import validate_session_id
                 from edison.core.session.persistence.repository import SessionRepository
-                from edison.core.utils.io import write_json_atomic
 
                 session_id = validate_session_id(args.session)
 
@@ -116,7 +117,6 @@ def main(args: argparse.Namespace) -> int:
 
                 # Save session
                 try:
-                    from edison.core.session.core.models import Session
                     session_entity = Session.from_dict(session)
                     session_repo.save(session_entity)
                 except:

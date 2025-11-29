@@ -10,6 +10,9 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
+from edison.core.session import lifecycle as session_manager
+from edison.core.config.domains.workflow import WorkflowConfig
 
 SUMMARY = "List tasks ready to be claimed or mark task as ready (complete)"
 
@@ -33,9 +36,6 @@ def main(args: argparse.Namespace) -> int:
     """List ready tasks or mark task as ready - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
-    from edison.core.session import lifecycle as session_manager
-    from edison.core.config.domains.workflow import WorkflowConfig
 
     try:
         # Resolve project root

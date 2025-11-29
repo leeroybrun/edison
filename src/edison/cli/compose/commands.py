@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
+from edison.core.composition.ide.commands import CommandComposer
+from edison.core.config import ConfigManager
 
 SUMMARY = "Compose CLI commands from configuration"
 
@@ -41,8 +43,6 @@ def main(args: argparse.Namespace) -> int:
     """Compose CLI commands - delegates to composition engine."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-    from edison.core.composition.ide.commands import CommandComposer
-    from edison.core.config import ConfigManager
 
     try:
         repo_root = get_repo_root(args)

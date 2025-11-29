@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..base import BaseDomainConfig
+from edison.data import read_yaml
 
 
 class Context7Config(BaseDomainConfig):
@@ -31,7 +32,6 @@ class Context7Config(BaseDomainConfig):
             Empty dict if not configured.
         """
         # Load from bundled defaults
-        from edison.data import read_yaml
         try:
             cfg = read_yaml("config", "context7.yml")
             triggers = cfg.get("triggers", {})
@@ -51,7 +51,6 @@ class Context7Config(BaseDomainConfig):
             Empty dict if not configured.
         """
         # Load from bundled defaults
-        from edison.data import read_yaml
         try:
             cfg = read_yaml("config", "context7.yml")
             aliases = cfg.get("aliases", {})
@@ -70,7 +69,6 @@ class Context7Config(BaseDomainConfig):
             Empty dict if not configured.
         """
         # Load from bundled defaults
-        from edison.data import read_yaml
         try:
             cfg = read_yaml("config", "context7.yml")
             packages = cfg.get("packages", {})
@@ -103,7 +101,6 @@ class Context7Config(BaseDomainConfig):
             Empty dict if not configured.
         """
         # Load from bundled defaults
-        from edison.data import read_yaml
         try:
             cfg = read_yaml("config", "context7.yml")
             detection = cfg.get("contentDetection", {})

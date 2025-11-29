@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..base import BaseDomainConfig
+from edison.data import get_data_path
 
 
 class AdaptersConfig(BaseDomainConfig):
@@ -36,7 +37,6 @@ class AdaptersConfig(BaseDomainConfig):
 
     def _load_composition_yaml(self) -> dict:
         """Load composition.yaml with outputs configuration."""
-        from edison.data import get_data_path
         composition_yaml_path = get_data_path("config") / "composition.yaml"
         if not composition_yaml_path.exists():
             raise FileNotFoundError(
