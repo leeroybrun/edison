@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = REPO_ROOT / "scripts" / "implementation" / "validate"
 
 
-def _run(args: list[str]) -> subprocess.CompletedProcess:
+def _run_command(args: list[str]) -> subprocess.CompletedProcess:
     return run_with_timeout([str(WRAPPER)] + args, capture_output=True, text=True)
 
 
@@ -24,7 +24,7 @@ def test_wrapper_exists_and_executable():
 def test_wrapper_invalid_json_decode(tmp_path: Path):
     bad = tmp_path / "bad.json"
     bad.write_text("{" )  # malformed JSON
-    res = _run([str(bad)])
+    res = _run_command([str(bad)])
     assert res.returncode != 0
     assert "Invalid JSON" in res.stdout or "Invalid JSON" in res.stderr
 
@@ -33,7 +33,7 @@ def test_wrapper_schema_failure(tmp_path: Path):
     # Valid JSON, wrong schema (missing required fields)
     bad = tmp_path / "schema-bad.json"
     bad.write_text('{"taskId":"x"}')
-    res = _run([str(bad)])
+    res = _run_command([str(bad)])
     assert res.returncode != 0
     # Expect schema error mention
     assert "Schema errors" in res.stdout or "missing required field" in res.stdout
@@ -54,6 +54,6 @@ def test_wrapper_schema_success(tmp_path: Path):
             "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z"}
         }.__repr__().replace("'", '"')
     )
-    res = _run([str(ok)])
+    res = _run_command([str(ok)])
     assert res.returncode == 0, res.stdout + res.stderr
     assert "Implementation report valid" in res.stdout

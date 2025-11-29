@@ -10,17 +10,12 @@ from pathlib import Path
 
 import pytest
 
-
-def _project_root() -> Path:
-    for parent in Path(__file__).resolve().parents:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    raise RuntimeError("Could not locate project root containing pyproject.toml")
+from tests.helpers.paths import get_repo_root
 
 
 @pytest.fixture(scope="module")
 def doc_path() -> Path:
-    return _project_root() / "src" / "edison" / "data" / "docs" / "ZENROLE_OVERLAY_MAPPING.md"
+    return get_repo_root() / "src" / "edison" / "data" / "docs" / "ZENROLE_OVERLAY_MAPPING.md"
 
 
 @pytest.fixture(scope="module")

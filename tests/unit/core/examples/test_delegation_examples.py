@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.helpers.paths import get_repo_root
+
 
 def test_delegation_example_files_exist():
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = get_repo_root()
     examples_dir = repo_root / "src/edison/data/examples/delegation"
 
     expected_files = {

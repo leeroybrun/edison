@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
-class StdErrConventionsTests(unittest.TestCase):
+class TestStdErrConventions(unittest.TestCase):
     def setUp(self) -> None:
         self.repo_root = REPO_ROOT
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-stderr-tests-"))

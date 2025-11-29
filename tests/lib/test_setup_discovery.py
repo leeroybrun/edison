@@ -1,23 +1,11 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml, write_json
 
 from pathlib import Path
-import json
-import yaml
 
 import pytest
 
-from edison.cli.setup.component_discovery import SetupDiscovery
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-
-
-def _write_json(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data), encoding="utf-8")
-
+from edison.core.setup import SetupDiscovery
 
 def _seed_setup_config(repo_root: Path) -> Path:
     """Write the canonical setup.yaml discovery section for tests."""
@@ -40,9 +28,8 @@ def _seed_setup_config(repo_root: Path) -> Path:
         },
     }
     cfg_path = repo_root / ".edison" / "core" / "config" / "setup.yaml"
-    _write_yaml(cfg_path, setup_cfg)
+    write_yaml(cfg_path, setup_cfg)
     return cfg_path
-
 
 def test_discover_packs_uses_configured_directory(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -60,7 +47,6 @@ def test_discover_packs_uses_configured_directory(isolated_project_env: Path) ->
     found = discovery.discover_packs()
     assert found == ["alpha", "beta"]
 
-
 def test_discover_orchestrators_reads_profiles(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_setup_config(repo)
@@ -73,19 +59,17 @@ def test_discover_orchestrators_reads_profiles(isolated_project_env: Path) -> No
             }
         }
     }
-    _write_yaml(repo / ".edison" / "core" / "config" / "orchestrators.yaml", orch_cfg)
+    write_yaml(repo / ".edison" / "core" / "config" / "orchestrators.yaml", orch_cfg)
 
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     found = discovery.discover_orchestrators()
     assert found == ["claude", "cursor", "codex"]
-
 
 def test_discover_orchestrators_falls_back_when_missing(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_setup_config(repo)
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     assert discovery.discover_orchestrators() == ["claude", "cursor", "codex"]
-
 
 def test_discover_validators_merges_core_and_packs(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -98,43 +82,40 @@ def test_discover_validators_merges_core_and_packs(isolated_project_env: Path) -
             }
         }
     }
-    _write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", core_cfg)
+    write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", core_cfg)
 
     pack_cfg = {"validation": {"roster": {"specialized": [{"id": "pack-val"}]}}}
     pack_path = repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml"
-    _write_yaml(pack_path, pack_cfg)
+    write_yaml(pack_path, pack_cfg)
 
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     found = discovery.discover_validators(["alpha"])
     assert set(found) == {"core-global", "core-critical", "pack-val"}
 
-
 def test_discover_agents_combines_sources(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_setup_config(repo)
     core_cfg = {"agents": [{"id": "core-agent"}]}
-    _write_yaml(repo / ".edison" / "core" / "config" / "agents.yaml", core_cfg)
+    write_yaml(repo / ".edison" / "core" / "config" / "agents.yaml", core_cfg)
 
     pack_cfg = {"agents": [{"id": "pack-agent"}, {"id": "core-agent"}]}
-    _write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "agents.yml", pack_cfg)
+    write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "agents.yml", pack_cfg)
 
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     found = discovery.discover_agents(["alpha"])
     assert found == ["core-agent", "pack-agent"]
 
-
 def test_detect_project_name_prefers_package_json(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_setup_config(repo)
-    _write_json(repo / "package.json", {"name": "sample-app"})
+    write_json(repo / "package.json", {"name": "sample-app"})
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     assert discovery.detect_project_name() == "sample-app"
-
 
 def test_detect_project_type_uses_heuristics(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_setup_config(repo)
-    _write_json(repo / "package.json", {"dependencies": {"next": "14.0.0"}})
+    write_json(repo / "package.json", {"dependencies": {"next": "14.0.0"}})
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     assert discovery.detect_project_type() == "Next.js Full-Stack"
 

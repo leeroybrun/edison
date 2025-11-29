@@ -7,7 +7,7 @@ from pathlib import Path
 from edison.data import get_data_path, read_yaml
 
 
-def _normalize(text: str) -> str:
+def _normalize_text(text: str) -> str:
     """Strip trailing whitespace to make similarity comparisons stable."""
     lines = [line.rstrip() for line in text.strip().splitlines()]
     return "\n".join(lines)
@@ -39,7 +39,7 @@ def test_no_duplicate_api_docs():
 
     assert not duplicates_within_pack, f"Duplicate api.md files found within packs: {duplicates_within_pack}"
 
-    normalized = {name: _normalize(path.read_text(encoding="utf-8")) for name, path in api_docs.items()}
+    normalized = {name: _normalize_text(path.read_text(encoding="utf-8")) for name, path in api_docs.items()}
     threshold = float(cfg["similarity_threshold"])
 
     cross_pack_duplicates = []

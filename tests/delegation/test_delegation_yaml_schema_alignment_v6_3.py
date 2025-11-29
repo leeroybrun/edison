@@ -30,7 +30,7 @@ CONFIG = get_data_path("config", "delegation.yaml")
 SCHEMA = get_data_path("schemas", "config/delegation.schema.json")
 
 
-def _load() -> tuple[dict, dict]:
+def _load_configs() -> tuple[dict, dict]:
     assert CONFIG.exists(), f"Missing delegation config: {CONFIG}"
     assert SCHEMA.exists(), f"Missing delegation schema: {SCHEMA}"
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
@@ -39,14 +39,14 @@ def _load() -> tuple[dict, dict]:
 
 
 def test_delegation_yaml_conforms_to_schema():
-    cfg, schema = _load()
+    cfg, schema = _load_configs()
     validator = Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(cfg), key=lambda e: list(e.path))
     assert not errors, "; ".join(err.message for err in errors)
 
 
 def test_delegation_rejects_unknown_fields():
-    cfg, schema = _load()
+    cfg, schema = _load_configs()
     validator = Draft202012Validator(schema)
 
     cfg_with_extra = json.loads(json.dumps(cfg))  # deep copy

@@ -8,19 +8,37 @@ from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import get_data_path
+from tests.config import get_task_states, get_qa_states, get_session_states
+from tests.helpers.paths import get_repo_root
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = get_repo_root()
 SESSION_CLI = REPO_ROOT / ".agents" / "scripts" / "session"
 TASKS_READY_CLI = REPO_ROOT / ".agents" / "scripts" / "tasks" / "ready"
 
 
 @unittest.skipIf(not (SESSION_CLI.exists() and TASKS_READY_CLI.exists()), "session/tasks CLI not present in this repo snapshot")
-class ImplementationReportGuardTests(unittest.TestCase):
+class TestImplementationReportGuard(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-delegation-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
-        for d in ["tasks/wip", "qa/waiting", "qa/validation-evidence", "sessions/wip"]:
-            (self.temp_root / ".project" / d).mkdir(parents=True, exist_ok=True)
+
+        # Load state directories from config (NO hardcoded values)
+        task_states = get_task_states()
+        qa_states = get_qa_states()
+        session_states = get_session_states()
+
+        # Create task directories
+        for state in task_states:
+            (self.temp_root / ".project" / "tasks" / state).mkdir(parents=True, exist_ok=True)
+
+        # Create QA directories
+        for state in qa_states:
+            (self.temp_root / ".project" / "qa" / state).mkdir(parents=True, exist_ok=True)
+        (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+
+        # Create session directories
+        for state in session_states:
+            (self.temp_root / ".project" / "sessions" / state).mkdir(parents=True, exist_ok=True)
         # Templates
         (self.temp_root / ".agents" / "sessions").mkdir(parents=True, exist_ok=True)
         shutil.copyfile(get_data_path("templates", "session.template.json"), self.temp_root / ".agents" / "sessions" / "TEMPLATE.json")

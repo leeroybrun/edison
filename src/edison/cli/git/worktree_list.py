@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
+from edison.cli import OutputFormatter, add_json_flag
 
 SUMMARY = "List all git worktrees"
 
@@ -28,7 +28,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Include archived worktrees",
     )
     add_json_flag(parser)
-    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:

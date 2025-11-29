@@ -1,4 +1,5 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml, write_guideline
 
 from pathlib import Path
 import sys
@@ -11,19 +12,6 @@ import pytest
 from edison.core.rules import RulesRegistry, compose_rules
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import get_data_path
-
-
-def _write_yaml(path: Path, payload: dict) -> None:
-    import yaml
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-
-
-def _write_guideline(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
 
 class TestRulesCompositionE2E:
     def test_full_rules_composition_pipeline_in_isolated_env(
@@ -39,7 +27,7 @@ class TestRulesCompositionE2E:
 
         # Core registry & guideline
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -59,7 +47,7 @@ class TestRulesCompositionE2E:
         )
 
         guideline = root / ".edison" / "core" / "guidelines" / "VALIDATION.md"
-        _write_guideline(
+        write_guideline(
             guideline,
             "\n".join(
                 [
@@ -92,7 +80,7 @@ class TestRulesCompositionE2E:
         root = isolated_project_env
 
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -112,7 +100,7 @@ class TestRulesCompositionE2E:
         )
 
         core_guideline = root / ".edison" / "core" / "guidelines" / "CORE.md"
-        _write_guideline(
+        write_guideline(
             core_guideline,
             "\n".join(
                 [
@@ -127,7 +115,7 @@ class TestRulesCompositionE2E:
         react_registry = root / ".edison" / "packs" / "react" / "rules" / "registry.yml"
         next_registry = root / ".edison" / "packs" / "nextjs" / "rules" / "registry.yml"
 
-        _write_yaml(
+        write_yaml(
             react_registry,
             {
                 "version": "1.0.0",
@@ -142,7 +130,7 @@ class TestRulesCompositionE2E:
             },
         )
 
-        _write_yaml(
+        write_yaml(
             next_registry,
             {
                 "version": "1.0.0",
@@ -222,7 +210,7 @@ class TestRulesCompositionE2E:
 
         # Minimal core registry & guideline in isolated project
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -242,7 +230,7 @@ class TestRulesCompositionE2E:
         )
 
         guideline = root / ".edison" / "core" / "guidelines" / "CLI.md"
-        _write_guideline(
+        write_guideline(
             guideline,
             "\n".join(
                 [

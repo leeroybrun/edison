@@ -6,34 +6,29 @@ from pathlib import Path
 
 import pytest
 
+from helpers.io_utils import write_text, write_yaml
+
 
 # Late import so tests can control configuration files per isolated repo
 
 def _write_timeout_config(root: Path, default: float = 0.2, file_ops: float = 1.0) -> None:
-    config_dir = root / ".edison" / "core" / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_dir.joinpath("defaults.yaml").write_text(
-        "\n".join(
-            [
-                "project:",
-                "  name: subprocess-wrapper-test",
-                "subprocess_timeouts:",
-                f"  default: {default}",
-                f"  file_operations: {file_ops}",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    cfg = {
+        "project": {
+            "name": "subprocess-wrapper-test"
+        },
+        "subprocess_timeouts": {
+            "default": default,
+            "file_operations": file_ops,
+        }
+    }
+    cfg_path = root / ".edison" / "core" / "config" / "defaults.yaml"
+    write_yaml(cfg_path, cfg)
 
-    project_cfg_dir = root / ".agents" / "config"
-    project_cfg_dir.mkdir(parents=True, exist_ok=True)
-    project_cfg_dir.joinpath("project.yml").write_text(
-        "project: { name: subprocess-wrapper-test }\n", encoding="utf-8"
-    )
+    project_cfg_path = root / ".agents" / "config" / "project.yml"
+    write_text(project_cfg_path, "project: { name: subprocess-wrapper-test }\n")
 
     # Ensure cached timeouts are refreshed for each test case
-    from edison.core.utils.subprocess import reset_subprocess_timeout_cache 
+    from edison.core.utils.subprocess import reset_subprocess_timeout_cache
     reset_subprocess_timeout_cache()
 
 

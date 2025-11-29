@@ -11,11 +11,34 @@ This module consolidates all test helper utilities into a clean, DRY structure:
 - json_utils: JSON traversal utilities
 - file_utils: File operation utilities
 - markdown_utils: Markdown parsing utilities
+- io_utils: I/O utilities for writing YAML, JSON, and config files
 """
 from __future__ import annotations
 
 # Core test environment classes
 from tests.helpers.env import TestProjectDir, TestGitRepo, create_tdd_evidence
 
-# Export main classes - these are the primary interfaces for tests
-__all__ = ["TestProjectDir", "TestGitRepo", "create_tdd_evidence"]
+# I/O utilities for writing test files
+from tests.helpers.io_utils import (
+    write_yaml,
+    write_json,
+    write_config,
+    write_text,
+    format_round_dir,
+    create_round_dir,
+)
+
+# Export main classes and functions - these are the primary interfaces for tests
+__all__ = [
+    # Core environment
+    "TestProjectDir",
+    "TestGitRepo",
+    "create_tdd_evidence",
+    # I/O utilities
+    "write_yaml",
+    "write_json",
+    "write_config",
+    "write_text",
+    "format_round_dir",
+    "create_round_dir",
+]

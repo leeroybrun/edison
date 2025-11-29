@@ -7,21 +7,9 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from edison.core.utils.subprocess import run_with_timeout
-
-
-def _repo_root() -> Path:
-    cur = Path(__file__).resolve()
-    candidate: Path | None = None
-    while cur != cur.parent:
-        if (cur / ".git").exists():
-            candidate = cur
-        cur = cur.parent
-    if candidate is None:
-        raise RuntimeError("git root not found")
-    if candidate.name == ".edison" and (candidate.parent / ".git").exists():
-        return candidate.parent
-    return candidate
+from tests.helpers.paths import get_repo_root
 
 
 def _seed_incomplete_validation_tx(root: Path, session_id: str, tx_id: str = "tx-incomplete-1") -> Path:
@@ -55,7 +43,7 @@ def test_detect_incomplete_transactions_reports_pending(tmp_path: Path) -> None:
     )
     tx_dir = _seed_incomplete_validation_tx(project_root, "sess-det")
 
-    repo_root = _repo_root()
+    repo_root = get_repo_root()
 
     env = os.environ.copy()
     env.update(
@@ -70,9 +58,10 @@ import json
 import os
 import sys
 from pathlib import Path
+from tests.helpers.paths import get_repo_root
 
 # Add src to path so we can import edison
-repo_root = Path(__file__).resolve().parents[2] if "__file__" in dir() else Path.cwd()
+repo_root = get_repo_root()
 
 from edison.core.session.recovery import detect_incomplete_transactions
 
@@ -105,7 +94,7 @@ def test_recover_validation_tx_cli_cleans_staging_and_is_idempotent(tmp_path: Pa
     (project_root / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
     tx_dir = _seed_incomplete_validation_tx(project_root, "sess-cli", tx_id="tx-cli-1")
 
-    repo_root = _repo_root()
+    repo_root = get_repo_root()
 
     env = os.environ.copy()
     env.update({"AGENTS_PROJECT_ROOT": str(project_root)})
@@ -114,9 +103,10 @@ def test_recover_validation_tx_cli_cleans_staging_and_is_idempotent(tmp_path: Pa
 from __future__ import annotations
 import sys
 from pathlib import Path
+from tests.helpers.paths import get_repo_root
 
 # Add src to path so we can import edison
-repo_root = Path(__file__).resolve().parents[2] if "__file__" in dir() else Path.cwd()
+repo_root = get_repo_root()
 
 from edison.core.session.recovery import recover_incomplete_validation_transactions
 

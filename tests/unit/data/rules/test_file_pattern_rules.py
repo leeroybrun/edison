@@ -8,11 +8,11 @@ from edison.core.rules import FilePatternRegistry
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def _ids(rules):
+def _get_get_ids(rules):
     return {rule.get("id") for rule in rules}
 
 
-def _stems(rules):
+def _get_get_stems(rules):
     return {Path(rule.get("_path", "")).stem for rule in rules if rule.get("_path")}
 
 
@@ -21,10 +21,10 @@ def test_core_file_pattern_rules_are_generic_only() -> None:
     registry = FilePatternRegistry(repo_root=ROOT)
     core_rules = registry.load_core_rules()
 
-    stems = _stems(core_rules)
+    stems = _get_stems(core_rules)
     assert stems == {"api", "testing"}
 
-    ids = _ids(core_rules)
+    ids = _get_ids(core_rules)
     banned = {
         "FILE_PATTERN.REACT_COMPONENT",
         "FILE_PATTERN.NEXTJS_APP_ROUTER",
@@ -53,7 +53,7 @@ def test_pack_file_patterns_load_when_active(packs, expected_ids) -> None:
     registry = FilePatternRegistry(repo_root=ROOT)
 
     composed = registry.compose(active_packs=packs)
-    composed_ids = _ids(composed)
+    composed_ids = _get_ids(composed)
     for rid in expected_ids:
         assert rid in composed_ids, f"Missing pack rule {rid} for packs {packs}"
 
@@ -62,5 +62,5 @@ def test_pack_file_patterns_load_when_active(packs, expected_ids) -> None:
         assert origins.get(rid, "").startswith("pack:"), f"{rid} should be marked as pack-origin"
 
     # Baseline: without packs, tech-specific rules should not appear
-    core_only_ids = _ids(registry.compose(active_packs=[]))
+    core_only_ids = _get_ids(registry.compose(active_packs=[]))
     assert core_only_ids.isdisjoint(expected_ids)

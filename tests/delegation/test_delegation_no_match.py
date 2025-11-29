@@ -8,14 +8,15 @@ from pathlib import Path
 import unittest
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.paths import get_repo_root
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = get_repo_root()
 VALIDATE = REPO_ROOT / ".edison" / "core" / "scripts" / "delegation" / "validate"
 
 
 @pytest.mark.skip(reason="Deprecated: Old delegation CLI removed, functionality moved to edison.core.delegation")
-class DelegationNoMatchTests(unittest.TestCase):
+class TestDelegationNoMatch(unittest.TestCase):
     def setUp(self) -> None:
         self.work = Path(tempfile.mkdtemp(prefix="delegation-nomatch-"))
         self.addCleanup(lambda: shutil.rmtree(self.work, ignore_errors=True))

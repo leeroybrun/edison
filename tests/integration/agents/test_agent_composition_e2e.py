@@ -3,11 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import subprocess
+
+from helpers.io_utils import write_text
 from edison.core.utils.subprocess import run_with_timeout
 
 
 class TestAgentCompositionE2E:
     def _write_core_agent(self, root: Path, name: str) -> Path:
+        """Write a core agent template file."""
         core_agents_dir = root / ".edison" / "core" / "agents"
         core_agents_dir.mkdir(parents=True, exist_ok=True)
         path = core_agents_dir / f"{name}.md"
@@ -28,10 +31,11 @@ class TestAgentCompositionE2E:
                 "- Core workflow step",
             ]
         )
-        path.write_text(content, encoding="utf-8")
+        write_text(path, content)
         return path
 
     def _write_pack_overlay(self, root: Path, pack: str, agent: str) -> Path:
+        """Write a pack-specific agent overlay file."""
         pack_agents_dir = root / ".edison" / "packs" / pack / "agents"
         pack_agents_dir.mkdir(parents=True, exist_ok=True)
         path = pack_agents_dir / f"{agent}.md"
@@ -46,7 +50,7 @@ class TestAgentCompositionE2E:
                 f"- {pack} guideline",
             ]
         )
-        path.write_text(content, encoding="utf-8")
+        write_text(path, content)
         return path
 
     def _write_defaults_and_config(self, root: Path, packs: list[str]) -> None:
@@ -61,7 +65,7 @@ class TestAgentCompositionE2E:
                 f"  active: [{', '.join(packs)}]",
             ]
         )
-        (core_dir / "defaults.yaml").write_text(defaults, encoding="utf-8")
+        write_text(core_dir / "defaults.yaml", defaults)
 
         # Write config in the correct modular location
         config_dir = root / ".agents" / "config"
@@ -72,7 +76,7 @@ class TestAgentCompositionE2E:
                 f"  active: [{', '.join(packs)}]",
             ]
         )
-        (config_dir / "packs.yml").write_text(packs_config, encoding="utf-8")
+        write_text(config_dir / "packs.yml", packs_config)
 
     def _assert_agent_schema(self, text: str) -> None:
         """Lightweight schema check for generated agent Markdown."""

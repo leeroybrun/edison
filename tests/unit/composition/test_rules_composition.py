@@ -1,10 +1,10 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml, write_guideline
 
 from pathlib import Path
 import sys
 
 import pytest
-
 
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -13,19 +13,6 @@ from edison.core.rules import (  # type: ignore  # noqa: E402
     RulesRegistry,
     compose_rules,
 )
-
-
-def _write_yaml(path: Path, payload: dict) -> None:
-    import yaml
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-
-
-def _write_guideline(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
 
 class TestRulesRegistryAndComposition:
     def test_registry_loading_from_yaml_uses_project_root(
@@ -36,7 +23,7 @@ class TestRulesRegistryAndComposition:
         root = isolated_project_env
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
 
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -56,7 +43,7 @@ class TestRulesRegistryAndComposition:
         )
 
         guideline = root / ".edison" / "core" / "guidelines" / "VALIDATION.md"
-        _write_guideline(
+        write_guideline(
             guideline,
             "\n".join(
                 [
@@ -84,7 +71,7 @@ class TestRulesRegistryAndComposition:
         root = isolated_project_env
         guideline = root / ".edison" / "core" / "guidelines" / "TEST.md"
 
-        _write_guideline(
+        write_guideline(
             guideline,
             "\n".join(
                 [
@@ -121,7 +108,7 @@ class TestRulesRegistryAndComposition:
         root = isolated_project_env
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
 
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -140,7 +127,7 @@ class TestRulesRegistryAndComposition:
         )
 
         guideline = root / ".edison" / "core" / "guidelines" / "BROKEN.md"
-        _write_guideline(guideline, "# Broken\nNo anchors here.\n")
+        write_guideline(guideline, "# Broken\nNo anchors here.\n")
 
         with pytest.raises(Exception) as exc:
             compose_rules(packs=[], project_root=root)
@@ -155,7 +142,7 @@ class TestRulesRegistryAndComposition:
         root = isolated_project_env
 
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -175,7 +162,7 @@ class TestRulesRegistryAndComposition:
         )
 
         core_guideline = root / ".edison" / "core" / "guidelines" / "CORE.md"
-        _write_guideline(
+        write_guideline(
             core_guideline,
             "\n".join(
                 [
@@ -188,7 +175,7 @@ class TestRulesRegistryAndComposition:
         )
 
         react_registry = root / ".edison" / "packs" / "react" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             react_registry,
             {
                 "version": "1.0.0",
@@ -233,7 +220,7 @@ class TestRulesRegistryAndComposition:
         root = isolated_project_env
 
         core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        _write_yaml(
+        write_yaml(
             core_registry,
             {
                 "version": "2.0.0",
@@ -254,7 +241,7 @@ class TestRulesRegistryAndComposition:
         a_path = root / ".edison" / "core" / "guidelines" / "A.md"
         b_path = root / ".edison" / "core" / "guidelines" / "B.md"
 
-        _write_guideline(
+        write_guideline(
             a_path,
             "\n".join(
                 [
@@ -265,7 +252,7 @@ class TestRulesRegistryAndComposition:
                 ]
             ),
         )
-        _write_guideline(
+        write_guideline(
             b_path,
             "\n".join(
                 [

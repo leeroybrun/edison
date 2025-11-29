@@ -11,9 +11,6 @@ from typing import Optional, Union, Dict, Any
 
 from edison.core.session.repository import SessionRepository
 from edison.core.session.manager import SessionManager
-from edison.core.session.worktree.config_helpers import _get_worktree_base
-from edison.core.session.transaction import validation_transaction
-from edison.core.session.recovery import recover_incomplete_validation_transactions
 
 
 def ensure_session(session_id: str, state: str = "active") -> Path:
@@ -35,17 +32,6 @@ def transition_state(session_id: str, to_state: str, reason: Optional[str] = Non
     """Transition a session to a new state."""
     mgr = SessionManager()
     return mgr.transition_state(session_id, to_state)
-
-
-def _get_project_name() -> str:
-    name = get_project_name()
-    if not name:
-        raise ValueError("PROJECT_NAME is required")
-    return name
-
-
-def _get_database_url() -> str:
-    return session_database._get_database_url()
 
 
 def close_session(session_id: str) -> Path:

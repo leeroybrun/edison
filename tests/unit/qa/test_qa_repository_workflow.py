@@ -3,18 +3,12 @@
 These tests validate advance_state() high-level workflow.
 """
 import pytest
-import yaml
+from helpers.io_utils import write_yaml
 import importlib
 from pathlib import Path
 from edison.core.qa.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.qa.models import QARecord
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
@@ -24,7 +18,7 @@ def repo_env(tmp_path, monkeypatch):
     config_dir = repo / ".edison" / "core" / "config"
 
     # 1. defaults.yaml (State Machine)
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -42,7 +36,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 2. tasks.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -57,7 +51,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 3. workflow.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "workflow.yaml",
         {
             "version": "1.0",
@@ -81,7 +75,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 4. state-machine.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "state-machine.yaml",
         {
             "statemachine": {
@@ -108,7 +102,6 @@ def repo_env(tmp_path, monkeypatch):
 
     return repo
 
-
 def create_qa_file(repo_path, qa_id, task_id, state="waiting", session_id=None):
     """Helper to create a QA file."""
     repo = QARepository(project_root=repo_path)
@@ -122,7 +115,6 @@ def create_qa_file(repo_path, qa_id, task_id, state="waiting", session_id=None):
     )
     repo.save(qa)
     return qa
-
 
 def test_advance_state_moves_qa_to_new_state(repo_env):
     """Test advance_state moves QA record to new state directory."""
@@ -155,7 +147,6 @@ def test_advance_state_moves_qa_to_new_state(repo_env):
     assert reloaded_qa is not None
     assert reloaded_qa.state == "todo"
 
-
 def test_advance_state_with_session(repo_env):
     """Test advance_state works within session context."""
     qa_id = "T-2-qa"
@@ -182,7 +173,6 @@ def test_advance_state_with_session(repo_env):
     old_path = repo_env / ".project" / "sessions" / "wip" / session_id / "qa" / "waiting" / f"{qa_id}.md"
     assert not old_path.exists()
 
-
 def test_advance_state_records_transition(repo_env):
     """Test advance_state records state transition in history."""
     qa_id = "T-3-qa"
@@ -206,7 +196,6 @@ def test_advance_state_records_transition(repo_env):
     assert transition.reason == "workflow_advance"
     assert transition.timestamp is not None
 
-
 def test_advance_state_returns_updated_record(repo_env):
     """Test advance_state returns QARecord with new state."""
     qa_id = "T-4-qa"
@@ -227,7 +216,6 @@ def test_advance_state_returns_updated_record(repo_env):
     assert updated_qa.state == "todo"
     assert updated_qa.title == f"QA {task_id}"
     assert updated_qa.metadata is not None
-
 
 def test_advance_state_multiple_transitions(repo_env):
     """Test advance_state through multiple state transitions."""
@@ -258,14 +246,12 @@ def test_advance_state_multiple_transitions(repo_env):
     expected_path = repo_env / ".project" / "qa" / "done" / f"{qa_id}.md"
     assert expected_path.exists()
 
-
 def test_advance_state_error_qa_not_found(repo_env):
     """Test error when advancing non-existent QA."""
     repo = QARepository(project_root=repo_env)
 
     with pytest.raises(PersistenceError, match="QA record not found"):
         repo.advance_state("NONEXISTENT-qa", "todo")
-
 
 def test_advance_state_changes_session_ownership(repo_env):
     """Test advance_state can change session ownership."""
@@ -287,7 +273,6 @@ def test_advance_state_changes_session_ownership(repo_env):
     expected_path = repo_env / ".project" / "sessions" / "wip" / "sess-1" / "qa" / "todo" / f"{qa_id}.md"
     assert expected_path.exists()
 
-
 def test_advance_state_preserves_metadata(repo_env):
     """Test advance_state preserves QA metadata."""
     qa_id = "T-7-qa"
@@ -306,7 +291,6 @@ def test_advance_state_preserves_metadata(repo_env):
     assert updated_qa.metadata.created_at == original_created_at
     assert updated_qa.metadata.created_by == "test"
     assert updated_qa.metadata.updated_at is not None
-
 
 def test_advance_state_preserves_round_number(repo_env):
     """Test advance_state preserves round number."""

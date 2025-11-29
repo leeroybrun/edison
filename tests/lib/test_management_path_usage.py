@@ -1,4 +1,5 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 import importlib
 import json
@@ -7,13 +8,8 @@ from pathlib import Path
 from typing import Tuple
 
 import pytest
-import yaml
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
+from tests.config import get_task_states, get_qa_states, get_session_states
 
 @pytest.fixture
 def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
@@ -23,17 +19,27 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     mgmt = tmp_path / ".mgmt"
-    for rel in [
-        "tasks/todo",
-        "tasks/wip",
-        "qa/validation-evidence",
-        "qa/waiting",
-        "sessions/wip",
-        "sessions/active",
-        "logs",
-        "archive",
-        "sessions/_tx",
-    ]:
+
+    # Load state directories from config (NO hardcoded values)
+    task_states = get_task_states()
+    qa_states = get_qa_states()
+    session_states = get_session_states()
+
+    # Create task directories
+    for state in task_states:
+        (mgmt / "tasks" / state).mkdir(parents=True, exist_ok=True)
+
+    # Create QA directories
+    for state in qa_states:
+        (mgmt / "qa" / state).mkdir(parents=True, exist_ok=True)
+    (mgmt / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+
+    # Create session directories
+    for state in session_states:
+        (mgmt / "sessions" / state).mkdir(parents=True, exist_ok=True)
+
+    # Create additional directories
+    for rel in ["logs", "archive", "sessions/_tx"]:
         (mgmt / rel).mkdir(parents=True, exist_ok=True)
 
     # Seed minimal session records so session/store lookups succeed
@@ -46,11 +52,11 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
         )
 
     # Config: point management dir to .mgmt and session paths into it
-    _write_yaml(
+    write_yaml(
         tmp_path / ".agents" / "config.yml",
         {"paths": {"management_dir": ".mgmt"}, "session": {"paths": {"root": ".mgmt/sessions", "archive": ".mgmt/archive", "tx": ".mgmt/sessions/_tx"}}},
     )
-    _write_yaml(
+    write_yaml(
         tmp_path / ".edison" / "core" / "config" / "defaults.yaml",
         {
             "paths": {"project_config_dir": ".agents"},
@@ -60,15 +66,13 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
 
     return tmp_path, mgmt
 
-
 def test_questionnaire_defaults_pick_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    from edison.cli.setup.questionnaire import SetupQuestionnaire
+    from edison.core.setup import SetupQuestionnaire
 
     q = SetupQuestionnaire(repo_root=repo, edison_core=Path(__file__).resolve().parents[2])
     ctx = q._context_with_defaults({})
     assert ctx.get("project_management_dir") == str(mgmt.relative_to(repo))
-
 
 def test_resolver_project_path_uses_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
@@ -78,14 +82,12 @@ def test_resolver_project_path_uses_management_dir(mgmt_repo: Tuple[Path, Path])
     path = resolver.PathResolver.get_project_path("tasks")
     assert path == mgmt / "tasks"
 
-
 def test_qa_store_root_uses_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
     from edison.core.utils.paths.management import get_management_paths
 
     mgmt_paths = get_management_paths(repo)
     assert mgmt_paths.get_qa_root() == mgmt / "qa"
-
 
 @pytest.mark.skip(reason="Legacy _audit_log function removed during Wave 7 module cleanup")
 def test_sessionlib_audit_log_writes_under_management_logs(mgmt_repo: Tuple[Path, Path]) -> None:
@@ -94,7 +96,6 @@ def test_sessionlib_audit_log_writes_under_management_logs(mgmt_repo: Tuple[Path
     # Audit logging is now handled differently within the session store.
     pass
 
-
 @pytest.mark.skip(reason="record_tdd_evidence removed - legacy io.py deleted in cleanup")
 def test_task_io_records_evidence_in_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
@@ -102,7 +103,6 @@ def test_task_io_records_evidence_in_management_dir(mgmt_repo: Tuple[Path, Path]
     # The function was removed as part of legacy task.io cleanup.
     # Evidence recording is now handled by edison.core.qa.evidence.service
     pass
-
 
 def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
@@ -118,7 +118,6 @@ def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> N
     candidates = ctx7._collect_candidate_files(task_file, session=None)
     assert "src/app.py" in candidates
 
-
 def test_evidence_service_root_under_management_root(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
     import edison.core.utils.paths.management as mgmt_pkg
@@ -132,7 +131,6 @@ def test_evidence_service_root_under_management_root(mgmt_repo: Tuple[Path, Path
     svc = evidence_service.EvidenceService("task-9", project_root=repo)
     assert str(svc.get_evidence_root()).startswith(str(mgmt / "qa" / "validation-evidence"))
 
-
 def test_session_validation_transaction_stages_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
     import edison.core.session.transaction as session_tx
@@ -143,7 +141,6 @@ def test_session_validation_transaction_stages_under_management(mgmt_repo: Tuple
     importlib.reload(session_tx)
     tx = session_tx.ValidationTransaction("sess-1", "task-1")
     assert str(tx.staging_root).startswith(str(mgmt))
-
 
 def test_session_next_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
@@ -163,7 +160,6 @@ def test_session_next_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> No
     files = session_next._all_task_files()
     assert task_file.resolve() in files
 
-
 def test_session_autostart_logs_under_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
     import edison.core.session.autostart as autostart
@@ -172,7 +168,6 @@ def test_session_autostart_logs_under_management_dir(mgmt_repo: Tuple[Path, Path
     sa = autostart.SessionAutoStart(project_root=repo)
     path = sa._session_log_path("sess-99")
     assert str(path).startswith(str(mgmt / "sessions" / "wip" / "sess-99"))
-
 
 def test_qa_validation_transaction_staging_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo

@@ -8,13 +8,13 @@ import shutil
 import pytest
 import yaml
 
+from tests.helpers import create_round_dir
+
 
 @pytest.fixture
 def round_dir(tmp_path: Path) -> Path:
     """Create a round directory for testing."""
-    d = tmp_path / "round-1"
-    d.mkdir(parents=True)
-    return d
+    return create_round_dir(tmp_path, 1)
 
 
 @pytest.fixture

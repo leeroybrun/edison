@@ -10,12 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+from helpers.io_utils import write_yaml
 
 
 @pytest.mark.qa
@@ -26,7 +22,7 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "delegation": {
@@ -59,7 +55,6 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
     assert "taskTypeRules" in delegation
     assert delegation["taskTypeRules"]["ui-component"]["preferredModel"] == "claude"
 
-
 @pytest.mark.qa
 def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch):
     """QAConfig must provide get_validation_config() method."""
@@ -68,7 +63,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "validation": {
@@ -109,7 +104,6 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     assert validation["dimensions"]["security"] == 20
     assert "roster" in validation
 
-
 @pytest.mark.qa
 def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monkeypatch):
     """QAConfig must provide max_concurrent_validators() method."""
@@ -118,7 +112,7 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "orchestration": {
@@ -140,7 +134,6 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
     assert isinstance(max_concurrent, int)
     assert max_concurrent == 3
 
-
 @pytest.mark.qa
 def test_qa_config_class_falls_back_to_bundled_defaults(tmp_path: Path, monkeypatch):
     """QAConfig falls back to bundled defaults when project config is empty.
@@ -154,7 +147,7 @@ def test_qa_config_class_falls_back_to_bundled_defaults(tmp_path: Path, monkeypa
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             # Empty config - should fall back to bundled defaults

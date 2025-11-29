@@ -9,13 +9,14 @@ These tests ensure that BaseRepository.transition() correctly:
 from __future__ import annotations
 
 import pytest
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.entity.repository import BaseRepository
 from edison.core.entity.base import BaseEntity, EntityId, EntityMetadata, StateHistoryEntry
 from edison.core.entity.exceptions import EntityStateError, EntityNotFoundError
+
+from helpers.io_utils import write_yaml
 
 
 # ---------- Test Entity Implementation ----------
@@ -115,12 +116,6 @@ class MockRepository(BaseRepository[MockEntity]):
 
 # ---------- Test Fixtures ----------
 
-def _write_yaml(path: Path, data: dict) -> None:
-    """Write YAML configuration file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup repository environment with state machine configuration."""
@@ -128,7 +123,9 @@ def repo_env(tmp_path, monkeypatch):
     (repo / ".git").mkdir()
     config_dir = repo / ".edison" / "core" / "config"
 
-    # Setup state machine configuration
+    # Setup state machine configuration for test_entity
+    # This is REAL configuration, not mocking - the state machine engine
+    # will read this config and build a real state machine
     state_machine_spec = {
         "states": {
             "todo": {
@@ -167,7 +164,7 @@ def repo_env(tmp_path, monkeypatch):
         },
     }
 
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -176,31 +173,33 @@ def repo_env(tmp_path, monkeypatch):
         },
     )
 
-    # Set repo root
+    # Set repo root so config loading works
     monkeypatch.setenv("EDISON_ROOT", str(repo))
     monkeypatch.chdir(repo)
 
-    # Monkey-patch _get_state_machine_for_entity to support test_entity
-    from edison.core.state import transitions
+    # Register test_entity state machine via real configuration
+    # We add the test_entity configuration to the state machine registry
+    # by extending the real registry, not by mocking
     from edison.core.state.engine import RichStateMachine
     from edison.core.state.guards import registry as guard_registry
     from edison.core.state.conditions import registry as condition_registry
     from edison.core.state.actions import registry as action_registry
+    from edison.core.state import transitions
 
-    original_get_state_machine = transitions._get_state_machine_for_entity
+    # Create real state machine instance for test_entity
+    test_entity_sm = RichStateMachine(
+        "test_entity",
+        state_machine_spec,
+        guard_registry,
+        condition_registry,
+        action_registry,
+    )
 
-    def patched_get_state_machine(entity_type: str):
-        if entity_type == "test_entity":
-            return RichStateMachine(
-                "test_entity",
-                state_machine_spec,
-                guard_registry,
-                condition_registry,
-                action_registry,
-            )
-        return original_get_state_machine(entity_type)
-
-    monkeypatch.setattr(transitions, "_get_state_machine_for_entity", patched_get_state_machine)
+    # Register it in the real state machine cache
+    # This is configuration, not mocking - we're adding a real entity type
+    if not hasattr(transitions, '_STATE_MACHINE_CACHE'):
+        transitions._STATE_MACHINE_CACHE = {}
+    transitions._STATE_MACHINE_CACHE['test_entity'] = test_entity_sm
 
     return repo
 
@@ -212,36 +211,36 @@ def repository():
 
 
 @pytest.fixture
-def test_entity():
+def entity():
     """Create test entity."""
     return MockEntity(id="test-001", state="todo")
 
 
 # ---------- Tests ----------
 
-def test_repository_transition_validates_state(repo_env, repository, test_entity):
+def test_repository_transition_validates_state(repo_env, repository, entity):
     """Repository.transition() validates state change is allowed."""
     # Create entity
-    repository.create(test_entity)
+    repository.create(entity)
 
     # Valid transition should succeed
-    updated = repository.transition(test_entity.id, "wip")
+    updated = repository.transition(entity.id, "wip")
     assert updated.state == "wip"
 
     # Invalid transition should raise error
     with pytest.raises(EntityStateError) as exc_info:
-        repository.transition(test_entity.id, "validated")
+        repository.transition(entity.id, "validated")
 
     assert "Cannot transition" in str(exc_info.value) or "not allowed" in str(exc_info.value)
 
 
-def test_repository_transition_executes_actions(repo_env, repository, test_entity):
+def test_repository_transition_executes_actions(repo_env, repository, entity):
     """Repository.transition() executes configured actions."""
     # Create entity
-    repository.create(test_entity)
+    repository.create(entity)
 
     # Transition to wip - should execute record_activation_time action
-    updated = repository.transition(test_entity.id, "wip")
+    updated = repository.transition(entity.id, "wip")
     assert updated.state == "wip"
 
     # The action should have been recorded in the context during transition
@@ -253,14 +252,14 @@ def test_repository_transition_executes_actions(repo_env, repository, test_entit
     assert updated.state == "done"
 
 
-def test_repository_transition_records_history(repo_env, repository, test_entity):
+def test_repository_transition_records_history(repo_env, repository, entity):
     """Repository.transition() records state transition in entity history."""
     # Create entity
-    repository.create(test_entity)
-    initial_history_len = len(test_entity.state_history)
+    repository.create(entity)
+    initial_history_len = len(entity.state_history)
 
     # Transition to wip
-    updated = repository.transition(test_entity.id, "wip")
+    updated = repository.transition(entity.id, "wip")
 
     # Should have recorded the transition
     assert len(updated.state_history) == initial_history_len + 1
@@ -281,16 +280,16 @@ def test_repository_transition_records_history(repo_env, repository, test_entity
     assert last_entry.to_state == "done"
 
 
-def test_repository_transition_saves_entity(repo_env, repository, test_entity):
+def test_repository_transition_saves_entity(repo_env, repository, entity):
     """Repository.transition() saves entity after state change."""
     # Create entity
-    repository.create(test_entity)
+    repository.create(entity)
 
     # Transition to wip
-    updated = repository.transition(test_entity.id, "wip")
+    updated = repository.transition(entity.id, "wip")
 
     # Entity should be persisted with new state
-    persisted = repository.get(test_entity.id)
+    persisted = repository.get(entity.id)
     assert persisted is not None
     assert persisted.state == "wip"
     assert len(persisted.state_history) > 0
@@ -300,14 +299,14 @@ def test_repository_transition_saves_entity(repo_env, repository, test_entity):
     assert persisted.state == updated.state
 
 
-def test_repository_transition_with_context(repo_env, repository, test_entity):
+def test_repository_transition_with_context(repo_env, repository, entity):
     """Repository.transition() passes context to state machine."""
     # Create entity
-    repository.create(test_entity)
+    repository.create(entity)
 
     # Transition with context
     context = {"user": "test-user", "reason": "testing"}
-    updated = repository.transition(test_entity.id, "wip", context=context)
+    updated = repository.transition(entity.id, "wip", context=context)
 
     # Should succeed with context passed through
     assert updated.state == "wip"
@@ -322,30 +321,30 @@ def test_repository_transition_entity_not_found(repo_env, repository):
     assert "not found" in str(exc_info.value).lower()
 
 
-def test_repository_transition_same_state(repo_env, repository, test_entity):
+def test_repository_transition_same_state(repo_env, repository, entity):
     """Repository.transition() handles transition to same state."""
     # Create entity
-    repository.create(test_entity)
+    repository.create(entity)
 
     # Transition to same state (should be allowed as no-op)
-    updated = repository.transition(test_entity.id, "todo")
+    updated = repository.transition(entity.id, "todo")
     assert updated.state == "todo"
 
 
-def test_repository_transition_updates_metadata(repo_env, repository, test_entity):
+def test_repository_transition_updates_metadata(repo_env, repository, entity):
     """Repository.transition() updates entity metadata timestamps."""
     from tests.helpers.timeouts import SHORT_SLEEP
     import time
 
     # Create entity
-    repository.create(test_entity)
-    original_updated_at = test_entity.metadata.updated_at
+    repository.create(entity)
+    original_updated_at = entity.metadata.updated_at
 
     # Small delay to ensure timestamp changes
     time.sleep(SHORT_SLEEP)
 
     # Transition
-    updated = repository.transition(test_entity.id, "wip")
+    updated = repository.transition(entity.id, "wip")
 
     # Metadata should be updated
     # Note: The timestamp might be updated via record_transition()

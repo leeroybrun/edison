@@ -1,9 +1,9 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 from pathlib import Path
 import subprocess
 import sys
-import yaml
 import pytest
 
 # Skip all tests in this file - setup/init CLI functionality has been moved to core library
@@ -18,18 +18,11 @@ from .test_setup_init import (
     _write_minimal_compose_config,
 )
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-
-
 def _seed_pack_with_setup(root: Path, name: str, setup_data: dict) -> None:
     pack_dir = root / ".edison" / "packs" / name
     (pack_dir / "config").mkdir(parents=True, exist_ok=True)
     (pack_dir / "config.yml").write_text(f"name: {name}\n", encoding="utf-8")
-    _write_yaml(pack_dir / "config" / "setup.yml", setup_data)
-
+    write_yaml(pack_dir / "config" / "setup.yml", setup_data)
 
 def test_setup_init_runs_pack_questions_and_writes_config(tmp_path: Path) -> None:
     _init_repo(tmp_path)
@@ -153,7 +146,6 @@ def test_setup_init_runs_pack_questions_and_writes_config(tmp_path: Path) -> Non
     assert pack_cfg["typescript"]["module"] == "node16"
     assert pack_cfg["react"]["version"] == "19-rc"
     assert pack_cfg["react"]["strict_mode"] is True
-
 
 def test_setup_init_skips_packs_without_setup_files(tmp_path: Path) -> None:
     _init_repo(tmp_path)

@@ -25,7 +25,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     """Load YAML from a file path, returning empty dict if file doesn't exist."""
     if not path.exists():
         return {}
-    return read_yaml(path, default={})
+    return read_yaml_file(path, default={})
 
 
 def _load_json(path: Path) -> Dict[str, Any]:

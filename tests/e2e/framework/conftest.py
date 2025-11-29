@@ -1,37 +1,11 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 import pytest
-import yaml
 
-# Add tests directory to path so tests can import from helpers.*
-TESTS_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(TESTS_ROOT) not in sys.path:
-    sys.path.insert(0, str(TESTS_ROOT))
-
-
-def _load_test_states() -> dict:
-    """Load canonical state definitions from tests/config/states.yaml."""
-    states_file = TESTS_ROOT / "config" / "states.yaml"
-    if not states_file.exists():
-        # Fallback to minimal defaults if config not found
-        return {
-            "session": {
-                "unique_dirs": ["wip", "done", "validated", "recovery"]
-            },
-            "task": {
-                "unique_dirs": ["todo"]
-            },
-            "qa": {
-                "unique_dirs": ["waiting", "todo", "wip", "done", "validated"]
-            },
-            "additional_paths": {
-                "qa": []
-            }
-        }
-    with open(states_file, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+# Import centralized config loader (SINGLE source of truth)
+# sys.path is already set up by tests/conftest.py
+from config.loader import load_test_states
 
 
 @pytest.fixture
@@ -47,7 +21,7 @@ def ensure_project_dirs(tmp_path: Path) -> Path:
     Returns:
         Path: The isolated .project root directory
     """
-    states_config = _load_test_states()
+    states_config = load_test_states()
 
     root = tmp_path / ".project"
 

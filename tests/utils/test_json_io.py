@@ -5,10 +5,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-import yaml
+
+from helpers.io_utils import write_yaml
 
 
-def _write_json_config(repo_root: Path) -> None:
+@pytest.fixture()
+def json_module(isolated_project_env: Path):
+    # Write config with specific json_io settings for testing
     cfg = {
         "json_io": {
             "indent": 2,
@@ -30,14 +33,7 @@ def _write_json_config(repo_root: Path) -> None:
             "poll_interval_seconds": 0.1,
         },
     }
-    cfg_dir = repo_root / ".edison" / "core" / "config"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-    cfg_dir.joinpath("defaults.yaml").write_text(yaml.safe_dump(cfg), encoding="utf-8")
-
-
-@pytest.fixture()
-def json_module(isolated_project_env: Path):
-    _write_json_config(isolated_project_env)
+    write_yaml(isolated_project_env / ".edison" / "core" / "config" / "defaults.yaml", cfg)
     import edison.core.utils.io.json as json_io  # type: ignore
 
     importlib.reload(json_io)

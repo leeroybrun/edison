@@ -7,78 +7,14 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 
-
-EDISON_ROOT = Path(__file__).resolve().parents[2]
-
-
-def _write_minimal_compose_config(root: Path) -> None:
-    """Seed a tiny config surface so compose commands can run in isolation."""
-
-    core_config = root / ".edison" / "core" / "config"
-    core_config.mkdir(parents=True, exist_ok=True)
-
-    (core_config / "commands.yaml").write_text(
-        dedent(
-            """
-            commands:
-              enabled: true
-              platforms: [claude, cursor, codex]
-              definitions:
-                - id: demo-cmd
-                  domain: demo
-                  command: demo
-                  short_desc: "Demo compose command"
-                  full_desc: "Full demo description"
-                  cli: "edison demo"
-                  args: []
-                  when_to_use: "When validating compose CLI"
-                  related_commands: []
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    (core_config / "hooks.yaml").write_text(
-        dedent(
-            """
-            hooks:
-              enabled: true
-              platforms: [claude]
-              definitions:
-                sample-hook:
-                  enabled: true
-                  description: "Sample hook for tests"
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    (core_config / "settings.yaml").write_text(
-        dedent(
-            """
-            settings:
-              enabled: true
-              platforms: [claude]
-              claude:
-                generate: true
-                permissions:
-                  allow: ["Read(./**)"]
-                  deny: []
-                  ask: []
-                env: {TEST_ENV: "1"}
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    # Hooks templates directory (may remain empty, but path should exist)
-    (root / ".edison" / "core" / "templates" / "hooks").mkdir(parents=True, exist_ok=True)
+from tests.helpers.io_utils import write_minimal_compose_config
+from tests.helpers.paths import get_repo_root
 
 
-def _run(domain: str, command: str, args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+EDISON_ROOT = get_repo_root()
+
+
+def _run_command(domain: str, command: str, args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     """Execute a CLI command using python -m edison.cli.<domain>.<command>."""
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(cwd)
@@ -87,13 +23,13 @@ def _run(domain: str, command: str, args: list[str], cwd: Path) -> subprocess.Co
 
 
 def test_compose_commands_list_and_generate(isolated_project_env: Path):
-    _write_minimal_compose_config(isolated_project_env)
+    write_minimal_compose_config(isolated_project_env, platforms=["claude", "cursor", "codex"], include_env=True)
 
-    listed = _run("compose", "commands", ["--list"], isolated_project_env)
+    listed = _run_command("compose", "commands", ["--list"], isolated_project_env)
     assert listed.returncode == 0, listed.stderr
     assert "demo-cmd" in listed.stdout
 
-    generated = _run("compose", "commands", ["--platform", "claude"], isolated_project_env)
+    generated = _run_command("compose", "commands", ["--platform", "claude"], isolated_project_env)
     assert generated.returncode == 0, generated.stderr
 
     out_file = isolated_project_env / ".claude" / "commands" / "demo-cmd.md"
@@ -103,9 +39,9 @@ def test_compose_commands_list_and_generate(isolated_project_env: Path):
 
 
 def test_compose_all_dry_run_skips_writes(isolated_project_env: Path):
-    _write_minimal_compose_config(isolated_project_env)
+    write_minimal_compose_config(isolated_project_env, platforms=["claude", "cursor", "codex"], include_env=True)
 
-    proc = _run("compose", "all", ["--dry-run", "--platforms", "claude"], isolated_project_env)
+    proc = _run_command("compose", "all", ["--dry-run", "--platforms", "claude"], isolated_project_env)
     assert proc.returncode == 0, proc.stderr
     assert "dry-run" in proc.stdout.lower()
 
@@ -113,9 +49,9 @@ def test_compose_all_dry_run_skips_writes(isolated_project_env: Path):
 
 
 def test_compose_settings_outputs_json(isolated_project_env: Path):
-    _write_minimal_compose_config(isolated_project_env)
+    write_minimal_compose_config(isolated_project_env, platforms=["claude", "cursor", "codex"], include_env=True)
 
-    proc = _run("compose", "settings", [], isolated_project_env)
+    proc = _run_command("compose", "settings", [], isolated_project_env)
     assert proc.returncode == 0, proc.stderr
 
     settings_path = isolated_project_env / ".claude" / "settings.json"
@@ -125,9 +61,9 @@ def test_compose_settings_outputs_json(isolated_project_env: Path):
 
 
 def test_compose_validate_honors_schema_warnings(isolated_project_env: Path):
-    _write_minimal_compose_config(isolated_project_env)
+    write_minimal_compose_config(isolated_project_env, platforms=["claude", "cursor", "codex"], include_env=True)
 
-    proc = _run("compose", "validate", [], isolated_project_env)
+    proc = _run_command("compose", "validate", [], isolated_project_env)
     assert proc.returncode == 0, proc.stderr
     assert "valid" in proc.stdout.lower()
 

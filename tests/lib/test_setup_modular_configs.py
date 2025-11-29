@@ -3,8 +3,7 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from edison.cli.setup.questionnaire import SetupQuestionnaire
-from edison.cli.setup.component_discovery import SetupDiscovery
+from edison.core.setup import SetupDiscovery, SetupQuestionnaire
 
 
 def test_render_modular_configs_creates_separate_files():

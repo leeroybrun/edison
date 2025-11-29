@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
 
 SUMMARY = "Show rules applicable to a context"
 

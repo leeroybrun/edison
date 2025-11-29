@@ -10,9 +10,13 @@ from textwrap import dedent
 import pytest
 import yaml
 
+from tests.helpers.io_utils import write_minimal_compose_config
+from tests.helpers.paths import get_repo_root
+from tests.helpers.timeouts import SUBPROCESS_TIMEOUT
 
-EDISON_ROOT = Path(__file__).resolve().parents[2]
-REPO_ROOT = Path(__file__).resolve().parents[4]
+
+EDISON_ROOT = get_repo_root()
+REPO_ROOT = get_repo_root()
 
 # Skip all tests in this file - setup/init CLI functionality has been moved to core library
 # and is now accessed via edison.core.setup module. CLI command for init doesn't exist yet.
@@ -28,7 +32,7 @@ def _run_setup(args: list[str], env: dict[str, str], cwd: Path, input_data: str 
         input=input_data,
         text=True,
         capture_output=True,
-        timeout=120,
+        timeout=SUBPROCESS_TIMEOUT,
     )
 
 
@@ -52,72 +56,6 @@ def _copy_core(dst_root: Path) -> Path:
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".pytest_cache", ".mypy_cache"),
     )
     return dst_core
-
-
-def _write_minimal_compose_config(root: Path) -> None:
-    """Seed tiny compose config so `compose all` has stable inputs."""
-
-    core_config = root / ".edison" / "core" / "config"
-    core_config.mkdir(parents=True, exist_ok=True)
-
-    (core_config / "commands.yaml").write_text(
-        dedent(
-            """
-            commands:
-              enabled: true
-              platforms: [claude]
-              definitions:
-                - id: demo-cmd
-                  domain: demo
-                  command: demo
-                  short_desc: "Demo compose command"
-                  full_desc: "Full demo description"
-                  cli: "edison demo"
-                  args: []
-                  when_to_use: "When validating compose CLI"
-                  related_commands: []
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    (core_config / "hooks.yaml").write_text(
-        dedent(
-            """
-            hooks:
-              enabled: true
-              platforms: [claude]
-              definitions:
-                sample-hook:
-                  enabled: true
-                  type: PreToolUse
-                  description: "Sample hook for tests"
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    (core_config / "settings.yaml").write_text(
-        dedent(
-            """
-            settings:
-              enabled: true
-              platforms: [claude]
-              claude:
-                generate: true
-                permissions:
-                  allow: ["Read(./**)"]
-                  deny: []
-                  ask: []
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
-
-    (root / ".edison" / "core" / "templates" / "hooks").mkdir(parents=True, exist_ok=True)
 
 
 def _seed_pack(root: Path, name: str) -> None:
@@ -160,7 +98,7 @@ def test_already_initialized_blocks_without_reconfigure(isolated_project_env: Pa
 def test_reconfigure_allows_rerun_and_writes_defaults(tmp_path: Path):
     _init_repo(tmp_path)
     _copy_core(tmp_path)
-    _write_minimal_compose_config(tmp_path)
+    write_minimal_compose_config(tmp_path, include_hook_type=True)
 
     # Pretend project was initialized previously
     (tmp_path / ".agents").mkdir(parents=True, exist_ok=True)
@@ -180,7 +118,7 @@ def test_reconfigure_allows_rerun_and_writes_defaults(tmp_path: Path):
 def test_basic_mode_non_interactive_defaults(tmp_path: Path):
     _init_repo(tmp_path)
     _copy_core(tmp_path)
-    _write_minimal_compose_config(tmp_path)
+    write_minimal_compose_config(tmp_path, include_hook_type=True)
 
     env = _prepare_env(tmp_path)
 
@@ -202,7 +140,7 @@ def test_basic_mode_non_interactive_defaults(tmp_path: Path):
 def test_advanced_mode_supports_custom_directories_and_dynamic_options(tmp_path: Path):
     _init_repo(tmp_path)
     _copy_core(tmp_path)
-    _write_minimal_compose_config(tmp_path)
+    write_minimal_compose_config(tmp_path, include_hook_type=True)
     _seed_pack(tmp_path, "demo-pack")
 
     env = _prepare_env(tmp_path)
@@ -261,7 +199,7 @@ def test_advanced_mode_supports_custom_directories_and_dynamic_options(tmp_path:
 def test_advanced_mode_non_interactive_defaults(tmp_path: Path):
     _init_repo(tmp_path)
     _copy_core(tmp_path)
-    _write_minimal_compose_config(tmp_path)
+    write_minimal_compose_config(tmp_path, include_hook_type=True)
 
     env = _prepare_env(tmp_path)
 
@@ -293,7 +231,7 @@ def test_advanced_mode_non_interactive_defaults(tmp_path: Path):
 def test_already_initialized_custom_directory(tmp_path: Path):
     _init_repo(tmp_path)
     _copy_core(tmp_path)
-    _write_minimal_compose_config(tmp_path)
+    write_minimal_compose_config(tmp_path, include_hook_type=True)
 
     env = _prepare_env(tmp_path)
 

@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
-import yaml
+
+from helpers.io_utils import write_yaml
 
 
 def _write_cli_config(repo_root: Path) -> None:
@@ -31,10 +34,8 @@ def _write_cli_config(repo_root: Path) -> None:
             "build_operations": 60.0,
         },
     }
-    cfg_dir = repo_root / ".edison" / "core" / "config"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-    cfg_path = cfg_dir / "defaults.yaml"
-    cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    cfg_path = repo_root / ".edison" / "core" / "config" / "defaults.yaml"
+    write_yaml(cfg_path, cfg)
 
 
 @pytest.fixture()
@@ -100,18 +101,64 @@ def test_confirm_honors_env_shortcuts(cli_module, monkeypatch, capsys):
 
 
 @pytest.mark.skip(reason="Test assumes modules load config from project-local files, but they use bundled edison.data defaults")
-def test_confirm_uses_default_on_empty_input(cli_module, monkeypatch):
+def test_confirm_uses_default_on_empty_input(cli_module, tmp_path: Path):
+    """Test that confirm uses default on empty input via subprocess."""
     # NOTE: This test expects cli to use config values from the temp project directory,
     # but the cli modules always load from bundled edison.data defaults.
-    monkeypatch.delenv("EDISON_ASSUME_YES", raising=False)
-    monkeypatch.setattr("builtins.input", lambda _: "")
-    assert cli_module.confirm("Continue?") is True  # default comes from YAML (True)
+    test_script = tmp_path / "test_confirm_empty.py"
+    test_script.write_text("""
+import sys
+from tests.helpers.paths import get_repo_root
+sys.path.insert(0, str(get_repo_root() / "src"))
+
+from edison.core.utils.cli.output import confirm
+
+# Test empty input with default=True
+result = confirm("Continue?", default=True)
+assert result is True, f"Expected True for empty input, got {{result}}"
+print("PASS")
+""")
+
+    result = subprocess.run(
+        [sys.executable, str(test_script)],
+        input="\n",
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={"AGENTS_PROJECT_ROOT": str(tmp_path)}
+    )
+
+    assert result.returncode == 0, f"Script failed: {result.stderr}"
+    assert "PASS" in result.stdout
 
 
-def test_confirm_rejects_negative_response(cli_module, monkeypatch):
-    monkeypatch.delenv("EDISON_ASSUME_YES", raising=False)
-    monkeypatch.setattr("builtins.input", lambda _: "n")
-    assert cli_module.confirm("Continue?") is False
+def test_confirm_rejects_negative_response(cli_module, tmp_path: Path):
+    """Test that confirm returns False for 'n' via subprocess."""
+    test_script = tmp_path / "test_confirm_no.py"
+    test_script.write_text("""
+import sys
+from tests.helpers.paths import get_repo_root
+sys.path.insert(0, str(get_repo_root() / "src"))
+
+from edison.core.utils.cli.output import confirm
+
+# Test 'n' input
+result = confirm("Continue?")
+assert result is False, f"Expected False for 'n', got {{result}}"
+print("PASS")
+""")
+
+    result = subprocess.run(
+        [sys.executable, str(test_script)],
+        input="n\n",
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={"AGENTS_PROJECT_ROOT": str(tmp_path)}
+    )
+
+    assert result.returncode == 0, f"Script failed: {result.stderr}"
+    assert "PASS" in result.stdout
 
 
 def test_error_and_success_use_prefixes(cli_module, capsys):

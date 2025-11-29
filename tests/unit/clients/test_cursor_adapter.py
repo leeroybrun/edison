@@ -5,33 +5,22 @@ from pathlib import Path
 import pytest
 
 from edison.core.adapters import CursorSync
+from tests.helpers.io_utils import write_yaml
 
 
 def _write_minimal_config(root: Path) -> None:
     """Write minimal defaults/config needed for ConfigManager-based adapters."""
-    core_dir = root / ".edison" / "core"
-    core_dir.mkdir(parents=True, exist_ok=True)
-    defaults = "\n".join(
-        [
-            "project:",
-            "  name: cursor-unit-test",
-            "packs:",
-            "  active: []",
-        ]
-    )
-    (core_dir / "defaults.yaml").write_text(defaults + "\n", encoding="utf-8")
+    defaults_data = {
+        "project": {"name": "cursor-unit-test"},
+        "packs": {"active": []}
+    }
+    write_yaml(root / ".edison" / "core" / "defaults.yaml", defaults_data)
 
-    agents_dir = root / ".agents"
-    agents_dir.mkdir(parents=True, exist_ok=True)
-    config = "\n".join(
-        [
-            "project:",
-            "  name: cursor-unit-test",
-            "packs:",
-            "  active: []",
-        ]
-    )
-    (agents_dir / "config.yml").write_text(config + "\n", encoding="utf-8")
+    config_data = {
+        "project": {"name": "cursor-unit-test"},
+        "packs": {"active": []}
+    }
+    write_yaml(root / ".agents" / "config.yml", config_data)
 
 
 class TestCursorAdapterCursorrules:
@@ -49,20 +38,21 @@ class TestCursorAdapterCursorrules:
         )
 
         # Minimal rules registry referencing the guideline
-        rules_dir = project_root / ".edison" / "core" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        registry_path = rules_dir / "registry.yml"
-        registry_path.write_text(
-            "version: '1.0.0'\n"
-            "rules:\n"
-            "  - id: arch-1\n"
-            "    title: Architecture rule\n"
-            "    blocking: true\n"
-            "    contexts: ['architecture']\n"
-            "    source:\n"
-            "      file: '.edison/core/guidelines/shared/architecture.md'\n",
-            encoding="utf-8",
-        )
+        registry_data = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "arch-1",
+                    "title": "Architecture rule",
+                    "blocking": True,
+                    "contexts": ["architecture"],
+                    "source": {
+                        "file": ".edison/core/guidelines/shared/architecture.md"
+                    }
+                }
+            ]
+        }
+        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         out_path = adapter.sync_to_cursorrules()
@@ -90,17 +80,18 @@ class TestCursorAdapterCursorrules:
         guidelines_dir.mkdir(parents=True, exist_ok=True)
         (guidelines_dir / "arch.md").write_text("# Arch\n\nText.\n", encoding="utf-8")
 
-        rules_dir = project_root / ".edison" / "core" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        (rules_dir / "registry.yml").write_text(
-            "version: '1.0.0'\n"
-            "rules:\n"
-            "  - id: r1\n"
-            "    title: R1\n"
-            "    blocking: false\n"
-            "    contexts: []\n",
-            encoding="utf-8",
-        )
+        registry_data = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "r1",
+                    "title": "R1",
+                    "blocking": False,
+                    "contexts": []
+                }
+            ]
+        }
+        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         path = adapter.sync_to_cursorrules()
@@ -127,18 +118,18 @@ class TestCursorAdapterCursorrules:
         guideline_path = guidelines_dir / "architecture.md"
         guideline_path.write_text("# Architecture\n\nOriginal.\n", encoding="utf-8")
 
-        rules_dir = project_root / ".edison" / "core" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        registry_path = rules_dir / "registry.yml"
-        registry_path.write_text(
-            "version: '1.0.0'\n"
-            "rules:\n"
-            "  - id: arch-1\n"
-            "    title: Architecture rule\n"
-            "    blocking: false\n"
-            "    contexts: []\n",
-            encoding="utf-8",
-        )
+        registry_data = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "arch-1",
+                    "title": "Architecture rule",
+                    "blocking": False,
+                    "contexts": []
+                }
+            ]
+        }
+        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         path = adapter.sync_to_cursorrules()
@@ -218,29 +209,33 @@ class TestCursorAdapterStructuredRules:
         _write_minimal_config(project_root)
 
         # Minimal rules registry with explicit categories and inline guidance bodies
-        rules_dir = project_root / ".edison" / "core" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        registry_path = rules_dir / "registry.yml"
-        registry_path.write_text(
-            "version: '1.0.0'\n"
-            "rules:\n"
-            "  - id: RULE.VALIDATION.ONE\n"
-            "    title: Validation One\n"
-            "    category: validation\n"
-            "    blocking: true\n"
-            "    guidance: 'Validation rule body.'\n"
-            "  - id: RULE.DELEGATION.ONE\n"
-            "    title: Delegation One\n"
-            "    category: delegation\n"
-            "    blocking: false\n"
-            "    guidance: 'Delegation rule body.'\n"
-            "  - id: RULE.CONTEXT.ONE\n"
-            "    title: Context One\n"
-            "    category: context\n"
-            "    blocking: false\n"
-            "    guidance: 'Context rule body.'\n",
-            encoding="utf-8",
-        )
+        registry_data = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "RULE.VALIDATION.ONE",
+                    "title": "Validation One",
+                    "category": "validation",
+                    "blocking": True,
+                    "guidance": "Validation rule body."
+                },
+                {
+                    "id": "RULE.DELEGATION.ONE",
+                    "title": "Delegation One",
+                    "category": "delegation",
+                    "blocking": False,
+                    "guidance": "Delegation rule body."
+                },
+                {
+                    "id": "RULE.CONTEXT.ONE",
+                    "title": "Context One",
+                    "category": "context",
+                    "blocking": False,
+                    "guidance": "Context rule body."
+                }
+            ]
+        }
+        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         paths = adapter.sync_structured_rules()

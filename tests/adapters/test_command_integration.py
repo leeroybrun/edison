@@ -4,18 +4,15 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-import yaml
+from tests.helpers.paths import get_repo_root
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = get_repo_root()
 core_path = ROOT / ".edison" / "core"
 from edison.core.composition.ide.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 from edison.core.adapters import ClaudeAdapter, CursorPromptAdapter, CodexAdapter  # type: ignore  # noqa: E402
 
-
-def _write_yaml(path: Path, data: Dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+from helpers.io_utils import write_yaml
 
 
 def _sample_command(id: str, short_desc: str = "Run demo") -> Dict:
@@ -37,7 +34,7 @@ def test_generate_commands_all_platforms(tmp_path: Path) -> None:
     import pytest
     pytest.skip("Pre-existing: composition.commands module doesn't exist yet")
     # Command definition source
-    _write_yaml(
+    write_yaml(
         tmp_path / ".edison/core/config/commands.yaml",
         {"commands": [_sample_command("demo", "Demo command")]},
     )
@@ -54,7 +51,7 @@ def test_generate_commands_all_platforms(tmp_path: Path) -> None:
             },
         }
     }
-    _write_yaml(tmp_path / ".agents/config/commands.yml", command_cfg)
+    write_yaml(tmp_path / ".agents/config/commands.yml", command_cfg)
 
     generated_root = tmp_path / ".agents" / "_generated"
     generated_root.mkdir(parents=True, exist_ok=True)

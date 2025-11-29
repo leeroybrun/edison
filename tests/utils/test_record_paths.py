@@ -1,4 +1,5 @@
 from __future__ import annotations
+from helpers.io_utils import write_config
 
 import os
 from pathlib import Path
@@ -6,21 +7,12 @@ from pathlib import Path
 from edison.core.config.cache import clear_all_caches
 from edison.core.utils.paths.records import RecordPaths
 
-
-def _write_config(root: Path, yaml_text: str) -> None:
-    cfg = root / ".edison" / "config" / "config.yml"
-    cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(yaml_text, encoding="utf-8")
-    (root / ".project").mkdir(exist_ok=True)
-
-
 def _use_root(tmp_path: Path) -> None:
     os.environ["AGENTS_PROJECT_ROOT"] = str(tmp_path)
     clear_all_caches()
 
-
 def test_record_paths_resolve_from_yaml(tmp_path: Path) -> None:
-    _write_config(
+    write_config(
         tmp_path,
         """
         session:

@@ -10,13 +10,14 @@ import unittest
 
 import yaml
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.paths import get_repo_root
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = get_repo_root()
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
-class GlobalValidatorsAlwaysRunTests(unittest.TestCase):
+class TestGlobalValidatorsAlwaysRun(unittest.TestCase):
     def setUp(self) -> None:
         # Ephemeral root for CLI scripts via project_ROOT override
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-globals-"))

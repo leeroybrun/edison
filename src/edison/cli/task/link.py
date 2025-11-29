@@ -83,13 +83,12 @@ def main(args: argparse.Namespace) -> int:
             if args.session:
                 from edison.core.session import validate_session_id
                 from edison.core.session.repository import SessionRepository
-                from edison.core.utils.paths import PathResolver
                 from edison.core.utils.io import write_json_atomic
 
                 session_id = validate_session_id(args.session)
 
                 # Find or create session
-                session_repo = SessionRepository(project_root=PathResolver.resolve_project_root())
+                session_repo = SessionRepository(project_root=project_root)
                 session_entity = session_repo.get(session_id)
 
                 if session_entity:
@@ -122,7 +121,7 @@ def main(args: argparse.Namespace) -> int:
                     session_repo.save(session_entity)
                 except:
                     # Create session directory structure
-                    session_dir = PathResolver.resolve_project_root() / ".project" / "sessions" / "draft" / session_id
+                    session_dir = project_root / ".project" / "sessions" / "draft" / session_id
                     session_dir.mkdir(parents=True, exist_ok=True)
                     write_json_atomic(session_dir / "session.json", session)
 

@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_force_flag
+from edison.cli import OutputFormatter, add_json_flag, add_force_flag
 
 SUMMARY = "Clean up session worktree"
 
@@ -29,7 +29,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Also delete the session branch",
     )
     add_json_flag(parser)
-    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:

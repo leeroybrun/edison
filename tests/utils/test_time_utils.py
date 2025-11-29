@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-import yaml
+
+from helpers.io_utils import write_yaml
 
 
 def _write_time_config(repo_root: Path) -> None:
@@ -28,9 +29,8 @@ def _write_time_config(repo_root: Path) -> None:
             "poll_interval_seconds": 0.1,
         },
     }
-    cfg_dir = repo_root / ".edison" / "core" / "config"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-    cfg_dir.joinpath("defaults.yaml").write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    cfg_path = repo_root / ".edison" / "core" / "config" / "defaults.yaml"
+    write_yaml(cfg_path, cfg)
 
 
 @pytest.fixture()

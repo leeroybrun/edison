@@ -45,25 +45,21 @@ def clear_path_caches():
     management._paths_instance = None
 
 
-def test_task_repository_no_hardcoded_project_paths(tmp_path, monkeypatch):
+def test_task_repository_no_hardcoded_project_paths(isolated_project_env):
     """Test TaskRepository uses config-driven paths, not hardcoded .project."""
     from edison.core.task.repository import TaskRepository
-    from edison.core.utils.paths import get_management_paths, PathResolver
+    from edison.core.utils.paths import get_management_paths
 
-    # Create custom management dir via config
-    project_root = tmp_path / "test_project"
-    project_root.mkdir()
+    # Use isolated project environment with real directory structure
+    project_root = isolated_project_env
 
     # Create custom config with different management dir
     config_dir = project_root / ".edison"
-    config_dir.mkdir()
+    config_dir.mkdir(exist_ok=True)
     config_file = config_dir / "config.yml"
     config_file.write_text("management_dir: .custom_mgmt\n")
 
-    # Mock PathResolver to return our test project root
-    monkeypatch.setattr(PathResolver, "resolve_project_root", lambda: project_root)
-
-    # Initialize repository
+    # Initialize repository - PathResolver will naturally resolve to isolated_project_env
     repo = TaskRepository(project_root=project_root)
 
     # Get management paths
@@ -85,25 +81,21 @@ def test_task_repository_no_hardcoded_project_paths(tmp_path, monkeypatch):
     assert task_path.parent.parent.parent.name == "test-session"  # session ID
 
 
-def test_qa_repository_no_hardcoded_project_paths(tmp_path, monkeypatch):
+def test_qa_repository_no_hardcoded_project_paths(isolated_project_env):
     """Test QARepository uses config-driven paths, not hardcoded .project."""
     from edison.core.qa.repository import QARepository
-    from edison.core.utils.paths import get_management_paths, PathResolver
+    from edison.core.utils.paths import get_management_paths
 
-    # Create custom management dir via config
-    project_root = tmp_path / "test_project"
-    project_root.mkdir()
+    # Use isolated project environment with real directory structure
+    project_root = isolated_project_env
 
     # Create custom config with different management dir
     config_dir = project_root / ".edison"
-    config_dir.mkdir()
+    config_dir.mkdir(exist_ok=True)
     config_file = config_dir / "config.yml"
     config_file.write_text("management_dir: .custom_mgmt\n")
 
-    # Mock PathResolver to return our test project root
-    monkeypatch.setattr(PathResolver, "resolve_project_root", lambda: project_root)
-
-    # Initialize repository
+    # Initialize repository - PathResolver will naturally resolve to isolated_project_env
     repo = QARepository(project_root=project_root)
 
     # Get management paths
@@ -124,37 +116,55 @@ def test_qa_repository_no_hardcoded_project_paths(tmp_path, monkeypatch):
     assert qa_path.parent.parent.parent.name == "test-session"  # session ID
 
 
-def test_session_current_no_hardcoded_project_paths(tmp_path, monkeypatch):
+def test_session_current_no_hardcoded_project_paths(isolated_project_env):
     """Test session current module uses config-driven paths, not hardcoded .project."""
     from edison.core.session.current import _get_session_id_file
-    from edison.core.utils.paths import get_management_paths, PathResolver
+    from edison.core.utils.paths import get_management_paths
+    from edison.core.utils.subprocess import run_with_timeout
+    from tests.helpers.env import TestGitRepo
+    import subprocess
 
-    # Create custom management dir via config
-    project_root = tmp_path / "test_project"
-    project_root.mkdir()
+    # Use isolated project environment with real directory structure
+    project_root = isolated_project_env
 
     # Create custom config
     config_dir = project_root / ".edison"
-    config_dir.mkdir()
+    config_dir.mkdir(exist_ok=True)
     config_file = config_dir / "config.yml"
     config_file.write_text("management_dir: .custom_mgmt\n")
 
-    # Mock is_worktree to return True
-    from edison.core.session import current
-    monkeypatch.setattr(current, "_is_in_worktree", lambda: True)
+    # Create a real git repository and worktree using TestGitRepo helper
+    git_repo = TestGitRepo(project_root)
 
-    # Mock PathResolver to return our test project root
-    monkeypatch.setattr(PathResolver, "resolve_project_root", lambda: project_root)
+    # Create a real worktree
+    worktree_path = git_repo.create_worktree("test-session", base_branch="main")
 
-    # Get the session ID file path
-    session_file = _get_session_id_file()
+    # Verify worktree was created successfully
+    assert worktree_path.exists(), f"Worktree should exist: {worktree_path}"
 
-    # Verify path uses custom management dir
-    assert session_file is not None
-    assert ".custom_mgmt" in str(session_file), f"Path should use .custom_mgmt: {session_file}"
-    assert ".project" not in str(session_file), f"Path should NOT use hardcoded .project: {session_file}"
+    # Verify the worktree has a .git file (indicator of a linked worktree)
+    git_file = worktree_path / ".git"
+    assert git_file.exists(), f"Worktree should have .git file: {git_file}"
 
-    # Verify it matches expected structure
-    mgmt = get_management_paths(project_root)
-    expected_file = mgmt.get_management_root() / ".session-id"
-    assert session_file == expected_file
+    # Change to worktree directory to make _is_in_worktree return True
+    import os
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(worktree_path)
+
+        # Get the session ID file path
+        session_file = _get_session_id_file()
+
+        # Verify path uses custom management dir
+        assert session_file is not None, "Session file should not be None when in worktree"
+        assert ".custom_mgmt" in str(session_file), f"Path should use .custom_mgmt: {session_file}"
+        assert ".project" not in str(session_file), f"Path should NOT use hardcoded .project: {session_file}"
+
+        # Verify it matches expected structure
+        # Note: get_management_paths needs to be called from within the worktree context
+        # so it resolves to the worktree's project root
+        mgmt = get_management_paths()
+        expected_file = mgmt.get_management_root() / ".session-id"
+        assert session_file == expected_file
+    finally:
+        os.chdir(original_cwd)

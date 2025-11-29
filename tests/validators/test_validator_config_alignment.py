@@ -10,13 +10,14 @@ from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import get_data_path
+from tests.helpers.paths import get_repo_root
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = get_repo_root()
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
-class ValidatorConfigAlignmentTests(unittest.TestCase):
+class TestValidatorConfigAlignment(unittest.TestCase):
     def setUp(self) -> None:
         # Ephemeral root used by scripts via project_ROOT override
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-validator-tests-"))

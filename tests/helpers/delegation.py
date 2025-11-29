@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, List
 
 from edison.core.config import ConfigManager
 from edison.core.utils.time import utc_timestamp
-from edison.core import task as _task
+from edison.core.task import TaskRepository, Task
 
 
 __all__ = ['get_role_mapping', 'map_role', 'route_task', 'delegate_task', 'aggregate_child_results']
@@ -90,22 +90,34 @@ def delegate_task(
     Returns:
         str: The child task identifier.
     """
-    child_id = _task.create_task_record(
+    repo = TaskRepository()
+
+    # Create child task
+    task = Task.create(
+        task_id=f"task-delegated-{utc_timestamp().replace(':', '-').replace('.', '-')}",
         title=description,
         description=description,
-        parent_task_id=parent_task_id,
         session_id=session_id,
+        state="pending",
     )
-    _task.update_task_record(
-        child_id,
-        {
-            'agent': agent,
-            'status': 'pending' if (_task.load_task_record(child_id).get('status') in (None, 'todo')) else _task.load_task_record(child_id).get('status'),
-            'delegated_at': utc_timestamp(),
-        },
-        operation='delegate',
-    )
-    return child_id
+
+    if parent_task_id:
+        task.parent_id = parent_task_id
+        # Update parent's children list
+        parent = repo.get(parent_task_id)
+        if parent and task.id not in parent.children:
+            parent.children.append(task.id)
+            repo.save(parent)
+
+    repo.create(task)
+
+    # Store agent metadata (note: Task model doesn't have agent field,
+    # but this is for delegation tracking in tests)
+    # We'll use tags for this purpose
+    task.tags = [f"agent:{agent}", f"delegated_at:{utc_timestamp()}"]
+    repo.save(task)
+
+    return task.id
 
 def _classify_status(status: str) -> str:
     """Normalize a raw task status to one of: success|failure|pending|in_progress."""
@@ -121,12 +133,13 @@ def _classify_status(status: str) -> str:
 
 def _compute_child_status_summary(child_ids: List[str]) -> Dict[str, Any]:
     """Compute counts and overall status from a list of child task ids."""
+    repo = TaskRepository()
     counts = {'success': 0, 'failure': 0, 'pending': 0}
     in_progress = 0
     for cid in child_ids:
         try:
-            rec = _task.load_task_record(cid)
-            cls = _classify_status(rec.get('status'))
+            task = repo.get(cid)
+            cls = _classify_status(task.state if task else 'pending')
         except Exception:
             cls = 'pending'
         if cls == 'in_progress':
@@ -169,24 +182,17 @@ def aggregate_child_results(parent_task_id: str) -> Dict[str, Any]:
           'counts': {'success': x, 'failure': y, 'pending': z},
           'status': 'completed' | 'partial_failure' | 'in_progress' | 'pending' }
     """
-    parent = _task.load_task_record(parent_task_id)
-    child_ids: List[str] = parent.get('child_tasks', []) or []
+    repo = TaskRepository()
+    parent = repo.get(parent_task_id)
+    if not parent:
+        raise ValueError(f"Parent task not found: {parent_task_id}")
+
+    child_ids: List[str] = parent.children or []
     summary = _compute_child_status_summary(child_ids)
 
-    # Persist summary on parent for visibility
-    _task.update_task_record(
-        parent_task_id,
-        {
-            'child_status_summary': {
-                'total': summary['total'],
-                'completed': summary['counts']['success'],
-                'failed': summary['counts']['failure'],
-                'pending': summary['counts']['pending'],
-                'in_progress': summary['in_progress'],
-            },
-            **({'status': summary['status']} if summary['status'] in ('completed', 'failure', 'partial_failure') else {}),
-        },
-        operation='aggregate-children',
-    )
+    # Update parent state based on aggregation
+    if summary['status'] in ('completed', 'failure', 'partial_failure'):
+        parent.state = summary['status']
+        repo.save(parent)
 
     return {k: summary[k] for k in ('total', 'counts', 'status')}

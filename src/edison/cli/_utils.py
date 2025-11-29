@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 from edison.core.utils.paths import resolve_project_root
 
@@ -26,23 +26,6 @@ def get_repo_root(args: argparse.Namespace) -> Path:
     return resolve_project_root()
 
 
-def validate_and_get_session_id(args: argparse.Namespace) -> str:
-    """Validate and return session ID from args.
-
-    Args:
-        args: Parsed arguments with session_id attribute
-
-    Returns:
-        str: Validated session ID
-
-    Raises:
-        ValueError: If session ID is invalid
-    """
-    from edison.core.session.id import validate_session_id
-
-    return validate_session_id(args.session_id)
-
-
 def detect_record_type(record_id: str) -> str:
     """Auto-detect record type from ID format.
 
@@ -55,21 +38,6 @@ def detect_record_type(record_id: str) -> str:
     if "-qa" in record_id or record_id.endswith(".qa"):
         return "qa"
     return "task"
-
-
-def get_record_type(args: argparse.Namespace, record_id: str) -> str:
-    """Get record type from args or auto-detect.
-
-    Args:
-        args: Parsed arguments with optional record_type attribute
-        record_id: Record identifier for auto-detection
-
-    Returns:
-        str: Record type ('task' or 'qa')
-    """
-    if hasattr(args, "record_type") and args.record_type:
-        return args.record_type
-    return detect_record_type(record_id)
 
 
 def get_repository(
@@ -115,42 +83,9 @@ def normalize_record_id(record_type: str, record_id: str) -> str:
     return _normalize(record_type, record_id)
 
 
-def run_cli_command(
-    main_func,
-    args: argparse.Namespace,
-    *,
-    error_code: str = "error",
-) -> int:
-    """Run CLI command with standard error handling.
-
-    Args:
-        main_func: Main function to execute (should return result dict or None)
-        args: Parsed arguments
-        error_code: Error code for JSON error output
-
-    Returns:
-        int: Exit code (0 for success, 1 for error)
-    """
-    from ._output import OutputFormatter
-
-    formatter = OutputFormatter(json_mode=getattr(args, "json", False))
-
-    try:
-        result = main_func(args)
-        if result is not None:
-            formatter.json_output(result)
-        return 0
-    except Exception as e:
-        formatter.error(e, error_code=error_code)
-        return 1
-
-
 __all__ = [
     "get_repo_root",
-    "validate_and_get_session_id",
     "detect_record_type",
-    "get_record_type",
     "get_repository",
     "normalize_record_id",
-    "run_cli_command",
 ]

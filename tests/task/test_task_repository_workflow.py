@@ -5,9 +5,9 @@ workflow operations like claim_task and complete_task that orchestrate
 state transitions and file movements across Task and QA domains.
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 import pytest
-import yaml
 import importlib
 from pathlib import Path
 from edison.core.task.workflow import TaskQAWorkflow
@@ -18,10 +18,6 @@ from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
 from edison.core.config import get_semantic_state
 
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup a repository environment with configuration."""
@@ -30,7 +26,7 @@ def repo_env(tmp_path, monkeypatch):
     config_dir = repo / ".edison" / "core" / "config"
     
     # 1. defaults.yaml (State Machine)
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -71,7 +67,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 2. tasks.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -86,7 +82,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 3. workflow.yaml (For semantic states)
-    _write_yaml(
+    write_yaml(
         config_dir / "workflow.yaml",
         {
             "version": "1.0",
@@ -110,7 +106,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 4. state-machine.yaml (redundant but good for completeness if config loads it)
-    _write_yaml(
+    write_yaml(
         config_dir / "state-machine.yaml",
         {
             "statemachine": {

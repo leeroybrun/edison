@@ -6,27 +6,21 @@ the legacy finder.py module for discovering tasks across filesystem.
 Following strict TDD: These tests are written FIRST and MUST fail initially.
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 from pathlib import Path
 import importlib
-import yaml
 import pytest
 
 from edison.core.task.repository import TaskRepository
 from edison.core.entity import EntityMetadata, EntityNotFoundError
 from edison.core.task.models import Task
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 def _bootstrap_repo(repo: Path) -> None:
     """Bootstrap a test repository with minimal config."""
     (repo / ".git").mkdir()
     config_dir = repo / ".edison" / "core" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -41,7 +35,7 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -54,7 +48,6 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
@@ -77,7 +70,6 @@ def repo_env(tmp_path, monkeypatch):
 
     return repo
 
-
 def create_markdown_task(path: Path, task_id: str, title: str, state: str, session_id: str = None):
     """Helper to create a raw markdown task file."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,7 +88,6 @@ def create_markdown_task(path: Path, task_id: str, title: str, state: str, sessi
     ])
 
     path.write_text("\n".join(content), encoding="utf-8")
-
 
 # ========================================
 # Test: find_by_state()
@@ -130,7 +121,6 @@ def test_find_by_state_returns_tasks_in_given_state(repo_env):
     assert "T-2" in task_ids
     assert "T-3" not in task_ids
 
-
 def test_find_by_state_returns_empty_list_when_state_dir_missing(repo_env):
     """TaskRepository.find_by_state() returns empty list when state dir doesn't exist."""
     repo = TaskRepository(project_root=repo_env)
@@ -140,7 +130,6 @@ def test_find_by_state_returns_empty_list_when_state_dir_missing(repo_env):
 
     # Assert
     assert tasks == []
-
 
 def test_find_by_state_includes_session_tasks(repo_env):
     """TaskRepository.find_by_state() includes tasks from session directories."""
@@ -164,7 +153,6 @@ def test_find_by_state_includes_session_tasks(repo_env):
     task_ids = {t.id for t in tasks}
     assert "T-GLOBAL" in task_ids
     assert "T-SESS" in task_ids
-
 
 # ========================================
 # Test: find_all()
@@ -198,7 +186,6 @@ def test_find_all_returns_all_tasks_across_states(repo_env):
     assert "T-2" in task_ids
     assert "T-3" in task_ids
 
-
 def test_find_all_includes_global_and_session_tasks(repo_env):
     """TaskRepository.find_all() includes tasks from both global and session dirs."""
     # Arrange
@@ -227,7 +214,6 @@ def test_find_all_includes_global_and_session_tasks(repo_env):
     assert "T-S1" in task_ids
     assert "T-S2" in task_ids
 
-
 def test_find_all_returns_empty_list_when_no_tasks(repo_env):
     """TaskRepository.find_all() returns empty list when no tasks exist."""
     repo = TaskRepository(project_root=repo_env)
@@ -237,7 +223,6 @@ def test_find_all_returns_empty_list_when_no_tasks(repo_env):
 
     # Assert
     assert tasks == []
-
 
 # ========================================
 # Test: find() with filters
@@ -263,7 +248,6 @@ def test_find_with_state_filter(repo_env):
     # Assert
     assert len(tasks) == 1
     assert tasks[0].id == "T-1"
-
 
 def test_find_with_session_id_filter(repo_env):
     """TaskRepository.find(session_id=...) filters by session."""
@@ -291,7 +275,6 @@ def test_find_with_session_id_filter(repo_env):
     assert tasks[0].id == "T-S1"
     assert tasks[0].session_id == "sess-1"
 
-
 def test_find_with_multiple_filters(repo_env):
     """TaskRepository.find() can combine multiple filters."""
     # Arrange
@@ -317,7 +300,6 @@ def test_find_with_multiple_filters(repo_env):
     assert len(tasks) == 1
     assert tasks[0].id == "T-S1-TODO"
 
-
 def test_find_returns_empty_list_when_no_matches(repo_env):
     """TaskRepository.find() returns empty list when no tasks match criteria."""
     # Arrange
@@ -333,7 +315,6 @@ def test_find_returns_empty_list_when_no_matches(repo_env):
 
     # Assert
     assert tasks == []
-
 
 # ========================================
 # Test: get() - single task lookup
@@ -357,7 +338,6 @@ def test_get_finds_task_in_global_directory(repo_env):
     assert task.id == "T-FIND-ME"
     assert task.title == "Find Me"
 
-
 def test_get_finds_task_in_session_directory(repo_env):
     """TaskRepository.get() finds task in session directory."""
     # Arrange
@@ -376,7 +356,6 @@ def test_get_finds_task_in_session_directory(repo_env):
     assert task.id == "T-SESS-FIND"
     assert task.session_id == "sess-1"
 
-
 def test_get_returns_none_when_task_not_found(repo_env):
     """TaskRepository.get() returns None when task doesn't exist."""
     repo = TaskRepository(project_root=repo_env)
@@ -386,7 +365,6 @@ def test_get_returns_none_when_task_not_found(repo_env):
 
     # Assert
     assert task is None
-
 
 def test_get_searches_all_states(repo_env):
     """TaskRepository.get() searches across all states."""
@@ -405,7 +383,6 @@ def test_get_searches_all_states(repo_env):
     assert task is not None
     assert task.id == "T-MULTI"
     assert task.state == "todo"
-
 
 # ========================================
 # Test: Compatibility with finder.py behavior
@@ -446,7 +423,6 @@ def test_list_all_compatible_with_list_records(repo_env):
     session_tasks = [t for t in tasks if t.id == "T-3"]
     assert len(session_tasks) == 1
     assert session_tasks[0].session_id == "sess-x"
-
 
 def test_get_compatible_with_find_record(repo_env):
     """TaskRepository.get() finds tasks correctly in expected locations."""

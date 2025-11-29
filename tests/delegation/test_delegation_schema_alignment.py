@@ -6,12 +6,13 @@ from pathlib import Path
 import unittest
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.paths import get_repo_root
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = get_repo_root()
 
 
 @pytest.mark.skip(reason="Deprecated: Schema location changed to edison/data/schemas, old .edison/core paths removed")
-class DelegationSchemaAlignmentTests(unittest.TestCase):
+class TestDelegationSchemaAlignment(unittest.TestCase):
     def test_single_canonical_schema_file(self) -> None:
         # There must be exactly one delegation-config.schema.json and it must be the canonical path
         matches = list(REPO_ROOT.rglob("delegation-config.schema.json"))

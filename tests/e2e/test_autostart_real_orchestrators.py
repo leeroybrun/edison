@@ -25,6 +25,7 @@ import pytest
 
 from edison.core.utils.subprocess import run_with_timeout
 from helpers.env import TestGitRepo, TestProjectDir
+from tests.helpers.paths import get_repo_root
 from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT
 
 try:  # Will fail RED phase until autostart is implemented (expected)
@@ -43,16 +44,7 @@ def has_orchestrator(name: str) -> bool:
     return shutil.which(name) is not None
 
 
-def _repo_root() -> Path:
-    cur = Path(__file__).resolve()
-    while cur != cur.parent:
-        if (cur / ".git").exists():
-            return cur
-        cur = cur.parent
-    raise RuntimeError("Repository root with .git not found")
-
-
-REPO_ROOT = _repo_root()
+REPO_ROOT = get_repo_root()
 
 
 def require_autostart() -> None:
@@ -62,7 +54,7 @@ def require_autostart() -> None:
         pytest.fail(f"SessionAutoStart not implemented yet: {AUTOSTART_IMPORT_ERROR}")
 
 
-def _extract(result: Any, key: str, default: Any = None) -> Any:
+def _extract_value(result: Any, key: str, default: Any = None) -> Any:
     if result is None:
         return default
     if isinstance(result, dict):
@@ -172,16 +164,16 @@ class TestRealOrchestratorIntegration:
             dry_run=False,
         )
 
-        session_id = _extract(result, "session_id") or _extract(result, "id")
+        session_id = _extract_value(result, "session_id") or _extract_value(result, "id")
         assert session_id, "auto-start must return session_id"
 
         session_data = _load_session(autostart_env["root"], session_id)
         assert session_data["meta"].get("orchestratorProfile") == "claude"
 
-        wt_path = Path(_extract(result, "worktree_path") or session_data["git"].get("worktreePath"))
+        wt_path = Path(_extract_value(result, "worktree_path") or session_data["git"].get("worktreePath"))
         autostart_env["git_repo"].assert_worktree_exists(wt_path)
 
-        proc: subprocess.Popen | None = _extract(result, "process") or _extract(result, "orchestrator_process")
+        proc: subprocess.Popen | None = _extract_value(result, "process") or _extract_value(result, "orchestrator_process")
         assert proc is not None, "orchestrator process handle not returned"
         assert proc.poll() is None, "orchestrator terminated prematurely"
         proc.terminate()
@@ -205,16 +197,16 @@ class TestRealOrchestratorIntegration:
             dry_run=False,
         )
 
-        session_id = _extract(result, "session_id") or _extract(result, "id")
+        session_id = _extract_value(result, "session_id") or _extract_value(result, "id")
         assert session_id
 
         session_data = _load_session(autostart_env["root"], session_id)
         assert session_data["meta"].get("orchestratorProfile") == "codex"
 
-        wt_path = Path(_extract(result, "worktree_path") or session_data["git"].get("worktreePath"))
+        wt_path = Path(_extract_value(result, "worktree_path") or session_data["git"].get("worktreePath"))
         autostart_env["git_repo"].assert_worktree_exists(wt_path)
 
-        proc: subprocess.Popen | None = _extract(result, "process") or _extract(result, "orchestrator_process")
+        proc: subprocess.Popen | None = _extract_value(result, "process") or _extract_value(result, "orchestrator_process")
         assert proc is not None
         assert proc.poll() is None
         proc.terminate()
@@ -238,16 +230,16 @@ class TestRealOrchestratorIntegration:
             dry_run=False,
         )
 
-        session_id = _extract(result, "session_id") or _extract(result, "id")
+        session_id = _extract_value(result, "session_id") or _extract_value(result, "id")
         assert session_id
 
         session_data = _load_session(autostart_env["root"], session_id)
         assert session_data["meta"].get("orchestratorProfile") == "gemini"
 
-        wt_path = Path(_extract(result, "worktree_path") or session_data["git"].get("worktreePath"))
+        wt_path = Path(_extract_value(result, "worktree_path") or session_data["git"].get("worktreePath"))
         autostart_env["git_repo"].assert_worktree_exists(wt_path)
 
-        proc: subprocess.Popen | None = _extract(result, "process") or _extract(result, "orchestrator_process")
+        proc: subprocess.Popen | None = _extract_value(result, "process") or _extract_value(result, "orchestrator_process")
         assert proc is not None
         assert proc.poll() is None
         proc.terminate()
@@ -280,11 +272,11 @@ class TestRealOrchestratorIntegration:
         session_ids = []
         worktrees = []
         for res in results:
-            sid = _extract(res, "session_id") or _extract(res, "id")
+            sid = _extract_value(res, "session_id") or _extract_value(res, "id")
             assert sid
             session_ids.append(sid)
             session_data = _load_session(autostart_env["root"], sid)
-            wt_path = Path(_extract(res, "worktree_path") or session_data["git"].get("worktreePath"))
+            wt_path = Path(_extract_value(res, "worktree_path") or session_data["git"].get("worktreePath"))
             worktrees.append(wt_path)
             autostart_env["git_repo"].assert_worktree_exists(wt_path)
 
@@ -307,7 +299,7 @@ class TestRealOrchestratorIntegration:
                 orchestrator=orchestrator,
                 dry_run=True,
             )
-            sid = _extract(res, "session_id") or _extract(res, "id")
+            sid = _extract_value(res, "session_id") or _extract_value(res, "id")
             ids.append(sid)
 
         assert len(ids) == len(set(ids)), f"Duplicate session IDs detected: {ids}"
@@ -333,7 +325,7 @@ class TestRealOrchestratorIntegration:
             dry_run=False,
         )
 
-        session_id = _extract(result, "session_id") or _extract(result, "id")
+        session_id = _extract_value(result, "session_id") or _extract_value(result, "id")
         assert session_id
 
         log_path = _find_log(autostart_env["root"], session_id)
@@ -341,7 +333,7 @@ class TestRealOrchestratorIntegration:
         log_body = log_path.read_text()
         assert marker in log_body, "Prompt marker not found in orchestrator log"
 
-        proc: subprocess.Popen | None = _extract(result, "process") or _extract(result, "orchestrator_process")
+        proc: subprocess.Popen | None = _extract_value(result, "process") or _extract_value(result, "orchestrator_process")
         if proc is not None and proc.poll() is None:
             proc.terminate()
             try:

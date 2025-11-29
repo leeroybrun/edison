@@ -30,12 +30,13 @@ from helpers.command_runner import (
     assert_command_success,
     assert_command_failure,
 )
+from tests.helpers.paths import get_repo_root
 
 
 @pytest.fixture
 def project(tmp_path: Path) -> TestProjectDir:
     """Create test project with templates."""
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = get_repo_root()
     proj = TestProjectDir(tmp_path, repo_root)
 
     # Ensure task template exists
@@ -66,7 +67,7 @@ def project(tmp_path: Path) -> TestProjectDir:
     return proj
 
 
-def _env(owner: str = "tester") -> dict:
+def _create_create_env(owner: str = "tester") -> dict:
     """Standard test environment."""
     return {"project_OWNER": owner}
 
@@ -90,11 +91,11 @@ def test_scenario_1_simple_lifecycle_no_validators(project: TestProjectDir):
     session_id = "s1-simple"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1000", "--wave", "wave1", "--slug", "simple"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1000", "--wave", "wave1", "--slug", "simple"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify task in todo
@@ -102,7 +103,7 @@ def test_scenario_1_simple_lifecycle_no_validators(project: TestProjectDir):
     assert todo_path.exists(), "Task should start in todo"
 
     # Claim task (todo → wip)
-    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify task in session wip
@@ -110,7 +111,7 @@ def test_scenario_1_simple_lifecycle_no_validators(project: TestProjectDir):
     assert session_wip_path.exists(), "Task should be in session wip after claim"
 
     # Mark done (wip → done)
-    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify task in session done
@@ -140,15 +141,15 @@ def test_scenario_2_with_validators_validation_gates(project: TestProjectDir):
     session_id = "s2-validated"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1001", "--wave", "wave1", "--slug", "validated"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1001", "--wave", "wave1", "--slug", "validated"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Claim task
-    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify QA brief in waiting
@@ -156,7 +157,7 @@ def test_scenario_2_with_validators_validation_gates(project: TestProjectDir):
     assert qa_waiting_path.exists(), "QA brief should start in waiting"
 
     # Mark task done (should advance QA to todo)
-    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify QA brief moved to todo
@@ -184,11 +185,11 @@ def test_scenario_3_parent_children_bundle(project: TestProjectDir):
     session_id = "s3-bundle"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create parent task
-    res = run_script("tasks/new", ["--id", "1002", "--wave", "wave1", "--slug", "parent", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1002", "--wave", "wave1", "--slug", "parent", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Split into children
@@ -196,7 +197,7 @@ def test_scenario_3_parent_children_bundle(project: TestProjectDir):
         "tasks/split",
         ["--parent", parent_id, "--session", session_id, "--owners", "alice,bob", "--slugs", "ui,api"],
         cwd=project.tmp_path,
-        env=_env()
+        env=_create_env()
     )
     assert_command_success(res)
     payload = json.loads(res.stdout)
@@ -208,7 +209,7 @@ def test_scenario_3_parent_children_bundle(project: TestProjectDir):
         assert child_path.exists(), f"Child task {child_id} should exist"
 
     # Try to validate parent without completing children (should fail)
-    res = run_script("tasks/status", [parent_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [parent_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     # Expected: failure because children not validated
     # Note: This test depends on bundle validation being implemented
 
@@ -232,19 +233,19 @@ def test_scenario_4_state_rollback(project: TestProjectDir):
     session_id = "s4-rollback"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1003", "--wave", "wave1", "--slug", "rollback"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1003", "--wave", "wave1", "--slug", "rollback"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Claim task
-    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Move to done
-    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify in done
@@ -252,7 +253,7 @@ def test_scenario_4_state_rollback(project: TestProjectDir):
     assert done_path.exists(), "Task should be in done"
 
     # Rollback to wip (e.g., found an issue)
-    res = run_script("tasks/status", [task_id, "--status", "wip", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "wip", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify back in wip
@@ -280,11 +281,11 @@ def test_scenario_5_partial_splits_recovery(project: TestProjectDir):
     session_id = "s5-split-recovery"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create parent task
-    res = run_script("tasks/new", ["--id", "1004", "--wave", "wave1", "--slug", "split-parent", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1004", "--wave", "wave1", "--slug", "split-parent", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Perform split
@@ -292,7 +293,7 @@ def test_scenario_5_partial_splits_recovery(project: TestProjectDir):
         "tasks/split",
         ["--parent", parent_id, "--session", session_id, "--owners", "alice,bob,carol", "--slugs", "ui,api,db"],
         cwd=project.tmp_path,
-        env=_env()
+        env=_create_env()
     )
     assert_command_success(res)
     payload = json.loads(res.stdout)
@@ -335,15 +336,15 @@ def test_scenario_6_cross_session_handoff(project: TestProjectDir):
     session_b_id = "s6b-handoff-end"
 
     # Create session A
-    res = run_script("session", ["new", "--owner", session_a_id, "--session-id", session_a_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_a_id, "--session-id", session_a_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1005", "--wave", "wave1", "--slug", "handoff"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1005", "--wave", "wave1", "--slug", "handoff"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Claim in session A
-    res = run_script("tasks/claim", [task_id, "--session", session_a_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/claim", [task_id, "--session", session_a_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Verify task in session A
@@ -352,11 +353,11 @@ def test_scenario_6_cross_session_handoff(project: TestProjectDir):
 
     # Close session A (should release task back to global backlog)
     # Note: This requires session close functionality to be implemented
-    # res = run_script("session", ["close", "--session-id", session_a_id], cwd=project.tmp_path, env=_env())
+    # res = run_script("session", ["close", "--session-id", session_a_id], cwd=project.tmp_path, env=_create_env())
     # assert_command_success(res)
 
     # Create session B
-    res = run_script("session", ["new", "--owner", session_b_id, "--session-id", session_b_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_b_id, "--session-id", session_b_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Claim in session B (should work after session A closes)
@@ -381,15 +382,15 @@ def test_guards_prevent_invalid_transitions(project: TestProjectDir):
     task_id = "1006-wave1-guards"
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1006", "--wave", "wave1", "--slug", "guards"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1006", "--wave", "wave1", "--slug", "guards"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Try to skip from todo to done (should fail)
-    res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project.tmp_path, env=_create_env())
     assert_command_failure(res), "Should not allow skipping from todo to done"
 
     # Try to skip from todo to validated (should fail)
-    res = run_script("tasks/status", [task_id, "--status", "validated"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "validated"], cwd=project.tmp_path, env=_create_env())
     assert_command_failure(res), "Should not allow skipping from todo to validated"
 
     # Verify task still in todo
@@ -412,21 +413,21 @@ def test_guards_prevent_done_without_evidence(project: TestProjectDir):
     session_id = "s-evidence"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create task
-    res = run_script("tasks/new", ["--id", "1007", "--wave", "wave1", "--slug", "evidence"], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1007", "--wave", "wave1", "--slug", "evidence"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Claim and mark done
-    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
-    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Try to validate without evidence (should fail)
-    res = run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_failure(res), "Should not allow validation without evidence"
 
     # Verify no synthetic approval created
@@ -454,11 +455,11 @@ def test_bundle_validation_all_children_required(project: TestProjectDir):
     session_id = "s-bundle"
 
     # Create session
-    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_env())
+    res = run_script("session", ["new", "--owner", session_id, "--session-id", session_id, "--mode", "start"], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Create parent
-    res = run_script("tasks/new", ["--id", "1008", "--wave", "wave1", "--slug", "bundle", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/new", ["--id", "1008", "--wave", "wave1", "--slug", "bundle", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     assert_command_success(res)
 
     # Split into 3 children
@@ -466,7 +467,7 @@ def test_bundle_validation_all_children_required(project: TestProjectDir):
         "tasks/split",
         ["--parent", parent_id, "--session", session_id, "--owners", "a,b,c", "--slugs", "x,y,z"],
         cwd=project.tmp_path,
-        env=_env()
+        env=_create_env()
     )
     assert_command_success(res)
     payload = json.loads(res.stdout)
@@ -474,11 +475,11 @@ def test_bundle_validation_all_children_required(project: TestProjectDir):
 
     # Complete only 2 of 3 children
     for child_id in child_ids[:2]:
-        res = run_script("tasks/status", [child_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_env())
+        res = run_script("tasks/status", [child_id, "--status", "done", "--session", session_id], cwd=project.tmp_path, env=_create_env())
         # May succeed or fail depending on implementation
 
     # Try to validate parent (should fail - missing 3rd child)
-    res = run_script("tasks/status", [parent_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_env())
+    res = run_script("tasks/status", [parent_id, "--status", "validated", "--session", session_id], cwd=project.tmp_path, env=_create_env())
     # Expected: failure because not all children validated
     # Note: Depends on bundle validation implementation
 

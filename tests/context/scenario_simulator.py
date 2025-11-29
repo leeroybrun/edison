@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 from edison.core.utils.subprocess import run_with_timeout
+from tests.config import get_task_states, get_qa_states, get_session_states, load_paths
 
 try:
     from .baseline_profiler import BaselineProfiler
@@ -278,20 +279,25 @@ class ScenarioSimulator:
         project_dir = temp_dir / ".project"
         project_dir.mkdir(exist_ok=True)
 
+        # Load state directories from config (NO hardcoded values)
+        task_states = get_task_states()
+        qa_states = get_qa_states()
+        session_states = get_session_states()
+
         # Create task directories
-        for subdir in ["tasks/todo", "tasks/wip", "tasks/done", "tasks/validated"]:
-            (project_dir / subdir).mkdir(parents=True, exist_ok=True)
+        for state in task_states:
+            (project_dir / "tasks" / state).mkdir(parents=True, exist_ok=True)
 
         # Create QA directories
-        for subdir in ["qa/waiting", "qa/todo", "qa/wip", "qa/done", "qa/validated"]:
-            (project_dir / subdir).mkdir(parents=True, exist_ok=True)
+        for state in qa_states:
+            (project_dir / "qa" / state).mkdir(parents=True, exist_ok=True)
 
         # Create validation evidence directory
         (project_dir / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
 
         # Create session directories
-        for subdir in ["sessions/wip", "sessions/done", "sessions/validated"]:
-            (project_dir / subdir).mkdir(parents=True, exist_ok=True)
+        for state in session_states:
+            (project_dir / "sessions" / state).mkdir(parents=True, exist_ok=True)
 
         return project_dir
 
@@ -310,14 +316,18 @@ class ScenarioSimulator:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
+            # Load default session state from config (NO hardcoded values)
+            from tests.config import get_default_value
+            default_state = get_default_value("session", "state")
+
             # Create minimal session structure
-            sessions_dir = temp_path / ".project" / "sessions" / "wip"
+            sessions_dir = temp_path / ".project" / "sessions" / default_state
             sessions_dir.mkdir(parents=True, exist_ok=True)
 
             session_file = sessions_dir / f"{session_id}.json"
             session_data = {
                 "sessionId": session_id,
-                "status": "wip",
+                "status": default_state,
                 "scope": {"tasks": [], "qa": []},
                 "created": "2025-11-14T00:00:00Z",
                 "lastActive": "2025-11-14T00:00:00Z",

@@ -13,11 +13,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.paths import get_repo_root
+
 
 RUNBOOK_PATH = (
-    Path(__file__)
-    .resolve()
-    .parents[4]
+    get_repo_root()
     / "src"
     / "edison"
     / "data"

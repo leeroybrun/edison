@@ -101,40 +101,6 @@ def add_dry_run_flag(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_verbose_flag(parser: argparse.ArgumentParser) -> None:
-    """Add --verbose flag.
-
-    Args:
-        parser: ArgumentParser to add the flag to
-    """
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help="Enable verbose output",
-    )
-
-
-def add_record_type_arg(
-    parser: argparse.ArgumentParser,
-    required: bool = False,
-) -> None:
-    """Add --type argument for record type selection.
-
-    Args:
-        parser: ArgumentParser to add the argument to
-        required: Whether the argument is required
-    """
-    parser.add_argument(
-        "--type",
-        "-t",
-        dest="record_type",
-        choices=["task", "qa"],
-        required=required,
-        help="Record type (task or qa). Auto-detected if not specified.",
-    )
-
-
 def add_standard_flags(parser: argparse.ArgumentParser) -> None:
     """Add standard flags that most commands use.
 
@@ -154,7 +120,5 @@ __all__ = [
     "add_record_id_arg",
     "add_force_flag",
     "add_dry_run_flag",
-    "add_verbose_flag",
-    "add_record_type_arg",
     "add_standard_flags",
 ]

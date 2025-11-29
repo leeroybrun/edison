@@ -7,6 +7,7 @@ import pytest
 
 from edison.core.task import TaskQAWorkflow
 from edison.core.qa import validator
+from tests.helpers.paths import get_repo_root
 def test_simple_delegation_hint_uses_task_type_rules(
     isolated_project_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -140,13 +141,6 @@ def test_build_validator_roster_categorizes_validators(
     assert not triggered_blocking
 
 
-def _repo_root_from_tests() -> Path:
-    """Resolve repository root from the tests tree without PathResolver."""
-    cur = Path(__file__).resolve()
-    # .../edison/tests/unit/lib/test_qa_validator.py
-    return cur.parents[3]
-
-
 def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     qa.config.load_delegation_config should source data from YAML ConfigManager.
@@ -155,11 +149,11 @@ def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch
     contains priority lists, while the core YAML config defines rich
     filePatternRules/taskTypeRules. This asserts YAML is used.
     """
-    from edison.core.qa import config as qa_config 
+    from edison.core.qa import config as qa_config
     from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-    repo_root = _repo_root_from_tests()
+    repo_root = get_repo_root()
     cfg = ConfigManager(repo_root).load_config(validate=False)
     expected = cfg.get("delegation", {}) or {}
 
@@ -170,11 +164,11 @@ def test_load_delegation_config_uses_yaml_config(monkeypatch: pytest.MonkeyPatch
 
 def test_load_validation_config_uses_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
     """qa.config.load_validation_config should return the validation section from YAML."""
-    from edison.core.qa import config as qa_config 
+    from edison.core.qa import config as qa_config
     from edison.core.config import ConfigManager
 
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-    repo_root = _repo_root_from_tests()
+    repo_root = get_repo_root()
     cfg = ConfigManager(repo_root).load_config(validate=False)
     expected = cfg.get("validation", {}) or {}
 

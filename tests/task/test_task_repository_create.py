@@ -6,9 +6,9 @@ with proper QA record creation following the legacy io.create_task behavior.
 Following STRICT TDD - tests written FIRST, implementation second.
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 import pytest
-import yaml
 import importlib
 from pathlib import Path
 from edison.core.task.workflow import TaskQAWorkflow
@@ -20,13 +20,6 @@ from edison.core.qa.models import QARecord
 from edison.core.config import get_semantic_state
 from edison.core.exceptions import TaskStateError
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    """Helper to write YAML config files."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup a repository environment with configuration."""
@@ -35,7 +28,7 @@ def repo_env(tmp_path, monkeypatch):
     config_dir = repo / ".edison" / "core" / "config"
 
     # 1. defaults.yaml (State Machine)
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -76,7 +69,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 2. tasks.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -91,7 +84,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 3. workflow.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "workflow.yaml",
         {
             "version": "1.0",
@@ -105,7 +98,7 @@ def repo_env(tmp_path, monkeypatch):
     )
 
     # 4. record_metadata.yaml (for TYPE_INFO defaults)
-    _write_yaml(
+    write_yaml(
         config_dir / "record_metadata.yaml",
         {
             "task": {
@@ -133,7 +126,6 @@ def repo_env(tmp_path, monkeypatch):
 
     return repo
 
-
 # ========== TDD Tests: create_task() ==========
 
 def test_create_task_basic(repo_env):
@@ -155,7 +147,6 @@ def test_create_task_basic(repo_env):
     task_path = repo_env / ".project" / "tasks" / "todo" / "T-001.md"
     assert task_path.exists()
 
-
 def test_create_task_with_description(repo_env):
     """TaskQAWorkflow.create_task() saves description."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -174,7 +165,6 @@ def test_create_task_with_description(repo_env):
     task_path = repo_env / ".project" / "tasks" / "todo" / "T-002.md"
     content = task_path.read_text()
     assert "This is a detailed description" in content
-
 
 def test_create_task_creates_qa_record(repo_env):
     """TaskQAWorkflow.create_task() creates associated QA record."""
@@ -196,7 +186,6 @@ def test_create_task_creates_qa_record(repo_env):
     qa_path = repo_env / ".project" / "qa" / "waiting" / f"{qa_id}.md"
     assert qa_path.exists()
 
-
 def test_create_task_with_session_id(repo_env):
     """TaskQAWorkflow.create_task() can create task in session."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -216,7 +205,6 @@ def test_create_task_with_session_id(repo_env):
     task_path = repo_env / ".project" / "sessions" / "wip" / "sess-1" / "tasks" / "todo" / "T-004.md"
     assert task_path.exists()
 
-
 def test_create_task_with_owner(repo_env):
     """TaskQAWorkflow.create_task() records owner in metadata."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -231,7 +219,6 @@ def test_create_task_with_owner(repo_env):
     # Assert
     assert task.metadata.created_by == "alice"
 
-
 def test_create_task_duplicate_raises_error(repo_env):
     """TaskQAWorkflow.create_task() raises error if task exists."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -242,7 +229,6 @@ def test_create_task_duplicate_raises_error(repo_env):
     # Try to create duplicate
     with pytest.raises(TaskStateError, match="already exists"):
         workflow.create_task(task_id="T-006", title="Duplicate")
-
 
 def test_create_task_returns_persisted_task(repo_env):
     """TaskQAWorkflow.create_task() returns task that can be retrieved."""
@@ -257,7 +243,6 @@ def test_create_task_returns_persisted_task(repo_env):
     assert retrieved_task is not None
     assert retrieved_task.id == created_task.id
     assert retrieved_task.title == created_task.title
-
 
 def test_create_task_qa_inherits_session_id(repo_env):
     """TaskQAWorkflow.create_task() creates QA with same session_id."""
@@ -276,7 +261,6 @@ def test_create_task_qa_inherits_session_id(repo_env):
     assert qa is not None
     assert qa.session_id == "sess-2"
 
-
 def test_create_task_sets_timestamps(repo_env):
     """TaskQAWorkflow.create_task() sets created_at and updated_at."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -289,7 +273,6 @@ def test_create_task_sets_timestamps(repo_env):
     assert task.metadata.updated_at is not None
     # Initially they should be the same
     assert task.metadata.created_at == task.metadata.updated_at
-
 
 def test_create_task_without_qa_option(repo_env):
     """TaskQAWorkflow.create_task() can skip QA creation if requested."""
@@ -309,7 +292,6 @@ def test_create_task_without_qa_option(repo_env):
     # Assert - QA does NOT exist
     qa = qa_repo.get(f"{task.id}-qa")
     assert qa is None
-
 
 def test_create_task_qa_title_includes_task_title(repo_env):
     """TaskQAWorkflow.create_task() creates QA with informative title."""

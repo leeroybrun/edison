@@ -95,32 +95,6 @@ class OutputFormatter:
             print(f"{prefix}{key}: {value}")
 
 
-def format_json(data: Any, indent: int = 2) -> str:
-    """Format data as JSON string.
-
-    Args:
-        data: Data to format
-        indent: Indentation level
-
-    Returns:
-        JSON string
-    """
-    return json.dumps(data, indent=indent, default=str)
-
-
-def print_success(message: str) -> None:
-    """Print success message with checkmark."""
-    print(f"\u2713 {message}")
-
-
-def print_error(message: str) -> None:
-    """Print error message to stderr."""
-    print(f"Error: {message}", file=sys.stderr)
-
-
 __all__ = [
     "OutputFormatter",
-    "format_json",
-    "print_success",
-    "print_error",
 ]

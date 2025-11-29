@@ -15,7 +15,7 @@ from ._config import get_config
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.paths import PathResolver
 from ..config.domains import OrchestratorConfig
-from edison.cli.orchestrator.launcher import (
+from edison.core.orchestrator import (
     OrchestratorLauncher,
     OrchestratorError,
 )

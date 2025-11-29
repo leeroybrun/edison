@@ -6,22 +6,16 @@ paths are respected and that task discovery works without the legacy
 ``task`` module.
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 from pathlib import Path
 
 import importlib
-import yaml
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
 
 def _bootstrap_repo(repo: Path) -> None:
     (repo / ".git").mkdir()
     config_dir = repo / ".edison" / "core" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -43,7 +37,7 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -64,7 +58,6 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-
 
 def test_create_and_find_task(tmp_path, monkeypatch):
     repo = tmp_path

@@ -11,6 +11,12 @@ import yaml
 # Keep the repository free of Python bytecode and __pycache__ artifacts during tests.
 sys.dont_write_bytecode = True
 
+# Add tests directory to sys.path ONCE for all child tests
+# This allows all tests to import from helpers.* without duplication
+TESTS_ROOT = Path(__file__).resolve().parent
+if str(TESTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TESTS_ROOT))
+
 
 # Ensure standard seek constants exist on the io module for tarfile compatibility
 if not hasattr(io, "SEEK_SET"):
@@ -40,38 +46,11 @@ if not hasattr(io, "open_code"):
 from edison.core.utils.paths.resolver import PathResolver
 from edison.core.utils.subprocess import run_with_timeout
 
+# Import centralized config loader (SINGLE source of truth)
+from config.loader import load_test_states
+
 # Repository root (resolved via PathResolver for relocatability)
 REPO_ROOT = PathResolver.resolve_project_root()
-
-
-def _load_test_states() -> dict:
-    """Load canonical state definitions from tests/config/states.yaml."""
-    states_file = Path(__file__).resolve().parent / "config" / "states.yaml"
-    if not states_file.exists():
-        # Fallback to minimal defaults if config not found
-        return {
-            "session": {
-                "unique_dirs": ["wip", "done", "validated"],
-                "directories": {
-                    "active": "wip",
-                    "wip": "wip",
-                    "done": "done",
-                    "closing": "done",
-                    "validated": "validated"
-                }
-            },
-            "task": {
-                "unique_dirs": ["todo", "wip", "done", "validated", "blocked"]
-            },
-            "qa": {
-                "unique_dirs": ["waiting", "todo", "wip", "done", "validated"]
-            },
-            "additional_paths": {
-                "qa": ["qa/validation-evidence"]
-            }
-        }
-    with open(states_file, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def _reset_all_global_caches() -> None:
@@ -276,7 +255,7 @@ def isolated_project_env(tmp_path, monkeypatch):
     agents_root = tmp_path / ".edison"
 
     # Core .project layout (tasks, QA, sessions) - loaded from canonical config
-    states_config = _load_test_states()
+    states_config = load_test_states()
 
     # Create task directories
     task_unique_dirs = states_config.get("task", {}).get("unique_dirs", [])
@@ -316,11 +295,15 @@ def isolated_project_env(tmp_path, monkeypatch):
     if task_tpl_src.exists():
         task_tpl_dst.write_text(task_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
     else:
+        # Load default task state from config (NO hardcoded values)
+        from tests.config import get_default_value
+        default_task_state = get_default_value("task", "state")
+
         task_tpl_dst.write_text(
             "# Task Template\n\n"
             "## Metadata\n"
             "- **Task ID:** example-id\n"
-            "- **Status:** todo\n",
+            f"- **Status:** {default_task_state}\n",
             encoding="utf-8",
         )
 
@@ -330,23 +313,32 @@ def isolated_project_env(tmp_path, monkeypatch):
     if qa_tpl_src.exists():
         qa_tpl_dst.write_text(qa_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
     else:
+        # Load default QA state from config (NO hardcoded values)
+        from tests.config import get_default_value
+        default_qa_state = get_default_value("qa", "state")
+
         qa_tpl_dst.write_text(
             "# QA Template\n\n"
             "## Metadata\n"
             "- **Validator Owner:** _unassigned_\n"
-            "- **Status:** waiting\n",
+            f"- **Status:** {default_qa_state}\n",
             encoding="utf-8",
         )
 
     # Session template and workflow spec (minimal but valid for tests)
     # Use bundled template from edison.data
     from edison.data import get_data_path
+    from tests.config import get_default_value
+
     session_tpl_src = get_data_path("templates", "session.template.json")
     session_tpl_dst = agents_root / "sessions" / "TEMPLATE.json"
     session_tpl_dst.parent.mkdir(parents=True, exist_ok=True)
     if session_tpl_src.exists():
         session_tpl_dst.write_text(session_tpl_src.read_text(encoding="utf-8"), encoding="utf-8")
     else:
+        # Load default session state from config (NO hardcoded values)
+        default_session_state = get_default_value("session", "state")
+
         session_tpl_dst.write_text(
             json.dumps(
                 {
@@ -354,11 +346,11 @@ def isolated_project_env(tmp_path, monkeypatch):
                         "sessionId": "_placeholder_",
                         "owner": "_placeholder_",
                         "mode": "start",
-                        "status": states_config.get("session", {}).get("states", {}).get("wip", "wip"),
+                        "status": default_session_state,
                         "createdAt": "_placeholder_",
                         "lastActive": "_placeholder_",
                     },
-                    "state": states_config.get("session", {}).get("states", {}).get("active", "active"),
+                    "state": default_session_state,
                     "tasks": {},
                     "qa": {},
                     "git": {
@@ -475,7 +467,7 @@ def isolated_project_env(tmp_path, monkeypatch):
 
 
 # -----------------------------------------------------------------------------
-# Consolidated fixtures (moved from tests/task/, tests/qa/, tests/e2e/)
+# Consolidated fixtures (moved from tests/task/, tests/unit/qa/, tests/e2e/)
 # -----------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
@@ -488,7 +480,7 @@ def repo_root() -> Path:
 
 
 @pytest.fixture
-def test_project_dir(tmp_path: Path, repo_root: Path):
+def project_dir(tmp_path: Path, repo_root: Path):
     """Create isolated .project directory for testing.
 
     This fixture uses TestProjectDir helper for managing test project structure.
@@ -498,7 +490,7 @@ def test_project_dir(tmp_path: Path, repo_root: Path):
 
 
 @pytest.fixture
-def test_git_repo(tmp_path: Path):
+def git_repo(tmp_path: Path):
     """Create isolated git repository for testing.
 
     Uses TestGitRepo helper for worktree-capable git operations.

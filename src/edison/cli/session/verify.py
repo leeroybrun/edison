@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
+from edison.cli import add_json_flag, OutputFormatter
 
 SUMMARY = "Verify a session against closing-phase guards"
 
@@ -27,7 +27,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Lifecycle phase to verify (currently only 'closing' supported)",
     )
     add_json_flag(parser)
-    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:

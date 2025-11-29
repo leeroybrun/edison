@@ -9,12 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+from helpers.io_utils import write_yaml
 
 
 @pytest.mark.task
@@ -25,7 +21,7 @@ def test_task_config_reads_paths_from_project_config(tmp_path: Path, monkeypatch
 
     # Project config placed under .edison/config/ for ConfigManager
     config_dir = repo / ".edison" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {

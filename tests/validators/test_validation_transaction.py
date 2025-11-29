@@ -7,6 +7,7 @@ import subprocess
 import sys
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.paths import get_repo_root
 
 
 def _evidence_dir(root: Path, task_id: str, round_num: int) -> Path:
@@ -41,7 +42,7 @@ def test_validation_transaction_creates_staging_and_journal(
     task_id = "150-wave1-tx-meta"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = get_repo_root()
     env = os.environ.copy()
     env.update(
         {
@@ -103,7 +104,7 @@ def test_validation_transaction_commit_moves_reports_atomically(
     task_id = "150-wave1-commit"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = get_repo_root()
     env = os.environ.copy()
     env.update(
         {
@@ -173,7 +174,7 @@ def test_validation_transaction_rollback_on_exception(
     task_id = "150-wave1-rollback"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = get_repo_root()
     env = os.environ.copy()
     env.update(
         {
@@ -232,7 +233,7 @@ def test_validation_transaction_partial_validator_failure_no_commit(
     task_id = "150-wave1-partial"
     round_num = 1
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = get_repo_root()
     env = os.environ.copy()
     env.update(
         {

@@ -1,6 +1,6 @@
 """Pytest configuration for E2E workflow tests.
 
-Fixtures (repo_root, test_project_dir, test_git_repo, combined_env) are now
+Fixtures (repo_root, project_dir, git_repo, combined_env) are now
 consolidated in tests/conftest.py to avoid duplication.
 
 This file only contains E2E-specific marker configuration and collection hooks.

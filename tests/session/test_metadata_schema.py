@@ -5,12 +5,13 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.helpers.paths import get_repo_root
 
 
 def _load_real_jsonschema():
     """Load jsonschema from site-packages, bypassing the core stub."""
     sys.modules.pop("jsonschema", None)
-    core_path = Path(__file__).resolve().parents[2]
+    core_path = get_repo_root()
     original_path = list(sys.path)
     cleaned_path = []
     for entry in sys.path:

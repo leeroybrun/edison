@@ -8,8 +8,9 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from tests.helpers.paths import get_repo_root
 
-CORE_DIR = Path(__file__).resolve().parents[2]
+CORE_DIR = get_repo_root()
 SCRIPTS_DIR = CORE_DIR / "scripts" / "git"
 
 # Helper to run CLI commands using python -m
@@ -19,7 +20,7 @@ def _run_cli(module: str, args: list[str], repo: Path) -> subprocess.CompletedPr
     return subprocess.run(
         cmd,
         cwd=repo,
-        env=_env(repo),
+        env=_create_env(repo),
         capture_output=True,
         text=True
     )
@@ -65,7 +66,7 @@ def _make_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _env(repo: Path) -> dict[str, str]:
+def _create_create_env(repo: Path) -> dict[str, str]:
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(repo)
     return env

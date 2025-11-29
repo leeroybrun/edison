@@ -9,9 +9,9 @@ Following CRITICAL PRINCIPLES:
 - Use isolated_project_env fixture for test isolation
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 import pytest
-import yaml
 from pathlib import Path
 
 from edison.core.task.workflow import TaskQAWorkflow
@@ -23,13 +23,6 @@ from edison.core.entity import EntityMetadata
 from edison.core.utils.io.locking import safe_move_file, write_text_locked
 from edison.core.config import get_semantic_state
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    """Helper to write YAML config files."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 @pytest.fixture
 def task_env(tmp_path, monkeypatch):
     """Setup task workflow environment with real configuration."""
@@ -38,7 +31,7 @@ def task_env(tmp_path, monkeypatch):
     config_dir = repo / ".edison" / "core" / "config"
 
     # 1. defaults.yaml (State Machine + Semantics)
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -79,7 +72,7 @@ def task_env(tmp_path, monkeypatch):
     )
 
     # 2. tasks.yaml
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -94,7 +87,7 @@ def task_env(tmp_path, monkeypatch):
     )
 
     # 3. session.yaml (for session paths)
-    _write_yaml(
+    write_yaml(
         config_dir / "session.yaml",
         {
             "session": {
@@ -120,7 +113,6 @@ def task_env(tmp_path, monkeypatch):
     (repo / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
 
     return repo
-
 
 # ----------------------------------------------------------------------
 # Tests for TaskQAWorkflow directory creation
@@ -149,7 +141,6 @@ def test_create_task_ensures_task_directory(task_env):
     assert "Test task" in content, "Task file should contain title"
     assert "Test description" in content, "Task file should contain description"
 
-
 def test_create_task_ensures_qa_directory(task_env):
     """Verify create_task creates QA directory structure."""
     workflow = TaskQAWorkflow(project_root=task_env)
@@ -166,7 +157,6 @@ def test_create_task_ensures_qa_directory(task_env):
     assert qa_file.exists(), "QA file should be created"
     assert qa_file.parent.exists(), "QA directory should exist"
     assert qa_file.parent.name == "waiting", "QA should be in waiting directory"
-
 
 def test_claim_task_ensures_session_directories(task_env):
     """Verify claim_task creates session task and QA directories."""
@@ -218,7 +208,6 @@ def test_claim_task_ensures_session_directories(task_env):
     session_qa_file = session_qa_dir / "T-003-qa.md"
     assert session_qa_file.exists(), "QA should be moved to session directory"
 
-
 def test_complete_task_ensures_done_directories(task_env):
     """Verify complete_task creates done directories."""
     workflow = TaskQAWorkflow(project_root=task_env)
@@ -264,7 +253,6 @@ def test_complete_task_ensures_done_directories(task_env):
     qa_file = session_qa_todo / "T-004-qa.md"
     assert qa_file.exists(), "QA should be in todo directory (ready for validation)"
 
-
 # ----------------------------------------------------------------------
 # Tests for TaskRepository directory creation
 # ----------------------------------------------------------------------
@@ -288,7 +276,6 @@ def test_repository_save_ensures_directory(task_env):
     task_file = task_env / ".project" / "tasks" / "todo" / "T-005.md"
     assert task_file.exists(), "Task file should be created"
     assert task_file.parent.exists(), "Parent directory should be created"
-
 
 def test_repository_save_creates_nested_session_directories(task_env):
     """Verify TaskRepository creates nested session directories."""
@@ -320,7 +307,6 @@ def test_repository_save_creates_nested_session_directories(task_env):
         assert current.exists(), f"Directory {current} should exist"
         current = current.parent
 
-
 # ----------------------------------------------------------------------
 # Tests for QARepository directory creation
 # ----------------------------------------------------------------------
@@ -346,7 +332,6 @@ def test_qa_repository_save_ensures_directory(task_env):
     assert qa_file.exists(), "QA file should be created"
     assert qa_file.parent.exists(), "Parent directory should be created"
 
-
 # ----------------------------------------------------------------------
 # Tests for locking module directory creation
 # ----------------------------------------------------------------------
@@ -369,7 +354,6 @@ def test_safe_move_file_ensures_dest_directory(task_env):
     assert not src.exists(), "Source file should be moved (not copied)"
     assert dest.read_text(encoding="utf-8") == "test content", "Content should be preserved"
 
-
 def test_safe_move_file_creates_multiple_nested_levels(task_env):
     """Verify safe_move_file creates deeply nested directories."""
     src = task_env / "file.txt"
@@ -387,7 +371,6 @@ def test_safe_move_file_creates_multiple_nested_levels(task_env):
         assert dir_path.exists(), f"Directory {level} should be created"
         assert dir_path.is_dir(), f"{level} should be a directory"
 
-
 def test_write_text_locked_ensures_directory(task_env):
     """Verify write_text_locked creates parent directory."""
     # Target file in non-existent directory
@@ -399,7 +382,6 @@ def test_write_text_locked_ensures_directory(task_env):
     assert target.exists(), "File should be created"
     assert target.parent.exists(), "Parent directory should be created"
     assert target.read_text(encoding="utf-8") == "locked content", "Content should match"
-
 
 def test_write_text_locked_creates_nested_directories(task_env):
     """Verify write_text_locked creates deeply nested directories."""
@@ -414,7 +396,6 @@ def test_write_text_locked_creates_nested_directories(task_env):
     assert (task_env / "level1").is_dir()
     assert (task_env / "level1" / "level2").is_dir()
     assert (task_env / "level1" / "level2" / "level3").is_dir()
-
 
 # ----------------------------------------------------------------------
 # Edge cases and error conditions
@@ -437,7 +418,6 @@ def test_directory_creation_with_existing_directories(task_env):
 
     task_file = todo_dir / "T-008.md"
     assert task_file.exists(), "Should create file in existing directory"
-
 
 def test_concurrent_directory_creation_safety(task_env):
     """Verify directory creation is safe for concurrent operations."""

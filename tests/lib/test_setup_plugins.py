@@ -1,16 +1,10 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 from pathlib import Path
 import yaml
 
-from edison.cli.setup.component_discovery import SetupDiscovery
-from edison.cli.setup.questionnaire import SetupQuestionnaire
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-
+from edison.core.setup import SetupDiscovery, SetupQuestionnaire
 
 def _seed_core_setup(repo_root: Path) -> None:
     setup_cfg = {
@@ -53,22 +47,19 @@ def _seed_core_setup(repo_root: Path) -> None:
         },
     }
 
-    _write_yaml(repo_root / ".edison" / "core" / "config" / "setup.yaml", setup_cfg)
-
+    write_yaml(repo_root / ".edison" / "core" / "config" / "setup.yaml", setup_cfg)
 
 def _write_pack(repo_root: Path, name: str, setup_data: dict | None = None) -> Path:
     pack_dir = repo_root / ".edison" / "packs" / name
     (pack_dir / "config").mkdir(parents=True, exist_ok=True)
     (pack_dir / "config.yml").write_text(f"name: {name}\n", encoding="utf-8")
     if setup_data:
-        _write_yaml(pack_dir / "config" / "setup.yml", setup_data)
+        write_yaml(pack_dir / "config" / "setup.yml", setup_data)
     return pack_dir
-
 
 def _build_questionnaire(repo_root: Path) -> SetupQuestionnaire:
     discovery = SetupDiscovery(repo_root / ".edison" / "core", repo_root)
     return SetupQuestionnaire(repo_root=repo_root, edison_core=repo_root / ".edison" / "core", discovery=discovery)
-
 
 def test_discover_pack_setup_questions_merges_selected_packs(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -122,7 +113,6 @@ def test_discover_pack_setup_questions_merges_selected_packs(isolated_project_en
 
     assert ids == ["typescript_strict", "typescript_target", "react_version"]
 
-
 def test_dependencies_require_selected_pack(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_core_setup(repo)
@@ -148,7 +138,6 @@ def test_dependencies_require_selected_pack(isolated_project_env: Path) -> None:
 
     assert questions == []
 
-
 def test_questionnaire_runs_pack_questions_after_pack_selection_basic(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_core_setup(repo)
@@ -171,7 +160,6 @@ def test_questionnaire_runs_pack_questions_after_pack_selection_basic(isolated_p
     assert answers["ts_basic"] is True
     assert "ts_adv" not in answers  # advanced question should be skipped in basic mode
 
-
 def test_questionnaire_runs_pack_questions_in_advanced_mode(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _seed_core_setup(repo)
@@ -192,7 +180,6 @@ def test_questionnaire_runs_pack_questions_in_advanced_mode(isolated_project_env
 
     assert answers["ts_basic"] is True
     assert answers["ts_adv"] == "adv"
-
 
 def test_render_config_template_includes_pack_config(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -246,7 +233,6 @@ def test_render_config_template_includes_pack_config(isolated_project_env: Path)
     assert pack_cfg["typescript"]["strict"] is True
     assert pack_cfg["typescript"]["target"] == "ES2020"
     assert pack_cfg["react"]["version"] == "18"
-
 
 def test_missing_pack_setup_file_is_skipped(isolated_project_env: Path) -> None:
     repo = isolated_project_env

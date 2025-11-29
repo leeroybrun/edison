@@ -138,8 +138,9 @@ def test_guideline_cross_references_align_with_existing_files() -> None:
     Ensure known cross-references in guidelines point at existing markdown files
     and do not retain broken legacy links.
     """
+    from tests.helpers.paths import get_repo_root
 
-    config_path = Path(__file__).resolve().parents[1] / "fixtures/guidelines/cross_references.yaml"
+    config_path = get_repo_root() / "tests" / "fixtures/guidelines/cross_references.yaml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
     guidelines_root = get_data_path("guidelines")

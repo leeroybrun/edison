@@ -42,29 +42,36 @@ class TestProjectDir:
 
     def _setup_directories(self) -> None:
         """Create .project and .agents directory structure."""
-        # Load states from YAML config (NO hardcoded values)
+        # Load states and paths from YAML config (NO hardcoded values)
         task_states = get_task_states()
         qa_states = get_qa_states()
         session_states = get_session_states()
-        
+        paths_config = load_paths()
+
+        # Get subdirectory names from config
+        project_subdirs = paths_config["subdirectories"]["project"]
+        edison_subdirs = paths_config["subdirectories"]["edison"]
+        script_subdirs = paths_config["subdirectories"]["scripts"]
+        qa_subdirs = paths_config["subdirectories"]["qa"]
+
         # .project structure - tasks
         for state in task_states:
-            (self.project_root / "tasks" / state).mkdir(parents=True, exist_ok=True)
+            (self.project_root / project_subdirs["tasks"] / state).mkdir(parents=True, exist_ok=True)
 
         # .project structure - qa
         for state in qa_states:
-            (self.project_root / "qa" / state).mkdir(parents=True, exist_ok=True)
-        (self.project_root / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+            (self.project_root / project_subdirs["qa"] / state).mkdir(parents=True, exist_ok=True)
+        (self.project_root / project_subdirs["qa"] / qa_subdirs["validation_evidence"]).mkdir(parents=True, exist_ok=True)
 
         # .project structure - sessions
         for state in session_states:
-            (self.project_root / "sessions" / state).mkdir(parents=True, exist_ok=True)
+            (self.project_root / project_subdirs["sessions"] / state).mkdir(parents=True, exist_ok=True)
 
         # .agents structure
-        (self.agents_root / "sessions").mkdir(parents=True, exist_ok=True)
-        (self.agents_root / "rules").mkdir(parents=True, exist_ok=True)
-        (self.agents_root / "scripts").mkdir(parents=True, exist_ok=True)
-        (self.agents_root / "scripts" / "lib").mkdir(parents=True, exist_ok=True)
+        (self.agents_root / edison_subdirs["sessions"]).mkdir(parents=True, exist_ok=True)
+        (self.agents_root / edison_subdirs["rules"]).mkdir(parents=True, exist_ok=True)
+        (self.agents_root / edison_subdirs["scripts"]).mkdir(parents=True, exist_ok=True)
+        (self.agents_root / edison_subdirs["scripts"] / script_subdirs["lib"]).mkdir(parents=True, exist_ok=True)
 
     def _setup_configs(self) -> None:
         """Copy/create necessary config files."""
@@ -321,8 +328,13 @@ class TestProjectDir:
 
     def assert_evidence_exists(self, task_id: str, filename: str, round_num: int = 1) -> None:
         """Assert evidence file exists for task."""
+        # Load paths from config (NO hardcoded values)
+        paths_config = load_paths()
+        project_subdirs = paths_config["subdirectories"]["project"]
+        qa_subdirs = paths_config["subdirectories"]["qa"]
+
         evidence_dir = (
-            self.project_root / "qa" / "validation-evidence" /
+            self.project_root / project_subdirs["qa"] / qa_subdirs["validation_evidence"] /
             task_id / f"round-{round_num}"
         )
         evidence_file = evidence_dir / filename
@@ -348,13 +360,19 @@ class TestProjectDir:
         Returns:
             Path to context7 marker file
         """
+        # Load paths from config (NO hardcoded values)
+        paths_config = load_paths()
+        project_subdirs = paths_config["subdirectories"]["project"]
+        qa_subdirs = paths_config["subdirectories"]["qa"]
+
         evidence_dir = (
-            self.project_root / "qa" / "validation-evidence" /
+            self.project_root / project_subdirs["qa"] / qa_subdirs["validation_evidence"] /
             task_id / f"round-{round_num}"
         )
         evidence_dir.mkdir(parents=True, exist_ok=True)
 
         marker_file = evidence_dir / f"context7-{package}.txt"
+        from datetime import datetime
         marker_file.write_text(
             f"Context7 evidence for {package}\n"
             f"Retrieved: {datetime.utcnow().isoformat()}\n"
@@ -378,18 +396,22 @@ def create_tdd_evidence(
     """Create TDD evidence files for a session/task round.
 
     Files are written under:
-    .project/sessions/wip/{session_id}/tasks/{task_id}/evidence/tdd/round-1
+    .project/sessions/{state}/{session_id}/tasks/{task_id}/evidence/tdd/round-1
     """
-    # Load default session state from config (NO hardcoded values)
-    from tests.config import get_default_value
+    # Load default session state and paths from config (NO hardcoded values)
+    from tests.config import get_default_value, load_paths
+    import time
+
     default_state = get_default_value("session", "state")
-    
+    paths_config = load_paths()
+    project_subdirs = paths_config["subdirectories"]["project"]
+
     evidence_dir = (
         project.project_root
-        / "sessions"
+        / project_subdirs["sessions"]
         / default_state
         / session_id
-        / "tasks"
+        / project_subdirs["tasks"]
         / task_id
         / "evidence"
         / "tdd"

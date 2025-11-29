@@ -7,7 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
+
+from helpers.io_utils import write_yaml
 
 
 def _write_test_config(repo_root: Path) -> None:
@@ -57,14 +58,8 @@ def _write_test_config(repo_root: Path) -> None:
     }
 
     cfg_dir = repo_root / ".edison" / "core" / "config"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-
-    cfg_dir.joinpath("state-machine.yaml").write_text(
-        yaml.safe_dump(state_machine), encoding="utf-8"
-    )
-    cfg_dir.joinpath("workflow.yaml").write_text(
-        yaml.safe_dump(workflow), encoding="utf-8"
-    )
+    write_yaml(cfg_dir / "state-machine.yaml", state_machine)
+    write_yaml(cfg_dir / "workflow.yaml", workflow)
 
 
 @pytest.fixture()
@@ -78,8 +73,8 @@ def config_utils(isolated_project_env: Path):
 
     # Clear lru_cache on our utility functions
     from edison.core.utils import config
-    config.load_config_section.cache_clear()
-    config.get_states_for_domain.cache_clear()
+    config._load_config_section_impl.cache_clear()
+    config._get_states_for_domain_impl.cache_clear()
 
     return config
 

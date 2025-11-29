@@ -4,8 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 import pytest
+from tests.helpers.paths import get_repo_root
 
-EDISON_ROOT = Path(__file__).resolve().parents[2]
+EDISON_ROOT = get_repo_root()
 
 # Skip all tests in this file - utils/verify-setup CLI functionality doesn't exist yet
 # The equivalent would be 'edison config validate' but it's not implemented yet

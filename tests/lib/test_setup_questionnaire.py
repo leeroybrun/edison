@@ -1,14 +1,12 @@
 from __future__ import annotations
+from helpers.io_utils import write_yaml, write_json
 
 from pathlib import Path
-import json
 import yaml
 
 import pytest
 
-from edison.cli.setup.component_discovery import SetupDiscovery
-from edison.cli.setup.questionnaire import SetupQuestionnaire
-
+from edison.core.setup import SetupDiscovery, SetupQuestionnaire
 
 FULL_SETUP = {
     "setup": {
@@ -169,32 +167,19 @@ FULL_SETUP = {
     },
 }
 
-
 def _write_setup(repo_root: Path) -> None:
     path = repo_root / ".edison" / "core" / "config" / "setup.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(FULL_SETUP), encoding="utf-8")
 
-
-def _write_json(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data), encoding="utf-8")
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 def _build_questionnaire(repo: Path) -> SetupQuestionnaire:
     discovery = SetupDiscovery(repo / ".edison" / "core", repo)
     return SetupQuestionnaire(repo_root=repo, edison_core=repo / ".edison" / "core", discovery=discovery)
 
-
 def test_basic_mode_non_interactive_uses_defaults(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _write_setup(repo)
-    _write_json(repo / "package.json", {"name": "demo-app", "dependencies": {"react": "18.0.0"}})
+    write_json(repo / "package.json", {"name": "demo-app", "dependencies": {"react": "18.0.0"}})
 
     q = _build_questionnaire(repo)
     result = q.run(mode="basic", assume_yes=True)
@@ -205,13 +190,12 @@ def test_basic_mode_non_interactive_uses_defaults(isolated_project_env: Path) ->
     assert result["orchestrators"] == ["claude"]
     assert result["enable_worktrees"] is False
 
-
 def test_advanced_mode_includes_additional_questions(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _write_setup(repo)
-    _write_json(repo / "package.json", {"name": "demo-app"})
-    _write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
-    _write_yaml(repo / ".edison" / "core" / "config" / "agents.yaml", {"agents": [{"id": "core-agent"}]})
+    write_json(repo / "package.json", {"name": "demo-app"})
+    write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
+    write_yaml(repo / ".edison" / "core" / "config" / "agents.yaml", {"agents": [{"id": "core-agent"}]})
 
     q = _build_questionnaire(repo)
     result = q.run(mode="advanced", assume_yes=True)
@@ -230,7 +214,6 @@ def test_advanced_mode_includes_additional_questions(isolated_project_env: Path)
     assert result["task_states"] == ["todo", "wip", "blocked", "done", "validated"]
     assert result["coverage_threshold"] == 90
 
-
 def test_validation_rejects_invalid_values(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _write_setup(repo)
@@ -242,15 +225,14 @@ def test_validation_rejects_invalid_values(isolated_project_env: Path) -> None:
     with pytest.raises(ValueError):
         q.run(mode="advanced", provided_answers={"coverage_threshold": 120}, assume_yes=True)
 
-
 def test_multiselect_enforces_discovered_options(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     _write_setup(repo)
     packs_dir = repo / ".edison" / "packs"
-    _write_yaml(packs_dir / "alpha" / "config.yml", {"name": "alpha"})
-    _write_yaml(packs_dir / "beta" / "config.yml", {"name": "beta"})
-    _write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
-    _write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml", {"validation": {"roster": {"global": [{"id": "pack-val"}]}}})
+    write_yaml(packs_dir / "alpha" / "config.yml", {"name": "alpha"})
+    write_yaml(packs_dir / "beta" / "config.yml", {"name": "beta"})
+    write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
+    write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml", {"validation": {"roster": {"global": [{"id": "pack-val"}]}}})
 
     q = _build_questionnaire(repo)
     result = q.run(

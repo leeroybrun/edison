@@ -48,7 +48,7 @@ def test_all_imports_use_utils_time():
         "src/edison/cli/session/recovery/repair.py",
         "src/edison/cli/session/track.py",
         "src/edison/core/hooks/compaction.py",
-        "tests/file_io/test_io_utils.py",
+        "tests/unit/file_io/test_io_utils.py",
         "src/edison/cli/qa/round.py",
     ]
 

@@ -32,11 +32,17 @@ FALLBACK_TIMEOUTS: Dict[str, float] = {
 
 
 @lru_cache(maxsize=4)
-def _load_timeouts(repo_root: Path) -> Dict[str, float]:
-    """Load timeout configuration with fallbacks.
+def _load_timeouts_impl(repo_root_str: str) -> Dict[str, float]:
+    """Internal implementation with string-based caching.
 
     Values are sourced from YAML configuration, falling back to the baked-in
     defaults when config is missing or malformed.
+
+    Args:
+        repo_root_str: Project root path as string
+
+    Returns:
+        Dict of timeout values keyed by timeout type
     """
     timeouts: Dict[str, float] = dict(FALLBACK_TIMEOUTS)
     try:
@@ -44,6 +50,7 @@ def _load_timeouts(repo_root: Path) -> Dict[str, float]:
         # stripped environments.
         from ..config import ConfigManager  # type: ignore
 
+        repo_root = Path(repo_root_str)
         cfg = ConfigManager(repo_root).load_config(validate=False)  # type: ignore[arg-type]
         configured = cfg.get("subprocess_timeouts") or {}
         for key, value in configured.items():
@@ -55,6 +62,21 @@ def _load_timeouts(repo_root: Path) -> Dict[str, float]:
         # Fall back silently to baked-in defaults
         pass
     return timeouts
+
+
+def _load_timeouts(repo_root: Path) -> Dict[str, float]:
+    """Load timeout configuration with fallbacks.
+
+    Values are sourced from YAML configuration, falling back to the baked-in
+    defaults when config is missing or malformed.
+
+    Args:
+        repo_root: Project root path
+
+    Returns:
+        Dict of timeout values keyed by timeout type
+    """
+    return _load_timeouts_impl(str(repo_root))
 
 
 def _flatten_cmd(cmd: Any) -> Sequence[str]:
@@ -126,7 +148,7 @@ def check_output_with_timeout(cmd, timeout_type: str | None = None, **kwargs):
 
 
 def reset_subprocess_timeout_cache() -> None:
-    _load_timeouts.cache_clear()
+    _load_timeouts_impl.cache_clear()
     reset_timeout_cache()
 
 

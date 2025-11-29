@@ -7,17 +7,7 @@ import pytest
 
 from edison.core.adapters import ZenSync, WORKFLOW_HEADING
 from edison.core.config import ConfigManager
-
-# Repository root for test fixtures
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-
-def _repo_root() -> Path:
-    """Locate project repo root (directory containing AGENTS.md)."""
-    for parent in REPO_ROOT.parents:
-        if (parent / "AGENTS.md").exists():
-            return parent
-    raise RuntimeError("could not locate project repo root (AGENTS.md not found)")
+from tests.helpers.paths import get_repo_root
 
 
 def _cli_roles_and_paths(repo_root: Path) -> list[tuple[str, Path]]:
@@ -70,4 +60,3 @@ def test_verify_cli_prompts_syncs_all_project_roles(isolated_project_env: Path) 
         assert path.exists(), f"Prompt file missing for {role_name}: {path}"
         text = path.read_text(encoding="utf-8")
         assert WORKFLOW_HEADING in text, f"Workflow loop not found in {path}"
-

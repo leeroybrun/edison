@@ -9,27 +9,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.io_utils import write_db_config
+from tests.helpers.paths import get_repo_root
 
-EDISON_ROOT = Path(__file__).resolve().parents[2]
 
-
-def _write_db_config(repo_root: Path, project: str = "demo") -> None:
-    cfg_dir = repo_root / ".agents" / "config"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-    cfg_dir.joinpath("database.yml").write_text(
-        textwrap.dedent(
-            f"""
-            project:
-              name: {project}
-            database:
-              enabled: true
-            worktrees:
-              enableDatabaseIsolation: true
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+EDISON_ROOT = get_repo_root()
 
 
 def _fake_psql(tmp_path: Path) -> tuple[Path, Path]:
@@ -68,7 +52,7 @@ def stubbed_psql(tmp_path, monkeypatch):
 
 
 def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, stubbed_psql, monkeypatch):
-    _write_db_config(isolated_project_env, project="sample")
+    write_db_config(isolated_project_env, project="sample")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 
@@ -88,7 +72,7 @@ def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, st
 
 
 def test_drop_session_db_force_terminates_connections(isolated_project_env, stubbed_psql, monkeypatch):
-    _write_db_config(isolated_project_env, project="demo")
+    write_db_config(isolated_project_env, project="demo")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
 

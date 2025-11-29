@@ -6,8 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.paths import get_repo_root
+from tests.helpers.timeouts import SUBPROCESS_TIMEOUT
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+REPO_ROOT = get_repo_root()
 # Note: Legacy .edison/core/scripts has been migrated to Python modules
 # This test now verifies utility scripts in the root scripts/ directory
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
@@ -80,7 +83,7 @@ def test_python_scripts_help_runs_without_permission_errors():
                 env=env,
                 text=True,
                 capture_output=True,
-                timeout=15,
+                timeout=SUBPROCESS_TIMEOUT / 8,
             )
         except PermissionError as err:  # pragma: no cover - exercised via assertion
             pytest.fail(f"{script} raised PermissionError: {err}")

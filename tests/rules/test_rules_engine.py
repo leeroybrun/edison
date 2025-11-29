@@ -85,7 +85,7 @@ def _engine_with_context_rules(rules_config: Dict[str, Any] | None = None) -> Ru
     return RulesEngine(base_config)
 
 
-def _ids(rules: List[Rule]) -> List[str]:
+def _get_get_ids(rules: List[Rule]) -> List[str]:
     return [r.id for r in rules]
 
 
@@ -100,7 +100,7 @@ def test_get_rules_for_context_filters_by_type_and_state() -> None:
         operation="tasks/status",
     )
 
-    assert _ids(rules) == ["task-definition-complete"]
+    assert _get_ids(rules) == ["task-definition-complete"]
 
 
 def test_get_rules_for_context_ignores_mismatched_context_type() -> None:
@@ -149,6 +149,6 @@ def test_get_rules_for_context_sorts_by_priority() -> None:
     )
 
     # Expect highest-priority rule first, followed by existing guidance rules.
-    assert _ids(rules)[0] == "high-priority-guidance"
-    assert "tdd-red-first" in _ids(rules)
+    assert _get_ids(rules)[0] == "high-priority-guidance"
+    assert "tdd-red-first" in _get_ids(rules)
 

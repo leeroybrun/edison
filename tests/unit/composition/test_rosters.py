@@ -7,7 +7,7 @@ from pathlib import Path
 from edison.core.composition import AgentRegistry, generate_available_agents
 
 
-def _read(path: Path) -> str:
+def _read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
@@ -44,7 +44,7 @@ def test_generation_header_contains_iso_timestamp(tmp_path: Path) -> None:
     output_path = tmp_path / ".edison" / "_generated" / "AVAILABLE_AGENTS.md"
 
     generate_available_agents(output_path, repo_root=tmp_path)
-    content = _read(output_path)
+    content = _read_file(output_path)
 
     assert "AUTO-GENERATED FILE - DO NOT EDIT MANUALLY" in content
     match = re.search(r"Generated at:\s*([0-9T:.-]+)", content)
@@ -59,7 +59,7 @@ def test_agent_table_includes_all_registry_agents(tmp_path: Path) -> None:
     expected_names = {agent["name"] for agent in registry.get_all_metadata()}
 
     generate_available_agents(output_path, repo_root=tmp_path)
-    table_names = set(_table_names(_read(output_path)))
+    table_names = set(_table_names(_read_file(output_path)))
 
     assert table_names, "Agent table must not be empty"
     assert table_names == expected_names, "Agent table must list all registry agents"
@@ -86,7 +86,7 @@ type: strategist
     output_path = repo_root / ".edison" / "_generated" / "AVAILABLE_AGENTS.md"
     generate_available_agents(output_path, repo_root=repo_root)
 
-    table_names = set(_table_names(_read(output_path)))
+    table_names = set(_table_names(_read_file(output_path)))
 
     assert table_names == {"innovation"}, (
         "Generator must read agents from registry instead of hardcoded templates"

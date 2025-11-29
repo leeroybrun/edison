@@ -10,6 +10,7 @@ but with different implementation. Tests need rewrite when TUI is reimplemented.
 """
 
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 import os
 from pathlib import Path
@@ -18,19 +19,13 @@ import sys
 import yaml
 
 import pytest
+from tests.helpers.paths import get_repo_root
 
 pytestmark = pytest.mark.skip(reason="Legacy scripts/config/configure.py removed during uvx migration. Rewrite needed for new CLI.")
 
-
 # Paths relative to this test file
-CORE_DIR = Path(__file__).resolve().parents[2]
+CORE_DIR = get_repo_root()
 REPO_ROOT = CORE_DIR.parent.parent
-
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-
 
 def _load_configure_module():
     spec = importlib.util.spec_from_file_location(
@@ -42,35 +37,32 @@ def _load_configure_module():
     spec.loader.exec_module(module)
     return module
 
-
 def _make_discovery_fixtures(root: Path) -> None:
     """Create minimal discovery inputs under the isolated repo root."""
 
     # Packs
-    _write_yaml(root / ".edison/packs/alpha/config.yml", {"id": "alpha"})
-    _write_yaml(root / ".edison/packs/beta/config.yml", {"id": "beta"})
+    write_yaml(root / ".edison/packs/alpha/config.yml", {"id": "alpha"})
+    write_yaml(root / ".edison/packs/beta/config.yml", {"id": "beta"})
 
     # Validators and agents (core discovery paths)
-    _write_yaml(
+    write_yaml(
         root / ".edison/core/config/validators.yaml",
         {"validators": [{"id": "lint"}, {"id": "security"}]},
     )
-    _write_yaml(
+    write_yaml(
         root / ".edison/core/config/agents.yaml",
         {"agents": [{"id": "builder"}, {"id": "reviewer"}]},
     )
-
 
 def test_menu_loads_current_config(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
 
     cfg_path = tmp_path / ".agents" / "config.yml"
-    _write_yaml(cfg_path, {"project": {"name": "demo-app"}})
+    write_yaml(cfg_path, {"project": {"name": "demo-app"}})
 
     menu = ConfigurationMenu(repo_root=tmp_path, edison_core=CORE_DIR, config_dir=".agents")
 
     assert menu.current_config.get("project", {}).get("name") == "demo-app"
-
 
 def test_discovers_dynamic_options(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
@@ -86,12 +78,11 @@ def test_discovers_dynamic_options(isolated_project_env, tmp_path: Path):
     # Orchestrators fall back to values defined in setup.yaml
     assert "claude" in options.get("orchestrators", [])
 
-
 def test_tracks_and_saves_changes(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
 
     cfg_path = tmp_path / ".agents" / "config.yml"
-    _write_yaml(cfg_path, {"project": {"name": "old"}, "tdd": {"enforcement": "warn"}})
+    write_yaml(cfg_path, {"project": {"name": "old"}, "tdd": {"enforcement": "warn"}})
 
     menu = ConfigurationMenu(repo_root=tmp_path, edison_core=CORE_DIR, config_dir=".agents")
     menu.set_value("project_name", "new-name")
@@ -114,12 +105,11 @@ def test_tracks_and_saves_changes(isolated_project_env, tmp_path: Path):
     backup_data = yaml.safe_load(backup.read_text())
     assert backup_data["project"]["name"] == "old"
 
-
 def test_dry_run_does_not_write(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
 
     cfg_path = tmp_path / ".agents" / "config.yml"
-    _write_yaml(cfg_path, {"project": {"name": "alpha"}})
+    write_yaml(cfg_path, {"project": {"name": "alpha"}})
 
     menu = ConfigurationMenu(repo_root=tmp_path, edison_core=CORE_DIR, config_dir=".agents")
     menu.set_value("project_name", "beta")
@@ -131,24 +121,22 @@ def test_dry_run_does_not_write(isolated_project_env, tmp_path: Path):
     assert saved["project"]["name"] == "alpha"
     assert not cfg_path.with_suffix(".yml.bak").exists()
 
-
 def test_validation_blocks_invalid_values(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
 
     cfg_path = tmp_path / ".agents" / "config.yml"
-    _write_yaml(cfg_path, {"tdd": {"coverage_threshold": 50}})
+    write_yaml(cfg_path, {"tdd": {"coverage_threshold": 50}})
 
     menu = ConfigurationMenu(repo_root=tmp_path, edison_core=CORE_DIR, config_dir=".agents")
 
     with pytest.raises(ValueError):
         menu.set_value("coverage_threshold", 150)  # exceeds 0-100 range defined in setup.yaml
 
-
 def test_simple_mode_without_prompt_toolkit(isolated_project_env, tmp_path: Path):
     ConfigurationMenu = _load_configure_module().ConfigurationMenu
 
     cfg_path = tmp_path / ".agents" / "config.yml"
-    _write_yaml(cfg_path, {"project": {"name": "demo"}})
+    write_yaml(cfg_path, {"project": {"name": "demo"}})
 
     menu = ConfigurationMenu(
         repo_root=tmp_path,

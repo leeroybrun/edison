@@ -13,13 +13,14 @@ import tempfile
 from pathlib import Path
 import unittest
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.paths import get_repo_root
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]  # tests/session/test_*.py -> tests -> edison
+REPO_ROOT = get_repo_root()
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
-class StatusJsonPurityTests(unittest.TestCase):
+class TestStatusJsonPurity(unittest.TestCase):
     def setUp(self) -> None:
         self.repo_root = REPO_ROOT
         self.tmp = Path(tempfile.mkdtemp(prefix="project-status-json-"))

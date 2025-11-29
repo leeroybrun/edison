@@ -9,6 +9,7 @@ import pytest
 
 from edison.core.adapters import ClaudeSync
 from edison.core.adapters import load_schema
+from tests.helpers.io_utils import write_generated_agent, write_orchestrator_constitution, write_orchestrator_manifest
 
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -26,69 +27,6 @@ class TestClaudeAdapterUnit:
             if src.exists():
                 shutil.copy(src, schema_dst_dir / name)
 
-    def _write_generated_agent(self, root: Path, name: str, role_text: str = "") -> Path:
-        """Create a minimal Edison-composed agent in .edison/_generated/agents."""
-        agents_dir = root / ".edison" / "_generated" / "agents"
-        agents_dir.mkdir(parents=True, exist_ok=True)
-        path = agents_dir / f"{name}.md"
-        content_lines = [
-            f"# Agent: {name}",
-            "",
-            "## Role",
-            role_text or f"Core role for {name}.",
-            "",
-            "## Tools",
-            "- tool-one",
-            "- tool-two",
-            "",
-            "## Guidelines",
-            "- follow the rules",
-            "",
-            "## Workflows",
-            "- do the work",
-        ]
-        path.write_text("\n".join(content_lines), encoding="utf-8")
-        return path
-
-    def _write_orchestrator_constitution(self, root: Path) -> Path:
-        """Write orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)."""
-        out_dir = root / ".edison" / "_generated" / "constitutions"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        constitution = out_dir / "ORCHESTRATORS.md"
-        constitution.write_text(
-            "\n".join(
-                [
-                    "# Test Orchestrator Constitution",
-                    "",
-                    "## 📋 Mandatory Preloads (Session Start)",
-                    "- SESSION_WORKFLOW.md",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        return constitution
-
-    def _write_orchestrator_manifest(self, root: Path) -> Path:
-        out_dir = root / ".edison" / "_generated"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        manifest = out_dir / "orchestrator-manifest.json"
-        data = {
-            "version": "2.0.0",
-            "generated": "2025-01-01T00:00:00",
-            "composition": {"packs": [], "guidelinesCount": 0, "validatorsCount": 0, "agentsCount": 3},
-            "validators": {"global": [], "critical": [], "specialized": []},
-            "agents": {
-                "generic": ["feature-implementer"],
-                "specialized": ["api-builder", "component-builder-nextjs"],
-                "project": ["custom-agent"],
-            },
-            "guidelines": [],
-            "delegation": {"filePatterns": {}, "taskTypes": {}},
-            "workflowLoop": {},
-        }
-        manifest.write_text(json.dumps(data), encoding="utf-8")
-        return manifest
-
     def test_validate_claude_structure_creates_dirs(self, isolated_project_env: Path) -> None:
         """validate_structure creates .claude and agents subdir when missing."""
         root = isolated_project_env
@@ -103,7 +41,7 @@ class TestClaudeAdapterUnit:
     def test_agent_conversion_preserves_sections(self, isolated_project_env: Path) -> None:
         """sync_agents converts Edison agents into Claude agent files."""
         root = isolated_project_env
-        src = self._write_generated_agent(root, "feature-implementer", role_text="Full-stack feature orchestrator.")
+        src = write_generated_agent(root, "feature-implementer", role_text="Full-stack feature orchestrator.")
 
         adapter = ClaudeSync(repo_root=root)
         changed = adapter.sync_agents()

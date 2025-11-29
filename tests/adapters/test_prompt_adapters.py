@@ -8,6 +8,8 @@ import sys
 
 import pytest
 
+from tests.helpers.io_utils import write_yaml, write_json
+
 
 # Make Edison core importable for the adapter modules
 
@@ -37,16 +39,11 @@ def _write_adapter_config(repo_root: Path) -> None:
         },
     }
 
-    config_dir = repo_root / ".edison" / "core" / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / "defaults.yaml").write_text(
-        json.dumps(defaults, indent=2), encoding="utf-8"
-    )
+    # Note: This uses JSON format for backwards compatibility with existing tests
+    write_json(repo_root / ".edison" / "core" / "config" / "defaults.yaml", defaults)
 
     # Minimal project overlay so ConfigManager sees a valid project config dir
-    project_cfg_dir = repo_root / ".agents" / "config"
-    project_cfg_dir.mkdir(parents=True, exist_ok=True)
-    (project_cfg_dir / "project.yml").write_text("project: { name: adapter-unit-test }\n", encoding="utf-8")
+    write_yaml(repo_root / ".agents" / "config" / "project.yml", {"project": {"name": "adapter-unit-test"}})
 
 
 def _seed_generated(repo_root: Path) -> Path:

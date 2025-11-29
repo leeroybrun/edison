@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Clear stale locks"
 
@@ -34,10 +34,10 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     from edison.core.session.id import validate_session_id
-    from pathlib import Path
-    from edison.core.utils.paths import PathResolver
 
     try:
+        # Resolve project root using shared utility
+        project_root = get_repo_root(args)
         cleared = []
 
         if args.session_id:
@@ -48,8 +48,7 @@ def main(args: argparse.Namespace) -> int:
         elif args.force:
             # Clear all stale locks
             # This would scan for and clear all lock files
-            repo_root = PathResolver.resolve_project_root()
-            lock_dir = repo_root / ".project" / "locks"
+            lock_dir = project_root / ".project" / "locks"
             if lock_dir.exists():
                 lock_files = list(lock_dir.glob("*.lock"))
                 for lock_file in lock_files:

@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from tests.helpers.paths import get_repo_root
 
-EDISON_ROOT = Path(__file__).resolve().parents[2]
+EDISON_ROOT = get_repo_root()
 
 
 def run(domain: str, command: str, args: list[str], env: dict) -> subprocess.CompletedProcess:

@@ -5,90 +5,62 @@ from pathlib import Path
 import pytest
 
 from edison.core.adapters import ZenSync
+from tests.helpers.io_utils import write_yaml
 
 
 class TestZenAdapterUnit:
     def _write_basic_config(self, root: Path) -> None:
         """Write modular config overlays in the new YAML layout."""
         config_dir = root / ".edison" / "config"
-        config_dir.mkdir(parents=True, exist_ok=True)
 
         # Explicit pack activation (none for the baseline tests)
-        (config_dir / "packs.yml").write_text(
-            "\n".join(
-                [
-                    "packs:",
-                    "  active: []",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        write_yaml(config_dir / "packs.yml", {"packs": {"active": []}})
 
         # Zen roles must use mapping form (no legacy lists) to satisfy validator.
-        (config_dir / "zen.yml").write_text(
-            "\n".join(
-                [
-                    "zen:",
-                    "  enabled: true",
-                    "  roles:",
-                    "    codex: {}",
-                    "    claude: {}",
-                    "    gemini: {}",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        write_yaml(config_dir / "zen.yml", {
+            "zen": {
+                "enabled": True,
+                "roles": {
+                    "codex": {},
+                    "claude": {},
+                    "gemini": {}
+                }
+            }
+        })
 
         # Minimal defaults file in the modern config location for ConfigManager
-        core_config_dir = root / ".edison" / "core" / "config"
-        core_config_dir.mkdir(parents=True, exist_ok=True)
-        defaults_path = core_config_dir / "defaults.yaml"
+        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
         if not defaults_path.exists():
-            defaults_path.write_text("project:\n  name: test-project\n", encoding="utf-8")
+            write_yaml(defaults_path, {"project": {"name": "test-project"}})
 
     def _write_config_with_project_roles(self, root: Path) -> None:
         """Config with active packs and zen.roles mapping for project roles."""
         config_dir = root / ".edison" / "config"
-        config_dir.mkdir(parents=True, exist_ok=True)
 
         # Project packs are declared in modular overlay form.
-        (config_dir / "packs.yml").write_text(
-            "\n".join(
-                [
-                    "packs:",
-                    "  active:",
-                    "    - fastify",
-                    "    - prisma",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        write_yaml(config_dir / "packs.yml", {
+            "packs": {
+                "active": ["fastify", "prisma"]
+            }
+        })
 
         # Role mapping now lives under zen.yml with per-role mappings.
-        (config_dir / "zen.yml").write_text(
-            "\n".join(
-                [
-                    "zen:",
-                    "  enabled: true",
-                    "  roles:",
-                    "    project-api-builder:",
-                    "      guidelines: [api-design, validation, error-handling]",
-                    "      rules: [validation, implementation]",
-                    "      packs: [fastify]",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        write_yaml(config_dir / "zen.yml", {
+            "zen": {
+                "enabled": True,
+                "roles": {
+                    "project-api-builder": {
+                        "guidelines": ["api-design", "validation", "error-handling"],
+                        "rules": ["validation", "implementation"],
+                        "packs": ["fastify"]
+                    }
+                }
+            }
+        })
 
-        core_config_dir = root / ".edison" / "core" / "config"
-        core_config_dir.mkdir(parents=True, exist_ok=True)
-        defaults_path = core_config_dir / "defaults.yaml"
+        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
         if not defaults_path.exists():
-            defaults_path.write_text("project:\n  name: test-project\n", encoding="utf-8")
+            write_yaml(defaults_path, {"project": {"name": "test-project"}})
 
     def _write_guidelines(self, root: Path) -> None:
         """Create a small guideline set with role-specific markers."""
@@ -131,79 +103,89 @@ class TestZenAdapterUnit:
         )
 
     def _write_rules_registry(self, root: Path) -> None:
-        rdir = root / ".edison" / "core" / "rules"
-        rdir.mkdir(parents=True, exist_ok=True)
-        registry = """
-version: 1.0.0
-rules:
-  - id: RULE.REVIEW.VALIDATION
-    title: Validation rule for reviews
-    category: validation
-    blocking: true
-  - id: RULE.REVIEW.IMPLEMENTATION
-    title: Implementation rule for reviews
-    category: implementation
-    blocking: false
-  - id: RULE.PLANNING.DELEGATION
-    title: Delegation planning rule
-    category: delegation
-    blocking: false
-  - id: RULE.PLANNING.SESSION
-    title: Session planning rule
-    category: session
-    blocking: false
-"""
-        (rdir / "registry.yml").write_text(registry.strip() + "\n", encoding="utf-8")
+        registry_data = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "RULE.REVIEW.VALIDATION",
+                    "title": "Validation rule for reviews",
+                    "category": "validation",
+                    "blocking": True
+                },
+                {
+                    "id": "RULE.REVIEW.IMPLEMENTATION",
+                    "title": "Implementation rule for reviews",
+                    "category": "implementation",
+                    "blocking": False
+                },
+                {
+                    "id": "RULE.PLANNING.DELEGATION",
+                    "title": "Delegation planning rule",
+                    "category": "delegation",
+                    "blocking": False
+                },
+                {
+                    "id": "RULE.PLANNING.SESSION",
+                    "title": "Session planning rule",
+                    "category": "session",
+                    "blocking": False
+                }
+            ]
+        }
+        write_yaml(root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
 
     def _write_rules_with_packs(self, root: Path) -> None:
         """Create core + pack rule registries for category/pack filtering."""
-        core_dir = root / ".edison" / "core" / "rules"
-        core_dir.mkdir(parents=True, exist_ok=True)
-        core_registry = """
-version: 1.0.0
-rules:
-  - id: RULE.CORE.VALIDATION
-    title: Core validation rule
-    category: validation
-    blocking: false
-  - id: RULE.CORE.IMPLEMENTATION
-    title: Core implementation rule
-    category: implementation
-    blocking: false
-  - id: RULE.CORE.DELEGATION
-    title: Core delegation rule
-    category: delegation
-    blocking: false
-"""
-        (core_dir / "registry.yml").write_text(core_registry.strip() + "\n", encoding="utf-8")
+        core_registry = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "RULE.CORE.VALIDATION",
+                    "title": "Core validation rule",
+                    "category": "validation",
+                    "blocking": False
+                },
+                {
+                    "id": "RULE.CORE.IMPLEMENTATION",
+                    "title": "Core implementation rule",
+                    "category": "implementation",
+                    "blocking": False
+                },
+                {
+                    "id": "RULE.CORE.DELEGATION",
+                    "title": "Core delegation rule",
+                    "category": "delegation",
+                    "blocking": False
+                }
+            ]
+        }
+        write_yaml(root / ".edison" / "core" / "rules" / "registry.yml", core_registry)
 
-        fastify_dir = root / ".edison" / "packs" / "fastify" / "rules"
-        fastify_dir.mkdir(parents=True, exist_ok=True)
-        fastify_registry = """
-version: 1.0.0
-rules:
-  - id: RULE.FASTIFY.VALIDATION
-    title: Fastify validation rule
-    category: validation
-    blocking: false
-"""
-        (fastify_dir / "registry.yml").write_text(
-            fastify_registry.strip() + "\n", encoding="utf-8"
-        )
+        fastify_registry = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "RULE.FASTIFY.VALIDATION",
+                    "title": "Fastify validation rule",
+                    "category": "validation",
+                    "blocking": False
+                }
+            ]
+        }
+        write_yaml(root / ".edison" / "packs" / "fastify" / "rules" / "registry.yml", fastify_registry)
 
-        prisma_dir = root / ".edison" / "packs" / "prisma" / "rules"
-        prisma_dir.mkdir(parents=True, exist_ok=True)
-        prisma_registry = """
-version: 1.0.0
-rules:
-  - id: RULE.prisma.VALIDATION
-    title: prisma validation rule
-    category: validation
-    blocking: false
-"""
-        (prisma_dir / "registry.yml").write_text(
-            prisma_registry.strip() + "\n", encoding="utf-8"
-        )
+        prisma_registry = {
+            "version": "1.0.0",
+            "rules": [
+                {
+                    "id": "RULE.prisma.VALIDATION",
+                    "title": "prisma validation rule",
+                    "category": "validation",
+                    "blocking": False
+                }
+            ]
+        }
+        write_yaml(root / ".edison" / "packs" / "prisma" / "rules" / "registry.yml", prisma_registry)
 
     def test_role_based_guideline_filtering(self, isolated_project_env: Path) -> None:
         """ZenAdapter.get_applicable_guidelines should filter by role."""

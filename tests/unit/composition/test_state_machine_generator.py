@@ -7,7 +7,7 @@ import pytest
 from edison.core.composition.output.state_machine import generate_state_machine_doc as write_state_machine_docs
 
 
-def _read(path: Path) -> str:
+def _read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
@@ -20,7 +20,7 @@ def test_state_machine_doc_written_to_generated_dir(isolated_project_env: Path) 
     write_state_machine_docs(output_path)
 
     assert output_path.exists(), "STATE_MACHINE.md must be written to .edison/_generated"
-    content = _read(output_path)
+    content = _read_file(output_path)
     assert "AUTO-GENERATED FILE" in content or "State Machine" in content
     # Should contain some state machine content
     assert "state" in content.lower() or "transition" in content.lower()
@@ -34,6 +34,6 @@ def test_state_machine_doc_contains_expected_sections(isolated_project_env: Path
 
     write_state_machine_docs(output_path)
 
-    content = _read(output_path)
+    content = _read_file(output_path)
     # Should have task/QA/session domain coverage
     assert any(word in content.lower() for word in ["task", "qa", "session"])

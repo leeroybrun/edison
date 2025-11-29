@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 import yaml
+from tests.helpers.paths import get_repo_root
 
-CORE_ROOT = Path(__file__).resolve().parents[2]
+CORE_ROOT = get_repo_root()
 CONFIG = CORE_ROOT / "config" / "delegation.yaml"
 
 

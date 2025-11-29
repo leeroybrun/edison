@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from tests.helpers.paths import get_repo_root
 
 
 # Edison repo root
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = get_repo_root()
 DATA_DIR = REPO_ROOT / "src" / "edison" / "data"
 
 
-class ValidatorConfigAlignmentTests(unittest.TestCase):
+class TestValidatorConfigAlignment(unittest.TestCase):
     """Tests for validator configuration and schema alignment."""
 
     def test_schema_tracking_requires_completedAt(self) -> None:

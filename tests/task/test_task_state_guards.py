@@ -9,12 +9,14 @@ import pytest
 
 from helpers.command_runner import run_script, assert_command_failure, assert_command_success, assert_json_output
 from helpers.env import TestProjectDir
+from tests.helpers.paths import get_repo_root
+from tests.helpers.timeouts import THREAD_JOIN_TIMEOUT
 
 
 @pytest.fixture()
 def project(tmp_path: Path) -> TestProjectDir:
     # Determine repo root (tests live under repository tests/ tree)
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = get_repo_root()
     proj = TestProjectDir(tmp_path, repo_root)
     # Ensure task and QA templates exist for CLI scripts
     tasks_tpl_src = repo_root / ".project" / "tasks" / "TEMPLATE.md"
@@ -55,7 +57,7 @@ def project(tmp_path: Path) -> TestProjectDir:
     return proj
 
 
-def _env(owner: str = "tester") -> dict:
+def _create_create_env(owner: str = "tester") -> dict:
     return {"project_OWNER": owner}
 
 
@@ -68,7 +70,7 @@ def test_claim_disallows_done_bypass(project: TestProjectDir):
         "tasks/new",
         ["--id", "300", "--wave", "wave1", "--slug", "guard-claim"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
     assert_command_success(res_new)
     task_id = "300-wave1-guard-claim"
@@ -79,7 +81,7 @@ def test_claim_disallows_done_bypass(project: TestProjectDir):
         "tasks/claim",
         [task_id, "--status", "done"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
 
     # Assert: must fail-closed and remain out of done
@@ -96,7 +98,7 @@ def test_status_never_synthesizes_approval(project: TestProjectDir):
         "tasks/new",
         ["--id", "301", "--wave", "wave1", "--slug", "guard-validate"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
     assert_command_success(res_new)
     task_id = "301-wave1-guard-validate"
@@ -121,7 +123,7 @@ def test_status_never_synthesizes_approval(project: TestProjectDir):
         "tasks/status",
         [task_id, "--status", "validated"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
 
     # Assert: must fail (no synthetic approval), and no bundle-approved.json is created
@@ -142,7 +144,7 @@ def test_allocate_id_considers_session_scoped_siblings(project: TestProjectDir):
         "tasks/new",
         ["--id", "201", "--wave", "wave1", "--slug", "parent"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
     assert_command_success(res_parent)
     # Create a child in session sA manually in session-scoped tree
@@ -157,7 +159,7 @@ def test_allocate_id_considers_session_scoped_siblings(project: TestProjectDir):
         "tasks/allocate-id",
         ["--base", "201"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
 
     # Assert: next id must be 201.2 (not 201.1 duplicate)
@@ -175,7 +177,7 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
         "tasks/new",
         ["--id", "202", "--wave", "wave1", "--slug", "parent-fu"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
     assert_command_success(res_parent)
     task_id = "202-wave1-parent-fu"
@@ -183,7 +185,7 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
         "tasks/new",
         ["--id", "202.1", "--wave", "wave1", "--slug", "child-existing", "--session", "sFU"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
 
     # Seed implementation-report.json to request a blocking follow-up
@@ -197,7 +199,7 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
         "tasks/ensure-followups",
         ["--task", task_id, "--session", "sFU", "--enforce"],
         cwd=project.tmp_path,
-        env=_env(),
+        env=_create_env(),
     )
     data = assert_json_output(res_fus)
 
@@ -207,20 +209,70 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
 
 
 @pytest.mark.security
-def test_write_text_locked_atomic_replace_used(project: TestProjectDir, monkeypatch):
+def test_write_text_locked_atomic_replace_used(project: TestProjectDir):
+    """Test that write_text_locked uses atomic replacement.
+
+    This test verifies that write_text_locked creates a temp file and atomically
+    replaces the target, ensuring no partial writes are visible. We test this by
+    verifying that concurrent reads always see either the old or new content,
+    never partial/corrupted content.
+    """
     from edison.core.utils.io.locking import write_text_locked
+    import threading
 
     target = project.tmp_path / "atomic.txt"
-    target.write_text("orig\n")
+    target.write_text("original content\n")
 
-    calls = {"replace": 0}
-    real_replace = os.replace
-    def wrapped_replace(src, dst):
-        calls["replace"] += 1
-        return real_replace(src, dst)
+    errors: list[BaseException] = []
+    stop_event = threading.Event()
+    iterations_completed = {"count": 0}
 
-    monkeypatch.setattr(os, "replace", wrapped_replace)
-    write_text_locked(target, "updated\n")
+    def writer():
+        """Continuously write to the file."""
+        try:
+            counter = 0
+            while not stop_event.is_set() and counter < 50:
+                write_text_locked(target, f"updated content {counter}\n")
+                counter += 1
+            iterations_completed["count"] = counter
+        except BaseException as e:
+            errors.append(e)
 
-    # Assert: atomic path replacement was used at least once
-    assert calls["replace"] >= 1
+    def reader():
+        """Continuously read and validate the file content."""
+        try:
+            for _ in range(100):
+                if stop_event.is_set():
+                    break
+                content = target.read_text()
+                # Verify content is always a complete line (never partial)
+                assert content.endswith("\n"), f"Partial write detected: {content!r}"
+                # Verify content matches expected pattern (either original or updated)
+                assert (
+                    content.startswith("original content") or
+                    content.startswith("updated content")
+                ), f"Corrupted content: {content!r}"
+        except BaseException as e:
+            errors.append(e)
+
+    # Start writer and readers concurrently
+    writer_thread = threading.Thread(target=writer, daemon=True)
+    reader_threads = [threading.Thread(target=reader, daemon=True) for _ in range(3)]
+
+    writer_thread.start()
+    for t in reader_threads:
+        t.start()
+
+    # Wait for completion
+    writer_thread.join(timeout=THREAD_JOIN_TIMEOUT)
+    stop_event.set()
+    for t in reader_threads:
+        t.join(timeout=THREAD_JOIN_TIMEOUT / 2)
+
+    # Verify no errors occurred
+    assert not errors, f"Encountered errors during concurrent read/write: {errors!r}"
+    # Verify writes actually happened
+    assert iterations_completed["count"] > 0, "Writer did not complete any iterations"
+    # Final content should be valid
+    final_content = target.read_text()
+    assert final_content.endswith("\n")

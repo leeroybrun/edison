@@ -27,6 +27,35 @@ from edison.core.config.cache import get_cached_config
 
 
 @lru_cache(maxsize=8)
+def _load_config_section_impl(
+    section_name: str,
+    repo_root_str: str,
+    required: bool = True
+) -> Dict[str, Any]:
+    """Internal implementation with string-based caching.
+
+    Args:
+        section_name: Config section to load (e.g., "statemachine", "tasks", "qa")
+        repo_root_str: Project root path as string (empty for auto-detect)
+        required: If True, raise KeyError if section missing
+
+    Returns:
+        Config section dict, or empty dict if not required and missing
+
+    Raises:
+        KeyError: If section is required but missing
+    """
+    repo_root = Path(repo_root_str) if repo_root_str else None
+    config = get_cached_config(repo_root=repo_root)
+
+    if section_name not in config:
+        if required:
+            raise KeyError(f"Config section '{section_name}' not found")
+        return {}
+
+    return config.get(section_name, {})
+
+
 def load_config_section(
     section_name: str,
     repo_root: Optional[Path] = None,
@@ -49,17 +78,39 @@ def load_config_section(
         >>> statemachine = load_config_section("statemachine")
         >>> workflow = load_config_section("workflow")
     """
-    config = get_cached_config(repo_root=repo_root)
-
-    if section_name not in config:
-        if required:
-            raise KeyError(f"Config section '{section_name}' not found")
-        return {}
-
-    return config.get(section_name, {})
+    return _load_config_section_impl(section_name, str(repo_root) if repo_root else "", required)
 
 
 @lru_cache(maxsize=8)
+def _get_states_for_domain_impl(domain: str, repo_root_str: str) -> List[str]:
+    """Internal implementation with string-based caching.
+
+    Args:
+        domain: Domain name ("task" or "qa")
+        repo_root_str: Project root path as string (empty for auto-detect)
+
+    Returns:
+        List of state names from config
+
+    Raises:
+        ValueError: If domain config is invalid or missing
+    """
+    repo_root = Path(repo_root_str) if repo_root_str else None
+    statemachine = load_config_section("statemachine", repo_root=repo_root)
+
+    domain_cfg = statemachine.get(domain)
+    if not isinstance(domain_cfg, dict):
+        raise ValueError(f"state-machine config missing '{domain}' domain definition")
+
+    states_cfg = domain_cfg.get("states")
+    if isinstance(states_cfg, dict):
+        return list(states_cfg.keys())
+    if isinstance(states_cfg, list):
+        return [str(s) for s in states_cfg]
+
+    raise ValueError(f"statemachine.{domain}.states must be a dict or list")
+
+
 def get_states_for_domain(domain: str, repo_root: Optional[Path] = None) -> List[str]:
     """Get allowed states for a domain from config.
 
@@ -79,19 +130,7 @@ def get_states_for_domain(domain: str, repo_root: Optional[Path] = None) -> List
         >>> task_states = get_states_for_domain("task")
         >>> ["todo", "wip", "done", "validated"]
     """
-    statemachine = load_config_section("statemachine", repo_root=repo_root)
-
-    domain_cfg = statemachine.get(domain)
-    if not isinstance(domain_cfg, dict):
-        raise ValueError(f"state-machine config missing '{domain}' domain definition")
-
-    states_cfg = domain_cfg.get("states")
-    if isinstance(states_cfg, dict):
-        return list(states_cfg.keys())
-    if isinstance(states_cfg, list):
-        return [str(s) for s in states_cfg]
-
-    raise ValueError(f"statemachine.{domain}.states must be a dict or list")
+    return _get_states_for_domain_impl(domain, str(repo_root) if repo_root else "")
 
 
 def _find_initial_state(domain: str, repo_root: Optional[Path] = None) -> str:

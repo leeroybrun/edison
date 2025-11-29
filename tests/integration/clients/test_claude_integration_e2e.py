@@ -10,8 +10,8 @@ import os
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
 
-
 from edison.data import get_data_path
+from tests.helpers.io_utils import write_generated_agent, write_orchestrator_manifest
 
 _CUR = Path(__file__).resolve()
 
@@ -53,44 +53,6 @@ def _bootstrap_minimal_project(root: Path) -> None:
 
 
 class TestClaudeIntegrationE2E:
-    def _write_generated_agent(self, root: Path, name: str) -> None:
-        gen_dir = root / ".agents" / "_generated" / "agents"
-        gen_dir.mkdir(parents=True, exist_ok=True)
-        gen_dir.joinpath(f"{name}.md").write_text(
-            "\n".join(
-                [
-                    f"# Agent: {name}",
-                    "",
-                    "## Role",
-                    f"Role for {name}.",
-                    "",
-                    "## Tools",
-                    "- tool-one",
-                    "",
-                    "## Guidelines",
-                    "- guideline-one",
-                    "",
-                    "## Workflows",
-                    "- workflow-one",
-                ]
-            ),
-            encoding="utf-8",
-        )
-
-    def _write_manifest(self, root: Path, agents: dict[str, list[str]]) -> None:
-        out_dir = root / ".agents" / "_generated"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        manifest = {
-            "version": "2.0.0",
-            "generated": "2025-01-01T00:00:00",
-            "composition": {"packs": [], "guidelinesCount": 0, "validatorsCount": 0, "agentsCount": sum(len(v) for v in agents.values())},
-            "validators": {"global": [], "critical": [], "specialized": []},
-            "agents": agents,
-            "guidelines": [],
-            "delegation": {"filePatterns": {}, "taskTypes": {}},
-            "workflowLoop": {},
-        }
-        (out_dir / "orchestrator-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     @pytest.mark.integration
     def test_full_sync_pipeline_via_cli(self, isolated_project_env: Path) -> None:
@@ -99,15 +61,16 @@ class TestClaudeIntegrationE2E:
         _bootstrap_minimal_project(root)
 
         # Generated Edison artifacts
-        self._write_generated_agent(root, "api-builder")
-        self._write_generated_agent(root, "component-builder-nextjs")
-        self._write_manifest(
+        write_generated_agent(root, "api-builder", base_dir=".agents")
+        write_generated_agent(root, "component-builder-nextjs", base_dir=".agents")
+        write_orchestrator_manifest(
             root,
-            {
+            agents={
                 "generic": [],
                 "specialized": ["api-builder", "component-builder-nextjs"],
                 "project": [],
             },
+            base_dir=".agents"
         )
         # Minimal orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)
         constitutions_dir = root / ".agents" / "_generated" / "constitutions"
@@ -171,8 +134,8 @@ class TestClaudeIntegrationE2E:
         root = isolated_project_env
         _bootstrap_minimal_project(root)
 
-        self._write_generated_agent(root, "feature-implementer")
-        self._write_manifest(root, {"generic": ["feature-implementer"], "specialized": [], "project": []})
+        write_generated_agent(root, "feature-implementer", base_dir=".agents")
+        write_orchestrator_manifest(root, agents={"generic": ["feature-implementer"], "specialized": [], "project": []}, base_dir=".agents")
 
         claude_dir = root / ".claude"
         claude_dir.mkdir(parents=True, exist_ok=True)

@@ -4,25 +4,19 @@ These tests ensure that TaskRepository correctly identifies and retrieves
 tasks stored in session-specific directories.
 """
 from __future__ import annotations
+from helpers.io_utils import write_yaml
 
 from pathlib import Path
 import importlib
-import yaml
 import pytest
 
 from edison.core.task.repository import TaskRepository
 from edison.core.entity import EntityMetadata
 
-
-def _write_yaml(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-
-
 def _bootstrap_repo(repo: Path) -> None:
     (repo / ".git").mkdir()
     config_dir = repo / ".edison" / "core" / "config"
-    _write_yaml(
+    write_yaml(
         config_dir / "defaults.yaml",
         {
             "statemachine": {
@@ -36,7 +30,7 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-    _write_yaml(
+    write_yaml(
         config_dir / "tasks.yaml",
         {
             "tasks": {
@@ -49,7 +43,6 @@ def _bootstrap_repo(repo: Path) -> None:
             }
         },
     )
-
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
@@ -73,7 +66,6 @@ def repo_env(tmp_path, monkeypatch):
 
     return repo
 
-
 def create_markdown_task(path: Path, task_id: str, title: str, session_id: str = None):
     """Helper to create a raw markdown task file."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,7 +84,6 @@ def create_markdown_task(path: Path, task_id: str, title: str, session_id: str =
     ])
     
     path.write_text("\n".join(content), encoding="utf-8")
-
 
 def test_get_task_from_session_directory(repo_env):
     """Test that TaskRepository.get() finds tasks in session directories."""
@@ -114,7 +105,6 @@ def test_get_task_from_session_directory(repo_env):
     assert task.id == task_id
     assert task.session_id == session_id
     assert task.title == "Session Task"
-
 
 def test_list_all_includes_session_tasks(repo_env):
     """Test that TaskRepository.list_all() includes tasks from global and session dirs."""
@@ -140,7 +130,6 @@ def test_list_all_includes_session_tasks(repo_env):
     assert "T-SESS-1" in task_ids
     assert "T-SESS-2" in task_ids
     assert len(tasks) == 3
-
 
 def test_find_by_session_filters_correctly(repo_env):
     """Test that finding by session ID works correctly across directories."""

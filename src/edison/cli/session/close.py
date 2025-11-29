@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
+from edison.cli import add_json_flag, OutputFormatter
 
 SUMMARY = "Validate and transition a session into closing/archival"
 
@@ -31,7 +31,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Skip guard checks and move directly to closing (not recommended)",
     )
     add_json_flag(parser)
-    add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:

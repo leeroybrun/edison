@@ -5,16 +5,13 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-import yaml
+from tests.helpers.paths import get_repo_root
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = get_repo_root()
 CORE_PATH = ROOT / ".edison" / "core"
 from edison.core.adapters import ClaudeAdapter  # type: ignore  # noqa: E402
 
-
-def _write_yaml(path: Path, data: Dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+from helpers.io_utils import write_yaml
 
 
 def _seed_generated(repo_root: Path) -> Path:
@@ -54,8 +51,8 @@ def test_claude_adapter_generates_all(tmp_path: Path) -> None:
     generated_root = _seed_generated(tmp_path)
 
     # Core definitions
-    _write_yaml(tmp_path / ".edison/core/config/commands.yaml", {"commands": [_command_def()]})
-    _write_yaml(
+    write_yaml(tmp_path / ".edison/core/config/commands.yaml", {"commands": [_command_def()]})
+    write_yaml(
         tmp_path / ".edison/core/config/hooks.yaml",
         {
             "hooks": {
@@ -81,11 +78,11 @@ def test_claude_adapter_generates_all(tmp_path: Path) -> None:
     (template_dir / "demo-hook.sh.template").write_text('echo "{{ config.message }}"\n', encoding="utf-8")
 
     # Project overlays
-    _write_yaml(
+    write_yaml(
         tmp_path / ".agents/config/project.yml",
         {"project": {"name": "claude-full-test"}},
     )
-    _write_yaml(
+    write_yaml(
         tmp_path / ".agents/config/commands.yml",
         {
             "commands": {
@@ -95,11 +92,11 @@ def test_claude_adapter_generates_all(tmp_path: Path) -> None:
             }
         },
     )
-    _write_yaml(
+    write_yaml(
         tmp_path / ".agents/config/settings.yml",
         {"settings": {"claude": {"generate": True, "data": {"editor": "claude", "theme": "dark"}}}},
     )
-    _write_yaml(
+    write_yaml(
         tmp_path / ".agents/config/hooks.yml",
         {"hooks": {"enabled": True, "platforms": ["claude"], "output_dir": str(tmp_path / ".claude" / "hooks")}},
     )

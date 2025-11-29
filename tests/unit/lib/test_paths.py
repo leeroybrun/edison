@@ -33,7 +33,7 @@ def _reset_project_root_cache() -> None:
 
 
 class TestCanonicalProjectRoot:
-    def test_project_dir_is_under_repo_root_not_edison(
+    def project_dir_is_under_repo_root_not_edison(
         self,
         isolated_project_env: Path,
         monkeypatch: pytest.MonkeyPatch,

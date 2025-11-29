@@ -1,7 +1,6 @@
 """Tests for validator-approval rule checker."""
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -9,6 +8,8 @@ from pathlib import Path
 import pytest
 
 from edison.core.rules import RulesEngine, RuleViolationError
+from tests.helpers import format_round_dir, create_round_dir
+from tests.helpers.io_utils import write_json
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +21,7 @@ def clear_path_caches():
     management._paths_instance = None
 
 
-def _cfg(require: bool = True, max_age_days: int = 7) -> dict:
+def _create_config(require: bool = True, max_age_days: int = 7) -> dict:
     return {
         "rules": {
             "byState": {
@@ -45,19 +46,17 @@ def _report_path(task_id: str, round_no: int = 1) -> Path:
     return (
         Path(".project/qa/validation-evidence")
         / task_id
-        / f"round-{round_no}"
+        / format_round_dir(round_no)
         / "bundle-approved.json"
     ).resolve()
 
 
 def _write_bundle(path: Path, payload: dict | None = None, *, approved: bool = True) -> None:
     """Helper to write a bundle-approved.json file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
     data = dict(payload or {})
     # approved flag always wins if explicitly passed
     data.setdefault("approved", bool(approved))
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+    write_json(path, data)
 
 
 def test_validator_approval_passes_with_explicit_recent_report(tmp_path: Path):
@@ -67,7 +66,7 @@ def test_validator_approval_passes_with_explicit_recent_report(tmp_path: Path):
     _write_bundle(rpt, approved=True)
     task = {"id": task_id, "validation": {"reportPath": str(rpt)}}
 
-    engine = RulesEngine(_cfg())
+    engine = RulesEngine(_create_config())
 
     assert engine.check_state_transition(task, "done", "validated") == []
 
@@ -80,7 +79,7 @@ def test_validator_approval_blocks_when_missing_evidence_directory(tmp_path: Pat
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    engine = RulesEngine(_cfg(require=True))
+    engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
 
     with pytest.raises(RuleViolationError) as exc:
@@ -97,18 +96,11 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    round_dir = (
-        tmp_path
-        / ".project"
-        / "qa"
-        / "validation-evidence"
-        / task_id
-        / "round-1"
-    )
-    round_dir.mkdir(parents=True, exist_ok=True)
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round_dir = create_round_dir(base, 1)
     assert not (round_dir / "bundle-approved.json").exists()
 
-    engine = RulesEngine(_cfg(require=True))
+    engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
 
     with pytest.raises(RuleViolationError) as exc:
@@ -126,15 +118,9 @@ def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    rpt = (
-        tmp_path
-        / ".project"
-        / "qa"
-        / "validation-evidence"
-        / task_id
-        / "round-1"
-        / "bundle-approved.json"
-    )
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round_dir = create_round_dir(base, 1)
+    rpt = round_dir / "bundle-approved.json"
     _write_bundle(rpt, approved=True)
 
     # Set mtime to 2 days ago and require maxAgeDays=1
@@ -142,7 +128,7 @@ def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch:
     os.utime(rpt, (old, old))
 
     task = {"id": task_id}
-    engine = RulesEngine(_cfg(require=True, max_age_days=1))
+    engine = RulesEngine(_create_config(require=True, max_age_days=1))
 
     with pytest.raises(RuleViolationError) as exc:
         engine.check_state_transition(task, "done", "validated")
@@ -157,15 +143,9 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    rpt = (
-        tmp_path
-        / ".project"
-        / "qa"
-        / "validation-evidence"
-        / task_id
-        / "round-1"
-        / "bundle-approved.json"
-    )
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round_dir = create_round_dir(base, 1)
+    rpt = round_dir / "bundle-approved.json"
 
     failing_bundle = {
         "taskId": task_id,
@@ -180,7 +160,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
     }
     _write_bundle(rpt, payload=failing_bundle, approved=False)
 
-    engine = RulesEngine(_cfg(require=True))
+    engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
 
     with pytest.raises(RuleViolationError) as exc:
@@ -200,18 +180,12 @@ def test_validator_approval_allows_when_bundle_approved(tmp_path: Path, monkeypa
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    rpt = (
-        tmp_path
-        / ".project"
-        / "qa"
-        / "validation-evidence"
-        / task_id
-        / "round-2"
-        / "bundle-approved.json"
-    )
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round_dir = create_round_dir(base, 2)
+    rpt = round_dir / "bundle-approved.json"
     _write_bundle(rpt, approved=True)
 
-    engine = RulesEngine(_cfg(require=True))
+    engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
 
     assert engine.check_state_transition(task, "done", "validated") == []
@@ -224,17 +198,9 @@ def test_validator_approval_uses_latest_round_directory(tmp_path: Path, monkeypa
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
-    base = (
-        tmp_path
-        / ".project"
-        / "qa"
-        / "validation-evidence"
-        / task_id
-    )
-    round1 = base / "round-1"
-    round3 = base / "round-3"
-    round1.mkdir(parents=True, exist_ok=True)
-    round3.mkdir(parents=True, exist_ok=True)
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round1 = create_round_dir(base, 1)
+    round3 = create_round_dir(base, 3)
 
     rpt1 = round1 / "bundle-approved.json"
     rpt3 = round3 / "bundle-approved.json"
@@ -246,7 +212,7 @@ def test_validator_approval_uses_latest_round_directory(tmp_path: Path, monkeypa
     os.utime(rpt3, (now - 10, now - 10))
     os.utime(rpt1, (now, now))
 
-    engine = RulesEngine(_cfg(require=True))
+    engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
 
     # Correct behavior: choose round-3 (approved=True) by round number

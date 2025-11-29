@@ -69,7 +69,7 @@ def _engine_with_detection_rules() -> RulesEngine:
     return RulesEngine(cfg)
 
 
-def _ids(rules: List[Rule]) -> List[str]:
+def _get_get_ids(rules: List[Rule]) -> List[str]:
     return [r.id for r in rules]
 
 
@@ -88,7 +88,7 @@ def test_file_patterns_trigger_validation_rules_for_changed_files() -> None:
         operation="session/next",
     )
 
-    ids = _ids(rules)
+    ids = _get_ids(rules)
     assert "database-migrations" in ids
     assert "api-contracts" in ids
     # Database rule has higher priority (10 < 20) and should be first.
@@ -107,6 +107,6 @@ def test_operation_type_filters_delegation_rules() -> None:
         operation="delegation/plan",
     )
 
-    ids = _ids(rules)
+    ids = _get_ids(rules)
     assert ids == ["delegation-priority"]
 
