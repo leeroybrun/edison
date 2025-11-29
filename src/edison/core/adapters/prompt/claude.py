@@ -25,44 +25,7 @@ class ClaudeAdapter(PromptAdapter):
         adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
         self.claude_dir = adapters_cfg.get_client_path("claude")
 
-    def render_client(self) -> str:
-        """Render Claude client file from _generated/clients/claude.md.
-        
-        Returns:
-            Content of the Claude client configuration.
-        """
-        source = self.clients_dir / "claude.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Client file not found: {source}")
-        return source.read_text(encoding="utf-8")
-
-    def render_agent(self, agent_name: str) -> str:
-        """Render agent from _generated/agents/.
-        
-        Args:
-            agent_name: Name of the agent to render.
-            
-        Returns:
-            Agent content.
-        """
-        source = self.agents_dir / f"{agent_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Agent not found: {source}")
-        return source.read_text(encoding="utf-8")
-
-    def render_validator(self, validator_name: str) -> str:
-        """Render validator from _generated/validators/.
-        
-        Args:
-            validator_name: Name of the validator to render.
-            
-        Returns:
-            Validator content.
-        """
-        source = self.validators_dir / f"{validator_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Validator not found: {source}")
-        return source.read_text(encoding="utf-8")
+    # Claude uses default implementations from base class - no overrides needed
 
     def write_outputs(self, output_root: Path) -> None:
         """Write all outputs to Claude Code layout.

@@ -108,21 +108,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
 
         return f"{content}{workflow_section}"
 
-    def render_agent(self, agent_name: str) -> str:
-        """Render agent prompt from _generated/agents/."""
-        agent_path = self.agents_dir / f"{agent_name}.md"
-        if not agent_path.exists():
-            raise FileNotFoundError(f"Agent not found: {agent_path}")
-
-        return agent_path.read_text(encoding="utf-8")
-
-    def render_validator(self, validator_name: str) -> str:
-        """Render validator prompt from _generated/validators/."""
-        validator_path = self.validators_dir / f"{validator_name}.md"
-        if not validator_path.exists():
-            raise FileNotFoundError(f"Validator not found: {validator_path}")
-
-        return validator_path.read_text(encoding="utf-8")
+    # Cursor uses default implementations from base class - no overrides needed
 
 
 __all__ = ["CursorPromptAdapter"]

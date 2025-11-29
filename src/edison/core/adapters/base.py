@@ -34,17 +34,99 @@ class PromptAdapter(ABC):
                 self.repo_root = Path.cwd().resolve()
 
     # ----- Abstract API -----
-    @abstractmethod
     def render_agent(self, agent_name: str) -> str:
-        """Render a single agent prompt from `_generated/agents/`."""
+        """Render a single agent prompt from `_generated/agents/`.
 
-    @abstractmethod
+        Default implementation reads the agent file and applies post-processing.
+        Override _post_process_agent() to customize formatting instead of this method.
+
+        Args:
+            agent_name: Name of the agent to render.
+
+        Returns:
+            Rendered agent content.
+
+        Raises:
+            FileNotFoundError: If agent file does not exist.
+        """
+        source = self.agents_dir / f"{agent_name}.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Agent not found: {source}")
+        content = source.read_text(encoding="utf-8")
+        return self._post_process_agent(agent_name, content)
+
     def render_validator(self, validator_name: str) -> str:
-        """Render a single validator prompt from `_generated/validators/`."""
+        """Render a single validator prompt from `_generated/validators/`.
+
+        Default implementation reads the validator file and applies post-processing.
+        Override _post_process_validator() to customize formatting instead of this method.
+
+        Args:
+            validator_name: Name of the validator to render.
+
+        Returns:
+            Rendered validator content.
+
+        Raises:
+            FileNotFoundError: If validator file does not exist.
+        """
+        source = self.validators_dir / f"{validator_name}.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Validator not found: {source}")
+        content = source.read_text(encoding="utf-8")
+        return self._post_process_validator(validator_name, content)
+
+    def render_client(self, client_name: str) -> str:
+        """Render a client file from `_generated/clients/`.
+
+        Args:
+            client_name: Name of the client (e.g., 'claude', 'zen').
+
+        Returns:
+            Client file content.
+
+        Raises:
+            FileNotFoundError: If client file does not exist.
+        """
+        source = self.clients_dir / f"{client_name}.md"
+        if not source.exists():
+            raise FileNotFoundError(f"Client file not found: {source}")
+        return source.read_text(encoding="utf-8")
 
     @abstractmethod
     def write_outputs(self, output_root: Path) -> None:
         """Write all generated prompts to provider-specific location."""
+
+    # ----- Extension Hooks -----
+    def _post_process_agent(self, agent_name: str, content: str) -> str:
+        """Hook for subclasses to format agent content.
+
+        Override this method to add provider-specific formatting to agents.
+        Default implementation returns content unchanged.
+
+        Args:
+            agent_name: Name of the agent.
+            content: Raw agent content from file.
+
+        Returns:
+            Formatted agent content.
+        """
+        return content
+
+    def _post_process_validator(self, validator_name: str, content: str) -> str:
+        """Hook for subclasses to format validator content.
+
+        Override this method to add provider-specific formatting to validators.
+        Default implementation returns content unchanged.
+
+        Args:
+            validator_name: Name of the validator.
+            content: Raw validator content from file.
+
+        Returns:
+            Formatted validator content.
+        """
+        return content
 
     # ----- Shared path helpers -----
     @property

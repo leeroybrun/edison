@@ -42,33 +42,18 @@ class ZenPromptAdapter(PromptAdapter):
             "This template is required for Zen prompt generation."
         )
 
-    def render_client(self) -> str:
-        """Render Zen client file from _generated/clients/zen.md.
-        
-        Returns:
-            Content of the Zen client configuration.
-        """
-        source = self.clients_dir / "zen.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Client file not found: {source}")
-        return source.read_text(encoding="utf-8")
+    def _post_process_agent(self, agent_name: str, content: str) -> str:
+        """Format agent content for Zen MCP.
 
-    def render_agent(self, agent_name: str) -> str:
-        """Render agent as Zen prompt from _generated/agents/.
-        
         Args:
-            agent_name: Name of the agent to render.
-            
+            agent_name: Name of the agent.
+            content: Raw agent content from file.
+
         Returns:
             Zen-formatted agent prompt.
         """
-        source = self.agents_dir / f"{agent_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Agent not found: {source}")
-        
-        content = source.read_text(encoding="utf-8")
         workflow_block = self._workflow_loop_block()
-        
+
         lines: List[str] = [
             "=== Edison / Zen MCP Prompt ===",
             f"Role: {agent_name}",
@@ -79,25 +64,21 @@ class ZenPromptAdapter(PromptAdapter):
             "",
             workflow_block,
         ]
-        
+
         return "\n".join(lines).rstrip() + "\n"
 
-    def render_validator(self, validator_name: str) -> str:
-        """Render validator as Zen prompt from _generated/validators/.
-        
+    def _post_process_validator(self, validator_name: str, content: str) -> str:
+        """Format validator content for Zen MCP.
+
         Args:
-            validator_name: Name of the validator to render.
-            
+            validator_name: Name of the validator.
+            content: Raw validator content from file.
+
         Returns:
             Zen-formatted validator prompt.
         """
-        source = self.validators_dir / f"{validator_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Validator not found: {source}")
-        
-        content = source.read_text(encoding="utf-8")
         workflow_block = self._workflow_loop_block()
-        
+
         lines: List[str] = [
             "=== Edison / Zen MCP Validator Prompt ===",
             f"Validator: {validator_name}",
@@ -108,7 +89,7 @@ class ZenPromptAdapter(PromptAdapter):
             "",
             workflow_block,
         ]
-        
+
         return "\n".join(lines).rstrip() + "\n"
 
     def write_outputs(self, output_root: Path) -> None:
@@ -137,7 +118,7 @@ class ZenPromptAdapter(PromptAdapter):
         
         # Write client file
         try:
-            client_content = self.render_client()
+            client_content = self.render_client("zen")
             (output_dir / "zen.txt").write_text(client_content, encoding="utf-8")
         except FileNotFoundError:
             pass

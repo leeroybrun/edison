@@ -10,9 +10,9 @@ from the unified composition engine output.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from ...utils.paths import PathResolver
+from .base import SyncAdapter
 from edison.core.utils.paths import get_project_config_dir
 from ...composition.output import OutputConfigLoader
 from edison.core.utils.io import ensure_directory
@@ -22,9 +22,9 @@ class ClaudeAdapterError(RuntimeError):
     """Error in Claude adapter operations."""
 
 
-class ClaudeSync:
+class ClaudeSync(SyncAdapter):
     """Sync Edison-composed outputs to Claude Code layout.
-    
+
     This adapter:
     - Reads from _generated/ (already composed by unified engine)
     - Writes to .claude/ with Claude-specific formatting
@@ -33,29 +33,37 @@ class ClaudeSync:
     """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
-        self.repo_root: Path = repo_root or PathResolver.resolve_project_root()
+        super().__init__(repo_root)
         self.project_config_dir = get_project_config_dir(self.repo_root)
-        self._config = OutputConfigLoader(repo_root=self.repo_root)
-        
+
         # Source paths from config
-        agents_dir = self._config.get_agents_dir()
+        output_loader = self._config  # type: ignore[attr-defined]
+        agents_dir = output_loader.get_agents_dir()
         self.generated_agents_dir = agents_dir if agents_dir else (
             self.project_config_dir / "_generated" / "agents"
         )
-        
+
         # Client config - NO fallback, config MUST exist
         from edison.core.config.domains import AdaptersConfig
         adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
         self.claude_dir = adapters_cfg.get_client_path("claude")
-        
+
         # Sync config for agents
-        sync_cfg = self._config.get_sync_config("claude")
+        sync_cfg = output_loader.get_sync_config("claude")
         if sync_cfg and sync_cfg.enabled and sync_cfg.agents_path:
-            self.claude_agents_dir = self._config._resolve_path(sync_cfg.agents_path)
+            self.claude_agents_dir = output_loader._resolve_path(sync_cfg.agents_path)
             self._agents_filename_pattern = sync_cfg.agents_filename_pattern or "{name}.md"
         else:
             self.claude_agents_dir = self.claude_dir / "agents"
             self._agents_filename_pattern = "{name}.md"
+
+    def _load_config(self) -> Dict[str, Any]:
+        """Load Claude adapter configuration.
+
+        Returns:
+            OutputConfigLoader instance for managing composition output paths.
+        """
+        return OutputConfigLoader(repo_root=self.repo_root)  # type: ignore[return-value]
 
     def validate_structure(self, *, create_missing: bool = True) -> Path:
         """Ensure .claude directory structure exists.
