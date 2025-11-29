@@ -239,6 +239,13 @@ class SessionConfig(BaseDomainConfig):
         """Get timeout for worktree operations."""
         return int(self.section.get("worktree", {}).get("timeouts", {}).get(key, default))
 
+    def get_worktree_uuid_suffix_length(self) -> int:
+        """Get UUID suffix length for worktree naming collisions."""
+        val = self.section.get("worktree", {}).get("uuidSuffixLength")
+        if val is None:
+            raise ValueError("session.worktree.uuidSuffixLength not configured")
+        return int(val)
+
     # --- Database Config ---
     def get_database_config(self) -> Dict[str, Any]:
         """Get database configuration."""
@@ -248,6 +255,22 @@ class SessionConfig(BaseDomainConfig):
     def get_recovery_config(self) -> Dict[str, Any]:
         """Get recovery configuration (timeouts, etc)."""
         return self.section.get("recovery", {})
+
+    def get_recovery_default_timeout_minutes(self) -> int:
+        """Get default timeout in minutes for recovery operations."""
+        rec_cfg = self.get_recovery_config()
+        val = rec_cfg.get("defaultTimeoutMinutes")
+        if val is None:
+            raise ValueError("session.recovery.defaultTimeoutMinutes not configured")
+        return int(val)
+
+    # --- Transaction Config ---
+    def get_transaction_min_disk_headroom(self) -> int:
+        """Get minimum disk headroom in bytes for transaction operations."""
+        val = self.section.get("transaction", {}).get("minDiskHeadroom")
+        if val is None:
+            raise ValueError("session.transaction.minDiskHeadroom not configured")
+        return int(val)
 
 
 __all__ = ["SessionConfig"]

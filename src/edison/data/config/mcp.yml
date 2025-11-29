@@ -1,5 +1,7 @@
 mcp:
   config_file: ".mcp.json"
+  tool_names:
+    edison_zen_clink: "mcp__edison-zen__clink"
   servers:
     edison-zen:
       # Portable: use uvx to run zen-mcp-server from git

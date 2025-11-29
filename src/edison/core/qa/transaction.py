@@ -30,9 +30,14 @@ class ValidationTransaction:
     def __init__(self, task_id: str, round_num: int) -> None:
         self.task_id = str(task_id)
         self.round_num = int(round_num)
-        # Session id is resolved from env when available; fall back to a
-        # generic validation session identifier to keep tests simple.
-        self._session_id = os.environ.get("project_SESSION") or "validation-session"
+        # Session id is resolved from env when available; fall back to
+        # configured validation session identifier
+        if "project_SESSION" in os.environ:
+            self._session_id = os.environ["project_SESSION"]
+        else:
+            from edison.core.config.domains.qa import QAConfig
+            qa_config = QAConfig()
+            self._session_id = qa_config.get_validation_session_id()
 
         self.staging_dir: Optional[Path] = None
         self.journal_path: Optional[Path] = None

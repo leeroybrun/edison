@@ -127,14 +127,13 @@ def run_validator(validator_markdown_path: str, session_id: str, validator_name:
         except Exception:
             pass
 
-    # Fallback: inline default
+    # No fallback: configuration MUST exist
     if header is None:
-        header = (
-            f"# {{ validator_name }} Validation Report\n\n"
-            "## Executive Summary\n\n"
-            "## Dimension Scores\n\n"
-            "## Findings\n\n"
-            "## Validation Pass/Fail\n\n"
+        raise RuntimeError(
+            "Validator report template not found. "
+            "Define _report-template.md in either:\n"
+            "  1. Project validators: .edison/config/validators/_report-template.md\n"
+            "  2. Bundled templates: edison.data/templates/_report-template.md"
         )
 
     body = process_validator_template(validator_markdown_path, context={

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 # Re-export from core module
 from .core import (
-    ENGINE_VERSION,
+    get_engine_version,
     dry_duplicate_report,
     render_conditional_includes,
     _strip_headings_and_code,
@@ -22,6 +22,12 @@ from .core import (
     _split_paragraphs,
     _paragraph_shingles,
 )
+
+# Lazy ENGINE_VERSION for backward compatibility
+def __getattr__(name: str):
+    if name == "ENGINE_VERSION":
+        return get_engine_version()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # Re-export from anchors module
 from .anchors import (
@@ -40,6 +46,7 @@ from .markdown import (
 __all__ = [
     # Core
     "ENGINE_VERSION",
+    "get_engine_version",
     "dry_duplicate_report",
     "render_conditional_includes",
     "_strip_headings_and_code",

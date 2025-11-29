@@ -231,7 +231,8 @@ def _ensure_disk_space(final_root: Path, required_bytes: int) -> None:
     if os.environ.get("EDISON_FORCE_DISK_FULL") or os.environ.get("project_FORCE_DISK_FULL"):
         raise OSError(errno.ENOSPC, "Forced disk full for test")
     free_bytes = _disk_free_bytes(final_root)
-    headroom = max(int(required_bytes * 0.1), 5 * 1024 * 1024)  # ≥5MB
+    min_headroom = get_config().get_transaction_min_disk_headroom()
+    headroom = max(int(required_bytes * 0.1), min_headroom)
     if free_bytes < required_bytes + headroom:
         raise OSError(errno.ENOSPC, f"Insufficient disk space: need {required_bytes}, free {free_bytes}")
 

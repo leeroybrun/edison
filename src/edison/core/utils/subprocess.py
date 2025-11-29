@@ -17,60 +17,69 @@ from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
 
 from edison.core.config.domains.timeouts import TimeoutsConfig
 
-FALLBACK_TIMEOUTS: Dict[str, float] = {
-    "git_operations": 30.0,
-    "test_execution": 300.0,
-    "build_operations": 600.0,
-    "ai_calls": 120.0,
-    "file_operations": 10.0,
-    "default": 60.0,
-}
-
 
 @lru_cache(maxsize=4)
 def _load_timeouts_impl(repo_root_str: str) -> Dict[str, float]:
-    """Internal implementation with string-based caching.
-
-    Values are sourced from YAML configuration, falling back to the baked-in
-    defaults when config is missing or malformed.
+    """Load timeout configuration from YAML without fallbacks.
 
     Args:
         repo_root_str: Project root path as string
 
     Returns:
         Dict of timeout values keyed by timeout type
+
+    Raises:
+        RuntimeError: If config cannot be loaded or subprocess_timeouts section is missing
     """
-    timeouts: Dict[str, float] = dict(FALLBACK_TIMEOUTS)
     try:
-        # Local import to avoid optional dependency errors when running in
-        # stripped environments.
         from ..config import ConfigManager  # type: ignore
 
         repo_root = Path(repo_root_str)
         cfg = ConfigManager(repo_root).load_config(validate=False)  # type: ignore[arg-type]
-        configured = cfg.get("subprocess_timeouts") or {}
+        configured = cfg.get("subprocess_timeouts")
+
+        if not configured:
+            raise RuntimeError(
+                "subprocess_timeouts configuration section is missing. "
+                "Add subprocess_timeouts to your YAML config."
+            )
+
+        timeouts: Dict[str, float] = {}
         for key, value in configured.items():
             try:
                 timeouts[key] = float(value)
-            except Exception:
-                continue
-    except Exception:
-        # Fall back silently to baked-in defaults
-        pass
-    return timeouts
+            except (ValueError, TypeError) as e:
+                raise RuntimeError(
+                    f"Invalid timeout value for '{key}': {value}. "
+                    f"Expected numeric value. Error: {e}"
+                )
+
+        # Ensure 'default' timeout exists
+        if "default" not in timeouts:
+            raise RuntimeError(
+                "subprocess_timeouts configuration must include a 'default' timeout value"
+            )
+
+        return timeouts
+    except Exception as e:
+        if isinstance(e, RuntimeError):
+            raise
+        raise RuntimeError(
+            f"Failed to load subprocess timeout configuration: {e}"
+        ) from e
 
 
 def _load_timeouts(repo_root: Path) -> Dict[str, float]:
-    """Load timeout configuration with fallbacks.
-
-    Values are sourced from YAML configuration, falling back to the baked-in
-    defaults when config is missing or malformed.
+    """Load timeout configuration from YAML without fallbacks.
 
     Args:
         repo_root: Project root path
 
     Returns:
         Dict of timeout values keyed by timeout type
+
+    Raises:
+        RuntimeError: If config cannot be loaded or subprocess_timeouts section is missing
     """
     return _load_timeouts_impl(str(repo_root))
 

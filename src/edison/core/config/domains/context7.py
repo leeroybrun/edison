@@ -92,6 +92,31 @@ class Context7Config(BaseDomainConfig):
         """Return package metadata."""
         return self.packages
 
+    @cached_property
+    def content_detection(self) -> Dict[str, Dict[str, List[str]]]:
+        """Return content detection patterns for packages.
+
+        Returns:
+            Dict mapping package names to detection config with:
+            - filePatterns: List of glob patterns for files to search
+            - searchPatterns: List of regex patterns to search for in content
+            Empty dict if not configured.
+        """
+        # Load from bundled defaults
+        from edison.data import read_yaml
+        try:
+            cfg = read_yaml("config", "context7.yml")
+            detection = cfg.get("contentDetection", {})
+            if isinstance(detection, dict):
+                return detection
+        except Exception:
+            pass
+        return {}
+
+    def get_content_detection(self) -> Dict[str, Dict[str, List[str]]]:
+        """Return content detection patterns for packages."""
+        return self.content_detection
+
 
 __all__ = [
     "Context7Config",

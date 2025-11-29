@@ -14,6 +14,11 @@ Available domain configs:
 - TimeoutsConfig: Operation timeouts
 - WorkflowConfig: Workflow lifecycle configuration
 - DatabaseConfig: Database connection and isolation
+- AdaptersConfig: Adapter paths and settings
+- ProcessConfig: Process detection patterns for session ID inference
+- CLIConfig: CLI output formatting and display settings
+- JSONIOConfig: JSON I/O formatting and encoding settings
+- Context7Config: Context7 package detection and aliases
 
 Usage:
     from edison.core.config.domains import PacksConfig, SessionConfig, TaskConfig
@@ -39,6 +44,11 @@ from .project import ProjectConfig
 from .timeouts import TimeoutsConfig
 from .workflow import WorkflowConfig
 from .database import DatabaseConfig
+from .adapters import AdaptersConfig
+from .process import ProcessConfig
+from .cli import CLIConfig
+from .json_io import JSONIOConfig
+from .context7 import Context7Config
 
 __all__: list[str] = [
     "PacksConfig",
@@ -51,6 +61,11 @@ __all__: list[str] = [
     "TimeoutsConfig",
     "WorkflowConfig",
     "DatabaseConfig",
+    "AdaptersConfig",
+    "ProcessConfig",
+    "CLIConfig",
+    "JSONIOConfig",
+    "Context7Config",
 ]
 
 

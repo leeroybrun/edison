@@ -33,6 +33,26 @@ aliases:
   "@prisma/client": "prisma"
   prisma-client: "prisma"
 
+# Content-based detection patterns (searches file content for package usage)
+# These are applied to specific file types to detect package usage beyond file patterns
+contentDetection:
+  zod:
+    filePatterns:
+      - "**/*.ts"
+      - "**/*.tsx"
+    searchPatterns:
+      - "import.*zod"
+      - "from.*zod"
+      - "z\\."
+  prisma:
+    filePatterns:
+      - "**/*.ts"
+      - "**/*.tsx"
+    searchPatterns:
+      - "import.*@prisma/client"
+      - "PrismaClient"
+      - "prisma\\."
+
 packages:
   next:
     version: "16.0.0"

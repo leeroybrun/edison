@@ -1,6 +1,9 @@
 edison:
   version: "1.0.0"
 
+text_processing:
+  engine_version: "2.5B-1"
+
 project:
   name: "project"  # Can be overridden by EDISON_project__name
   owner: null  # If null, will default to getpass.getuser() at runtime

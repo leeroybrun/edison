@@ -14,7 +14,9 @@ WORKFLOW_HEADING = "## Edison Workflow Loop"
 
 class ZenSyncMixin:
     def _workflow_template(self: ZenSync) -> Optional[str]:
-        template_path = self.repo_root / ".zen" / "templates" / "workflow-loop.txt"
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        template_path = adapters_cfg.get_template_path("zen", "workflow-loop.txt")
         if template_path.exists():
             return template_path.read_text(encoding="utf-8")
         return None
@@ -49,7 +51,15 @@ class ZenSyncMixin:
         return core_text.rstrip() + "\n\n" + loop_text.rstrip() + "\n"
 
     def _zen_prompts_dir(self: ZenSync) -> Path:
-        out_dir = self.repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        sync_path = adapters_cfg.get_sync_path("zen", "prompts_path")
+        if not sync_path:
+            raise ValueError(
+                "Zen prompts_path not configured in composition.yaml outputs.sync.zen. "
+                "This path is required for Zen prompt sync."
+            )
+        out_dir = sync_path / "project"
         ensure_directory(out_dir)
         return out_dir
 
@@ -116,7 +126,10 @@ class ZenSyncMixin:
           - ``missingWorkflow`` (list[str]): Entries for files lacking the
             Edison workflow loop section.
         """
-        cli_dir = self.repo_root / ".zen" / "conf" / "cli_clients"
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        zen_dir = adapters_cfg.get_client_path("zen")
+        cli_dir = zen_dir / "conf" / "cli_clients"
         report: Dict[str, Any] = {
             "ok": True,
             "models": [],

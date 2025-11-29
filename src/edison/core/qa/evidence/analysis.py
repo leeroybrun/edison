@@ -51,18 +51,9 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
         ]
     latest = rounds[-1]
 
-    # Load required evidence files from config with fallback to defaults
-    try:
-        qa_config = QAConfig()
-        required_files = qa_config.get_required_evidence_files()
-    except Exception:
-        # Fallback to hardcoded defaults if config is unavailable
-        required_files = [
-            "command-type-check.txt",
-            "command-lint.txt",
-            "command-test.txt",
-            "command-build.txt",
-        ]
+    # Load required evidence files from config
+    qa_config = QAConfig()
+    required_files = qa_config.get_required_evidence_files()
 
     needed = set(required_files)
     present = {p.name for p in latest.iterdir() if p.is_file()}

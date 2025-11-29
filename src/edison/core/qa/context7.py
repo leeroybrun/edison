@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
@@ -27,50 +28,36 @@ from edison.core.qa._utils import parse_primary_files
 from edison.core.config.domains.context7 import Context7Config
 
 
-# Fallback defaults if config loading fails
-_DEFAULT_TRIGGERS: Dict[str, List[str]] = {
-    "react": ["*.tsx", "*.jsx", "**/components/**/*"],
-    "next": ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx"],
-    "zod": ["**/*.schema.ts", "**/*.validation.ts", "**/*schema.ts"],
-    "prisma": [
-        "**/*.prisma",
-        "**/prisma/schema.*",
-        "**/prisma/migrations/**/*",
-        "**/prisma/seeds/**/*",
-    ],
-}
-
-_DEFAULT_ALIASES: Dict[str, str] = {
-    "react-dom": "react",
-    "next/router": "next",
-    "nextjs": "next",
-    "@prisma/client": "prisma",
-    "prisma-client": "prisma",
-}
-
-
 def _load_triggers() -> Dict[str, List[str]]:
-    """Load triggers from config with fallback to defaults."""
-    try:
-        cfg = Context7Config()
-        triggers = cfg.get_triggers()
-        if triggers:
-            return triggers
-    except Exception:
-        pass
-    return _DEFAULT_TRIGGERS
+    """Load triggers from config.
+
+    Raises:
+        RuntimeError: If triggers configuration is not available.
+    """
+    cfg = Context7Config()
+    triggers = cfg.get_triggers()
+    if not triggers:
+        raise RuntimeError(
+            "Context7 triggers configuration missing; "
+            "define triggers in context7.yml or .edison/config/context7.yml"
+        )
+    return triggers
 
 
 def _load_aliases() -> Dict[str, str]:
-    """Load aliases from config with fallback to defaults."""
-    try:
-        cfg = Context7Config()
-        aliases = cfg.get_aliases()
-        if aliases:
-            return aliases
-    except Exception:
-        pass
-    return _DEFAULT_ALIASES
+    """Load aliases from config.
+
+    Raises:
+        RuntimeError: If aliases configuration is not available.
+    """
+    cfg = Context7Config()
+    aliases = cfg.get_aliases()
+    if not aliases:
+        raise RuntimeError(
+            "Context7 aliases configuration missing; "
+            "define aliases in context7.yml or .edison/config/context7.yml"
+        )
+    return aliases
 
 
 def _project_root() -> Path:
@@ -207,20 +194,35 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
         for pkg, pats in triggers.items():
             if any(fnmatch.fnmatch(rel, pat) for pat in pats):
                 packages.add(_normalize(pkg))
-        # Additional heuristics
-        lower_rel = rel.lower()
-        if lower_rel.endswith(".prisma") or "/prisma/" in lower_rel:
-            packages.add("prisma")
-    # Content-based zod detection (files in worktree)
+
+    # Content-based detection using configured patterns
     try:
         wt_path = Path((session or {}).get("git", {}).get("worktreePath", ""))
         if wt_path.exists():
-            for ts_file in wt_path.rglob("*.ts"):
-                try:
-                    if "zod" in ts_file.read_text(encoding="utf-8"):
-                        packages.add("zod")
-                except Exception:
+            ctx7_cfg = Context7Config()
+            content_detection = ctx7_cfg.get_content_detection()
+
+            for pkg, detection_cfg in content_detection.items():
+                file_patterns = detection_cfg.get("filePatterns", [])
+                search_patterns = detection_cfg.get("searchPatterns", [])
+
+                if not file_patterns or not search_patterns:
                     continue
+
+                # Find files matching the patterns
+                for pattern in file_patterns:
+                    for file_path in wt_path.glob(pattern):
+                        if not file_path.is_file():
+                            continue
+                        try:
+                            content = file_path.read_text(encoding="utf-8")
+                            # Check if any search pattern matches
+                            for search_pattern in search_patterns:
+                                if re.search(search_pattern, content):
+                                    packages.add(_normalize(pkg))
+                                    break
+                        except Exception:
+                            continue
     except Exception:
         pass
 

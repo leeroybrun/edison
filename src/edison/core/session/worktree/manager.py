@@ -65,7 +65,8 @@ def create_worktree(
             ensure_directory(local_root)
             candidate = local_root / session_id
             if candidate.exists() and any(candidate.iterdir()):
-                candidate = local_root / f"{session_id}-{uuid.uuid4().hex[:6]}"
+                suffix_length = config_obj.get_worktree_uuid_suffix_length()
+                candidate = local_root / f"{session_id}-{uuid.uuid4().hex[:suffix_length]}"
             worktree_path = candidate
     except Exception:
         pass

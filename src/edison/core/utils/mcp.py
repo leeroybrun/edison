@@ -11,7 +11,64 @@ from edison.core.session.context import SessionContext
 from edison.core.utils import git as git_utils
 
 
-TOOL_NAME = "mcp__edison-zen__clink"
+_TOOL_NAME_CACHE: str | None = None
+
+
+def get_tool_name() -> str:
+    """Load MCP tool name from configuration.
+
+    Returns:
+        str: The MCP tool name for edison-zen clink
+
+    Raises:
+        RuntimeError: If config cannot be loaded or tool name is missing
+    """
+    global _TOOL_NAME_CACHE
+    if _TOOL_NAME_CACHE is not None:
+        return _TOOL_NAME_CACHE
+
+    try:
+        from edison.core.config import ConfigManager
+        from edison.core.utils.paths import resolve_project_root
+
+        repo_root = resolve_project_root()
+        cfg_manager = ConfigManager(repo_root)
+        full_config = cfg_manager.load_config(validate=False)
+
+        if "mcp" not in full_config:
+            raise RuntimeError(
+                "mcp configuration section is missing. "
+                "Add 'mcp' section to your YAML config."
+            )
+
+        if "tool_names" not in full_config["mcp"]:
+            raise RuntimeError(
+                "mcp.tool_names configuration is missing. "
+                "Add 'mcp.tool_names' section to your YAML config."
+            )
+
+        tool_name = full_config["mcp"]["tool_names"].get("edison_zen_clink")
+        if not tool_name:
+            raise RuntimeError(
+                "mcp.tool_names.edison_zen_clink is not configured. "
+                "Add 'mcp.tool_names.edison_zen_clink' to your YAML config."
+            )
+
+        _TOOL_NAME_CACHE = str(tool_name)
+        return _TOOL_NAME_CACHE
+    except Exception as e:
+        if isinstance(e, RuntimeError):
+            raise
+        raise RuntimeError(
+            f"Failed to load MCP tool name configuration: {e}"
+        ) from e
+
+
+# Lazy module-level attribute access
+def __getattr__(name: str):
+    if name == "TOOL_NAME":
+        return get_tool_name()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def resolve_working_directory(
@@ -56,7 +113,7 @@ def format_clink_cli_command(
     role: Optional[str] = None,
     prompt: Optional[str] = None,
     session_id: Optional[str] = None,
-    tool_name: str = TOOL_NAME,
+    tool_name: str | None = None,
     extra_args: Optional[Dict[str, str]] = None,
 ) -> str:
     """
@@ -65,6 +122,8 @@ def format_clink_cli_command(
     Examples:
         mcp__edison-zen__clink --cli_name codex --role default --prompt '...' --working_directory /abs/path
     """
+    if tool_name is None:
+        tool_name = get_tool_name()
     parts = [tool_name, f"--cli_name {shlex.quote(cli_name)}"]
     if role:
         parts.append(f"--role {shlex.quote(role)}")
@@ -82,4 +141,4 @@ def format_clink_cli_command(
     return " ".join(parts)
 
 
-__all__ = ["TOOL_NAME", "resolve_working_directory", "format_clink_cli_command"]
+__all__ = ["TOOL_NAME", "get_tool_name", "resolve_working_directory", "format_clink_cli_command"]

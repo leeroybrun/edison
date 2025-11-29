@@ -87,8 +87,14 @@ def is_session_expired(session_id: str) -> bool:
         return True
     now = datetime.now(timezone.utc)
     rec_cfg = get_config().get_recovery_config()
-    skew_allowance = int(rec_cfg.get("clockSkewAllowanceSeconds", 300))
-    timeout_hours = int(rec_cfg.get("timeoutHours", 8))
+    skew_allowance = rec_cfg.get("clockSkewAllowanceSeconds")
+    if skew_allowance is None:
+        raise ValueError("session.recovery.clockSkewAllowanceSeconds not configured")
+    skew_allowance = int(skew_allowance)
+    timeout_hours = rec_cfg.get("timeoutHours")
+    if timeout_hours is None:
+        raise ValueError("session.recovery.timeoutHours not configured")
+    timeout_hours = int(timeout_hours)
     
     if ref > now:
         skew = (ref - now).total_seconds()
@@ -241,7 +247,10 @@ def cleanup_expired_sessions() -> List[str]:
             logger.error("Failed to cleanup session %s: %s", sid, e)
     return cleaned
 
-def check_timeout(sess_dir: Path, threshold_minutes: int = 60) -> bool:
+def check_timeout(sess_dir: Path, threshold_minutes: Optional[int] = None) -> bool:
+    if threshold_minutes is None:
+        threshold_minutes = get_config().get_recovery_default_timeout_minutes()
+
     p = _session_json_path(sess_dir)
     if not p.exists():
         raise ValueError('missing session.json')

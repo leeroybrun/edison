@@ -44,15 +44,16 @@ def _load_project_dir_from_yaml(path: Path) -> str | None:
     return None
 
 
-def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
+def _resolve_project_dir_from_configs(repo_root: Path) -> str:
     """Resolve project config dir using configuration precedence.
 
     Precedence (highest to lowest):
     1. Environment variable: EDISON_paths__project_config_dir
-    2. Project overrides: {repo_root}/.edison/config/*.yml
-    3. Bundled defaults: edison.data package
+    2. Bundled defaults: edison.data package
+    3. Project overrides: {repo_root}/.edison/config/*.yml
 
-    Falls back to ``DEFAULT_PROJECT_CONFIG_PRIMARY`` when no config provides a value.
+    Note: DEFAULT_PROJECT_CONFIG_PRIMARY is used for bootstrapping config directory
+    detection. The actual value should be defined in bundled defaults.yaml.
     """
     # Priority 1: Environment override
     env_override = os.environ.get("EDISON_paths__project_config_dir")
@@ -72,7 +73,8 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
         pass  # Bundled data not available, continue with project config
 
     # Priority 3: Project overrides (.edison/config/)
-    config_dir = repo_root / ".edison" / "config"
+    # Note: Using DEFAULT_PROJECT_CONFIG_PRIMARY here is necessary to bootstrap config loading
+    config_dir = repo_root / DEFAULT_PROJECT_CONFIG_PRIMARY / "config"
     if config_dir.exists():
         yaml_files = sorted(config_dir.glob("*.yml")) + sorted(
             config_dir.glob("*.yaml")
@@ -82,6 +84,7 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str | None:
             if found is not None:
                 value = found
 
+    # Use constant as final bootstrap fallback - it matches the bundled defaults
     return value or DEFAULT_PROJECT_CONFIG_PRIMARY
 
 
@@ -97,13 +100,14 @@ def get_project_config_dir(
 
     Returns:
         Path: Project configuration directory resolved via config.
+
+    Note:
+        The directory name is resolved from config (bundled defaults or overrides).
+        DEFAULT_PROJECT_CONFIG_PRIMARY is used as a bootstrap fallback.
     """
     from edison.core.utils.io import ensure_directory
 
-    project_dir_name = (
-        _resolve_project_dir_from_configs(repo_root) or DEFAULT_PROJECT_CONFIG_PRIMARY
-    )
-
+    project_dir_name = _resolve_project_dir_from_configs(repo_root)
     project_dir = repo_root / project_dir_name
 
     if create:

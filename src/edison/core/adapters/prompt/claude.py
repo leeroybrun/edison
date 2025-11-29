@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 
 from ..base import PromptAdapter
 from edison.core.utils.io import ensure_directory
+from edison.core.config.domains import AdaptersConfig
 
 
 class ClaudeAdapter(PromptAdapter):
@@ -21,7 +22,8 @@ class ClaudeAdapter(PromptAdapter):
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
         super().__init__(generated_root, repo_root)
-        self.claude_dir = self.repo_root / ".claude"
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        self.claude_dir = adapters_cfg.get_client_path("claude")
 
     def render_client(self) -> str:
         """Render Claude client file from _generated/clients/claude.md.

@@ -14,11 +14,12 @@ from ..base import PromptAdapter
 from .._config import ConfigMixin
 from ...composition.output import OutputConfigLoader
 from edison.core.utils.io import ensure_directory
+from edison.core.config.domains import AdaptersConfig
 
 
 class CursorPromptAdapter(PromptAdapter, ConfigMixin):
     """Provider adapter for Cursor IDE.
-    
+
     Uses composition.yaml for all path configuration.
     """
 
@@ -26,7 +27,8 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         super().__init__(generated_root, repo_root)
         self._cached_config: Optional[Dict] = None
         self._output_config = OutputConfigLoader(repo_root=self.repo_root)
-        self.cursor_dir = self.repo_root / ".cursor"
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        self.cursor_dir = adapters_cfg.get_client_path("cursor")
 
     def generate_commands(self) -> Dict[str, Path]:
         """Generate slash commands for Cursor."""

@@ -17,6 +17,7 @@ from typing import List, Optional
 from edison.core.utils.io import ensure_directory
 from ...composition.output import OutputConfigLoader
 from ..base import PromptAdapter
+from edison.core.config.domains import AdaptersConfig
 
 
 WORKFLOW_HEADING = "## Edison Workflow Loop"
@@ -29,18 +30,17 @@ class ZenPromptAdapter(PromptAdapter):
         super().__init__(generated_root, repo_root=repo_root)
         self.project_config_dir_name = self.generated_root.parent.name
         self._config = OutputConfigLoader(repo_root=self.repo_root)
+        self._adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
 
     def _workflow_loop_block(self) -> str:
         """Return shared workflow loop block for all Zen prompts."""
-        template = self.repo_root / ".zen" / "templates" / "workflow-loop.txt"
+        template = self._adapters_cfg.get_template_path("zen", "workflow-loop.txt")
         if template.exists():
             return template.read_text(encoding="utf-8").strip()
-        # Fallback minimal block
-        return "\n".join([
-            "## Edison Workflow Loop (CRITICAL)",
-            "",
-            "scripts/session next <session-id>",
-        ])
+        raise FileNotFoundError(
+            f"Zen workflow template not found: {template}. "
+            "This template is required for Zen prompt generation."
+        )
 
     def render_client(self) -> str:
         """Render Zen client file from _generated/clients/zen.md.

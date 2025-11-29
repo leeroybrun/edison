@@ -1,0 +1,47 @@
+# QA and Validation Configuration
+# Configuration for quality assurance, evidence tracking, and validation workflows
+
+version: "1.0.0"
+
+validation:
+  # Session ID to use for validation transactions when no active session exists
+  # This is used as a fallback identifier for validation operations that
+  # are not tied to a specific development session
+  defaultSessionId: "validation-session"
+
+  # Required evidence files that must be present in each validation round
+  requiredEvidenceFiles:
+    - command-type-check.txt
+    - command-lint.txt
+    - command-test.txt
+    - command-build.txt
+
+  # Evidence collection settings
+  evidence:
+    # Minimum files required for validation to proceed
+    minRequiredFiles: 4
+
+    # File patterns that should be collected as evidence
+    patterns:
+      - "command-*.txt"
+      - "context7-*.md"
+      - "context7-*.txt"
+      - "validator-*-report.json"
+
+  # Transaction settings
+  transaction:
+    # Maximum age of validation transactions before cleanup (hours)
+    maxAgeHours: 24
+
+    # Whether to auto-cleanup stale transactions
+    autoCleanup: true
+
+orchestration:
+  # Maximum concurrent validator agents
+  maxConcurrentAgents: 4
+
+  # Per-validator timeout (seconds)
+  validatorTimeout: 300
+
+  # Execution mode: parallel or sequential
+  executionMode: parallel

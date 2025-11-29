@@ -17,7 +17,6 @@ from .core import (
     write_text,
 )
 from .json import (
-    DEFAULT_JSON_CONFIG,
     read_json,
     update_json,
     write_json_atomic,
@@ -48,7 +47,6 @@ __all__ = [
     "read_text",
     "write_text",
     # json
-    "DEFAULT_JSON_CONFIG",
     "read_json",
     "write_json_atomic",
     "update_json",

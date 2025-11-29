@@ -81,11 +81,17 @@ class CursorSync:
 
     @property
     def _cursor_agents_dir(self) -> Path:
-        return self.repo_root / ".cursor" / "agents"
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        cursor_dir = adapters_cfg.get_client_path("cursor")
+        return cursor_dir / "agents"
 
     @property
     def _cursor_rules_dir(self) -> Path:
-        return self.repo_root / ".cursor" / "rules"
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        cursor_dir = adapters_cfg.get_client_path("cursor")
+        return cursor_dir / "rules"
 
     @property
     def _cursor_cache_dir(self) -> Path:

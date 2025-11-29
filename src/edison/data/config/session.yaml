@@ -6,10 +6,11 @@ session:
     templates:
       primary: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
       repo: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
-    recovery:
-      timeoutHours: 8
-      staleCheckIntervalHours: 1
-      clockSkewAllowanceSeconds: 300
+  recovery:
+    timeoutHours: 8
+    staleCheckIntervalHours: 1
+    clockSkewAllowanceSeconds: 300
+    defaultTimeoutMinutes: 60
   validation:
     idRegex: "^[a-zA-Z0-9_\\-\\.]+$"
     maxLength: 64
@@ -33,6 +34,7 @@ session:
     - "recovery"
     - "archived"
   worktree:
+    uuidSuffixLength: 6
     timeouts:
       health_check: 10
       fetch: 60
@@ -42,3 +44,5 @@ session:
       install: 300
       branch_check: 10
       prune: 10
+  transaction:
+    minDiskHeadroom: 5242880

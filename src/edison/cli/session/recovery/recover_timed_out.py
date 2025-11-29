@@ -15,11 +15,14 @@ SUMMARY = "Recover timed-out sessions"
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
+    from edison.core.config.domains import SessionConfig
+    default_timeout = SessionConfig().get_recovery_default_timeout_minutes()
+
     parser.add_argument(
         "--threshold-minutes",
         type=int,
-        default=60,
-        help="Inactivity threshold in minutes (default: 60)",
+        default=default_timeout,
+        help=f"Inactivity threshold in minutes (default: {default_timeout})",
     )
     parser.add_argument(
         "--dry-run",

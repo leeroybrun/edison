@@ -18,7 +18,6 @@ from .errors import (
     run_cli,
 )
 from .output import (
-    DEFAULT_CLI_CONFIG,
     confirm,
     error,
     output_json,
@@ -36,7 +35,6 @@ __all__ = [
     "cli_error",
     "run_cli",
     # output
-    "DEFAULT_CLI_CONFIG",
     "output_json",
     "output_table",
     "confirm",

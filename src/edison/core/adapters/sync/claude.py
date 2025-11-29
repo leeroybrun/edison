@@ -43,12 +43,10 @@ class ClaudeSync:
             self.project_config_dir / "_generated" / "agents"
         )
         
-        # Client config
-        client_cfg = self._config.get_client_config("claude")
-        if client_cfg and client_cfg.enabled:
-            self.claude_dir = self._config._resolve_path(client_cfg.output_path)
-        else:
-            self.claude_dir = self.repo_root / ".claude"
+        # Client config - NO fallback, config MUST exist
+        from edison.core.config.domains import AdaptersConfig
+        adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        self.claude_dir = adapters_cfg.get_client_path("claude")
         
         # Sync config for agents
         sync_cfg = self._config.get_sync_config("claude")

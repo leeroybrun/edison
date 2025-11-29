@@ -20,7 +20,6 @@ from typing import Optional, Union
 
 # CLI utilities
 from .cli import (
-    DEFAULT_CLI_CONFIG,
     cli_error,
     confirm,
     dry_run_parent,
@@ -49,7 +48,6 @@ from .git import (
 
 # I/O utilities
 from .io import (
-    DEFAULT_JSON_CONFIG,
     HAS_YAML,
     LockTimeoutError,
     PathLike,
@@ -96,14 +94,14 @@ from .process import (
 # Subprocess utilities - lazy import to avoid circular dependency
 # Import directly from edison.core.utils.subprocess when needed
 
-# Text utilities
+# Text utilities - lazy import ENGINE_VERSION to avoid circular import
 from .text import (
-    ENGINE_VERSION,
     _shingles,
     _strip_headings_and_code,
     _tokenize,
     dry_duplicate_report,
     render_conditional_includes,
+    get_engine_version,
 )
 
 # Time utilities
@@ -111,7 +109,19 @@ from .time import parse_iso8601, utc_now, utc_timestamp
 
 # Lazily import MCP helpers to avoid circular imports through SessionContext
 # and PathResolver during package import.
-MCP_TOOL_NAME = "mcp__edison-zen__clink"
+
+def get_mcp_tool_name() -> str:
+    """Get the MCP tool name from configuration.
+
+    Returns:
+        str: The configured MCP tool name
+
+    Raises:
+        RuntimeError: If config cannot be loaded or tool name is missing
+    """
+    from . import mcp as _mcp
+
+    return _mcp.get_tool_name()
 
 
 def resolve_working_directory(
@@ -128,10 +138,14 @@ def format_clink_cli_command(
     role: Optional[str] = None,
     prompt: Optional[str] = None,
     session_id: Optional[str] = None,
-    tool_name: str = MCP_TOOL_NAME,
+    tool_name: Optional[str] = None,
     extra_args: Optional[dict] = None,
 ) -> str:
     from . import mcp as _mcp
+
+    # Default to configured tool name if not provided
+    if tool_name is None:
+        tool_name = get_mcp_tool_name()
 
     return _mcp.format_clink_cli_command(
         cli_name=cli_name,
@@ -141,15 +155,6 @@ def format_clink_cli_command(
         tool_name=tool_name,
         extra_args=extra_args,
     )
-
-
-def get_mcp_tool_name() -> str:
-    try:
-        from . import mcp as _mcp
-
-        return getattr(_mcp, "TOOL_NAME", MCP_TOOL_NAME)
-    except Exception:
-        return MCP_TOOL_NAME
 
 
 # NOTE: dependencies module is NOT imported here to avoid import-time coupling
@@ -163,7 +168,6 @@ __all__ = [
     "json_output",
     "cli_error",
     "run_cli",
-    "DEFAULT_CLI_CONFIG",
     "output_json",
     "output_table",
     "confirm",
@@ -186,7 +190,6 @@ __all__ = [
     "atomic_write",
     "read_text",
     "write_text",
-    "DEFAULT_JSON_CONFIG",
     "read_json",
     "write_json_atomic",
     "update_json",
@@ -228,7 +231,7 @@ __all__ = [
     # Text
     "dry_duplicate_report",
     "render_conditional_includes",
-    "ENGINE_VERSION",
+    "get_engine_version",
     "_strip_headings_and_code",
     "_tokenize",
     "_shingles",

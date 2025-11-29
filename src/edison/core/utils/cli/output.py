@@ -12,35 +12,12 @@ import os
 import sys
 from typing import Any, Iterable, List, Mapping, Sequence
 
-# Default configuration (hardcoded to avoid circular dependency with ConfigManager)
-DEFAULT_CLI_CONFIG: dict[str, Any] = {
-    "json": {
-        "indent": 2,
-        "sort_keys": True,
-        "ensure_ascii": False,
-    },
-    "table": {
-        "padding": 1,
-        "column_gap": 2,
-    },
-    "confirm": {
-        "assume_yes_env": "",
-        # Note: "default" key is intentionally omitted so function parameters are used
-    },
-    "output": {
-        "success_prefix": "[OK]",
-        "error_prefix": "[ERR]",
-        "warning_prefix": "[WARN]",
-        "use_color": False,
-    },
-}
-
 
 def _cfg() -> dict:
-    """Return CLI configuration, loading from YAML if available.
+    """Return CLI configuration from YAML without fallbacks.
 
-    Tries to load from ConfigManager first, falls back to hardcoded defaults
-    if config is unavailable.
+    Raises:
+        RuntimeError: If config cannot be loaded or cli section is missing
     """
     try:
         from edison.core.config import ConfigManager
@@ -50,13 +27,29 @@ def _cfg() -> dict:
         cfg_manager = ConfigManager(repo_root)
         full_config = cfg_manager.load_config(validate=False)
 
-        if "cli" in full_config:
-            return full_config["cli"]
-    except Exception:
-        # Fall back to defaults if config loading fails
-        pass
+        if "cli" not in full_config:
+            raise RuntimeError(
+                "cli configuration section is missing. "
+                "Add 'cli' section to your YAML config."
+            )
 
-    return DEFAULT_CLI_CONFIG
+        config = full_config["cli"]
+
+        # Validate required subsections
+        required_subsections = ["json", "table", "confirm", "output"]
+        missing_subsections = [s for s in required_subsections if s not in config]
+        if missing_subsections:
+            raise RuntimeError(
+                f"cli configuration missing required subsections: {missing_subsections}"
+            )
+
+        return config
+    except Exception as e:
+        if isinstance(e, RuntimeError):
+            raise
+        raise RuntimeError(
+            f"Failed to load CLI configuration: {e}"
+        ) from e
 
 
 def output_json(data: Any, pretty: bool = True) -> str:
@@ -187,7 +180,6 @@ def success(message: str) -> None:
 
 
 __all__ = [
-    "DEFAULT_CLI_CONFIG",
     "output_json",
     "output_table",
     "confirm",
