@@ -93,7 +93,7 @@ class TaskManager:
         """
         if state:
             return self._repo.list_by_state(state)
-        return self._repo.list_all()
+        return self._repo.get_all()
 
     def find_tasks_by_session(self, session_id: str) -> List[Task]:
         """Find tasks belonging to a session.

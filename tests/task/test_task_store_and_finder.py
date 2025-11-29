@@ -101,6 +101,6 @@ def test_create_and_find_task(tmp_path, monkeypatch):
     assert found.id == "T-123"
 
     # List all tasks
-    all_tasks = repo.list_all()
+    all_tasks = repo.get_all()
     ids = {t.id for t in all_tasks}
     assert "T-123" in ids

@@ -1,6 +1,7 @@
 """Worktree cleanup and archival operations."""
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 from typing import List, Optional
@@ -9,6 +10,8 @@ from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
 from .config_helpers import _config, _resolve_archive_directory
 from .._utils import get_repo_dir
+
+logger = logging.getLogger(__name__)
 
 
 def list_archived_worktrees_sorted() -> List[Path]:
@@ -56,8 +59,8 @@ def archive_worktree(session_id: str, worktree_path: Path, *, dry_run: bool = Fa
             capture_output=True,
             timeout=timeout_prune
         )
-    except Exception:
-        pass
+    except (OSError, RuntimeError, TimeoutError) as e:
+        logger.warning("Failed to clean up worktree reference for %s: %s", session_id, e)
 
     return archived_path
 
@@ -75,8 +78,8 @@ def cleanup_worktree(session_id: str, worktree_path: Path, branch_name: str, del
             capture_output=True,
             timeout=timeout
         )
-    except Exception:
-        pass
+    except (OSError, RuntimeError, TimeoutError) as e:
+        logger.warning("Failed to remove worktree %s: %s", worktree_path, e)
 
     # Delete the branch if requested
     if delete_branch and branch_name:
@@ -88,8 +91,8 @@ def cleanup_worktree(session_id: str, worktree_path: Path, branch_name: str, del
                 capture_output=True,
                 timeout=timeout
             )
-        except Exception:
-            pass
+        except (OSError, RuntimeError, TimeoutError) as e:
+            logger.warning("Failed to delete branch %s: %s", branch_name, e)
 
 
 def remove_worktree(worktree_path: Path, branch_name: Optional[str] = None) -> None:
@@ -105,12 +108,13 @@ def remove_worktree(worktree_path: Path, branch_name: Optional[str] = None) -> N
             capture_output=True,
             timeout=timeout,
         )
-    except Exception:
+    except (OSError, RuntimeError, TimeoutError) as e:
+        logger.warning("Failed to remove worktree %s, attempting manual cleanup: %s", worktree_path, e)
         try:
             if worktree_path.exists():
                 shutil.rmtree(worktree_path, ignore_errors=True)
-        except Exception:
-            pass
+        except OSError as cleanup_err:
+            logger.error("Manual worktree cleanup failed for %s: %s", worktree_path, cleanup_err)
 
     if branch_name:
         try:
@@ -121,8 +125,8 @@ def remove_worktree(worktree_path: Path, branch_name: Optional[str] = None) -> N
                 capture_output=True,
                 timeout=timeout,
             )
-        except Exception:
-            pass
+        except (OSError, RuntimeError, TimeoutError) as e:
+            logger.warning("Failed to delete branch %s: %s", branch_name, e)
 
 
 def prune_worktrees(*, dry_run: bool = False) -> None:

@@ -28,34 +28,36 @@ _SESSION_ID_FILENAME = ".session-id"
 
 def _is_in_worktree() -> bool:
     """Check if current directory is inside a git worktree.
-    
+
     Returns:
         True if in a linked worktree (not the primary checkout).
     """
     try:
         from edison.core.utils.git.worktree import is_worktree
         return is_worktree()
-    except Exception:
+    except (OSError, RuntimeError) as e:
+        logger.debug("Failed to check worktree status: %s", e)
         return False
 
 
 def _get_session_id_file() -> Optional[Path]:
     """Get path to .session-id file if in worktree.
-    
+
     The file is stored in .project/.session-id within the worktree root.
-    
+
     Returns:
         Path to the session ID file, or None if not in worktree.
     """
     if not _is_in_worktree():
         return None
-    
+
     try:
         from edison.core.utils.paths import PathResolver, get_management_paths
         project_root = PathResolver.resolve_project_root()
         mgmt = get_management_paths(project_root)
         return mgmt.get_management_root() / _SESSION_ID_FILENAME
-    except Exception:
+    except (FileNotFoundError, OSError, RuntimeError) as e:
+        logger.debug("Failed to resolve session ID file path: %s", e)
         return None
 
 
@@ -128,7 +130,11 @@ def _session_exists(session_id: str) -> bool:
         from .persistence.repository import SessionRepository
         repo = SessionRepository()
         return repo.exists(session_id)
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.debug("Failed to check session existence for %s: %s", session_id, e)
+        return False
+    except ValueError as e:
+        logger.warning("Invalid session ID %s: %s", session_id, e)
         return False
 
 
@@ -149,7 +155,11 @@ def _auto_session_for_owner() -> Optional[str]:
             if sess.state == "wip":
                 return sess.id
         return None
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.debug("Failed to infer session from process tree: %s", e)
+        return None
+    except ValueError as e:
+        logger.warning("Invalid session data during inference: %s", e)
         return None
 
 

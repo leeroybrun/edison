@@ -79,7 +79,7 @@ def main(args: argparse.Namespace) -> int:
                 next_id = f"{next_id}-{args.prefix}"
         else:
             # Allocate top-level ID using TaskRepository
-            tasks = repo.list_all()
+            tasks = repo.get_all()
             max_id = 0
             for task_entity in tasks:
                 try:

@@ -24,10 +24,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional, Protocol, TYPE_CHECKING
 
-from .engine import RichStateMachine, StateTransitionError
-from .guards import registry as guard_registry
-from .conditions import registry as condition_registry
-from .actions import registry as action_registry
+from .engine import StateTransitionError
 
 if TYPE_CHECKING:
     from edison.core.entity.protocols import StatefulEntity
@@ -63,54 +60,6 @@ class EntityTransitionError(StateTransitionError):
         self.reason = reason
 
 
-def _get_state_machine_for_entity(entity_type: str) -> Optional[RichStateMachine]:
-    """Get state machine configuration for an entity type.
-
-    This is a lazy loader that avoids circular imports by importing
-    config modules only when needed.
-
-    Args:
-        entity_type: Entity type ("task", "session", "qa")
-
-    Returns:
-        RichStateMachine instance or None if not configured
-    """
-    # Import config lazily to avoid circular imports
-    try:
-        if entity_type == "task":
-            from edison.core.config.domains import TaskConfig
-            cfg = TaskConfig()
-            spec = (cfg._state_machine if hasattr(cfg, "_state_machine") else {})
-            task_spec = (spec.get("task") if isinstance(spec, dict) else {}) or {}
-            return RichStateMachine(
-                "task", task_spec, guard_registry, condition_registry, action_registry
-            )
-        elif entity_type == "session":
-            # Build session state machine directly from config, avoiding circular import
-            from edison.core.config.domains.session import SessionConfig
-            cfg = SessionConfig()
-            state_config = cfg._state_config or {}
-            session_spec = state_config.get("session", {})
-            return RichStateMachine(
-                "session",
-                session_spec,
-                guard_registry,
-                condition_registry,
-                action_registry,
-            )
-        elif entity_type == "qa":
-            # QA uses task state machine by default
-            from edison.core.config.domains import TaskConfig
-            cfg = TaskConfig()
-            spec = (cfg._state_machine if hasattr(cfg, "_state_machine") else {})
-            qa_spec = (spec.get("qa") if isinstance(spec, dict) else {}) or {}
-            return RichStateMachine(
-                "qa", qa_spec, guard_registry, condition_registry, action_registry
-            )
-    except ImportError:
-        pass
-
-    return None
 
 
 def validate_transition(
@@ -121,6 +70,8 @@ def validate_transition(
     context: Optional[Mapping[str, Any]] = None,
 ) -> tuple[bool, str]:
     """Validate a state transition without executing it.
+
+    This function delegates to StateValidator for canonical validation logic.
 
     Args:
         entity_type: Entity type ("task", "session", "qa")
@@ -137,30 +88,25 @@ def validate_transition(
 
     if from_state == to_state:
         return True, ""
-    
-    machine = _get_state_machine_for_entity(entity_type)
-    if machine is None:
+
+    # Delegate to StateValidator as the canonical validation entry point
+    from edison.core.state.validator import StateValidator, MissingStateMachine
+
+    try:
+        validator = StateValidator()
+        validator.ensure_transition(
+            entity=entity_type,
+            current=from_state,
+            target=to_state,
+            context=context,
+        )
+        return True, ""
+    except MissingStateMachine:
         # No state machine configured - allow all transitions
         return True, ""
-    
-    # Check if transition is allowed by state machine
-    try:
-        # Check if target state is in allowed transitions from current state
-        allowed = machine.allowed_targets(from_state)
-        if to_state not in allowed:
-            return False, f"Transition from {from_state} to {to_state} not allowed"
-        
-        # Validate guards and conditions
-        valid = machine.validate(
-            from_state, 
-            to_state, 
-            context=dict(context or {}),
-            execute_actions=False  # Don't execute actions during validation
-        )
-        if not valid:
-            return False, f"Transition guards/conditions failed for {from_state} -> {to_state}"
-        return True, ""
     except StateTransitionError as e:
+        return False, str(e)
+    except Exception as e:
         return False, str(e)
 
 
@@ -229,14 +175,20 @@ def transition_entity(
         result["history_entry"] = history_entry
     
     # Execute actions for the target state (if machine exists)
-    machine = _get_state_machine_for_entity(entity_type)
-    if machine is not None:
-        try:
-            # Validate and execute actions
-            machine.validate(from_state, to_state, context=ctx, execute_actions=True)
-        except StateTransitionError:
-            # Already validated, so this shouldn't happen
-            pass
+    # Use StateValidator's machine for action execution
+    from edison.core.state.validator import StateValidator, MissingStateMachine
+
+    try:
+        validator = StateValidator()
+        machine = validator._machine(entity_type)
+        # Validate and execute actions
+        machine.validate(from_state, to_state, context=ctx, execute_actions=True)
+    except MissingStateMachine:
+        # No state machine configured - skip action execution
+        pass
+    except StateTransitionError:
+        # Already validated, so this shouldn't happen
+        pass
     
     # Record any executed actions in result
     if "_actions" in ctx:

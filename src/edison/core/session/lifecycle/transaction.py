@@ -63,9 +63,10 @@ def _sid_dir(session_id: str) -> Path:
         repo = SessionRepository()
         json_path = repo.get_session_json_path(session_id)
         return json_path.parent
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
         # Fallback: If session doesn't exist yet, use default "wip" state location
         # This allows validation transactions to work even before session is fully initialized
+        logger.debug("Session directory not found for %s, using default: %s", session_id, e)
         mgmt_paths = get_management_paths(PathResolver.resolve_project_root())
         default_dir = mgmt_paths.get_session_state_dir("wip") / validate_session_id(session_id)
         ensure_directory(default_dir)
@@ -97,7 +98,7 @@ def _append_tx_log(session_id: str, tx_id: str, action: str, message: str = "", 
                 f.flush()
                 os.fsync(f.fileno())
     except SystemExit:
-        pass
+        raise
 
 def begin_tx(
     session_id: str,
@@ -137,8 +138,8 @@ def begin_tx(
         )
     try:
         _append_tx_log(sid, tx_id, "begin", message=f"{payload['domain']}:{payload['record_id']}", wave=None)
-    except Exception:
-        pass
+    except (OSError, RuntimeError) as e:
+        logger.warning("Failed to append transaction log for %s: %s", tx_id, e)
     return tx_id
 
 def finalize_tx(session_id: str, tx_id: str) -> None:
@@ -212,13 +213,15 @@ def session_transaction(
     )
     try:
         yield tx_id
+    except SystemExit:
+        raise
     except Exception:
         try:
             rollback_tx(tx_id)
         except SystemExit:
             raise
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to rollback transaction %s: %s", tx_id, e)
         raise
     else:
         commit_tx(tx_id)
@@ -259,7 +262,8 @@ class ValidationTransaction:
         mgmt_paths = get_management_paths(self.final_root)
         try:
             self._mgmt_rel = mgmt_paths.get_management_root().relative_to(self.final_root)
-        except Exception:
+        except ValueError as e:
+            logger.debug("Management root not relative to final root, using name only: %s", e)
             self._mgmt_rel = Path(mgmt_paths.get_management_root().name)
         self._committed = False
         self._aborted = False
@@ -305,11 +309,15 @@ class ValidationTransaction:
                             "size": st.st_size,
                             "mtime": int(st.st_mtime),
                         })
-                    except Exception:
-                        pass
+                    except (OSError, ValueError) as e:
+                        logger.debug("Failed to stat file %s: %s", p, e)
         try:
             meta = io_read_json(self.meta_path)
-        except Exception:
+        except (FileNotFoundError, OSError) as e:
+            logger.debug("Failed to read transaction metadata: %s", e)
+            meta = {}
+        except ValueError as e:
+            logger.warning("Invalid transaction metadata JSON: %s", e)
             meta = {}
         meta["preManifest"] = manifest
         io_write_json_atomic(self.meta_path, meta)
@@ -355,8 +363,8 @@ class ValidationTransaction:
         # Release lock
         try:
             self._lock_cm.__exit__(None, None, None)
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to release validation transaction lock after commit: %s", e)
 
     def abort(self, reason: str = "") -> None:
         if self._committed or self._aborted:
@@ -376,8 +384,8 @@ class ValidationTransaction:
         # Release lock
         try:
             self._lock_cm.__exit__(None, None, None)
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to release validation transaction lock during abort: %s", e)
 
     def rollback(self) -> None:
         self.abort("rollback")

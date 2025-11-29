@@ -3,12 +3,17 @@ Rule-specific checker implementations.
 
 This module contains specialized checker functions for individual rules.
 Each checker validates whether a task satisfies specific rule requirements.
+
+Architecture:
+- Each checker is a function that takes (task, rule) and returns bool
+- Checkers are registered in a global registry by rule ID
+- The RulesEngine uses the registry instead of hardcoded dispatch
 """
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_management_paths
@@ -18,6 +23,44 @@ from .errors import RuleViolationError
 
 if TYPE_CHECKING:
     from ..qa.evidence import EvidenceService
+
+# Type alias for checker functions
+RuleChecker = Callable[[Dict[str, Any], Rule], bool]
+
+# Global registry mapping rule IDs to checker functions
+_RULE_CHECKERS: Dict[str, RuleChecker] = {}
+
+
+def register_checker(rule_id: str) -> Callable[[RuleChecker], RuleChecker]:
+    """Decorator to register a rule checker function.
+
+    Args:
+        rule_id: The rule ID this checker handles
+
+    Returns:
+        Decorator function
+
+    Example:
+        @register_checker("task-definition-complete")
+        def check_task_definition(task: Dict, rule: Rule) -> bool:
+            return bool(task.get("acceptanceCriteria"))
+    """
+    def decorator(func: RuleChecker) -> RuleChecker:
+        _RULE_CHECKERS[rule_id] = func
+        return func
+    return decorator
+
+
+def get_checker(rule_id: str) -> Optional[RuleChecker]:
+    """Get the checker function for a rule ID.
+
+    Args:
+        rule_id: The rule ID to look up
+
+    Returns:
+        Checker function if registered, None otherwise
+    """
+    return _RULE_CHECKERS.get(rule_id)
 
 
 def _load_json_safe(path: Path) -> Dict[str, Any]:
@@ -185,6 +228,33 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
     return True
 
 
+@register_checker("task-definition-complete")
+def check_task_definition_complete(task: Dict[str, Any], rule: Rule) -> bool:
+    """Check if task has acceptance criteria defined."""
+    return bool(task.get("acceptanceCriteria"))
+
+
+@register_checker("all-tests-pass")
+def check_all_tests_pass(task: Dict[str, Any], rule: Rule) -> bool:
+    """Check if all tests pass for the task."""
+    test_status = task.get("testStatus", {})
+    return bool(test_status.get("allPass", False))
+
+
+@register_checker("coverage-threshold")
+def check_coverage_threshold(task: Dict[str, Any], rule: Rule) -> bool:
+    """Check if code coverage meets the threshold."""
+    coverage = task.get("coverage", {})
+    return bool(coverage.get("meetsThreshold", False))
+
+
+# Alias for backward compatibility - validator-approval uses the existing function
+_RULE_CHECKERS["validator-approval"] = check_validator_approval
+
+
 __all__ = [
     "check_validator_approval",
+    "register_checker",
+    "get_checker",
+    "RuleChecker",
 ]

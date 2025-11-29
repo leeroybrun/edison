@@ -11,6 +11,7 @@ Design principles:
 from __future__ import annotations
 
 import fnmatch
+import logging
 import os
 import re
 import sys
@@ -26,6 +27,8 @@ from edison.core.qa.evidence import EvidenceService
 from edison.core.utils.git import get_changed_files
 from edison.core.qa._utils import parse_primary_files
 from edison.core.config.domains.context7 import Context7Config
+
+logger = logging.getLogger(__name__)
 
 
 def _load_triggers() -> Dict[str, List[str]]:
@@ -83,10 +86,15 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
 
                 if path.suffix == ".yml" or path.suffix == ".yaml":
                     return read_yaml(path, raise_on_error=True) or {}
-                
+
                 return read_json(path)
-            except Exception:
-                # Treat unreadable config as missing in fail_closed mode
+            except (FileNotFoundError, OSError) as e:
+                logger.debug("Config file not readable at %s: %s", path, e)
+                if fail_closed:
+                    raise SystemExit("Context7 config invalid or unreadable")
+                return {}
+            except ValueError as e:
+                logger.error("Invalid YAML/JSON in config file %s: %s", path, e)
                 if fail_closed:
                     raise SystemExit("Context7 config invalid or unreadable")
                 return {}
@@ -120,7 +128,8 @@ def _parse_primary_files(task_path: Path) -> List[str]:
     """
     try:
         text = task_path.read_text(errors="ignore")
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.debug("Failed to read task file %s: %s", task_path, e)
         return []
 
     return parse_primary_files(text)
@@ -140,8 +149,8 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
                 path = base / state / task_path.name
                 if path.exists():
                     candidates.extend(_parse_primary_files(path))
-    except Exception:
-        pass
+    except (FileNotFoundError, OSError, RuntimeError) as e:
+        logger.debug("Failed to scan task states: %s", e)
 
     # Worktree scan (session-aware)
     try:
@@ -150,7 +159,8 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
             diff_files: List[Path] = []
             try:
                 diff_files = get_changed_files(wt_path, session_id=None)
-            except Exception:
+            except (OSError, RuntimeError) as e:
+                logger.debug("Failed to get changed files from worktree: %s", e)
                 diff_files = []
             if diff_files:
                 candidates.extend([p.as_posix() for p in diff_files])
@@ -165,8 +175,8 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
                         for ext in (".ts", ".tsx", ".jsx", ".prisma", ".sql")
                     ) or "prisma/" in rel or "app/" in rel:
                         candidates.append(rel)
-    except Exception:
-        pass
+    except (OSError, ValueError, RuntimeError) as e:
+        logger.debug("Failed to scan worktree for candidate files: %s", e)
 
     return candidates
 
@@ -221,10 +231,11 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
                                 if re.search(search_pattern, content):
                                     packages.add(_normalize(pkg))
                                     break
-                        except Exception:
+                        except (OSError, UnicodeDecodeError) as e:
+                            logger.debug("Failed to read file %s for content detection: %s", file_path, e)
                             continue
-    except Exception:
-        pass
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.debug("Failed to perform content-based package detection: %s", e)
 
     return packages
 
@@ -261,7 +272,8 @@ def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:
         try:
             if not _marker_valid(path.read_text()):
                 missing.append(pkg)
-        except Exception:
+        except (FileNotFoundError, OSError, UnicodeDecodeError) as e:
+            logger.warning("Failed to read marker file %s: %s", path, e)
             missing.append(pkg)
     return missing
 

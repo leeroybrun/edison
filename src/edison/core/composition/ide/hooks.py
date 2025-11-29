@@ -139,12 +139,8 @@ class HookComposer(IDEComposerBase):
     def _merge_from_file(self, merged: Dict[str, Dict[str, Any]], path: Path) -> Dict[str, Dict[str, Any]]:
         """Load hook definitions from ``path`` and merge into ``merged`` by id."""
         data = self._load_yaml_hooks(path)
-        for hook_id, raw in data.items():
-            if not isinstance(raw, dict):
-                continue
-            existing = merged.get(hook_id, {})
-            merged[hook_id] = self.cfg_mgr.deep_merge(existing, raw)
-        return merged
+        # Use base class generic merge method (handles dict-based definitions)
+        return self._merge_definitions(merged, data)
 
     def _load_yaml_hooks(self, path: Path) -> Dict[str, Dict[str, Any]]:
         """Load hook ``definitions`` mapping from YAML path (empty when missing)."""

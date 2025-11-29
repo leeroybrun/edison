@@ -57,7 +57,7 @@ def main(args: argparse.Namespace) -> int:
         if args.status:
             entities = repo.list_by_state(args.status)
         else:
-            entities = repo.list_all()
+            entities = repo.get_all()
 
         # Filter by session if specified
         if session_id:

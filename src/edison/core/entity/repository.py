@@ -214,15 +214,6 @@ class BaseRepository(BaseEntityManager[T]):
         """
         pass
     
-    def list_all(self) -> List[T]:
-        """List all entities.
-        
-        Alias for get_all() for backward compatibility.
-        
-        Returns:
-            List of all entities
-        """
-        return self._do_list_all()
     
     @abstractmethod
     def _do_list_all(self) -> List[T]:

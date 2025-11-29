@@ -405,9 +405,7 @@ class RulesEngine:
 
     def _check_rule(self, task: Dict[str, Any], rule: Rule) -> bool:
         """
-        Check if task satisfies a rule.
-
-        This is a basic implementation. Extend with specific checkers.
+        Check if task satisfies a rule using the checker registry.
 
         Args:
             task: Task object
@@ -416,24 +414,11 @@ class RulesEngine:
         Returns:
             True if rule is satisfied, False otherwise
         """
-        # Basic rule checking logic
-        # Can be extended with rule-specific validators
+        # Use registry-based dispatch instead of hardcoded if-else
+        checker = checkers.get_checker(rule.id)
 
-        if rule.id == "task-definition-complete":
-            return bool(task.get("acceptanceCriteria"))
-
-        if rule.id == "all-tests-pass":
-            # Check test results (would integrate with TDD system)
-            test_status = task.get("testStatus", {})
-            return bool(test_status.get("allPass", False))
-
-        if rule.id == "coverage-threshold":
-            # Check coverage (would integrate with TDD system)
-            coverage = task.get("coverage", {})
-            return bool(coverage.get("meetsThreshold", False))
-
-        if rule.id == "validator-approval":
-            return checkers.check_validator_approval(task, rule)
+        if checker is not None:
+            return checker(task, rule)
 
         # Default: conservative failure when rule is not explicitly handled.
         # This ensures new rules produce at least a warning until a checker exists.

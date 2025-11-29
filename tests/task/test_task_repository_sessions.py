@@ -107,23 +107,23 @@ def test_get_task_from_session_directory(repo_env):
     assert task.title == "Session Task"
 
 def test_list_all_includes_session_tasks(repo_env):
-    """Test that TaskRepository.list_all() includes tasks from global and session dirs."""
+    """Test that TaskRepository.get_all() includes tasks from global and session dirs."""
     # 1. Create global task
     global_task_path = repo_env / ".project" / "tasks" / "todo" / "T-GLOBAL-1.md"
     create_markdown_task(global_task_path, "T-GLOBAL-1", "Global Task")
-    
+
     # 2. Create session 1 task
     sess1_path = repo_env / ".project" / "sessions" / "wip" / "sess-1" / "tasks" / "wip" / "T-SESS-1.md"
     create_markdown_task(sess1_path, "T-SESS-1", "Session 1 Task", "sess-1")
-    
+
     # 3. Create session 2 task
     sess2_path = repo_env / ".project" / "sessions" / "wip" / "sess-2" / "tasks" / "todo" / "T-SESS-2.md"
     create_markdown_task(sess2_path, "T-SESS-2", "Session 2 Task", "sess-2")
-    
+
     repo = TaskRepository(project_root=repo_env)
-    
+
     # This should fail as it will only find the global task
-    tasks = repo.list_all()
+    tasks = repo.get_all()
     
     task_ids = {t.id for t in tasks}
     assert "T-GLOBAL-1" in task_ids

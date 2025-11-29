@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import logging
 import importlib.util as _importlib_util
 from typing import Any, Dict, Optional
 from pathlib import Path
@@ -9,6 +10,8 @@ from pathlib import Path
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
 from .._config import get_config, reset_config_cache
+
+logger = logging.getLogger(__name__)
 
 
 def _session_config():
@@ -78,10 +81,15 @@ def _load_database_adapter_module(db_cfg: Optional[Dict[str, Any]] = None) -> Op
         module = _importlib_util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-        except Exception:
+        except (ImportError, AttributeError, SyntaxError) as e:
+            logger.warning("Failed to load database adapter module %s: %s", adapter_name, e)
             return None
         return module
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.debug("Database adapter not found at %s: %s", adapter_path if 'adapter_path' in locals() else 'unknown', e)
+        return None
+    except ValueError as e:
+        logger.warning("Invalid database adapter configuration: %s", e)
         return None
 
 
@@ -112,7 +120,11 @@ def create_session_database(session_id: str) -> Optional[str]:
             repo_dir=repo_dir,
             worktree_config=config,
         )
-    except Exception:
+    except (OSError, RuntimeError) as e:
+        logger.error("Failed to create session database for %s: %s", session_id, e)
+        return None
+    except ValueError as e:
+        logger.error("Invalid database configuration for session %s: %s", session_id, e)
         return None
 
 
@@ -140,5 +152,7 @@ def drop_session_database(session_id: str) -> None:
             repo_dir=repo_dir,
             worktree_config=wt_config,
         )
-    except Exception:
-        return
+    except (OSError, RuntimeError) as e:
+        logger.warning("Failed to drop session database for %s: %s", session_id, e)
+    except ValueError as e:
+        logger.error("Invalid database configuration for session %s: %s", session_id, e)

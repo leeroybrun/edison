@@ -389,7 +389,7 @@ def test_get_searches_all_states(repo_env):
 # ========================================
 
 def test_list_all_compatible_with_list_records(repo_env):
-    """TaskRepository.list_all() provides similar output to finder.list_records()."""
+    """TaskRepository.get_all() provides similar output to finder.list_records()."""
     # Arrange
     create_markdown_task(
         repo_env / ".project" / "tasks" / "todo" / "T-1.md",
@@ -405,7 +405,7 @@ def test_list_all_compatible_with_list_records(repo_env):
     )
 
     repo = TaskRepository(project_root=repo_env)
-    tasks = repo.list_all()
+    tasks = repo.get_all()
 
     # Assert: Should find all 3 tasks (global + session)
     assert len(tasks) == 3

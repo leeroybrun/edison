@@ -204,13 +204,8 @@ class CommandComposer(IDEComposerBase):
     def _merge_from_file(self, merged: Dict[str, Dict], path: Path) -> Dict[str, Dict]:
         """Load YAML commands from ``path`` and merge into ``merged`` by id."""
         data = self._load_yaml_commands(path)
-        for raw in data:
-            cmd_id = raw.get("id")
-            if not cmd_id:
-                continue
-            existing = merged.get(cmd_id, {})
-            merged[cmd_id] = self.cfg_mgr.deep_merge(existing, raw)
-        return merged
+        # Use base class generic merge method
+        return self._merge_definitions(merged, data, key_getter=lambda d: d.get("id"))
 
     def _load_yaml_commands(self, path: Path) -> List[Dict]:
         """Load command ``definitions`` list from YAML path (empty when missing)."""

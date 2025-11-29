@@ -46,7 +46,8 @@ def _parse_iso_utc(ts: str) -> Optional[datetime]:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
-    except Exception:
+    except (ValueError, TypeError) as e:
+        logger.debug("Failed to parse timestamp '%s': %s", ts, e)
         return None
 
 def _session_meta_times(session: dict) -> tuple[Optional[datetime], Optional[datetime], Optional[datetime]]:
@@ -69,7 +70,11 @@ def is_session_expired(session_id: str) -> bool:
         if not session_entity:
             return True
         sess = session_entity.to_dict()
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.warning("Failed to load session %s: %s", session_id, e)
+        return True
+    except ValueError as e:
+        logger.error("Invalid session data for %s: %s", session_id, e)
         return True
     ref = _effective_activity_time(sess)
     if ref is None:
@@ -110,8 +115,10 @@ def append_session_log(session_id: str, message: str) -> None:
         from .models import Session
         updated_entity = Session.from_dict(sess)
         repo.save(updated_entity)
-    except Exception:
-        pass
+    except (FileNotFoundError, OSError) as e:
+        logger.warning("Failed to append session log for %s: %s", session_id, e)
+    except ValueError as e:
+        logger.error("Invalid session data for %s: %s", session_id, e)
 
 def restore_records_to_global_transactional(session_id: str) -> int:
     """Restore all session-scoped records back to global queues."""
@@ -193,13 +200,13 @@ def restore_records_to_global_transactional(session_id: str) -> int:
                 ensure_directory(rec["src"].parent)
                 moved_back = safe_move_file(rec["dest"], rec["src"])
                 logger.warning("Rollback restored %s to %s", rec["dest"], moved_back)
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error("Rollback failed for %s: %s", rec["dest"], e)
                 continue
         try:
             abort_tx(sid, tx_id, reason="rollback-restore")
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to abort transaction %s: %s", tx_id, e)
         # Surface a clear rollback marker for callers/tests
         raise RuntimeError(f"Rolled back restore for session {sid}") from exc
 
@@ -268,7 +275,11 @@ def handle_timeout(sess_dir: Path) -> Path:
     orig = {}
     try:
         orig = read_json(_session_json_path(sess_dir))
-    except Exception:
+    except (FileNotFoundError, OSError) as e:
+        logger.warning("Failed to read session.json for %s: %s", sess_dir, e)
+        orig = {}
+    except ValueError as e:
+        logger.error("Invalid session.json for %s: %s", sess_dir, e)
         orig = {}
 
     rec_dir = get_sessions_root() / 'recovery' / sess_dir.name
@@ -334,7 +345,11 @@ def detect_incomplete_transactions() -> List[Dict[str, Any]]:
 
             try:
                 meta = io_read_json(meta_path)
-            except Exception:
+            except (FileNotFoundError, OSError) as e:
+                logger.debug("Failed to read meta.json for %s: %s", tx_dir, e)
+                continue
+            except ValueError as e:
+                logger.warning("Invalid meta.json for %s: %s", tx_dir, e)
                 continue
 
             tx_id = meta.get("txId")
@@ -394,7 +409,11 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
 
         try:
             meta = io_read_json(meta_path)
-        except Exception:
+        except (FileNotFoundError, OSError) as e:
+            logger.debug("Failed to read meta.json for %s: %s", tx_dir, e)
+            continue
+        except ValueError as e:
+            logger.warning("Invalid meta.json for %s: %s", tx_dir, e)
             continue
 
         tx_id = meta.get("txId")
@@ -459,7 +478,8 @@ def clear_session_locks(session_id: str) -> List[str]:
     sid = validate_session_id(session_id)
     try:
         root = PathResolver.resolve_project_root()
-    except Exception:
+    except (FileNotFoundError, OSError, RuntimeError) as e:
+        logger.warning("Failed to resolve project root: %s", e)
         return []
 
     lock_dir = root / ".project" / "locks"
@@ -491,7 +511,8 @@ def clear_all_locks(force: bool = False) -> List[str]:
 
     try:
         root = PathResolver.resolve_project_root()
-    except Exception:
+    except (FileNotFoundError, OSError, RuntimeError) as e:
+        logger.warning("Failed to resolve project root: %s", e)
         return []
 
     lock_dir = root / ".project" / "locks"
