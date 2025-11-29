@@ -4,25 +4,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from edison.core.task import TaskRepository
 from ...session import manager as session_manager
-from edison.core.config.domains import qa as qa_config
+from edison.core.config.domains.qa import QAConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.qa._utils import parse_primary_files
 
-__all__ = ["build_validator_roster", "_detect_validators_from_git_diff", "_files_for_task", "_primary_files_from_doc", "_task_type_from_doc"]
+__all__ = ["build_validator_roster", "_detect_validators_from_git_diff", "_files_for_task", "_task_type_from_doc"]
 
 def _task_type_from_doc(text: str) -> Optional[str]:
     for line in text.splitlines():
         if "Task Type:" in line:
             return line.split(":", 1)[1].strip().split()[0].lower()
     return None
-
-def _primary_files_from_doc(text: str) -> List[str]:
-    """Extract primary files from task markdown text.
-
-    This is a thin wrapper around the shared parse_primary_files() utility
-    for backward compatibility with existing callers.
-    """
-    return parse_primary_files(text)
 
 def _files_for_task(task_id: str) -> List[str]:
     """Extract primary files from a task by ID.
@@ -56,7 +48,7 @@ def _detect_validators_from_git_diff(session_id: str) -> List[str]:
         return []
     if not changed_files:
         return []
-    cfg = qa_config.load_validation_config()
+    cfg = QAConfig().validation_config
     roster = cfg.get("roster") if isinstance(cfg.get("roster"), dict) else {}
     specialized = (roster.get("specialized") or []) if isinstance(roster, dict) else []
     triggered: List[str] = []
@@ -83,7 +75,7 @@ def _entry(v: Dict[str, Any], *, default_priority: int, blocking: bool, reason: 
     return entry
 
 def build_validator_roster(task_id: str, session_id: Optional[str] = None, *, validators_cfg: Optional[Dict[str, Any]] = None, manifest: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    raw_cfg = validators_cfg if validators_cfg is not None else qa_config.load_validation_config()
+    raw_cfg = validators_cfg if validators_cfg is not None else QAConfig().validation_config
     if not raw_cfg:
         return {"error": "Could not load validator configs"}
     cfg = raw_cfg if isinstance(raw_cfg, dict) else {}
@@ -113,7 +105,7 @@ def build_validator_roster(task_id: str, session_id: Optional[str] = None, *, va
         info = _entry(v, default_priority=3, blocking=v.get("blocksOnFail", False), reason=reason, detection_method=detection_method, include_focus=True)
         (triggered_blocking if v.get("blocksOnFail") else triggered_optional).append(info)
     manifest_cap = (manifest.get("orchestration", {}) or {}).get("maxConcurrentAgents") if isinstance(manifest, dict) else None
-    max_concurrent = int(manifest_cap) if manifest_cap is not None else qa_config.max_concurrent_validators()
+    max_concurrent = int(manifest_cap) if manifest_cap is not None else QAConfig().get_max_concurrent_validators()
     total_blocking = len(always_required) + len(triggered_blocking)
     decision_points: List[str] = []
     if total_blocking > max_concurrent:

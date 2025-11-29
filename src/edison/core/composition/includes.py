@@ -99,10 +99,6 @@ def _normalize_include_target(raw: str, base_file: Path) -> Path:
 
 _INCLUDE_RE = re.compile(r"\{\{\s*include:([^}]+)\}\}")
 _INCLUDE_OPT_RE = re.compile(r"\{\{\s*include-optional:([^}]+)\}\}")
-# T-016: Kept for backward compatibility with validator.py (not used in resolve_includes)
-_SAFE_INCLUDE_RE = re.compile(
-    r"\{\{\s*safe_include\(\s*['\"]([^'\"]+)['\"]\s*,\s*fallback=['\"][^'\"]*['\"]\s*\)\s*\}\}"
-)
 
 
 def resolve_includes(
@@ -243,12 +239,10 @@ def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: s
 def validate_composition(text: str) -> None:
     if not text.strip():
         raise ComposeError("Composed prompt is empty after processing.")
-    # Ensure obvious compose markers present (support both legacy and template-based composition)
-    has_legacy_marker = "# Core Edison Principles" in text
     # Check for validator-related keywords (case-insensitive)
     text_lower = text[:1000].lower()
     has_validator_marker = "validator" in text_lower or "validation" in text_lower
-    if not has_legacy_marker and not has_validator_marker:
+    if not has_validator_marker:
         raise ComposeError("Missing core section marker in composed prompt.")
 
 

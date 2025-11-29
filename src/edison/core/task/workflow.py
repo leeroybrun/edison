@@ -95,14 +95,14 @@ class TaskQAWorkflow:
             TaskStateError: If task already exists
         """
         from edison.core.exceptions import TaskStateError
-        from edison.core.config import get_semantic_state
+        from edison.core.config.domains.workflow import WorkflowConfig
 
         # Check if task already exists
         if self.task_repo.exists(task_id):
             raise TaskStateError(f"Task {task_id} already exists")
 
         # Determine initial state
-        todo_state = get_semantic_state("task", "todo")
+        todo_state = WorkflowConfig().get_semantic_state("task", "todo")
 
         # Create task entity
         task = Task.create(
@@ -154,7 +154,7 @@ class TaskQAWorkflow:
         Raises:
             PersistenceError: If task not found or invalid state
         """
-        from edison.core.config import get_semantic_state
+        from edison.core.config.domains.workflow import WorkflowConfig
 
         # 1. Load task
         task = self.task_repo.get(task_id)
@@ -162,12 +162,13 @@ class TaskQAWorkflow:
             raise PersistenceError(f"Task not found: {task_id}")
 
         # Check valid state
-        done_state = get_semantic_state("task", "done")
-        validated_state = get_semantic_state("task", "validated")
+        workflow_config = WorkflowConfig()
+        done_state = workflow_config.get_semantic_state("task", "done")
+        validated_state = workflow_config.get_semantic_state("task", "validated")
         if task.state in (done_state, validated_state):
             raise PersistenceError(f"Task {task_id} is already {task.state}")
 
-        wip_state = get_semantic_state("task", "wip")
+        wip_state = workflow_config.get_semantic_state("task", "wip")
 
         # 2. Update task entity
         old_state = task.state
@@ -212,14 +213,15 @@ class TaskQAWorkflow:
         Raises:
             PersistenceError: If task not found or invalid state
         """
-        from edison.core.config import get_semantic_state
+        from edison.core.config.domains.workflow import WorkflowConfig
 
         # 1. Load task
         task = self.task_repo.get(task_id)
         if not task:
             raise PersistenceError(f"Task not found: {task_id}")
 
-        wip_state = get_semantic_state("task", "wip")
+        workflow_config = WorkflowConfig()
+        wip_state = workflow_config.get_semantic_state("task", "wip")
 
         # Validation: Must be in WIP
         if task.state != wip_state:
@@ -233,7 +235,7 @@ class TaskQAWorkflow:
                 f"Task {task_id} is claimed by '{task.session_id}' (cannot complete from '{session_id}')"
             )
 
-        done_state = get_semantic_state("task", "done")
+        done_state = workflow_config.get_semantic_state("task", "done")
 
         # 2. Update task entity
         old_state = task.state
@@ -261,7 +263,7 @@ class TaskQAWorkflow:
             task: Task entity
         """
         from edison.core.qa.models import QARecord
-        from edison.core.config import get_semantic_state
+        from edison.core.config.domains.workflow import WorkflowConfig
 
         qa_id = f"{task.id}-qa"
 
@@ -269,7 +271,7 @@ class TaskQAWorkflow:
         if self.qa_repo.exists(qa_id):
             return
 
-        waiting_state = get_semantic_state("qa", "waiting")
+        waiting_state = WorkflowConfig().get_semantic_state("qa", "waiting")
 
         qa = QARecord(
             id=qa_id,
@@ -317,14 +319,14 @@ class TaskQAWorkflow:
 
     def _advance_qa_for_completion(self, task_id: str, session_id: str) -> None:
         """Advance QA state when task is completed."""
-        from edison.core.config import get_semantic_state
+        from edison.core.config.domains.workflow import WorkflowConfig
 
         qa_id = f"{task_id}-qa"
 
         qa = self.qa_repo.get(qa_id)
         if qa:
             # waiting -> todo
-            todo_state = get_semantic_state("qa", "todo")
+            todo_state = WorkflowConfig().get_semantic_state("qa", "todo")
             self.qa_repo.advance_state(qa_id, todo_state, session_id)
 
             # Update QA status in session

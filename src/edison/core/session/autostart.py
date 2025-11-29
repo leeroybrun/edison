@@ -70,7 +70,6 @@ class SessionAutoStart:
         prompt_path: Optional[Path | str] = None,
         detach: bool = False,
         no_worktree: bool = False,
-        naming_strategy: Optional[str] = None,
         dry_run: bool = False,
         launch_orchestrator: bool = True,
         persist_dry_run: bool = False,
@@ -126,9 +125,7 @@ class SessionAutoStart:
             self.session_manager.create_session(
                 session_id=session_id,
                 metadata=metadata,
-                process=process,
                 owner=profile,
-                naming_strategy=naming_strategy,
             )
             session_created = True
 

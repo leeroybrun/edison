@@ -174,7 +174,7 @@ class Session:
                 "owner": self.owner,
                 "createdAt": self.metadata.created_at,
                 "lastActive": self.metadata.updated_at,
-                "status": self._state_to_status(self.state),
+                "status": self.state,
             },
             "ready": self.ready,
         }
@@ -198,18 +198,7 @@ class Session:
             data["stateHistory"] = [h.to_dict() for h in self.state_history]
         
         return data
-    
-    def _state_to_status(self, state: str) -> str:
-        """Map state to legacy status field."""
-        mapping = {
-            "active": "wip",
-            "wip": "wip",
-            "done": "done",
-            "validated": "validated",
-            "closing": "done",
-        }
-        return mapping.get(state, state)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Session":
         """Create Session from dictionary representation."""

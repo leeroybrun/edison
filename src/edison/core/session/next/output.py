@@ -20,7 +20,7 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
     lines.append(f"═══ Session {payload['sessionId']} – Next Steps ═══\n")
 
     # Show applicable rules FIRST (proactive, not just at enforcement)
-    if payload.get("rulesEngine") or payload.get("rulesExpanded"):
+    if payload.get("rulesEngine"):
         lines.append("📋 APPLICABLE RULES (read FIRST):")
 
         # Context-aware rules from RulesEngine
@@ -31,19 +31,6 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
             for r in rules_list:
                 blocking = " (blocking)" if r.get("blocking") else ""
                 lines.append(f"    - {r['id']}{blocking}: {r.get('description','')}")
-
-        # Legacy expanded rules from registry (kept for backwards compatibility)
-        if payload.get("rulesExpanded"):
-            if re_summary:
-                lines.append("\n  Registry Rules:")
-            for rule in payload["rulesExpanded"]:
-                lines.append(f"\n  {rule['id']} - {rule.get('title', 'N/A')}")
-                lines.append(f"  Source: {rule.get('sourcePath', 'N/A')}")
-                if rule.get("content"):
-                    # Show first 2 lines of rule content
-                    content_lines = rule["content"].split("\n")[:2]
-                    for line in content_lines:
-                        lines.append(f"    {line}")
         lines.append("")
 
     # Show actions with enhanced details

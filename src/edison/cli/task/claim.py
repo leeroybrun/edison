@@ -60,7 +60,7 @@ def main(args: argparse.Namespace) -> int:
     from edison.core.task import TaskQAWorkflow, normalize_record_id
     from edison.core.session import manager as session_manager
     from edison.core.session import validate_session_id
-    from edison.core.config.domains.project import get_project_owner
+    from edison.core.config.domains.project import ProjectConfig
 
     try:
         # Resolve project root
@@ -84,7 +84,7 @@ def main(args: argparse.Namespace) -> int:
             raise ValueError("No session specified and no current session found. Use --session to specify one.")
 
         # Get owner
-        owner = args.owner or get_project_owner()
+        owner = args.owner or ProjectConfig().get_owner_or_user()
 
         # Use TaskQAWorkflow for claiming (handles state transition and persistence)
         workflow = TaskQAWorkflow(project_root=project_root)
@@ -109,7 +109,7 @@ def main(args: argparse.Namespace) -> int:
         else:
             # QA claim - use QA repository directly
             from edison.core.qa.repository import QARepository
-            from edison.core.config import get_semantic_state
+            from edison.core.config.domains.workflow import WorkflowConfig
 
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)
@@ -117,7 +117,7 @@ def main(args: argparse.Namespace) -> int:
                 raise ValueError(f"QA record not found: {record_id}")
 
             # Update state and session
-            wip_state = get_semantic_state("qa", "wip")
+            wip_state = WorkflowConfig().get_semantic_state("qa", "wip")
             old_state = qa.state
             qa.state = wip_state
             qa.session_id = session_id

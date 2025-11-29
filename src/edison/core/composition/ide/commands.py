@@ -213,27 +213,18 @@ class CommandComposer(IDEComposerBase):
         return merged
 
     def _load_yaml_commands(self, path: Path) -> List[Dict]:
-        """Load command ``definitions`` list from YAML path (empty when missing).
-
-        Supports both the legacy schema (commands: [ ... ]) and the current
-        nested schema (commands: { definitions: [ ... ] }).
-        """
+        """Load command ``definitions`` list from YAML path (empty when missing)."""
         data = self.cfg_mgr.load_yaml(path)
         if not isinstance(data, dict):
             return []
 
         commands = data.get("commands")
 
-        # Current schema: commands: { definitions: [...] }
+        # Schema: commands: { definitions: [...] }
         if isinstance(commands, dict):
             definitions = commands.get("definitions") or []
             if isinstance(definitions, list):
                 return [c for c in definitions if isinstance(c, dict)]
-            return []
-
-        # Legacy schema: commands: [...]
-        if isinstance(commands, list):
-            return [c for c in commands if isinstance(c, dict)]
 
         return []
 

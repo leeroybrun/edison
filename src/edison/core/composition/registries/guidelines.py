@@ -74,8 +74,6 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         super().__init__(repo_root)
-        # Alias for compatibility
-        self.repo_root = self.project_root
         self.project_guidelines_dir = self.project_dir / "guidelines"
         
         # Use core composer for discovery

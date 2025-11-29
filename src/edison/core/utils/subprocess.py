@@ -15,11 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, List, MutableMapping, Optional, Sequence
 
-from edison.core.config.domains.timeouts import (
-    get_timeout_settings,
-    reset_timeout_cache,
-    resolve_timeout_repo_root,
-)
+from edison.core.config.domains.timeouts import TimeoutsConfig
 
 FALLBACK_TIMEOUTS: Dict[str, float] = {
     "git_operations": 30.0,
@@ -105,7 +101,15 @@ def _infer_timeout_type(cmd: Any) -> str:
 
 
 def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | str | None = None) -> float:
-    repo_root = resolve_timeout_repo_root(cwd)
+    if cwd is not None:
+        try:
+            repo_root = Path(cwd).resolve()
+        except Exception:
+            from edison.core.utils.paths import PathResolver
+            repo_root = PathResolver.resolve_project_root()
+    else:
+        from edison.core.utils.paths import PathResolver
+        repo_root = PathResolver.resolve_project_root()
 
     timeouts = _load_timeouts(repo_root)
 
@@ -149,7 +153,8 @@ def check_output_with_timeout(cmd, timeout_type: str | None = None, **kwargs):
 
 def reset_subprocess_timeout_cache() -> None:
     _load_timeouts_impl.cache_clear()
-    reset_timeout_cache()
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
 
 
 def _to_cwd(cwd: Optional[Path | str]) -> Optional[str]:
@@ -224,8 +229,8 @@ def run_git_command(
     Returns:
         CompletedProcess from subprocess.run
     """
-    timeouts = get_timeout_settings(cwd)
-    default_timeout = timeouts["git_operations_seconds"]
+    timeout_config = TimeoutsConfig(repo_root=Path(cwd) if cwd else None)
+    default_timeout = timeout_config.git_operations_seconds
 
     return run_command(
         cmd,
@@ -263,8 +268,8 @@ def run_db_command(
     Returns:
         CompletedProcess from subprocess.run
     """
-    timeouts = get_timeout_settings(cwd)
-    default_timeout = timeouts["db_operations_seconds"]
+    timeout_config = TimeoutsConfig(repo_root=Path(cwd) if cwd else None)
+    default_timeout = timeout_config.db_operations_seconds
 
     return run_command(
         cmd,

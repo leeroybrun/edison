@@ -68,41 +68,8 @@ class TimeoutsConfig(BaseDomainConfig):
         }
 
 
-# ---------------------------------------------------------------------------
-# Module-level helper functions (backward compatibility)
-# ---------------------------------------------------------------------------
-
-
-def get_timeout_settings(repo_root: Optional[Path] = None) -> Dict[str, float]:
-    """Get all timeout settings."""
-    return TimeoutsConfig(repo_root=repo_root).get_all_settings()
-
-
-def reset_timeout_cache() -> None:
-    """Clear timeout cache (now delegates to centralized cache)."""
-    from ..cache import clear_all_caches
-    clear_all_caches()
-
-
-def resolve_timeout_repo_root(repo_root: Optional[Path] = None) -> Path:
-    """Resolve repo root for timeout config."""
-    if repo_root is not None:
-        try:
-            return Path(repo_root).resolve()
-        except Exception:
-            pass
-    try:
-        from edison.core.utils.paths import PathResolver
-        return PathResolver.resolve_project_root()
-    except Exception:
-        return Path.cwd().resolve()
-
-
 __all__ = [
     "TimeoutsConfig",
-    "get_timeout_settings",
-    "reset_timeout_cache",
-    "resolve_timeout_repo_root",
 ]
 
 

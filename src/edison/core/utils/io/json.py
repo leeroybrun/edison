@@ -30,15 +30,10 @@ def _cfg() -> Dict[str, Any]:
 
 def _lock_timeout_seconds() -> float:
     # Lazy import to avoid circular dependency with config
-    from edison.core.config.domains.timeouts import get_timeout_settings
+    from edison.core.config.domains.timeouts import TimeoutsConfig
 
-    timeouts = get_timeout_settings()
-    try:
-        return float(timeouts["json_io_lock_seconds"])
-    except KeyError as exc:
-        raise RuntimeError(
-            "json_io_lock_seconds missing from timeout configuration"
-        ) from exc
+    timeout_config = TimeoutsConfig()
+    return timeout_config.json_io_lock_seconds
 
 
 def _lock_context(path: Path, acquire_lock: bool) -> ContextManager[Any]:

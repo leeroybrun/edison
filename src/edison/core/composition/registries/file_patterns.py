@@ -42,8 +42,6 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
             resolved_root = Path.cwd()
         
         super().__init__(resolved_root)
-        # Alias for compatibility
-        self.repo_root = self.project_root
 
         self.core_rules_dir = self._resolve_core_rules_dir()
         self.pack_roots = self._resolve_pack_roots()

@@ -35,7 +35,7 @@ def main(args: argparse.Namespace) -> int:
 
     from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
     from edison.core.session import manager as session_manager
-    from edison.core.config import get_semantic_state
+    from edison.core.config.domains.workflow import WorkflowConfig
 
     try:
         # Resolve project root
@@ -70,7 +70,7 @@ def main(args: argparse.Namespace) -> int:
         else:
             # List all ready tasks (tasks in todo status)
             repo = TaskRepository(project_root=project_root)
-            todo_state = get_semantic_state("task", "todo")
+            todo_state = WorkflowConfig().get_semantic_state("task", "todo")
             tasks = repo.list_by_state(todo_state)
 
             ready_tasks = [

@@ -276,9 +276,7 @@ class SessionManager:
         session_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         *,
-        process: Optional[str] = None,
         owner: Optional[str] = None,
-        naming_strategy: Optional[str] = None,
     ) -> Path:
         """Create a new session with auto-generated ID if not provided.
 
@@ -287,24 +285,20 @@ class SessionManager:
         Args:
             session_id: Optional session ID (auto-generated if not provided)
             metadata: Additional metadata
-            process: Process name (unused, for backward compat)
             owner: Session owner
-            naming_strategy: Naming strategy (unused, for backward compat)
 
         Returns:
             Path to session.json file
         """
-        sid = session_id or self._generate_session_id(
-            process=process, owner=owner, naming_strategy=naming_strategy
-        )
+        sid = session_id or self._generate_session_id()
 
         path = self.create(session_id=sid, owner=owner, metadata=metadata)
 
-        # Update naming strategy metadata for downstream consumers
+        # Update metadata for downstream consumers
         session = self._repo.get(sid)
         if session:
             meta = session.to_dict().get("meta", {})
-            strategy_used = naming_strategy or self._config.get_naming_config().get("strategy")
+            strategy_used = self._config.get_naming_config().get("strategy")
             if strategy_used:
                 meta["namingStrategy"] = strategy_used
             if owner:
@@ -344,12 +338,6 @@ class SessionManager:
         return self.transition(session_id, to_state)
 
     # --- Internal helpers -------------------------------------------------
-    def _generate_session_id(
-        self,
-        *,
-        process: Optional[str],
-        owner: Optional[str],
-        naming_strategy: Optional[str],
-    ) -> str:
+    def _generate_session_id(self) -> str:
         """Generate a new session ID."""
         return generate_session_id()

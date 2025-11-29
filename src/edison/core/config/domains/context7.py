@@ -93,29 +93,6 @@ class Context7Config(BaseDomainConfig):
         return self.packages
 
 
-# ---------------------------------------------------------------------------
-# Module-level helper functions (backward compatibility)
-# ---------------------------------------------------------------------------
-
-
-def load_triggers(repo_root: Optional[Path] = None) -> Dict[str, List[str]]:
-    """Return the ``triggers`` section from Context7 configuration."""
-    return Context7Config(repo_root=repo_root).triggers
-
-
-def load_aliases(repo_root: Optional[Path] = None) -> Dict[str, str]:
-    """Return the ``aliases`` section from Context7 configuration."""
-    return Context7Config(repo_root=repo_root).aliases
-
-
-def load_packages(repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Return the ``packages`` section from Context7 configuration."""
-    return Context7Config(repo_root=repo_root).packages
-
-
 __all__ = [
     "Context7Config",
-    "load_triggers",
-    "load_aliases",
-    "load_packages",
 ]

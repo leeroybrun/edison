@@ -25,7 +25,7 @@ class TestAgentCompositionBasic:
         write_core_agent(root, "api-builder")
 
         registry = AgentRegistry()
-        core_agents = registry.discover_core_agents()
+        core_agents = registry.discover_core()
 
         assert "api-builder" in core_agents
         assert core_agents["api-builder"].name == "api-builder"

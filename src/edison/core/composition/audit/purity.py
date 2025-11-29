@@ -15,10 +15,7 @@ Purity ensures clean separation between generic (core/pack) and project-specific
 from typing import Dict, Iterable, List, Any
 
 from .guideline_discovery import GuidelineRecord
-from edison.core.config.domains.project import (
-    DEFAULT_PROJECT_TERMS,
-    project_terms as _project_terms,
-)
+from edison.core.config.domains.project import DEFAULT_PROJECT_TERMS, ProjectConfig
 
 
 PACK_TECH_TERMS = [
@@ -59,7 +56,7 @@ def _scan_terms(
 
 def project_terms() -> List[str]:
     """Return project-specific terms to keep out of core/pack guidelines."""
-    return _project_terms()
+    return ProjectConfig().get_project_terms()
 
 
 def purity_violations(

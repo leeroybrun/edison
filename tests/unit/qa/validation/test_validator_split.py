@@ -54,7 +54,6 @@ def test_backward_compatible_imports() -> None:
                 "build_validator_roster",
                 "_detect_validators_from_git_diff",
                 "_files_for_task",
-                "_primary_files_from_doc",
                 "_task_type_from_doc",
             },
         ),

@@ -71,9 +71,6 @@ def validate_pack(
     patterns_val = None
     if isinstance(triggers_val, dict):
         patterns_val = triggers_val.get("filePatterns")
-    elif isinstance(triggers_val, list):
-        # Legacy shape – treat list as filePatterns
-        patterns_val = triggers_val
     if not (isinstance(patterns_val, list) and patterns_val):
         issues.append(
             ValidationIssue(

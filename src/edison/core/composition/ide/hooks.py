@@ -243,15 +243,7 @@ class HookComposer(IDEComposerBase):
             template = Template(template_path.read_text(encoding="utf-8"))
             return template.render(**context)
 
-        # Fallback plain script when no template is available
-        lines = [
-            "#!/usr/bin/env bash",
-            f"# Hook: {hook_def.id}",
-            f"# Description: {hook_def.description}",
-            "",
-            "exit 0",
-        ]
-        return "\n".join(lines).rstrip() + "\n"
+        raise ValueError(f"Template not found for hook: {hook_def.id}")
 
     def _render_basic_template(self, text: str, context: Dict) -> str:
         """Very small placeholder renderer for when Jinja2 is unavailable."""

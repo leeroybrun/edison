@@ -13,29 +13,16 @@ from ..path_utils import resolve_project_dir_placeholders
 
 
 def load_header_template(cfg_mgr: ConfigManager, config: Dict[str, Any]) -> str:
-    """Retrieve the configured header template, falling back to bundled defaults."""
+    """Retrieve the configured header template."""
     header_template = (config.get("composition") or {}).get("generatedFileHeader") or ""
-    if header_template.strip():
-        return header_template.strip()
-
-    fallback_path = get_data_path("config", "composition.yaml")
-    fallback_cfg = cfg_mgr.load_yaml(fallback_path) if fallback_path.exists() else {}
-    header_template = (fallback_cfg.get("composition") or {}).get("generatedFileHeader") or ""
-
     if not header_template.strip():
         raise ValueError("composition.generatedFileHeader must be configured")
     return header_template.strip()
 
 
 def resolve_version(cfg_mgr: ConfigManager, config: Dict[str, Any]) -> str:
-    """Resolve Edison version from YAML config or bundled defaults."""
+    """Resolve Edison version from YAML config or package version."""
     version = (config.get("edison") or {}).get("version")
-    if version:
-        return str(version)
-
-    defaults_path = get_data_path("config", "defaults.yaml")
-    defaults_cfg = cfg_mgr.load_yaml(defaults_path) if defaults_path.exists() else {}
-    version = (defaults_cfg.get("edison") or {}).get("version")
     if version:
         return str(version)
 

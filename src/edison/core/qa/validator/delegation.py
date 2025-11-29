@@ -4,8 +4,9 @@ import fnmatch
 from typing import Any, Dict, List, Optional, Tuple
 
 from edison.core.task import TaskRepository
-from edison.core.config.domains import qa as qa_config
-from .roster import _primary_files_from_doc, _task_type_from_doc
+from edison.core.config.domains.qa import QAConfig
+from edison.core.qa._utils import parse_primary_files
+from .roster import _task_type_from_doc
 
 __all__ = ["simple_delegation_hint", "enhance_delegation_hint"]
 
@@ -16,7 +17,7 @@ def simple_delegation_hint(
     delegation_cfg: Optional[Dict[str, Any]] = None,
     rule_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    cfg = delegation_cfg if delegation_cfg is not None else qa_config.load_delegation_config()
+    cfg = delegation_cfg if delegation_cfg is not None else QAConfig().delegation_config
     if not cfg:
         return None
 
@@ -33,7 +34,7 @@ def simple_delegation_hint(
 
     selected: Optional[Tuple[str, str]] = None
 
-    primary_files = _primary_files_from_doc(text)
+    primary_files = parse_primary_files(text)
     for pattern, rule in fp_rules.items():
         for f in primary_files:
             if fnmatch.fnmatch(f, pattern):
@@ -104,7 +105,7 @@ def enhance_delegation_hint(
             "reason": "No clear delegation pattern matched (orchestrator-direct recommended)",
         }
 
-    cfg = delegation_cfg if delegation_cfg is not None else qa_config.load_delegation_config()
+    cfg = delegation_cfg if delegation_cfg is not None else QAConfig().delegation_config
 
     try:
         task_repo = TaskRepository()
@@ -114,7 +115,7 @@ def enhance_delegation_hint(
         return basic_hint
 
     task_type = _task_type_from_doc(text)
-    files = _primary_files_from_doc(text)
+    files = parse_primary_files(text)
 
     matched_patterns: List[Dict[str, Any]] = []
     fp_rules = cfg.get("filePatternRules", {})

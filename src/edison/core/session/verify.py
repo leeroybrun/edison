@@ -13,7 +13,7 @@ from edison.core.session import graph
 from edison.core.task import TaskRepository
 from edison.core.qa import QARepository
 from edison.core import task  # for read_metadata
-from edison.core.config import get_task_states, get_qa_states
+from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.utils.io import read_json as io_read_json
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
@@ -87,7 +87,7 @@ def verify_session_health(session_id: str) -> dict:
             msg = f"Task {task_id} missing on disk"
             failures.append(msg)
             continue
-        if status not in get_task_states():
+        if status not in WorkflowConfig().task_states:
             msg = f"Task {task_id} unexpected state: {status}"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "task", "taskId": task_id, "state": status})
@@ -99,7 +99,7 @@ def verify_session_health(session_id: str) -> dict:
             status = p.parent.name
         except FileNotFoundError:
             status = "missing"
-        if status not in get_qa_states():
+        if status not in WorkflowConfig().qa_states:
             msg = f"QA {qa_id} unexpected state: {status}"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})

@@ -84,38 +84,8 @@ class QAConfig(BaseDomainConfig):
         return self.get_max_concurrent_validators()
 
 
-# ---------------------------------------------------------------------------
-# Module-level helper functions (backward compatibility)
-# ---------------------------------------------------------------------------
-
-
-def load_config(repo_root: Optional[Path] = None, *, validate: bool = False) -> Dict[str, Any]:
-    """Load merged Edison configuration for the given repository root."""
-    from ..cache import get_cached_config
-    return get_cached_config(repo_root=repo_root)
-
-
-def load_delegation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Return the ``delegation`` section from YAML configuration."""
-    return QAConfig(repo_root=repo_root).delegation_config
-
-
-def load_validation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Return the ``validation`` section from YAML configuration."""
-    return QAConfig(repo_root=repo_root).validation_config
-
-
-def max_concurrent_validators(repo_root: Optional[Path] = None) -> int:
-    """Return the global validator concurrency cap from YAML configuration."""
-    return QAConfig(repo_root=repo_root).get_max_concurrent_validators()
-
-
 __all__ = [
     "QAConfig",
-    "load_config",
-    "load_delegation_config",
-    "load_validation_config",
-    "max_concurrent_validators",
 ]
 
 

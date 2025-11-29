@@ -205,21 +205,6 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return self._load_yaml(path, required=False)
 
     # ------------------------------------------------------------------
-    # Anchor resolution
-    # ------------------------------------------------------------------
-    @staticmethod
-    def extract_anchor_content(source_file: Path, anchor: str) -> str:
-        """
-        Extract content between ANCHOR markers in a guideline file.
-
-        Supports both explicit END markers and implicit termination at the next
-        ANCHOR marker (or EOF when no END marker is present).
-
-        This is a static method for backward compatibility with existing tests.
-        """
-        return extract_anchor_content(source_file, anchor)
-
-    # ------------------------------------------------------------------
     # Composition helpers
     # ------------------------------------------------------------------
     def _resolve_source(self, rule: Dict[str, Any]) -> Tuple[Optional[Path], Optional[str]]:

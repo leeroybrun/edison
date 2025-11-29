@@ -5,10 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 
 from edison.core.utils.paths import PathResolver
-from edison.core.config.domains.project import (
-    get_project_name,
-    substitute_project_tokens,
-)
+from edison.core.config.domains.project import ProjectConfig
 from .._config import get_config
 
 if TYPE_CHECKING:
@@ -30,21 +27,21 @@ def _get_repo_dir() -> Path:
 
 def _get_project_name() -> str:
     """Resolve the active project name via ConfigManager."""
-    return get_project_name()
+    return ProjectConfig().name
 
 
 def _worktree_base_dir(cfg: Dict[str, Any], repo_dir: Path) -> Path:
     """Compute the worktree base directory from configuration.
-    
+
     Args:
         cfg: Worktree configuration dictionary
         repo_dir: Repository root directory
-        
+
     Returns:
         Resolved path to worktree base directory
     """
     base_dir_value = cfg.get("baseDirectory") or "../{PROJECT_NAME}-worktrees"
-    substituted = substitute_project_tokens(str(base_dir_value), repo_dir)
+    substituted = ProjectConfig(repo_root=repo_dir).substitute_project_tokens(str(base_dir_value))
     base_dir_path = Path(substituted)
     if base_dir_path.is_absolute():
         return base_dir_path

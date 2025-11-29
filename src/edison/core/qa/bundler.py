@@ -10,7 +10,7 @@ from edison.core.utils.io import (
     read_json as io_read_json,
     ensure_directory,
 )
-from edison.core.config.domains import qa as qa_config
+from edison.core.config.domains.qa import QAConfig
 from .evidence import EvidenceService
 
 
@@ -18,7 +18,7 @@ enforce_no_legacy_project_root("lib.qa.bundler")
 
 
 def bundle_summary_filename(config: Optional[Dict[str, Any]] = None) -> str:
-    cfg = config or qa_config.load_validation_config()
+    cfg = config or QAConfig().validation_config
     if isinstance(cfg, dict) and "artifactPaths" not in cfg and "validation" in cfg:
         cfg = cfg.get("validation", {}) or {}
     paths = cfg.get("artifactPaths", {}) if isinstance(cfg, dict) else {}

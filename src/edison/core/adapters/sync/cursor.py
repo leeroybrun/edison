@@ -408,7 +408,7 @@ class CursorSync:
     def _auto_compose_agents(self, src_dir: Path) -> int:
         """Compose agents into `<project_config_dir>/_generated/agents` when missing."""
         registry = AgentRegistry(repo_root=self.repo_root)
-        core_agents = registry.discover_core_agents()
+        core_agents = registry.discover_core()
         if not core_agents:
             return 0
 

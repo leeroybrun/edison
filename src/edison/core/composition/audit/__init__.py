@@ -7,8 +7,6 @@ This package was split from a single audit.py file (299 lines) into focused modu
 - discovery: Find guideline files across layers
 - analysis: Build shingle index and duplication matrix
 - purity: Detect cross-layer term leakage
-
-All previous exports are re-exported here for backward compatibility.
 """
 
 # Discovery exports
@@ -26,14 +24,11 @@ from .analysis import (
 
 # Purity exports
 from .purity import (
-    DEFAULT_PROJECT_TERMS,
     PACK_TECH_TERMS,
     project_terms,
     purity_violations,
 )
-
-# Backward compatibility: global constant that was in original audit.py
-project_TERMS = project_terms()
+from edison.core.config.domains.project import DEFAULT_PROJECT_TERMS
 
 __all__ = [
     # Discovery
@@ -48,5 +43,4 @@ __all__ = [
     "project_terms",
     "DEFAULT_PROJECT_TERMS",
     "PACK_TECH_TERMS",
-    "project_TERMS",  # Backward compatibility
 ]

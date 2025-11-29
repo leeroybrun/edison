@@ -139,55 +139,9 @@ class ProjectConfig(BaseDomainConfig):
         return raw.replace("{PROJECT_NAME}", self.name)
 
 
-# ---------------------------------------------------------------------------
-# Module-level helper functions (backward compatibility)
-# ---------------------------------------------------------------------------
-
-
-def get_project_settings(repo_root: Optional[Path] = None) -> dict:
-    """Get project settings as a dict."""
-    cfg = ProjectConfig(repo_root=repo_root)
-    return {
-        "name": cfg.name,
-        "owner": cfg.owner,
-        "audit_terms": cfg.audit_terms,
-    }
-
-
-def get_project_name(repo_root: Optional[Path] = None) -> str:
-    """Get project name."""
-    return ProjectConfig(repo_root=repo_root).name
-
-
-def get_project_owner(repo_root: Optional[Path] = None) -> str:
-    """Get project owner (or current user as fallback)."""
-    return ProjectConfig(repo_root=repo_root).get_owner_or_user()
-
-
-def get_project_audit_terms(repo_root: Optional[Path] = None) -> List[str]:
-    """Get project audit terms."""
-    return ProjectConfig(repo_root=repo_root).audit_terms
-
-
-def project_terms(repo_root: Optional[Path] = None) -> List[str]:
-    """Get combined project terms for auditing."""
-    return ProjectConfig(repo_root=repo_root).get_project_terms()
-
-
-def substitute_project_tokens(raw: str, repo_root: Optional[Path] = None) -> str:
-    """Substitute project tokens in a string."""
-    return ProjectConfig(repo_root=repo_root).substitute_project_tokens(raw)
-
-
 __all__ = [
     "ProjectConfig",
     "DEFAULT_PROJECT_TERMS",
-    "get_project_settings",
-    "get_project_name",
-    "get_project_owner",
-    "get_project_audit_terms",
-    "project_terms",
-    "substitute_project_tokens",
 ]
 
 

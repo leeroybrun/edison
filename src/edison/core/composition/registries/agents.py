@@ -64,7 +64,7 @@ class AgentTemplateError(AgentError):
 
 @dataclass
 class CoreAgent:
-    """Core agent reference (for backward compatibility)."""
+    """Core agent reference."""
     name: str
     core_path: Path
     
@@ -76,7 +76,7 @@ class CoreAgent:
 
 @dataclass
 class PackOverlay:
-    """Pack overlay reference (for backward compatibility)."""
+    """Pack overlay reference."""
     pack: str
     path: Path
     
@@ -103,9 +103,7 @@ class AgentRegistry(BaseRegistry[CoreAgent]):
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         super().__init__(repo_root)
-        # Alias for compatibility
-        self.repo_root = self.project_root
-        
+
         # Use unified composer for ALL discovery
         self._composer = LayeredComposer(repo_root=self.project_root, content_type="agents")
     
@@ -136,14 +134,7 @@ class AgentRegistry(BaseRegistry[CoreAgent]):
         project_new = self._composer.discover_project_new(existing)
         return {name: CoreAgent.from_layer_source(src) for name, src in project_new.items()}
 
-    # ------- Discovery (delegated to unified system) ------- 
-    
-    def discover_core_agents(self) -> Dict[str, CoreAgent]:
-        """Discover core agents via unified LayeredComposer.
-        
-        Alias for discover_core() for backward compatibility.
-        """
-        return self.discover_core()
+    # ------- Discovery (delegated to unified system) -------
 
     def resolve_core_agent(self, name: str) -> CoreAgent:
         """Resolve a specific core agent."""
@@ -166,17 +157,6 @@ class AgentRegistry(BaseRegistry[CoreAgent]):
         """
         agents = self.discover_core()
         return agents.get(name)
-    
-    def get_metadata(self, name: str) -> Dict:
-        """Get agent metadata dict by name.
-        
-        For backward compatibility with code expecting dict return.
-        """
-        agent = self.resolve_core_agent(name)
-        return {
-            "name": agent.name,
-            "core_path": str(agent.core_path),
-        }
 
     def discover_pack_overlays(self, agent_name: str, packs: List[str]) -> List[PackOverlay]:
         """Discover pack overlays for a given agent via unified system."""
@@ -271,7 +251,7 @@ This constitution contains:
             composed,
             project_dir=self.project_dir,
             target_path=target_path,
-            repo_root=self.repo_root,
+            repo_root=self.project_root,
         )
         
         return composed
@@ -355,29 +335,10 @@ This constitution contains:
 
     def get_all(self) -> List[CoreAgent]:
         """Return all core agents.
-        
+
         Implements BaseRegistry interface.
         """
         return list(self.discover_core().values())
-    
-    def get_all_metadata(self) -> List[Dict[str, Any]]:
-        """Return metadata for all core agents.
-        
-        For backward compatibility with code expecting list of metadata dicts.
-        """
-        agents: List[Dict[str, Any]] = []
-        for core_agent in self.discover_core().values():
-            meta = self._read_front_matter(core_agent.core_path)
-            agents.append(
-                {
-                    "name": str(meta.get("name") or core_agent.name),
-                    "type": str(meta.get("type") or "implementer"),
-                    "model": str(meta.get("model") or "codex"),
-                    "description": str(meta.get("description") or ""),
-                    "core_path": str(core_agent.core_path),
-                }
-            )
-        return sorted(agents, key=lambda a: a["name"])
 
 
 def compose_agent(agent_name: str, packs: List[str], *, repo_root: Optional[Path] = None) -> str:

@@ -33,7 +33,7 @@ def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], pr
         "project": [],
     }
 
-    core_agents = registry.discover_core_agents()
+    core_agents = registry.discover_core()
     generic_names = sorted(core_agents.keys())
     agents["generic"] = generic_names
 

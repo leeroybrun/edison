@@ -27,9 +27,6 @@ def load_pack_metadata(pack_path: Path) -> PackMetadata:
     trigger_patterns: List[str] = []
     if isinstance(raw_triggers, dict):
         trigger_patterns = list(raw_triggers.get("filePatterns") or [])
-    elif isinstance(raw_triggers, list):
-        # Legacy shape (Phase 2) – treat list as file patterns for backward compatibility
-        trigger_patterns = list(raw_triggers or [])
 
     return PackMetadata(
         name=str(yml.get("name", "")),

@@ -40,7 +40,7 @@ from edison.core.session.next.utils import (
     extract_wave_and_base_id,
     allocate_child_id,
 )
-from edison.core.session.next.rules import RULE_IDS, rules_for, expand_rules
+from edison.core.session.next.rules import RULE_IDS, rules_for
 from edison.core.session.next.actions import (
     infer_task_status,
     infer_qa_status,
@@ -111,8 +111,8 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         if not children:
             continue
         # A parent is ready to unblock when every child is done or validated.
-        # Prefer the session graph view first (status stored in session["tasks"])
-        # and fall back to filesystem inference for backward compatibility.
+        # Check session graph first (for tasks claimed in this session),
+        # then fall back to filesystem (for global tasks not yet claimed).
         def _child_ready(cid: str) -> bool:
             entry = tasks_map.get(cid, {}) or {}
             status = str(entry.get("status") or "").lower()
@@ -359,16 +359,6 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     # Build reportsMissing list for visibility
     reports_missing = build_reports_missing(session)
 
-    # Collect all unique rule IDs from actions
-    all_rule_ids: List[str] = []
-    for a in actions:
-        for rid in a.get("ruleIds", []):
-            if rid not in all_rule_ids:
-                all_rule_ids.append(rid)
-
-    # Always expand rules (no flag needed - default behavior)
-    expanded_rules = expand_rules(all_rule_ids)
-
     # Phase 1B: context-aware rules + guard previews via RulesEngine.
     rules_engine_summary: Dict[str, Any] = {}
     engine = None
@@ -443,7 +433,6 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         "blockers": blockers,
         "reportsMissing": reports_missing,
         "followUpsPlan": followups_plan,
-        "rulesExpanded": expanded_rules,  # Always include expanded rules
         "rulesEngine": rules_engine_summary,  # Context-aware rules (git diff + config)
         "rules": [
             "Use bundle-first validation; keep one QA per task.",

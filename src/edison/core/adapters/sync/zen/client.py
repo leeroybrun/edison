@@ -49,20 +49,21 @@ class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
 
     # ---------- Role configuration helpers ----------
     def _load_zen_roles_config(self) -> Dict[str, Any]:
-        """Return raw zen.roles config as a mapping (or empty dict).
+        """Return raw zen.roles config as a mapping.
 
-        Supports both legacy list form (ignored here) and new mapping form.
+        Requires zen.roles to be a dict/mapping (no legacy list form).
         """
         if self._zen_roles_config:
             return self._zen_roles_config
 
         zen_cfg = self.config.get("zen") or {}
         roles_cfg = zen_cfg.get("roles") or {}
-        if isinstance(roles_cfg, dict):
-            self._zen_roles_config = roles_cfg
-        else:
-            # Legacy form: list of model ids; no per-role config available.
-            self._zen_roles_config = {}
+        if not isinstance(roles_cfg, dict):
+            raise ValueError(
+                f"zen.roles must be a mapping/dict, not {type(roles_cfg).__name__}. "
+                "Legacy list form is no longer supported."
+            )
+        self._zen_roles_config = roles_cfg
         return self._zen_roles_config
 
     def _validate_role_config(self) -> None:

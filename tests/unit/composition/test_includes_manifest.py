@@ -194,9 +194,10 @@ def test_mixed_modern_and_legacy_syntax(tmp_path):
 
 
 def test_no_safe_include_regex_pattern_defined(tmp_path):
-    """After removal, _SAFE_INCLUDE_RE should still exist but never be used in resolve_includes().
+    """Legacy safe_include() syntax is no longer supported.
 
-    This test verifies the regex is not actively used in the resolution logic.
+    This test verifies that the old safe_include() regex has been removed
+    and that resolve_includes() does not process this legacy syntax.
 
     NO MOCKS: Uses real resolve_includes with _REPO_ROOT_OVERRIDE.
     """
@@ -207,14 +208,14 @@ def test_no_safe_include_regex_pattern_defined(tmp_path):
 
         base_file = tmp_path / "base.md"
 
-        # Verify regex pattern still exists (backward compat for other modules)
-        assert hasattr(includes, "_SAFE_INCLUDE_RE")
+        # Verify regex pattern no longer exists (backward compat removed)
+        assert not hasattr(includes, "_SAFE_INCLUDE_RE")
 
-        # But it should NOT be used in resolve_includes anymore
+        # Legacy syntax should NOT be processed
         legacy_content = "{{ safe_include('test.md', fallback='FB') }}"
         result, _ = includes.resolve_includes(legacy_content, base_file)
 
-        # Legacy syntax should remain unchanged (regex not applied)
+        # Legacy syntax should remain unchanged (not processed)
         assert "safe_include" in result
     finally:
         includes._REPO_ROOT_OVERRIDE = original_override

@@ -171,66 +171,8 @@ class WorkflowConfig(BaseDomainConfig):
         return semantic_key
 
 
-# ---------------------------------------------------------------------------
-# Module-level helper functions (backward compatibility)
-# ---------------------------------------------------------------------------
-
-_WORKFLOW_CONFIG_CACHE: Optional[WorkflowConfig] = None
-
-
-def load_workflow_config(force_reload: bool = False, **kwargs) -> Dict[str, Any]:
-    """Load the workflow configuration."""
-    global _WORKFLOW_CONFIG_CACHE
-
-    if _WORKFLOW_CONFIG_CACHE is not None and not force_reload:
-        cfg = _WORKFLOW_CONFIG_CACHE
-    else:
-        cfg = WorkflowConfig()
-        _WORKFLOW_CONFIG_CACHE = cfg
-
-    return {
-        "version": cfg._workflow_yaml.get("version"),
-        "validationLifecycle": cfg.validation_lifecycle,
-        "timeouts": cfg.timeouts,
-        "taskStates": cfg.task_states,
-        "qaStates": cfg.qa_states,
-    }
-
-
-def get_task_states(**kwargs) -> List[str]:
-    """Get allowed task states."""
-    return load_workflow_config(**kwargs)["taskStates"]
-
-
-def get_qa_states(**kwargs) -> List[str]:
-    """Get allowed QA states."""
-    return load_workflow_config(**kwargs)["qaStates"]
-
-
-def get_lifecycle_transition(event: str, **kwargs) -> Dict[str, str]:
-    """Get transition details for a lifecycle event."""
-    return load_workflow_config(**kwargs)["validationLifecycle"].get(event, {})
-
-
-def get_timeout(name: str, **kwargs) -> str:
-    """Get a timeout value by name."""
-    return load_workflow_config(**kwargs)["timeouts"].get(name, "")
-
-
-def get_semantic_state(domain: str, semantic_key: str, **kwargs) -> str:
-    """Resolve a semantic state to the configured state name."""
-    load_workflow_config(**kwargs)  # Ensure config is loaded
-    return _WORKFLOW_CONFIG_CACHE.get_semantic_state(domain, semantic_key)
-
-
 __all__ = [
     "WorkflowConfig",
-    "load_workflow_config",
-    "get_task_states",
-    "get_qa_states",
-    "get_lifecycle_transition",
-    "get_timeout",
-    "get_semantic_state",
 ]
 
 
