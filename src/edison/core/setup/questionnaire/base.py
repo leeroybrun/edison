@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from edison.core.utils.io import read_yaml
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.paths import PathResolver
-from ..component_discovery import SetupDiscovery
+from ..discovery import SetupDiscovery
 
 from . import prompts
 from . import validation

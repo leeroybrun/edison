@@ -25,7 +25,7 @@ class SafeDict(dict):
         'System: {system}, User: {user}'
     """
 
-    def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
+    def __missing__(self, key: str) -> str:
         """
         Return placeholder string for missing keys instead of raising KeyError.
 

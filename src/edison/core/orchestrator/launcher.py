@@ -16,7 +16,6 @@ import shutil
 import string
 import subprocess
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,13 +23,7 @@ from edison.core.config.domains import OrchestratorConfig
 from edison.core.session.context import SessionContext
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
-
-
-class _SafeDict(dict):
-    """dict that preserves unknown placeholders instead of raising."""
-
-    def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
-        return "{" + key + "}"
+from .utils import SafeDict
 
 
 class OrchestratorError(Exception):
@@ -226,7 +219,7 @@ class OrchestratorLauncher:
     def _expand_template_vars(self, template: str) -> str:
         """Expand template variables in strings."""
         tokens = self._build_tokens()
-        return str(template).format_map(_SafeDict(tokens))
+        return str(template).format_map(SafeDict(tokens))
 
     def _build_tokens(self) -> Dict[str, str]:
         session_id = getattr(self.session_context, "session_id", None)
