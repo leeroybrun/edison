@@ -14,6 +14,7 @@
 13. ✅ **ALWAYS FINDING AND FIXING ROOT ISSUES/ROOT CAUSES**: We should NEVER apply dirty fixes or remove/simplify some logic/tests JUST to make some tests pass or bypass an issue. We must ALWAYS find the ROOT CAUSES of all issues and FIX THEM instead.
 14. ✅ **REFACTORING ESSENTIALS**: When refactoring, ALWAYS update ALL related code/callers, including CLIs/tests/e2e tests/unit tests/integration tests and ALL calls/usage sites. DO NOT KEEP or implement legacy fallbacks/backward-compatibility/deprecated code/logic, ALWAYS refactor and update EVERYTHING.
 15. ✅ **SELF VALIDATION**: When you think your task is done, do not mark it as done yet. You MUST self-validate and re-analyse EVERYTHING from a new fresh set of eyes, like if a colleague looked at the work you just had done to make sure you had not forgotten anything and that EVERYTHING has correctly been implemented and follows our CRITICAL PRINCIPLES.
+16. ✅ **GIT**: NEVER use `git reset`/`git checkout` or any similar commands, except if the user specifically asks you to. THIS IS CRITICAL! 
 
 ## Testing
 - When updating code, ALL related tests should be updated, including unit, integration, e2e, etc

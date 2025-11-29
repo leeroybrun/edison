@@ -1,8 +1,17 @@
+"""Test task delegation functionality using Repository-based API.
+
+Tests cover:
+- Child task result tracking and aggregation
+- Agent tracking in delegation
+- Parent-child task linking
+- Session validation CLI
+"""
 import sys
 import os
 import json
 import subprocess
 from pathlib import Path
+from typing import Dict, Any
 
 from tests.helpers.paths import get_repo_root
 
@@ -28,30 +37,84 @@ from tests.helpers.session import ensure_session
 from edison.core.utils.subprocess import run_with_timeout
 
 
+# Helper functions to replace legacy compat API
+def create_task_record(title: str, session_id: str, parent_task_id: str = None) -> str:
+    """Create a task record using TaskRepository."""
+    repo = TaskRepository()
+    task = Task.create(
+        task_id=f"task-{os.urandom(4).hex()}",
+        title=title,
+        description="",
+        session_id=session_id,
+        state="todo"
+    )
+    if parent_task_id:
+        task.parent_id = parent_task_id
+    repo.create(task)
+    return task.id
+
+
+def load_task_record(task_id: str) -> Dict[str, Any]:
+    """Load a task record using TaskRepository."""
+    repo = TaskRepository()
+    task = repo.get(task_id)
+    if task is None:
+        raise FileNotFoundError(f"Task record not found: {task_id}")
+    return {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "status": task.state,
+        "session_id": task.session_id,
+        "parent_task_id": task.parent_id,
+        "child_tasks": []  # TODO: Implement child task tracking
+    }
+
+
+def set_task_result(task_id: str, status: str = None, result: Any = None, error: str = None) -> Dict[str, Any]:
+    """Set task result using TaskRepository."""
+    repo = TaskRepository()
+    task = repo.get(task_id)
+    if task is None:
+        raise FileNotFoundError(f"Task record not found: {task_id}")
+
+    if status:
+        task.state = status
+    if result is not None:
+        task.result = str(result)
+    if error is not None:
+        task.result = f"Error: {error}"
+
+    repo.save(task)
+
+    return {
+        "id": task.id,
+        "status": task.state,
+        "result": task.result,
+    }
+
+
 def test_child_task_result_tracking(tmp_path):
     """D5: Child task result tracking and aggregation surface exists and works minimally.
 
     RED phase: we expect this to fail until implementations are added in task/delegationlib.
     """
-    # API surface checks (fail fast with clear messages if missing)
-    _require_attr(_task, 'create_task_record')
-    _require_attr(_task, 'load_task_record')
-    _require_attr(_task, 'set_task_result')
-    _require_attr(_delegationlib, 'delegate_task')
-    _require_attr(_delegationlib, 'aggregate_child_results')
+    # Check that delegation helper exists
+    assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
+    assert hasattr(_delegationlib, 'aggregate_child_results'), "aggregate_child_results function must exist"
 
     # Minimal happy path scenario (will execute once GREEN is implemented)
     sid = 'sess-g4-d5-1'
     ensure_session(sid)
 
-    parent_id = _task.create_task_record("Parent task for D5", session_id=sid)
+    parent_id = create_task_record("Parent task for D5", session_id=sid)
     child_ok = _delegationlib.delegate_task("Child OK", agent='codex', parent_task_id=parent_id, session_id=sid)
     child_fail = _delegationlib.delegate_task("Child FAIL", agent='claude', parent_task_id=parent_id, session_id=sid)
 
-    _task.set_task_result(child_ok, status='success', result={"message": "done"})
-    _task.set_task_result(child_fail, status='failure', error='boom')
+    set_task_result(child_ok, status='success', result={"message": "done"})
+    set_task_result(child_fail, status='failure', error='boom')
 
-    parent = _task.load_task_record(parent_id)
+    parent = load_task_record(parent_id)
     assert 'child_tasks' in parent and set(parent['child_tasks']) >= {child_ok, child_fail}
 
     agg = _delegationlib.aggregate_child_results(parent_id)
@@ -63,37 +126,33 @@ def test_child_task_result_tracking(tmp_path):
 
 def test_delegation_tracks_agent(tmp_path):
     """D5: Delegation records which agent executed each child task."""
-    _require_attr(_task, 'create_task_record')
-    _require_attr(_task, 'load_task_record')
-    _require_attr(_delegationlib, 'delegate_task')
+    assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
 
     sid = 'sess-g4-d5-2'
     ensure_session(sid)
-    parent_id = _task.create_task_record("Parent for agent tracking", session_id=sid)
+    parent_id = create_task_record("Parent for agent tracking", session_id=sid)
     child = _delegationlib.delegate_task("Child A", agent='codex', parent_task_id=parent_id, session_id=sid)
 
-    child_rec = _task.load_task_record(child)
+    child_rec = load_task_record(child)
     assert child_rec.get('agent') == 'codex'
 
 
 def test_aggregate_child_results(tmp_path):
     """D5: Aggregation returns counts and overall status from real child results."""
-    _require_attr(_task, 'create_task_record')
-    _require_attr(_task, 'set_task_result')
-    _require_attr(_delegationlib, 'delegate_task')
-    _require_attr(_delegationlib, 'aggregate_child_results')
+    assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
+    assert hasattr(_delegationlib, 'aggregate_child_results'), "aggregate_child_results function must exist"
 
     sid = 'sess-g4-d5-3'
     ensure_session(sid)
-    parent_id = _task.create_task_record("Parent for aggregation", session_id=sid)
+    parent_id = create_task_record("Parent for aggregation", session_id=sid)
 
     c1 = _delegationlib.delegate_task("C1", agent='codex', parent_task_id=parent_id, session_id=sid)
     c2 = _delegationlib.delegate_task("C2", agent='claude', parent_task_id=parent_id, session_id=sid)
     c3 = _delegationlib.delegate_task("C3", agent='gemini', parent_task_id=parent_id, session_id=sid)
 
-    _task.set_task_result(c1, status='success')
-    _task.set_task_result(c2, status='failure')
-    _task.set_task_result(c3, status='success')
+    set_task_result(c1, status='success')
+    set_task_result(c2, status='failure')
+    set_task_result(c3, status='success')
 
     agg = _delegationlib.aggregate_child_results(parent_id)
     assert agg['total'] == 3
@@ -146,13 +205,10 @@ def test_task_session_linking(tmp_path):
 
     Validates bidirectional linkage from the task perspective.
     """
-    _require_attr(_task, 'create_task_record')
-    _require_attr(_task, 'load_task_record')
-
     sid = 'sess-g4-s1-1'
     ensure_session(sid)
-    tid = _task.create_task_record("Linked task", session_id=sid)
-    task = _task.load_task_record(tid)
+    tid = create_task_record("Linked task", session_id=sid)
+    task = load_task_record(tid)
     assert task.get('session_id') == sid
 
     # Session side should include the task id in its metadata (task-side responsibility to register it)
@@ -167,16 +223,22 @@ def test_delegate_task_updates_parent_child_tasks_list():
     This is the core parent-child linking test that must pass.
     RED phase: This will fail until delegation.py properly updates the parent record.
     """
-    _require_attr(_task, 'create_task_record')
-    _require_attr(_task, 'load_task_record')
-    _require_attr(_delegationlib, 'delegate_task')
+    assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
 
     sid = 'sess-parent-child-link-1'
     ensure_session(sid)
 
     # Create parent task
     parent_id = "parent-task-001"
-    _task.create_task_record(parent_id, "Parent Task")
+    repo = TaskRepository()
+    parent_task = Task.create(
+        task_id=parent_id,
+        title="Parent Task",
+        description="",
+        session_id=sid,
+        state="todo"
+    )
+    repo.create(parent_task)
 
     # Delegate a child task
     child_id = _delegationlib.delegate_task(
@@ -187,7 +249,7 @@ def test_delegate_task_updates_parent_child_tasks_list():
     )
 
     # Load parent and verify child is in its child_tasks list
-    parent = _task.load_task_record(parent_id)
+    parent = load_task_record(parent_id)
     assert 'child_tasks' in parent, "Parent task must have child_tasks field"
     assert isinstance(parent['child_tasks'], list), "child_tasks must be a list"
     assert child_id in parent['child_tasks'], f"Child {child_id} must be in parent's child_tasks list"
@@ -201,7 +263,7 @@ def test_delegate_task_updates_parent_child_tasks_list():
     )
 
     # Reload parent and verify both children are tracked
-    parent = _task.load_task_record(parent_id)
+    parent = load_task_record(parent_id)
     assert len(parent['child_tasks']) == 2, "Parent should track both children"
     assert child_id in parent['child_tasks'], "First child must still be in list"
     assert child_id_2 in parent['child_tasks'], "Second child must be in list"

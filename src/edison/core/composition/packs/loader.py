@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
-from edison.core.utils.io import read_yaml as read_yaml_file
+from edison.core.utils.io import read_yaml
 from edison.data import read_yaml as read_bundled_yaml
 from edison.core.utils.paths import get_project_config_dir
 from ..includes import _repo_root
@@ -25,7 +25,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     """Load YAML from a file path, returning empty dict if file doesn't exist."""
     if not path.exists():
         return {}
-    return read_yaml_file(path, default={})
+    return read_yaml(path, default={})
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
@@ -73,9 +73,9 @@ def load_pack(repo_root: Path, name: str) -> PackManifest:
             "Use src/edison/data/config/defaults.yaml as the canonical source."
         )
     if not defaults and defaults_path.exists():
-        defaults = read_yaml_file(defaults_path, default={})
+        defaults = read_yaml(defaults_path, default={})
 
-    deps_yaml = read_yaml_file(pdir / "pack-dependencies.yaml", default={})
+    deps_yaml = read_yaml(pdir / "pack-dependencies.yaml", default={})
     deps = deps_yaml.get("dependencies") or {}
     dev_deps = deps_yaml.get("devDependencies") or {}
     req = deps_yaml.get("requiredPacks") or []

@@ -19,13 +19,7 @@ from .repository import TaskRepository
 from .workflow import TaskQAWorkflow
 from .paths import safe_relative
 
-# Compatibility layer for legacy task record API
-from .compat import (
-    create_task_record,
-    load_task_record,
-    update_task_record,
-    set_task_result,
-)
+# Compatibility layer removed - use TaskRepository directly
 
 # State validation function
 from edison.core.state.transitions import validate_transition as validate_state_transition
@@ -92,11 +86,6 @@ __all__ = [
     "normalize_record_id",
     "default_owner",
     "safe_relative",
-    # Compatibility layer functions
-    "create_task_record",
-    "load_task_record",
-    "update_task_record",
-    "set_task_result",
     # State validation
     "validate_state_transition",
 ]
