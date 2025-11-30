@@ -277,7 +277,7 @@ print("PASS")
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PATH": os.environ.get("PATH", "")}
+        env={"AGENTS_PROJECT_ROOT": str(tmp_path)}
     )
 
     assert result.returncode == 0, f"Script failed: stderr={result.stderr}, stdout={result.stdout}"
@@ -344,7 +344,7 @@ print("PASS")
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PATH": os.environ.get("PATH", "")}
+        env={"AGENTS_PROJECT_ROOT": str(tmp_path)}
     )
 
     assert result.returncode == 0, f"Script failed: stderr={result.stderr}, stdout={result.stdout}"

@@ -627,7 +627,6 @@ cli:
     column_gap: 2
   confirm:
     assume_yes_env: "EDISON_ASSUME_YES"
-    default: false
   output:
     success_prefix: "[OK]"
     error_prefix: "[ERR]"

@@ -18,7 +18,6 @@ DEFAULT_JSON_ENSURE_ASCII = False
 DEFAULT_TABLE_PADDING = 1
 DEFAULT_TABLE_COLUMN_GAP = 2
 DEFAULT_CONFIRM_ASSUME_YES_ENV = "EDISON_ASSUME_YES"
-DEFAULT_CONFIRM_DEFAULT = False
 DEFAULT_SUCCESS_PREFIX = "[OK]"
 DEFAULT_ERROR_PREFIX = "[ERR]"
 DEFAULT_WARNING_PREFIX = "[WARN]"
@@ -99,12 +98,6 @@ class CLIConfig(BaseDomainConfig):
         env_var = self._confirm_config.get("assume_yes_env", DEFAULT_CONFIRM_ASSUME_YES_ENV)
         return str(env_var)
 
-    @cached_property
-    def confirm_default(self) -> bool:
-        """Get default confirmation response (default: False)."""
-        default = self._confirm_config.get("default", DEFAULT_CONFIRM_DEFAULT)
-        return bool(default)
-
     # --- Output Message Settings ---
     @cached_property
     def success_prefix(self) -> str:
@@ -157,11 +150,10 @@ class CLIConfig(BaseDomainConfig):
         """Get all confirmation settings as a dict.
 
         Returns:
-            Dict with assume_yes_env, default.
+            Dict with assume_yes_env.
         """
         return {
             "assume_yes_env": self.confirm_assume_yes_env,
-            "default": self.confirm_default,
         }
 
     def get_output_config(self) -> Dict[str, Any]:

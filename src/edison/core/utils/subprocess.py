@@ -73,6 +73,8 @@ def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | st
     # Map timeout type to TimeoutsConfig attribute
     timeout_map = {
         "git_operations": timeout_config.git_operations_seconds,
+        "db_operations": timeout_config.db_operations_seconds,
+        "json_io_lock": timeout_config.json_io_lock_seconds,
         "test_execution": timeout_config.test_execution_seconds,
         "build_operations": timeout_config.build_operations_seconds,
         "default": timeout_config.default_seconds,

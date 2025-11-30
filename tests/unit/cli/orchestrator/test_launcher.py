@@ -13,6 +13,7 @@ from edison.core.orchestrator import (
 )
 from edison.core.session.core.context import SessionContext
 from tests.helpers.io_utils import write_orchestrator_config
+from helpers.cache_utils import reset_edison_caches
 
 
 def _session_context(session_id: str, project_root: Path, worktree: Path) -> SessionContext:
@@ -47,7 +48,8 @@ def test_launcher_initialization(tmp_path: Path, isolated_project_env, monkeypat
             "initial_prompt": {"enabled": False},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
         _session_context("sess-init", tmp_path, tmp_path / "wt"),
@@ -71,7 +73,8 @@ def test_launch_with_stdin_prompt(tmp_path: Path, isolated_project_env, monkeypa
             "initial_prompt": {"enabled": True, "method": "stdin"},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock-stdin", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock-stdin", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -113,7 +116,8 @@ def test_launch_with_file_prompt(tmp_path: Path, isolated_project_env, monkeypat
             "initial_prompt": {"enabled": True, "method": "file", "arg_flag": "--prompt-file"},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock-file", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock-file", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -153,7 +157,8 @@ def test_launch_with_arg_prompt(tmp_path: Path, isolated_project_env, monkeypatc
             "initial_prompt": {"enabled": True, "method": "arg", "arg_flag": "--prompt"},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock-arg", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock-arg", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -183,7 +188,8 @@ def test_launch_with_env_prompt(tmp_path: Path, isolated_project_env, monkeypatc
             "initial_prompt": {"enabled": True, "method": "env", "env_var": "PROMPT_TEXT"},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock-env", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock-env", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -206,7 +212,8 @@ def test_launch_missing_binary_raises_error(tmp_path: Path, isolated_project_env
             "initial_prompt": {"enabled": False},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="missing", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="missing", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -226,7 +233,8 @@ def test_template_variable_expansion(tmp_path: Path, isolated_project_env) -> No
             "initial_prompt": {"enabled": False},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
     worktree = tmp_path / "wt-template"
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),
@@ -265,7 +273,8 @@ def test_cleanup_temp_files(tmp_path: Path, isolated_project_env, monkeypatch) -
             "initial_prompt": {"enabled": True, "method": "file", "arg_flag": "--prompt-file"},
         }
     }
-    write_orchestrator_config(tmp_path, profiles, default="mock-cleanup", core_config=True)
+    write_orchestrator_config(tmp_path, profiles, default="mock-cleanup", core_config=False)
+    reset_edison_caches()  # Clear cache after writing config
 
     launcher = OrchestratorLauncher(
         OrchestratorConfig(repo_root=tmp_path, validate=True),

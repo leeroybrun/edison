@@ -106,9 +106,8 @@ def confirm(message: str, default: bool = False) -> bool:
     """
     cfg = _cfg()["confirm"]
     assume_env = cfg.get("assume_yes_env") or ""
-    # Use function parameter as default for cfg.get
-    configured_default = bool(cfg.get("default", default))
-    effective_default = configured_default
+    # Use function parameter directly - each prompt has context-specific default
+    effective_default = default
 
     prompt_suffix = "[Y/n]" if effective_default else "[y/N]"
     prompt = f"{message} {prompt_suffix} "

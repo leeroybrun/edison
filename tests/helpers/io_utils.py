@@ -522,7 +522,7 @@ def write_orchestrator_config(
     config_dir.mkdir(parents=True, exist_ok=True)
 
     config_data = {
-        "orchestrator": {
+        "orchestrators": {
             "profiles": profiles,
             "default": default,
         },

@@ -18,7 +18,7 @@ def _write_cli_config(repo_root: Path) -> None:
         "cli": {
             "json": {"indent": 4, "sort_keys": True, "ensure_ascii": False},
             "table": {"padding": 1, "column_gap": 2},
-            "confirm": {"assume_yes_env": "EDISON_ASSUME_YES", "default": True},
+            "confirm": {"assume_yes_env": "EDISON_ASSUME_YES"},
             "output": {
                 "success_prefix": "[OK]",
                 "error_prefix": "[ERR]",

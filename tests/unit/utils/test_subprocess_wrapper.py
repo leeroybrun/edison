@@ -13,19 +13,18 @@ from helpers.io_utils import write_text, write_yaml
 
 def _write_timeout_config(root: Path, default: float = 0.2, file_ops: float = 1.0) -> None:
     cfg = {
-        "project": {
-            "name": "subprocess-wrapper-test"
-        },
-        "subprocess_timeouts": {
-            "default": default,
-            "file_operations": file_ops,
+        "timeouts": {
+            "git_operations_seconds": 60.0,
+            "db_operations_seconds": 30.0,
+            "json_io_lock_seconds": file_ops,
+            "test_execution_seconds": 300.0,
+            "build_operations_seconds": 600.0,
+            "default_seconds": default,
         }
     }
-    cfg_path = root / ".edison" / "core" / "config" / "defaults.yaml"
+    # Write to .edison/config/ to override bundled defaults
+    cfg_path = root / ".edison" / "config" / "timeouts.yaml"
     write_yaml(cfg_path, cfg)
-
-    project_cfg_path = root / ".agents" / "config" / "project.yml"
-    write_text(project_cfg_path, "project: { name: subprocess-wrapper-test }\n")
 
     # Ensure cached timeouts are refreshed for each test case
     from edison.core.utils.subprocess import reset_subprocess_timeout_cache
@@ -65,5 +64,5 @@ def test_run_with_timeout_respects_timeout_type(isolated_project_env: Path) -> N
     with pytest.raises(subprocess.TimeoutExpired):
         run_with_timeout(
             [sys.executable, "-c", "import time; time.sleep(0.2)"],
-            timeout_type="file_operations",
+            timeout_type="json_io_lock",
         )

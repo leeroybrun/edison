@@ -15,10 +15,6 @@ from .._config import get_config
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.paths import PathResolver
 from ...config.domains import OrchestratorConfig
-from edison.core.orchestrator import (
-    OrchestratorLauncher,
-    OrchestratorError,
-)
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.paths import get_project_config_dir
 from edison.data import get_data_path
@@ -135,9 +131,6 @@ class SessionAutoStart:
                 dry_run=dry_run,
             )
 
-        except OrchestratorError as exc:
-            self._handle_rollback(session_created, session_id, worktree_path, branch_name)
-            raise SessionAutoStartError(str(exc)) from exc
         except Exception as exc:
             self._handle_rollback(session_created, session_id, worktree_path, branch_name)
             raise SessionAutoStartError(str(exc)) from exc
@@ -293,6 +286,9 @@ class SessionAutoStart:
         Raises:
             OrchestratorError: if orchestrator launch fails (triggers rollback).
         """
+        # Lazy import to avoid circular dependency: orchestrator imports session.context
+        from edison.core.orchestrator import OrchestratorLauncher
+
         # Prepare session context for launcher
         session = get_session(session_id)
         ctx = SessionContext()
