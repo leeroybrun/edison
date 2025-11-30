@@ -21,7 +21,7 @@ from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
 from edison.core.entity import EntityMetadata
 from edison.core.utils.io.locking import safe_move_file, write_text_locked
-from edison.core.config import get_semantic_state
+from edison.core.config import WorkflowConfig
 
 @pytest.fixture
 def task_env(tmp_path, monkeypatch):

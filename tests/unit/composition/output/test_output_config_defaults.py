@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from edison.core.composition import OutputConfigLoader
-from .conftest import create_minimal_project
+from tests.unit.composition.conftest import create_minimal_project
 
 
 class TestDefaultConfiguration:

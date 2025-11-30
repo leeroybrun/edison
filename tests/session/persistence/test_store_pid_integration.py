@@ -16,7 +16,12 @@ from edison.core.utils.process.inspector import find_topmost_process, infer_sess
 from edison.core.session.core.id import validate_session_id
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session.core.models import Session
-from edison.core.config.domains.project import get_project_owner
+from edison.core.config.domains.project import ProjectConfig
+
+
+def get_project_owner(repo_root=None):
+    """Get project owner using ProjectConfig class."""
+    return ProjectConfig(repo_root=repo_root).owner
 
 
 def auto_session_for_owner(owner: str | None, repo: SessionRepository | None = None) -> str:

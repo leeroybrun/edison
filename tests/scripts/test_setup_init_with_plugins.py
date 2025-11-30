@@ -15,8 +15,8 @@ from .test_setup_init import (
     _load_config,
     _prepare_env,
     _run_setup,
-    _write_minimal_compose_config,
 )
+from tests.helpers.io_utils import _write_minimal_compose_config
 
 def _seed_pack_with_setup(root: Path, name: str, setup_data: dict) -> None:
     pack_dir = root / ".edison" / "packs" / name

@@ -27,6 +27,24 @@ from .core.id import validate_session_id, SessionIdError
 
 # Repository (persistence layer)
 from .persistence.repository import SessionRepository
+from .persistence import archive
+from .persistence import database
+from .persistence import graph
+
+# Lifecycle submodules
+from . import lifecycle
+from .lifecycle import recovery
+from .lifecycle import transaction
+from .lifecycle import autostart
+
+# Worktree submodule
+from . import worktree
+
+# Core submodules
+from .core import id
+
+# Next submodule
+from . import next
 
 # Path resolution utilities
 from .paths import get_session_bases, resolve_session_record_path
@@ -51,8 +69,22 @@ __all__ = [
     # ID validation
     "validate_session_id",
     "SessionIdError",
-    # Repository
+    # Repository & Persistence
     "SessionRepository",
+    "archive",
+    "database",
+    "graph",
+    # Lifecycle submodules
+    "lifecycle",
+    "recovery",
+    "transaction",
+    "autostart",
+    # Worktree
+    "worktree",
+    # Core submodules
+    "id",
+    # Next
+    "next",
     # Path resolution
     "get_session_bases",
     "resolve_session_record_path",

@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from edison.core.composition import OutputConfigLoader
-from .conftest import create_minimal_project, write_composition_yaml
+from tests.unit.composition.conftest import create_minimal_project, write_composition_yaml
 
 
 class TestGuidelinesConfiguration:

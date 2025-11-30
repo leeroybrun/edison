@@ -11,6 +11,7 @@ from typing import Optional, Union, Dict, Any
 
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session.lifecycle.manager import SessionManager
+from edison.core.session.worktree.config_helpers import _get_worktree_base
 
 
 def ensure_session(session_id: str, state: str = "active") -> Path:

@@ -16,7 +16,7 @@ from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
-from edison.core.config import get_semantic_state
+from edison.core.config import WorkflowConfig
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
@@ -167,7 +167,7 @@ def test_claim_task_moves_from_todo_to_wip(repo_env):
     session_id = "sess-1"
 
     # Create task in global todo
-    todo_state = get_semantic_state("task", "todo")
+    todo_state = WorkflowConfig().get_semantic_state("task", "todo")
     create_task_file(repo_env, task_id, state=todo_state)
 
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -176,7 +176,7 @@ def test_claim_task_moves_from_todo_to_wip(repo_env):
     updated_task = workflow.claim_task(task_id, session_id)
 
     # Assert
-    wip_state = get_semantic_state("task", "wip")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
     assert updated_task.state == wip_state
     assert updated_task.session_id == session_id
 
@@ -200,8 +200,8 @@ def test_claim_task_moves_qa_to_session(repo_env):
     qa_id = f"{task_id}-qa"
     session_id = "sess-1"
 
-    todo_state = get_semantic_state("task", "todo")
-    waiting_state = get_semantic_state("qa", "waiting")
+    todo_state = WorkflowConfig().get_semantic_state("task", "todo")
+    waiting_state = WorkflowConfig().get_semantic_state("qa", "waiting")
 
     create_task_file(repo_env, task_id, state=todo_state)
     create_qa_file(repo_env, qa_id, task_id, state=waiting_state)
@@ -230,8 +230,8 @@ def test_complete_task_moves_from_wip_to_done(repo_env):
     task_id = "T-3"
     session_id = "sess-1"
 
-    wip_state = get_semantic_state("task", "wip")
-    done_state = get_semantic_state("task", "done")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
+    done_state = WorkflowConfig().get_semantic_state("task", "done")
 
     # Create task in session wip
     create_task_file(repo_env, task_id, state=wip_state, session_id=session_id)
@@ -254,9 +254,9 @@ def test_complete_task_advances_qa_state(repo_env):
     qa_id = f"{task_id}-qa"
     session_id = "sess-1"
 
-    wip_state = get_semantic_state("task", "wip")
-    waiting_state = get_semantic_state("qa", "waiting")
-    qa_todo_state = get_semantic_state("qa", "todo")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
+    waiting_state = WorkflowConfig().get_semantic_state("qa", "waiting")
+    qa_todo_state = WorkflowConfig().get_semantic_state("qa", "todo")
 
     create_task_file(repo_env, task_id, state=wip_state, session_id=session_id)
     create_qa_file(repo_env, qa_id, task_id, state=waiting_state, session_id=session_id)
@@ -288,7 +288,7 @@ def test_claim_task_fails_when_task_already_done(repo_env):
     session_id = "sess-claim-5"
 
     # Create task in done state
-    done_state = get_semantic_state("task", "done")
+    done_state = WorkflowConfig().get_semantic_state("task", "done")
     create_task_file(repo_env, task_id, state=done_state)
 
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -309,7 +309,7 @@ def test_claim_task_fails_when_task_already_validated(repo_env):
     session_id = "sess-claim-6"
 
     # Create task in validated state
-    validated_state = get_semantic_state("task", "validated")
+    validated_state = WorkflowConfig().get_semantic_state("task", "validated")
     create_task_file(repo_env, task_id, state=validated_state)
 
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -323,7 +323,7 @@ def test_complete_task_not_in_wip_raises_error(repo_env):
     session_id = "sess-1"
 
     # Create task in todo state (not wip)
-    todo_state = get_semantic_state("task", "todo")
+    todo_state = WorkflowConfig().get_semantic_state("task", "todo")
     create_task_file(repo_env, task_id, state=todo_state, session_id=session_id)
 
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -340,7 +340,7 @@ def test_complete_task_wrong_session_raises_error(repo_env):
     session_b = "sess-b"
 
     # Task claimed by session A and in wip state
-    wip_state = get_semantic_state("task", "wip")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
     create_task_file(repo_env, task_id, state=wip_state, session_id=session_a)
 
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -355,8 +355,8 @@ def test_complete_task_returns_updated_task(repo_env):
     task_id = "T-9"
     session_id = "sess-1"
 
-    wip_state = get_semantic_state("task", "wip")
-    done_state = get_semantic_state("task", "done")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
+    done_state = WorkflowConfig().get_semantic_state("task", "done")
 
     # Create task in session wip
     original_task = create_task_file(repo_env, task_id, state=wip_state, session_id=session_id)
@@ -385,8 +385,8 @@ def test_complete_task_handles_missing_qa_gracefully(repo_env):
     task_id = "T-10"
     session_id = "sess-1"
 
-    wip_state = get_semantic_state("task", "wip")
-    done_state = get_semantic_state("task", "done")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
+    done_state = WorkflowConfig().get_semantic_state("task", "done")
 
     # Create task without QA
     create_task_file(repo_env, task_id, state=wip_state, session_id=session_id)
@@ -404,8 +404,8 @@ def test_claim_task_handles_missing_qa_gracefully(repo_env):
     task_id = "T-11"
     session_id = "sess-claim-11"
 
-    todo_state = get_semantic_state("task", "todo")
-    wip_state = get_semantic_state("task", "wip")
+    todo_state = WorkflowConfig().get_semantic_state("task", "todo")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
 
     # Create task WITHOUT QA
     create_task_file(repo_env, task_id, state=todo_state)
@@ -424,7 +424,7 @@ def test_claim_task_from_wip_to_wip_with_new_session(repo_env):
     old_session_id = "sess-old"
     new_session_id = "sess-new"
 
-    wip_state = get_semantic_state("task", "wip")
+    wip_state = WorkflowConfig().get_semantic_state("task", "wip")
 
     # Create task in old session's wip
     create_task_file(repo_env, task_id, state=wip_state, session_id=old_session_id)

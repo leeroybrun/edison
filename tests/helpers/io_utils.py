@@ -368,6 +368,174 @@ This constitution defines the governance and operational principles for orchestr
     return constitution_path
 
 
+def write_minimal_compose_config(
+    base_path: Path,
+    *,
+    platforms: list = None,
+    include_hook_type: bool = False,
+    include_env: bool = False,
+) -> Path:
+    """Write minimal compose configuration for testing.
+
+    Creates the necessary directory structure and config files for
+    compose commands to work in tests.
+
+    Args:
+        base_path: Base directory (typically tmp_path in tests)
+        platforms: List of platforms to enable (default: ["claude"])
+        include_hook_type: Include hook type definitions
+        include_env: Include environment variables in config
+
+    Returns:
+        Path: Path to the created config directory
+
+    Examples:
+        >>> write_minimal_compose_config(tmp_path)
+        >>> write_minimal_compose_config(tmp_path, platforms=["claude", "cursor"])
+    """
+    base_path = Path(base_path)
+    if platforms is None:
+        platforms = ["claude"]
+
+    # Create .edison/core/config directory
+    config_dir = base_path / ".edison" / "core" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create commands.yaml with a demo command
+    commands_data = {
+        "commands": {
+            "definitions": [
+                {
+                    "id": "demo-cmd",
+                    "domain": "demo",
+                    "command": "demo",
+                    "short_desc": "Demo command for testing",
+                    "full_desc": "A demo command used in tests.",
+                    "cli": "echo demo",
+                    "args": [],
+                    "when_to_use": "For testing compose functionality",
+                    "related_commands": [],
+                }
+            ],
+            "selection": {"mode": "all"},
+        }
+    }
+    write_yaml(config_dir / "commands.yaml", commands_data)
+
+    # Create settings.yaml with permissions
+    settings_data = {
+        "settings": {
+            "permissions": {
+                "allow": ["Read(./**)"],
+            }
+        }
+    }
+    write_yaml(config_dir / "settings.yaml", settings_data)
+
+    # Create main config.yml
+    main_config = {
+        "composition": {
+            "platforms": platforms,
+        }
+    }
+    if include_env:
+        main_config["env"] = {"TEST_VAR": "test_value"}
+
+    write_yaml(config_dir / "config.yml", main_config)
+
+    if include_hook_type:
+        hooks_data = {
+            "hooks": {
+                "definitions": [
+                    {
+                        "id": "demo-hook",
+                        "type": "pre-commit",
+                        "script": "echo hook",
+                    }
+                ]
+            }
+        }
+        write_yaml(config_dir / "hooks.yaml", hooks_data)
+
+    return config_dir
+
+
+def write_db_config(
+    base_path: Path,
+    *,
+    project: str = "test",
+) -> Path:
+    """Write database configuration for testing.
+
+    Creates the necessary config for session database operations.
+
+    Args:
+        base_path: Base directory (typically tmp_path in tests)
+        project: Project name for database naming
+
+    Returns:
+        Path: Path to the created config file
+    """
+    base_path = Path(base_path)
+    config_dir = base_path / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    config_data = {
+        "project": {
+            "name": project,
+        },
+        "database": {
+            "enabled": True,
+            "prefix": project,
+        },
+    }
+    config_path = config_dir / "config.yml"
+    write_yaml(config_path, config_data)
+    return config_path
+
+
+def write_orchestrator_config(
+    base_path: Path,
+    profiles: dict,
+    *,
+    default: str = "default",
+    core_config: bool = False,
+) -> Path:
+    """Write orchestrator configuration for testing.
+
+    Creates orchestrator profile configuration.
+
+    Args:
+        base_path: Base directory (typically tmp_path in tests)
+        profiles: Dictionary of profile name to profile configuration
+        default: Default profile name
+        core_config: If True, write to .edison/core/config instead of .edison/config
+
+    Returns:
+        Path: Path to the created config file
+    """
+    base_path = Path(base_path)
+    if core_config:
+        config_dir = base_path / ".edison" / "core" / "config"
+    else:
+        config_dir = base_path / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    config_data = {
+        "orchestrator": {
+            "profiles": profiles,
+            "default": default,
+        },
+    }
+    config_path = config_dir / "orchestrator.yml"
+    write_yaml(config_path, config_data)
+    return config_path
+
+
+# Alias for backward compatibility with test imports
+_write_minimal_compose_config = write_minimal_compose_config
+
+
 __all__ = [
     "write_yaml",
     "write_json",
@@ -379,4 +547,7 @@ __all__ = [
     "write_generated_agent",
     "write_orchestrator_manifest",
     "write_orchestrator_constitution",
+    "write_minimal_compose_config",
+    "write_db_config",
+    "write_orchestrator_config",
 ]

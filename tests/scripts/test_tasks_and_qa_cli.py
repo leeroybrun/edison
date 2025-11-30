@@ -210,7 +210,7 @@ def test_qa_bundle_outputs_manifest(tmp_path: Path):
     env["AGENTS_PROJECT_ROOT"] = str(root)
 
     # register tasks in session graph
-    from edison.core.session import persistence as session_graph
+    from edison.core.session import graph as session_graph
     os.environ["AGENTS_PROJECT_ROOT"] = str(root)
     session_graph.register_task("s1", "150-wave1-demo", owner="alice", status="done")
     session_graph.link_tasks("s1", "150-wave1-demo", "150.1-wave1-child")

@@ -17,7 +17,7 @@ from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
-from edison.core.config import get_semantic_state
+from edison.core.config import WorkflowConfig
 from edison.core.exceptions import TaskStateError
 
 @pytest.fixture
