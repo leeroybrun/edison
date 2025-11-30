@@ -11,13 +11,14 @@ from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.qa.models import QARecord
 from tests.helpers.env_setup import setup_project_root
+from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.cache_utils import reset_edison_caches
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup a repository environment with configuration."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    from tests.helpers.fixtures import create_repo_with_git
+    repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "core" / "config"
 
     # 1. defaults.yaml (State Machine)

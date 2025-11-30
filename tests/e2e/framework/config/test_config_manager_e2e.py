@@ -9,6 +9,7 @@ import pytest
 from jsonschema import Draft202012Validator, ValidationError
 
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 
 
 def _ensure_core_root_on_sys_path() -> None:
@@ -23,7 +24,8 @@ def _ensure_core_root_on_sys_path() -> None:
     if _core_root is None:
         _core_root = get_repo_root()
 def make_tmp_repo(tmp_path: Path, defaults: dict, project: Optional[dict] = None) -> Path:
-    repo = tmp_path
+    # Create real git repository so ConfigManager(repo_root=repo) is honored consistently
+    repo = create_repo_with_git(tmp_path)
     # Create .edison/config structure for project config overlays
     # ConfigManager loads bundled defaults first, then merges project overlays
     config_dir = repo / ".edison" / "config"
@@ -31,8 +33,6 @@ def make_tmp_repo(tmp_path: Path, defaults: dict, project: Optional[dict] = None
     write_yaml(config_dir / "custom.yaml", defaults)
     if project is not None:
         write_yaml(repo / "edison.yaml", project)
-    # Fake a git root marker so ConfigManager(repo_root=repo) is honored consistently
-    (repo / ".git").mkdir(parents=True, exist_ok=True)
     return repo
 
 

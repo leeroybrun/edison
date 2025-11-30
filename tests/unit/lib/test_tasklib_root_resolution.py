@@ -7,6 +7,7 @@ import pytest
 
 from edison.core.utils.paths import PathResolver
 from tests.helpers.env_setup import setup_project_root
+from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.cache_utils import reset_edison_caches
 
 # Repository root for test fixtures
@@ -27,7 +28,7 @@ def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypa
     monkeypatch.delenv("project_PROJECT_ROOT", raising=False)
 
     # Provide a minimal git marker so ROOT detection remains valid
-    (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
+    create_repo_with_git(tmp_path)
 
     # Reload PathResolver module to pick up new environment
     importlib.reload(importlib.import_module("edison.core.utils.paths"))
@@ -50,7 +51,7 @@ def test_resolve_repo_root_ignores_project_env_when_agents_unset(tmp_path: Path,
     # Point project_* to an arbitrary temp directory that is NOT the repo root
     project_root = tmp_path / "project-root"
     project_root.mkdir(parents=True, exist_ok=True)
-    (project_root / ".git").mkdir(parents=True, exist_ok=True)
+    create_repo_with_git(project_root)
 
     monkeypatch.setenv("project_ROOT", str(project_root))
     monkeypatch.setenv("project_PROJECT_ROOT", str(project_root))

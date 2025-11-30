@@ -6,6 +6,7 @@ state transitions and file movements across Task and QA domains.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.fixtures import create_task_file, create_qa_file
 from helpers.env_setup import setup_project_root
 
@@ -20,8 +21,8 @@ from edison.core.config import WorkflowConfig
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup a repository environment with configuration."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    from tests.helpers.fixtures import create_repo_with_git
+    repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "core" / "config"
     
     # 1. defaults.yaml (State Machine)

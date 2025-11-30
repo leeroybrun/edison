@@ -62,7 +62,8 @@ def test_session_id_detection_moved():
 def test_is_git_repository_functionality(tmp_path):
     """Basic functionality test to ensure git utilities work."""
     from edison.core.utils.git import is_git_repository
-    
-    # Create a fake git dir
-    (tmp_path / ".git").mkdir()
+
+    # Create a real git repository
+    from tests.helpers.fixtures import create_repo_with_git
+    create_repo_with_git(tmp_path)
     assert is_git_repository(tmp_path)

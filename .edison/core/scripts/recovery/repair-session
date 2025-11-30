@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""
+Wrapper script for repairing corrupted session files.
+Restores session from backup file.
+"""
+import sys
+import argparse
+import os
+import json
+import shutil
+from pathlib import Path
+
+# Ensure edison package is importable
+REPO_ROOT = Path(__file__).resolve().parents[4]
+if str(REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from edison.core.utils.paths import PathResolver
+
+
+def find_session_file(root: Path, session_id: str) -> Path | None:
+    """Find session JSON file across all session state directories."""
+    sessions_root = root / ".project" / "sessions"
+    if not sessions_root.exists():
+        return None
+
+    # Check all subdirectories for the session file
+    for state_dir in sessions_root.iterdir():
+        if not state_dir.is_dir() or state_dir.name.startswith("_"):
+            continue
+        session_file = state_dir / f"{session_id}.json"
+        if session_file.exists():
+            return session_file
+
+    return None
+
+
+def find_backup_file(root: Path, session_id: str) -> Path | None:
+    """Find backup file for session."""
+    backup_dir = root / ".project" / "sessions" / "_backup"
+    if not backup_dir.exists():
+        return None
+
+    backup_file = backup_dir / f"{session_id}.json.bak"
+    if backup_file.exists():
+        return backup_file
+
+    return None
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Repair corrupted session files")
+    parser.add_argument("--dry-run", action="store_true", help="Show repair plan without executing")
+    parser.add_argument("--force", action="store_true", help="Force repair from backup")
+    parser.add_argument("--session", required=True, help="Session ID to repair")
+    args = parser.parse_args()
+
+    # Set project root from environment if provided
+    if "AGENTS_PROJECT_ROOT" in os.environ:
+        root = Path(os.environ["AGENTS_PROJECT_ROOT"])
+    else:
+        try:
+            root = PathResolver.resolve_project_root()
+        except (FileNotFoundError, OSError, RuntimeError) as e:
+            print(f"Error: Failed to resolve project root: {e}", file=sys.stderr)
+            return 1
+
+    try:
+        # Find session file
+        session_file = find_session_file(root, args.session)
+        if not session_file:
+            print(f"Error: Session file not found for {args.session}", file=sys.stderr)
+            return 1
+
+        # Find backup file
+        backup_file = find_backup_file(root, args.session)
+        if not backup_file:
+            print(f"Error: No backup file found for {args.session}", file=sys.stderr)
+            return 1
+
+        # Check if session file is corrupted
+        is_corrupted = False
+        try:
+            with open(session_file, 'r') as f:
+                json.load(f)
+        except (json.JSONDecodeError, OSError):
+            is_corrupted = True
+
+        if not is_corrupted:
+            print(f"Session {args.session} appears to be valid")
+            return 0
+
+        if args.dry_run:
+            print(f"Would restore session {args.session} from backup:")
+            print(f"  Source: {backup_file}")
+            print(f"  Target: {session_file}")
+            return 0
+
+        # Restore from backup
+        shutil.copy2(backup_file, session_file)
+        print(f"Restored session {args.session} from backup")
+
+        # Verify restoration
+        with open(session_file, 'r') as f:
+            json.load(f)
+
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -110,6 +110,41 @@ def isolated_project_env(tmp_path, monkeypatch):
         stderr=subprocess.DEVNULL,
     )
 
+    # Configure git user for tests (required for commits)
+    run_with_timeout(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    run_with_timeout(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Create initial commit so worktrees can be created
+    # (worktrees require at least one commit in the repository)
+    readme_file = tmp_path / "README.md"
+    readme_file.write_text("# Test Project\n", encoding="utf-8")
+    run_with_timeout(
+        ["git", "add", "README.md"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    run_with_timeout(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
     # Copy Edison core config files (state-machine.yaml, etc.) for state machine tests
     # In standalone Edison package, config files are bundled in src/edison/data/config/
     edison_bundled_config = Path(__file__).parent.parent / "src" / "edison" / "data" / "config"

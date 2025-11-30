@@ -149,7 +149,8 @@ def test_clean_worktrees_force_archives_orphans(project: tuple[Path, dict[str, s
     # Active preserved
     assert active_wt.exists(), "Active session worktree must be preserved"
     # Orphan archived
-    # archiveDirectory resolves relative to REPO_DIR.parent because manifest uses "../..."
-    archived_dir = root.parent.parent / WORKTREE_DIRNAME / "_archived"
-    archived_candidates = list(archived_dir.glob(f"*{orphan_sid}"))
+    # archiveDirectory is resolved from manifest which uses "../{WORKTREE_DIRNAME}/_archived"
+    # This resolves to root.parent/{WORKTREE_DIRNAME}/_archived (not root.parent.parent)
+    archived_dir = root.parent / WORKTREE_DIRNAME / "_archived"
+    archived_candidates = list(archived_dir.glob(f"{orphan_sid}*"))
     assert archived_candidates, f"Expected archived entry for {orphan_sid}"

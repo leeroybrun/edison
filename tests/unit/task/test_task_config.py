@@ -11,14 +11,15 @@ from pathlib import Path
 import pytest
 
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.env_setup import setup_project_root
 
 
 @pytest.mark.task
 def test_task_config_reads_paths_from_project_config(tmp_path: Path, monkeypatch):
     """TaskConfig must resolve paths from project config overrides."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    from tests.helpers.fixtures import create_repo_with_git
+    repo = create_repo_with_git(tmp_path)
 
     # Project config placed under .edison/config/ for ConfigManager
     config_dir = repo / ".edison" / "config"

@@ -119,8 +119,8 @@ class MockRepository(BaseRepository[MockEntity]):
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
     """Setup repository environment with state machine configuration."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    from tests.helpers.fixtures import create_repo_with_git
+    repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "core" / "config"
 
     # Setup state machine configuration for test_entity

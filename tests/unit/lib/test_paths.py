@@ -18,6 +18,7 @@ from edison.core.utils.paths import (  # type: ignore  # noqa: E402
 )
 from edison.core.utils.subprocess import run_with_timeout  # type: ignore  # noqa: E402
 from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.env_setup import setup_project_root
 
 
@@ -86,9 +87,7 @@ class TestEnvOverridesAndErrors:
         When AGENTS_PROJECT_ROOT points at a valid repo root, it must take
         precedence over any other mechanism.
         """
-        repo = tmp_path / "project"
-        repo.mkdir(parents=True, exist_ok=True)
-        (repo / ".git").mkdir()
+        repo = create_repo_with_git(tmp_path, name="project")
         (repo / ".project").mkdir()
 
         setup_project_root(monkeypatch, repo)

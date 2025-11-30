@@ -7,6 +7,7 @@ paths are respected and that task discovery works without the legacy
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.env_setup import setup_project_root
 
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 import importlib
 
 def _bootstrap_repo(repo: Path) -> None:
-    (repo / ".git").mkdir()
+    create_repo_with_git(repo)
     config_dir = repo / ".edison" / "core" / "config"
     write_yaml(
         config_dir / "defaults.yaml",

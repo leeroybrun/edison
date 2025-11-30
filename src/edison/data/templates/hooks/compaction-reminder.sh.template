@@ -6,7 +6,11 @@
 # This hook is triggered automatically by Claude Code BEFORE context compaction.
 # It reminds the agent to re-read its constitution after compaction completes.
 
-set -e
+# Fast check: Skip if no Edison session file exists
+SESSION_FILE=".project/.session-id"
+if [[ ! -f "$SESSION_FILE" ]]; then
+  exit 0  # No Edison session, skip hook
+fi
 
 # Configuration from hooks.yaml
 ROLE="{{ config.default_role | default('agents') }}"
@@ -27,8 +31,8 @@ fi
 {% if config.log.enabled %}
 if [ "$LOG_ENABLED" = "true" ] || [ "$LOG_ENABLED" = "True" ]; then
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    mkdir -p "$(dirname "$LOG_PATH")"
-    echo "$TIMESTAMP role=$ROLE source=precompact message=$MESSAGE" >> "$LOG_PATH"
+    mkdir -p "$(dirname "$LOG_PATH")" 2>/dev/null || true
+    echo "$TIMESTAMP role=$ROLE source=precompact message=$MESSAGE" >> "$LOG_PATH" 2>/dev/null || true
 fi
 {% endif %}
 

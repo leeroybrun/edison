@@ -19,6 +19,7 @@ from edison.core.utils.git import (  # type: ignore  # noqa: E402
     get_git_root,
 )
 from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.env_setup import setup_project_root
 
 
@@ -63,7 +64,7 @@ class TestPathResolver:
         """Fail fast when root would resolve to .edison directory."""
         edison_root = tmp_path / ".edison"
         edison_root.mkdir(parents=True, exist_ok=True)
-        (edison_root / ".git").mkdir()
+        create_repo_with_git(edison_root)
 
         setup_project_root(monkeypatch, edison_root)
 

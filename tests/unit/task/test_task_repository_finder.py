@@ -7,6 +7,7 @@ Following strict TDD: These tests are written FIRST and MUST fail initially.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.markdown_utils import create_markdown_task
 from helpers.env_setup import setup_project_root
 
@@ -20,7 +21,7 @@ from edison.core.task.models import Task
 
 def _bootstrap_repo(repo: Path) -> None:
     """Bootstrap a test repository with minimal config."""
-    (repo / ".git").mkdir()
+    create_repo_with_git(repo)
     config_dir = repo / ".edison" / "core" / "config"
     write_yaml(
         config_dir / "defaults.yaml",

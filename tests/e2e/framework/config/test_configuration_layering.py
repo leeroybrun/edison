@@ -18,6 +18,7 @@ import pytest
 import json
 
 from tests.helpers.paths import get_repo_root
+from tests.helpers.fixtures import create_repo_with_git
 
 # Add Edison core to path
 _THIS_FILE = Path(__file__).resolve()
@@ -45,7 +46,8 @@ def make_tmp_repo(
     project_overlays: dict | None = None,
 ) -> Path:
     """Create temporary repo with the new 3-layer config layout."""
-    repo = tmp_path
+    # Create real git repository to make PathResolver happy
+    repo = create_repo_with_git(tmp_path)
 
     # Core defaults & modular core config (.edison/core/config/*.yaml)
     core_dir = repo / ".edison" / "core" / "config"
@@ -61,8 +63,6 @@ def make_tmp_repo(
             fname = name if name.endswith(".yml") else f"{name}.yml"
             write_yaml(proj_dir / fname, data)
 
-    # Git marker to make PathResolver happy
-    (repo / ".git").mkdir(parents=True, exist_ok=True)
     return repo
 
 
@@ -434,8 +434,7 @@ def test_config_precedence_documentation(tmp_path: Path, monkeypatch: pytest.Mon
 
 def test_missing_config_files_handled_gracefully(tmp_path: Path):
     """Test system works even with missing config files."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
 
     # No defaults.yaml, no project overlays
     mgr = ConfigManager(repo_root=repo)

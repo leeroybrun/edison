@@ -8,6 +8,7 @@ import pytest
 from tests.helpers.paths import get_repo_root
 from tests.helpers.io_utils import write_yaml
 from tests.helpers.env_setup import setup_project_root
+from tests.helpers.fixtures import create_repo_with_git
 
 # Add Edison core to path so test helpers can resolve
 _THIS_FILE = Path(__file__).resolve()
@@ -23,10 +24,8 @@ if _CORE_ROOT is None:
 
 CORE_ROOT = _CORE_ROOT
 def _make_repo(tmp_path: Path, name: str = "example-project") -> Path:
-    repo = tmp_path / name
-    repo.mkdir(parents=True, exist_ok=True)
-    (repo / ".git").mkdir(parents=True, exist_ok=True)
-    return repo
+    """Create a test repository with git initialized."""
+    return create_repo_with_git(tmp_path, name=name)
 
 
 

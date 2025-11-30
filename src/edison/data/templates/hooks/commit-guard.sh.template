@@ -4,11 +4,15 @@
 # Description: {{ description }}
 # Blocking: {{ "YES - CAN BLOCK COMMITS" if blocking else "NO" }}
 
-set -e
+# Fast check: Skip if no Edison session file exists
+SESSION_FILE=".project/.session-id"
+if [[ ! -f "$SESSION_FILE" ]]; then
+  exit 0  # No Edison session, skip hook
+fi
 
-# Parse input JSON
-INPUT=$(cat)
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool')
+# Parse input JSON (with timeout to prevent hanging)
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
 
 {% set cfg = config if config is defined else {} %}
 {% set require_tests = cfg.get("require_tests_pass", False) %}
@@ -20,7 +24,7 @@ if [[ "$TOOL_NAME" != "Bash" ]]; then
   exit 0
 fi
 
-COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""')
+COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
 if [[ "$COMMAND" != *"git commit"* ]]; then
   exit 0
 fi

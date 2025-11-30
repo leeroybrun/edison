@@ -3,7 +3,11 @@
 # Type: {{ type }}
 # Description: {{ description }}
 
-set -e
+# Fast check: Skip if no Edison session file exists
+SESSION_FILE=".project/.session-id"
+if [[ ! -f "$SESSION_FILE" ]]; then
+  exit 0  # No Edison session, skip hook
+fi
 
 echo "👋 Edison Session Ending..."
 
@@ -11,8 +15,8 @@ echo "👋 Edison Session Ending..."
 {% set cfg = config if config is defined else {} %}
 {% if cfg.get("save_logs", False) %}
 LOG_FILE=".edison/logs/session-$(date +%Y%m%d-%H%M%S).log"
-mkdir -p .edison/logs
-echo "Session ended at $(date)" > "$LOG_FILE"
+mkdir -p .edison/logs 2>/dev/null || true
+echo "Session ended at $(date)" > "$LOG_FILE" 2>/dev/null || true
 {% endif %}
 
 exit 0

@@ -49,8 +49,9 @@ def test_missing_database_url_raises(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_invalid_yaml_config_fails_cleanly(tmp_path: Path):
-    # Create a fake repo with .git and invalid edison.yaml
-    (tmp_path / ".git").mkdir()
+    # Create a real git repo and invalid edison.yaml
+    from tests.helpers.fixtures import create_repo_with_git
+    create_repo_with_git(tmp_path)
     (tmp_path / "edison.yaml").write_text("project: [this: is: invalid]", encoding="utf-8")
     cm = ConfigManager(repo_root=tmp_path)
     with pytest.raises(Exception):

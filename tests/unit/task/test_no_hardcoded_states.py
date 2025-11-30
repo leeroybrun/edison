@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from helpers.env_setup import setup_project_root
+from tests.helpers.fixtures import create_repo_with_git
 
 
 def _find_hardcoded_lists_in_file(file_path: Path) -> list[tuple[int, str]]:
@@ -169,7 +170,7 @@ statemachine:
         encoding="utf-8",
     )
 
-    (tmp_path / ".git").mkdir()
+    create_repo_with_git(tmp_path)
 
     # Set up environment - need monkeypatch fixture
     # Since this test doesn't have monkeypatch, we'll handle env manually

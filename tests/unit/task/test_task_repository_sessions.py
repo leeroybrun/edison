@@ -5,6 +5,7 @@ tasks stored in session-specific directories.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.markdown_utils import create_markdown_task
 from helpers.env_setup import setup_project_root
 
@@ -16,7 +17,7 @@ from edison.core.task.repository import TaskRepository
 from edison.core.entity import EntityMetadata
 
 def _bootstrap_repo(repo: Path) -> None:
-    (repo / ".git").mkdir()
+    create_repo_with_git(repo)
     config_dir = repo / ".edison" / "core" / "config"
     write_yaml(
         config_dir / "defaults.yaml",

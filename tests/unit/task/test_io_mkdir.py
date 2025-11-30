@@ -10,6 +10,7 @@ Following CRITICAL PRINCIPLES:
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.fixtures import create_repo_with_git
 from helpers.env_setup import setup_project_root
 
 import pytest
@@ -27,8 +28,7 @@ from edison.core.config import WorkflowConfig
 @pytest.fixture
 def task_env(tmp_path, monkeypatch):
     """Setup task workflow environment with real configuration."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "core" / "config"
 
     # 1. defaults.yaml (State Machine + Semantics)

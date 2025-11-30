@@ -13,13 +13,13 @@ import pytest
 
 from helpers.io_utils import write_yaml
 from tests.helpers.env_setup import setup_project_root
+from tests.helpers.fixtures import create_repo_with_git
 
 
 @pytest.mark.qa
 def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch):
     """QAConfig must provide get_delegation_config() method."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
@@ -57,8 +57,7 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
 @pytest.mark.qa
 def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch):
     """QAConfig must provide get_validation_config() method."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
@@ -104,8 +103,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
 @pytest.mark.qa
 def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monkeypatch):
     """QAConfig must provide max_concurrent_validators() method."""
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"
@@ -137,8 +135,7 @@ def test_qa_config_class_falls_back_to_bundled_defaults(tmp_path: Path, monkeypa
     so even with an empty project config, maxConcurrentAgents should be available.
     This test verifies that bundled defaults are properly loaded.
     """
-    repo = tmp_path
-    (repo / ".git").mkdir()
+    repo = create_repo_with_git(tmp_path)
 
     # Project config placed under .edison/config (not .edison/core/config)
     config_dir = repo / ".edison" / "config"

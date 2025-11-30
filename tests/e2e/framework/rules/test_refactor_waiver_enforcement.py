@@ -6,10 +6,6 @@ from helpers.tdd_helpers import _validate_refactor_cycle
 
 
 class TestRefactorWaiver(unittest.TestCase):
-    def setUp(self) -> None:  # noqa: D401
-        # Direct import from test helpers
-        self.tddlib = type('TddLib', (), {'_validate_refactor_cycle': _validate_refactor_cycle})()
-
     def test_valid_red_green_refactor_sequence(self):
         commits = [
             {"message": "[RED] initial failing test"},
@@ -20,7 +16,7 @@ class TestRefactorWaiver(unittest.TestCase):
         def provider(_started_at: str, _base: str):
             return commits
 
-        ok = self.tddlib._validate_refactor_cycle(
+        ok = _validate_refactor_cycle(
             task_id="T-TEST-OK",
             commit_provider=provider,
         )
@@ -35,7 +31,7 @@ class TestRefactorWaiver(unittest.TestCase):
         def provider(_started_at: str, _base: str):
             return commits
 
-        ok = self.tddlib._validate_refactor_cycle(
+        ok = _validate_refactor_cycle(
             task_id="T-TEST-FAIL",
             commit_provider=provider,
         )
@@ -45,7 +41,7 @@ class TestRefactorWaiver(unittest.TestCase):
         def provider(_started_at: str, _base: str):
             return []
 
-        ok = self.tddlib._validate_refactor_cycle(
+        ok = _validate_refactor_cycle(
             task_id="T-TEST-EMPTY",
             commit_provider=provider,
         )

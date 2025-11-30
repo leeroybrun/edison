@@ -49,8 +49,8 @@ settings:
         - "Bash(docker push:*)"
 
     # Environment variables
+    # Note: EDISON_ACTIVE is NOT set here - hooks detect sessions via .project/.session-id file
     env:
-      EDISON_ACTIVE: "true"
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: "64000"
 
     # Other settings

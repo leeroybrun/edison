@@ -7,6 +7,9 @@ Most fixtures are consolidated in tests/conftest.py.
 sys.path is already configured by tests/conftest.py.
 
 Note: Session tests use session_git_repo_path fixture (returns Path, not TestGitRepo helper).
+
+CRITICAL: All session tests MUST run in isolated environments to prevent
+session persistence between tests causing failures.
 """
 from __future__ import annotations
 

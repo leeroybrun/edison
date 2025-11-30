@@ -13,17 +13,34 @@ from tests.helpers.io_utils import write_yaml
 from tests.helpers.cache_utils import reset_edison_caches
 
 
-def create_repo_with_git(tmp_path: Path) -> Path:
-    """Create a directory with .git marker for git root detection.
+def create_repo_with_git(tmp_path: Path, name: Optional[str] = None) -> Path:
+    """Create a directory with a real git repository initialized.
+
+    Uses `git init` to create a proper git repository rather than just
+    a .git directory marker. This ensures git commands like
+    `git rev-parse --show-toplevel` work correctly.
 
     Args:
         tmp_path: Temporary directory from pytest fixture
+        name: Optional subdirectory name (if None, uses tmp_path directly)
 
     Returns:
         Path to the repository root
     """
-    repo = tmp_path
-    (repo / ".git").mkdir(parents=True, exist_ok=True)
+    from edison.core.utils.subprocess import run_with_timeout
+    import subprocess
+
+    repo = tmp_path / name if name else tmp_path
+    repo.mkdir(parents=True, exist_ok=True)
+
+    # Initialize a real git repository
+    run_with_timeout(
+        ["git", "init"],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     return repo
 
 

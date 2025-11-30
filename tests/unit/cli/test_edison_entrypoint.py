@@ -13,6 +13,7 @@ from edison.core.utils.paths import resolve_project_root
 from edison.core.utils.git import get_git_root, is_git_repository
 from edison.cli._dispatcher import discover_domains, discover_commands
 from tests.helpers.env_setup import clear_path_caches
+from tests.helpers.fixtures import create_repo_with_git
 
 
 def test_discover_domains_finds_cli_modules() -> None:
@@ -71,14 +72,14 @@ def test_is_git_repository(tmp_path: Path) -> None:
     repo.mkdir()
     assert not is_git_repository(repo)
 
-    (repo / ".git").mkdir()
+    create_repo_with_git(repo)
     assert is_git_repository(repo)
 
 
 def test_get_git_root(tmp_path: Path) -> None:
     """Test git root detection."""
     root = tmp_path / "project"
-    (root / ".git").mkdir(parents=True, exist_ok=True)
+    create_repo_with_git(root)
     nested = root / "a" / "b"
     nested.mkdir(parents=True, exist_ok=True)
 
