@@ -64,3 +64,53 @@ def get_json_field(data: Dict[str, Any], field: str, default: Any = None) -> Any
         return traverse_json_path(data, field)
     except KeyError:
         return default
+
+
+def create_session_json(
+    session_id: str,
+    owner: str = "test",
+    state: str = "draft",
+) -> dict:
+    """Create session JSON structure.
+
+    Args:
+        session_id: Session identifier
+        owner: Session owner
+        state: Session state
+
+    Returns:
+        Dict with session structure
+    """
+    return {
+        "meta": {
+            "sessionId": session_id,
+            "owner": owner,
+            "status": state,
+        },
+        "state": state,
+        "tasks": {},
+        "qa": {},
+    }
+
+
+def get_session_field(session_data: dict, field_path: str) -> Any:
+    """Get field from session JSON with dot notation.
+
+    Args:
+        session_data: Session JSON dict
+        field_path: Dot-separated path (e.g., "meta.sessionId")
+
+    Returns:
+        Value at path or None if not found
+
+    Example:
+        session_id = get_session_field(data, "meta.sessionId")
+    """
+    parts = field_path.split(".")
+    value = session_data
+    for part in parts:
+        if isinstance(value, dict):
+            value = value.get(part)
+        else:
+            return None
+    return value

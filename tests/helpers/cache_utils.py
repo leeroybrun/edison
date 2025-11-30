@@ -87,3 +87,30 @@ def reset_edison_caches() -> None:
         management._paths_instance = None
     except Exception:
         pass
+
+
+def reload_config_modules(*module_names: str) -> None:
+    """Reload Edison config-dependent modules.
+
+    Use after changing config to ensure modules pick up changes.
+    """
+    import importlib
+    for name in module_names:
+        try:
+            mod = importlib.import_module(name)
+            importlib.reload(mod)
+        except ImportError:
+            pass
+
+
+CONFIG_MODULES = [
+    "edison.core.config.domains.task",
+    "edison.core.task.paths",
+    "edison.core.utils.paths.resolver",
+]
+
+
+def reset_all_and_reload() -> None:
+    """Reset caches and reload common config modules."""
+    reset_edison_caches()
+    reload_config_modules(*CONFIG_MODULES)

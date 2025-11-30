@@ -146,7 +146,7 @@ Works seamlessly in any environment.
 ## 📁 File Structure
 
 ```
-tests/context/
+tests/tools/context/
 ├── README.md                      # Complete usage guide (11 KB)
 ├── IMPLEMENTATION_SUMMARY.md      # This file
 ├── __init__.py                    # Package exports

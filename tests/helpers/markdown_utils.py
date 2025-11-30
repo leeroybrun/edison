@@ -5,6 +5,7 @@ task and QA markdown files.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -84,3 +85,64 @@ def extract_primary_files(content: str) -> List[str]:
                 primary_files.append(file_path)
 
     return primary_files
+
+
+def create_task_file(
+    path: Path,
+    task_id: str,
+    title: str = "Test Task",
+    state: str = "todo",
+    session_id: str | None = None,
+) -> Path:
+    """Create a markdown task file.
+
+    Args:
+        path: Where to create the file
+        task_id: Task identifier
+        title: Task title
+        state: Task state (todo, wip, done)
+        session_id: Optional session ID
+
+    Returns:
+        Path to created file
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        f"<!-- Status: {state} -->",
+        f"# {title}",
+        f"Task ID: {task_id}",
+    ]
+    if session_id:
+        lines.append(f"Session: {session_id}")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
+def create_qa_file(
+    path: Path,
+    qa_id: str,
+    title: str = "Test QA",
+    state: str = "pending",
+    validator: str = "test-validator",
+) -> Path:
+    """Create a markdown QA file.
+
+    Args:
+        path: Where to create the file
+        qa_id: QA identifier
+        title: QA title
+        state: QA state
+        validator: Validator owner
+
+    Returns:
+        Path to created file
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        f"<!-- Status: {state} -->",
+        f"# {title}",
+        f"QA ID: {qa_id}",
+        f"Validator: {validator}",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path

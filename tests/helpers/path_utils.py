@@ -107,3 +107,52 @@ def get_record_state(
     if record_path:
         return record_path.parent.name
     return None
+
+
+def ensure_state_directories(
+    project_root: Path,
+    entity_type: str = "session",
+) -> dict[str, Path]:
+    """Ensure state directories exist for entity type.
+
+    Args:
+        project_root: Project root path
+        entity_type: Type of entity (session, task, qa)
+
+    Returns:
+        Dict mapping state names to paths
+    """
+    from tests.config import load_states
+    states = load_states()
+    dirs = states.get(entity_type, {}).get("directories", {})
+
+    result = {}
+    for state, dirname in dirs.items():
+        path = project_root / ".project" / f"{entity_type}s" / dirname
+        path.mkdir(parents=True, exist_ok=True)
+        result[state] = path
+
+    return result
+
+
+def get_state_directory(
+    project_root: Path,
+    entity_type: str,
+    state: str,
+    entity_id: str,
+) -> Path:
+    """Get directory path for entity in specific state.
+
+    Args:
+        project_root: Project root path
+        entity_type: Type of entity (session, task, qa)
+        state: Entity state
+        entity_id: Entity identifier
+
+    Returns:
+        Path to entity directory
+    """
+    from tests.config import load_states
+    states = load_states()
+    dirname = states.get(entity_type, {}).get("directories", {}).get(state, state)
+    return project_root / ".project" / f"{entity_type}s" / dirname / entity_id
