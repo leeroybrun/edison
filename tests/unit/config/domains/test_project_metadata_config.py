@@ -102,8 +102,8 @@ def test_default_owner_prefers_config_owner(monkeypatch, isolated_project_env: P
         {"project": {"name": "owner-proj", "owner": "config-owner"}},
     )
 
-    from edison.core.config.domains.project import get_project_owner
+    from edison.core.config.domains.project import ProjectConfig
 
     # Pass the isolated project root to ensure config is loaded from the right location
-    owner = get_project_owner(repo_root=isolated_project_env)
+    owner = ProjectConfig(repo_root=isolated_project_env).owner
     assert owner == "config-owner"
