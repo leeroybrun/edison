@@ -580,6 +580,8 @@ timeouts:
   db_operations_seconds: 30.0
   json_io_lock_seconds: 5.0
   test_execution_seconds: 300.0
+  build_operations_seconds: 600.0
+  default_seconds: 60.0
 
 subprocess_timeouts:
   git_operations: 30

@@ -15,6 +15,8 @@ _REQUIRED_TIMEOUT_KEYS = (
     "db_operations_seconds",
     "json_io_lock_seconds",
     "test_execution_seconds",
+    "build_operations_seconds",
+    "default_seconds",
 )
 
 
@@ -61,6 +63,18 @@ class TimeoutsConfig(BaseDomainConfig):
         self._validate_required_keys()
         return float(self.section["test_execution_seconds"])
 
+    @cached_property
+    def build_operations_seconds(self) -> float:
+        """Get timeout for build operations in seconds."""
+        self._validate_required_keys()
+        return float(self.section["build_operations_seconds"])
+
+    @cached_property
+    def default_seconds(self) -> float:
+        """Get default timeout in seconds."""
+        self._validate_required_keys()
+        return float(self.section["default_seconds"])
+
     def get_all_settings(self) -> Dict[str, float]:
         """Get all timeout settings as a dict.
 
@@ -73,6 +87,8 @@ class TimeoutsConfig(BaseDomainConfig):
             "db_operations_seconds": float(self.section["db_operations_seconds"]),
             "json_io_lock_seconds": float(self.section["json_io_lock_seconds"]),
             "test_execution_seconds": float(self.section["test_execution_seconds"]),
+            "build_operations_seconds": float(self.section["build_operations_seconds"]),
+            "default_seconds": float(self.section["default_seconds"]),
         }
 
 
