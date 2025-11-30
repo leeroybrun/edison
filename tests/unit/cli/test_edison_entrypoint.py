@@ -12,6 +12,7 @@ from pathlib import Path
 from edison.core.utils.paths import resolve_project_root
 from edison.core.utils.git import get_git_root, is_git_repository
 from edison.cli._dispatcher import discover_domains, discover_commands
+from tests.helpers.env_setup import clear_path_caches
 
 
 def test_discover_domains_finds_cli_modules() -> None:
@@ -56,8 +57,7 @@ def test_resolve_project_root_walks_up(isolated_project_env: Path) -> None:
     try:
         os.chdir(nested)
         # Clear cache to force fresh resolution
-        import edison.core.utils.paths.resolver as paths
-        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+        clear_path_caches()
 
         detected = resolve_project_root()
         assert detected == root

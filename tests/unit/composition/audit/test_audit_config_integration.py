@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.helpers.env_setup import setup_project_root
 from helpers.io_utils import write_yaml, write_text
 from edison.core.composition.audit import GuidelineRecord, duplication_matrix
 from edison.cli.qa.audit import register_args
@@ -69,7 +70,7 @@ def test_duplication_matrix_uses_config_threshold_and_shingle_size(tmp_path: Pat
     records = _write_guidelines(repo_root)
 
     # Make ConfigManager and path resolution use this isolated repo
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_root))
+    setup_project_root(monkeypatch, repo_root)
 
     pairs = duplication_matrix(records)
 
@@ -83,7 +84,7 @@ def test_cli_audit_threshold_defaults_to_config(tmp_path: Path, monkeypatch: pyt
     _write_composition_config(repo_root, min_similarity=0.5, cli_threshold=0.37, k=4)
     _write_guidelines(repo_root)
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_root))
+    setup_project_root(monkeypatch, repo_root)
 
     parser = argparse.ArgumentParser()
     register_args(parser)

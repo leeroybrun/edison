@@ -5,6 +5,8 @@ tasks stored in session-specific directories.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from helpers.markdown_utils import create_markdown_task
+from helpers.env_setup import setup_project_root
 
 from pathlib import Path
 import importlib
@@ -50,13 +52,7 @@ def repo_env(tmp_path, monkeypatch):
     repo = tmp_path
     _bootstrap_repo(repo)
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-
-    # Clear config caches
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     # Reload config-dependent modules
     import edison.core.config.domains.task as task_config
@@ -65,25 +61,6 @@ def repo_env(tmp_path, monkeypatch):
     importlib.reload(paths)
 
     return repo
-
-def create_markdown_task(path: Path, task_id: str, title: str, session_id: str = None):
-    """Helper to create a raw markdown task file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    
-    content = [
-        f"<!-- Status: {path.parent.name} -->"
-    ]
-    if session_id:
-        content.append(f"<!-- Session: {session_id} -->")
-    
-    content.extend([
-        "",
-        f"# {title}",
-        "",
-        "Description here."
-    ])
-    
-    path.write_text("\n".join(content), encoding="utf-8")
 
 def test_get_task_from_session_directory(repo_env):
     """Test that TaskRepository.get() finds tasks in session directories."""
@@ -94,7 +71,7 @@ def test_get_task_from_session_directory(repo_env):
     session_task_path = (
         repo_env / ".project" / "sessions" / "wip" / session_id / "tasks" / "todo" / f"{task_id}.md"
     )
-    create_markdown_task(session_task_path, task_id, "Session Task", session_id)
+    create_markdown_task(session_task_path, task_id, "Session Task", session_id=session_id)
     
     repo = TaskRepository(project_root=repo_env)
     
@@ -114,11 +91,11 @@ def test_list_all_includes_session_tasks(repo_env):
 
     # 2. Create session 1 task
     sess1_path = repo_env / ".project" / "sessions" / "wip" / "sess-1" / "tasks" / "wip" / "T-SESS-1.md"
-    create_markdown_task(sess1_path, "T-SESS-1", "Session 1 Task", "sess-1")
+    create_markdown_task(sess1_path, "T-SESS-1", "Session 1 Task", session_id="sess-1")
 
     # 3. Create session 2 task
     sess2_path = repo_env / ".project" / "sessions" / "wip" / "sess-2" / "tasks" / "todo" / "T-SESS-2.md"
-    create_markdown_task(sess2_path, "T-SESS-2", "Session 2 Task", "sess-2")
+    create_markdown_task(sess2_path, "T-SESS-2", "Session 2 Task", session_id="sess-2")
 
     repo = TaskRepository(project_root=repo_env)
 

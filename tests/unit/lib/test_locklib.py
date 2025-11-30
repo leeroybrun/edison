@@ -8,6 +8,7 @@ import pytest
 
 from edison.core.utils.io.locking import LockTimeoutError, acquire_file_lock
 from tests.helpers.timeouts import SHORT_SLEEP, LOCK_TIMEOUT, THREAD_JOIN_TIMEOUT
+from tests.helpers.env_setup import setup_project_root
 
 
 def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:
@@ -62,7 +63,7 @@ def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch,
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     target = tmp_path / "lock.json"
     holder_ready = threading.Event()
@@ -102,7 +103,7 @@ def test_file_locking_config_exposes_yaml_values(monkeypatch: pytest.MonkeyPatch
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     # Reload to ensure the module observes the temp project root and config
     import importlib

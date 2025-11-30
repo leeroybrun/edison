@@ -820,6 +820,7 @@ def test_context7_fails_closed_when_config_missing(
     internal configuration loader in an isolated project environment.
     """
     import runpy
+    from tests.helpers.env_setup import setup_project_root
 
     # Remove Context7 YAML config in the test project (.agents/config/validators.yml)
     cfg_yaml = project_dir.agents_root / "config" / "validators.yml"
@@ -827,7 +828,7 @@ def test_context7_fails_closed_when_config_missing(
         cfg_yaml.unlink()
 
     # Ensure ConfigManager and task resolve the isolated project root.
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_dir.tmp_path))
+    setup_project_root(monkeypatch, project_dir.tmp_path)
 
     # Locate repo root by searching for the real tasks/ready script.
     ready_script: Path | None = None

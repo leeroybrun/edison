@@ -9,6 +9,7 @@ import yaml
 
 from tests.helpers import create_round_dir
 from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.env_setup import setup_project_root
 from edison.core.utils.subprocess import run_with_timeout
 
 
@@ -30,7 +31,7 @@ def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
     reset_edison_caches()
 
     # Set up isolated project root
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
 
     # Initialize git repo (required by PathResolver)

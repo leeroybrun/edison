@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from tests.helpers.paths import get_repo_root, get_core_root
+from tests.helpers.env_setup import setup_project_root
 
 
 REPO_ROOT = get_repo_root()
@@ -19,7 +20,7 @@ from edison.core.utils.io.locking import safe_move_file
 @pytest.fixture()
 def tmp_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # Make task resolve ROOT to tmp_path for any relative usage
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     src = tmp_path / "src.txt"
     dst = tmp_path / "dst.txt"
     src.write_text("hello\n")

@@ -89,6 +89,19 @@ def reset_edison_caches() -> None:
         pass
 
 
+def reset_session_store_cache() -> None:
+    """Reset session store cache.
+
+    Clears both the session config cache and all general caches to ensure
+    clean state for session-related operations.
+    """
+    from edison.core.session._config import reset_config_cache
+    from edison.core.config.cache import clear_all_caches
+
+    reset_config_cache()
+    clear_all_caches()
+
+
 def reload_config_modules(*module_names: str) -> None:
     """Reload Edison config-dependent modules.
 

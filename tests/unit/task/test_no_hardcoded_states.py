@@ -10,6 +10,7 @@ import importlib
 from pathlib import Path
 
 import pytest
+from helpers.env_setup import setup_project_root
 
 
 def _find_hardcoded_lists_in_file(file_path: Path) -> list[tuple[int, str]]:
@@ -170,13 +171,16 @@ statemachine:
 
     (tmp_path / ".git").mkdir()
 
-    # Set up environment
+    # Set up environment - need monkeypatch fixture
+    # Since this test doesn't have monkeypatch, we'll handle env manually
     old_root = os.environ.get("AGENTS_PROJECT_ROOT")
     try:
         os.environ["AGENTS_PROJECT_ROOT"] = str(tmp_path)
+
+        # Clear caches manually
+        from edison.core.config.cache import clear_all_caches
         clear_all_caches()
 
-        # Import and reload to pick up new config
         from edison.core.utils.paths import resolver
         resolver._PROJECT_ROOT_CACHE = None
 

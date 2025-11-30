@@ -7,6 +7,7 @@ paths are respected and that task discovery works without the legacy
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from helpers.env_setup import setup_project_root
 
 from pathlib import Path
 
@@ -63,10 +64,7 @@ def test_create_and_find_task(tmp_path, monkeypatch):
     repo = tmp_path
     _bootstrap_repo(repo)
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     import edison.core.task.paths as paths
     paths = importlib.reload(paths)

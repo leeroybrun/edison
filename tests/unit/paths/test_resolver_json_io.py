@@ -9,17 +9,16 @@ import pytest
 import yaml
 from edison.core.utils.paths.resolver import PathResolver
 from edison.core.utils.io import write_json_atomic
-from edison.core.config.cache import clear_all_caches
 from edison.core.session._config import reset_config_cache
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import setup_project_root, clear_path_caches
+from tests.helpers.cache_utils import reset_edison_caches
 
 
 @pytest.fixture
 def project_with_session(tmp_path, monkeypatch):
     """Create a real project with session structure."""
     # Reset caches
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
     reset_config_cache()
 
     # Create .edison/config directory
@@ -51,20 +50,15 @@ def project_with_session(tmp_path, monkeypatch):
     write_json_atomic(session_json, {"owner": "tester"})
 
     # Set env vars
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.delenv("project_SESSION", raising=False)
     monkeypatch.delenv("project_OWNER", raising=False)
-
-    # Reset caches after env setup
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
     reset_config_cache()
 
     yield tmp_path, session_name
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
     reset_config_cache()
 
 
@@ -122,8 +116,7 @@ def test_detect_session_id_with_env_var(project_with_session, monkeypatch):
 def test_detect_session_id_handles_malformed_json(tmp_path, monkeypatch):
     """Verify that detect_session_id gracefully handles malformed JSON."""
     # Reset caches
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
     reset_config_cache()
 
     # Create minimal config
@@ -152,13 +145,9 @@ def test_detect_session_id_handles_malformed_json(tmp_path, monkeypatch):
     (session_dir / "session.json").write_text("{ invalid json }", encoding="utf-8")
 
     # Set env vars
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.delenv("project_SESSION", raising=False)
     monkeypatch.delenv("project_OWNER", raising=False)
-
-    # Reset caches
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
     reset_config_cache()
 
     # Test: Should gracefully handle malformed JSON
@@ -168,6 +157,5 @@ def test_detect_session_id_handles_malformed_json(tmp_path, monkeypatch):
     assert result is None, "Should return None for malformed JSON"
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
     reset_config_cache()

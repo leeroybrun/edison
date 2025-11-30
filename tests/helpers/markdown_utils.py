@@ -146,3 +146,42 @@ def create_qa_file(
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+
+
+def create_markdown_task(
+    path: Path,
+    task_id: str,
+    title: str,
+    state: str | None = None,
+    session_id: str | None = None,
+) -> None:
+    """Create a raw markdown task file for testing.
+
+    This helper creates task files directly as markdown, bypassing the repository layer.
+    Used for testing task discovery and parsing logic.
+
+    Args:
+        path: Full path where to create the task file (including filename)
+        task_id: Task identifier
+        title: Task title
+        state: Task state (e.g., 'todo', 'wip', 'done'). If None, infers from parent directory name.
+        session_id: Optional session ID to include in metadata
+
+    Note:
+        - Creates parent directories if they don't exist
+        - If state is not provided, uses path.parent.name as the state
+        - This matches the filesystem convention where tasks are in state-named directories
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Infer state from parent directory if not provided
+    if state is None:
+        state = path.parent.name
+
+    content = [f"<!-- Status: {state} -->"]
+    if session_id:
+        content.append(f"<!-- Session: {session_id} -->")
+
+    content.extend(["", f"# {title}", "", "Task description here."])
+
+    path.write_text("\n".join(content), encoding="utf-8")

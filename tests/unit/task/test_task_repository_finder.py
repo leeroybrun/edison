@@ -7,6 +7,8 @@ Following strict TDD: These tests are written FIRST and MUST fail initially.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from helpers.markdown_utils import create_markdown_task
+from helpers.env_setup import setup_project_root
 
 from pathlib import Path
 import importlib
@@ -55,39 +57,15 @@ def repo_env(tmp_path, monkeypatch):
     repo = tmp_path
     _bootstrap_repo(repo)
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     # Reload config-dependent modules
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
-
     import edison.core.config.domains.task as task_config
     importlib.reload(task_config)
     import edison.core.task.paths as paths
     importlib.reload(paths)
 
     return repo
-
-def create_markdown_task(path: Path, task_id: str, title: str, state: str, session_id: str = None):
-    """Helper to create a raw markdown task file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    content = [
-        f"<!-- Status: {state} -->"
-    ]
-    if session_id:
-        content.append(f"<!-- Session: {session_id} -->")
-
-    content.extend([
-        "",
-        f"# {title}",
-        "",
-        "Task description here."
-    ])
-
-    path.write_text("\n".join(content), encoding="utf-8")
 
 # ========================================
 # Test: find_by_state()

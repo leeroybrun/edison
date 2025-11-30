@@ -10,6 +10,7 @@ Following CRITICAL PRINCIPLES:
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from helpers.env_setup import setup_project_root
 
 import pytest
 from pathlib import Path
@@ -101,13 +102,7 @@ def task_env(tmp_path, monkeypatch):
     )
 
     # Set environment and clear caches
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     # Create session directory structure (sessions live in .project/sessions per ManagementPaths)
     (repo / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)

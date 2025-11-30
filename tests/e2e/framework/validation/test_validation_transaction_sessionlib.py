@@ -21,6 +21,7 @@ from pathlib import Path
 import sys
 
 import pytest
+from tests.helpers.env_setup import setup_project_root
 
 
 def _evidence_paths(root: Path, task_id: str, round_no: int = 1) -> Path:
@@ -33,7 +34,7 @@ def test_validation_tx_commit_success(monkeypatch, tmp_path: Path):
     project_root = tmp_path
     (project_root / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
     # Route sessionlib/task ROOT to tmp via env
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
 
     # Ensure core lib importable in tests
     repo_root = Path(__file__).resolve()
@@ -70,7 +71,7 @@ def test_validation_tx_commit_success(monkeypatch, tmp_path: Path):
 def test_validation_tx_rollback_on_exception(monkeypatch, tmp_path: Path):
     project_root = tmp_path
     (project_root / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
     repo_root = Path(__file__).resolve()
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
@@ -99,7 +100,7 @@ def test_validation_tx_rollback_on_exception(monkeypatch, tmp_path: Path):
 def test_validation_tx_crash_recovery_cleanup(monkeypatch, tmp_path: Path):
     project_root = tmp_path
     (project_root / ".project" / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
     repo_root = Path(__file__).resolve()
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
@@ -130,7 +131,7 @@ def test_validation_tx_concurrency_lock(monkeypatch, tmp_path: Path):
     project_root = tmp_path
     sessions_dir = project_root / ".project" / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
     repo_root = Path(__file__).resolve()
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent
@@ -156,7 +157,7 @@ def test_validation_tx_concurrency_lock(monkeypatch, tmp_path: Path):
 def test_validation_tx_disk_full_precheck(monkeypatch, tmp_path: Path):
     project_root = tmp_path
     (project_root / ".project" / "sessions").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
     # Force disk-full path
     monkeypatch.setenv("project_FORCE_DISK_FULL", "1")
     repo_root = Path(__file__).resolve()
@@ -178,7 +179,7 @@ def test_validation_tx_permission_error_on_commit(monkeypatch, tmp_path: Path):
     # Simulate permission failure deterministically via env
     monkeypatch.setenv("project_FORCE_PERMISSION_ERROR", "1")
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    setup_project_root(monkeypatch, project_root)
     repo_root = Path(__file__).resolve()
     while repo_root != repo_root.parent and not (repo_root / ".git").exists():
         repo_root = repo_root.parent

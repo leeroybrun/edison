@@ -5,6 +5,7 @@ QARepository and TaskRepository into session/paths.py.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from tests.helpers.env_setup import setup_project_root
 
 import pytest
 import importlib
@@ -49,13 +50,7 @@ def session_path_env(tmp_path, monkeypatch):
         },
     )
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-
-    # Clear caches
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     # Reload config-dependent modules
     import edison.core.task.paths as paths

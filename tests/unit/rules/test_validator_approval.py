@@ -10,15 +10,7 @@ import pytest
 from edison.core.rules import RulesEngine, RuleViolationError
 from tests.helpers import format_round_dir, create_round_dir
 from tests.helpers.io_utils import write_json
-
-
-@pytest.fixture(autouse=True)
-def clear_path_caches():
-    """Clear path singleton cache before each test."""
-    from edison.core.utils.paths import management
-    management._paths_instance = None
-    yield
-    management._paths_instance = None
+from tests.helpers.env_setup import setup_project_root
 
 
 def _create_config(require: bool = True, max_age_days: int = 7) -> dict:
@@ -77,7 +69,7 @@ def test_validator_approval_blocks_when_missing_evidence_directory(tmp_path: Pat
 
     # Isolated fake project root with no .project/qa tree
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
@@ -94,7 +86,7 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
     task_id = "VAL-NO-BUNDLE"
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
@@ -116,7 +108,7 @@ def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch:
     task_id = "VAL-003"
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
@@ -141,7 +133,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
     task_id = "VAL-FAILED-VALIDATORS"
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
@@ -178,7 +170,7 @@ def test_validator_approval_allows_when_bundle_approved(tmp_path: Path, monkeypa
     task_id = "VAL-IMPLICIT-APPROVED"
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 2)
@@ -196,7 +188,7 @@ def test_validator_approval_uses_latest_round_directory(tmp_path: Path, monkeypa
     task_id = "VAL-LATEST-ROUND"
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round1 = create_round_dir(base, 1)

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from tests.helpers.env_setup import setup_project_root
 
 
 @pytest.fixture
@@ -31,7 +32,7 @@ def isolated_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
        which matches DEFAULT_CLI_CONFIG (specifically having no 'default' key for confirm).
     """
     # 1. Isolate project root
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     # 2. Setup mock data directory for core defaults
     data_dir = tmp_path / "data"

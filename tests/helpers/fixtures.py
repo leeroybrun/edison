@@ -145,6 +145,85 @@ def reload_config_modules(*module_names: str) -> None:
             pass
 
 
+def create_task_file(
+    repo_path: Path,
+    task_id: str,
+    state: str = "todo",
+    session_id: Optional[str] = None,
+    title: Optional[str] = None,
+):
+    """Create a task file using the TaskRepository.
+
+    This helper creates real Task entities using the repository layer,
+    following the NO MOCKS principle for testing real behavior.
+
+    Args:
+        repo_path: Path to the repository root
+        task_id: Task identifier
+        state: Task state (default: "todo")
+        session_id: Optional session ID for the task
+        title: Optional task title (defaults to "Task {task_id}")
+
+    Returns:
+        The created Task object
+    """
+    from edison.core.task.repository import TaskRepository
+    from edison.core.task.models import Task
+    from edison.core.entity import EntityMetadata
+
+    repo = TaskRepository(project_root=repo_path)
+    task = Task(
+        id=task_id,
+        state=state,
+        title=title or f"Task {task_id}",
+        session_id=session_id,
+        metadata=EntityMetadata.create(created_by="test", session_id=session_id)
+    )
+    repo.save(task)
+    return task
+
+
+def create_qa_file(
+    repo_path: Path,
+    qa_id: str,
+    task_id: str,
+    state: str = "waiting",
+    session_id: Optional[str] = None,
+    title: Optional[str] = None,
+):
+    """Create a QA file using the QARepository.
+
+    This helper creates real QARecord entities using the repository layer,
+    following the NO MOCKS principle for testing real behavior.
+
+    Args:
+        repo_path: Path to the repository root
+        qa_id: QA identifier
+        task_id: Associated task ID
+        state: QA state (default: "waiting")
+        session_id: Optional session ID for the QA record
+        title: Optional QA title (defaults to "QA {task_id}")
+
+    Returns:
+        The created QARecord object
+    """
+    from edison.core.qa.workflow.repository import QARepository
+    from edison.core.qa.models import QARecord
+    from edison.core.entity import EntityMetadata
+
+    repo = QARepository(project_root=repo_path)
+    qa = QARecord(
+        id=qa_id,
+        task_id=task_id,
+        state=state,
+        title=title or f"QA {task_id}",
+        session_id=session_id,
+        metadata=EntityMetadata.create(created_by="test", session_id=session_id)
+    )
+    repo.save(qa)
+    return qa
+
+
 # Common module sets for reloading
 CONFIG_MODULES = [
     "edison.core.config.domains.task",

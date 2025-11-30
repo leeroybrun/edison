@@ -15,7 +15,6 @@ from typing import Dict
 import pytest
 import yaml
 
-from edison.core.config.cache import clear_all_caches
 from edison.core.state.validator import StateValidator, MissingStateMachine
 from edison.core.state.transitions import validate_transition, EntityTransitionError
 from edison.core.state import StateTransitionError
@@ -26,7 +25,8 @@ from edison.core.session.core.models import Session
 from edison.core.task.models import Task
 from edison.core.qa.models import QARecord
 from edison.core.entity import EntityMetadata, EntityStateError
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import setup_project_root
+from tests.helpers.cache_utils import reset_edison_caches
 
 
 @pytest.fixture
@@ -37,8 +37,7 @@ def unified_state_config(tmp_path: Path, monkeypatch):
     by StateValidator, validate_transition, and all repositories.
     """
     # Reset caches
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
 
     # Create config directory
     config_dir = tmp_path / ".edison" / "config"
@@ -156,20 +155,15 @@ def unified_state_config(tmp_path: Path, monkeypatch):
     (config_dir / "state-machine.yml").write_text(yaml.dump(state_machine))
 
     # Set environment
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-
-    # Reset caches after env vars
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
 
     # Note: session.state module removed - state machine built on-demand from config
 
     yield tmp_path
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
+    reset_edison_caches()
 
 
 # ==============================================================================

@@ -10,11 +10,12 @@ from typing import Tuple
 import pytest
 
 from tests.config import get_task_states, get_qa_states, get_session_states
+from tests.helpers.env_setup import setup_project_root
 
 @pytest.fixture
 def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
     """Create a real repo with custom management dir (.mgmt) and no .project."""
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

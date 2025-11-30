@@ -14,6 +14,7 @@ from typing import Any, Dict
 
 import pytest
 
+from tests.helpers.env_setup import setup_project_root
 from edison.core.task.repository import TaskRepository
 from edison.core.task.models import Task
 from edison.core.rules import RulesEngine, RuleViolationError
@@ -50,7 +51,7 @@ def test_transition_task_blocks_without_validator_approval(
 ) -> None:
     """Task transition to validated should block when no bundle-approved.json exists."""
     root = isolated_project_env
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(root))
+    setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
 
     # Ensure task directories exist
@@ -91,7 +92,7 @@ def test_transition_task_allows_when_bundle_approved(
 ) -> None:
     """Task transition to validated should succeed when bundle-approved.json has approved=true."""
     root = isolated_project_env
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(root))
+    setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
 
     # Ensure directories exist

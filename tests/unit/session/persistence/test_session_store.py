@@ -2,19 +2,15 @@ import pytest
 from pathlib import Path
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session.core.id import validate_session_id
-from edison.core.session._config import reset_config_cache, get_config
-from edison.core.config.cache import clear_all_caches
+from edison.core.session._config import get_config
 from edison.core.session.persistence.graph import save_session
 from edison.core.session.lifecycle.manager import get_session
 from edison.core.exceptions import SessionNotFoundError, SessionError
 from edison.core.utils.paths import PathResolver, get_management_paths
 from edison.core.utils.io import read_json
+from tests.helpers import reset_session_store_cache
 
 # Helper functions to replace store module functions
-def reset_session_store_cache():
-    """Reset session store cache."""
-    reset_config_cache()
-    clear_all_caches()
 
 def session_exists(session_id: str) -> bool:
     """Check if a session exists."""

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from tests.helpers.paths import get_repo_root
+from tests.helpers.env_setup import setup_project_root
 
 
 REPO_ROOT = get_repo_root()
@@ -46,7 +47,7 @@ def _bootstrap_minimal_project(tmp_root: Path) -> None:
 def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Provide isolated project root and reload libs against it."""
     _bootstrap_minimal_project(tmp_path)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.setenv("project_ROOT", str(tmp_path))
 
     # Reload task/sessionlib so their ROOT/DATA_ROOT/TX_ROOT derive from sandbox

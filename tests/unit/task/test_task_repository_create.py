@@ -7,6 +7,7 @@ Following STRICT TDD - tests written FIRST, implementation second.
 """
 from __future__ import annotations
 from helpers.io_utils import write_yaml
+from helpers.env_setup import setup_project_root
 
 import pytest
 import importlib
@@ -110,13 +111,7 @@ def repo_env(tmp_path, monkeypatch):
         }
     )
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-
-    # Clear config caches
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     # Reload config-dependent modules
     import edison.core.config.domains.task as task_config

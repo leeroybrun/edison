@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.env_setup import setup_project_root
 from tests.helpers.io_utils import write_db_config
 from tests.helpers.paths import get_repo_root
 
@@ -54,7 +55,7 @@ def stubbed_psql(tmp_path, monkeypatch):
 def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, stubbed_psql, monkeypatch):
     write_db_config(isolated_project_env, project="sample")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    setup_project_root(monkeypatch, isolated_project_env)
 
     result = subprocess.run(
         [sys.executable, "-m", "edison.cli.session.db.create", "sess-123"],
@@ -74,7 +75,7 @@ def test_create_session_db_invokes_psql_and_prints_name(isolated_project_env, st
 def test_drop_session_db_force_terminates_connections(isolated_project_env, stubbed_psql, monkeypatch):
     write_db_config(isolated_project_env, project="demo")
     monkeypatch.setenv("DATABASE_URL", "postgres://example")
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    setup_project_root(monkeypatch, isolated_project_env)
 
     result = subprocess.run(
         [sys.executable, "-m", "edison.cli.session.db.drop", "sess-999", "--force"],

@@ -20,6 +20,8 @@ from edison.core.composition import includes as composition_includes
 from edison.core.composition.registries import guidelines as composition_guidelines
 # from edison.core.adapters.sync import zen as zen_adapter
 from edison.core.adapters.sync import cursor as cursor_adapter
+from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.env_setup import setup_project_root
 
 
 @pytest.fixture
@@ -42,16 +44,11 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
 @pytest.fixture(autouse=True)
 def _reset_path_caches() -> Generator[None, None, None]:
     """Reset internal caches before each test."""
-    import edison.core.utils.paths.resolver as resolver_mod
-    import edison.core.task.paths as task_paths_mod
-
-    resolver_mod._PROJECT_ROOT_CACHE = None
-    task_paths_mod._ROOT_CACHE = None
+    reset_edison_caches()
 
     yield
 
-    resolver_mod._PROJECT_ROOT_CACHE = None
-    task_paths_mod._ROOT_CACHE = None
+    reset_edison_caches()
 
 
 class TestRepoRootConsolidation:
@@ -84,7 +81,7 @@ class TestRepoRootConsolidation:
         fake_root = tmp_path / "fake_root"
         fake_root.mkdir()
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(fake_root))
+        setup_project_root(monkeypatch, fake_root)
 
         # Canonical
         assert resolve_project_root() == fake_root

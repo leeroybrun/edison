@@ -22,6 +22,7 @@ from edison.core.config.domains import OrchestratorConfig
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.process.inspector import infer_session_id
 from tests.helpers.timeouts import wait_for_file, medium_sleep
+from tests.helpers.env_setup import setup_project_root
 
 
 # Import target under test (implementation added in this task)
@@ -34,7 +35,7 @@ class AutoStartEnv:
     def __init__(self, root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self.root = root
         self.monkeypatch = monkeypatch
-        self.monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(self.root))
+        setup_project_root(monkeypatch, self.root)
         self.monkeypatch.setenv("PROJECT_NAME", "autostart")
         self.monkeypatch.chdir(self.root)
 

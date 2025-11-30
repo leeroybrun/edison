@@ -3,11 +3,12 @@ import time
 import pytest
 
 from edison.core.utils.resilience import retry_with_backoff
+from tests.helpers.env_setup import setup_project_root
 
 
 def test_retry_with_backoff_uses_config_defaults(tmp_path, monkeypatch):
     """retry_with_backoff should pull defaults from YAML config when args omitted."""
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     cfg_dir = tmp_path / ".edison" / "config"
     cfg_dir.mkdir(parents=True, exist_ok=True)

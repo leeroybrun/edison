@@ -4,15 +4,16 @@ import json
 import subprocess
 from pathlib import Path
 
-from edison.core.utils.paths import PathResolver 
-from edison.core.utils.paths.project import get_project_config_dir 
+from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths.project import get_project_config_dir
+from tests.helpers.env_setup import setup_project_root 
 def test_session_template_resolves_from_project_config_dir(
     monkeypatch: "pytest.MonkeyPatch", tmp_path: Path
 ) -> None:
     """Session templates must resolve via project config directory, not hardcoded paths."""
 
     # Simulate an isolated repo that uses .edison as the project config dir (no .agents)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
 

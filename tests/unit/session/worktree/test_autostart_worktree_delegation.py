@@ -11,14 +11,14 @@ from edison.core.session.lifecycle.autostart import SessionAutoStart
 from edison.core.session import SessionManager
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import clear_path_caches
 
 
 @pytest.fixture(autouse=True)
 def setup_worktree_config(session_git_repo_path, monkeypatch):
     """Setup git repo with orchestrator config."""
     # Reset caches
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 
@@ -65,14 +65,14 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
     monkeypatch.setenv("PROJECT_NAME", "testproj")
 
     # Reset caches after env vars
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 
     yield
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 

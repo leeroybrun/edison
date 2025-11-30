@@ -4,11 +4,14 @@ These tests validate advance_state() high-level workflow.
 """
 import pytest
 from helpers.io_utils import write_yaml
+from helpers.fixtures import create_qa_file
 import importlib
 from pathlib import Path
 from edison.core.qa.workflow.repository import QARepository
 from edison.core.entity import PersistenceError, EntityMetadata
 from edison.core.qa.models import QARecord
+from tests.helpers.env_setup import setup_project_root
+from tests.helpers.cache_utils import reset_edison_caches
 
 @pytest.fixture
 def repo_env(tmp_path, monkeypatch):
@@ -84,13 +87,7 @@ def repo_env(tmp_path, monkeypatch):
         }
     )
 
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-
-    # Clear config caches
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     # Reload config-dependent modules
     import edison.core.config.domains.task as task_config
@@ -102,19 +99,6 @@ def repo_env(tmp_path, monkeypatch):
 
     return repo
 
-def create_qa_file(repo_path, qa_id, task_id, state="waiting", session_id=None):
-    """Helper to create a QA file."""
-    repo = QARepository(project_root=repo_path)
-    qa = QARecord(
-        id=qa_id,
-        task_id=task_id,
-        state=state,
-        title=f"QA {task_id}",
-        session_id=session_id,
-        metadata=EntityMetadata.create(created_by="test", session_id=session_id)
-    )
-    repo.save(qa)
-    return qa
 
 def test_advance_state_moves_qa_to_new_state(repo_env):
     """Test advance_state moves QA record to new state directory."""

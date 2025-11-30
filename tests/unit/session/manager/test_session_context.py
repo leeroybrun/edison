@@ -5,6 +5,7 @@ import json
 import os
 
 from edison.core.session.core.context import SessionContext
+from tests.helpers.env_setup import setup_project_root
 
 
 def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) -> None:
@@ -13,7 +14,7 @@ def test_in_session_worktree_switches_and_restores(tmp_path: Path, monkeypatch) 
     session_id = "sess-ctx"
     worktree = tmp_path / "wt"
     worktree.mkdir()
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     # Get the correct initial session state directory name
     config = SessionConfig()
@@ -37,7 +38,7 @@ def test_in_session_worktree_without_path(tmp_path: Path, monkeypatch) -> None:
 
     session_id = "sess-no-wt"
     data = {"meta": {}, "git": {}}
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
 
     # Get the correct initial session state directory name
     config = SessionConfig()

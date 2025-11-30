@@ -29,7 +29,7 @@ def session_git_repo_path(tmp_path: Path, monkeypatch) -> Generator[Path, None, 
         Path to the git repository root.
     """
     from helpers.env import TestGitRepo
-    from tests.helpers.cache_utils import reset_edison_caches
+    from tests.helpers import reset_edison_caches, setup_project_root
 
     # Reset caches before setup
     reset_edison_caches()
@@ -40,12 +40,9 @@ def session_git_repo_path(tmp_path: Path, monkeypatch) -> Generator[Path, None, 
     config_dir = repo.repo_path / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    # Set environment variables for isolation
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo.repo_path))
+    # Set environment variables for isolation using centralized helper
+    setup_project_root(monkeypatch, repo.repo_path)
     monkeypatch.setenv("project_ROOT", str(repo.repo_path))
-
-    # Reset caches AFTER env vars are set
-    reset_edison_caches()
 
     yield repo.repo_path
 

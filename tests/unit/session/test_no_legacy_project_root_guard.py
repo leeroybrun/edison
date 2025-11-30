@@ -6,6 +6,8 @@ import sys
 
 import pytest
 
+from tests.helpers.env_setup import setup_project_root
+
 import edison.core.utils.paths.resolver as resolver
 import edison.core.session.persistence.repository as session_repository
 import edison.core.task as task
@@ -18,9 +20,7 @@ def _set_legacy_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """
     legacy_root = tmp_path / "project-pre-edison"
     legacy_root.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(legacy_root))
-    # Clear cached project root so guards re-resolve against the legacy path.
-    resolver._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    setup_project_root(monkeypatch, legacy_root)
     return legacy_root
 
 

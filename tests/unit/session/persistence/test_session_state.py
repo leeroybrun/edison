@@ -8,7 +8,7 @@ from edison.core.state import StateTransitionError
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import setup_project_root, clear_path_caches
 
 @pytest.fixture
 def session_config(tmp_path, monkeypatch):
@@ -16,7 +16,7 @@ def session_config(tmp_path, monkeypatch):
     Sets up a temporary config for state transitions.
     """
     # Reset ALL caches first
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 
@@ -56,10 +56,10 @@ def session_config(tmp_path, monkeypatch):
     }
     (config_dir / "state-machine.yml").write_text(yaml.dump(state_machine))
     
-    # Set env vars
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    # Set env vars using centralized helper
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.setenv("project_ROOT", str(tmp_path))
-    
+
     # Reset global registries used by state module
     guard_registry.reset()
     condition_registry.reset()
@@ -68,15 +68,10 @@ def session_config(tmp_path, monkeypatch):
     condition_registry.register("ready_to_close", lambda ctx: ctx.get("session", {}).get("ready", False))
     action_registry.register("record_closed", lambda ctx: ctx.setdefault("log", []).append("closed"))
 
-    # Reset caches AFTER env vars are set
-    path_resolver._PROJECT_ROOT_CACHE = None
-    clear_all_caches()
-    reset_config_cache()
-
     yield tmp_path
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 

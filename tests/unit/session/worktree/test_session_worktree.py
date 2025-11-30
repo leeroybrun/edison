@@ -6,17 +6,17 @@ from edison.core.session import worktree
 from edison.core.session._config import reset_config_cache
 from edison.core.config.cache import clear_all_caches
 from edison.core.utils.subprocess import run_with_timeout
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import clear_path_caches
 
 @pytest.fixture(autouse=True)
 def setup_worktree_config(session_git_repo_path, monkeypatch):
     """Configure worktree settings for tests."""
     # Setup .edison/core/config
     config_dir = session_git_repo_path / ".edison" / "config"
-    
-    # Create worktrees directory path - use absolute path 
+
+    # Create worktrees directory path - use absolute path
     worktrees_dir = session_git_repo_path / "worktrees"
-    
+
     session_data = {
         "worktrees": {
             "enabled": True,
@@ -33,19 +33,19 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
         }
     }
     (config_dir / "session.yml").write_text(yaml.dump(session_data))
-    
+
     # Set env vars
     monkeypatch.setenv("PROJECT_NAME", "testproj")
-    
+
     # Reset caches to ensure config is loaded
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
-    
+
     yield
-    
+
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 

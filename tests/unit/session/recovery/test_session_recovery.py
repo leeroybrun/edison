@@ -4,14 +4,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from edison.core.session import recovery
-from edison.core.session._config import reset_config_cache, get_config
-from edison.core.config.cache import clear_all_caches
+from edison.core.session._config import get_config
 from edison.core.utils.paths import PathResolver
-
-def reset_session_store_cache():
-    """Reset session store cache."""
-    reset_config_cache()
-    clear_all_caches()
+from tests.helpers import reset_session_store_cache
 
 def _ensure_session_dirs():
     """Ensure session directories exist."""

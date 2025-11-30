@@ -10,6 +10,7 @@ import pytest
 
 from tests.helpers.paths import get_repo_root
 from tests.helpers.timeouts import SHORT_SLEEP, THREAD_JOIN_TIMEOUT, MEDIUM_SLEEP
+from tests.helpers.env_setup import setup_project_root
 
 
 # Locate repo root
@@ -55,7 +56,7 @@ def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             "PYTHONUNBUFFERED": "1",
         }
     )
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.setenv("project_ROOT", str(tmp_path))
     # Re-initialize module-level roots derived from environment by reloading libs
     import importlib

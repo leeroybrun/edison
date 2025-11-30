@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from edison.core.utils.paths import PathResolver
+from tests.helpers.env_setup import setup_project_root
+from tests.helpers.cache_utils import reset_edison_caches
 
 # Repository root for test fixtures
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -20,7 +22,7 @@ def test_resolve_repo_root_respects_agents_project_root(tmp_path: Path, monkeypa
     (e.g. project_ROOT) influence Edison core resolution.
     """
     # Only AGENTS_PROJECT_ROOT should influence root resolution
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    setup_project_root(monkeypatch, tmp_path)
     monkeypatch.delenv("project_ROOT", raising=False)
     monkeypatch.delenv("project_PROJECT_ROOT", raising=False)
 
@@ -42,6 +44,7 @@ def test_resolve_repo_root_ignores_project_env_when_agents_unset(tmp_path: Path,
     the actual git repository root, not project-specific env overrides.
     """
     # Ensure generic override is absent
+    reset_edison_caches()
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
 
     # Point project_* to an arbitrary temp directory that is NOT the repo root

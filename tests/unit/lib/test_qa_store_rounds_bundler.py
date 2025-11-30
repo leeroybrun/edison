@@ -4,18 +4,11 @@ from pathlib import Path
 from typing import Dict
 
 import pytest
-
-
-def _reset_project_root(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(root))
-    import edison.core.utils.paths.resolver as resolver  # type: ignore
-
-    # Clear cached root so PathResolver re-evaluates after env change
-    resolver._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+from tests.helpers.env_setup import setup_project_root
 
 
 def test_score_history_jsonl_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _reset_project_root(monkeypatch, tmp_path)
+    setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import scoring
     
     # Use the scoring module's public API
@@ -31,7 +24,7 @@ def test_score_history_jsonl_roundtrip(tmp_path: Path, monkeypatch: pytest.Monke
 
 @pytest.mark.skip(reason="rounds.py module deleted - use EvidenceService instead")
 def test_rounds_next_round_detects_existing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _reset_project_root(monkeypatch, tmp_path)
+    setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import rounds
 
     ev_root = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1"
@@ -43,7 +36,7 @@ def test_rounds_next_round_detects_existing(tmp_path: Path, monkeypatch: pytest.
 
 
 def test_bundler_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _reset_project_root(monkeypatch, tmp_path)
+    setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import bundler
 
     cfg: Dict[str, object] = {

@@ -19,7 +19,7 @@ from edison.core.session._config import reset_config_cache
 from edison.core.session.worktree.cleanup import cleanup_worktree, prune_worktrees, remove_worktree
 from edison.core.utils.git.worktree import check_worktree_health, get_existing_worktree_path
 from edison.core.utils.subprocess import run_with_timeout
-import edison.core.utils.paths.resolver as path_resolver
+from tests.helpers.env_setup import clear_path_caches
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +29,7 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
     Uses REAL git repository, NO MOCKS.
     """
     # Reset ALL caches first
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 
@@ -76,14 +76,14 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
     monkeypatch.setenv("PROJECT_NAME", "testproj")
 
     # Reset caches AFTER env vars are set
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 
     yield
 
     # Cleanup
-    path_resolver._PROJECT_ROOT_CACHE = None
+    clear_path_caches()
     clear_all_caches()
     reset_config_cache()
 

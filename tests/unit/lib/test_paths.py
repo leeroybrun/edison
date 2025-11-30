@@ -17,6 +17,8 @@ from edison.core.utils.paths import (  # type: ignore  # noqa: E402
     resolve_project_root,
 )
 from edison.core.utils.subprocess import run_with_timeout  # type: ignore  # noqa: E402
+from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.env_setup import setup_project_root
 
 
 @pytest.fixture(autouse=True)
@@ -25,11 +27,9 @@ def _reset_project_root_cache() -> None:
     Ensure each test runs with a clean project-root cache so that env/CWD
     manipulations are observed independently.
     """
-    import edison.core.utils.paths.resolver as paths  # type: ignore
-
-    paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    reset_edison_caches()
     yield
-    paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    reset_edison_caches()
 
 
 class TestCanonicalProjectRoot:
@@ -70,7 +70,7 @@ class TestCanonicalProjectRoot:
         edison_root.mkdir(parents=True, exist_ok=True)
 
         # Point AGENTS_PROJECT_ROOT at the .edison directory directly
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(edison_root))
+        setup_project_root(monkeypatch, edison_root)
 
         with pytest.raises(EdisonPathError):
             PathResolver.resolve_project_root()
@@ -91,7 +91,7 @@ class TestEnvOverridesAndErrors:
         (repo / ".git").mkdir()
         (repo / ".project").mkdir()
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
+        setup_project_root(monkeypatch, repo)
         # Even if project-specific env vars are set, they must be ignored
         monkeypatch.setenv("project_ROOT", str(tmp_path / "project-root"))
         monkeypatch.setenv("project_PROJECT_ROOT", str(tmp_path / "project-project-root"))
@@ -106,7 +106,7 @@ class TestEnvOverridesAndErrors:
     ) -> None:
         """AGENTS_PROJECT_ROOT pointing at a non-existent path must fail fast."""
         bogus = tmp_path / "does-not-exist"
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(bogus))
+        setup_project_root(monkeypatch, bogus)
 
         with pytest.raises(EdisonPathError):
             resolve_project_root()

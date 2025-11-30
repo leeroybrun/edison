@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from helpers.io_utils import write_yaml
+from tests.helpers.env_setup import setup_project_root
 
 
 @pytest.mark.qa
@@ -42,9 +43,7 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
     )
 
     monkeypatch.chdir(repo)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     from edison.core.config.domains.qa import QAConfig
 
@@ -88,9 +87,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     )
 
     monkeypatch.chdir(repo)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     from edison.core.config.domains.qa import QAConfig
 
@@ -122,9 +119,7 @@ def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monk
     )
 
     monkeypatch.chdir(repo)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     from edison.core.config.domains.qa import QAConfig
 
@@ -155,9 +150,7 @@ def test_qa_config_class_falls_back_to_bundled_defaults(tmp_path: Path, monkeypa
     )
 
     monkeypatch.chdir(repo)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
+    setup_project_root(monkeypatch, repo)
 
     from edison.core.config.domains.qa import QAConfig
 

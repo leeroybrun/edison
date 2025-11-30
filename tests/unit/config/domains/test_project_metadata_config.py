@@ -7,6 +7,7 @@ import pytest
 
 from edison.core.config import ConfigManager
 from tests.helpers.io_utils import write_yaml
+from tests.helpers.env_setup import setup_project_root
 
 
 def test_project_metadata_defaults_present(isolated_project_env: Path) -> None:
@@ -60,8 +61,8 @@ def test_worktree_path_uses_project_name_from_config(monkeypatch, isolated_proje
     clear_all_caches()
     reset_config_cache()
 
-    # Use monkeypatch to set project root for this test
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    # Use setup_project_root to set project root and reset caches
+    setup_project_root(monkeypatch, isolated_project_env)
 
     target, branch = worktree.resolve_worktree_target("sess-123")
 

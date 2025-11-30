@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator
 from edison.core.config import ConfigManager
 from edison.data import get_data_path
 from tests.helpers.paths import get_repo_root
+from tests.helpers.cache_utils import reset_edison_caches
 
 # ROOT is determined by test fixtures for isolated testing
 ROOT = get_repo_root()
@@ -107,7 +108,7 @@ def test_config_manager_defaults_to_project_root_not_edison(
 
     # Ensure no environment override and clear cached project root.
     monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-    resolver._PROJECT_ROOT_CACHE = None
+    reset_edison_caches()
 
     mgr = ConfigManager()
 

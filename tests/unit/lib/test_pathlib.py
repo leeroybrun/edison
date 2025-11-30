@@ -18,16 +18,16 @@ from edison.core.utils.git import (  # type: ignore  # noqa: E402
     is_git_repository,
     get_git_root,
 )
+from tests.helpers.cache_utils import reset_edison_caches
+from tests.helpers.env_setup import setup_project_root
 
 
 @pytest.fixture(autouse=True)
 def _reset_project_root_cache() -> None:
     """Ensure each test observes a fresh project-root cache."""
-    import edison.core.utils.paths.resolver as paths  # type: ignore
-
-    paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    reset_edison_caches()
     yield
-    paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    reset_edison_caches()
 
 
 class TestPathResolver:
@@ -65,7 +65,7 @@ class TestPathResolver:
         edison_root.mkdir(parents=True, exist_ok=True)
         (edison_root / ".git").mkdir()
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(edison_root))
+        setup_project_root(monkeypatch, edison_root)
 
         with pytest.raises((EdisonPathError, ValueError)):
             PathResolver.resolve_project_root()

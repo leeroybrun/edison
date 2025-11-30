@@ -27,6 +27,7 @@ from edison.core.session.current import (
 from edison.core.exceptions import SessionError
 from edison.core.session.core.id import SessionIdError
 from edison.core.utils.subprocess import run_with_timeout
+from tests.helpers.env_setup import setup_project_root
 
 
 def _init_git_repo(path: Path) -> None:
@@ -180,7 +181,7 @@ class TestGetSessionIdFile:
         project_dir.mkdir(parents=True)
 
         # Set project root and change to worktree
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         result = _get_session_id_file()
@@ -316,7 +317,7 @@ class TestGetCurrentSession:
         project_dir.mkdir(parents=True)
 
         # Create session file to make session "exist"
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         _create_session_file(worktree_path, "stored-session-123")
 
         # Write session ID file
@@ -349,7 +350,7 @@ class TestGetCurrentSession:
         session_file.write_text("stale-session-123\n")
 
         # Create a different session that DOES exist for inference
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.setenv("project_OWNER", "test-owner")
         _create_session_file(worktree_path, "inferred-session-456")
 
@@ -375,7 +376,7 @@ class TestGetCurrentSession:
         project_dir = worktree_path / ".project"
         project_dir.mkdir(parents=True)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         result = get_current_session()
@@ -389,7 +390,7 @@ class TestGetCurrentSession:
         repo_path.mkdir()
         _init_git_repo(repo_path)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_path))
+        setup_project_root(monkeypatch, repo_path)
         monkeypatch.chdir(repo_path)
 
         result = get_current_session()
@@ -403,7 +404,7 @@ class TestGetCurrentSession:
         repo_path.mkdir()
         _init_git_repo(repo_path)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_path))
+        setup_project_root(monkeypatch, repo_path)
         monkeypatch.chdir(repo_path)
 
         result = get_current_session()
@@ -426,7 +427,7 @@ class TestSetCurrentSession:
         project_dir = worktree_path / ".project"
         project_dir.mkdir(parents=True)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         set_current_session("new-session-123")
@@ -442,7 +443,7 @@ class TestSetCurrentSession:
         repo_path.mkdir()
         _init_git_repo(repo_path)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_path))
+        setup_project_root(monkeypatch, repo_path)
         monkeypatch.chdir(repo_path)
 
         with pytest.raises(SessionError) as exc_info:
@@ -463,7 +464,7 @@ class TestSetCurrentSession:
         project_dir = worktree_path / ".project"
         project_dir.mkdir(parents=True)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         # Try to set invalid session ID
@@ -491,7 +492,7 @@ class TestClearCurrentSession:
         session_file = project_dir / ".session-id"
         session_file.write_text("test-session-123\n")
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         clear_current_session()
@@ -505,7 +506,7 @@ class TestClearCurrentSession:
         repo_path.mkdir()
         _init_git_repo(repo_path)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_path))
+        setup_project_root(monkeypatch, repo_path)
         monkeypatch.chdir(repo_path)
 
         # Should not raise
@@ -524,7 +525,7 @@ class TestClearCurrentSession:
         project_dir = worktree_path / ".project"
         project_dir.mkdir(parents=True)
 
-        monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(worktree_path))
+        setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
         # Should not raise

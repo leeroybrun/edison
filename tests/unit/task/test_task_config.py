@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from helpers.io_utils import write_yaml
+from helpers.env_setup import setup_project_root
 
 
 @pytest.mark.task
@@ -35,13 +36,7 @@ def test_task_config_reads_paths_from_project_config(tmp_path: Path, monkeypatch
     )
 
     monkeypatch.chdir(repo)
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    import edison.core.utils.paths.resolver as resolver
-    resolver._PROJECT_ROOT_CACHE = None
-
-    # Clear config cache to ensure fresh load from test files
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
+    setup_project_root(monkeypatch, repo)
 
     from edison.core.config.domains import TaskConfig
     cfg = TaskConfig(repo_root=repo)
