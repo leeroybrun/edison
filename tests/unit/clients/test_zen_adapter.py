@@ -14,10 +14,10 @@ class TestZenAdapterUnit:
         config_dir = root / ".edison" / "config"
 
         # Explicit pack activation (none for the baseline tests)
-        write_yaml(config_dir / "packs.yml", {"packs": {"active": []}})
+        write_yaml(config_dir / "packs.yaml", {"packs": {"active": []}})
 
         # Zen roles must use mapping form (no legacy lists) to satisfy validator.
-        write_yaml(config_dir / "zen.yml", {
+        write_yaml(config_dir / "zen.yaml", {
             "zen": {
                 "enabled": True,
                 "roles": {
@@ -28,24 +28,24 @@ class TestZenAdapterUnit:
             }
         })
 
-        # Minimal defaults file in the modern config location for ConfigManager
-        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
-        if not defaults_path.exists():
-            write_yaml(defaults_path, {"project": {"name": "test-project"}})
+        # Minimal project config for ConfigManager
+        project_config_path = root / ".edison" / "config" / "project.yaml"
+        if not project_config_path.exists():
+            write_yaml(project_config_path, {"project": {"name": "test-project"}})
 
     def _write_config_with_project_roles(self, root: Path) -> None:
         """Config with active packs and zen.roles mapping for project roles."""
         config_dir = root / ".edison" / "config"
 
         # Project packs are declared in modular overlay form.
-        write_yaml(config_dir / "packs.yml", {
+        write_yaml(config_dir / "packs.yaml", {
             "packs": {
                 "active": ["fastify", "prisma"]
             }
         })
 
-        # Role mapping now lives under zen.yml with per-role mappings.
-        write_yaml(config_dir / "zen.yml", {
+        # Role mapping now lives under zen.yaml with per-role mappings.
+        write_yaml(config_dir / "zen.yaml", {
             "zen": {
                 "enabled": True,
                 "roles": {
@@ -58,13 +58,13 @@ class TestZenAdapterUnit:
             }
         })
 
-        defaults_path = root / ".edison" / "core" / "config" / "defaults.yaml"
-        if not defaults_path.exists():
-            write_yaml(defaults_path, {"project": {"name": "test-project"}})
+        project_config_path = root / ".edison" / "config" / "project.yaml"
+        if not project_config_path.exists():
+            write_yaml(project_config_path, {"project": {"name": "test-project"}})
 
     def _write_guidelines(self, root: Path) -> None:
         """Create a small guideline set with role-specific markers."""
-        gdir = root / ".edison" / "core" / "guidelines"
+        gdir = root / ".edison" / "guidelines"
         gdir.mkdir(parents=True, exist_ok=True)
 
         (gdir / "QUALITY.md").write_text("QUALITY-GUIDE\n", encoding="utf-8")
@@ -73,8 +73,8 @@ class TestZenAdapterUnit:
         (gdir / "architecture.md").write_text("ARCHITECTURE-GUIDE\n", encoding="utf-8")
 
     def _write_guidelines_with_packs_and_overlays(self, root: Path) -> None:
-        """Create guidelines across core + packs to exercise mapping engine."""
-        core_dir = root / ".edison" / "core" / "guidelines"
+        """Create guidelines across bundled + packs to exercise mapping engine."""
+        core_dir = root / ".edison" / "guidelines"
         core_dir.mkdir(parents=True, exist_ok=True)
         (core_dir / "api-design.md").write_text("CORE-API-DESIGN\n", encoding="utf-8")
         (core_dir / "validation.md").write_text("CORE-VALIDATION\n", encoding="utf-8")
@@ -132,7 +132,7 @@ class TestZenAdapterUnit:
                 }
             ]
         }
-        write_yaml(root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
+        write_yaml(root / ".edison" / "rules" / "registry.yaml", registry_data)
 
     def _write_rules_with_packs(self, root: Path) -> None:
         """Create core + pack rule registries for category/pack filtering."""
@@ -159,7 +159,7 @@ class TestZenAdapterUnit:
                 }
             ]
         }
-        write_yaml(root / ".edison" / "core" / "rules" / "registry.yml", core_registry)
+        write_yaml(root / ".edison" / "rules" / "registry.yaml", core_registry)
 
         fastify_registry = {
             "version": "1.0.0",
@@ -172,7 +172,7 @@ class TestZenAdapterUnit:
                 }
             ]
         }
-        write_yaml(root / ".edison" / "packs" / "fastify" / "rules" / "registry.yml", fastify_registry)
+        write_yaml(root / ".edison" / "packs" / "fastify" / "rules" / "registry.yaml", fastify_registry)
 
         prisma_registry = {
             "version": "1.0.0",
@@ -185,7 +185,7 @@ class TestZenAdapterUnit:
                 }
             ]
         }
-        write_yaml(root / ".edison" / "packs" / "prisma" / "rules" / "registry.yml", prisma_registry)
+        write_yaml(root / ".edison" / "packs" / "prisma" / "rules" / "registry.yaml", prisma_registry)
 
     def test_role_based_guideline_filtering(self, isolated_project_env: Path) -> None:
         """ZenAdapter.get_applicable_guidelines should filter by role."""

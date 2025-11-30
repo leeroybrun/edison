@@ -36,21 +36,28 @@ def test_validators_use_includes():
 
 def test_include_paths_valid():
     """Include directives must point to real template and overlay files."""
+    from edison.data import get_data_path
+
+    # Validator templates are now in bundled data
+    global_template = str(get_data_path("validators", "global/global.md"))
+    security_template = str(get_data_path("validators", "critical/security.md"))
+    performance_template = str(get_data_path("validators", "critical/performance.md"))
+
     expected_map = {
         ".agents/validators/global/global-codex.md": [
-            ".edison/core/validators/templates/global-comprehensive.md",
+            global_template,
             ".agents/validators/overlays/global-project.md",
         ],
         ".agents/validators/global/global-claude.md": [
-            ".edison/core/validators/templates/global-comprehensive.md",
+            global_template,
             ".agents/validators/overlays/global-project.md",
         ],
         ".agents/validators/security/codex-security.md": [
-            ".edison/core/validators/templates/critical-security.md",
+            security_template,
             ".agents/validators/overlays/security-project-requirements.md",
         ],
         ".agents/validators/performance/codex-performance.md": [
-            ".edison/core/validators/templates/critical-performance.md",
+            performance_template,
             ".agents/validators/overlays/performance-project-benchmarks.md",
         ],
     }
@@ -97,18 +104,20 @@ def test_rendered_output_complete(tmp_path: Path):
     Uses Python composition module to resolve includes.
     """
     from edison.core.composition.includes import resolve_includes
+    from edison.data import get_data_path
 
     # Probe strings expected in template and overlay outputs
+    # Update paths to bundled data locations
     template_probes = {
-        ".edison/core/validators/templates/global-comprehensive.md": [
+        str(get_data_path("validators", "global/global.md")): [
             "Architecture",  # header expected in global template
             "Code Quality",
         ],
-        ".edison/core/validators/templates/critical-security.md": [
+        str(get_data_path("validators", "critical/security.md")): [
             "Authentication & Session",
             "Input Validation & Output Encoding",
         ],
-        ".edison/core/validators/templates/critical-performance.md": [
+        str(get_data_path("validators", "critical/performance.md")): [
             "Performance",
             "Profiling",
         ],

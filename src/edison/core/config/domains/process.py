@@ -18,9 +18,6 @@ DEFAULT_EDISON_NAMES = ["edison", "python"]
 DEFAULT_EDISON_MARKERS = [
     "edison",
     ".edison",
-    "scripts/tasks",
-    "scripts/session",
-    "scripts/qa",
 ]
 
 

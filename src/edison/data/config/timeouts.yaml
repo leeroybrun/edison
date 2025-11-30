@@ -1,0 +1,15 @@
+# Timeout Configuration
+# Centralized timeout settings for all Edison operations
+# All values in seconds
+
+timeouts:
+  # Core operation timeouts
+  git_operations_seconds: 60.0
+  db_operations_seconds: 30.0
+  json_io_lock_seconds: 5.0
+  test_execution_seconds: 300.0
+  build_operations_seconds: 600.0
+  default_seconds: 60.0
+  # Additional operation timeouts (merged from subprocess_timeouts)
+  ai_calls_seconds: 120.0
+  file_operations_seconds: 10.0

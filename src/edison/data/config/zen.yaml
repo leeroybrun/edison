@@ -1,0 +1,11 @@
+# Zen MCP Configuration
+# Settings for Zen MCP server integration
+
+zen:
+  retry:
+    max_attempts: 3
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+  secret_rotation:
+    enabled: false
+    check_interval_hours: 24

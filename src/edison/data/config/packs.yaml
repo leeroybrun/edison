@@ -13,3 +13,28 @@ packs:
     algorithm: toposort
     dependencyFile: "pack-dependencies.yaml"
     default: []
+  defaults:
+    fastify:
+      scripts:
+        "api:dev": "node -e \"console.log('fastify dev placeholder')\""
+    nextjs:
+      scripts:
+        "next:dev": "next dev"
+        "next:build": "next build"
+        "next:start": "next start"
+    prisma:
+      scripts:
+        "db:generate": "prisma generate"
+        "db:migrate": "prisma migrate dev"
+        "db:studio": "prisma studio"
+    react:
+      scripts: {}
+    tailwind:
+      scripts:
+        "tailwind:check": "node -e \"console.log('tailwind v4 syntax check placeholder')\""
+    typescript:
+      scripts:
+        "type-check": "tsc --noEmit"
+    vitest:
+      scripts:
+        "test": "vitest run"

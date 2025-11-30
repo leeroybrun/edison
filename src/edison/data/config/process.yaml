@@ -18,6 +18,3 @@ edison_processes:
 edison_script_markers:
   - edison
   - .edison
-  - scripts/tasks
-  - scripts/session
-  - scripts/qa

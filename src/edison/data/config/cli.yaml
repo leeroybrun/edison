@@ -1,0 +1,15 @@
+# CLI Configuration
+# Command-line interface formatting and output settings
+# NOTE: JSON formatting settings are in json-io.yaml (not duplicated here)
+
+cli:
+  table:
+    padding: 1
+    column_gap: 2
+  confirm:
+    assume_yes_env: "EDISON_ASSUME_YES"
+  output:
+    success_prefix: "[OK]"
+    error_prefix: "[ERR]"
+    warning_prefix: "[WARN]"
+    use_color: false

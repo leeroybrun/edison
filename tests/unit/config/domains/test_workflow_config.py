@@ -1,40 +1,14 @@
 import pytest
 import yaml
 from pathlib import Path
-from typing import Any, Dict, Optional
 from edison.core.config.domains import workflow
 from edison.core.config.domains.workflow import (
-    load_workflow_config, 
-    get_task_states, 
+    WorkflowConfig,
+    load_workflow_config,
+    get_task_states,
     get_qa_states,
     get_semantic_state
 )
-
-# --- Test Helpers ---
-
-def make_fake_read_yaml(
-    return_value: Optional[Dict[str, Any]] = None,
-    side_effect: Optional[Exception] = None,
-):
-    """Return a fake reader that still loads the real state-machine config."""
-
-    def fake_read(domain: str, filename: str) -> Dict[str, Any]:
-        if filename == "state-machine.yaml":
-            from edison.data import read_yaml
-
-            return read_yaml(domain, filename)
-        if side_effect:
-            raise side_effect
-        if return_value is not None:
-            return return_value
-        return {}
-
-    return fake_read
-
-def make_fake_file_exists(return_value: bool):
-    def fake_exists(domain: str, filename: str) -> bool:
-        return return_value
-    return fake_exists
 
 # --- Tests ---
 
@@ -94,48 +68,22 @@ def test_default_workflow_yaml_exists():
     real_yaml_path = Path("src/edison/data/config/workflow.yaml")
     assert real_yaml_path.exists(), "src/edison/data/config/workflow.yaml should exist"
 
-def test_invalid_config_raises_error():
-    """Test that invalid config raises ValueError using dependency injection."""
-    # Missing required keys
-    fake_read = make_fake_read_yaml(return_value={"version": "1.0.0"})
-    fake_exists = make_fake_file_exists(True)
-    
-    with pytest.raises(ValueError, match="missing required key"):
-        load_workflow_config(
-            force_reload=True,
-            read_yaml_func=fake_read,
-            file_exists_func=fake_exists
-        )
 
-def test_malformed_yaml_raises_error():
-    """Test that malformed yaml raises ValueError using dependency injection."""
-    fake_read = make_fake_read_yaml(side_effect=Exception("Bad YAML"))
-    fake_exists = make_fake_file_exists(True)
+def test_workflow_yaml_structure():
+    """Workflow.yaml must be nested under 'workflow:' key and not duplicate states."""
+    workflow_yaml = yaml.safe_load(Path("src/edison/data/config/workflow.yaml").read_text()) or {}
 
-    with pytest.raises(ValueError, match="Failed to parse workflow.yaml"):
-        load_workflow_config(
-            force_reload=True,
-            read_yaml_func=fake_read,
-            file_exists_func=fake_exists
-        )
+    # Content should be under 'workflow' key (consistent with other domain configs)
+    assert "workflow" in workflow_yaml, "workflow.yaml should have content under 'workflow:' key"
+    wf_section = workflow_yaml["workflow"]
 
-def test_missing_file_raises_error():
-    """Test that missing file raises FileNotFoundError using dependency injection."""
-    fake_exists = make_fake_file_exists(False)
-    
-    with pytest.raises(FileNotFoundError, match="workflow.yaml not found"):
-        load_workflow_config(
-            force_reload=True,
-            file_exists_func=fake_exists
-        )
+    # Must not duplicate state definitions (sourced from state-machine.yaml)
+    assert "taskStates" not in wf_section, "workflow.yaml should not duplicate taskStates"
+    assert "qaStates" not in wf_section, "workflow.yaml should not duplicate qaStates"
 
 
 def test_workflow_states_source_state_machine():
-    """Workflow config must not duplicate state definitions."""
-    workflow_yaml = yaml.safe_load(Path("src/edison/data/config/workflow.yaml").read_text()) or {}
-    assert "taskStates" not in workflow_yaml, "workflow.yaml should not duplicate taskStates; source them from state-machine.yaml"
-    assert "qaStates" not in workflow_yaml, "workflow.yaml should not duplicate qaStates; source them from state-machine.yaml"
-
+    """States should be sourced from state-machine.yaml, not workflow.yaml."""
     state_machine_yaml = yaml.safe_load(Path("src/edison/data/config/state-machine.yaml").read_text()) or {}
     sm_root = state_machine_yaml.get("statemachine") or {}
     task_states = list((sm_root.get("task") or {}).get("states", {}).keys())

@@ -9,12 +9,16 @@ from tests.helpers.io_utils import write_yaml
 
 
 def _write_minimal_config(root: Path) -> None:
-    """Write minimal defaults/config needed for ConfigManager-based adapters."""
-    defaults_data = {
-        "project": {"name": "cursor-unit-test"},
+    """Write minimal config needed for ConfigManager-based adapters."""
+    project_data = {
+        "project": {"name": "cursor-unit-test"}
+    }
+    write_yaml(root / ".edison" / "config" / "project.yaml", project_data)
+
+    packs_data = {
         "packs": {"active": []}
     }
-    write_yaml(root / ".edison" / "core" / "defaults.yaml", defaults_data)
+    write_yaml(root / ".edison" / "config" / "packs.yaml", packs_data)
 
     config_data = {
         "project": {"name": "cursor-unit-test"},
@@ -30,7 +34,7 @@ class TestCursorAdapterCursorrules:
         _write_minimal_config(project_root)
 
         # Minimal guideline setup - create in 'shared' subdirectory to match registry path
-        guidelines_dir = project_root / ".edison" / "core" / "guidelines" / "shared"
+        guidelines_dir = project_root / ".edison" / "guidelines" / "shared"
         guidelines_dir.mkdir(parents=True, exist_ok=True)
         guideline_path = guidelines_dir / "architecture.md"
         guideline_path.write_text(
@@ -47,12 +51,12 @@ class TestCursorAdapterCursorrules:
                     "blocking": True,
                     "contexts": ["architecture"],
                     "source": {
-                        "file": ".edison/core/guidelines/shared/architecture.md"
+                        "file": ".edison/guidelines/shared/architecture.md"
                     }
                 }
             ]
         }
-        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
+        write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         out_path = adapter.sync_to_cursorrules()
@@ -76,7 +80,7 @@ class TestCursorAdapterCursorrules:
         _write_minimal_config(project_root)
 
         # Baseline guideline/rule so sync_to_cursorrules can run
-        guidelines_dir = project_root / ".edison" / "core" / "guidelines"
+        guidelines_dir = project_root / ".edison" / "guidelines"
         guidelines_dir.mkdir(parents=True, exist_ok=True)
         (guidelines_dir / "arch.md").write_text("# Arch\n\nText.\n", encoding="utf-8")
 
@@ -91,7 +95,7 @@ class TestCursorAdapterCursorrules:
                 }
             ]
         }
-        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
+        write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         path = adapter.sync_to_cursorrules()
@@ -113,7 +117,7 @@ class TestCursorAdapterCursorrules:
         _write_minimal_config(project_root)
 
         # Guideline and rules
-        guidelines_dir = project_root / ".edison" / "core" / "guidelines"
+        guidelines_dir = project_root / ".edison" / "guidelines"
         guidelines_dir.mkdir(parents=True, exist_ok=True)
         guideline_path = guidelines_dir / "architecture.md"
         guideline_path.write_text("# Architecture\n\nOriginal.\n", encoding="utf-8")
@@ -129,7 +133,7 @@ class TestCursorAdapterCursorrules:
                 }
             ]
         }
-        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
+        write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         path = adapter.sync_to_cursorrules()
@@ -179,11 +183,11 @@ class TestCursorAdapterAgentSync:
 
         _write_minimal_config(project_root)
 
-        # Core agent template but no pre-generated agents
-        core_agents_dir = project_root / ".edison" / "core" / "agents"
-        core_agents_dir.mkdir(parents=True, exist_ok=True)
-        core_template = core_agents_dir / "api-builder.md"
-        core_template.write_text(
+        # Agent template but no pre-generated agents
+        agents_dir = project_root / ".edison" / "agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        agent_template = agents_dir / "api-builder.md"
+        agent_template.write_text(
             "# Agent: api-builder\n\n{{TOOLS}}\n\n{{GUIDELINES}}\n",
             encoding="utf-8",
         )
@@ -235,7 +239,7 @@ class TestCursorAdapterStructuredRules:
                 }
             ]
         }
-        write_yaml(project_root / ".edison" / "core" / "rules" / "registry.yml", registry_data)
+        write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
         adapter = CursorSync(project_root=project_root)
         paths = adapter.sync_structured_rules()

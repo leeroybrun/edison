@@ -7,7 +7,6 @@ from typing import Dict
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-core_path = ROOT / ".edison" / "core"
 from edison.core.composition.ide.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
 from edison.core.adapters import ClaudeAdapter, CursorPromptAdapter, CodexAdapter  # type: ignore  # noqa: E402
@@ -35,7 +34,7 @@ def test_generate_commands_all_platforms(tmp_path: Path) -> None:
     pytest.skip("Pre-existing: composition.commands module doesn't exist yet")
     # Command definition source
     write_yaml(
-        tmp_path / ".edison/core/config/commands.yaml",
+        tmp_path / ".edison/config/commands.yaml",
         {"commands": [_sample_command("demo", "Demo command")]},
     )
 

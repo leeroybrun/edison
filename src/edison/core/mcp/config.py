@@ -2,19 +2,16 @@
 
 This module centralizes creation and persistence of `.mcp.json` entries for
 all Edison-managed MCP servers. Configuration is fully YAML-driven
-(`edison.data.config.mcp.yml` + pack overlays + project overrides) with no
-hardcoded values, and JSON output formatting comes from the CLI config
-section of `defaults.yaml`/project overrides.
+(`edison.data.config.mcp.yaml` + pack overlays + project overrides) with no
+hardcoded values, and JSON output formatting comes from the JSONIOConfig
+domain configuration.
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Sequence
-
-import yaml
 
 from edison.data import read_yaml
 from edison.core.utils import io as file_utils
@@ -121,27 +118,19 @@ def _load_yaml_file(path: Path) -> Dict[str, Any]:
 
 
 def _load_json_format(project_root: Path) -> Dict[str, Any]:
-    """Load JSON formatting preferences from defaults + project overrides."""
+    """Load JSON formatting preferences from JSONIOConfig domain config."""
+    from edison.core.config.domains.json_io import JSONIOConfig
 
-    defaults = read_yaml("config", "defaults.yaml") or {}
-    cli_defaults = (defaults.get("cli") or {}).get("json", {})
-    json_io_cfg = defaults.get("json_io") or {}
-    merged = deep_merge(json_io_cfg, cli_defaults)
-
-    project_config_dir = get_project_config_dir(project_root)
-    project_cli_cfg = _load_yaml_file(project_config_dir / "config" / "cli.yml")
-    if isinstance(project_cli_cfg, dict):
-        merged = deep_merge(merged, (project_cli_cfg.get("cli") or {}).get("json", {}))
-
+    cfg = JSONIOConfig(repo_root=project_root)
     return {
-        "indent": merged.get("indent", 2),
-        "sort_keys": merged.get("sort_keys", True),
-        "ensure_ascii": merged.get("ensure_ascii", False),
+        "indent": cfg.indent,
+        "sort_keys": cfg.sort_keys,
+        "ensure_ascii": cfg.ensure_ascii,
     }
 
 
 def _iter_pack_overlays(project_root: Path, packs: Sequence[str] | None) -> Iterable[Path]:
-    """Yield pack-level mcp.yml files for the requested packs (if any)."""
+    """Yield pack-level mcp.yaml files for the requested packs (if any)."""
 
     pack_root = get_project_config_dir(project_root, create=False) / "packs"
     if not pack_root.exists():
@@ -153,28 +142,26 @@ def _iter_pack_overlays(project_root: Path, packs: Sequence[str] | None) -> Iter
     for pack_dir in sorted(p for p in pack_root.iterdir() if p.is_dir()):
         if allowed and pack_dir.name not in allowed:
             continue
-        for fname in ("mcp.yml", "mcp.yaml"):
-            candidate = pack_dir / "config" / fname
-            if candidate.exists():
-                overlays.append(candidate)
+        candidate = pack_dir / "config" / "mcp.yaml"
+        if candidate.exists():
+            overlays.append(candidate)
     return overlays
 
 
 def _load_mcp_config(project_root: Path, packs: Sequence[str] | None = None) -> Dict[str, Any]:
     """Load MCP configuration from base + pack overlays + project overrides."""
 
-    merged = (read_yaml("config", "mcp.yml") or {}).get("mcp") or {}
+    merged = (read_yaml("config", "mcp.yaml") or {}).get("mcp") or {}
 
     for overlay_path in _iter_pack_overlays(project_root, packs):
         overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
         merged = deep_merge(merged, overlay)
 
     project_config_dir = get_project_config_dir(project_root)
-    for fname in ("mcp.yml", "mcp.yaml"):
-        overlay_path = project_config_dir / "config" / fname
-        if overlay_path.exists():
-            overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
-            merged = deep_merge(merged, overlay)
+    overlay_path = project_config_dir / "config" / "mcp.yaml"
+    if overlay_path.exists():
+        overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
+        merged = deep_merge(merged, overlay)
 
     return merged
 

@@ -37,7 +37,7 @@ def test_readme_mentions_mcp_commands():
 def test_readme_mentions_mcp_config_files():
     content = _read_readme()
     assert ".mcp.json" in content, "README must mention .mcp.json"
-    assert "mcp.yml" in content.lower(), "README must mention mcp.yml configuration source"
+    assert "mcp.yaml" in content.lower(), "README must mention mcp.yaml configuration source"
 
 
 def test_readme_links_to_setup_doc():

@@ -11,12 +11,6 @@ from typing import Any, Dict, Optional
 
 from ..base import BaseDomainConfig
 
-# Default configuration values
-DEFAULT_INDENT = 2
-DEFAULT_SORT_KEYS = True
-DEFAULT_ENSURE_ASCII = False
-DEFAULT_ENCODING = "utf-8"
-
 
 class JSONIOConfig(BaseDomainConfig):
     """Domain-specific configuration accessor for JSON I/O operations.
@@ -37,27 +31,23 @@ class JSONIOConfig(BaseDomainConfig):
 
     @cached_property
     def indent(self) -> int:
-        """Get JSON indentation level (default: 2)."""
-        indent_val = self.section.get("indent", DEFAULT_INDENT)
-        return int(indent_val)
+        """Get JSON indentation level."""
+        return int(self.section["indent"])
 
     @cached_property
     def sort_keys(self) -> bool:
-        """Get whether to sort JSON object keys (default: True)."""
-        sort = self.section.get("sort_keys", DEFAULT_SORT_KEYS)
-        return bool(sort)
+        """Get whether to sort JSON object keys."""
+        return bool(self.section["sort_keys"])
 
     @cached_property
     def ensure_ascii(self) -> bool:
-        """Get whether to escape non-ASCII characters (default: False)."""
-        ascii_mode = self.section.get("ensure_ascii", DEFAULT_ENSURE_ASCII)
-        return bool(ascii_mode)
+        """Get whether to escape non-ASCII characters."""
+        return bool(self.section["ensure_ascii"])
 
     @cached_property
     def encoding(self) -> str:
-        """Get file encoding for JSON I/O (default: utf-8)."""
-        enc = self.section.get("encoding", DEFAULT_ENCODING)
-        return str(enc)
+        """Get file encoding for JSON I/O."""
+        return str(self.section["encoding"])
 
     def get_all_settings(self) -> Dict[str, Any]:
         """Get all JSON I/O settings as a dict.

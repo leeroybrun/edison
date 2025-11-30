@@ -15,23 +15,26 @@ def context7_config() -> Context7Config:
 
 
 def test_triggers_section_exists() -> None:
-    """Verify triggers section exists in context7.yml."""
-    cfg = read_yaml("config", "context7.yml")
-    assert "triggers" in cfg, "context7.yml must contain 'triggers' section"
-    assert isinstance(cfg["triggers"], dict), "triggers must be a dict"
+    """Verify triggers section exists in context7.yaml."""
+    cfg = read_yaml("config", "context7.yaml")
+    section = cfg.get("context7", {})
+    assert "triggers" in section, "context7.yaml must contain 'triggers' section under 'context7'"
+    assert isinstance(section["triggers"], dict), "triggers must be a dict"
 
 
 def test_aliases_section_exists() -> None:
-    """Verify aliases section exists in context7.yml."""
-    cfg = read_yaml("config", "context7.yml")
-    assert "aliases" in cfg, "context7.yml must contain 'aliases' section"
-    assert isinstance(cfg["aliases"], dict), "aliases must be a dict"
+    """Verify aliases section exists in context7.yaml."""
+    cfg = read_yaml("config", "context7.yaml")
+    section = cfg.get("context7", {})
+    assert "aliases" in section, "context7.yaml must contain 'aliases' section under 'context7'"
+    assert isinstance(section["aliases"], dict), "aliases must be a dict"
 
 
 def test_triggers_have_expected_packages() -> None:
     """Verify triggers contain expected package names."""
-    cfg = read_yaml("config", "context7.yml")
-    triggers = cfg.get("triggers", {})
+    cfg = read_yaml("config", "context7.yaml")
+    section = cfg.get("context7", {})
+    triggers = section.get("triggers", {})
     expected = {"react", "next", "zod", "prisma"}
     missing = expected.difference(triggers.keys())
     assert not missing, f"Missing expected trigger packages: {sorted(missing)}"
@@ -39,8 +42,9 @@ def test_triggers_have_expected_packages() -> None:
 
 def test_triggers_have_valid_patterns() -> None:
     """Verify each trigger has valid glob patterns."""
-    cfg = read_yaml("config", "context7.yml")
-    triggers = cfg.get("triggers", {})
+    cfg = read_yaml("config", "context7.yaml")
+    section = cfg.get("context7", {})
+    triggers = section.get("triggers", {})
 
     for pkg, patterns in triggers.items():
         assert isinstance(patterns, list), f"Triggers for '{pkg}' must be a list"
@@ -52,8 +56,9 @@ def test_triggers_have_valid_patterns() -> None:
 
 def test_aliases_have_expected_mappings() -> None:
     """Verify aliases contain expected mappings."""
-    cfg = read_yaml("config", "context7.yml")
-    aliases = cfg.get("aliases", {})
+    cfg = read_yaml("config", "context7.yaml")
+    section = cfg.get("context7", {})
+    aliases = section.get("aliases", {})
 
     expected_mappings = {
         "react-dom": "react",

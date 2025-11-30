@@ -32,7 +32,16 @@ def test_env_overrides_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("EDISON_tdd_requireEvidence", "false")
 
     mgr = ConfigManager(ROOT)
-    base = mgr.load_yaml(mgr.core_defaults_path)
+
+    # Load all core config files to get base config
+    base: dict = {}
+    if mgr.core_config_dir.exists():
+        yml_files = list(mgr.core_config_dir.glob("*.yml"))
+        yaml_files = list(mgr.core_config_dir.glob("*.yaml"))
+        for path in sorted(yml_files + yaml_files):
+            module_cfg = mgr.load_yaml(path)
+            base = mgr.deep_merge(base, module_cfg)
+
     assert base["tdd"]["enforceRedGreenRefactor"] is True
     assert base["tdd"]["requireEvidence"] is True
 
@@ -53,17 +62,13 @@ def test_load_and_validate_schema() -> None:
 def test_loads_defaults_yaml_not_yml(tmp_path: Path) -> None:
     """ConfigManager must prefer config/defaults.yaml over config/defaults.yml."""
     # NOTE: This test is skipped because ConfigManager always loads from bundled
-    # edison.data package, not from project-local .edison/core/config files.
+    # edison.data package, not from project-local .edison/config files.
     # The test's assumption about config loading order is incorrect.
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "defaults.yaml").write_text("version: '2.0.0'\n", encoding="utf-8")
-    (core_config_dir / "defaults.yml").write_text("version: '1.0.0'\n", encoding="utf-8")
-
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
-    # Minimal project overlay required by ConfigManager; does not override version
-    (project_config_dir / "project.yml").write_text("project: { name: test }\n", encoding="utf-8")
+    (project_config_dir / "defaults.yaml").write_text("version: '2.0.0'\n", encoding="utf-8")
+    (project_config_dir / "defaults.yml").write_text("version: '1.0.0'\n", encoding="utf-8")
+
 
     mgr = ConfigManager(tmp_path)
     cfg = mgr.load_config(validate=False)
@@ -98,7 +103,7 @@ def test_config_manager_defaults_to_project_root_not_edison(
     """ConfigManager() without repo_root must resolve to the outer project root.
 
     This guards against treating the inner .edison git repo as the project root
-    when running commands from within .edison/core.
+    when running commands from within the Edison data directory.
     """
     # Import here to avoid affecting module-level imports.
     import edison.core.utils.paths.resolver as resolver  # type: ignore
@@ -121,26 +126,23 @@ def test_config_manager_defaults_to_project_root_not_edison(
 
 @pytest.mark.skip(reason="Test assumes ConfigManager uses project-local config files, but it always uses bundled edison.data defaults")
 def test_legacy_core_defaults_yaml_outside_config_dir_is_ignored(tmp_path: Path) -> None:
-    """Legacy .edison/core/defaults.yaml must not be used by ConfigManager."""
+    """Legacy .edison/core paths must not be used by ConfigManager."""
     # NOTE: This test is skipped because ConfigManager always loads from bundled
-    # edison.data package, not from project-local .edison/core/config files.
+    # edison.data package, not from project-local .edison/config files.
     legacy_core_dir = tmp_path / ".edison" / "core"
     legacy_core_dir.mkdir(parents=True, exist_ok=True)
     (legacy_core_dir / "defaults.yaml").write_text("version: '0.9.0'\n", encoding="utf-8")
 
-    # Canonical defaults under .edison/core/config/defaults.yaml
-    core_config_dir = legacy_core_dir / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "defaults.yaml").write_text("version: '2.1.0'\n", encoding="utf-8")
-
+    # Canonical project config under .edison/config/
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "defaults.yaml").write_text("version: '2.1.0'\n", encoding="utf-8")
     (project_config_dir / "project.yml").write_text("project: { name: test }\n", encoding="utf-8")
 
     mgr = ConfigManager(tmp_path)
     cfg = mgr.load_config(validate=False)
 
-    # Config MUST come from core/config/defaults.yaml, not legacy defaults.yaml.
+    # Config MUST come from .edison/config/defaults.yaml, not legacy .edison/core paths.
     assert cfg.get("version") == "2.1.0"
 
 

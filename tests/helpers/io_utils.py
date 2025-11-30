@@ -380,6 +380,10 @@ def write_minimal_compose_config(
     Creates the necessary directory structure and config files for
     compose commands to work in tests.
 
+    Architecture:
+    - Project config at .edison/config/ (overrides bundled defaults)
+    - NO .edison/core/ - that is legacy
+
     Args:
         base_path: Base directory (typically tmp_path in tests)
         platforms: List of platforms to enable (default: ["claude"])
@@ -397,8 +401,8 @@ def write_minimal_compose_config(
     if platforms is None:
         platforms = ["claude"]
 
-    # Create .edison/core/config directory
-    config_dir = base_path / ".edison" / "core" / "config"
+    # Create .edison/config directory (project overrides - NO /core/)
+    config_dir = base_path / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
 
     # Create commands.yaml with a demo command
@@ -499,26 +503,25 @@ def write_orchestrator_config(
     profiles: dict,
     *,
     default: str = "default",
-    core_config: bool = False,
 ) -> Path:
     """Write orchestrator configuration for testing.
 
     Creates orchestrator profile configuration.
 
+    Architecture:
+    - Project config at .edison/config/ (overrides bundled defaults)
+    - NO .edison/core/ - that is legacy
+
     Args:
         base_path: Base directory (typically tmp_path in tests)
         profiles: Dictionary of profile name to profile configuration
         default: Default profile name
-        core_config: If True, write to .edison/core/config instead of .edison/config
 
     Returns:
         Path: Path to the created config file
     """
     base_path = Path(base_path)
-    if core_config:
-        config_dir = base_path / ".edison" / "core" / "config"
-    else:
-        config_dir = base_path / ".edison" / "config"
+    config_dir = base_path / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
 
     config_data = {

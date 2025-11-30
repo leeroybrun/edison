@@ -47,10 +47,10 @@ def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
     from edison.core.utils.paths.resolver import PathResolver
     REPO_ROOT = PathResolver.resolve_project_root()
     edison_bundled_config = Path(__file__).parent.parent.parent.parent / "src" / "edison" / "data" / "config"
-    edison_legacy_config = REPO_ROOT / ".edison" / "core" / "config"
+    edison_legacy_config = REPO_ROOT / ".edison" / "config"
 
     edison_core_config_src = edison_bundled_config if edison_bundled_config.exists() else edison_legacy_config
-    edison_core_config_dst = tmp_path / ".edison" / "core" / "config"
+    edison_core_config_dst = tmp_path / ".edison" / "config"
 
     if edison_core_config_src.exists():
         edison_core_config_dst.parent.mkdir(parents=True, exist_ok=True)
@@ -71,7 +71,7 @@ def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
         }
     }
 
-    config_file = config_dir / "qa.yml"
+    config_file = config_dir / "qa.yaml"
     config_file.write_text(yaml.safe_dump(custom_config))
 
     # Use centralized cache reset (includes all caches)

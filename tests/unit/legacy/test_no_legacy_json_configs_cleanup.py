@@ -45,10 +45,9 @@ def test_project_overlays_use_yaml_only() -> None:
         ROOT / ".agents" / "config" / "delegation.yml",
         ROOT / ".agents" / "config" / "validators.yml",
     ]
-    # Check bundled core config for state-machine
+    # State machine config should exist in bundled Edison config
     state_machine_config = get_data_path("config", "state-machine.yaml")
-    if not state_machine_config.exists():
-        required.append(ROOT / ".edison" / "core" / "config" / "state-machine.yaml")
+    assert state_machine_config.exists(), f"Bundled state-machine.yaml not found at {state_machine_config}"
 
     missing = [p for p in required if not p.exists()]
     assert not missing, f"Expected YAML configs missing: {missing}"

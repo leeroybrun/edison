@@ -337,7 +337,7 @@ def test_qa_bypass_without_type_flag_blocked(project_dir: TestProjectDir):
     # Attempt to change QA status via tasks/status WITHOUT --type should fail
     res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path)
     assert_command_failure(res)
-    assert_error_contains(res, "QA state transitions must use scripts/qa/promote")
+    assert_error_contains(res, "QA state transitions must use edison qa promote")
 
 
 @pytest.mark.edge_case

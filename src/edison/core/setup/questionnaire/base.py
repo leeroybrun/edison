@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from edison.core.utils.io import read_yaml
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.paths import PathResolver
+from edison.data import get_data_path
 from ..discovery import SetupDiscovery
 
 from . import prompts
@@ -16,7 +17,14 @@ from . import rendering
 
 
 class SetupQuestionnaire:
-    """Execute setup questions defined in setup.yaml."""
+    """Execute setup questions defined in setup.yaml.
+    
+    Architecture:
+    - edison_core: ALWAYS bundled edison.data directory
+    - config_path: ALWAYS bundled edison.data/config/setup.yaml
+    - project_dir: .edison/ for project overrides
+    - NO .edison/core/ - that is legacy
+    """
 
     def __init__(
         self,
@@ -27,9 +35,16 @@ class SetupQuestionnaire:
         assume_yes: bool = False,
     ) -> None:
         self.repo_root = repo_root or PathResolver.resolve_project_root()
-        config_dir = get_project_config_dir(self.repo_root, create=False)
-        self.edison_core = edison_core or (config_dir / "core")
-        self.config_path = config_path or (self.edison_core / "config" / "setup.yaml")
+        
+        # Edison core is ALWAYS from bundled data
+        self.edison_core = edison_core or Path(get_data_path(""))
+        
+        # Config path is ALWAYS bundled setup.yaml
+        self.config_path = config_path or get_data_path("config", "setup.yaml")
+        
+        # Project directory for overrides
+        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+        
         self.assume_yes = assume_yes
 
         self.config = self._load_config()
@@ -104,7 +119,7 @@ class SetupQuestionnaire:
         return defaults
 
     def render_modular_configs(self, answers: Dict[str, Any]) -> Dict[str, str]:
-        """Render modular config files following core's config/*.yml pattern.
+        """Render modular config files following .edison/config/*.yml pattern.
 
         Returns a dict mapping filename to YAML content:
             {
@@ -114,8 +129,8 @@ class SetupQuestionnaire:
                 ...
             }
 
-        This follows the same pattern as .edison/core/config/*.yaml where each
-        domain has its own file for better separation of concerns.
+        This follows the project config pattern where each domain has its own
+        file for better separation of concerns.
         """
         return rendering.render_modular_configs(self, answers)
 

@@ -37,10 +37,3 @@ def get_repo_root() -> Path:
     return last_git_root
 
 
-def get_core_root() -> Path:
-    """Get the .edison/core directory.
-
-    Returns:
-        Path: Absolute path to .edison/core directory
-    """
-    return get_repo_root() / ".edison" / "core"

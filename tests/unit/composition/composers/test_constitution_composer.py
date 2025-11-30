@@ -3,6 +3,8 @@ from helpers.io_utils import write_yaml
 
 from pathlib import Path
 
+import pytest
+
 from edison.core.config import ConfigManager
 from edison.core.composition.registries import constitutions as constitution
 
@@ -16,7 +18,7 @@ def _make_config_manager(repo_root: Path, packs: list[str] | None = None, consti
 
     if constitution_cfg is not None:
         write_yaml(
-            repo_root / ".edison" / "core" / "config" / "constitution.yaml",
+            repo_root / ".edison" / "config" / "constitution.yaml",
             constitution_cfg,
         )
 
@@ -48,18 +50,33 @@ def test_load_constitution_layer_reads_each_layer(tmp_path: Path) -> None:
     assert constitution.load_constitution_layer(project_dir, "orchestrator", "project") == "project-override"
     assert constitution.load_constitution_layer(project_dir, "agents", "project") == ""
 
-def test_compose_constitution_merges_core_pack_project(tmp_path: Path) -> None:
+def test_compose_constitution_merges_core_pack_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo_root = tmp_path
-    core_const_dir = repo_root / ".edison" / "core" / "constitutions"
-    pack_const_dir = repo_root / ".edison" / "packs" / "demo" / "constitutions"
-    project_const_dir = repo_root / ".edison" / "constitutions"
+    # Simulate bundled core constitutions in a test directory
+    # Monkeypatch get_data_path to return our test data directory
+    bundled_data_dir = tmp_path / "bundled_data"
+    bundled_data_dir.mkdir(parents=True, exist_ok=True)
 
+    def mock_get_data_path(subpackage: str = "", filename: str = "") -> Path:
+        base = bundled_data_dir / subpackage if subpackage else bundled_data_dir
+        return base / filename if filename else base
+
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.core.composition.core.paths.get_data_path", mock_get_data_path)
+
+    # Create bundled core constitutions
+    core_const_dir = bundled_data_dir / "constitutions"
     core_const_dir.mkdir(parents=True, exist_ok=True)
-    pack_const_dir.mkdir(parents=True, exist_ok=True)
-    project_const_dir.mkdir(parents=True, exist_ok=True)
-
     (core_const_dir / "orchestrator-base.md").write_text("CORE {{source_layers}}", encoding="utf-8")
+
+    # Create pack constitutions
+    pack_const_dir = repo_root / ".edison" / "packs" / "demo" / "constitutions"
+    pack_const_dir.mkdir(parents=True, exist_ok=True)
     (pack_const_dir / "orchestrator-additions.md").write_text("PACK demo", encoding="utf-8")
+
+    # Create project constitutions
+    project_const_dir = repo_root / ".edison" / "constitutions"
+    project_const_dir.mkdir(parents=True, exist_ok=True)
     (project_const_dir / "orchestrator-overrides.md").write_text("PROJECT", encoding="utf-8")
 
     cfg_mgr = _make_config_manager(repo_root, packs=["demo"])
@@ -110,11 +127,22 @@ def test_render_constitution_template_replaces_placeholders(tmp_path: Path) -> N
     assert sample_id in rendered
     assert "{{" not in rendered, "Handlebars markers should be rendered away"
 
-def test_generate_all_constitutions_creates_files(tmp_path: Path) -> None:
+def test_generate_all_constitutions_creates_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo_root = tmp_path
-    core_const_dir = repo_root / ".edison" / "core" / "constitutions"
-    core_const_dir.mkdir(parents=True, exist_ok=True)
+    # Simulate bundled core constitutions
+    bundled_data_dir = tmp_path / "bundled_data"
+    bundled_data_dir.mkdir(parents=True, exist_ok=True)
 
+    def mock_get_data_path(subpackage: str = "", filename: str = "") -> Path:
+        base = bundled_data_dir / subpackage if subpackage else bundled_data_dir
+        return base / filename if filename else base
+
+    monkeypatch.setattr("edison.data.get_data_path", mock_get_data_path)
+    monkeypatch.setattr("edison.core.composition.core.paths.get_data_path", mock_get_data_path)
+
+    # Create bundled core constitutions
+    core_const_dir = bundled_data_dir / "constitutions"
+    core_const_dir.mkdir(parents=True, exist_ok=True)
     (core_const_dir / "orchestrator-base.md").write_text("ORCH", encoding="utf-8")
     (core_const_dir / "agents-base.md").write_text("AGENT", encoding="utf-8")
     (core_const_dir / "validators-base.md").write_text("VALID", encoding="utf-8")

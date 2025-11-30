@@ -486,7 +486,7 @@ class ScenarioSimulator:
                         f"**Tokens**: {cli['tokens']:,}",
                         f"**Lines**: {cli['lines']:,}",
                         "",
-                        "This represents the guidance output from `scripts/session next`,",
+                        "This represents the guidance output from `edison session next`,",
                         "which is loaded by orchestrators on each planning cycle.",
                         "",
                     ]

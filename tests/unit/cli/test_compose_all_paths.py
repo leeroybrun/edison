@@ -36,96 +36,9 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
             encoding="utf-8",
         )
 
-    # Create minimal config with proper structure
-    # Note: ConfigManager looks for *.yml files in project config dir, not *.yaml
+    # Create project config structure
+    # ConfigManager reads bundled defaults from edison.data first, then project overrides
     import yaml
-
-    # Create core config defaults (to prevent fallback to hardcoded validators)
-    core_config_dir = core_dir / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    core_defaults = core_config_dir / "defaults.yaml"
-    core_defaults_data = {
-        "validation": {
-            "roster": {
-                "global": [],
-                "critical": [],
-                "specialized": [],
-            }
-        },
-    }
-    core_defaults.write_text(yaml.dump(core_defaults_data), encoding="utf-8")
-
-    # Minimal state machine config required by compose/state-machine generation
-    state_machine_cfg = {
-        "statemachine": {
-            "task": {
-                "states": {
-                    "todo": {
-                        "initial": True,
-                        "allowed_transitions": [{"to": "wip"}],
-                    },
-                    "wip": {
-                        "allowed_transitions": [{"to": "done"}],
-                    },
-                    "done": {
-                        "final": True,
-                        "allowed_transitions": [],
-                    },
-                }
-            },
-            "qa": {
-                "states": {
-                    "waiting": {
-                        "initial": True,
-                        "allowed_transitions": [{"to": "wip"}],
-                    },
-                    "wip": {
-                        "allowed_transitions": [{"to": "done"}],
-                    },
-                    "done": {
-                        "final": True,
-                        "allowed_transitions": [],
-                    },
-                }
-            },
-            "session": {
-                "states": {
-                    "active": {
-                        "initial": True,
-                        "allowed_transitions": [{"to": "closing"}],
-                    },
-                    "closing": {
-                        "allowed_transitions": [{"to": "validated"}],
-                    },
-                    "validated": {
-                        "final": True,
-                        "allowed_transitions": [],
-                    },
-                }
-            },
-        }
-    }
-    (core_config_dir / "state-machine.yaml").write_text(
-        yaml.dump(state_machine_cfg),
-        encoding="utf-8",
-    )
-
-    # Create constitution.yaml with mandatory reads
-    constitution_config = core_config_dir / "constitution.yaml"
-    constitution_data = {
-        "mandatoryReads": {
-            "orchestrator": [
-                {"path": "guidelines/SESSION_WORKFLOW.md", "purpose": "Session workflow"},
-            ],
-            "agents": [
-                {"path": "guidelines/TDD.md", "purpose": "Test-driven development"},
-            ],
-            "validators": [
-                {"path": "guidelines/VALIDATION.md", "purpose": "Validation guidelines"},
-            ],
-        }
-    }
-    constitution_config.write_text(yaml.dump(constitution_data), encoding="utf-8")
 
     # Create project config
     config_dir = repo_root / ".edison" / "config"

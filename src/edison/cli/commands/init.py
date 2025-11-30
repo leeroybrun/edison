@@ -1,7 +1,10 @@
 """
 Project initialization command.
 
-SUMMARY: Initialize an Edison project and wire up MCP integration.
+SUMMARY: Initialize an Edison project with interactive setup wizard.
+
+This command runs the setup questionnaire by default (interactive mode).
+Use --non-interactive to skip the questionnaire and use bundled defaults.
 """
 
 from __future__ import annotations
@@ -10,14 +13,14 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-
-from edison.core.utils.paths import get_project_config_dir
-from edison.data import get_data_path
-from edison.core.mcp.config import configure_mcp_json
+from typing import Optional
 
 from edison.cli import OutputFormatter
+from edison.core.utils.paths import get_project_config_dir
+from edison.core.utils.io import ensure_directory
+from edison.data import get_data_path
 
-SUMMARY = "Initialize an Edison project (creates config + MCP setup)"
+SUMMARY = "Initialize an Edison project (interactive setup wizard)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -29,6 +32,37 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default=".",
         help="Project directory to initialize (defaults to current directory)",
     )
+    
+    # Interactive mode control
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Skip questionnaire, use bundled defaults (no config files written)",
+    )
+    parser.add_argument(
+        "--advanced",
+        action="store_true",
+        help="Include advanced configuration questions",
+    )
+    
+    # File handling
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing config files without prompting",
+    )
+    parser.add_argument(
+        "--merge",
+        action="store_true",
+        help="Merge with existing config files instead of skipping",
+    )
+    parser.add_argument(
+        "--reconfigure",
+        action="store_true",
+        help="Re-run questionnaire on an existing project",
+    )
+    
+    # MCP options
     parser.add_argument(
         "--skip-mcp",
         action="store_true",
@@ -39,11 +73,17 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Use script-based command variant when available",
     )
+    
+    # Skip composition
+    parser.add_argument(
+        "--skip-compose",
+        action="store_true",
+        help="Skip running initial composition",
+    )
 
 
 def _ensure_structure(project_root: Path) -> Path:
     """Create base .edison structure and return config root."""
-
     config_root = get_project_config_dir(project_root)
 
     for rel in ["config", "guidelines", "_generated", "constitutions", "scripts/zen"]:
@@ -51,28 +91,16 @@ def _ensure_structure(project_root: Path) -> Path:
 
     gitignore = config_root / ".gitignore"
     if not gitignore.exists():
-        gitignore.write_text("# Edison generated content\n_generated/\n.cache/\n__pycache__/\n*.pyc\n", encoding="utf-8")
+        gitignore.write_text(
+            "# Edison generated content\n_generated/\n.cache/\n__pycache__/\n*.pyc\n",
+            encoding="utf-8"
+        )
 
     return config_root
 
 
-def _seed_config_files(config_root: Path) -> None:
-    """Copy packaged config templates into the project (idempotent)."""
-
-    config_dir = config_root / "config"
-    data_config_dir = get_data_path("config")
-
-    yaml_files = list(data_config_dir.glob("*.yaml")) + list(data_config_dir.glob("*.yml"))
-    for yaml_path in yaml_files:
-        target = config_dir / (yaml_path.stem + ".yml")
-        if target.exists():
-            continue
-        target.write_text(yaml_path.read_text(encoding="utf-8"), encoding="utf-8")
-
-
 def _copy_mcp_scripts(config_root: Path) -> None:
     """Place bundled MCP helper scripts under .edison/scripts/zen for shell mode."""
-
     dest_dir = config_root / "scripts" / "zen"
     src_dir_candidates = [
         Path(__file__).resolve().parents[4] / "scripts" / "zen",
@@ -88,10 +116,16 @@ def _copy_mcp_scripts(config_root: Path) -> None:
             shutil.copy2(script, dest)
 
 
-def _configure_mcp(project_root: Path, *, use_script: bool, formatter: OutputFormatter) -> tuple[bool, str | None]:
+def _configure_mcp(
+    project_root: Path, 
+    *, 
+    use_script: bool, 
+    formatter: OutputFormatter
+) -> tuple[bool, Optional[str]]:
     """Configure MCP entries; returns (success, warning_message)."""
+    from edison.core.mcp.config import configure_mcp_json
 
-    warning: str | None = None
+    warning: Optional[str] = None
 
     try:
         result = configure_mcp_json(
@@ -114,7 +148,6 @@ def _configure_mcp(project_root: Path, *, use_script: bool, formatter: OutputFor
 
 def _run_initial_composition(project_root: Path) -> None:
     """Invoke compose all to generate starter artifacts."""
-
     from argparse import Namespace
     from edison.cli.compose import all as compose_all
 
@@ -136,36 +169,172 @@ def _run_initial_composition(project_root: Path) -> None:
     compose_all.main(args)
 
 
+def _run_questionnaire(
+    project_root: Path,
+    mode: str,
+    formatter: OutputFormatter,
+    force: bool = False,
+    merge: bool = False,
+) -> bool:
+    """Run the setup questionnaire and write config files.
+    
+    Args:
+        project_root: Repository root path
+        mode: 'basic' or 'advanced'
+        formatter: Output formatter
+        force: Overwrite existing files
+        merge: Merge with existing files
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    from edison.core.setup import configure_project, WriteMode
+    
+    # Determine write mode
+    if force:
+        write_mode = WriteMode.OVERWRITE
+    elif merge:
+        write_mode = WriteMode.MERGE
+    else:
+        write_mode = WriteMode.CREATE
+    
+    # Run questionnaire with file writing enabled
+    result = configure_project(
+        repo_root=project_root,
+        interactive=True,
+        mode=mode,
+        write_files=True,
+        write_mode=write_mode,
+        overrides_only=True,  # Only write values that differ from defaults
+    )
+    
+    if not result.get("success"):
+        error = result.get("error", "Unknown error")
+        formatter.text(f"❌ Configuration failed: {error}")
+        return False
+    
+    # Report what was written
+    write_result = result.get("write_result")
+    if write_result:
+        if write_result.files_written:
+            formatter.text("\n📝 Config files written:")
+            for path in write_result.files_written:
+                formatter.text(f"   - {path.name}")
+        
+        if write_result.files_merged:
+            formatter.text("\n🔄 Config files merged:")
+            for path in write_result.files_merged:
+                formatter.text(f"   - {path.name}")
+        
+        if write_result.files_skipped:
+            formatter.text("\n⏭️  Existing files skipped (use --force or --merge):")
+            for path in write_result.files_skipped:
+                formatter.text(f"   - {path.name}")
+        
+        if write_result.errors:
+            formatter.text("\n❌ Errors:")
+            for error in write_result.errors:
+                formatter.text(f"   - {error}")
+            return False
+    
+    return True
+
+
+def _print_banner(formatter: OutputFormatter, project_name: str, reconfigure: bool = False) -> None:
+    """Print the setup banner."""
+    action = "Reconfiguring" if reconfigure else "Initializing"
+    formatter.text(f"\n{'='*60}")
+    formatter.text(f"  Edison Project Setup - {action}")
+    formatter.text(f"  Project: {project_name}")
+    formatter.text(f"{'='*60}\n")
+
+
+def _print_next_steps(formatter: OutputFormatter, config_root: Path) -> None:
+    """Print next steps after initialization."""
+    formatter.text("\n✅ Edison initialized successfully!")
+    formatter.text("\nNext steps:")
+    formatter.text(f"  1. Review {config_root.name}/config/*.yml for your overrides")
+    formatter.text("  2. Run 'edison compose all' to regenerate artifacts after changes")
+    formatter.text("  3. Start a session: edison session create <session-id>")
+
+
 def main(args: argparse.Namespace) -> int:
     """Initialize Edison in the given project directory."""
-
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
-
     project_root = Path(args.project_path).expanduser().resolve()
-
+    
+    # Check if already initialized
+    config_root = get_project_config_dir(project_root, create=False)
+    already_initialized = config_root.exists() and (config_root / "config").exists()
+    
+    # Validate reconfigure flag
+    if args.reconfigure and not already_initialized:
+        formatter.text("❌ Cannot reconfigure: Project not initialized yet.")
+        formatter.text("   Run 'edison init' first without --reconfigure.")
+        return 1
+    
+    # For non-reconfigure on existing project, warn
+    if already_initialized and not args.reconfigure and not args.force and not args.merge:
+        formatter.text(f"ℹ️  Project already initialized at {config_root}")
+        formatter.text("   Use --reconfigure to update configuration")
+        formatter.text("   Use --force to overwrite existing files")
+        formatter.text("   Use --merge to merge with existing files")
+        return 0
+    
     try:
+        project_name = project_root.name
+        _print_banner(formatter, project_name, reconfigure=args.reconfigure)
+        
+        # Create structure (idempotent)
         config_root = _ensure_structure(project_root)
-        _seed_config_files(config_root)
         _copy_mcp_scripts(config_root)
         formatter.text(f"✅ Created {config_root} structure")
-
-        if not args.skip_mcp:
-            success, warning = _configure_mcp(project_root, use_script=args.mcp_script, formatter=formatter)
+        
+        # Run questionnaire (interactive mode) or skip (non-interactive)
+        if args.non_interactive:
+            formatter.text("\n📋 Non-interactive mode: using bundled defaults")
+            formatter.text("   No project-specific config files written.")
+            formatter.text("   Run 'edison init --reconfigure' later to customize.")
         else:
-            formatter.text("ℹ️  Skipped MCP setup (--skip-mcp)")
-
-        formatter.text("\nRunning initial composition...")
-        _run_initial_composition(project_root)
-
-        formatter.text("\n✅ Edison initialized successfully!")
-        formatter.text("\nNext steps:")
-        formatter.text("  1. Review .edison/config/*.yml")
-        formatter.text("  2. Run 'edison compose all' after adjusting configuration")
-        formatter.text("  3. Start a session: edison session create <session-id>")
+            # Determine mode
+            mode = "advanced" if args.advanced else "basic"
+            
+            formatter.text(f"\n📋 Running setup questionnaire ({mode} mode)...")
+            formatter.text("   Press Enter to accept defaults shown in [brackets]\n")
+            
+            success = _run_questionnaire(
+                project_root,
+                mode=mode,
+                formatter=formatter,
+                force=args.force,
+                merge=args.merge,
+            )
+            
+            if not success:
+                return 1
+        
+        # Configure MCP
+        if not args.skip_mcp:
+            formatter.text("")
+            _configure_mcp(project_root, use_script=args.mcp_script, formatter=formatter)
+        else:
+            formatter.text("\nℹ️  Skipped MCP setup (--skip-mcp)")
+        
+        # Run composition
+        if not args.skip_compose:
+            formatter.text("\n🔧 Running initial composition...")
+            _run_initial_composition(project_root)
+        else:
+            formatter.text("\nℹ️  Skipped composition (--skip-compose)")
+        
+        _print_next_steps(formatter, config_root)
         return 0
 
+    except KeyboardInterrupt:
+        formatter.text("\n\n⚠️  Setup cancelled by user.")
+        return 130
     except Exception as exc:
-        formatter.error(exc, error_code="error")
+        formatter.error(exc, error_code="init_error")
         return 1
 
 

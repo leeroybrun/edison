@@ -42,12 +42,12 @@ def _seed_core_setup(repo_root: Path) -> None:
         "discovery": {
             "packs": {"directory": ".edison/packs", "pattern": "*/config.yml"},
             "orchestrators": {"fallback": []},
-            "validators": {"core_config": ".edison/core/config/validators.yaml", "pack_pattern": ".edison/packs/*/config/validators.yml"},
-            "agents": {"core_config": ".edison/core/config/agents.yaml", "pack_pattern": ".edison/packs/*/config/agents.yml"},
+            "validators": {"config_file": ".edison/config/validators.yaml", "pack_pattern": ".edison/packs/*/config/validators.yml"},
+            "agents": {"config_file": ".edison/config/agents.yaml", "pack_pattern": ".edison/packs/*/config/agents.yml"},
         },
     }
 
-    write_yaml(repo_root / ".edison" / "core" / "config" / "setup.yaml", setup_cfg)
+    write_yaml(repo_root / ".edison" / "config" / "setup.yaml", setup_cfg)
 
 def _write_pack(repo_root: Path, name: str, setup_data: dict | None = None) -> Path:
     pack_dir = repo_root / ".edison" / "packs" / name
@@ -58,8 +58,8 @@ def _write_pack(repo_root: Path, name: str, setup_data: dict | None = None) -> P
     return pack_dir
 
 def _build_questionnaire(repo_root: Path) -> SetupQuestionnaire:
-    discovery = SetupDiscovery(repo_root / ".edison" / "core", repo_root)
-    return SetupQuestionnaire(repo_root=repo_root, edison_core=repo_root / ".edison" / "core", discovery=discovery)
+    discovery = SetupDiscovery(repo_root / ".edison" / "config", repo_root)
+    return SetupQuestionnaire(repo_root=repo_root, edison_core=repo_root / ".edison" / "config", discovery=discovery)
 
 def test_discover_pack_setup_questions_merges_selected_packs(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -108,7 +108,7 @@ def test_discover_pack_setup_questions_merges_selected_packs(isolated_project_en
     _write_pack(repo, "typescript", ts_setup)
     _write_pack(repo, "react", react_setup)
 
-    discovery = SetupDiscovery(repo / ".edison" / "core", repo)
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
     ids = [q["id"] for q in discovery.discover_pack_setup_questions(["typescript", "react"])]
 
     assert ids == ["typescript_strict", "typescript_target", "react_version"]
@@ -133,7 +133,7 @@ def test_dependencies_require_selected_pack(isolated_project_env: Path) -> None:
 
     _write_pack(repo, "react", react_setup)
 
-    discovery = SetupDiscovery(repo / ".edison" / "core", repo)
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
     questions = discovery.discover_pack_setup_questions(["typescript"])  # react not selected
 
     assert questions == []
@@ -240,7 +240,7 @@ def test_missing_pack_setup_file_is_skipped(isolated_project_env: Path) -> None:
 
     _write_pack(repo, "typescript", None)  # no setup.yml present
 
-    discovery = SetupDiscovery(repo / ".edison" / "core", repo)
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
     questions = discovery.discover_pack_setup_questions(["typescript"])
 
     assert questions == []

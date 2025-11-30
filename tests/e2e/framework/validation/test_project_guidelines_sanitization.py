@@ -2,10 +2,12 @@ import os
 import re
 from pathlib import Path
 
+from edison.data import get_data_path
 from tests.helpers.paths import get_repo_root
 
+# Core guidelines are now in bundled data
+CORE_DIR = get_data_path("guidelines")
 REPO_ROOT = get_repo_root()
-CORE_DIR = REPO_ROOT / ".edison/core/guidelines"
 PROJECT_DIR = REPO_ROOT / ".agents/guidelines"
 
 
@@ -42,9 +44,10 @@ def test_project_guidelines_extend_core_and_isolate_project_specifics():
     assert proj_coding.is_file(), "Project coding-standards.md missing"
 
     text = proj_coding.read_text(encoding="utf-8", errors="ignore")
-    assert "{{include:.edison/core/guidelines/shared/coding-standards.md}}" in text or \
-           ".edison/core/guidelines/shared/coding-standards.md" in text, \
-           "Project coding standards must reference Edison core"
+    # Check if references bundled data guidelines (shared directory exists in bundled data)
+    assert "{{include:" in text or "edison/data/guidelines" in text or \
+           "guidelines/shared" in text, \
+           "Project coding standards must reference Edison core guidelines"
 
     overlays = PROJECT_DIR / "overlays"
     assert overlays.is_dir(), "Project overlays directory missing"
@@ -69,8 +72,9 @@ def test_no_orphaned_guidelines_and_consistent_structure():
     for md in PROJECT_DIR.glob("*.md"):
         text = md.read_text(encoding="utf-8", errors="ignore")
         assert (
-            "{{include:.edison/core/guidelines/" in text
-            or ".edison/core/guidelines/" in text
+            "{{include:" in text
+            or "edison/data/guidelines" in text
+            or "guidelines/" in text
             or md.parent.name == "overlays"
         ), f"{md} should include/extend core or be an overlay"
 

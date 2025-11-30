@@ -2,6 +2,9 @@
 
 Provides cached access to Context7-related configuration including
 triggers, aliases, and package metadata.
+
+Configuration is loaded from bundled edison.data/config/context7.yaml
+with project overrides from .edison/config/context7.yaml merged on top.
 """
 from __future__ import annotations
 
@@ -10,7 +13,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..base import BaseDomainConfig
-from edison.data import read_yaml
 
 
 class Context7Config(BaseDomainConfig):
@@ -18,6 +20,10 @@ class Context7Config(BaseDomainConfig):
 
     Provides structured access to Context7-related configuration with repo_root exposure.
     Extends BaseDomainConfig for consistent caching and repo_root handling.
+    
+    Configuration layering:
+    1. Bundled defaults from edison.data/config/context7.yaml
+    2. Project overrides from .edison/config/context7.yaml merged on top
     """
 
     def _config_section(self) -> str:
@@ -31,15 +37,10 @@ class Context7Config(BaseDomainConfig):
             Dict mapping package names to lists of file patterns.
             Empty dict if not configured.
         """
-        # Load from bundled defaults
-        try:
-            cfg = read_yaml("config", "context7.yml")
-            triggers = cfg.get("triggers", {})
-            if isinstance(triggers, dict):
-                # Ensure all values are lists
-                return {k: list(v) if isinstance(v, list) else [] for k, v in triggers.items()}
-        except Exception:
-            pass
+        triggers = self.section.get("triggers", {})
+        if isinstance(triggers, dict):
+            # Ensure all values are lists
+            return {k: list(v) if isinstance(v, list) else [] for k, v in triggers.items()}
         return {}
 
     @cached_property
@@ -50,14 +51,9 @@ class Context7Config(BaseDomainConfig):
             Dict mapping alias names to canonical package names.
             Empty dict if not configured.
         """
-        # Load from bundled defaults
-        try:
-            cfg = read_yaml("config", "context7.yml")
-            aliases = cfg.get("aliases", {})
-            if isinstance(aliases, dict):
-                return {k: str(v) for k, v in aliases.items()}
-        except Exception:
-            pass
+        aliases = self.section.get("aliases", {})
+        if isinstance(aliases, dict):
+            return {k: str(v) for k, v in aliases.items()}
         return {}
 
     @cached_property
@@ -68,14 +64,9 @@ class Context7Config(BaseDomainConfig):
             Dict mapping package names to their metadata.
             Empty dict if not configured.
         """
-        # Load from bundled defaults
-        try:
-            cfg = read_yaml("config", "context7.yml")
-            packages = cfg.get("packages", {})
-            if isinstance(packages, dict):
-                return packages
-        except Exception:
-            pass
+        packages = self.section.get("packages", {})
+        if isinstance(packages, dict):
+            return packages
         return {}
 
     def get_triggers(self) -> Dict[str, List[str]]:
@@ -100,14 +91,9 @@ class Context7Config(BaseDomainConfig):
             - searchPatterns: List of regex patterns to search for in content
             Empty dict if not configured.
         """
-        # Load from bundled defaults
-        try:
-            cfg = read_yaml("config", "context7.yml")
-            detection = cfg.get("contentDetection", {})
-            if isinstance(detection, dict):
-                return detection
-        except Exception:
-            pass
+        detection = self.section.get("contentDetection", {})
+        if isinstance(detection, dict):
+            return detection
         return {}
 
     def get_content_detection(self) -> Dict[str, Dict[str, List[str]]]:
@@ -140,7 +126,7 @@ def load_triggers() -> Dict[str, List[str]]:
     if not triggers:
         raise RuntimeError(
             "Context7 triggers configuration missing; "
-            "define triggers in context7.yml or .edison/config/context7.yml"
+            "define triggers in context7.yaml or .edison/config/context7.yaml"
         )
     return triggers
 
@@ -158,7 +144,7 @@ def load_aliases() -> Dict[str, str]:
     if not aliases:
         raise RuntimeError(
             "Context7 aliases configuration missing; "
-            "define aliases in context7.yml or .edison/config/context7.yml"
+            "define aliases in context7.yaml or .edison/config/context7.yaml"
         )
     return aliases
 

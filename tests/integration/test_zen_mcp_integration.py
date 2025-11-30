@@ -70,7 +70,7 @@ class TestZenMcpRelocation:
         Get .edison root directory.
 
         In wilson-leadgen project structure:
-        - Test file: /path/to/wilson-leadgen/.edison/core/tests/integration/test_zen_mcp_integration.py
+        - Test file: /path/to/wilson-leadgen/tests/integration/test_zen_mcp_integration.py
         - Searches up to find: /path/to/wilson-leadgen/.edison/
         """
         test_dir = Path(__file__).parent

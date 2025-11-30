@@ -22,7 +22,7 @@ from edison.core.task.models import Task
 def _bootstrap_repo(repo: Path) -> None:
     """Bootstrap a test repository with minimal config."""
     create_repo_with_git(repo)
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
     write_yaml(
         config_dir / "defaults.yaml",
         {

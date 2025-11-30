@@ -53,6 +53,10 @@ def create_edison_config_structure(
 ) -> Path:
     """Create Edison config directory structure with optional config files.
 
+    Creates project-level config overrides at .edison/config/ (not .edison/core/config
+    which is legacy). These configs override bundled defaults from
+    src/edison/data/config/*.yaml.
+
     Args:
         repo: Repository root path
         defaults: Contents for defaults.yaml
@@ -63,7 +67,7 @@ def create_edison_config_structure(
     Returns:
         Path to the config directory
     """
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
 
     if defaults is not None:

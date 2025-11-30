@@ -1,0 +1,141 @@
+# Post-training packages for Context7 knowledge refresh
+# These packages have versions newer than the model's training cutoff
+
+context7:
+  version: "1.0.0"
+  trainingCutoff: "2025-01"
+
+  # File pattern triggers for automatic package detection
+  triggers:
+    react:
+      - "*.tsx"
+      - "*.jsx"
+      - "**/components/**/*"
+    next:
+      - "app/**/*"
+      - "**/route.ts"
+      - "**/layout.tsx"
+      - "**/page.tsx"
+    zod:
+      - "**/*.schema.ts"
+      - "**/*.validation.ts"
+      - "**/*schema.ts"
+    prisma:
+      - "**/*.prisma"
+      - "**/prisma/schema.*"
+      - "**/prisma/migrations/**/*"
+      - "**/prisma/seeds/**/*"
+
+  # Package name aliases for normalization
+  aliases:
+    react-dom: "react"
+    next/router: "next"
+    nextjs: "next"
+    "@prisma/client": "prisma"
+    prisma-client: "prisma"
+
+  # Content-based detection patterns (searches file content for package usage)
+  # These are applied to specific file types to detect package usage beyond file patterns
+  contentDetection:
+    zod:
+      filePatterns:
+        - "**/*.ts"
+        - "**/*.tsx"
+      searchPatterns:
+        - "import.*zod"
+        - "from.*zod"
+        - "z\\."
+    prisma:
+      filePatterns:
+        - "**/*.ts"
+        - "**/*.tsx"
+      searchPatterns:
+        - "import.*@prisma/client"
+        - "PrismaClient"
+        - "prisma\\."
+
+  packages:
+    next:
+      version: "16.0.0"
+      context7Id: "/vercel/next.js"
+      criticalChanges:
+        - "App Router is now default"
+        - "Server Components by default"
+        - "New caching behavior"
+      topics:
+        - "route handlers"
+        - "app router patterns"
+        - "server components"
+        - "metadata API"
+
+    react:
+      version: "19.2.0"
+      context7Id: "/facebook/react"
+      criticalChanges:
+        - "New use() hook"
+        - "Server Components"
+        - "Actions"
+      topics:
+        - "hooks"
+        - "server components"
+        - "suspense"
+
+    tailwindcss:
+      version: "4.0.0"
+      context7Id: "/tailwindlabs/tailwindcss"
+      criticalChanges:
+        - "COMPLETELY different syntax from v3"
+        - "CSS-first configuration"
+        - "New color system"
+      topics:
+        - "v4 syntax"
+        - "configuration"
+        - "utilities"
+
+    zod:
+      version: "4.1.12"
+      context7Id: "/colinhacks/zod"
+      criticalChanges:
+        - "Breaking changes from v3 API"
+      topics:
+        - "validation"
+        - "schemas"
+
+    motion:
+      version: "12.23.24"
+      context7Id: "/framer/motion"
+      criticalChanges:
+        - "API changes (formerly Framer Motion)"
+        - "New animation syntax"
+      topics:
+        - "animations"
+        - "gestures"
+        - "layout animations"
+
+    typescript:
+      version: "5.7.0"
+      context7Id: "/microsoft/typescript"
+      criticalChanges:
+        - "New type inference features"
+      topics:
+        - "type inference"
+        - "satisfies operator"
+
+    prisma:
+      version: "6.0.0"
+      context7Id: "/prisma/prisma"
+      criticalChanges:
+        - "New client API"
+      topics:
+        - "schema"
+        - "client"
+        - "migrations"
+
+    better-auth:
+      version: "1.0.0"
+      context7Id: "/better-auth/better-auth"
+      criticalChanges:
+        - "New authentication library"
+      topics:
+        - "authentication"
+        - "sessions"

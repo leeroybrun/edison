@@ -7,7 +7,11 @@ Design principles:
 - DRY: Single source of truth for schema operations
 - NO MOCKS: Real jsonschema validation
 - Fail-safe: Gracefully handles missing jsonschema library
-- Path-aware: Uses PathResolver for consistent path resolution
+- Path-aware: Uses bundled data for schemas (ALWAYS)
+
+Architecture:
+- Schemas are ALWAYS from bundled edison.data/schemas/
+- NO .edison/core/schemas/ - that is legacy
 """
 from __future__ import annotations
 
@@ -48,8 +52,6 @@ else:
     except Exception:
         Draft202012Validator = None
 
-from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_project_config_dir
 from edison.data import get_data_path
 
 
@@ -60,31 +62,21 @@ class SchemaValidationError(ValueError):
 
 
 def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
-    """Resolve schemas directory for the given repository root.
+    """Resolve schemas directory.
 
-    Lookup order:
-    1. <project_config_dir>/core/schemas (dev mode)
-    2. src/edison/data/schemas (packaged mode)
+    Schemas are ALWAYS from bundled edison.data package.
+    NO .edison/core/schemas/ - that is legacy.
 
     Args:
-        repo_root: Optional repository root. If None, auto-detects.
+        repo_root: Ignored (kept for API compatibility).
 
     Returns:
-        Path to schemas directory.
+        Path to bundled schemas directory.
 
     Raises:
         FileNotFoundError: If schemas directory cannot be found.
     """
-    if repo_root is None:
-        repo_root = PathResolver.resolve_project_root()
-
-    # Try dev mode location first
-    config_dir = get_project_config_dir(repo_root, create=False)
-    dev_schemas = config_dir / "core" / "schemas"
-    if dev_schemas.exists():
-        return dev_schemas
-
-    # Try packaged data location
+    # Schemas are ALWAYS from bundled data
     try:
         packaged_schemas = get_data_path("schemas")
         if packaged_schemas.exists():
@@ -92,27 +84,21 @@ def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
     except Exception:
         pass
 
-    # Fallback to src/edison/data/schemas for development
-    src_schemas = repo_root / "src" / "edison" / "data" / "schemas"
-    if src_schemas.exists():
-        return src_schemas
-
     raise FileNotFoundError(
-        f"Schemas directory not found. Tried:\n"
-        f"  - {dev_schemas}\n"
-        f"  - {src_schemas}"
+        "Schemas directory not found in bundled edison.data package.\n"
+        "Ensure edison is properly installed."
     )
 
 
 def load_schema(schema_name: str, *, repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Load a JSON schema from the schemas directory.
+    """Load a JSON schema from the bundled schemas directory.
 
     Automatically appends .json extension if not present.
 
     Args:
         schema_name: Name of schema file (e.g., "claude-agent.schema.json"
             or "claude-agent.schema")
-        repo_root: Optional repository root. If None, auto-detects.
+        repo_root: Ignored (kept for API compatibility).
 
     Returns:
         Parsed schema dictionary.
@@ -155,7 +141,7 @@ def validate_payload(
     Args:
         payload: Data to validate.
         schema_name: Name of schema to validate against.
-        repo_root: Optional repository root. If None, auto-detects.
+        repo_root: Ignored (kept for API compatibility).
 
     Raises:
         SchemaValidationError: If validation fails.
@@ -191,7 +177,7 @@ def validate_payload_safe(
     Args:
         payload: Data to validate.
         schema_name: Name of schema to validate against.
-        repo_root: Optional repository root. If None, auto-detects.
+        repo_root: Ignored (kept for API compatibility).
 
     Returns:
         List of error messages. Empty list if validation passes.
@@ -238,6 +224,3 @@ __all__ = [
     "validate_payload_safe",
     "SchemaValidationError",
 ]
-
-
-

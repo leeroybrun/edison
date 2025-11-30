@@ -29,7 +29,7 @@ from edison.core.config import WorkflowConfig
 def task_env(tmp_path, monkeypatch):
     """Setup task workflow environment with real configuration."""
     repo = create_repo_with_git(tmp_path)
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
 
     # 1. defaults.yaml (State Machine + Semantics)
     write_yaml(

@@ -41,25 +41,6 @@ def test_validators_yaml_uses_nextjs_and_database():
     assert "ormsuite" not in blob, "legacy ormsuite validator should be removed"
 
 
-def test_defaults_yaml_updates_context_and_delegation():
-    data = _load_yaml("core/defaults.yaml")
-    specialized = data["validation"]["roster"]["specialized"]
-    file_rules = data["delegation"]["filePatternRules"]
-
-    ids = {v["id"] for v in specialized}
-    blob = "\n".join(str(v) for v in specialized)
-
-    assert "nextjs" in ids, "defaults must expose nextjs validator"
-    assert "database" in ids, "defaults must expose database validator (renamed from prisma)"
-    assert "webapp" not in blob, "defaults should not contain webapp"
-    assert "ormsuite" not in blob, "defaults should not contain ormsuite"
-
-    assert "schema.prisma" in file_rules, "delegation should route prisma schema files"
-    assert "prisma/migrations/**/*" in file_rules, "delegation should route prisma migrations"
-    assert "schema.ormsuite" not in file_rules
-    assert "ormsuite/migrations/**/*" not in file_rules
-
-
 def test_delegation_yaml_routes_prisma_and_nextjs():
     data = _load_yaml("core/config/delegation.yaml")
     file_rules = data["delegation"]["filePatternRules"]

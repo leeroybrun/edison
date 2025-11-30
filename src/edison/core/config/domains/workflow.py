@@ -6,11 +6,9 @@ validation lifecycle transitions and timeouts.
 from __future__ import annotations
 
 from functools import cached_property
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..base import BaseDomainConfig
-from edison.data import read_yaml as real_read_yaml, file_exists as real_file_exists
 
 
 class WorkflowConfig(BaseDomainConfig):
@@ -29,34 +27,34 @@ class WorkflowConfig(BaseDomainConfig):
 
     @cached_property
     def _workflow_yaml(self) -> Dict[str, Any]:
-        """Load workflow.yaml from bundled data."""
-        if not real_file_exists("config", "workflow.yaml"):
-            raise FileNotFoundError("workflow.yaml not found in edison.data.config")
+        """Get workflow configuration from cached config.
 
-        try:
-            raw_config = real_read_yaml("config", "workflow.yaml")
-        except Exception as e:
-            raise ValueError(f"Failed to parse workflow.yaml: {e}")
-
-        self._validate_workflow_config(raw_config)
-        return raw_config
+        Uses self.section to access config["workflow"], then extracts
+        the relevant fields (validationLifecycle, timeouts) and validates them.
+        """
+        workflow = {
+            "validationLifecycle": self.section.get("validationLifecycle", {}),
+            "timeouts": self.section.get("timeouts", {}),
+        }
+        self._validate_workflow_config(workflow)
+        return workflow
 
     def _validate_workflow_config(self, config: Dict[str, Any]) -> None:
         """Validate the structure of the workflow configuration."""
         if not config:
-            raise ValueError("workflow.yaml is empty")
+            raise ValueError("workflow configuration is empty")
 
         forbidden_keys = [k for k in ("qaStates", "taskStates") if k in config]
         if forbidden_keys:
             raise ValueError(
-                "workflow.yaml must not define state lists (qaStates/taskStates); "
-                "they are sourced from state-machine.yaml"
+                "workflow configuration must not define state lists (qaStates/taskStates); "
+                "they are sourced from state-machine configuration"
             )
 
         required_keys = ["validationLifecycle", "timeouts"]
         for key in required_keys:
             if key not in config:
-                raise ValueError(f"workflow.yaml missing required key: {key}")
+                raise ValueError(f"workflow configuration missing required key: {key}")
 
         if not isinstance(config["validationLifecycle"], dict):
             raise ValueError("validationLifecycle must be a dict")
@@ -68,20 +66,13 @@ class WorkflowConfig(BaseDomainConfig):
     def _state_machine_states(self) -> Tuple[List[str], List[str]]:
         """Load task and QA states from state machine config."""
         statemachine = self._config.get("statemachine", {})
-        if not isinstance(statemachine, dict):
-            # Try loading from bundled YAML
-            if not real_file_exists("config", "state-machine.yaml"):
-                raise FileNotFoundError("state-machine.yaml not found in edison.data.config")
-            try:
-                sm = real_read_yaml("config", "state-machine.yaml") or {}
-            except Exception as exc:
-                raise ValueError(f"Failed to parse state-machine.yaml: {exc}")
-            statemachine = sm.get("statemachine", {})
+        if not isinstance(statemachine, dict) or not statemachine:
+            raise ValueError("statemachine configuration section is missing")
 
         def _states(domain: str) -> List[str]:
             domain_cfg = statemachine.get(domain)
             if not isinstance(domain_cfg, dict):
-                raise ValueError(f"state-machine.yaml missing statemachine.{domain} definition")
+                raise ValueError(f"statemachine.{domain} configuration is missing")
             states_cfg = domain_cfg.get("states")
             if isinstance(states_cfg, dict):
                 return list(states_cfg.keys())
@@ -93,7 +84,7 @@ class WorkflowConfig(BaseDomainConfig):
         qa_states = _states("qa")
 
         if not task_states or not qa_states:
-            raise ValueError("state-machine.yaml must declare task and QA states")
+            raise ValueError("statemachine must declare task and QA states")
 
         return task_states, qa_states
 
@@ -170,22 +161,98 @@ class WorkflowConfig(BaseDomainConfig):
 
         return semantic_key
 
+    def get_initial_state(self, domain: str) -> str:
+        """Get the initial state for a domain.
+
+        Args:
+            domain: Either "task" or "qa"
+
+        Returns:
+            The initial state name from config
+
+        Raises:
+            ValueError: If domain is unknown or no initial state found
+        """
+        statemachine = self._config.get("statemachine", {})
+        if not isinstance(statemachine, dict):
+            raise ValueError("statemachine configuration section is missing")
+
+        domain_cfg = statemachine.get(domain, {})
+        states_cfg = domain_cfg.get("states", {})
+
+        # Look for state marked as initial=true
+        if isinstance(states_cfg, dict):
+            for state_name, state_meta in states_cfg.items():
+                if isinstance(state_meta, dict) and state_meta.get("initial"):
+                    return state_name
+
+        # Fallback: first state in list
+        states = self.task_states if domain == "task" else self.qa_states
+        if states:
+            return states[0]
+
+        raise ValueError(f"No initial state found for domain: {domain}")
+
+    def get_final_state(self, domain: str) -> str:
+        """Get the final/validated state for a domain.
+
+        Args:
+            domain: Either "task" or "qa"
+
+        Returns:
+            The final state name from config
+
+        Raises:
+            ValueError: If domain is unknown or no final state found
+        """
+        statemachine = self._config.get("statemachine", {})
+        if not isinstance(statemachine, dict):
+            raise ValueError("statemachine configuration section is missing")
+
+        domain_cfg = statemachine.get(domain, {})
+        states_cfg = domain_cfg.get("states", {})
+
+        # Look for state marked as final=true
+        if isinstance(states_cfg, dict):
+            for state_name, state_meta in states_cfg.items():
+                if isinstance(state_meta, dict) and state_meta.get("final"):
+                    return state_name
+
+        # Fallback to "validated" if no final state marked
+        if domain in ("task", "qa"):
+            return "validated"
+
+        raise ValueError(f"No final state found for domain: {domain}")
+
+    def get_states(self, domain: str) -> List[str]:
+        """Get all states for a domain.
+
+        Args:
+            domain: Either "task" or "qa"
+
+        Returns:
+            List of state names
+
+        Raises:
+            ValueError: If domain is unknown
+        """
+        if domain == "task":
+            return self.task_states
+        elif domain == "qa":
+            return self.qa_states
+        else:
+            raise ValueError(f"Unknown domain: {domain}")
+
 
 # Module-level convenience functions for backward compatibility
 _cached_config: Optional[WorkflowConfig] = None
 
 
-def _get_config(
-    force_reload: bool = False,
-    read_yaml_func: Any = None,
-    file_exists_func: Any = None,
-) -> WorkflowConfig:
+def _get_config(force_reload: bool = False) -> WorkflowConfig:
     """Get or create the singleton WorkflowConfig instance.
 
     Args:
         force_reload: If True, create a new config instance
-        read_yaml_func: Optional custom YAML reader (for testing)
-        file_exists_func: Optional custom file existence checker (for testing)
 
     Returns:
         WorkflowConfig instance
@@ -196,17 +263,11 @@ def _get_config(
     return _cached_config
 
 
-def load_workflow_config(
-    force_reload: bool = False,
-    read_yaml_func: Any = None,
-    file_exists_func: Any = None,
-) -> Dict[str, Any]:
+def load_workflow_config(force_reload: bool = False) -> Dict[str, Any]:
     """Load workflow configuration.
 
     Args:
         force_reload: If True, reload the configuration
-        read_yaml_func: Optional custom YAML reader (for testing)
-        file_exists_func: Optional custom file existence checker (for testing)
 
     Returns:
         Complete workflow configuration dict including:
@@ -214,70 +275,7 @@ def load_workflow_config(
         - timeouts: Timeout configuration
         - taskStates: List of task states (from state machine)
         - qaStates: List of QA states (from state machine)
-
-    Raises:
-        FileNotFoundError: If workflow.yaml or state-machine.yaml not found
-        ValueError: If configuration is invalid
     """
-    # Handle test dependency injection
-    if read_yaml_func is not None or file_exists_func is not None:
-        # For testing: directly load with injected dependencies
-        if file_exists_func and not file_exists_func("config", "workflow.yaml"):
-            raise FileNotFoundError("workflow.yaml not found in edison.data.config")
-
-        try:
-            if read_yaml_func:
-                raw_config = read_yaml_func("config", "workflow.yaml")
-            else:
-                raw_config = real_read_yaml("config", "workflow.yaml")
-        except Exception as e:
-            raise ValueError(f"Failed to parse workflow.yaml: {e}")
-
-        # Validate structure
-        if not raw_config:
-            raise ValueError("workflow.yaml is empty")
-
-        forbidden_keys = [k for k in ("qaStates", "taskStates") if k in raw_config]
-        if forbidden_keys:
-            raise ValueError(
-                "workflow.yaml must not define state lists (qaStates/taskStates); "
-                "they are sourced from state-machine.yaml"
-            )
-
-        required_keys = ["validationLifecycle", "timeouts"]
-        for key in required_keys:
-            if key not in raw_config:
-                raise ValueError(f"workflow.yaml missing required key: {key}")
-
-        # Load state machine states
-        if read_yaml_func:
-            sm = read_yaml_func("config", "state-machine.yaml") or {}
-        else:
-            sm = real_read_yaml("config", "state-machine.yaml") or {}
-
-        statemachine = sm.get("statemachine", {})
-
-        def _states(domain: str) -> List[str]:
-            domain_cfg = statemachine.get(domain)
-            if not isinstance(domain_cfg, dict):
-                raise ValueError(f"state-machine.yaml missing statemachine.{domain} definition")
-            states_cfg = domain_cfg.get("states")
-            if isinstance(states_cfg, dict):
-                return list(states_cfg.keys())
-            if isinstance(states_cfg, list):
-                return [str(s) for s in states_cfg]
-            raise ValueError(f"statemachine.{domain}.states must be a dict or list")
-
-        task_states = _states("task")
-        qa_states = _states("qa")
-
-        return {
-            **raw_config,
-            "taskStates": task_states,
-            "qaStates": qa_states,
-        }
-
-    # Production code: use cached config
     config = _get_config(force_reload=force_reload)
     return {
         "validationLifecycle": config.validation_lifecycle,
@@ -324,12 +322,63 @@ def get_semantic_state(domain: str, semantic_key: str) -> str:
     return _get_config().get_semantic_state(domain, semantic_key)
 
 
+def get_initial_state(domain: str, force_reload: bool = False) -> str:
+    """Get the initial state for a domain.
+
+    Args:
+        domain: Either "task" or "qa"
+        force_reload: If True, reload the configuration
+
+    Returns:
+        The initial state name from config
+
+    Raises:
+        ValueError: If domain is unknown or no initial state found
+    """
+    return _get_config(force_reload=force_reload).get_initial_state(domain)
+
+
+def get_final_state(domain: str, force_reload: bool = False) -> str:
+    """Get the final/validated state for a domain.
+
+    Args:
+        domain: Either "task" or "qa"
+        force_reload: If True, reload the configuration
+
+    Returns:
+        The final state name from config
+
+    Raises:
+        ValueError: If domain is unknown or no final state found
+    """
+    return _get_config(force_reload=force_reload).get_final_state(domain)
+
+
+def get_states(domain: str, force_reload: bool = False) -> List[str]:
+    """Get all states for a domain.
+
+    Args:
+        domain: Either "task" or "qa"
+        force_reload: If True, reload the configuration
+
+    Returns:
+        List of state names
+
+    Raises:
+        ValueError: If domain is unknown
+    """
+    return _get_config(force_reload=force_reload).get_states(domain)
+
+
 __all__ = [
     "WorkflowConfig",
     "load_workflow_config",
     "get_task_states",
     "get_qa_states",
     "get_semantic_state",
+    "get_initial_state",
+    "get_final_state",
+    "get_states",
 ]
 
 

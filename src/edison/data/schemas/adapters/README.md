@@ -19,5 +19,5 @@ Adapter schemas define the interface between Edison and specific IDE integration
 ## Related Code
 
 - `edison.core.composition.ide` - IDE adapter composition
-- `.agents/_generated/agents/` - Generated agent definitions
+- `.edison/_generated/agents/` - Generated agent definitions
 - Client-specific implementations (Cursor, Claude Code, etc.)

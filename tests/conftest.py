@@ -145,51 +145,18 @@ def isolated_project_env(tmp_path, monkeypatch):
         stderr=subprocess.DEVNULL,
     )
 
-    # Copy Edison core config files (state-machine.yaml, etc.) for state machine tests
-    # In standalone Edison package, config files are bundled in src/edison/data/config/
-    edison_bundled_config = Path(__file__).parent.parent / "src" / "edison" / "data" / "config"
-    edison_legacy_config = REPO_ROOT / ".edison" / "core" / "config"
-
-    edison_core_config_src = edison_bundled_config if edison_bundled_config.exists() else edison_legacy_config
-    edison_core_config_dst = tmp_path / ".edison" / "core" / "config"
-
-    if edison_core_config_src.exists():
-        edison_core_config_dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(edison_core_config_src, edison_core_config_dst, dirs_exist_ok=True)
-
-    # Ensure .edison/core/rules and .edison/core/guidelines directories exist for composition tests
-    (tmp_path / ".edison" / "core" / "rules").mkdir(parents=True, exist_ok=True)
-    (tmp_path / ".edison" / "core" / "guidelines").mkdir(parents=True, exist_ok=True)
-
-    # Copy START.SESSION.md for autostart tests
-    # The orchestrator.yaml config references .edison/core/guides/START.SESSION.md
-    guides_dir = tmp_path / ".edison" / "core" / "guides"
-    guides_dir.mkdir(parents=True, exist_ok=True)
-
-    # Source: bundled START_NEW_SESSION.md from edison.data.start
-    from edison.data import get_data_path
-    start_session_src = get_data_path("start", "START_NEW_SESSION.md")
-    start_session_dst = guides_dir / "START.SESSION.md"
-
-    if start_session_src.exists():
-        start_session_dst.write_text(start_session_src.read_text(encoding="utf-8"), encoding="utf-8")
-    else:
-        # Fallback: minimal session start template
-        start_session_dst.write_text(
-            "# Start Session\n\n"
-            "## Session Initialization\n\n"
-            "Run the session start command:\n"
-            "```bash\n"
-            "edison session start\n"
-            "```\n\n"
-            "## Begin Work\n\n"
-            "1. Claim task\n"
-            "2. Implement following TDD\n"
-            "3. Mark ready\n"
-            "4. Run validators\n"
-            "5. Complete task\n",
-            encoding="utf-8",
-        )
+    # Create .edison/config directory for project-level config overrides
+    # NOTE: Core config is ALWAYS from bundled edison.data package
+    # NO .edison/core/ - that is legacy
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create project-level directories for overrides (optional)
+    # Project can add custom guidelines, validators, rules at:
+    # .edison/guidelines/, .edison/validators/, .edison/rules/
+    (tmp_path / ".edison" / "guidelines").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".edison" / "validators").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".edison" / "rules").mkdir(parents=True, exist_ok=True)
 
     # Create necessary project structure mirroring Edison conventions
     project_root = tmp_path / ".project"
@@ -219,11 +186,9 @@ def isolated_project_env(tmp_path, monkeypatch):
     for dir_name in session_unique_dirs:
         (project_root / "sessions" / dir_name).mkdir(parents=True, exist_ok=True)
 
-    # Core .agents layout (sessions, scripts, validators, config overlays)
+    # Core .agents layout (sessions, validators, config overlays)
     for rel in [
         "sessions",
-        "scripts",
-        "scripts/lib",
         "validators",
         "config",
     ]:
@@ -310,42 +275,9 @@ def isolated_project_env(tmp_path, monkeypatch):
             encoding="utf-8",
         )
 
-    # Session workflow: prefer project overlay, fall back to core template.
-    workflow_src_candidates = [
-        REPO_ROOT / ".agents" / "session-workflow.json",
-        REPO_ROOT / ".edison" / "core" / "templates" / "session-workflow.json",
-    ]
-    workflow_dst = agents_root / "session-workflow.json"
-    for candidate in workflow_src_candidates:
-        if candidate.exists():
-            workflow_dst.write_text(candidate.read_text(encoding="utf-8"), encoding="utf-8")
-            break
-    else:
-        # Build workflow from canonical state config
-        session_dirs = states_config.get("session", {}).get("directories", {})
-        workflow_states = []
-        workflow_directories = {}
-
-        # Build state list and directory mappings from canonical config
-        for state_name, dir_name in session_dirs.items():
-            if state_name not in workflow_states:
-                workflow_states.append(state_name)
-            workflow_directories[state_name] = f".project/sessions/{dir_name}"
-
-        workflow_dst.write_text(
-            json.dumps(
-                {
-                    "session": {
-                        "states": workflow_states,
-                        "directories": workflow_directories,
-                        "transitions": {},
-                    }
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+    # NOTE: Session workflow is now defined in bundled state-machine.yaml
+    # and accessed via WorkflowConfig domain config. No need to create
+    # legacy session-workflow.json files.
 
     # Mirror Context7 validator config from the real repo when present so tests
     # relying on minimal postTrainingPackages metadata behave consistently.
@@ -384,16 +316,16 @@ def isolated_project_env(tmp_path, monkeypatch):
     if ready_wrapper_src.exists():
         shutil.copyfile(ready_wrapper_src, ready_wrapper_dst)
     else:
-        # Fallback: lightweight wrapper that delegates to core tasks/ready script.
-        core_ready_path = (REPO_ROOT / ".edison" / "core" / "scripts" / "tasks" / "ready")
-        core_ready = (
-            "from __future__ import annotations\n"
-            "from pathlib import Path\n"
-            "import runpy\n\n"
-            f"CORE_READY = Path({repr(str(core_ready_path))})\n"
-            "globals().update(runpy.run_path(str(CORE_READY)))\n"
+        # Fallback: minimal wrapper - tasks/ready functionality is in edison CLI
+        ready_wrapper_dst.write_text(
+            "#!/usr/bin/env python3\n"
+            "# Minimal tasks/ready wrapper for tests\n"
+            "# Real implementation is in edison.cli.task.ready\n"
+            "from edison.cli.task.ready import main\n"
+            "import sys\n"
+            "sys.exit(main())\n",
+            encoding="utf-8",
         )
-        ready_wrapper_dst.write_text(core_ready, encoding="utf-8")
 
     yield tmp_path
 

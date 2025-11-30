@@ -1,0 +1,8 @@
+# Project Configuration
+# Project-level metadata that can be overridden per-project
+# Override via EDISON_project__name, EDISON_project__owner, etc.
+
+project:
+  name: "project"  # Can be overridden by EDISON_project__name
+  owner: null  # If null, will default to getpass.getuser() at runtime
+  audit_terms: []  # Additional terms for audit purity checks

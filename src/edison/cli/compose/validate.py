@@ -13,6 +13,7 @@ from pathlib import Path
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
 from edison.core.composition import validate_composition
 from edison.core.utils.paths import get_project_config_dir
+from edison.data import get_data_path
 
 SUMMARY = "Validate composition configuration and outputs"
 
@@ -41,7 +42,7 @@ def main(args: argparse.Namespace) -> int:
     try:
         repo_root = get_repo_root(args)
 
-        # For now, just do basic validation that the repo structure exists
+        # Get project config directory (.edison/)
         config_dir = get_project_config_dir(repo_root, create=False)
         validation_result = {
             "valid": True,
@@ -49,16 +50,35 @@ def main(args: argparse.Namespace) -> int:
             "issues": [],
         }
 
-        # Check for basic required directories
-        required_dirs = [
-            config_dir,
-            config_dir / "core",
-        ]
-
-        for dir_path in required_dirs:
-            if not dir_path.exists():
+        # Validate bundled edison.data is accessible
+        try:
+            bundled_data_dir = get_data_path("")
+            if not bundled_data_dir.exists():
                 validation_result["valid"] = False
-                validation_result["issues"].append(f"Missing required directory: {dir_path}")
+                validation_result["issues"].append(
+                    f"Bundled edison.data not accessible: {bundled_data_dir}"
+                )
+        except Exception as e:
+            validation_result["valid"] = False
+            validation_result["issues"].append(f"Cannot access bundled edison.data: {e}")
+
+        # Check for project config directory (.edison/)
+        # Note: This is optional - projects can run with just bundled defaults
+        if not config_dir.exists():
+            validation_result["issues"].append({
+                "severity": "warning",
+                "message": f"Project config directory not found: {config_dir}",
+                "file": str(config_dir),
+            })
+
+        # Check for project config subdirectory (.edison/config/)
+        project_config = config_dir / "config"
+        if config_dir.exists() and not project_config.exists():
+            validation_result["issues"].append({
+                "severity": "warning",
+                "message": f"Project config subdirectory not found: {project_config}",
+                "file": str(project_config),
+            })
 
         if args.json:
             formatter.json_output(validation_result)
@@ -67,14 +87,15 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text("✓ Composition validation passed")
             else:
                 formatter.text("✗ Composition validation failed")
-                for issue in validation_result.get("issues", []):
-                    if isinstance(issue, str):
-                        formatter.text(f"  [error] {issue}")
-                    else:
-                        severity = issue.get("severity", "error")
-                        formatter.text(f"  [{severity}] {issue['message']}")
-                        if issue.get("file"):
-                            formatter.text(f"    File: {issue['file']}")
+            
+            for issue in validation_result.get("issues", []):
+                if isinstance(issue, str):
+                    formatter.text(f"  [error] {issue}")
+                else:
+                    severity = issue.get("severity", "error")
+                    formatter.text(f"  [{severity}] {issue['message']}")
+                    if issue.get("file"):
+                        formatter.text(f"    File: {issue['file']}")
 
             if args.fix and "fixes_applied" in validation_result:
                 formatter.text(f"\nApplied {len(validation_result['fixes_applied'])} fix(es)")

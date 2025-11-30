@@ -14,9 +14,11 @@ from helpers.io_utils import write_yaml
 
 def _write_cli_config(repo_root: Path) -> None:
     """Provision minimal config so cli utils pull values from YAML, not code defaults."""
-    cfg = {
+    cfg_dir = repo_root / ".edison" / "config"
+
+    # Write cli.yaml
+    cli_cfg = {
         "cli": {
-            "json": {"indent": 4, "sort_keys": True, "ensure_ascii": False},
             "table": {"padding": 1, "column_gap": 2},
             "confirm": {"assume_yes_env": "EDISON_ASSUME_YES"},
             "output": {
@@ -25,17 +27,31 @@ def _write_cli_config(repo_root: Path) -> None:
                 "warning_prefix": "[WARN]",
                 "use_color": False,
             },
-        },
-        "subprocess_timeouts": {
-            "default": 5.0,
-            "git_operations": 5.0,
-            "file_operations": 5.0,
-            "test_execution": 30.0,
-            "build_operations": 60.0,
-        },
+        }
     }
-    cfg_path = repo_root / ".edison" / "core" / "config" / "defaults.yaml"
-    write_yaml(cfg_path, cfg)
+    write_yaml(cfg_dir / "cli.yaml", cli_cfg)
+
+    # Write json-io.yaml (json formatting is separate from CLI)
+    json_io_cfg = {
+        "json_io": {
+            "indent": 4,
+            "sort_keys": True,
+            "ensure_ascii": False,
+        }
+    }
+    write_yaml(cfg_dir / "json-io.yaml", json_io_cfg)
+
+    # Write timeouts.yaml
+    timeouts_cfg = {
+        "timeouts": {
+            "default_seconds": 5.0,
+            "git_operations_seconds": 5.0,
+            "file_operations_seconds": 5.0,
+            "test_execution_seconds": 30.0,
+            "build_operations_seconds": 60.0,
+        }
+    }
+    write_yaml(cfg_dir / "timeouts.yaml", timeouts_cfg)
 
 
 @pytest.fixture()

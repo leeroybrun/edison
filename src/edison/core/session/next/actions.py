@@ -132,7 +132,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                             "taskId": task_id,
                             "type": "validator",
                             "validatorId": vid,
-                            "suggested": ["(re)run validator wave and write JSON per schema", f"scripts/qa/promote --task {task_id} --to wip"],
+                            "suggested": ["(re)run validator wave and write JSON per schema", f"edison qa promote --task {task_id} --to wip"],
                         })
             except Exception:
                 pass
@@ -152,7 +152,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                         "path": rel_path,
                         "suggested": [
                             "Write Implementation Report JSON per schema",
-                            f"scripts/implementation/validate {rel_path}",
+                            f"edison implementation validate {rel_path}",
                         ],
                     })
         except Exception:

@@ -2,6 +2,11 @@
 Edison rules migration utilities.
 
 These are standalone scripts for migrating rules registries.
+
+Architecture:
+- Bundled rules: edison.data/rules/registry.yml
+- Project rules: .edison/rules/registry.yml (overrides)
+- NO .edison/core/ - that is legacy
 """
 from __future__ import annotations
 
@@ -12,14 +17,16 @@ from pathlib import Path
 import yaml
 
 from edison.core.utils.paths import get_project_config_dir
+from edison.data import get_data_path
 from edison.cli import OutputFormatter
 
 
 def rules_migrate_registry_paths() -> int:
     """
-    Migrate legacy .agents/ prefixes to .edison/ in registry.json.
+    Migrate legacy .agents/ prefixes to .edison/ in project registry.
 
     This fixes paths that reference the old .agents directory structure.
+    Project-level rules are at .edison/rules/registry.json (not .edison/core/rules/).
     """
     formatter = OutputFormatter(json_mode=False)
 
@@ -27,14 +34,14 @@ def rules_migrate_registry_paths() -> int:
         # Find project root
         cwd = Path.cwd()
         config_dir = get_project_config_dir(cwd, create=False)
-        registry_path = config_dir / "core" / "rules" / "registry.json"
+        
+        # Project-level rules at .edison/rules/ (not .edison/core/rules/)
+        registry_path = config_dir / "rules" / "registry.json"
 
         if not registry_path.exists():
-            formatter.error(
-                Exception(f"Registry not found: {registry_path}"),
-                error_code="error"
-            )
-            return 1
+            formatter.text(f"No project-level rules registry at {registry_path}")
+            formatter.text("Bundled rules are at edison.data/rules/registry.yml")
+            return 0
 
         # Load registry
         data = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -44,10 +51,16 @@ def rules_migrate_registry_paths() -> int:
         for rule in data.get("rules", []):
             source_path = rule.get("sourcePath", "")
             if source_path.startswith(".agents/"):
-                # Map .agents/guidelines/ -> .edison/core/guidelines/
-                new_path = source_path.replace(".agents/guidelines/", ".edison/core/guidelines/")
-                new_path = new_path.replace(".agents/guides/", ".edison/core/guides/")
-                new_path = new_path.replace(".agents/validators/", ".edison/core/validators/")
+                # Map .agents/guidelines/ -> .edison/guidelines/ (no /core/)
+                new_path = source_path.replace(".agents/guidelines/", ".edison/guidelines/")
+                new_path = new_path.replace(".agents/guides/", ".edison/guides/")
+                new_path = new_path.replace(".agents/validators/", ".edison/validators/")
+                rule["sourcePath"] = new_path
+                modified = True
+                formatter.text(f"Migrated: {source_path} -> {new_path}")
+            elif ".edison/core/" in source_path:
+                # Also migrate legacy .edison/core/ paths
+                new_path = source_path.replace(".edison/core/", ".edison/")
                 rule["sourcePath"] = new_path
                 modified = True
                 formatter.text(f"Migrated: {source_path} -> {new_path}")
@@ -68,9 +81,10 @@ def rules_migrate_registry_paths() -> int:
 
 def rules_json_to_yaml_migration() -> int:
     """
-    Migrate rules registry from JSON to YAML format.
+    Migrate project rules registry from JSON to YAML format.
 
     Creates registry.yml from registry.json with version bump and enriched metadata.
+    Project-level rules are at .edison/rules/ (not .edison/core/rules/).
     """
     formatter = OutputFormatter(json_mode=False)
 
@@ -78,15 +92,15 @@ def rules_json_to_yaml_migration() -> int:
         # Find project root
         cwd = Path.cwd()
         config_dir = get_project_config_dir(cwd, create=False)
-        json_path = config_dir / "core" / "rules" / "registry.json"
-        yaml_path = config_dir / "core" / "rules" / "registry.yml"
+        
+        # Project-level rules at .edison/rules/ (not .edison/core/rules/)
+        json_path = config_dir / "rules" / "registry.json"
+        yaml_path = config_dir / "rules" / "registry.yml"
 
         if not json_path.exists():
-            formatter.error(
-                Exception(f"JSON registry not found: {json_path}"),
-                error_code="error"
-            )
-            return 1
+            formatter.text(f"No project-level JSON registry at {json_path}")
+            formatter.text("Bundled rules are at edison.data/rules/registry.yml")
+            return 0
 
         # Load JSON
         data = json.loads(json_path.read_text(encoding="utf-8"))
@@ -115,7 +129,6 @@ def rules_json_to_yaml_migration() -> int:
             # Convert start/end markers to anchor-based sourcePath
             source_path = rule.get("sourcePath", "")
             start_marker = rule.get("start", "")
-            end_marker = rule.get("end", "")
 
             # Extract anchor from markers if present
             # Format: <!-- RULE: RULE.ID START --> or <!-- ANCHOR: anchor-name -->
@@ -161,48 +174,68 @@ def rules_verify_anchors() -> int:
     """
     Verify that all rule anchors in registry.yml are resolvable.
 
-    Checks that each rule's sourcePath anchor exists in the source file.
+    Checks both bundled and project-level rules registries.
     """
     formatter = OutputFormatter(json_mode=False)
 
     try:
-        # Find project root
         cwd = Path.cwd()
         config_dir = get_project_config_dir(cwd, create=False)
-        yaml_path = config_dir / "core" / "rules" / "registry.yml"
+        
+        # Check bundled rules first
+        bundled_yaml_path = get_data_path("rules", "registry.yml")
+        
+        # Check project-level rules at .edison/rules/
+        project_yaml_path = config_dir / "rules" / "registry.yml"
 
-        if not yaml_path.exists():
-            formatter.error(
-                Exception(f"YAML registry not found: {yaml_path}"),
-                error_code="error"
-            )
-            return 1
-
-        # Load YAML
-        data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
-
+        total_verified = 0
         failures = []
-        for rule in data.get("rules", []):
-            rule_id = rule.get("id", "UNKNOWN")
-            source_path = rule.get("sourcePath", "")
 
-            if "#" in source_path:
-                file_path, anchor = source_path.split("#", 1)
-                full_path = cwd / file_path
+        for yaml_path, source_name in [
+            (bundled_yaml_path, "bundled"),
+            (project_yaml_path, "project"),
+        ]:
+            if not yaml_path.exists():
+                continue
 
-                if not full_path.exists():
-                    failures.append(f"{rule_id}: File not found: {full_path}")
-                    continue
+            # Load YAML
+            data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
 
-                # Check for anchor markers in file
-                content = full_path.read_text(encoding="utf-8")
-                anchor_marker = f"<!-- ANCHOR: {anchor} -->"
-                end_marker = f"<!-- END ANCHOR: {anchor} -->"
+            for rule in data.get("rules", []):
+                rule_id = rule.get("id", "UNKNOWN")
+                source_path = rule.get("sourcePath", "")
 
-                if anchor_marker not in content:
-                    failures.append(f"{rule_id}: Start anchor not found: {anchor_marker}")
-                elif end_marker not in content:
-                    failures.append(f"{rule_id}: End anchor not found: {end_marker}")
+                if "#" in source_path:
+                    file_path, anchor = source_path.split("#", 1)
+                    
+                    # Resolve file path - check bundled data first, then project
+                    full_path = None
+                    if file_path.startswith(".edison/"):
+                        # Project-relative path
+                        full_path = cwd / file_path
+                    else:
+                        # Try bundled data
+                        bundled_path = Path(get_data_path("")) / file_path
+                        if bundled_path.exists():
+                            full_path = bundled_path
+                        else:
+                            full_path = cwd / file_path
+
+                    if full_path is None or not full_path.exists():
+                        failures.append(f"[{source_name}] {rule_id}: File not found: {file_path}")
+                        continue
+
+                    # Check for anchor markers in file
+                    content = full_path.read_text(encoding="utf-8")
+                    anchor_marker = f"<!-- ANCHOR: {anchor} -->"
+                    end_marker = f"<!-- END ANCHOR: {anchor} -->"
+
+                    if anchor_marker not in content:
+                        failures.append(f"[{source_name}] {rule_id}: Start anchor not found: {anchor_marker}")
+                    elif end_marker not in content:
+                        failures.append(f"[{source_name}] {rule_id}: End anchor not found: {end_marker}")
+                    else:
+                        total_verified += 1
 
         if failures:
             formatter.error(
@@ -213,7 +246,7 @@ def rules_verify_anchors() -> int:
                 formatter.text(f"  - {failure}")
             return 1
 
-        formatter.text(f"✓ All {len(data.get('rules', []))} rule anchors verified")
+        formatter.text(f"✓ All {total_verified} rule anchors verified")
         return 0
 
     except Exception as e:

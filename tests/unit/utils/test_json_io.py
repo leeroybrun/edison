@@ -12,28 +12,39 @@ from helpers.io_utils import write_yaml
 @pytest.fixture()
 def json_module(isolated_project_env: Path):
     # Write config with specific json_io settings for testing
-    cfg = {
+    cfg_dir = isolated_project_env / ".edison" / "config"
+
+    # Write json-io.yaml
+    json_io_cfg = {
         "json_io": {
             "indent": 2,
             "sort_keys": True,
             "ensure_ascii": False,
-        },
+        }
+    }
+    write_yaml(cfg_dir / "json-io.yaml", json_io_cfg)
+
+    # Write timeouts.yaml
+    timeouts_cfg = {
         "timeouts": {
             "git_operations_seconds": 60.0,
             "db_operations_seconds": 30.0,
             "json_io_lock_seconds": 5.0,
-        },
-        "subprocess_timeouts": {
-            "default": 5.0,
-            "git_operations": 5.0,
-            "file_operations": 5.0,
-        },
+            "default_seconds": 5.0,
+            "file_operations_seconds": 5.0,
+        }
+    }
+    write_yaml(cfg_dir / "timeouts.yaml", timeouts_cfg)
+
+    # Write file-locking.yaml
+    file_locking_cfg = {
         "file_locking": {
             "timeout_seconds": 5.0,
             "poll_interval_seconds": 0.1,
-        },
+        }
     }
-    write_yaml(isolated_project_env / ".edison" / "core" / "config" / "defaults.yaml", cfg)
+    write_yaml(cfg_dir / "file-locking.yaml", file_locking_cfg)
+
     import edison.core.utils.io.json as json_io  # type: ignore
 
     importlib.reload(json_io)

@@ -16,5 +16,5 @@ Manifest schemas define the structure of Edison's self-describing metadata:
 
 ## Related Code
 
-- `.agents/manifest.json` - Project manifest
+- `.edison/manifest.json` - Project manifest
 - `edison.core.composition.registries` - Registry management

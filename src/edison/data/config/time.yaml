@@ -1,0 +1,8 @@
+# Time Configuration
+# ISO 8601 timestamp formatting settings
+
+time:
+  iso8601:
+    timespec: "seconds"
+    use_z_suffix: true
+    strip_microseconds: true

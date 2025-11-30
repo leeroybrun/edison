@@ -1,0 +1,9 @@
+# JSON I/O Configuration
+# Centralized JSON formatting and encoding settings
+# Used by both CLI output and file I/O operations
+
+json_io:
+  indent: 2
+  sort_keys: true
+  ensure_ascii: false
+  encoding: "utf-8"

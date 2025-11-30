@@ -2,13 +2,15 @@
 Rules Registry for the Edison Rules system.
 
 This module provides the RulesRegistry class for loading and composing rules
-from core + pack YAML registries, with support for guideline anchors and
+from bundled + pack YAML registries, with support for guideline anchors and
 include resolution.
 
-Moved from core.rules.registry to composition.registries for architectural
-coherence - rule composition follows the same patterns as guideline composition.
-
 Architecture:
+    - Bundled rules: edison.data/rules/registry.yml (ALWAYS used for core)
+    - Pack rules: .edison/packs/<pack>/rules/registry.yml
+    - Project rules: .edison/rules/registry.yml (overrides)
+    - NO .edison/core/ - that is legacy
+
     BaseEntityManager
     └── BaseRegistry
         └── RulesRegistry (this module)
@@ -40,9 +42,10 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
     - Include resolution
     
     Registry locations:
-      - Bundled: edison.data/rules/registry.yml
-      - Packs: .edison/packs/<pack>/rules/registry.yml
+      - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
+      - Packs: .edison/packs/<pack>/rules/registry.yml (bundled + project)
       - Project: .edison/rules/registry.yml (overrides)
+      - NO .edison/core/ - that is legacy
 
     This class is read-only; it does not mutate project state.
     """
@@ -58,22 +61,17 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         
         super().__init__(resolved_root)
 
-        config_dir = get_project_config_dir(self.project_root, create=False)
+        self.project_config_dir = get_project_config_dir(self.project_root, create=False)
 
-        # Core registry: prefer project's .edison/core/rules if it exists,
-        # otherwise fall back to bundled rules from edison.data package
-        project_core_registry = config_dir / "core" / "rules" / "registry.yml"
-        if project_core_registry.exists():
-            self.core_registry_path = project_core_registry
-        else:
-            try:
-                self.core_registry_path = get_data_path("rules", "registry.yml")
-            except Exception:
-                # Fallback for when package data unavailable
-                self.core_registry_path = config_dir / "rules" / "registry.yml"
-
-        self.packs_root = config_dir / "packs"
-        self.project_config_dir = config_dir
+        # Core registry is ALWAYS from bundled data
+        self.core_registry_path = get_data_path("rules", "registry.yml")
+        
+        # Bundled data directory for resolving guideline paths
+        self.bundled_data_dir = Path(get_data_path(""))
+        
+        # Pack directories (bundled + project)
+        self.bundled_packs_dir = Path(get_data_path("packs"))
+        self.project_packs_dir = self.project_config_dir / "packs"
     
     # ------- Utility Methods -------
 
@@ -110,7 +108,7 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return {rule.get("id", f"rule-{i}"): rule for i, rule in enumerate(rules) if isinstance(rule, dict)}
     
     def discover_packs(self, packs: List[str]) -> Dict[str, Dict[str, Any]]:
-        """Discover rules from active packs."""
+        """Discover rules from active packs (bundled + project)."""
         result: Dict[str, Dict[str, Any]] = {}
         for pack in packs:
             registry = self.load_pack_registry(pack)
@@ -122,7 +120,7 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return result
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
-        """Discover project-level rule overrides."""
+        """Discover project-level rule overrides at .edison/rules/."""
         path = self.project_config_dir / "rules" / "registry.yml"
         registry = self._load_yaml(path, required=False)
         rules = registry.get("rules", [])
@@ -170,9 +168,15 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return self._load_yaml(self.core_registry_path, required=True)
 
     def load_pack_registry(self, pack_name: str) -> Dict[str, Any]:
-        """Load pack-specific rules registry if it exists; otherwise empty."""
-        path = self.packs_root / pack_name / "rules" / "registry.yml"
-        return self._load_yaml(path, required=False)
+        """Load pack-specific rules registry (bundled or project)."""
+        # Try bundled pack first
+        bundled_path = self.bundled_packs_dir / pack_name / "rules" / "registry.yml"
+        if bundled_path.exists():
+            return self._load_yaml(bundled_path, required=False)
+        
+        # Fall back to project pack
+        project_path = self.project_packs_dir / pack_name / "rules" / "registry.yml"
+        return self._load_yaml(project_path, required=False)
 
     # ------------------------------------------------------------------
     # Composition helpers
@@ -193,15 +197,24 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         else:
             file_part = file_ref
 
-        # Resolve file path: absolute-from-root when starting with .edison/project-config-dir/ or /
-        project_dir_prefix = f"{self.project_config_dir.name}/"
-        if file_part.startswith(project_dir_prefix):
-            source_path = (self.project_config_dir / file_part[len(project_dir_prefix):]).resolve()
+        # Resolve file path
+        source_path: Optional[Path] = None
+        
+        # Project-relative paths starting with .edison/
+        if file_part.startswith(".edison/"):
+            source_path = (self.project_root / file_part).resolve()
+        # Absolute paths
         elif file_part.startswith("/"):
             source_path = (self.project_root / file_part.lstrip("/")).resolve()
         else:
-            # Treat as relative to core directory (e.g., "guidelines/VALIDATION.md")
-            source_path = (self.project_config_dir / "core" / file_part).resolve()
+            # Relative paths resolve to bundled data (e.g., "guidelines/VALIDATION.md")
+            bundled_path = (self.bundled_data_dir / file_part).resolve()
+            if bundled_path.exists():
+                source_path = bundled_path
+            else:
+                # Fall back to project directory for project-level content
+                project_path = (self.project_config_dir / file_part).resolve()
+                source_path = project_path
 
         return source_path, str(anchor) if anchor else None
 
@@ -262,7 +275,7 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
 
     def compose(self, packs: Optional[List[str]] = None) -> Dict[str, Any]:
         """
-        Compose rules from core + optional packs into a single structure.
+        Compose rules from bundled core + optional packs into a single structure.
 
         Returns:
             Dict with keys:
@@ -275,7 +288,7 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         core = self.load_core_registry()
         rules_index: Dict[str, Dict[str, Any]] = {}
 
-        # Core rules first
+        # Core rules first (from bundled data)
         for raw_rule in core.get("rules", []) or []:
             if not isinstance(raw_rule, dict):
                 continue
@@ -511,4 +524,3 @@ __all__ = [
     "get_rules_for_role",
     "filter_rules",
 ]
-

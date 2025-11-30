@@ -2,8 +2,8 @@
 Configuration Layering Scenario Coverage Tests (Dimension 10)
 
 New architecture (NO LEGACY, NO PACKS):
-- Core defaults live at `.edison/core/config/defaults.yaml`.
-- Project overlays live at `<project_config_dir>/config/*.yml` (default: `.edison/config/*.yml`).
+- Core defaults live in bundled data at `src/edison/data/config/*.yaml`.
+- Project overlays live at `<project_config_dir>/.edison/config/*.yaml`.
 - Environment overrides sit on top and preserve the original case when creating
   new keys (e.g., `EDISON_QUALITY__LEVEL` -> `{"quality": {"LEVEL": ...}}`).
 
@@ -45,22 +45,29 @@ def make_tmp_repo(
     core_modules: dict | None = None,
     project_overlays: dict | None = None,
 ) -> Path:
-    """Create temporary repo with the new 3-layer config layout."""
+    """Create temporary repo with the new 3-layer config layout.
+
+    NOTE: In production, core config is in bundled data (src/edison/data/config/).
+    For testing, we create a mock .edison/core/config/ to isolate tests from
+    production config changes. This is acceptable for unit/e2e tests.
+    """
     # Create real git repository to make PathResolver happy
     repo = create_repo_with_git(tmp_path)
 
-    # Core defaults & modular core config (.edison/core/config/*.yaml)
-    core_dir = repo / ".edison" / "core" / "config"
-    write_yaml(core_dir / "defaults.yaml", core_defaults)
-    for name, data in (core_modules or {}).items():
-        fname = name if name.endswith(".yaml") else f"{name}.yaml"
-        write_yaml(core_dir / fname, data)
+    # Mock core config for testing (not used in production - bundled data is used)
+    if core_defaults or core_modules:
+        core_dir = repo / ".edison" / "core" / "config"
+        if core_defaults:
+            write_yaml(core_dir / "defaults.yaml", core_defaults)
+        for name, data in (core_modules or {}).items():
+            fname = name if name.endswith(".yaml") else f"{name}.yaml"
+            write_yaml(core_dir / fname, data)
 
-    # Project overlays (<project_config_dir>/config/*.yml)
+    # Project overlays (<project_root>/.edison/config/*.yaml)
     if project_overlays:
         proj_dir = repo / ".edison" / "config"
         for name, data in project_overlays.items():
-            fname = name if name.endswith(".yml") else f"{name}.yml"
+            fname = name if name.endswith(".yaml") else f"{name}.yaml"
             write_yaml(proj_dir / fname, data)
 
     return repo
@@ -73,7 +80,7 @@ def test_scenario_1_core_defaults_only(tmp_path: Path):
     """
     Scenario 1: Core defaults only (minimal config)
     - Project has no project overlays
-    - Core defaults from .edison/core/config/defaults.yaml used
+    - Core defaults from bundled data (src/edison/data/config/*.yaml) used
     - System functional with defaults
     """
     defaults = {
@@ -291,6 +298,8 @@ def test_scenario_6c_schema_validation_failure(tmp_path: Path):
     - Project overlay has invalid value (e.g., coverage > 100)
     - Schema validation detects error
     """
+    from edison.data import get_data_path
+
     core_defaults = {"quality": {"coverage": {"overall": 80}}}
 
     project_overlay = {
@@ -299,8 +308,8 @@ def test_scenario_6c_schema_validation_failure(tmp_path: Path):
 
     repo = make_tmp_repo(tmp_path, core_defaults, project_overlays={"project": project_overlay})
 
-    # Copy real schema to tmp repo
-    real_schema = Path(".edison/core/schemas/edison.schema.json")
+    # Copy bundled schema to tmp repo (schemas are in bundled data)
+    real_schema = get_data_path("schemas", "edison.schema.json")
     if real_schema.exists():
         import shutil
         (repo / ".edison" / "core" / "schemas").mkdir(parents=True, exist_ok=True)
@@ -318,6 +327,8 @@ def test_scenario_6d_type_mismatch_in_config(tmp_path: Path):
     - Config expects boolean/number, gets string
     - Schema validation catches these
     """
+    from edison.data import get_data_path
+
     core_defaults = {}
 
     project_overlay = {
@@ -329,7 +340,8 @@ def test_scenario_6d_type_mismatch_in_config(tmp_path: Path):
 
     repo = make_tmp_repo(tmp_path, core_defaults, project_overlays={"project": project_overlay})
 
-    real_schema = Path(".edison/core/schemas/edison.schema.json")
+    # Copy bundled schema to tmp repo (schemas are in bundled data)
+    real_schema = get_data_path("schemas", "edison.schema.json")
     if real_schema.exists():
         import shutil
         (repo / ".edison" / "core" / "schemas").mkdir(parents=True, exist_ok=True)

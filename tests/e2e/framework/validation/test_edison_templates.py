@@ -34,7 +34,9 @@ def test_agents_md_include_resolves_without_error():
 
 def test_agents_md_has_all_13_checklist_items():
     """Verify all 13 Agent Compliance Checklist items present in template"""
-    template_path = Path(".edison/core/templates/AGENTS.md")
+    from edison.data import get_data_path
+
+    template_path = get_data_path("templates", "AGENTS.md")
     assert template_path.exists(), "AGENTS.md template must exist"
 
     content = template_path.read_text()
@@ -61,10 +63,12 @@ def test_agents_md_has_all_13_checklist_items():
 def test_start_session_include_resolves():
     """Verify START.SESSION.md include resolves without error"""
     from edison.core.composition.includes import resolve_includes
+    from edison.data import get_data_path
 
-    start_session = Path(".edison/core/guides/START.SESSION.md")
+    # START.SESSION.md is now bundled as START_NEW_SESSION.md
+    start_session = get_data_path("start", "START_NEW_SESSION.md")
     if not start_session.exists():
-        pytest.skip("START.SESSION.md not found")
+        pytest.skip("START_NEW_SESSION.md not found")
 
     content = start_session.read_text(encoding="utf-8")
     try:
@@ -125,10 +129,12 @@ def test_rendered_agents_md_is_comprehensive():
 def test_rendered_start_session_is_comprehensive():
     """Verify rendered START.SESSION.md contains all critical sections"""
     from edison.core.composition.includes import resolve_includes
+    from edison.data import get_data_path
 
-    start_session = Path(".edison/core/guides/START.SESSION.md")
+    # START.SESSION.md is now bundled as START_NEW_SESSION.md
+    start_session = get_data_path("start", "START_NEW_SESSION.md")
     if not start_session.exists():
-        pytest.skip("START.SESSION.md not found")
+        pytest.skip("START_NEW_SESSION.md not found")
 
     content = start_session.read_text(encoding="utf-8")
     try:

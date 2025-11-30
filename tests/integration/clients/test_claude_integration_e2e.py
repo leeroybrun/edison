@@ -31,17 +31,17 @@ if REPO_ROOT is None:
 
 def _bootstrap_minimal_project(root: Path) -> None:
     """Populate isolated project root with minimal Edison config/layout."""
-    # Use bundled Edison data instead of looking for .edison/core
+    # Use bundled Edison data instead of looking for legacy .edison/core
     bundled_defaults = get_data_path("config", "defaults.yaml")
 
-    core_dir = root / ".edison" / "core"
-    core_dir.mkdir(parents=True, exist_ok=True)
+    config_dir = root / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
 
     if bundled_defaults.exists():
-        shutil.copy(bundled_defaults, core_dir / "defaults.yaml")
+        shutil.copy(bundled_defaults, config_dir / "defaults.yaml")
     else:
         # Minimal fallback configuration when defaults not present
-        (core_dir / "defaults.yaml").write_text(
+        (config_dir / "defaults.yaml").write_text(
             "validation:\n  roster:\n    global: []\n    critical: []\n    specialized: []\n",
             encoding="utf-8",
         )
@@ -210,13 +210,13 @@ def test_compose_claude_generates_agents_from_generated(tmp_path: Path) -> None:
     project_root.mkdir(parents=True, exist_ok=True)
 
     # Minimal Edison layout: defaults + config + _generated agents
-    core_dir = project_root / ".edison" / "core"
-    core_dir.mkdir(parents=True, exist_ok=True)
+    config_dir = project_root / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
     bundled_defaults = get_data_path("config", "defaults.yaml")
     if bundled_defaults.exists():
-        shutil.copy(bundled_defaults, core_dir / "defaults.yaml")
+        shutil.copy(bundled_defaults, config_dir / "defaults.yaml")
     else:
-        (core_dir / "defaults.yaml").write_text("project:\n  name: test-project\n", encoding="utf-8")
+        (config_dir / "defaults.yaml").write_text("project:\n  name: test-project\n", encoding="utf-8")
 
     agents_dir = project_root / ".agents"
     agents_dir.mkdir(parents=True, exist_ok=True)

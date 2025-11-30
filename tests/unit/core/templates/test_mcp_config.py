@@ -15,7 +15,7 @@ def test_build_mcp_servers_merges_overrides(tmp_path: Path) -> None:
 
     pack_cfg_dir = project_root / ".edison" / "packs" / "custom" / "config"
     pack_cfg_dir.mkdir(parents=True)
-    (pack_cfg_dir / "mcp.yml").write_text(
+    (pack_cfg_dir / "mcp.yaml").write_text(
         """
 mcp:
   servers:
@@ -33,7 +33,7 @@ mcp:
 
     project_cfg_dir = project_root / ".edison" / "config"
     project_cfg_dir.mkdir(parents=True, exist_ok=True)
-    (project_cfg_dir / "mcp.yml").write_text(
+    (project_cfg_dir / "mcp.yaml").write_text(
         """
 mcp:
   config_file: ".mcp.json"

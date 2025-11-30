@@ -24,7 +24,7 @@ from edison.cli.qa.audit import register_args
 
 def _write_composition_config(root: Path, *, min_similarity: float, cli_threshold: float, k: int) -> Path:
     """Write composition config with DRY detection parameters."""
-    config_dir = root / ".edison" / "core" / "config"
+    config_dir = root / ".edison" / "config"
     composition_yaml = {
         "composition": {
             "dryDetection": {
@@ -42,7 +42,7 @@ def _write_composition_config(root: Path, *, min_similarity: float, cli_threshol
 
 def _write_guidelines(root: Path) -> list[GuidelineRecord]:
     """Write sample guideline files for duplication testing."""
-    guidelines_dir = root / ".edison" / "core" / "guidelines"
+    guidelines_dir = root / ".edison" / "guidelines"
     guidelines_dir.mkdir(parents=True, exist_ok=True)
 
     path_a = guidelines_dir / "dup-a.md"

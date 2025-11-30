@@ -2,15 +2,17 @@ import re
 import subprocess
 from pathlib import Path
 import pytest
+from edison.data import get_data_path
 
 pytestmark = pytest.mark.skip(reason="Documentation not yet written - guide files moved/pending")
 
-DOC_PATH = Path(".edison/core/docs/architecture/state-machine.md")
+# Doc doesn't exist yet - when added, it will be in bundled data
+DOC_PATH = get_data_path("docs", "architecture/state-machine.md")
 
 
 def _read_doc_text() -> str:
     assert DOC_PATH.exists(), (
-        "state-machine.md must exist at .edison/core/docs/architecture/state-machine.md"
+        "state-machine.md must exist in bundled data (docs/architecture/state-machine.md)"
     )
     return DOC_PATH.read_text(encoding="utf-8")
 

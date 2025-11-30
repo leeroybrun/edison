@@ -23,7 +23,7 @@ def _cfg() -> dict:
     from edison.core.utils.config import load_validated_section
     return load_validated_section(
         "cli",
-        required_subsections=["json", "table", "confirm", "output"]
+        required_subsections=["table", "confirm", "output"]
     )
 
 
@@ -37,13 +37,15 @@ def output_json(data: Any, pretty: bool = True) -> str:
     Returns:
         JSON string representation of the data
     """
-    cfg = _cfg()["json"]
+    # Use JSONIOConfig for JSON formatting (not duplicated in cli config)
+    from edison.core.config.domains.json_io import JSONIOConfig
+    cfg = JSONIOConfig()
     kwargs = {
-        "sort_keys": cfg["sort_keys"],
-        "ensure_ascii": cfg["ensure_ascii"],
+        "sort_keys": cfg.sort_keys,
+        "ensure_ascii": cfg.ensure_ascii,
     }
     if pretty:
-        kwargs["indent"] = cfg["indent"]
+        kwargs["indent"] = cfg.indent
     else:
         kwargs["separators"] = (",", ":")
     return json.dumps(data, **kwargs)

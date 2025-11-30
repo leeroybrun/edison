@@ -153,28 +153,28 @@ FULL_SETUP = {
     "discovery": {
         "packs": {"directory": ".edison/packs", "pattern": "*/config.yml"},
         "orchestrators": {
-            "config_file": ".edison/core/config/orchestrators.yaml",
+            "config_file": ".edison/config/orchestrators.yaml",
             "fallback": ["claude", "cursor", "codex"],
         },
         "validators": {
-            "core_config": ".edison/core/config/validators.yaml",
+            "config_file": ".edison/config/validators.yaml",
             "pack_pattern": ".edison/packs/*/config/validators.yml",
         },
         "agents": {
-            "core_config": ".edison/core/config/agents.yaml",
+            "config_file": ".edison/config/agents.yaml",
             "pack_pattern": ".edison/packs/*/config/agents.yml",
         },
     },
 }
 
 def _write_setup(repo_root: Path) -> None:
-    path = repo_root / ".edison" / "core" / "config" / "setup.yaml"
+    path = repo_root / ".edison" / "config" / "setup.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(FULL_SETUP), encoding="utf-8")
 
 def _build_questionnaire(repo: Path) -> SetupQuestionnaire:
-    discovery = SetupDiscovery(repo / ".edison" / "core", repo)
-    return SetupQuestionnaire(repo_root=repo, edison_core=repo / ".edison" / "core", discovery=discovery)
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
+    return SetupQuestionnaire(repo_root=repo, edison_core=repo / ".edison" / "config", discovery=discovery)
 
 def test_basic_mode_non_interactive_uses_defaults(isolated_project_env: Path) -> None:
     repo = isolated_project_env
@@ -194,8 +194,8 @@ def test_advanced_mode_includes_additional_questions(isolated_project_env: Path)
     repo = isolated_project_env
     _write_setup(repo)
     write_json(repo / "package.json", {"name": "demo-app"})
-    write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
-    write_yaml(repo / ".edison" / "core" / "config" / "agents.yaml", {"agents": [{"id": "core-agent"}]})
+    write_yaml(repo / ".edison" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
+    write_yaml(repo / ".edison" / "config" / "agents.yaml", {"agents": [{"id": "core-agent"}]})
 
     q = _build_questionnaire(repo)
     result = q.run(mode="advanced", assume_yes=True)
@@ -231,7 +231,7 @@ def test_multiselect_enforces_discovered_options(isolated_project_env: Path) -> 
     packs_dir = repo / ".edison" / "packs"
     write_yaml(packs_dir / "alpha" / "config.yml", {"name": "alpha"})
     write_yaml(packs_dir / "beta" / "config.yml", {"name": "beta"})
-    write_yaml(repo / ".edison" / "core" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
+    write_yaml(repo / ".edison" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
     write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml", {"validation": {"roster": {"global": [{"id": "pack-val"}]}}})
 
     q = _build_questionnaire(repo)

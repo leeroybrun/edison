@@ -57,7 +57,7 @@ def _write_test_config(repo_root: Path) -> None:
         },
     }
 
-    cfg_dir = repo_root / ".edison" / "core" / "config"
+    cfg_dir = repo_root / ".edison" / "config"
     write_yaml(cfg_dir / "state-machine.yaml", state_machine)
     write_yaml(cfg_dir / "workflow.yaml", workflow)
 
@@ -74,14 +74,17 @@ def config_utils(isolated_project_env: Path):
     # Clear lru_cache on our utility functions
     from edison.core.utils import config
     config._load_config_section_impl.cache_clear()
-    config._get_states_for_domain_impl.cache_clear()
 
-    return config
+    # Import workflow module for state functions
+    from edison.core.config.domains import workflow
+
+    # Return both modules - utils for generic functions, workflow for state functions
+    return {"utils": config, "workflow": workflow}
 
 
 def test_load_config_section_returns_section(config_utils):
     """load_config_section returns requested section from YAML."""
-    section = config_utils.load_config_section("statemachine")
+    section = config_utils["utils"].load_config_section("statemachine")
 
     assert isinstance(section, dict)
     assert "task" in section
@@ -93,7 +96,7 @@ def test_load_config_section_returns_section(config_utils):
 def test_load_config_section_validation_lifecycle(config_utils):
     """load_config_section can load validationLifecycle section."""
     # validationLifecycle is a top-level key in the merged config
-    section = config_utils.load_config_section("validationLifecycle")
+    section = config_utils["utils"].load_config_section("validationLifecycle")
 
     assert isinstance(section, dict)
     assert "onApprove" in section
@@ -103,18 +106,18 @@ def test_load_config_section_validation_lifecycle(config_utils):
 def test_load_config_section_missing_raises(config_utils):
     """load_config_section raises on missing required section."""
     with pytest.raises(KeyError, match="nonexistent"):
-        config_utils.load_config_section("nonexistent", required=True)
+        config_utils["utils"].load_config_section("nonexistent", required=True)
 
 
 def test_load_config_section_missing_returns_empty_when_optional(config_utils):
     """load_config_section returns empty dict for missing optional section."""
-    section = config_utils.load_config_section("nonexistent", required=False)
+    section = config_utils["utils"].load_config_section("nonexistent", required=False)
     assert section == {}
 
 
 def test_get_states_for_domain_task(config_utils):
-    """get_states_for_domain('task') returns task states from config."""
-    states = config_utils.get_states_for_domain("task")
+    """get_states('task') returns task states from config."""
+    states = config_utils["workflow"].get_states("task")
 
     assert isinstance(states, list)
     assert "todo" in states
@@ -124,8 +127,8 @@ def test_get_states_for_domain_task(config_utils):
 
 
 def test_get_states_for_domain_qa(config_utils):
-    """get_states_for_domain('qa') returns qa states from config."""
-    states = config_utils.get_states_for_domain("qa")
+    """get_states('qa') returns qa states from config."""
+    states = config_utils["workflow"].get_states("qa")
 
     assert isinstance(states, list)
     assert "waiting" in states
@@ -138,67 +141,43 @@ def test_get_states_for_domain_qa(config_utils):
 def test_get_initial_state_returns_config_value(config_utils):
     """get_initial_state uses semantic state mapping."""
     # Task initial should be 'todo' (first state marked initial)
-    task_initial = config_utils.get_initial_state("task")
+    task_initial = config_utils["workflow"].get_initial_state("task")
     assert task_initial == "todo"
 
     # QA initial should be 'waiting'
-    qa_initial = config_utils.get_initial_state("qa")
+    qa_initial = config_utils["workflow"].get_initial_state("qa")
     assert qa_initial == "waiting"
-
-
-def test_get_active_state_task(config_utils):
-    """get_active_state returns 'wip' for task domain."""
-    state = config_utils.get_active_state("task")
-    assert state == "wip"
-
-
-def test_get_active_state_qa(config_utils):
-    """get_active_state returns 'wip' for qa domain."""
-    state = config_utils.get_active_state("qa")
-    assert state == "wip"
-
-
-def test_get_completed_state_task(config_utils):
-    """get_completed_state returns 'done' for task domain."""
-    state = config_utils.get_completed_state("task")
-    assert state == "done"
-
-
-def test_get_completed_state_qa(config_utils):
-    """get_completed_state returns 'done' for qa domain."""
-    state = config_utils.get_completed_state("qa")
-    assert state == "done"
 
 
 def test_get_final_state_task(config_utils):
     """get_final_state returns 'validated' for task domain."""
-    state = config_utils.get_final_state("task")
+    state = config_utils["workflow"].get_final_state("task")
     assert state == "validated"
 
 
 def test_get_final_state_qa(config_utils):
     """get_final_state returns 'validated' for qa domain."""
-    state = config_utils.get_final_state("qa")
+    state = config_utils["workflow"].get_final_state("qa")
     assert state == "validated"
 
 
 def test_get_semantic_state_task_validated(config_utils):
     """get_semantic_state resolves 'validated' from lifecycle."""
     # Should parse target from "done → validated"
-    state = config_utils.get_semantic_state("task", "validated")
+    state = config_utils["workflow"].get_semantic_state("task", "validated")
     assert state == "validated"
 
 
 def test_get_semantic_state_qa_waiting(config_utils):
     """get_semantic_state resolves 'waiting' from lifecycle."""
     # Should parse target from rejection transition (done → waiting in test config)
-    state = config_utils.get_semantic_state("qa", "waiting")
+    state = config_utils["workflow"].get_semantic_state("qa", "waiting")
     assert state == "waiting"
 
 
 def test_get_semantic_state_unknown_returns_key(config_utils):
     """get_semantic_state returns the key itself if not mapped."""
-    state = config_utils.get_semantic_state("task", "unknown_state")
+    state = config_utils["workflow"].get_semantic_state("task", "unknown_state")
     assert state == "unknown_state"
 
 
@@ -216,9 +195,9 @@ def test_load_config_section_with_explicit_repo_root(isolated_project_env: Path)
 
 
 def test_get_states_caches_result(config_utils):
-    """get_states_for_domain returns consistent results (cached)."""
-    states1 = config_utils.get_states_for_domain("task")
-    states2 = config_utils.get_states_for_domain("task")
+    """get_states returns consistent results (cached)."""
+    states1 = config_utils["workflow"].get_states("task")
+    states2 = config_utils["workflow"].get_states("task")
 
     # Should return same list
     assert states1 == states2

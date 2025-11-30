@@ -6,12 +6,12 @@ Core rule files governing Edison behaviors, gates, and policy checks.
 
 Helper scripts (run from project root):
 
-- `python .edison/core/scripts/rules_migrate_registry_paths.py` – repair legacy `.edison/*` source paths and verify all rule files exist.
-- `python .edison/core/scripts/rules_verify_anchors.py` – verify that all fragment anchors in `registry.yml` exist in guideline files.
+- `edison rules migrate` – repair legacy `.edison/*` source paths and verify all rule files exist.
+- `edison rules verify-anchors` – verify that all fragment anchors in `registry.yml` exist in guideline files.
 
 CLI entrypoint:
 
-- `.edison/core/scripts/rules` – list/show/locate rules by ID, and `show-for-context <transition|task-type|guidance> <value>` to surface applicable rules before acting.
+- `edison rules` – list/show/locate rules by ID, and `show-for-context <transition|task-type|guidance> <value>` to surface applicable rules before acting.
 
 Task-type rules:
 

@@ -1,0 +1,5 @@
+# Orchestration Configuration
+# Settings for multi-agent orchestration
+
+orchestration:
+  maxConcurrentAgents: 5

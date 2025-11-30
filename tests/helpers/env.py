@@ -104,24 +104,9 @@ class TestProjectDir:
             dst_validators = validators_dir / "config.json"
             copy_if_different(src_validators, dst_validators)
 
-        # Copy session workflow config if it exists
-        src_workflow = self.repo_root / ".agents" / "session-workflow.json"
-        if src_workflow.exists():
-            dst_workflow = self.agents_root / "session-workflow.json"
-            copy_if_different(src_workflow, dst_workflow)
-        else:
-            # Create minimal workflow config
-            workflow = {
-                "initial": "session-init",
-                "states": {
-                    "session-init": {"type": "initial"},
-                    "session-active": {"type": "normal"},
-                    "session-complete": {"type": "final"}
-                }
-            }
-            (self.agents_root / "session-workflow.json").write_text(
-                json.dumps(workflow, indent=2)
-            )
+        # NOTE: Session workflow is now defined in bundled state-machine.yaml
+        # and accessed via WorkflowConfig domain config. No need to create
+        # legacy session-workflow.json files.
 
         # Copy task template if exists, otherwise create minimal fallback
         src_template = self.repo_root / ".project" / "tasks" / "TEMPLATE.md"

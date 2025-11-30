@@ -57,7 +57,7 @@ This document provides condensed orchestration guidance for Claude Code when wor
 
 **Before EVERY action**, run:
 ```bash
-scripts/session next <session-id>
+edison session next <session-id>
 ```
 
 **Read output sections IN ORDER**:
@@ -131,20 +131,20 @@ scripts/session next <session-id>
 Key commands for orchestration:
 
 **Task Management**:
-- `scripts/tasks/ready` - List tasks ready to claim
-- `scripts/tasks/claim <task-id>` - Claim task for session
-- `scripts/tasks/status` - Check task state and validation
+- `edison tasks ready` - List tasks ready to claim
+- `edison tasks claim <task-id>` - Claim task for session
+- `edison tasks status` - Check task state and validation
 
 **Session Management**:
-- `scripts/session next <session-id>` - Get next action (CRITICAL - run before every action)
+- `edison session next <session-id>` - Get next action (CRITICAL - run before every action)
 
 **Validation**:
-- `scripts/validators/validate <task-id>` - Run validators
-- `scripts/qa/promote <task-id>` - Promote after validation passes
+- `edison validators validate <task-id>` - Run validators
+- `edison qa promote <task-id>` - Promote after validation passes
 
 **Rules**:
-- `scripts/rules show-for-context guidance delegation` - Query applicable rules
-- `scripts/rules show-for-context transition \"wip→done\"` - Check transition rules
+- `edison rules show-for-context guidance delegation` - Query applicable rules
+- `edison rules show-for-context transition \"wip→done\"` - Check transition rules
 
 ## Generated Artifacts
 

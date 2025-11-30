@@ -40,7 +40,7 @@ def _write_adapter_config(repo_root: Path) -> None:
     }
 
     # Note: This uses JSON format for backwards compatibility with existing tests
-    write_json(repo_root / ".edison" / "core" / "config" / "defaults.yaml", defaults)
+    write_json(repo_root / ".edison" / "config" / "defaults.yaml", defaults)
 
     # Minimal project overlay so ConfigManager sees a valid project config dir
     write_yaml(repo_root / ".agents" / "config" / "project.yml", {"project": {"name": "adapter-unit-test"}})

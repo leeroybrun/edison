@@ -15,8 +15,8 @@ from tests.helpers.paths import get_repo_root
 # strings.
 #
 # Updated for bundled data structure - configs now in src/edison/data/config/
+# Note: defaults.yaml was eliminated - config is now split across dedicated files
 CRITICAL_PATHS = [
-    ("config", "defaults.yaml"),
     ("config", "delegation.yaml"),
     ("config", "session.yaml"),
     ("config", "validators.yaml"),

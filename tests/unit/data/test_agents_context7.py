@@ -30,7 +30,7 @@ def test_agents_include_context7_examples(agent_path: Path) -> None:
     # Topics can be in JSON array format or as comma-separated values
     assert '"route handlers"' in content or "route handlers" in content
 
-    assert "config/context7.yml" in content
+    assert "config/context7.yaml" in content
 
     # Version info can be in list format or inline
     assert "Next.js 16" in content

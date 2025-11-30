@@ -312,7 +312,7 @@ def test_evidence_partial_files(project_dir: TestProjectDir):
     assert not (rd / "command-test.txt").exists()
     assert not (rd / "command-build.txt").exists()
 
-    # In real workflow: scripts/tasks/ready would FAIL (missing required files)
+    # In real workflow: edison tasks ready would FAIL (missing required files)
 
 
 @pytest.mark.integration

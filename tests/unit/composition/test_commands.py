@@ -11,7 +11,6 @@ import pytest
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-core_path = ROOT / ".edison" / "core"
 from edison.core.composition.ide.commands import (  # type: ignore  # noqa: E402
     CommandArg,
     CommandDefinition,
@@ -65,10 +64,10 @@ def test_command_definition_dataclass() -> None:
     assert cmd.related_commands == ["open-file"]
 
 def test_load_core_definitions(tmp_path: Path) -> None:
-    """Core commands are loaded from .edison/core/config/commands.yaml."""
+    """Core commands are loaded from .edison/config/commands.yaml."""
     core_cmd = _sample_command_def("core-cmd")
     write_yaml(
-        tmp_path / ".edison/core/config/commands.yaml",
+        tmp_path / ".edison/config/commands.yaml",
         {"commands": {"definitions": [core_cmd]}},
     )
 
@@ -87,7 +86,7 @@ def test_merge_pack_definitions(tmp_path: Path) -> None:
     pack_only = _sample_command_def("pack-only", domain="pack", short_desc="from pack")
 
     write_yaml(
-        tmp_path / ".edison/core/config/commands.yaml",
+        tmp_path / ".edison/config/commands.yaml",
         {"commands": {"definitions": [core_cmd]}},
     )
     write_yaml(
@@ -111,7 +110,7 @@ def test_apply_project_overrides(tmp_path: Path) -> None:
     project_override = _sample_command_def("shared", full_desc="project description", args=[{"name": "proj", "description": "proj arg"}])
 
     write_yaml(
-        tmp_path / ".edison/core/config/commands.yaml",
+        tmp_path / ".edison/config/commands.yaml",
         {"commands": {"definitions": [core_cmd]}},
     )
     write_yaml(
@@ -293,7 +292,7 @@ def test_compose_all_platforms(tmp_path: Path) -> None:
     """compose_all renders for every configured platform."""
     core_cmd = _sample_command_def("demo")
     write_yaml(
-        tmp_path / ".edison/core/config/commands.yaml",
+        tmp_path / ".edison/config/commands.yaml",
         {"commands": {"definitions": [core_cmd]}},
     )
 
@@ -320,7 +319,7 @@ def test_truncate_short_desc(tmp_path: Path) -> None:
     """Short descriptions are truncated to the configured maximum."""
     long_desc = "x" * 120
     cmd_def = _sample_command_def("long", short_desc=long_desc)
-    write_yaml(tmp_path / ".edison/core/config/commands.yaml", {"commands": [cmd_def]})
+    write_yaml(tmp_path / ".edison/config/commands.yaml", {"commands": [cmd_def]})
 
     composer = CommandComposer(config={"commands": {}}, repo_root=tmp_path)
     defs = composer.load_definitions()

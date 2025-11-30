@@ -6,7 +6,7 @@ then generates a PID-based session identifier.
 IMPORTANT
 ---------
 This module reuses the psutil/is_process_alive pattern from
-``scripts/tasks/cleanup-stale-locks`` for consistency. Keep the
+``edison tasks cleanup-stale-locks`` for consistency. Keep the
 behaviour aligned with that script whenever changes are made here.
 """
 from __future__ import annotations
@@ -27,9 +27,6 @@ DEFAULT_EDISON_NAMES = ["edison", "python"]  # python when running Edison script
 DEFAULT_EDISON_MARKERS = [
     "edison",
     ".edison",
-    "scripts/tasks",
-    "scripts/session",
-    "scripts/qa",
 ]
 
 _CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "process.yaml"
@@ -95,7 +92,7 @@ def _is_edison_script(cmdline: List[str]) -> bool:
 def is_process_alive(pid: int) -> bool:
     """Check if a process is alive by PID.
 
-    Uses the same pattern as ``scripts/tasks/cleanup-stale-locks``:
+    Uses the same pattern as ``edison tasks cleanup-stale-locks``:
     - Prefer ``psutil.pid_exists`` when psutil is installed
     - Fallback to ``os.kill(pid, 0)`` where supported
 

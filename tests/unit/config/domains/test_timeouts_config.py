@@ -19,23 +19,22 @@ def _write_timeouts_config(
     db_seconds: float = 0.2,
     lock_seconds: float = 0.2,
 ) -> Path:
-    """Ensure defaults.yaml contains the timeouts section with given values."""
-    defaults_path = repo_root / ".edison" / "core" / "config" / "defaults.yaml"
-    defaults_path.parent.mkdir(parents=True, exist_ok=True)
+    """Write timeouts config to project .edison/config/timeouts.yaml."""
+    timeouts_path = repo_root / ".edison" / "config" / "timeouts.yaml"
+    timeouts_path.parent.mkdir(parents=True, exist_ok=True)
 
-    current = yaml.safe_load(defaults_path.read_text()) if defaults_path.exists() else {}
+    current = yaml.safe_load(timeouts_path.read_text()) if timeouts_path.exists() else {}
     if current is None:
         current = {}
 
-    current.setdefault("project", {"name": "timeouts-tests"})
     current["timeouts"] = {
         "git_operations_seconds": git_seconds,
         "db_operations_seconds": db_seconds,
         "json_io_lock_seconds": lock_seconds,
     }
 
-    defaults_path.write_text(yaml.safe_dump(current), encoding="utf-8")
-    return defaults_path
+    timeouts_path.write_text(yaml.safe_dump(current), encoding="utf-8")
+    return timeouts_path
 
 
 def test_timeouts_defaults_present_in_config(isolated_project_env: Path) -> None:

@@ -39,3 +39,10 @@ orchestrators:
         enabled: true
         method: "file"
         path: ".edison/_generated/constitutions/ORCHESTRATORS.md"
+
+    mock:
+      command: "echo"
+      args: ["mock-orchestrator"]
+      cwd: "."
+      initial_prompt:
+        enabled: false

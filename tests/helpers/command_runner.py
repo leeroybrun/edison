@@ -19,7 +19,7 @@ def run_script(
 ) -> subprocess.CompletedProcess:
     """Run an Edison CLI command by translating legacy script paths to new CLI commands.
 
-    Legacy `.edison/core/scripts/*` paths are automatically mapped to `edison` CLI commands.
+    All commands use the `edison` CLI format (e.g., `edison tasks status`, `edison qa promote`).
 
     Args:
         script_name: Script path (e.g., "tasks/ready", "session", "qa/new")

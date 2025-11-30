@@ -1,0 +1,24 @@
+# Adapters Configuration
+# Output paths and settings for different AI coding assistants
+
+adapters:
+  claude:
+    output_dir: ".claude"
+    orchestrator_filename: "CLAUDE.md"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    header: "# Claude Code Orchestrator"
+  codex:
+    output_dir: ".codex"
+    orchestrator_filename: "CODEX.md"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    header: "# Codex System Prompt"
+  cursor:
+    output_dir: ".cursor/prompts"
+    orchestrator_filename: "cursor-orchestrator.txt"
+    agents_dirname: "agents"
+    validators_dirname: "validators"
+    workflow_template: ".zen/templates/workflow-loop.txt"
+  zen:
+    output_dir: ".zen/conf/systemprompts/clink/project"

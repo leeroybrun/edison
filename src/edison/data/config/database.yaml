@@ -1,0 +1,11 @@
+# Database Configuration
+# Database isolation and session management
+# Override via EDISON_database__url or DATABASE_URL environment variable
+
+database:
+  enabled: false
+  url: null  # Required when enabled=true; can be overridden by EDISON_database__url or DATABASE_URL
+  templateStrategy: "clone"
+  cleanupStrategy: "drop"
+  sessionPrefix: "session"
+  adapter: "prisma"

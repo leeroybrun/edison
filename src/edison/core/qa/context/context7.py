@@ -42,7 +42,7 @@ def _load_triggers() -> Dict[str, List[str]]:
     if not triggers:
         raise RuntimeError(
             "Context7 triggers configuration missing; "
-            "define triggers in context7.yml or .edison/config/context7.yml"
+            "define triggers in context7.yaml or .edison/config/context7.yaml"
         )
     return triggers
 
@@ -58,7 +58,7 @@ def _load_aliases() -> Dict[str, str]:
     if not aliases:
         raise RuntimeError(
             "Context7 aliases configuration missing; "
-            "define aliases in context7.yml or .edison/config/context7.yml"
+            "define aliases in context7.yaml or .edison/config/context7.yaml"
         )
     return aliases
 
@@ -76,7 +76,7 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
     root = _project_root()
     config_root = get_project_config_dir(root)
     candidates = [
-        config_root / "config" / "validators.yml",
+        config_root / "config" / "validators.yaml",
         config_root / "validators" / "config.json",
     ]
     for path in candidates:
@@ -84,7 +84,7 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
             try:
                 from edison.core.utils.io import read_yaml, read_json
 
-                if path.suffix == ".yml" or path.suffix == ".yaml":
+                if path.suffix == ".yaml":
                     return read_yaml(path, raise_on_error=True) or {}
 
                 return read_json(path)
@@ -99,7 +99,7 @@ def load_validator_config(*, fail_closed: bool = False) -> Dict:
                     raise SystemExit("Context7 config invalid or unreadable")
                 return {}
     if fail_closed:
-        raise SystemExit("Context7 config missing (validators.yml)")
+        raise SystemExit("Context7 config missing (validators.yaml)")
     return {}
 
 

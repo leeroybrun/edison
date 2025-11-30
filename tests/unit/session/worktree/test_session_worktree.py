@@ -11,7 +11,7 @@ from tests.helpers.env_setup import clear_path_caches
 @pytest.fixture(autouse=True)
 def setup_worktree_config(session_git_repo_path, monkeypatch):
     """Configure worktree settings for tests."""
-    # Setup .edison/core/config
+    # Setup .edison/config
     config_dir = session_git_repo_path / ".edison" / "config"
 
     # Create worktrees directory path - use absolute path

@@ -1,0 +1,14 @@
+# Worktree Configuration
+# Git worktree management for session isolation
+
+worktrees:
+  enabled: true
+  baseBranch: "main"
+  baseDirectory: "../{PROJECT_NAME}-worktrees"
+  archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
+  branchPrefix: "session/"
+  pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  cleanup:
+    autoArchive: true
+    archiveAfterDays: 30
+    deleteAfterDays: 90

@@ -50,9 +50,9 @@ def test_acquire_file_lock_times_out_without_fail_open(tmp_path: Path) -> None:
 
 
 def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
-    config_dir.joinpath("defaults.yaml").write_text(
+    config_dir.joinpath("file-locking.yaml").write_text(
         "\n".join(
             [
                 "file_locking:",
@@ -90,9 +90,9 @@ def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch,
 
 
 def test_file_locking_config_exposes_yaml_values(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
-    config_dir.joinpath("defaults.yaml").write_text(
+    config_dir.joinpath("file-locking.yaml").write_text(
         "\n".join(
             [
                 "file_locking:",

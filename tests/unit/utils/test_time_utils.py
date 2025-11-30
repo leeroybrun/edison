@@ -10,27 +10,38 @@ from helpers.io_utils import write_yaml
 
 
 def _write_time_config(repo_root: Path) -> None:
-    cfg = {
+    cfg_dir = repo_root / ".edison" / "config"
+
+    # Write time.yaml
+    time_cfg = {
         "time": {
             "iso8601": {
                 "timespec": "seconds",
                 "use_z_suffix": True,
                 "strip_microseconds": True,
             }
-        },
-        "subprocess_timeouts": {
-            "default": 5.0,
-            "git_operations": 5.0,
-            "file_operations": 5.0,
-        },
+        }
+    }
+    write_yaml(cfg_dir / "time.yaml", time_cfg)
+
+    # Write timeouts.yaml
+    timeouts_cfg = {
+        "timeouts": {
+            "default_seconds": 5.0,
+            "git_operations_seconds": 5.0,
+            "file_operations_seconds": 5.0,
+        }
+    }
+    write_yaml(cfg_dir / "timeouts.yaml", timeouts_cfg)
+
+    # Write file-locking.yaml
+    file_locking_cfg = {
         "file_locking": {
-            "mode": "portalocker",
             "timeout_seconds": 5.0,
             "poll_interval_seconds": 0.1,
-        },
+        }
     }
-    cfg_path = repo_root / ".edison" / "core" / "config" / "defaults.yaml"
-    write_yaml(cfg_path, cfg)
+    write_yaml(cfg_dir / "file-locking.yaml", file_locking_cfg)
 
 
 @pytest.fixture()

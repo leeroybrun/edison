@@ -20,11 +20,11 @@ from edison.data import read_yaml
 from edison.core.utils.subprocess import run_with_timeout
 
 
-_MCP_CFG = (read_yaml("config", "mcp.yml") or {}).get("mcp") or {}
+_MCP_CFG = (read_yaml("config", "mcp.yaml") or {}).get("mcp") or {}
 _SERVERS = _MCP_CFG.get("servers") or {}
 
 if not _SERVERS:
-    raise RuntimeError("mcp.yml must declare at least one server")
+    raise RuntimeError("mcp.yaml must declare at least one server")
 
 DEFAULT_SERVER_ID = next(iter(_SERVERS.keys()))
 CONFIG_FILE_NAME = str(_MCP_CFG.get("config_file", ".mcp.json"))

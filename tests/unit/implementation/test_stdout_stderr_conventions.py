@@ -1,6 +1,6 @@
 """Tests for standardizing stderr usage across CLIs.
 
-Focus: scripts/implementation/report should emit logs to stderr and allow
+Focus: edison implementation report should emit logs to stderr and allow
 machine-readable stdout via --print-path (path only).
 """
 from __future__ import annotations

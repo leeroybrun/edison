@@ -11,6 +11,7 @@ from ...config import ConfigManager
 from ...config.domains import PacksConfig
 from ...utils.paths.project import get_project_config_dir
 from ...utils.paths import PathResolver
+from edison.data import get_data_path
 
 
 class IDEComposerBase(ABC):
@@ -20,9 +21,15 @@ class IDEComposerBase(ABC):
     
     Provides:
     - Standardized repo_root and config loading
-    - Shared path resolution (core_dir, packs_dir, project_dir)
+    - Shared path resolution (core_dir from bundled data, project_dir for overrides)
     - Canonical active_packs via PacksConfig
     - Common YAML/file loading patterns
+    
+    Architecture:
+    - core_dir: ALWAYS bundled edison.data (no .edison/core/)
+    - project_dir: .edison/ for project overrides
+    - project_packs_dir: .edison/packs/ for project-level packs
+    - bundled_packs_dir: edison.data/packs/ for bundled packs
     """
 
     def __init__(self, config: Optional[Dict] = None, repo_root: Optional[Path] = None) -> None:
@@ -39,10 +46,16 @@ class IDEComposerBase(ABC):
         self.config = self.cfg_mgr.deep_merge(base_cfg, config or {})
         
         # Standard directory layout
-        config_dir = get_project_config_dir(self.repo_root, create=False)
-        self.core_dir = config_dir / "core"
-        self.packs_dir = config_dir / "packs"
-        self.project_dir = config_dir
+        # Core content is ALWAYS from bundled edison.data
+        self.core_dir = Path(get_data_path(""))
+        self.bundled_packs_dir = Path(get_data_path("packs"))
+        
+        # Project-level directories
+        self.project_dir = get_project_config_dir(self.repo_root, create=False)
+        self.project_packs_dir = self.project_dir / "packs"
+        
+        # Alias for backward compatibility
+        self.packs_dir = self.bundled_packs_dir
 
     @property
     def _packs_config(self) -> PacksConfig:
@@ -88,7 +101,7 @@ class IDEComposerBase(ABC):
         """Generic merge for YAML definitions by key.
 
         This method handles merging definitions from different sources
-        (core, packs, project) by extracting a unique key from each
+        (bundled core, packs, project) by extracting a unique key from each
         definition and deep-merging definitions with matching keys.
 
         Args:
@@ -102,7 +115,7 @@ class IDEComposerBase(ABC):
 
         Example:
             merged = {}
-            # Merge from core
+            # Merge from bundled core
             merged = self._merge_definitions(merged, core_defs)
             # Merge from pack
             merged = self._merge_definitions(merged, pack_defs)
@@ -134,6 +147,3 @@ class IDEComposerBase(ABC):
 
 
 __all__ = ["IDEComposerBase"]
-
-
-

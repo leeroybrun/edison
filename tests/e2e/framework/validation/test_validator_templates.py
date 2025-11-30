@@ -2,18 +2,21 @@ import os
 import re
 import pytest
 from pathlib import Path
+from edison.data import get_data_path
 
 
 def test_validator_templates_directory_exists():
     """Verify templates directory created"""
-    templates_dir = Path(".edison/core/validators/templates")
+    # Validator templates are now in bundled data
+    templates_dir = get_data_path("validators")
     assert templates_dir.exists(), "Validator templates directory must exist"
     assert templates_dir.is_dir(), "templates path must be a directory"
 
 
 def test_validator_templates_are_project_agnostic():
     """Verify validator templates have no project-specific content"""
-    templates_dir = Path(".edison/core/validators/templates")
+    # Validator templates are now in bundled data
+    templates_dir = get_data_path("validators")
 
     # Patterns that indicate project-specific content
     project_name = os.environ.get("PROJECT_NAME", "").strip()
@@ -60,12 +63,13 @@ def test_validator_templates_are_project_agnostic():
 
 def test_validator_templates_use_placeholders():
     """Verify templates use {PROJECT_NAME} and other placeholders"""
-    templates_dir = Path(".edison/core/validators/templates")
+    # Validator templates are now in bundled data with different structure
+    templates_dir = get_data_path("validators")
 
     required_placeholders = {
-        "global-comprehensive.md": ["{PROJECT_NAME}", "{MODEL_ID}", "{INTERFACE}"],
-        "critical-security.md": ["{PROJECT_NAME}"],
-        "critical-performance.md": ["{PROJECT_NAME}"],
+        "global/global.md": ["{PROJECT_NAME}", "{MODEL_ID}", "{INTERFACE}"],
+        "critical/security.md": ["{PROJECT_NAME}"],
+        "critical/performance.md": ["{PROJECT_NAME}"],
     }
 
     if not templates_dir.exists():
@@ -86,7 +90,8 @@ def test_validator_templates_use_placeholders():
 
 def test_global_template_has_all_validation_dimensions():
     """Verify global template covers all validation dimensions"""
-    template_path = Path(".edison/core/validators/templates/global-comprehensive.md")
+    # Validator templates are now in bundled data
+    template_path = get_data_path("validators", "global/global.md")
 
     if not template_path.exists():
         pytest.skip("Template not created yet")
@@ -112,15 +117,16 @@ def test_global_template_has_all_validation_dimensions():
 
 def test_all_three_templates_created_and_valid():
     """Verify all three validator templates exist and are well-formed"""
-    templates_dir = Path(".edison/core/validators/templates")
+    # Validator templates are now in bundled data with different structure
+    templates_dir = get_data_path("validators")
 
     if not templates_dir.exists():
         pytest.skip("templates directory not created yet")
 
     expected_templates = [
-        "global-comprehensive.md",
-        "critical-security.md",
-        "critical-performance.md",
+        "global/global.md",
+        "critical/security.md",
+        "critical/performance.md",
     ]
 
     for template_name in expected_templates:

@@ -33,20 +33,21 @@ class ConfigManager:
 
     Configuration sources (highest to lowest priority):
     1. Environment variables: EDISON_*
-    2. Project config: .edison/config/*.yaml
-    3. Bundled defaults: edison.data package
+    2. Project config: .edison/config/*.yaml (alphabetical order)
+    3. Bundled defaults: edison.data/config/*.yaml (alphabetical order)
+
+    All YAML files are loaded and merged - no special handling for defaults.yaml.
     """
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = repo_root or self._find_repo_root()
-        
+
         # Lazy import to avoid circular dependencies
         from edison.core.utils.paths import get_project_config_dir
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
 
         # Bundled defaults from edison.data package (always available)
         self.core_config_dir = get_data_path("config")
-        self.core_defaults_path = self.core_config_dir / "defaults.yaml"
 
         # Project-specific config overrides
         self.project_config_dir = project_root_dir / "config"
@@ -250,36 +251,179 @@ class ConfigManager:
         self._set_nested(cfg, ["database", "url"], url)
 
     def load_config(self, validate: bool = True) -> Dict[str, Any]:
-        cfg: Dict[str, Any] = {}
-        defaults_path = self.core_config_dir / "defaults.yaml"
-        if defaults_path.exists():
-            cfg = self.load_yaml(defaults_path)
+        """Load and merge configuration from multiple sources.
 
+        Configuration is loaded and merged in the following order:
+        1. All *.yml and *.yaml files from core config directory (alphabetical order)
+        2. All *.yml and *.yaml files from project config directory (alphabetical order)
+        3. Environment variable overrides (EDISON_*)
+
+        Args:
+            validate: If True, validate against JSON schema
+
+        Returns:
+            Merged configuration dictionary
+        """
+        cfg: Dict[str, Any] = {}
+
+        # Load all yaml files from core config directory (no special defaults.yaml)
         if self.core_config_dir.exists():
-            # Support both .yml and .yaml extensions for core config files
             yml_files = list(self.core_config_dir.glob("*.yml"))
             yaml_files = list(self.core_config_dir.glob("*.yaml"))
             for path in sorted(yml_files + yaml_files):
-                if path.name == "defaults.yaml":
-                    continue
                 module_cfg = self.load_yaml(path)
                 cfg = self.deep_merge(cfg, module_cfg)
 
+        # Merge project overrides
         if self.project_config_dir.exists():
-            # Support both .yml and .yaml extensions for project overrides
             yml_files = list(self.project_config_dir.glob("*.yml"))
             yaml_files = list(self.project_config_dir.glob("*.yaml"))
             for path in sorted(yml_files + yaml_files):
                 mod_cfg = self.load_yaml(path)
                 cfg = self.deep_merge(cfg, mod_cfg)
 
+        # Apply env overrides
         self._apply_project_env_aliases(cfg)
         self._apply_database_env_aliases(cfg)
         self.apply_env_overrides(cfg, strict=validate)
+
         if validate:
             self.validate_schema(cfg, "config/config.schema.json")
 
         return cfg
+
+    # ========== Accessor Methods ==========
+
+    def get_all(self) -> Dict[str, Any]:
+        """Get full merged configuration.
+        
+        Returns:
+            Complete merged config dict
+        """
+        return self.load_config(validate=False)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a config value by dot-notation key.
+        
+        Args:
+            key: Dot-notation key (e.g., 'project.name', 'paths.config_dir')
+            default: Value to return if key not found
+            
+        Returns:
+            Config value or default
+            
+        Example:
+            >>> manager.get('project.name')
+            'my-project'
+            >>> manager.get('nonexistent.key', 'fallback')
+            'fallback'
+        """
+        config = self.load_config(validate=False)
+        parts = key.split(".")
+        
+        current = config
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return default
+        return current
+
+    # ========== Mutation Methods ==========
+
+    def set(self, key: str, value: Any) -> None:
+        """Stage a config change for later saving.
+        
+        Args:
+            key: Dot-notation key (e.g., 'project.name')
+            value: Value to set
+            
+        Note:
+            Changes are not persisted until save() is called.
+        """
+        if not hasattr(self, "_staged_changes"):
+            self._staged_changes: Dict[str, Any] = {}
+        self._staged_changes[key] = value
+
+    def save(self, target_file: Optional[str] = None) -> Path:
+        """Write staged changes to the appropriate config file.
+        
+        Args:
+            target_file: Specific file to write to (e.g., 'project.yml').
+                        If None, determines file from key prefixes.
+                        
+        Returns:
+            Path to the written file
+            
+        Raises:
+            ValueError: If no changes staged or cannot determine target file
+        """
+        from edison.core.utils.io import write_yaml, ensure_directory
+        
+        if not hasattr(self, "_staged_changes") or not self._staged_changes:
+            raise ValueError("No changes staged. Use set() first.")
+        
+        # Determine target file from staged keys
+        if target_file is None:
+            # Use first key's prefix to determine file
+            first_key = next(iter(self._staged_changes.keys()))
+            prefix = first_key.split(".")[0]
+            target_file = self._get_file_for_section(prefix)
+        
+        # Ensure config directory exists
+        ensure_directory(self.project_config_dir)
+        
+        target_path = self.project_config_dir / target_file
+        
+        # Load existing file content if it exists
+        existing = self.load_yaml(target_path) if target_path.exists() else {}
+        
+        # Apply staged changes
+        for key, value in self._staged_changes.items():
+            parts = key.split(".")
+            self._set_nested(existing, parts, value)
+        
+        # Write file
+        write_yaml(target_path, existing)
+        
+        # Clear staged changes
+        self._staged_changes = {}
+        
+        return target_path
+
+    def _get_file_for_section(self, section: str) -> str:
+        """Determine which config file a section belongs to.
+        
+        Args:
+            section: Top-level config section name
+            
+        Returns:
+            Filename for the section
+        """
+        section_file_map = {
+            "paths": "defaults.yml",
+            "project": "project.yml",
+            "database": "defaults.yml",
+            "auth": "defaults.yml",
+            "packs": "packs.yml",
+            "validators": "validators.yml",
+            "validation": "validators.yml",
+            "agents": "delegation.yml",
+            "delegation": "delegation.yml",
+            "orchestrators": "orchestrators.yml",
+            "worktrees": "worktrees.yml",
+            "workflow": "workflow.yml",
+            "statemachine": "workflow.yml",
+            "tdd": "tdd.yml",
+            "ci": "commands.yml",
+            "commands": "commands.yml",
+            "hooks": "hooks.yml",
+            "context7": "context7-packages.yml",
+            "session": "session.yml",
+            "resilience": "defaults.yml",
+            "timeouts": "defaults.yml",
+        }
+        return section_file_map.get(section, f"{section}.yml")
 
 
 __all__ = ["ConfigManager"]

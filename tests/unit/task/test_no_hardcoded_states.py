@@ -137,7 +137,7 @@ def test_config_functions_work_without_fallbacks(tmp_path):
     import os
 
     # Set up minimal config
-    config_dir = tmp_path / ".edison" / "core" / "config"
+    config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True)
 
     (config_dir / "defaults.yaml").write_text(

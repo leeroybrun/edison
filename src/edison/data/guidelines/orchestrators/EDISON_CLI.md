@@ -16,7 +16,7 @@ This guide covers CLI commands for orchestrators managing sessions, coordinating
 ### Session Next
 
 ```bash
-scripts/session next <session-id>
+edison session next <session-id>
 ```
 
 **Purpose**: Get recommended next actions for the session
@@ -32,12 +32,12 @@ scripts/session next <session-id>
 
 **Example:**
 ```bash
-scripts/session next sess-001
+edison session next sess-001
 ```
 
 **Workflow loop:**
 ```
-1. Run: scripts/session next <session-id>
+1. Run: edison session next <session-id>
 2. Read output (rules → actions → delegation)
 3. Execute recommended command
 4. REPEAT from step 1
@@ -50,7 +50,7 @@ scripts/session next sess-001
 ### Create New Session
 
 ```bash
-scripts/session new --owner <owner> --mode start
+edison session new --owner <owner> --mode start
 ```
 
 **Purpose**: Create a session record in `sessions/wip/`
@@ -58,7 +58,7 @@ scripts/session new --owner <owner> --mode start
 
 **Example:**
 ```bash
-scripts/session new --owner claude-orchestrator --mode start
+edison session new --owner claude-orchestrator --mode start
 ```
 
 ---
@@ -66,7 +66,7 @@ scripts/session new --owner claude-orchestrator --mode start
 ### Start Session with Orchestrator
 
 ```bash
-scripts/session start <task-id> --orchestrator <profile> [--detach]
+edison session start <task-id> --orchestrator <profile> [--detach]
 ```
 
 **Purpose**: Create session, optional worktree, and launch orchestrator
@@ -74,7 +74,7 @@ scripts/session start <task-id> --orchestrator <profile> [--detach]
 
 **Example:**
 ```bash
-scripts/session start TASK-123 --orchestrator dev --detach
+edison session start TASK-123 --orchestrator dev --detach
 ```
 
 ---
@@ -82,7 +82,7 @@ scripts/session start TASK-123 --orchestrator dev --detach
 ### Session Status
 
 ```bash
-scripts/session status <session-id> [--json]
+edison session status <session-id> [--json]
 ```
 
 **Purpose**: Show current session state and scope
@@ -90,7 +90,7 @@ scripts/session status <session-id> [--json]
 
 **Example:**
 ```bash
-scripts/session status sess-001 --json
+edison session status sess-001 --json
 ```
 
 **Output includes:**
@@ -104,7 +104,7 @@ scripts/session status sess-001 --json
 ### Complete Session
 
 ```bash
-scripts/session complete <session-id>
+edison session complete <session-id>
 ```
 
 **Purpose**: Verify everything is validated and archive the session
@@ -122,7 +122,7 @@ scripts/session complete <session-id>
 ### List Ready Tasks
 
 ```bash
-scripts/tasks/ready
+edison tasks ready
 ```
 
 **Purpose**: Show tasks ready to be claimed
@@ -139,7 +139,7 @@ TASK-124  [todo]   Add email validation
 ### Claim Task
 
 ```bash
-scripts/tasks/claim <task-id> [--session <session-id>]
+edison tasks claim <task-id> [--session <session-id>]
 ```
 
 **Purpose**: Claim a task from `todo → wip` and bind to session
@@ -147,7 +147,7 @@ scripts/tasks/claim <task-id> [--session <session-id>]
 
 **Example:**
 ```bash
-scripts/tasks/claim TASK-123 --session sess-001
+edison tasks claim TASK-123 --session sess-001
 ```
 
 **Effects:**
@@ -160,7 +160,7 @@ scripts/tasks/claim TASK-123 --session sess-001
 ### Task Status
 
 ```bash
-scripts/tasks/status <task-id> [--json]
+edison tasks status <task-id> [--json]
 ```
 
 **Purpose**: Inspect task state and metadata
@@ -168,7 +168,7 @@ scripts/tasks/status <task-id> [--json]
 
 **Example:**
 ```bash
-scripts/tasks/status TASK-123 --json
+edison tasks status TASK-123 --json
 ```
 
 ---
@@ -176,7 +176,7 @@ scripts/tasks/status TASK-123 --json
 ### Task Ready (Promote to Done)
 
 ```bash
-scripts/tasks/ready <task-id> [--session <session-id>]
+edison tasks ready <task-id> [--session <session-id>]
 ```
 
 **Purpose**: Move task from `wip → done` with evidence checks
@@ -190,7 +190,7 @@ scripts/tasks/ready <task-id> [--session <session-id>]
 
 **Example:**
 ```bash
-scripts/tasks/ready TASK-123 --session sess-001
+edison tasks ready TASK-123 --session sess-001
 ```
 
 **Effects:**
@@ -204,7 +204,7 @@ scripts/tasks/ready TASK-123 --session sess-001
 ### Promote QA Brief
 
 ```bash
-scripts/qa/promote --task <task-id> --to <state>
+edison qa promote --task <task-id> --to <state>
 ```
 
 **Purpose**: Advance QA brief through validation states
@@ -215,16 +215,16 @@ scripts/qa/promote --task <task-id> --to <state>
 **Example:**
 ```bash
 # Start validation
-scripts/qa/promote --task TASK-123 --to todo
+edison qa promote --task TASK-123 --to todo
 
 # Mark validation in progress
-scripts/qa/promote --task TASK-123 --to wip
+edison qa promote --task TASK-123 --to wip
 
 # Mark validation complete
-scripts/qa/promote --task TASK-123 --to done
+edison qa promote --task TASK-123 --to done
 
 # Finalize after bundle approval
-scripts/qa/promote --task TASK-123 --to validated
+edison qa promote --task TASK-123 --to validated
 ```
 
 **Requirements for `done → validated`:**
@@ -242,14 +242,14 @@ Orchestrators trigger validation but don't run validators directly.
 ```
 Use Task/Delegation tool to invoke validator agent:
 - Agent: code-reviewer (or specialized validator)
-- Command: scripts/validators/validate --task <task-id>
+- Command: edison validators validate --task <task-id>
 - Monitor: Validator writes reports to evidence directory
 ```
 
 **Orchestrator checks results:**
 ```bash
 # After validator completes, check bundle
-scripts/qa/bundle <task-id>
+edison qa bundle <task-id>
 ```
 
 ---
@@ -285,7 +285,7 @@ delegate_to_agent(
 ### Sync Git Worktree
 
 ```bash
-scripts/session sync-git <session-id>
+edison session sync-git <session-id>
 ```
 
 **Purpose**: Create/sync git worktree for isolated work
@@ -296,7 +296,7 @@ scripts/session sync-git <session-id>
 ### Conflict Check
 
 ```bash
-scripts/session conflict-check <session-id>
+edison session conflict-check <session-id>
 ```
 
 **Purpose**: Dry-run merge against base branch
@@ -309,7 +309,7 @@ scripts/session conflict-check <session-id>
 ### Show Rules for Context
 
 ```bash
-scripts/rules show-for-context <category> <context>
+edison rules show-for-context <category> <context>
 ```
 
 **Purpose**: Query applicable rules for current situation
@@ -318,13 +318,13 @@ scripts/rules show-for-context <category> <context>
 **Examples:**
 ```bash
 # Delegation rules
-scripts/rules show-for-context guidance delegation
+edison rules show-for-context guidance delegation
 
 # State transition rules
-scripts/rules show-for-context transition "wip→done"
+edison rules show-for-context transition "wip→done"
 
 # Context budget rules
-scripts/rules show-for-context context budget
+edison rules show-for-context context budget
 ```
 
 ---
@@ -335,58 +335,58 @@ scripts/rules show-for-context context budget
 
 ```bash
 # 1. Get next action
-scripts/session next sess-001
+edison session next sess-001
 
 # 2. List ready tasks
-scripts/tasks/ready
+edison tasks ready
 
 # 3. Claim task
-scripts/tasks/claim TASK-123 --session sess-001
+edison tasks claim TASK-123 --session sess-001
 
 # 4. Delegate implementation
 # (use Task tool to delegate to appropriate agent)
 
 # 5. Monitor progress
-scripts/session next sess-001
+edison session next sess-001
 ```
 
 ### Completing a Task
 
 ```bash
 # 1. Verify implementation complete
-scripts/tasks/status TASK-123
+edison tasks status TASK-123
 
 # 2. Promote to done
-scripts/tasks/ready TASK-123 --session sess-001
+edison tasks ready TASK-123 --session sess-001
 
 # 3. Start validation
-scripts/qa/promote --task TASK-123 --to todo
+edison qa promote --task TASK-123 --to todo
 
 # 4. Delegate to validator
 # (use Task tool to delegate to code-reviewer)
 
 # 5. After validation passes, promote QA
-scripts/qa/promote --task TASK-123 --to validated
+edison qa promote --task TASK-123 --to validated
 
 # 6. Check session state
-scripts/session next sess-001
+edison session next sess-001
 ```
 
 ### Parallel Work Coordination
 
 ```bash
 # 1. Claim multiple independent tasks
-scripts/tasks/claim TASK-123 --session sess-001
-scripts/tasks/claim TASK-124 --session sess-001
+edison tasks claim TASK-123 --session sess-001
+edison tasks claim TASK-124 --session sess-001
 
 # 2. Delegate to multiple agents concurrently
 # (use Task tool with parallel invocations)
 
 # 3. Monitor progress
-scripts/session status sess-001
+edison session status sess-001
 
 # 4. Process completions as they arrive
-scripts/session next sess-001
+edison session next sess-001
 ```
 
 ---

@@ -16,7 +16,7 @@ This guide covers CLI commands for validators who review implementation work, ru
 ### Run Validation
 
 ```bash
-scripts/validators/validate --task <task-id> [--round <N>] [--session <session-id>]
+edison validators validate --task <task-id> [--round <N>] [--session <session-id>]
 ```
 
 **Purpose**: Validate validator reports for a task or bundle
@@ -31,16 +31,16 @@ scripts/validators/validate --task <task-id> [--round <N>] [--session <session-i
 **Example:**
 ```bash
 # Validate latest round
-scripts/validators/validate --task TASK-123
+edison validators validate --task TASK-123
 
 # Validate specific round
-scripts/validators/validate --task TASK-123 --round 2
+edison validators validate --task TASK-123 --round 2
 
 # Bundle mode (validate children in session)
-scripts/validators/validate --task TASK-123 --session sess-001
+edison validators validate --task TASK-123 --session sess-001
 
 # Enforce continuation tracking
-scripts/validators/validate --task TASK-123 --continuation-id CONT-abc123
+edison validators validate --task TASK-123 --continuation-id CONT-abc123
 ```
 
 **Input location**: `.project/qa/validation-evidence/<task-id>/round-N/`
@@ -51,7 +51,7 @@ scripts/validators/validate --task TASK-123 --continuation-id CONT-abc123
 ### Check QA Status
 
 ```bash
-scripts/qa/status [--json]
+edison qa status [--json]
 ```
 
 **Purpose**: Check QA state and validation requirements
@@ -59,7 +59,7 @@ scripts/qa/status [--json]
 
 **Example:**
 ```bash
-scripts/qa/status --json
+edison qa status --json
 ```
 
 ---
@@ -67,7 +67,7 @@ scripts/qa/status --json
 ### Create Validation Bundle
 
 ```bash
-scripts/qa/bundle <task-id>
+edison qa bundle <task-id>
 ```
 
 **Purpose**: Inspect evidence paths and child tasks before validation
@@ -75,7 +75,7 @@ scripts/qa/bundle <task-id>
 
 **Example:**
 ```bash
-scripts/qa/bundle TASK-123
+edison qa bundle TASK-123
 ```
 
 **Output:**
@@ -89,7 +89,7 @@ scripts/qa/bundle TASK-123
 ### Start Validation Round
 
 ```bash
-scripts/qa/round --task <task-id> --status <status>
+edison qa round --task <task-id> --status <status>
 ```
 
 **Purpose**: Record validator outcomes for a validation round
@@ -102,7 +102,7 @@ scripts/qa/round --task <task-id> --status <status>
 
 **Example:**
 ```bash
-scripts/qa/round --task TASK-123 --status approved
+edison qa round --task TASK-123 --status approved
 ```
 
 ---
@@ -191,28 +191,28 @@ Validators produce JSON reports in this structure:
 
 ```bash
 # 1. Check task is ready for validation
-scripts/tasks/status TASK-123
+edison tasks status TASK-123
 
 # Task should be in 'done' state with implementation-report.json
 
 # 2. Inspect validation bundle
-scripts/qa/bundle TASK-123
+edison qa bundle TASK-123
 
 # Review evidence directory and required validators
 
 # 3. Run validation
-scripts/validators/validate --task TASK-123
+edison validators validate --task TASK-123
 
 # This checks all required validator reports exist
 
 # 4. If issues found, record round status
-scripts/qa/round --task TASK-123 --status needs-work
+edison qa round --task TASK-123 --status needs-work
 
 # 5. After fixes, re-validate
-scripts/validators/validate --task TASK-123 --round 2
+edison validators validate --task TASK-123 --round 2
 
 # 6. Record approval
-scripts/qa/round --task TASK-123 --status approved
+edison qa round --task TASK-123 --status approved
 
 # 7. Orchestrator promotes QA to validated
 # (validators don't do this - orchestrator does)
@@ -222,12 +222,12 @@ scripts/qa/round --task TASK-123 --status approved
 
 ```bash
 # 1. Check bundle scope
-scripts/qa/bundle TASK-123 --session sess-001
+edison qa bundle TASK-123 --session sess-001
 
 # Shows parent task + child tasks in session
 
 # 2. Validate all tasks in bundle
-scripts/validators/validate --task TASK-123 --session sess-001
+edison validators validate --task TASK-123 --session sess-001
 
 # Validates parent + all children
 
@@ -239,12 +239,12 @@ scripts/validators/validate --task TASK-123 --session sess-001
 
 ```bash
 # Round 1: Initial validation
-scripts/validators/validate --task TASK-123 --round 1
+edison validators validate --task TASK-123 --round 1
 
 # Issues found - developer fixes
 
 # Round 2: Re-validate after fixes
-scripts/validators/validate --task TASK-123 --round 2
+edison validators validate --task TASK-123 --round 2
 
 # Continue until approved
 ```
@@ -314,12 +314,12 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for acti
 ## What Validators Should NOT Do
 
 **❌ DO NOT run these commands** (orchestrator-only):
-- `scripts/session next/start/status/close` - Session management
-- `scripts/tasks/claim/ready` - Task claiming and promotion
-- `scripts/qa/promote` - QA state transitions (orchestrator does this after validation)
+- `edison session next/start/status/close` - Session management
+- `edison tasks claim/ready` - Task claiming and promotion
+- `edison qa promote` - QA state transitions (orchestrator does this after validation)
 
 **❌ DO NOT run these commands** (agent-only):
-- `scripts/track start/complete` - Implementation tracking
+- `edison track start/complete` - Implementation tracking
 - Task implementation commands
 
 **✅ DO run:**

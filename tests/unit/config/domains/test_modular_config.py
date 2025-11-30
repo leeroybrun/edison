@@ -9,18 +9,18 @@ from edison.data import get_data_path
 @pytest.mark.skip(reason="Test assumes ConfigManager uses project-local config files, but it always uses bundled edison.data defaults")
 def test_modular_config_loading(tmp_path: Path) -> None:
     """
-    Verify that ConfigManager loads configuration from the new modular 
-    .edison/core/config/ structure and merges it correctly.
-    
+    Verify that ConfigManager loads configuration from the modular
+    .edison/config/ structure and merges it correctly.
+
     NOTE: This test is skipped because ConfigManager always loads from bundled
-    edison.data package, not from project-local .edison/core/config files.
+    edison.data package, not from project-local .edison/config files.
     """
     # Setup modular config structure
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+
     # 1. defaults.yaml
-    (core_config_dir / "defaults.yaml").write_text("""
+    (project_config_dir / "defaults.yaml").write_text("""
 edison:
   version: "2.0.0"
 git:
@@ -28,7 +28,7 @@ git:
 """, encoding="utf-8")
 
     # 2. validators.yaml
-    (core_config_dir / "validators.yaml").write_text("""
+    (project_config_dir / "validators.yaml").write_text("""
 validation:
   roster:
     global:
@@ -36,27 +36,27 @@ validation:
 """, encoding="utf-8")
 
     # 3. delegation.yaml
-    (core_config_dir / "delegation.yaml").write_text("""
+    (project_config_dir / "delegation.yaml").write_text("""
 delegation:
   implementers:
     primary: codex
 """, encoding="utf-8")
 
     # 4. models.yaml
-    (core_config_dir / "models.yaml").write_text("""
+    (project_config_dir / "models.yaml").write_text("""
 models:
   codex:
     provider: zen-mcp
 """, encoding="utf-8")
-    
+
     # 5. packs.yaml
-    (core_config_dir / "packs.yaml").write_text("""
+    (project_config_dir / "packs.yaml").write_text("""
 packs:
   enabled: true
 """, encoding="utf-8")
-    
+
     # 6. state-machine.yaml
-    (core_config_dir / "state-machine.yaml").write_text("""
+    (project_config_dir / "state-machine.yaml").write_text("""
 statemachine:
   task:
     states:
@@ -69,19 +69,11 @@ statemachine:
         allowed_transitions: []
 """, encoding="utf-8")
 
-    # Create project overlay under .edison/config (canonical overlays path)
-    project_config_dir = tmp_path / ".edison" / "config"
-    project_config_dir.mkdir(parents=True, exist_ok=True)
+    # 7. project.yml
     (project_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
-    
+
     # Initialize ConfigManager
     mgr = ConfigManager(tmp_path)
-    
-    # Force it to use the new path structure (simulating the change we need to make)
-    # Note: We can't easily mock internal attributes if we want to test the __init__ logic logic changes,
-    # so we rely on the ConfigManager logic we ARE ABOUT TO WRITE.
-    # Ideally, we want ConfigManager to *automatically* detect or prefer core/config if we change the code.
-    
     cfg = mgr.load_config(validate=False)
     
     # Assertions
@@ -107,18 +99,15 @@ statemachine:
     assert task_states["todo"]["allowed_transitions"][0]["to"] == "done"
 
 def test_no_json_fallback(tmp_path: Path) -> None:
-    """Ensure JSON config files are ignored in the new structure."""
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Write a JSON file that should be IGNORED
-    (core_config_dir / "ignored.json").write_text('{"should_ignore": true}', encoding="utf-8")
-    
-    # Write minimal defaults
-    (core_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
-    
+    """Ensure JSON config files are ignored in the config structure."""
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write a JSON file that should be IGNORED
+    (project_config_dir / "ignored.json").write_text('{"should_ignore": true}', encoding="utf-8")
+
+    # Write minimal defaults
+    (project_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
     (project_config_dir / "project.yml").write_text("project: { name: test }", encoding="utf-8")
 
     mgr = ConfigManager(tmp_path)
@@ -129,15 +118,8 @@ def test_no_json_fallback(tmp_path: Path) -> None:
 
 def test_legacy_monolithic_project_config_yml_is_ignored(tmp_path: Path) -> None:
     """
-    Ensure legacy .agents/config.yml is ignored in favour of .agents/config/*.yml overlays.
+    Ensure legacy .agents/config.yml is ignored in favour of .edison/config/*.yml overlays.
     """
-    # Core defaults
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "defaults.yaml").write_text(
-        "git:\n  branchPrefix: 'from-defaults/'\n", encoding="utf-8"
-    )
-
     # Legacy monolithic config.yml (must NOT be loaded)
     agents_dir = tmp_path / ".agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
@@ -148,6 +130,9 @@ def test_legacy_monolithic_project_config_yml_is_ignored(tmp_path: Path) -> None
     # Canonical overlay under .edison/config/*.yml
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "defaults.yaml").write_text(
+        "git:\n  branchPrefix: 'from-defaults/'\n", encoding="utf-8"
+    )
     (project_config_dir / "project.yml").write_text(
         "git: { branchPrefix: 'from-overlay/' }\n", encoding="utf-8"
     )
@@ -162,20 +147,16 @@ def test_legacy_monolithic_project_config_yml_is_ignored(tmp_path: Path) -> None
 @pytest.mark.skip(reason="Test assumes ConfigManager uses project-local config files, but it always uses bundled edison.data defaults")
 def test_project_modular_config_loading(tmp_path: Path) -> None:
     """
-    Verify that ConfigManager loads project-level modular config from 
-    .agents/config/ and merges it on top of core defaults.
-    
+    Verify that ConfigManager loads project-level modular config from
+    .edison/config/ and merges it on top of bundled defaults.
+
     NOTE: This test is skipped because ConfigManager always loads from bundled
-    edison.data package, not from project-local .edison/core/config files.
+    edison.data package, not from project-local .edison/config files.
     """
-    # Setup core config
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
-    
     # Setup project config dir (canonical overlays under .edison/config)
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "defaults.yaml").write_text("edison: { version: '1.0' }", encoding="utf-8")
 
     # Create a project-level metadata overlay
     (project_config_dir / "project.yml").write_text(
@@ -215,8 +196,8 @@ delegation:
 
 def test_core_repo_config_validates_against_canonical_schema() -> None:
     """
-    Real repository config (.edison/core/config + .agents/config.yml) must
-    validate against the canonical Draft-2020-12 config schema.
+    Real repository config (.edison/config/) must validate against the
+    canonical Draft-2020-12 config schema.
     """
     import json
     from jsonschema import Draft202012Validator, ValidationError

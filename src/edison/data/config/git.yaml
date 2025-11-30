@@ -1,0 +1,5 @@
+# Git Configuration
+# Git-related settings for Edison operations
+
+git:
+  branchPrefix: "session/"

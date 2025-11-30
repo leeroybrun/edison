@@ -121,7 +121,7 @@ def repo_env(tmp_path, monkeypatch):
     """Setup repository environment with state machine configuration."""
     from tests.helpers.fixtures import create_repo_with_git
     repo = create_repo_with_git(tmp_path)
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
 
     # Setup state machine configuration for test_entity
     # This is REAL configuration, not mocking - the state machine engine

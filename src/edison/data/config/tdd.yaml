@@ -1,0 +1,7 @@
+# TDD Configuration
+# Test-Driven Development enforcement settings
+
+tdd:
+  enforceRedGreenRefactor: true
+  requireEvidence: true
+  hmacValidation: false

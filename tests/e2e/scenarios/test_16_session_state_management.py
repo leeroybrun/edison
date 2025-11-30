@@ -63,10 +63,13 @@ def _minimal_jsonschema_validate(instance: dict, schema: dict) -> list[str]:
 
 
 @pytest.mark.fast
-@pytest.mark.skip(reason="Test references deprecated .agents/ structure - session templates moved to .edison/")
+@pytest.mark.skip(reason="Test references deprecated .agents/ structure - session templates moved to bundled edison.data")
 def test_template_has_state_and_validates_against_schema():
-    tmpl = _load_json(REPO_ROOT / ".agents" / "sessions" / "TEMPLATE.json")
-    schema = _load_json(REPO_ROOT / ".agents" / "sessions" / "session.schema.json")
+    # NOTE: Session templates are now in bundled edison.data/templates/session.template.json
+    # Schema validation should be done via the bundled template
+    from edison.data import get_data_path
+    tmpl = _load_json(get_data_path("templates", "session.template.json"))
+    schema = _load_json(get_data_path("schemas", "session.schema.json"))
     # RED: ensure required 'state' present and set to 'active' for new sessions
     assert "state" in tmpl, "TEMPLATE.json missing top-level 'state'"
     assert tmpl["state"] == "active", "TEMPLATE.json should default state to 'active'"
@@ -75,17 +78,26 @@ def test_template_has_state_and_validates_against_schema():
 
 
 @pytest.mark.fast
-@pytest.mark.skip(reason="Test references deprecated .agents/ structure - session workflow moved to .edison/")
+@pytest.mark.skip(reason="Test references deprecated structure - session workflow is now in bundled state-machine.yaml")
 def test_docs_align_with_state_machine_terms():
-    # The docs must mention the canonical session states and directory mapping
-    workflow = _load_json(REPO_ROOT / ".agents" / "session-workflow.json")
-    states = workflow.get("session", {}).get("states", [])
-    assert set(states) == {"active", "closing", "validated"}
-    text = (REPO_ROOT / ".agents" / "guidelines" / "SESSION_WORKFLOW.md").read_text()
-    # Expect explicit mapping lines present in the guide
-    assert "`.project/sessions/wip/` (active)" in text
-    assert "`.project/sessions/done/` (closing)" in text
-    assert "`.project/sessions/validated/` (validated)" in text
+    """Verify session state machine defines expected states.
+    
+    NOTE: The canonical session workflow definition is now in:
+    - bundled: edison.data/config/state-machine.yaml
+    - project override: .edison/config/state-machine.yaml
+    
+    Accessed via WorkflowConfig domain config.
+    """
+    from edison.core.config.domains.workflow import WorkflowConfig
+    
+    workflow_config = WorkflowConfig()
+    session_states = workflow_config.get_states("session")
+    
+    # Verify expected session states are defined
+    expected_states = {"active", "closing", "validated"}
+    assert set(session_states) == expected_states, (
+        f"Expected session states {expected_states}, got {set(session_states)}"
+    )
 
 
 @pytest.mark.worktree

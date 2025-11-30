@@ -1,4 +1,10 @@
 validation:
+  dimensions:
+    functionality: 30
+    reliability: 25
+    security: 20
+    maintainability: 15
+    performance: 10
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
   requiredEvidenceFiles:

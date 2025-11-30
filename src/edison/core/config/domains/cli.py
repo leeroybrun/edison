@@ -1,7 +1,9 @@
 """Domain-specific configuration for CLI output formatting.
 
-Provides cached access to CLI configuration including JSON output,
-table formatting, confirmation prompts, and status messages.
+Provides cached access to CLI configuration including table formatting,
+confirmation prompts, and status messages.
+
+Note: JSON formatting settings are in JSONIOConfig (not duplicated here).
 """
 from __future__ import annotations
 
@@ -11,38 +13,22 @@ from typing import Any, Dict, Optional
 
 from ..base import BaseDomainConfig
 
-# Default configuration values
-DEFAULT_JSON_INDENT = 2
-DEFAULT_JSON_SORT_KEYS = True
-DEFAULT_JSON_ENSURE_ASCII = False
-DEFAULT_TABLE_PADDING = 1
-DEFAULT_TABLE_COLUMN_GAP = 2
-DEFAULT_CONFIRM_ASSUME_YES_ENV = "EDISON_ASSUME_YES"
-DEFAULT_SUCCESS_PREFIX = "[OK]"
-DEFAULT_ERROR_PREFIX = "[ERR]"
-DEFAULT_WARNING_PREFIX = "[WARN]"
-DEFAULT_USE_COLOR = False
-
 
 class CLIConfig(BaseDomainConfig):
     """Domain-specific configuration accessor for CLI output.
 
     Provides typed, cached access to CLI configuration including:
-    - JSON output formatting
     - Table formatting (padding, spacing)
     - Confirmation prompt defaults
     - Output message prefixes
+
+    Note: JSON formatting is handled by JSONIOConfig to avoid duplication.
 
     Extends BaseDomainConfig for consistent caching and repo_root handling.
     """
 
     def _config_section(self) -> str:
         return "cli"
-
-    @cached_property
-    def _json_config(self) -> Dict[str, Any]:
-        """Get JSON output configuration."""
-        return self.section.get("json", {}) or {}
 
     @cached_property
     def _table_config(self) -> Dict[str, Any]:
@@ -59,81 +45,43 @@ class CLIConfig(BaseDomainConfig):
         """Get output message configuration."""
         return self.section.get("output", {}) or {}
 
-    # --- JSON Output Settings ---
-    @cached_property
-    def json_indent(self) -> int:
-        """Get JSON indentation level (default: 2)."""
-        indent = self._json_config.get("indent", DEFAULT_JSON_INDENT)
-        return int(indent)
-
-    @cached_property
-    def json_sort_keys(self) -> bool:
-        """Get whether to sort JSON object keys (default: True)."""
-        sort = self._json_config.get("sort_keys", DEFAULT_JSON_SORT_KEYS)
-        return bool(sort)
-
-    @cached_property
-    def json_ensure_ascii(self) -> bool:
-        """Get whether to escape non-ASCII in JSON (default: False)."""
-        ascii_mode = self._json_config.get("ensure_ascii", DEFAULT_JSON_ENSURE_ASCII)
-        return bool(ascii_mode)
-
     # --- Table Formatting Settings ---
     @cached_property
     def table_padding(self) -> int:
-        """Get table cell padding (default: 1)."""
-        padding = self._table_config.get("padding", DEFAULT_TABLE_PADDING)
-        return int(padding)
+        """Get table cell padding."""
+        return int(self._table_config["padding"])
 
     @cached_property
     def table_column_gap(self) -> int:
-        """Get spacing between table columns (default: 2)."""
-        gap = self._table_config.get("column_gap", DEFAULT_TABLE_COLUMN_GAP)
-        return int(gap)
+        """Get spacing between table columns."""
+        return int(self._table_config["column_gap"])
 
     # --- Confirmation Prompt Settings ---
     @cached_property
     def confirm_assume_yes_env(self) -> str:
-        """Get environment variable name for auto-confirm (default: EDISON_ASSUME_YES)."""
-        env_var = self._confirm_config.get("assume_yes_env", DEFAULT_CONFIRM_ASSUME_YES_ENV)
-        return str(env_var)
+        """Get environment variable name for auto-confirm."""
+        return str(self._confirm_config["assume_yes_env"])
 
     # --- Output Message Settings ---
     @cached_property
     def success_prefix(self) -> str:
-        """Get success message prefix (default: [OK])."""
-        prefix = self._output_config.get("success_prefix", DEFAULT_SUCCESS_PREFIX)
-        return str(prefix)
+        """Get success message prefix."""
+        return str(self._output_config["success_prefix"])
 
     @cached_property
     def error_prefix(self) -> str:
-        """Get error message prefix (default: [ERR])."""
-        prefix = self._output_config.get("error_prefix", DEFAULT_ERROR_PREFIX)
-        return str(prefix)
+        """Get error message prefix."""
+        return str(self._output_config["error_prefix"])
 
     @cached_property
     def warning_prefix(self) -> str:
-        """Get warning message prefix (default: [WARN])."""
-        prefix = self._output_config.get("warning_prefix", DEFAULT_WARNING_PREFIX)
-        return str(prefix)
+        """Get warning message prefix."""
+        return str(self._output_config["warning_prefix"])
 
     @cached_property
     def use_color(self) -> bool:
-        """Get whether to use colored output (default: False)."""
-        color = self._output_config.get("use_color", DEFAULT_USE_COLOR)
-        return bool(color)
-
-    def get_json_config(self) -> Dict[str, Any]:
-        """Get all JSON formatting settings as a dict.
-
-        Returns:
-            Dict with indent, sort_keys, ensure_ascii.
-        """
-        return {
-            "indent": self.json_indent,
-            "sort_keys": self.json_sort_keys,
-            "ensure_ascii": self.json_ensure_ascii,
-        }
+        """Get whether to use colored output."""
+        return bool(self._output_config["use_color"])
 
     def get_table_config(self) -> Dict[str, Any]:
         """Get all table formatting settings as a dict.

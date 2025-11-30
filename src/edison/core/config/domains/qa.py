@@ -19,8 +19,8 @@ class QAConfig(BaseDomainConfig):
     Extends BaseDomainConfig for consistent caching and repo_root handling.
 
     Configuration is loaded from:
-    1. Project config: .edison/config/qa.yml (if exists)
-    2. Bundled defaults: edison.data/config/qa.yml
+    1. Project config: .edison/config/qa.yaml (if exists)
+    2. Bundled defaults: edison.data/config/qa.yaml
     3. Legacy location: validators.yaml (validation section)
     """
 
@@ -74,7 +74,7 @@ class QAConfig(BaseDomainConfig):
         if not session_id:
             raise RuntimeError(
                 "validation.defaultSessionId missing in configuration; "
-                "define it in qa.yml or .edison/config/qa.yml"
+                "define it in qa.yaml or .edison/config/qa.yaml"
             )
         return str(session_id)
 
@@ -91,7 +91,7 @@ class QAConfig(BaseDomainConfig):
         if not files:
             raise RuntimeError(
                 "validation.requiredEvidenceFiles missing in configuration; "
-                "define it in qa.yml or .edison/config/qa.yml"
+                "define it in qa.yaml or .edison/config/qa.yaml"
             )
         if not isinstance(files, list):
             raise RuntimeError(
@@ -112,7 +112,7 @@ class QAConfig(BaseDomainConfig):
         if value is None:
             raise RuntimeError(
                 "orchestration.maxConcurrentAgents missing in configuration; "
-                "define it in qa.yml or .edison/config/qa.yml"
+                "define it in qa.yaml or .edison/config/qa.yaml"
             )
         return int(value)
 

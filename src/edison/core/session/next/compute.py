@@ -4,8 +4,8 @@
 This module contains the core compute_next function and CLI facade.
 
 Rule Types:
-  1. ENFORCEMENT rules: Linked to state machine transitions in session-workflow.json,
-     enforced by guard CLIs (scripts/tasks/ready, scripts/qa/promote, etc.).
+  1. ENFORCEMENT rules: Linked to state machine transitions in state-machine.yaml,
+     enforced by guard CLIs (edison tasks ready, edison qa promote, etc.).
      Example: RULE.GUARDS.FAIL_CLOSED, RULE.VALIDATION.FIRST
 
   2. GUIDANCE rules: Registered in rules/registry.json but not linked to transitions.
@@ -95,7 +95,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "qa.promote.wip",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["scripts/qa/promote", "--task", task_id, "--to", "wip"],
+                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "wip"],
                 "rationale": "Validation-first: launch validator wave",
                 "ruleRef": {"id": rule_ids[0]},
                 "ruleIds": rule_ids,
@@ -127,7 +127,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "task.unblock.wip",
                 "entity": "task",
                 "recordId": task_id,
-                "cmd": ["scripts/tasks/status", task_id, "--status", "wip"],
+                "cmd": ["edison", "tasks", "status", task_id, "--status", "wip"],
                 "rationale": "All child tasks are done/validated; move parent from blocked → wip",
                 "ruleRef": {"id": RULE_IDS["fail_closed"]},
                 "ruleIds": [RULE_IDS["fail_closed"]],
@@ -149,7 +149,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "task.promote.done",
                 "entity": "task",
                 "recordId": task_id,
-                "cmd": ["scripts/tasks/status", task_id, "--status", "done"],
+                "cmd": ["edison", "tasks", "status", task_id, "--status", "done"],
                 "rationale": "Children ready and automation evidence present; promote parent wip → done",
                 "ruleRef": {"id": rule_ids[0]},
                 "ruleIds": rule_ids,
@@ -163,7 +163,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "qa.create",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["scripts/qa/new", task_id],
+                "cmd": ["edison", "qa", "new", task_id],
                 "rationale": "Pair QA with active task",
                 "ruleRef": {"id": RULE_IDS["fail_closed"]},
                 "ruleIds": [RULE_IDS["fail_closed"]],
@@ -184,7 +184,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "qa.promote.todo",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["scripts/qa/promote", "--task", task_id, "--to", "todo"],
+                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "todo"],
                 "rationale": "Task done; get QA ready",
                 "ruleRef": {"id": rule_ids[0]},
                 "ruleIds": rule_ids,
@@ -225,7 +225,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             slug = slugify(fu.get("title") or "follow-up")
             next_id = allocate_child_id(base)
             if fu.get("blockingBeforeValidation"):
-                cmd = ["scripts/tasks/new", "--id", next_id, "--wave", wave, "--slug", slug, "--parent", task_id, "--session", session_id]
+                cmd = ["edison", "tasks", "new", "--id", next_id, "--wave", wave, "--slug", slug, "--parent", task_id, "--session", session_id]
                 fus_cmds.append({
                     "kind": "create-link-claim",
                     "title": fu.get("title"),
@@ -234,7 +234,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "similar": similar_tasks(fu.get("title") or "follow-up"),
                 })
             else:
-                cmd = ["scripts/tasks/new", "--id", next_id, "--wave", wave, "--slug", slug]
+                cmd = ["edison", "tasks", "new", "--id", next_id, "--wave", wave, "--slug", slug]
                 fus_cmds.append({
                     "kind": "create-only",
                     "title": fu.get("title"),
@@ -245,7 +245,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         for fu in val_fus:
             slug = slugify(fu.get("title") or "follow-up")
             next_id = allocate_child_id(base)
-            cmd = ["scripts/tasks/new", "--id", next_id, "--wave", wave, "--slug", slug]
+            cmd = ["edison", "tasks", "new", "--id", next_id, "--wave", wave, "--slug", slug]
             fus_cmds.append({
                 "kind": "create-only",
                 "title": fu.get("title"),
@@ -269,7 +269,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "id": "bundle.build",
                     "entity": "qa",
                     "recordId": f"{task_id}-qa",
-                    "cmd": ["scripts/qa/bundle", task_id],
+                    "cmd": ["edison", "qa", "bundle", task_id],
                     "rationale": "Bundle related tasks for validation",
                     "ruleRef": {"id": rule_id},
                     "ruleIds": [rule_id],
@@ -297,7 +297,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             new_id = allocate_child_id(base)
             slug = s.get("suggestedSlug") or slugify(s.get("title","follow-up"))
             # Build guarded Python tasks/new command
-            cmd = ["scripts/tasks/new", "--id", new_id, "--wave", wave, "--slug", slug, "--owner", session["meta"]["sessionId"], "--parent", parent_id, "--session", session_id]
+            cmd = ["edison", "tasks", "new", "--id", new_id, "--wave", wave, "--slug", slug, "--owner", session["meta"]["sessionId"], "--parent", parent_id, "--session", session_id]
             actions.append({
                 "id": "task.create.followup",
                 "entity": "task",
@@ -313,7 +313,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "id": "task.claim",
                     "entity": "task",
                     "recordId": new_id,
-                    "cmd": ["scripts/tasks/claim", new_id, "--session", session_id],
+                    "cmd": ["edison", "tasks", "claim", new_id, "--session", session_id],
                     "rationale": "Suggestion marked claimNow by validator",
                     "ruleRef": {"id": RULE_IDS["validation_first"]},
                     "ruleIds": [RULE_IDS["validation_first"]],
@@ -324,7 +324,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "id": "task.block",
                     "entity": "task",
                     "recordId": parent_id,
-                    "cmd": ["scripts/tasks/status", parent_id, "--status", "blocked"],
+                    "cmd": ["edison", "tasks", "status", parent_id, "--status", "blocked"],
                     "rationale": "Follow-up marked blocking; set parent to blocked",
                     "ruleRef": {"id": RULE_IDS["validation_first"]},
                     "ruleIds": [RULE_IDS["validation_first"]],
@@ -336,7 +336,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "qa.round.rejected",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["scripts/qa/round", "--task", task_id, "--status", "rejected", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
+                "cmd": ["edison", "qa", "round", "--task", task_id, "--status", "rejected", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
                 "rationale": "Blocking validators failed; record Round and return QA to waiting",
                 "ruleRef": {"id": RULE_IDS["validation_first"]},
                 "ruleIds": [RULE_IDS["validation_first"], RULE_IDS["bundle_first"]],
@@ -347,7 +347,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "qa.promote.done",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["scripts/qa/promote", "--task", task_id, "--to", "done"],
+                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "done"],
                 "rationale": "All blocking validators approved; close QA",
                 "ruleRef": {"id": RULE_IDS["validation_first"]},
                 "ruleIds": [RULE_IDS["validation_first"]],
@@ -440,7 +440,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             "All moves must go through guarded CLIs.",
         ],
         "recommendations": [
-            "Run 'scripts/session verify' periodically to detect metadata drift (manual edits)",
+            "Run 'edison session verify' periodically to detect metadata drift (manual edits)",
             "Context7 enforcement cross-checks task metadata + git diff for accuracy",
         ],
     }

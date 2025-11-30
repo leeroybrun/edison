@@ -42,8 +42,7 @@ def render_readme_template(
 
             Welcome to your newly initialized Edison workspace. The `edison setup` wizard
             generated baseline configuration under `{config_dir}/config/` using a modular
-            structure where each domain has its own file. This follows the same pattern as
-            `.edison/core/config/*.yaml` for consistency and maintainability.
+            structure where each domain has its own file.
 
             ## Generated Structure
 
@@ -61,7 +60,7 @@ def render_readme_template(
             ## Configuration Pattern
 
             Configuration follows this precedence (lowest → highest):
-            1. Core defaults: `.edison/core/config/*.yaml`
+            1. Core defaults: bundled edison.data package
             2. Project overrides: `{config_dir}/config/*.yml` (this directory)
             3. Environment variables: `EDISON_*`
 
@@ -82,7 +81,7 @@ def render_readme_template(
             - `edison utils doctor` — verify your environment
             - `edison configure` — interactive configuration menu
             - `edison config edison-config` — inspect merged configuration
-            - See `.edison/core/docs/HELP_SYSTEM_TEMPLATE.md` for CLI help
+            - Run `edison --help` for CLI help
             """
         ).strip()
         + "\n"

@@ -15,10 +15,10 @@ class TestSessionScopedWorkflow(unittest.TestCase):
     def test_placeholder(self) -> None:
         """Placeholder - original tests removed as they tested deprecated CLI structure."""
         # Original tests invoked scripts like:
-        # - scripts/session
-        # - scripts/tasks/claim
-        # - scripts/tasks/status
-        # - scripts/qa/new
+        # - edison session
+        # - edison tasks claim
+        # - edison tasks status
+        # - edison qa new
         #
         # These paths don't exist in the current structure.
         #

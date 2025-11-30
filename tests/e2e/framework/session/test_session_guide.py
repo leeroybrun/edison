@@ -7,12 +7,14 @@ from typing import List
 
 import pytest
 import yaml
+from edison.data import get_data_path
 
 pytestmark = pytest.mark.skip(reason="Documentation not yet written - guide files moved/pending")
 
-GUIDE_PATH = Path('.edison/core/docs/guides/session.md')
-STATE_MACHINE_PATH = Path('.edison/core/docs/architecture/state-machine.md')
-START_SESSION_PATH = Path('.edison/core/templates/START.SESSION.md')
+# These files don't exist in bundled data yet - when they're added, update these paths
+GUIDE_PATH = get_data_path("docs", "guides/session.md")  # Will be bundled
+STATE_MACHINE_PATH = get_data_path("docs", "architecture/state-machine.md")  # Will be bundled
+START_SESSION_PATH = get_data_path("start", "START_NEW_SESSION.md")  # Already bundled
 
 
 def _read_file() -> List[str]:

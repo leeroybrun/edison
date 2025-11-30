@@ -72,4 +72,6 @@ config_files:
   legacy_config: "config.yml"
   modular_config_dir: "config"
   validators_config: "validators/config.json"
-  session_workflow: "session-workflow.json"
+  # NOTE: session-workflow.json is deprecated
+  # Session workflow is now defined in bundled state-machine.yaml
+  # accessed via WorkflowConfig domain config

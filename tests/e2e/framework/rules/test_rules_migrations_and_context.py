@@ -20,33 +20,50 @@ def _copy_minimal_repo(dst_root: Path) -> None:
     """Copy minimal Edison structures needed for rules tests into dst_root.
 
     This keeps tests real (no mocks) while avoiding mutation of the main repo.
+    Guidelines and other files are now in bundled data, so we copy from there.
     """
-    # Registry JSON
-    src_reg = REPO_ROOT / ".edison" / "core" / "rules" / "registry.json"
-    dst_reg = dst_root / ".edison" / "core" / "rules" / "registry.json"
-    dst_reg.parent.mkdir(parents=True, exist_ok=True)
-    dst_reg.write_bytes(src_reg.read_bytes())
+    from edison.data import get_data_path
 
-    # Guideline files referenced by the registry
-    src_guidelines_dir = REPO_ROOT / ".edison" / "core" / "guidelines"
+    # Registry JSON - check both bundled data and legacy locations
+    src_reg = get_data_path("rules", "registry.json")
+    if not src_reg.exists():
+        # Fallback to legacy location
+        src_reg = REPO_ROOT / ".edison" / "core" / "rules" / "registry.json"
+
+    if src_reg.exists():
+        dst_reg = dst_root / ".edison" / "core" / "rules" / "registry.json"
+        dst_reg.parent.mkdir(parents=True, exist_ok=True)
+        dst_reg.write_bytes(src_reg.read_bytes())
+
+    # Guideline files referenced by the registry - now in bundled data
+    src_guidelines_dir = get_data_path("guidelines")
     dst_guidelines_dir = dst_root / ".edison" / "core" / "guidelines"
     if src_guidelines_dir.exists():
         # Shallow copy of all guideline files – cheap and keeps behavior realistic.
         dst_guidelines_dir.mkdir(parents=True, exist_ok=True)
-        for path in src_guidelines_dir.glob("*.md"):
-            target = dst_guidelines_dir / path.name
+        for path in src_guidelines_dir.glob("**/*.md"):
+            # Preserve subdirectory structure
+            rel_path = path.relative_to(src_guidelines_dir)
+            target = dst_guidelines_dir / rel_path
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(path.read_bytes())
 
-    # Additional rule sources referenced by the registry (guides and validators).
+    # Additional rule sources referenced by the registry
+    # START.SESSION.md is now START_NEW_SESSION.md in bundled data
     extra_sources = [
-        ".edison/core/guides/START.SESSION.md",
-        ".edison/core/validators/OUTPUT_FORMAT.md",
+        ("start", "START_NEW_SESSION.md", ".edison/core/guides/START.SESSION.md"),
+        ("validators", "OUTPUT_FORMAT.md", ".edison/core/validators/OUTPUT_FORMAT.md"),
     ]
-    for rel in extra_sources:
-        src = REPO_ROOT / rel
-        dst = dst_root / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
+    for subpkg, filename, legacy_path in extra_sources:
+        src = get_data_path(subpkg, filename)
+        if not src.exists():
+            # Fallback to legacy location
+            src = REPO_ROOT / legacy_path
+        if src.exists():
+            # Write to expected test location (legacy path structure for test compatibility)
+            dst = dst_root / legacy_path
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(src.read_bytes())
 
 
 class TestRulesRegistryMigration(unittest.TestCase):
@@ -74,10 +91,11 @@ class TestRulesRegistryMigration(unittest.TestCase):
             # Simulate legacy broken paths by rewriting guidelines prefix back to .agents/.
             for rule in data.get("rules", []):
                 sp = rule.get("sourcePath", "")
-                if sp.startswith(".edison/core/guidelines/"):
-                    rule["sourcePath"] = sp.replace(
-                        ".edison/core/guidelines/", ".agents/guidelines/"
-                    )
+                # Check for both legacy and bundled data paths
+                if sp.startswith(".edison/core/guidelines/") or sp.startswith("guidelines/"):
+                    # Replace with legacy .agents/ path to test migration
+                    base_name = sp.split("/")[-1]
+                    rule["sourcePath"] = f".agents/guidelines/{base_name}"
             reg_path.write_text(json.dumps(data, indent=2))
 
             script = SCRIPTS_ROOT / "rules_migrate_registry_paths.py"

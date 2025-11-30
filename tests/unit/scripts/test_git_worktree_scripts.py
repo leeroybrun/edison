@@ -31,7 +31,7 @@ def _make_repo(tmp_path: Path) -> Path:
     repo.mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
 
-    cfg_dir = repo / ".edison" / "core" / "config"
+    cfg_dir = repo / ".edison" / "config"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     defaults = textwrap.dedent(
         """
@@ -66,7 +66,7 @@ def _make_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _create_create_env(repo: Path) -> dict[str, str]:
+def _create_env(repo: Path) -> dict[str, str]:
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(repo)
     return env

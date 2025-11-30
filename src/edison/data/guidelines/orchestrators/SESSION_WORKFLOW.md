@@ -9,7 +9,7 @@ This guide assumes you already ran the appropriate intake prompt (`START.SESSION
 
 ## CLI naming (dispatcher + auto-start)
 - Use the dispatcher: `edison session start|next|verify|close|recovery --session <id>`.
-- **Auto-start:** `edison session start` bootstraps the orchestrator using ConfigManager (core → pack → project YAML overlays), delivers the prompt template to the active agent, and restores/creates the session record. Run this once per session; it replaces legacy `scripts/session` wrappers.
+- **Auto-start:** `edison session start` bootstraps the orchestrator using ConfigManager (core → pack → project YAML overlays), delivers the prompt template to the active agent, and restores/creates the session record. Run this once per session.
 - Prompt templates for the current role/session are injected automatically on start; do not hand-edit the rendered prompt.
 - Set the project owner environment variable (`<PROJECT>_OWNER`) if your orchestration layer expects it for default session ownership.
 
@@ -101,18 +101,18 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 - Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.edison/session-workflow.json`; `edison session status <id>` renders the Markdown view for humans/LLMs.
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY START -->
-- Use `.edison/scripts/tasks/new --parent <id>` or `.edison/scripts/tasks/link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `.edison/scripts/tasks/link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
+- Use `edison tasks new --parent <id>` or `edison tasks link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison tasks link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY END -->
 - Before promoting a task to `done/`, run `edison tasks ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
 - Before invoking validators, run `edison validators bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
-- Use `scripts/me whoami|tasks|bundle` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
+- Use `edison me whoami|tasks|bundle` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED START -->
-> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison tasks status`, `edison qa promote`, `.edison/scripts/qa/round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
+> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison tasks status`, `edison qa promote`, `edison qa round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED END -->
 
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES START -->
-All task/QA moves MUST go through guarded CLIs (`edison tasks status`, `edison qa promote`, `.edison/scripts/qa/round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
+All task/QA moves MUST go through guarded CLIs (`edison tasks status`, `edison qa promote`, `edison qa round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES END -->
 
 <!-- RULE: RULE.QA.PAIR_ON_WIP START -->
@@ -162,17 +162,17 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
    ```
 
 2. **Sub-agent will handle:**
-   - ✅ Calling `scripts/track start` (their mandatory first step)
+   - ✅ Calling `edison track start` (their mandatory first step)
    - ✅ Following TDD (RED → GREEN → REFACTOR)
    - ✅ Querying Context7 for post-training packages
    - ✅ Filling implementation report as they work
    - ✅ Running automation commands (type-check, lint, test, build)
-   - ✅ Calling `scripts/track complete` (their mandatory last step)
+   - ✅ Calling `edison track complete` (their mandatory last step)
 
 3. **Monitor progress:**
    ```bash
-   scripts/track active  # See if sub-agent is still working
-   scripts/track stale   # Detect if sub-agent crashed
+   edison track active  # See if sub-agent is still working
+   edison track stale   # Detect if sub-agent crashed
    ```
 
 4. **When sub-agent reports back:**
@@ -187,9 +187,9 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 **If you must implement yourself:**
 
 1. **YOU must follow `.edison/implementation/IMPLEMENTER_WORKFLOW.md`:**
-   - Call `scripts/track start --task <id> --type implementation --model claude`
+   - Call `edison track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
-   - Call `scripts/track complete`
+   - Call `edison track complete`
 
 2. **This is the SAME process sub-agents follow** - you get no shortcuts!
 
@@ -199,7 +199,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 2. **Spawn follow-up tasks** (if any discovered):
    - Create in `tasks/todo/` with paired QA in `qa/waiting/`
-   - Link to parent via `.edison/scripts/tasks/link`
+   - Link to parent via `edison tasks link`
    - Decide if they belong in current session (claim now) or future session (leave in todo/)
 
 3. **Update session Activity Log** with implementation milestone.
@@ -380,21 +380,21 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 **Note**: Specific models, blocking status, and trigger patterns are defined in `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` based on active packs.
 
 **Each validator will handle:**
-- ✅ Calling `scripts/track start` (their mandatory first step)
+- ✅ Calling `edison track start` (their mandatory first step)
 - ✅ Loading context (QA brief, implementation report, evidence, git diff)
 - ✅ Querying Context7 (if context7Required in their config)
 - ✅ Filling validator report as they validate
 - ✅ Determining verdict (approve/reject/blocked)
-- ✅ Calling `scripts/track complete` (their mandatory last step)
+- ✅ Calling `edison track complete` (their mandatory last step)
 
 ### 3.4. Monitor Validators
 
 ```bash
 # See which validators are running
-scripts/track active
+edison track active
 
 # Detect crashed validators
-scripts/track stale
+edison track stale
 ```
 
 **If validator crashes:** Remove stale report, investigate logs, re-launch validator.
@@ -478,9 +478,9 @@ scripts/track stale
 ```
 
 > **💡 MONITORING UTILITIES:**
-> - `scripts/track active` - See all running validators (PIDs, models, start times)
-> - `scripts/track stale` - Detect crashed validators (PID no longer running)
-> - `scripts/track heartbeat` - Not typically needed (validators should complete quickly)
+> - `edison track active` - See all running validators (PIDs, models, start times)
+> - `edison track stale` - Detect crashed validators (PID no longer running)
+> - `edison track heartbeat` - Not typically needed (validators should complete quickly)
 
 ## 4. Handling rejections & follow-ups
 1. Rejected tasks **stay** in `.project/tasks/wip/`. Never move them back to `todo/`—they are still active work.
@@ -502,13 +502,13 @@ scripts/track stale
 ### Linking semantics for follow-ups (fail-closed)
 - Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done` or `validated`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
-- The readiness gate runs `.edison/scripts/tasks/ensure-followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
+- The readiness gate runs `edison tasks ensure-followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
 <!-- RULE: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING END -->
 
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST START -->
 ### Duplicate prevention before creation
 - Before creating any follow-up, search existing tasks by slug/title similarity. If a near-duplicate (≥0.82) exists, do NOT create a new task—link/record the existing ID where appropriate.
-- The helper `.edison/scripts/tasks/ensure-followups` performs this check automatically.
+- The helper `edison tasks ensure-followups` performs this check automatically.
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST END -->
 
 ### Parent Requeue (auto‑suggested)

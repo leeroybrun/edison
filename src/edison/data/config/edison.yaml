@@ -1,0 +1,5 @@
+# Edison Framework Configuration
+# Top-level application metadata and version information
+
+edison:
+  version: "1.0.0"

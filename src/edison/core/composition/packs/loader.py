@@ -43,9 +43,9 @@ def _pack_dir(repo_root: Path, name: str) -> Path:
 
 @lru_cache(maxsize=1)
 def _pack_defaults_catalog() -> Dict[str, Dict[str, Any]]:
-    """Load pack defaults from the canonical config defaults.yaml."""
+    """Load pack defaults from the canonical config packs.yaml."""
     try:
-        cfg = read_bundled_yaml("config", "defaults.yaml") or {}
+        cfg = read_bundled_yaml("config", "packs.yaml") or {}
     except Exception:
         return {}
     packs_cfg = cfg.get("packs") or {}
@@ -70,7 +70,7 @@ def load_pack(repo_root: Path, name: str) -> PackManifest:
     if name in defaults_catalog and defaults_path.exists():
         raise ValueError(
             f"Duplicate defaults.yaml for pack '{name}' detected at {defaults_path}. "
-            "Use src/edison/data/config/defaults.yaml as the canonical source."
+            "Use src/edison/data/config/packs.yaml as the canonical source."
         )
     if not defaults and defaults_path.exists():
         defaults = read_yaml(defaults_path, default={})

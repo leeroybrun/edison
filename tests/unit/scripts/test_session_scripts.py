@@ -78,8 +78,8 @@ def test_domain_layout_and_no_legacy_wrappers():
     legacy_scripts = EDISON_ROOT / "scripts"
     if legacy_scripts.exists():
         # Scripts dir may exist for migration utilities, but should not contain domain folders
-        assert not (legacy_scripts / "session").exists(), "Legacy scripts/session should be removed"
-        assert not (legacy_scripts / "tasks").exists(), "Legacy scripts/tasks should be removed"
+        assert not (legacy_scripts / "session").exists(), "Legacy edison session should be removed from scripts/"
+        assert not (legacy_scripts / "tasks").exists(), "Legacy edison tasks should be removed from scripts/"
 
 
 def test_session_recover_outputs_json(tmp_path: Path):

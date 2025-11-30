@@ -76,7 +76,7 @@ class TestAgentsConstitutionGeneration:
         assert "<!-- Role: AGENT -->" in content
 
         constitution_cfg = yaml.safe_load(
-            (root / ".edison" / "core" / "config" / "constitution.yaml").read_text(encoding="utf-8")
+            (root / ".edison" / "config" / "constitution.yaml").read_text(encoding="utf-8")
         )
         mandatory_reads = constitution_cfg.get("mandatoryReads", {}).get("agents", [])
         assert mandatory_reads, "constitution.yaml must define mandatoryReads.agents"

@@ -20,7 +20,7 @@ def session_path_env(tmp_path, monkeypatch):
     """Setup test environment with configuration."""
     from tests.helpers.fixtures import create_repo_with_git
     repo = create_repo_with_git(tmp_path)
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
 
     # 1. defaults.yaml
     write_yaml(

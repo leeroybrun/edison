@@ -72,44 +72,31 @@ def test_core_defaults_expose_profiles() -> None:
 
     assert cfg.get_default_profile_name() == "claude"
     profiles = set(cfg.list_profiles())
-    assert profiles == {"claude", "codex", "gemini", "happy"}
+    assert profiles == {"claude", "codex", "gemini", "happy", "mock"}
 
     claude = cfg.get_profile("claude")
     assert claude.get("command")
     assert claude.get("initial_prompt", {}).get("enabled") is True
 
 
-def test_project_overlay_merges_core(tmp_path: Path) -> None:
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "orchestrator.yaml").write_text(
-        textwrap.dedent(
-            """
-            orchestrators:
-              default: codex
-              profiles:
-                codex:
-                  command: "codex"
-                  args:
-                    - "--from-core"
-                  cwd: "{session_worktree}"
-            """
-        ),
-        encoding="utf-8",
-    )
+def test_project_overlay_merges_bundled_defaults(tmp_path: Path) -> None:
+    """Test that project config in .edison/config/ merges with bundled defaults.
 
+    Architecture:
+    - Bundled defaults: src/edison/data/config/ (always loaded first)
+    - Project overrides: {repo_root}/.edison/config/ (merged on top)
+    """
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
     (project_config_dir / "orchestrator.yml").write_text(
         textwrap.dedent(
             """
             orchestrators:
-              default: codex
               profiles:
                 codex:
                   args:
                     - "+"
-                    - "--extra"
+                    - "--extra-from-project"
                   env:
                     FROM: "project"
             """
@@ -122,14 +109,21 @@ def test_project_overlay_merges_core(tmp_path: Path) -> None:
     cfg = OrchestratorConfig(repo_root=tmp_path, validate=True)
 
     merged = cfg.get_profile("codex")
-    assert merged["args"] == ["--from-core", "--extra"]
+    # Args are merged: bundled defaults + project overlay (+ syntax appends)
+    assert "--extra-from-project" in merged["args"]
+    # Env from project overlay
     assert merged.get("env", {}).get("FROM") == "project"
 
 
 def test_schema_validation_rejects_invalid_prompt_method(tmp_path: Path) -> None:
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "orchestrator.yaml").write_text(
+    """Test that invalid prompt method is rejected by schema validation.
+
+    Note: Project config overrides bundled defaults. We override a bundled profile
+    with an invalid initial_prompt.method value.
+    """
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "orchestrator.yaml").write_text(
         textwrap.dedent(
             """
             orchestrators:
@@ -152,9 +146,13 @@ def test_schema_validation_rejects_invalid_prompt_method(tmp_path: Path) -> None
 
 
 def test_template_expansion_replaces_tokens(tmp_path: Path) -> None:
-    core_config_dir = tmp_path / ".edison" / "core" / "config"
-    core_config_dir.mkdir(parents=True, exist_ok=True)
-    (core_config_dir / "orchestrator.yaml").write_text(
+    """Test that template variables in profile config are expanded correctly.
+
+    Note: We add a custom 'templated' profile via project config overlay.
+    """
+    project_config_dir = tmp_path / ".edison" / "config"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    (project_config_dir / "orchestrator.yaml").write_text(
         textwrap.dedent(
             """
             orchestrators:

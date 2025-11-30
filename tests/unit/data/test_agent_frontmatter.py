@@ -252,8 +252,8 @@ def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
     assert "context7CompatibleLibraryID" in section, \
         f"{path} get-library-docs example missing context7CompatibleLibraryID"
 
-    assert "config/context7.yml" in section, \
-        f"{path} must point to config/context7.yml for versions"
+    assert "config/context7.yaml" in section, \
+        f"{path} must point to config/context7.yaml for versions"
 
     for warning in ("Next.js 16", "React 19", "Tailwind CSS 4", "Prisma 6"):
         assert warning in section, f"{path} missing version warning for {warning}"

@@ -13,7 +13,7 @@ The authoritative definition lives in `.edison/core/defaults.yaml` under `statem
 
 - `tasks/status`: Calls `validate_state_transition` before any move and gates `… → done` via `tasks/ready`.
 - `tasks/ready`: Enforces completion requirements (implementation report, evidence files, validator config/TDD rules) and fails closed.
-- Pre-commit hook: `.git/hooks/pre-commit` invokes `.edison/core/scripts/git-hooks/precommit_check.py` to block invalid staged renames under `.project/tasks/` and `.project/qa/`.
+- Pre-commit hook: `.git/hooks/pre-commit` invokes `edison git-hooks precommit-check` to block invalid staged renames under `.project/tasks/` and `.project/qa/`.
 
 ## Failure Mode (Fail-Closed)
 
@@ -25,5 +25,5 @@ The authoritative definition lives in `.edison/core/defaults.yaml` under `statem
 - Allowed: `task todo → wip`, `qa waiting → todo`, `task done → validated` (with approvals).
 - Blocked: `task todo → validated`, `qa todo → validated`, non-adjacent skips.
 
-See tests under `.edison/core/scripts/tests/framework/tests/test_state_machine_guards.py` covering valid/invalid paths and edge cases.
+See tests under `tests/unit/framework/test_state_machine_guards.py` covering valid/invalid paths and edge cases.
 

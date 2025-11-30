@@ -2,7 +2,7 @@
 
 This test asserts that QAConfig class provides typed access to delegation
 and validation configuration sections from YAML files placed under
-``.edison/core/config``. The QAConfig helper should follow the same pattern
+``.edison/config``. The QAConfig helper should follow the same pattern
 as TaskConfig and SessionConfig.
 """
 from __future__ import annotations

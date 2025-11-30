@@ -204,7 +204,7 @@ class TestRulesCompositionE2E:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        scripts/rules compose should write composed rules JSON into .agents/_generated/rules/.
+        edison rules compose should write composed rules JSON into .agents/_generated/rules/.
         """
         root = isolated_project_env
 

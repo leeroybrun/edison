@@ -1,7 +1,7 @@
 """
 Generic MCP setup command.
 
-SUMMARY: Configure and validate MCP server entries from mcp.yml
+SUMMARY: Configure and validate MCP server entries from mcp.yaml
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Sequence
 from edison.core.mcp.config import build_mcp_servers, configure_mcp_json
 from edison.cli import OutputFormatter, add_dry_run_flag
 
-SUMMARY = "Setup MCP servers defined in mcp.yml (no mocks, YAML-driven)"
+SUMMARY = "Setup MCP servers defined in mcp.yaml (no mocks, YAML-driven)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:

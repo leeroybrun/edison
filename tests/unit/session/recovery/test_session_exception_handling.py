@@ -19,9 +19,7 @@ import pytest
 from tests.helpers.paths import get_repo_root
 
 
-# Wire scripts/lib onto sys.path
 REPO_ROOT = get_repo_root()
-SCRIPTS_DIR = REPO_ROOT / ".edison" / "core"
 from edison.core import task  # type: ignore  # noqa: E402
 from edison.data import get_data_path
 from edison.core.session import lifecycle as session_manager

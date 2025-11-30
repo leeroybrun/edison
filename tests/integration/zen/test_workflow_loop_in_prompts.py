@@ -33,7 +33,7 @@ class TestZenWorkflowLoop:
             )
 
             # Verify key components
-            assert "scripts/session next" in content, (
+            assert "edison session next" in content, (
                 f"{prompt_file} missing session next command"
             )
             assert "APPLICABLE RULES" in content, (

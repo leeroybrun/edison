@@ -15,8 +15,8 @@ def _make_guard_wrappers(tmp_root: Path, repo_root: Path) -> None:
     """Create the strict guard wrappers under <tmp>/scripts/* expected by guards.
 
     We intentionally mirror the paths used by guard checks:
-    - scripts/implementation/validate → wraps Edison Python module
-    - scripts/tasks/ensure-followups → wraps Edison Python module
+    - edison implementation validate → wraps Edison Python module
+    - edison tasks ensure-followups → wraps Edison Python module
 
     Note: After migration to Python modules, these wrappers now call Python modules
     instead of legacy shell scripts.

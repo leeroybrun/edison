@@ -16,7 +16,7 @@ def session_exists(session_id: str) -> bool:
 @pytest.fixture(autouse=True)
 def setup_custom_config(project_root):
     """Setup custom session configuration and registries."""
-    # Setup .edison/core/config
+    # Setup .edison/config
     config_dir = project_root / ".edison" / "config"
     
     defaults_data = {

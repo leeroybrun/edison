@@ -2,10 +2,12 @@ import os
 import re
 from pathlib import Path
 import pytest
+from edison.data import get_data_path
 
 pytestmark = pytest.mark.skip(reason="Documentation not yet written - guide files moved/pending")
 
-GUIDE_PATH = Path(".edison/core/docs/guides/task.md")
+# Guide doesn't exist yet - when added, it will be in bundled data
+GUIDE_PATH = get_data_path("docs", "guides/task.md")
 
 
 def _read_file(path: Path) -> str:
@@ -33,7 +35,7 @@ def _relative_md_links(text: str):
 
 
 def test_task_guide_exists_and_long_enough():
-    assert GUIDE_PATH.exists(), "task.md guide must exist at .edison/core/docs/guides/task.md"
+    assert GUIDE_PATH.exists(), "task.md guide must exist in bundled data (docs/guides/task.md)"
     content = _read_file(GUIDE_PATH)
     line_count = len(content.splitlines())
     assert line_count >= 400, f"task.md too short: {line_count} lines (expected >= 400)"

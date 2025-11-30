@@ -2,13 +2,15 @@
 File pattern rule registry with pack awareness.
 
 This module keeps core free of tech-specific file pattern rules by loading
-generic patterns from the core rules directory and merging in pack-provided
+generic patterns from the bundled rules directory and merging in pack-provided
 patterns only when those packs are active.
 
-Moved from core.rules.file_patterns to composition.registries for architectural
-coherence - file pattern composition follows the same patterns as other registries.
-
 Architecture:
+    - Bundled file patterns: edison.data/rules/file_patterns/ (ALWAYS)
+    - Pack patterns: bundled packs + .edison/packs/<pack>/rules/file_patterns/
+    - Project overrides: .edison/rules/file_patterns/ (optional)
+    - NO .edison/core/ - that is legacy
+
     BaseEntityManager
     └── BaseRegistry
         └── FilePatternRegistry (this module)
@@ -25,11 +27,16 @@ from edison.core.utils.paths import get_project_config_dir
 
 
 class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
-    """Load file pattern rules from core plus optional packs.
+    """Load file pattern rules from bundled core plus optional packs.
     
     Extends BaseRegistry with file-pattern-specific functionality:
     - YAML-based pattern loading from directories
     - Pack-aware pattern composition
+    
+    Architecture:
+    - Core patterns: ALWAYS from bundled edison.data/rules/file_patterns/
+    - Pack patterns: bundled packs + project packs
+    - NO .edison/core/ - that is legacy
     """
     
     entity_type: str = "file_pattern"
@@ -43,18 +50,26 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
         
         super().__init__(resolved_root)
 
-        self.core_rules_dir = self._resolve_core_rules_dir()
-        self.pack_roots = self._resolve_pack_roots()
+        # Core rules are ALWAYS from bundled data
+        self.core_rules_dir = get_data_path("rules") / "file_patterns"
+        
+        # Pack roots: bundled + project
+        self.bundled_packs_dir = Path(get_data_path("packs"))
+        self.project_config_dir = get_project_config_dir(self.project_root, create=False)
+        self.project_packs_dir = self.project_config_dir / "packs"
+        
+        # Project-level file pattern overrides
+        self.project_rules_dir = self.project_config_dir / "rules" / "file_patterns"
     
     # ------- BaseRegistry Interface Implementation -------
     
     def discover_core(self) -> Dict[str, Dict[str, Any]]:
-        """Discover core file pattern rules."""
+        """Discover core file pattern rules from bundled data."""
         rules = self.load_core_rules()
         return {rule.get("name", rule.get("_path", f"rule-{i}")): rule for i, rule in enumerate(rules)}
     
     def discover_packs(self, packs: List[str]) -> Dict[str, Dict[str, Any]]:
-        """Discover file pattern rules from active packs."""
+        """Discover file pattern rules from active packs (bundled + project)."""
         result: Dict[str, Dict[str, Any]] = {}
         for pack in packs:
             rules = self.load_pack_rules(pack)
@@ -64,9 +79,9 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
         return result
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
-        """Discover project-level file pattern overrides."""
-        # File patterns are in core/packs, not project-level
-        return {}
+        """Discover project-level file pattern overrides at .edison/rules/file_patterns/."""
+        rules = self._load_dir(self.project_rules_dir, "project")
+        return {rule.get("name", rule.get("_path", f"project-rule-{i}")): rule for i, rule in enumerate(rules)}
     
     def exists(self, name: str) -> bool:
         """Check if a file pattern rule exists in core."""
@@ -79,26 +94,6 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
     def get_all(self) -> List[Dict[str, Any]]:
         """Get all file pattern rules from core."""
         return list(self.discover_core().values())
-    
-    # ------- Path Resolution -------
-
-    def _resolve_core_rules_dir(self) -> Path:
-        candidate = get_project_config_dir(self.project_root, create=False) / "core" / "rules" / "file_patterns"
-        if candidate.exists():
-            return candidate
-        return get_data_path("rules") / "file_patterns"
-
-    def _resolve_pack_roots(self) -> List[Path]:
-        roots: List[Path] = []
-        project_packs = get_project_config_dir(self.project_root, create=False) / "packs"
-        if project_packs.exists():
-            roots.append(project_packs)
-
-        data_packs = get_data_path("packs")
-        if data_packs.exists() and data_packs not in roots:
-            roots.append(data_packs)
-
-        return roots
 
     @staticmethod
     def _load_yaml(path: Path) -> Dict[str, Any]:
@@ -121,19 +116,25 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
         return rules
 
     def load_core_rules(self) -> List[Dict[str, Any]]:
-        """Return file pattern rules bundled with core (generic only)."""
+        """Return file pattern rules from bundled core (generic only)."""
         return self._load_dir(self.core_rules_dir, "core")
 
     def load_pack_rules(self, pack_name: str) -> List[Dict[str, Any]]:
-        """Return file pattern rules from the given pack if present."""
-        for root in self.pack_roots:
-            candidate = root / pack_name / "rules" / "file_patterns"
-            if candidate.exists():
-                return self._load_dir(candidate, f"pack:{pack_name}")
+        """Return file pattern rules from the given pack (bundled or project)."""
+        # Try bundled pack first
+        bundled_candidate = self.bundled_packs_dir / pack_name / "rules" / "file_patterns"
+        if bundled_candidate.exists():
+            return self._load_dir(bundled_candidate, f"pack:{pack_name}")
+        
+        # Try project pack
+        project_candidate = self.project_packs_dir / pack_name / "rules" / "file_patterns"
+        if project_candidate.exists():
+            return self._load_dir(project_candidate, f"pack:{pack_name}")
+        
         return []
 
     def compose(self, *, active_packs: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-        """Compose core + pack file pattern rules respecting active packs."""
+        """Compose bundled core + pack file pattern rules respecting active packs."""
         rules = list(self.load_core_rules())
         for pack in active_packs or []:
             rules.extend(self.load_pack_rules(pack))

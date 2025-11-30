@@ -42,7 +42,7 @@ setup:
       type: multiselect
       source: discover_packs
       default: []
-      help: "Select technology packs to enable (auto-discovered from .edison/packs/)"
+      help: "Select technology packs to enable (discovered from bundled + .edison/packs/)"
 
     - id: orchestrators
       prompt: "IDE orchestrators"
@@ -107,7 +107,7 @@ setup:
     - id: project_config_dir
       prompt: "Project config directory"
       type: string
-      default: ".agents"
+      default: ".edison"
       help: "Where to store Edison project configuration"
       validation: "^[.a-zA-Z0-9_-]+$"
 
@@ -145,14 +145,14 @@ setup:
       type: multiselect
       source: discover_validators
       default: []
-      help: "Select which validators to enable (core + pack validators)"
+      help: "Select which validators to enable (bundled + pack validators)"
 
     - id: agents
       prompt: "Enable agents"
       type: multiselect
       source: discover_agents
       default: []
-      help: "Select which agents to enable (core + pack agents)"
+      help: "Select which agents to enable (bundled + pack agents)"
 
     - id: tdd_enforcement
       prompt: "TDD enforcement level"
@@ -168,19 +168,31 @@ setup:
       validation: "0-100"
 
 # Discovery sources configuration
+# NOTE: Discovery is handled programmatically by SetupDiscovery class
+# which uses bundled edison.data + project .edison/ directories.
+# These settings are for reference/documentation only.
 discovery:
+  # Packs are discovered from:
+  # - Bundled: edison.data/packs/
+  # - Project: .edison/packs/
   packs:
-    directory: ".edison/packs"
-    pattern: "*/config.yml"
+    bundled: "edison.data/packs"
+    project: ".edison/packs"
 
+  # Orchestrators from bundled config
   orchestrators:
-    config_file: ".edison/core/config/orchestrators.yaml"
+    bundled_config: "edison.data/config/orchestrator.yaml"
     fallback: ["claude", "cursor", "codex"]
 
+  # Validators from bundled + packs
   validators:
-    core_config: ".edison/core/config/validators.yaml"
-    pack_pattern: ".edison/packs/*/config/validators.yml"
+    bundled_config: "edison.data/config/validators.yaml"
+    bundled_pack_pattern: "edison.data/packs/*/config/validators.yml"
+    project_pack_pattern: ".edison/packs/*/config/validators.yml"
 
+  # Agents from bundled + packs
   agents:
-    core_config: ".edison/core/config/agents.yaml"
-    pack_pattern: ".edison/packs/*/config/agents.yml"
+    bundled_config: "edison.data/config/agents.yaml"
+    bundled_agents_dir: "edison.data/agents"
+    bundled_pack_pattern: "edison.data/packs/*/config/agents.yml"
+    project_pack_pattern: ".edison/packs/*/config/agents.yml"

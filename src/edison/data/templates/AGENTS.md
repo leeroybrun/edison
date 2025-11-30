@@ -10,7 +10,7 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.edison/manifest.json` and every `mandatory` entry before touching code. Edison scripts (`session next`, `tasks/claim`) inject rules proactively.
+1. **Mandatory preload** – Load `.edison/manifest.json` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison tasks claim`) injects rules proactively.
 
 2. **Correct intake prompt** – Start every session via `.edison/START.SESSION.md`. That checklist handles QA sweeps + task selection.
 
@@ -71,12 +71,12 @@ Configured in `.edison/manifest.json` under `mandatory` array. May include:
 
 **Proactive Loading Mechanism**:
 
-Edison scripts inject rules automatically:
-- **On planning**: `.edison/core/scripts/session next <session> --with-rules`
-- **On claim**: `.edison/core/scripts/tasks/claim <id> --with-rules`
-- **On QA creation**: `.edison/core/scripts/qa/new <id> --with-rules`
+Edison CLI injects rules automatically:
+- **On planning**: `edison session next <session> --with-rules`
+- **On claim**: `edison tasks claim <id> --with-rules`
+- **On QA creation**: `edison qa new <id> --with-rules`
 
-**Fail-Closed**: If manifest or required configs missing, scripts refuse to proceed.
+**Fail-Closed**: If manifest or required configs missing, CLI refuses to proceed.
 
 ---
 
@@ -110,22 +110,22 @@ Edison scripts inject rules automatically:
 
 Edison guidelines contain **anchored rule IDs** indexed in `.edison/core/rules/registry.yml`.
 
-**Discovery**: 
+**Discovery**:
 ```bash
-.edison/core/scripts/rules list
+edison rules list
 ```
 
 **Show rule details**:
 ```bash
-.edison/core/scripts/rules show <RULE_ID>
+edison rules show <RULE_ID>
 ```
 
 **Require rule in prompt** (outputs wrapped snippet for agent consumption):
 ```bash
-.edison/core/scripts/rules require <RULE_ID>
+edison rules require <RULE_ID>
 ```
 
-**Orchestrators MUST** load every rule ID referenced by `scripts/session next`.
+**Orchestrators MUST** load every rule ID referenced by `edison session next`.
 
 ---
 
@@ -141,7 +141,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 5. **QA** (multi-round validation until approved)
 6. **Session Completion** (transactional restore to global queues)
 
-**Session Timeout**: Sessions expire after `session.timeout_hours` (default 8). Use `scripts/session heartbeat` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
+**Session Timeout**: Sessions expire after `session.timeout_hours` (default 8). Use `edison session heartbeat` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
 
 ---
 
@@ -243,32 +243,32 @@ All in `.edison/core/guidelines/`:
 - `.edison/core/templates/session-workflow.json` - State machine definitions
 - `.edison/START.SESSION.md` - Session intake checklist
 
-### Scripts (Automation)
+### CLI Reference (Automation)
 
 **Session Lifecycle**:
-- `.edison/core/scripts/session` - Session management CLI (new, status, complete, etc.)
-- `.edison/core/scripts/session_next.py` - Action planning and task recommendation
-- `.edison/core/scripts/session_verify.py` - Guard validation
+- `edison session` - Session management CLI (new, status, complete, etc.)
+- `edison session next` - Action planning and task recommendation
+- `edison session verify` - Guard validation
 
 **Task Operations**:
-- `.edison/core/scripts/tasks/claim` - Claim task into session (moves file)
-*- `.edison/core/scripts/tasks/status` - Check task state
-- `.edison/core/scripts/tasks/ready` - Mark task done (triggers validation)
-- `.edison/core/scripts/tasks/split` - Create child tasks for parallel work
-- `.edison/core/scripts/tasks/link` - Link parent-child relationships
+- `edison tasks claim` - Claim task into session (moves file)
+- `edison tasks status` - Check task state
+- `edison tasks ready` - Mark task done (triggers validation)
+- `edison tasks split` - Create child tasks for parallel work
+- `edison tasks link` - Link parent-child relationships
 
 **QA Operations**:
-- `.edison/core/scripts/qa/new` - Create QA brief for task
-- `.edison/core/scripts/qa/round` - Create new validation round
-- `.edison/core/scripts/qa/promote` - Move QA through states (validated, etc.)
-- `.edison/core/scripts/qa/bundle` - Bundle validation for parent+children
+- `edison qa new` - Create QA brief for task
+- `edison qa round` - Create new validation round
+- `edison qa promote` - Move QA through states (validated, etc.)
+- `edison qa bundle` - Bundle validation for parent+children
 
 **Validator Orchestration**:
-- `.edison/core/scripts/validators/run-wave` - Execute validator wave (batched)
-- `.edison/core/scripts/validators/validate` - Aggregate validator verdicts
+- `edison validators run-wave` - Execute validator wave (batched)
+- `edison validators validate` - Aggregate validator verdicts
 
 **Delegation**:
-- `.edison/core/scripts/delegation/validate` - Validate delegation config schema
+- `edison delegation validate` - Validate delegation config schema
 
 ---
 
@@ -316,7 +316,7 @@ For large tasks requiring multiple implementers working simultaneously:
 ### Step 1: Split Task
 
 ```bash
-.edison/core/scripts/tasks/split <parent-task-id> --children 3
+edison tasks split <parent-task-id> --children 3
 ```
 
 Creates:
@@ -329,13 +329,13 @@ Each implementer claims one child task into their own session:
 
 ```bash
 # Implementer A
-.edison/core/scripts/tasks/claim 105 --session session-a
+edison tasks claim 105 --session session-a
 
 # Implementer B
-.edison/core/scripts/tasks/claim 110 --session session-b
+edison tasks claim 110 --session session-b
 
 # Implementer C
-.edison/core/scripts/tasks/claim 115 --session session-c
+edison tasks claim 115 --session session-c
 ```
 
 ### Step 3: Implement in Parallel
@@ -350,7 +350,7 @@ Each follows standard workflow:
 Parent task coordinates validation:
 
 ```bash
-.edison/core/scripts/validators/run-wave <parent-task-id> --bundle
+edison validators run-wave <parent-task-id> --bundle
 ```
 
 Runs validators on **entire cluster** (parent + all children).
@@ -417,10 +417,10 @@ Edison framework is **fail-closed by design**. When something is wrong, **work s
 - Ensures evidence trail completeness
 
 **Recovery**:
-- `.edison/core/scripts/recovery/` contains repair scripts
-- Session timeout: `scripts/recovery/repair-session`
-- Lock contention: `scripts/recovery/clear-locks`
-- Orphaned worktrees: `scripts/recovery/clean-worktrees`
+- Edison CLI provides recovery commands
+- Session timeout: `edison recovery repair-session`
+- Lock contention: `edison recovery clear-locks`
+- Orphaned worktrees: `edison recovery clean-worktrees`
 
 **Never bypass guardrails**. If blocked, fix the underlying issue.
 

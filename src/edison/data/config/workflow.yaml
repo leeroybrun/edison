@@ -1,16 +1,17 @@
-version: "1.0.0"
+workflow:
+  version: "1.0.0"
 
-validationLifecycle:
-  onApprove:
-    qaState: done → validated
-    taskState: done → validated
-  onReject:
-    qaState: wip → waiting
-    taskState: done → wip
-  onRevalidate:
-    qaState: waiting → todo
+  validationLifecycle:
+    onApprove:
+      qaState: done → validated
+      taskState: done → validated
+    onReject:
+      qaState: wip → waiting
+      taskState: done → wip
+    onRevalidate:
+      qaState: waiting → todo
 
-timeouts:
-  staleTaskThreshold: 4h
-  sessionTimeout: 2h
-  validatorTimeout: 5m
+  timeouts:
+    staleTaskThreshold: 4h
+    sessionTimeout: 2h
+    validatorTimeout: 5m

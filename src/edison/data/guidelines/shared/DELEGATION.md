@@ -39,7 +39,7 @@
 ## Enforcement
 - Respect `neverImplementDirectly: true` (or equivalent) flags—those tasks must be delegated.
 - Multi-role tasks marked `partial` should list multiple preferred models; choose a diverse set when delegating waves.
-- Validate configs with guarded helpers (e.g., `scripts/delegation/validate config|decide`) before sending work.
+- Validate configs with guarded helpers (e.g., `edison delegation validate config|decide`) before sending work.
 
 ## Parallelization pattern
 - When work is non-trivial or time-sensitive, split into child tasks per implementer and run in parallel within the concurrency cap.

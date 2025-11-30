@@ -345,7 +345,7 @@ outputs:
 
 composition:
   workflowLoop:
-    command: "scripts/session next"
+    command: "edison session next"
     frequency: "Every task cycle"
     readOrder:
       - "Task file in .project/tasks/"
@@ -371,3 +371,7 @@ composition:
     shingleSize: 12
     threshold: 0.37
     minSimilarity: 0.3
+
+  # Include file settings
+  includes:
+    max_depth: 3

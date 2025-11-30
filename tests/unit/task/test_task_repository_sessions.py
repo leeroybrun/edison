@@ -18,7 +18,7 @@ from edison.core.entity import EntityMetadata
 
 def _bootstrap_repo(repo: Path) -> None:
     create_repo_with_git(repo)
-    config_dir = repo / ".edison" / "core" / "config"
+    config_dir = repo / ".edison" / "config"
     write_yaml(
         config_dir / "defaults.yaml",
         {

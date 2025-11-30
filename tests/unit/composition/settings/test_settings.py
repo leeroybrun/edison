@@ -9,7 +9,6 @@ import pytest
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-core_path = ROOT / ".edison" / "core"
 from edison.core.composition.ide.settings import SettingsComposer, merge_permissions  # type: ignore  # noqa: E402
 
 from helpers.io_utils import write_yaml
@@ -34,7 +33,7 @@ def _core_settings(allow: list[str] | None = None) -> Dict:
 
 def test_load_core_settings(tmp_path: Path) -> None:
     """Core settings load from YAML and expose permissions/env."""
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
 
     composer = SettingsComposer(config={}, repo_root=tmp_path)
     settings = composer.load_core_settings()
@@ -50,7 +49,7 @@ def test_extract_pack_permissions(tmp_path: Path) -> None:
         "settings": {"claude": {"permissions": {"allow": ["Bash(test:*)"], "deny": [], "ask": []}}}
     }
     write_yaml(tmp_path / ".edison/packs/pack1/config/settings.yml", pack_settings)
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
 
     composer = SettingsComposer(config={"packs": {"active": ["pack1"]}}, repo_root=tmp_path)
     perms = composer.extract_pack_permissions("pack1")
@@ -73,7 +72,7 @@ def test_merge_permissions_arrays() -> None:
 
 def test_merge_env_vars(tmp_path: Path) -> None:
     """Env dicts merge with overlay overriding duplicates."""
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
     composer = SettingsComposer(config={}, repo_root=tmp_path)
 
     base = {"env": {"A": "1", "B": "2"}}
@@ -85,7 +84,7 @@ def test_merge_env_vars(tmp_path: Path) -> None:
 
 def test_compose_complete_settings(tmp_path: Path) -> None:
     """Core + pack + project overrides merge into final settings."""
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
     write_yaml(
         tmp_path / ".edison/packs/pack1/config/settings.yml",
         {"settings": {"claude": {"permissions": {"allow": ["PackAllow"], "deny": [], "ask": []}}}},
@@ -118,7 +117,7 @@ def test_compose_with_hooks_section(tmp_path: Path) -> None:
 
     NO MOCKS: Uses real HookComposer with actual hook templates.
     """
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
 
     # Create a real hook definition that HookComposer can process
     hooks_config = {
@@ -134,10 +133,10 @@ def test_compose_with_hooks_section(tmp_path: Path) -> None:
             }
         }
     }
-    write_yaml(tmp_path / ".edison/core/config/hooks.yaml", hooks_config)
+    write_yaml(tmp_path / ".edison/config/hooks.yaml", hooks_config)
 
     # Create the hook template
-    template_dir = tmp_path / ".edison" / "core" / "templates" / "hooks"
+    template_dir = tmp_path / ".edison" / "templates" / "hooks"
     template_dir.mkdir(parents=True, exist_ok=True)
     template_file = template_dir / "test.sh.template"
     template_file.write_text("#!/usr/bin/env bash\n# {{ description }}\necho 'from hook'\n", encoding="utf-8")
@@ -162,7 +161,7 @@ def test_compose_with_hooks_section(tmp_path: Path) -> None:
 
 def test_backup_existing_settings(tmp_path: Path) -> None:
     """Existing settings.json is backed up before overwrite when enabled."""
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", _core_settings())
+    write_yaml(tmp_path / ".edison/config/settings.yaml", _core_settings())
     target = tmp_path / ".claude/settings.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps({"old": True}), encoding="utf-8")
@@ -206,7 +205,7 @@ def test_edison_internal_keys_stripped(tmp_path: Path) -> None:
             }
         }
     }
-    write_yaml(tmp_path / ".edison/core/config/settings.yaml", core_with_internal)
+    write_yaml(tmp_path / ".edison/config/settings.yaml", core_with_internal)
 
     composer = SettingsComposer(config={}, repo_root=tmp_path)
     settings = composer.compose_settings()

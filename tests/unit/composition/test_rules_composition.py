@@ -19,9 +19,9 @@ class TestRulesRegistryAndComposition:
         self,
         isolated_project_env: Path,
     ) -> None:
-        """Core registry is loaded from .edison/core/rules/registry.yml under project root."""
+        """Core registry is loaded from .edison/rules/registry.yml under project root."""
         root = isolated_project_env
-        core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
+        core_registry = root / ".edison" / "rules" / "registry.yml"
 
         write_yaml(
             core_registry,
@@ -42,7 +42,7 @@ class TestRulesRegistryAndComposition:
             },
         )
 
-        guideline = root / ".edison" / "core" / "guidelines" / "VALIDATION.md"
+        guideline = root / ".edison" / "guidelines" / "VALIDATION.md"
         write_guideline(
             guideline,
             "\n".join(
@@ -69,7 +69,7 @@ class TestRulesRegistryAndComposition:
     ) -> None:
         """Anchors are extracted between ANCHOR and END ANCHOR markers."""
         root = isolated_project_env
-        guideline = root / ".edison" / "core" / "guidelines" / "TEST.md"
+        guideline = root / ".edison" / "guidelines" / "TEST.md"
 
         write_guideline(
             guideline,
@@ -106,7 +106,7 @@ class TestRulesRegistryAndComposition:
     ) -> None:
         """Referencing a non-existent anchor fails fast."""
         root = isolated_project_env
-        core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
+        core_registry = root / ".edison" / "rules" / "registry.yml"
 
         write_yaml(
             core_registry,
@@ -126,7 +126,7 @@ class TestRulesRegistryAndComposition:
             },
         )
 
-        guideline = root / ".edison" / "core" / "guidelines" / "BROKEN.md"
+        guideline = root / ".edison" / "guidelines" / "BROKEN.md"
         write_guideline(guideline, "# Broken\nNo anchors here.\n")
 
         with pytest.raises(Exception) as exc:
@@ -141,7 +141,7 @@ class TestRulesRegistryAndComposition:
         """Pack registries are merged with core rules by ID."""
         root = isolated_project_env
 
-        core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
+        core_registry = root / ".edison" / "rules" / "registry.yml"
         write_yaml(
             core_registry,
             {
@@ -161,7 +161,7 @@ class TestRulesRegistryAndComposition:
             },
         )
 
-        core_guideline = root / ".edison" / "core" / "guidelines" / "CORE.md"
+        core_guideline = root / ".edison" / "guidelines" / "CORE.md"
         write_guideline(
             core_guideline,
             "\n".join(
@@ -219,7 +219,7 @@ class TestRulesRegistryAndComposition:
         """Anchors that include files with circular includes surface an error."""
         root = isolated_project_env
 
-        core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
+        core_registry = root / ".edison" / "rules" / "registry.yml"
         write_yaml(
             core_registry,
             {
@@ -238,8 +238,8 @@ class TestRulesRegistryAndComposition:
             },
         )
 
-        a_path = root / ".edison" / "core" / "guidelines" / "A.md"
-        b_path = root / ".edison" / "core" / "guidelines" / "B.md"
+        a_path = root / ".edison" / "guidelines" / "A.md"
+        b_path = root / ".edison" / "guidelines" / "B.md"
 
         write_guideline(
             a_path,

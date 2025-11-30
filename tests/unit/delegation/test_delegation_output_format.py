@@ -31,7 +31,7 @@ class TestDelegationOutputFormat(unittest.TestCase):
         self.assertIn(".edison/core/schemas/reports/delegation-report.schema.json", text)
 
     def test_schema_fields_match_implementation_delegations(self) -> None:
-        """Schema must align with `scripts/implementation/report --add-delegation` format.
+        """Schema must align with `edison implementation report --add-delegation` format.
 
         Implementation expects delegations[] entries with keys:
         - filePattern (required), model (required), role (required)

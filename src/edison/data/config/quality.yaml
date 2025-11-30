@@ -1,0 +1,9 @@
+# Quality Configuration
+# Code quality standards and test coverage requirements
+
+quality:
+  coverage:
+    overall: 80
+    changed: 100
+  allowSkip: false
+  blockOnFailingTests: true

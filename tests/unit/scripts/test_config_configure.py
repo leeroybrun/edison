@@ -44,13 +44,13 @@ def _make_discovery_fixtures(root: Path) -> None:
     write_yaml(root / ".edison/packs/alpha/config.yml", {"id": "alpha"})
     write_yaml(root / ".edison/packs/beta/config.yml", {"id": "beta"})
 
-    # Validators and agents (core discovery paths)
+    # Validators and agents (project config paths)
     write_yaml(
-        root / ".edison/core/config/validators.yaml",
+        root / ".edison/config/validators.yaml",
         {"validators": [{"id": "lint"}, {"id": "security"}]},
     )
     write_yaml(
-        root / ".edison/core/config/agents.yaml",
+        root / ".edison/config/agents.yaml",
         {"agents": [{"id": "builder"}, {"id": "reviewer"}]},
     )
 

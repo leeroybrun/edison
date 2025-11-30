@@ -54,7 +54,7 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str:
     3. Project overrides: {repo_root}/.edison/config/*.yml
 
     Note: DEFAULT_PROJECT_CONFIG_PRIMARY is used for bootstrapping config directory
-    detection. The actual value should be defined in bundled defaults.yaml.
+    detection. The actual value should be defined in bundled paths.yaml.
     """
     # Priority 1: Environment override
     env_override = os.environ.get("EDISON_paths__project_config_dir")
@@ -63,12 +63,11 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str:
 
     value: str | None = None
 
-    # Priority 2: Bundled defaults from edison.data package
+    # Priority 2: Bundled defaults from edison.data package (paths.yaml)
     try:
-
-        bundled_defaults = get_data_path("config", "defaults.yaml")
-        if bundled_defaults.exists():
-            value = _load_project_dir_from_yaml(bundled_defaults) or value
+        bundled_paths = get_data_path("config", "paths.yaml")
+        if bundled_paths.exists():
+            value = _load_project_dir_from_yaml(bundled_paths) or value
     except Exception:
         pass  # Bundled data not available, continue with project config
 

@@ -18,6 +18,6 @@ Report schemas define the structure of output documents produced by agents:
 
 ## Related Code
 
-- `scripts/validators/validate` - Validator execution
+- `edison validators validate` - Validator execution
 - `.project/qa/validation-evidence/` - Validation output storage
 - Agent delegation workflows

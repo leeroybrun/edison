@@ -8,7 +8,6 @@ from typing import Dict
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-CORE_PATH = ROOT / ".edison" / "core"
 from edison.core.adapters import ClaudeAdapter  # type: ignore  # noqa: E402
 
 from helpers.io_utils import write_yaml
@@ -51,9 +50,9 @@ def test_claude_adapter_generates_all(tmp_path: Path) -> None:
     generated_root = _seed_generated(tmp_path)
 
     # Core definitions
-    write_yaml(tmp_path / ".edison/core/config/commands.yaml", {"commands": [_command_def()]})
+    write_yaml(tmp_path / ".edison/config/commands.yaml", {"commands": [_command_def()]})
     write_yaml(
-        tmp_path / ".edison/core/config/hooks.yaml",
+        tmp_path / ".edison/config/hooks.yaml",
         {
             "hooks": {
                 "enabled": True,
@@ -73,7 +72,7 @@ def test_claude_adapter_generates_all(tmp_path: Path) -> None:
         },
     )
 
-    template_dir = tmp_path / ".edison" / "core" / "templates" / "hooks"
+    template_dir = tmp_path / ".edison" / "templates" / "hooks"
     template_dir.mkdir(parents=True, exist_ok=True)
     (template_dir / "demo-hook.sh.template").write_text('echo "{{ config.message }}"\n', encoding="utf-8")
 

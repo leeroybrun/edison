@@ -26,8 +26,8 @@ def render_modular_configs(
             ...
         }
 
-    This follows the same pattern as .edison/core/config/*.yaml where each
-    domain has its own file for better separation of concerns.
+    This follows the modular config pattern where each domain has its own
+    file for better separation of concerns.
     """
     context = build_context_with_defaults(questionnaire, answers)
     config_dict = build_config_dict(context)

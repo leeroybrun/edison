@@ -110,8 +110,11 @@ def test_q2_validators_use_safe_include_directives():
 # -------------------------
 def test_q3_standard_report_template_exists_and_has_required_sections():
     """Q3: Standard report template must exist with required sections."""
-    report_tpl = Path(".edison/core/validators/_report-template.md")
-    assert report_tpl.exists(), "Missing standard report template at .edison/core/validators/_report-template.md"
+    from edison.data import get_data_path
+
+    # Report template is now in bundled data at templates directory
+    report_tpl = get_data_path("templates", "_report-template.md")
+    assert report_tpl.exists(), "Missing standard report template in bundled data"
 
     text = _read_file(report_tpl)
     for section in [

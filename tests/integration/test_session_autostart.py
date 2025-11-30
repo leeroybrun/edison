@@ -59,13 +59,13 @@ class AutoStartEnv:
         run_with_timeout(["git", "add", "README.md"], cwd=self.root, check=True)
         run_with_timeout(["git", "commit", "-m", "init"], cwd=self.root, check=True)
 
-        self.config_dir = self.root / ".edison" / "core" / "config"
+        self.config_dir = self.root / ".edison" / "config"
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.schemas_dir = self.root / ".edison" / "core" / "schemas"
+        self.schemas_dir = self.root / ".edison" / "schemas"
         self.schemas_dir.mkdir(parents=True, exist_ok=True)
 
         # Create guides directory and START.SESSION.md for autostart tests
-        guides_dir = self.root / ".edison" / "core" / "guides"
+        guides_dir = self.root / ".edison" / "guides"
         guides_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy START_NEW_SESSION.md as START.SESSION.md (required by orchestrator.yaml)
