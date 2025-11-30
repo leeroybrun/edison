@@ -24,9 +24,11 @@ def _ensure_core_root_on_sys_path() -> None:
         _core_root = get_repo_root()
 def make_tmp_repo(tmp_path: Path, defaults: dict, project: Optional[dict] = None) -> Path:
     repo = tmp_path
-    # Create .edison/core/config structure so ConfigManager finds it
-    config_dir = repo / ".edison" / "core" / "config"
-    write_yaml(config_dir / "defaults.yaml", defaults)
+    # Create .edison/config structure for project config overlays
+    # ConfigManager loads bundled defaults first, then merges project overlays
+    config_dir = repo / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    write_yaml(config_dir / "custom.yaml", defaults)
     if project is not None:
         write_yaml(repo / "edison.yaml", project)
     # Fake a git root marker so ConfigManager(repo_root=repo) is honored consistently
