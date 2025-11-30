@@ -133,7 +133,7 @@ def test_evidence_service_root_under_management_root(mgmt_repo: Tuple[Path, Path
 
 def test_session_validation_transaction_stages_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.session.transaction as session_tx
+    import edison.core.session.lifecycle.transaction as session_tx
     import edison.core.session._config as session_config
 
     # Clear the config cache to pick up new configuration

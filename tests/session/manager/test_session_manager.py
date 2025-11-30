@@ -2,6 +2,7 @@ import pytest
 import yaml
 from pathlib import Path
 from edison.core.session import lifecycle
+from edison.core.session.lifecycle import manager
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry

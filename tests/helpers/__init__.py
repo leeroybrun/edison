@@ -12,6 +12,7 @@ This module consolidates all test helper utilities into a clean, DRY structure:
 - file_utils: File operation utilities
 - markdown_utils: Markdown parsing utilities
 - io_utils: I/O utilities for writing YAML, JSON, and config files
+- cache_utils: Cache reset utilities for test isolation
 """
 from __future__ import annotations
 
@@ -28,6 +29,9 @@ from tests.helpers.io_utils import (
     create_round_dir,
 )
 
+# Cache utilities for test isolation
+from tests.helpers.cache_utils import reset_edison_caches
+
 # Export main classes and functions - these are the primary interfaces for tests
 __all__ = [
     # Core environment
@@ -41,4 +45,6 @@ __all__ = [
     "write_text",
     "format_round_dir",
     "create_round_dir",
+    # Cache utilities
+    "reset_edison_caches",
 ]

@@ -74,7 +74,7 @@ def session_env():
     # Reload modules so constants derive from the new ROOT
     import importlib
     import edison.core.task as _task  # type: ignore
-    import edison.core.session.manager as _session_manager  # type: ignore
+    import edison.core.session.lifecycle.manager as _session_manager  # type: ignore
     import edison.core.session.worktree as _session_worktree  # type: ignore
     importlib.reload(_task)
     importlib.reload(_session_manager)

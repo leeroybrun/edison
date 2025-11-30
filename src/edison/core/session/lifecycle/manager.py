@@ -46,7 +46,7 @@ def _validate_session_id_format(session_id: str) -> bool:
 
 
 def _get_worktree_config():
-    from ._config import get_config
+    from .._config import get_config
 
     return get_config().get_worktree_config()
 

@@ -60,8 +60,8 @@ def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # Re-initialize module-level roots derived from environment by reloading libs
     import importlib
     import edison.core.task as _task  # type: ignore
-    import edison.core.session.manager as _session_manager  # type: ignore
-    import edison.core.session.recovery as _session_recovery  # type: ignore
+    import edison.core.session.lifecycle.manager as _session_manager  # type: ignore
+    import edison.core.session.lifecycle.recovery as _session_recovery  # type: ignore
     importlib.reload(_task)
     importlib.reload(_session_manager)
     importlib.reload(_session_recovery)

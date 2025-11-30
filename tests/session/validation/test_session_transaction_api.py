@@ -53,7 +53,7 @@ def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import importlib
 
     import edison.core.task as _task  # type: ignore
-    import edison.core.session.transaction as _session_transaction  # type: ignore
+    import edison.core.session.lifecycle.transaction as _session_transaction  # type: ignore
 
     importlib.reload(_task)
     importlib.reload(_session_transaction)

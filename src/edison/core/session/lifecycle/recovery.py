@@ -112,7 +112,7 @@ def append_session_log(session_id: str, message: str) -> None:
             "timestamp": io_utc_timestamp(),
             "message": message
         })
-        from .models import Session
+        from ..core.models import Session
         updated_entity = Session.from_dict(sess)
         repo.save(updated_entity)
     except (FileNotFoundError, OSError) as e:
@@ -232,7 +232,7 @@ def cleanup_expired_sessions() -> List[str]:
             sess_meta.setdefault("lastActive", io_utc_timestamp())
             sess["meta"] = sess_meta
             append_session_log(sid, "Session expired due to inactivity; records restored to global queues")
-            from .models import Session
+            from ..core.models import Session
             updated_entity = Session.from_dict(sess)
             repo.save(updated_entity)
             # Note: save moves the session directory to the new state

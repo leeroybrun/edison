@@ -52,109 +52,16 @@ from config import load_states as load_test_states
 # Repository root (resolved via PathResolver for relocatability)
 REPO_ROOT = PathResolver.resolve_project_root()
 
-
-def _reset_all_global_caches() -> None:
-    """Reset ALL global caches in Edison modules to ensure test isolation."""
-    # Path resolver cache
-    try:
-        import edison.core.utils.paths.resolver as paths  # type: ignore
-        paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
-
-    # Task paths caches - CRITICAL for test isolation
-    try:
-        import edison.core.task.paths as task_paths  # type: ignore
-        task_paths._ROOT_CACHE = None  # type: ignore[attr-defined]
-        task_paths._SESSION_CONFIG_CACHE = None  # type: ignore[attr-defined]
-        task_paths._TASK_CONFIG_CACHE = None  # type: ignore[attr-defined]
-        task_paths._TASK_ROOT_CACHE = None  # type: ignore[attr-defined]
-        task_paths._QA_ROOT_CACHE = None  # type: ignore[attr-defined]
-        task_paths._SESSIONS_ROOT_CACHE = None  # type: ignore[attr-defined]
-        task_paths._TASK_DIRS_CACHE = None  # type: ignore[attr-defined]
-        task_paths._QA_DIRS_CACHE = None  # type: ignore[attr-defined]
-        task_paths._SESSION_DIRS_CACHE = None  # type: ignore[attr-defined]
-        task_paths._PREFIX_CACHE = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
-
-    # State machine caches - session state machine now built from config on-demand
-    # No need to clear session.state cache as it's been removed
-
-    # Clear ALL config caches (central cache.py)
-    try:
-        from edison.core.config.cache import clear_all_caches
-        clear_all_caches()
-    except Exception:
-        pass
-
-    # Session config cache (centralized in _config.py)
-    try:
-        from edison.core.session._config import reset_config_cache
-        reset_config_cache()
-    except Exception:
-        pass
-    
-    # Session store cache
-    try:
-        from edison.core.session._config import reset_config_cache as reset_session_store_cache
-        reset_session_store_cache()
-    except Exception:
-        pass
-
-    try:
-        import edison.core.task.state as task_state  # type: ignore
-        if hasattr(task_state, '_STATE_MACHINE'):
-            task_state._STATE_MACHINE = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
-
-    # Composition module caches - CRITICAL for test isolation
-    composition_modules = [
-        "edison.core.composition.includes",
-        "edison.core.composition.commands",
-        "edison.core.composition.composers",
-        "edison.core.composition.settings",
-        "edison.core.composition.hooks",
-    ]
-    for mod_name in composition_modules:
-        try:
-            import importlib
-            mod = importlib.import_module(mod_name)
-            if hasattr(mod, '_REPO_ROOT_OVERRIDE'):
-                mod._REPO_ROOT_OVERRIDE = None  # type: ignore[attr-defined]
-        except Exception:
-            pass
-
-    # ConfigManager cache
-    try:
-        import edison.core.config as config_mod  # type: ignore
-        if hasattr(config_mod, '_CONFIG_CACHE'):
-            config_mod._CONFIG_CACHE = {}  # type: ignore[attr-defined]
-    except Exception:
-        pass
-
-    try:
-        from edison.core.utils import project_config  # type: ignore
-
-        project_config.reset_project_config_cache()
-    except Exception:
-        pass
-
-    # Management paths singleton cache - CRITICAL for test isolation
-    try:
-        import edison.core.utils.paths.management as management  # type: ignore
-        management._paths_instance = None  # type: ignore[attr-defined]
-    except Exception:
-        pass
+# Import centralized cache reset function (DRY - single source of truth)
+from helpers.cache_utils import reset_edison_caches
 
 
 @pytest.fixture(autouse=True)
 def _reset_global_project_root_cache() -> None:
     """Ensure all global caches are fresh for each test."""
-    _reset_all_global_caches()
+    reset_edison_caches()
     yield
-    _reset_all_global_caches()
+    reset_edison_caches()
 
 
 @pytest.fixture
@@ -520,4 +427,10 @@ def combined_env(tmp_path: Path, repo_root: Path):
 @pytest.fixture
 def project_env(isolated_project_env):
     """Alias for isolated_project_env for backward compatibility."""
+    return isolated_project_env
+
+
+@pytest.fixture
+def project_root(isolated_project_env):
+    """Alias for isolated_project_env for tests expecting project_root fixture."""
     return isolated_project_env

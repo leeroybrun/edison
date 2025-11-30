@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-import subprocess
 import shutil
 
 import pytest
 import yaml
 
 from tests.helpers import create_round_dir
+from tests.helpers.cache_utils import reset_edison_caches
+from edison.core.utils.subprocess import run_with_timeout
 
 
 @pytest.fixture
@@ -19,13 +20,21 @@ def round_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
-    """Create an isolated project with custom QA config."""
+    """Create an isolated project with custom QA config.
+
+    Uses centralized cache_utils for cache reset (DRY principle).
+    """
+    import subprocess
+
+    # Reset caches before setup
+    reset_edison_caches()
+
     # Set up isolated project root
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     monkeypatch.chdir(tmp_path)
 
     # Initialize git repo (required by PathResolver)
-    subprocess.run(
+    run_with_timeout(
         ["git", "init"],
         cwd=tmp_path,
         check=True,
@@ -64,12 +73,7 @@ def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
     config_file = config_dir / "qa.yml"
     config_file.write_text(yaml.safe_dump(custom_config))
 
-    # Clear ALL caches to pick up new config
-    from edison.core.config.cache import clear_all_caches
-    clear_all_caches()
-
-    # Also clear PathResolver cache to ensure it picks up the new root
-    import edison.core.utils.paths.resolver as paths_resolver
-    paths_resolver._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+    # Use centralized cache reset (includes all caches)
+    reset_edison_caches()
 
     return tmp_path
