@@ -53,20 +53,17 @@ def test_worktree_path_uses_project_name_from_config(monkeypatch, isolated_proje
     )
 
     from edison.core.session import worktree
-    from edison.core.config.domains import SessionConfig
+    from edison.core.config.cache import clear_all_caches
     from edison.core.session._config import reset_config_cache
-    
-    # Reset config cache and create fresh config for isolated repo
+
+    # Reset ALL config caches to ensure fresh load from files
+    clear_all_caches()
     reset_config_cache()
-    
+
     # Use monkeypatch to set project root for this test
-    import os
-    os.environ["AGENTS_PROJECT_ROOT"] = str(isolated_project_env)
-    
-    try:
-        target, branch = worktree.resolve_worktree_target("sess-123")
-    finally:
-        del os.environ["AGENTS_PROJECT_ROOT"]
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+
+    target, branch = worktree.resolve_worktree_target("sess-123")
 
     expected_base = (isolated_project_env.parent / "demo-proj-custom" / "sess-123").resolve()
     assert target == expected_base
@@ -102,7 +99,11 @@ def test_default_owner_prefers_config_owner(monkeypatch, isolated_project_env: P
         {"project": {"name": "owner-proj", "owner": "config-owner"}},
     )
 
+    from edison.core.config.cache import clear_all_caches
     from edison.core.config.domains.project import ProjectConfig
+
+    # Clear the config cache to ensure fresh load from files
+    clear_all_caches()
 
     # Pass the isolated project root to ensure config is loaded from the right location
     owner = ProjectConfig(repo_root=isolated_project_env).owner
