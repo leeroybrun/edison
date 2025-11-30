@@ -52,17 +52,18 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
             encoding="utf-8",
         )
 
-    # Config: point management dir to .mgmt and session paths into it
+    # Config: point project config dir to .agents, then point management dir to .mgmt
     write_yaml(
-        tmp_path / ".agents" / "config.yml",
-        {"paths": {"management_dir": ".mgmt"}, "session": {"paths": {"root": ".mgmt/sessions", "archive": ".mgmt/archive", "tx": ".mgmt/sessions/_tx"}}},
+        tmp_path / ".edison" / "config" / "paths.yaml",
+        {"paths": {"project_config_dir": ".agents"}},
     )
     write_yaml(
-        tmp_path / ".edison" / "core" / "config" / "defaults.yaml",
-        {
-            "paths": {"project_config_dir": ".agents"},
-            "session": {"paths": {"root": ".mgmt/sessions", "archive": ".mgmt/archive", "tx": ".mgmt/sessions/_tx"}},
-        },
+        tmp_path / ".agents" / "config.yml",
+        {"paths": {"management_dir": ".mgmt"}},
+    )
+    write_yaml(
+        tmp_path / ".agents" / "config" / "session.yaml",
+        {"session": {"paths": {"root": ".mgmt/sessions", "archive": ".mgmt/archive", "tx": ".mgmt/sessions/_tx"}}},
     )
 
     return tmp_path, mgmt
@@ -70,9 +71,14 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
 def test_questionnaire_defaults_pick_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
     from edison.core.setup import SetupQuestionnaire
+    from edison.core.setup.questionnaire.context import build_context_with_defaults
+    import edison.core.utils.paths.management as mgmt_pkg
+
+    # Reset singleton to pick up new config
+    mgmt_pkg._paths_instance = None
 
     q = SetupQuestionnaire(repo_root=repo, edison_core=Path(__file__).resolve().parents[2])
-    ctx = q._context_with_defaults({})
+    ctx = build_context_with_defaults(q, {})
     assert ctx.get("project_management_dir") == str(mgmt.relative_to(repo))
 
 def test_resolver_project_path_uses_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
@@ -112,7 +118,7 @@ def test_task_context7_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> N
     task_file.write_text("# Task\n\n## Primary Files / Areas\n- src/app.py\n", encoding="utf-8")
 
     import edison.core.task.paths as task_paths
-    import edison.core.qa.context7 as ctx7
+    import edison.core.qa.context.context7 as ctx7
 
     importlib.reload(task_paths)
     importlib.reload(ctx7)
@@ -172,7 +178,7 @@ def test_session_autostart_logs_under_management_dir(mgmt_repo: Tuple[Path, Path
 
 def test_qa_validation_transaction_staging_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.qa.transaction as qa_tx
+    import edison.core.qa.workflow.transaction as qa_tx
 
     importlib.reload(qa_tx)
     tx = qa_tx.ValidationTransaction("task-2", 1)

@@ -28,7 +28,7 @@ class TestNormalizeValidatorEntries:
         result = normalize_validator_entries(
             raw_entries,
             fallback_map={},
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -56,7 +56,7 @@ class TestNormalizeValidatorEntries:
         result = normalize_validator_entries(
             raw_entries,
             fallback_map=fallback_map,
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -92,7 +92,7 @@ class TestNormalizeValidatorEntries:
         result = normalize_validator_entries(
             raw_entries,
             fallback_map={},
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -120,7 +120,7 @@ class TestNormalizeValidatorEntries:
         result = normalize_validator_entries(
             raw_entries,
             fallback_map=fallback_map,
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],

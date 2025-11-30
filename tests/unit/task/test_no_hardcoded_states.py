@@ -186,8 +186,8 @@ statemachine:
         resolver._PROJECT_ROOT_CACHE = None
 
         # Get states from config
-        task_states = get_task_states(repo_root=tmp_path)
-        qa_states = get_qa_states(repo_root=tmp_path)
+        task_states = get_task_states(force_reload=True)
+        qa_states = get_qa_states(force_reload=True)
 
         # Verify they are never empty or None
         assert task_states is not None, "get_task_states() returned None"

@@ -29,7 +29,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="missing-validator",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -66,7 +66,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="python-imports",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -99,7 +99,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="jsx-validator",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=["react"],
@@ -132,7 +132,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="test-validator",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -161,7 +161,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="multi-trigger",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
@@ -187,7 +187,7 @@ class TestMetadataInference:
         try:
             result = infer_validator_metadata(
                 validator_id="unreadable",
-                repo_root=repo_root,
+                project_root=repo_root,
                 project_dir=project_dir,
                 packs_dir=packs_dir,
                 active_packs=[],
@@ -232,7 +232,7 @@ class TestMetadataInference:
 
         result = infer_validator_metadata(
             validator_id="shared-validator",
-            repo_root=repo_root,
+            project_root=repo_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=[],
