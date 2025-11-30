@@ -201,12 +201,31 @@ def infer_session_id() -> str:
     return f"{process_name}-pid-{pid}"
 
 
+def get_current_owner() -> str:
+    """Get the current owner identifier based on process tree.
+
+    The owner is used to identify which process/user owns a session.
+    It's derived from the topmost process in the tree.
+
+    Returns:
+        str: Owner identifier in the form ``{process-name}-pid-{pid}``
+
+    Note:
+        This is the same as infer_session_id() but named for semantic clarity
+        when looking up sessions by owner.
+    """
+    process_name, pid = find_topmost_process()
+    return f"{process_name}-pid-{pid}"
+
+
 __all__ = [
     "HAS_PSUTIL",
     "is_process_alive",
     "find_topmost_process",
     "infer_session_id",
+    "get_current_owner",
 ]
+
 
 
 

@@ -131,7 +131,7 @@ def test_config_functions_work_without_fallbacks(tmp_path):
     This test ensures that the config system always provides states,
     so no fallbacks are needed in the code.
     """
-    from edison.core.config import get_task_states, get_qa_states
+    from edison.core.config.domains.workflow import get_task_states, get_qa_states
     from edison.core.config.cache import clear_all_caches
     import os
 

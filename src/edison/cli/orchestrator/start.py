@@ -10,8 +10,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import (
 from edison.core.session.lifecycle.autostart import SessionAutoStart
+from edison.cli import (
     OutputFormatter,
     add_dry_run_flag,
     add_json_flag,

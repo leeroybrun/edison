@@ -9,8 +9,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import (
 from edison.core.config.domains import OrchestratorConfig
+from edison.cli import (
     OutputFormatter,
     add_json_flag,
     add_repo_root_flag,

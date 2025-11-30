@@ -54,9 +54,10 @@ def test_generation_header_contains_iso_timestamp(tmp_path: Path) -> None:
 
 def test_agent_table_includes_all_registry_agents(tmp_path: Path) -> None:
     output_path = tmp_path / ".edison" / "_generated" / "AVAILABLE_AGENTS.md"
-    registry = AgentRegistry(repo_root=tmp_path)
+    registry = AgentRegistry(project_root=tmp_path)
 
-    expected_names = {agent["name"] for agent in registry.get_all_metadata()}
+    # Get expected names from core agents
+    expected_names = set(registry.discover_core().keys())
 
     generate_available_agents(output_path, repo_root=tmp_path)
     table_names = set(_table_names(_read_file(output_path)))

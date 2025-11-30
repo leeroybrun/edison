@@ -18,6 +18,9 @@ from .transaction import begin_tx, finalize_tx, abort_tx
 from .._config import get_config
 from .._utils import get_sessions_root
 
+# Backward compatibility alias for tests
+_sessions_root = get_sessions_root
+
 logger = logging.getLogger(__name__)
 
 def _session_dir_map() -> Dict[str, Path]:

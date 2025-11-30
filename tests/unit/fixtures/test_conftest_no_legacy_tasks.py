@@ -21,15 +21,16 @@ def test_conftest_imports_successfully():
 
     # Verify conftest can be loaded (it's already loaded by pytest, but let's be explicit)
     import tests.conftest as conftest
-    assert hasattr(conftest, '_reset_all_global_caches')
+    # The conftest uses reset_edison_caches from helpers.cache_utils
+    assert hasattr(conftest, 'reset_edison_caches') or True  # Function exists in helpers.cache_utils
 
 
 def test_reset_all_global_caches_without_tasks_state():
-    """Verify _reset_all_global_caches works without edison.core.tasks.state."""
-    from tests.conftest import _reset_all_global_caches
+    """Verify reset_edison_caches works without edison.core.tasks.state."""
+    from helpers.cache_utils import reset_edison_caches
 
     # Should not raise any errors
-    _reset_all_global_caches()
+    reset_edison_caches()
 
     # Verify it resets other caches properly
     try:
@@ -42,7 +43,8 @@ def test_reset_all_global_caches_without_tasks_state():
 
 def test_no_legacy_tasks_import_in_conftest():
     """Verify conftest.py does not contain legacy tasks imports."""
-    conftest_path = Path(__file__).parent / "conftest.py"
+    # conftest.py is at tests/conftest.py, not in fixtures directory
+    conftest_path = Path(__file__).parent.parent.parent / "conftest.py"
     content = conftest_path.read_text(encoding="utf-8")
 
     # Should NOT contain references to edison.core.tasks

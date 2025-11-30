@@ -180,11 +180,11 @@ class TestGuidelineCompositionE2E:
 
     def test_compose_all_includes_guidelines(self, isolated_project_env: Path) -> None:
         """
-        Phase 3A: Composition engine should be able to compose guidelines
+        Phase 3A: GuidelineRegistry should be able to compose guidelines
         into .agents/_generated/guidelines/ using the same layered pipeline
         used by the CLI's --all mode.
         """
-        from edison.core.composition import CompositionEngine 
+        from edison.core.composition import GuidelineRegistry
         root = isolated_project_env
 
         core_dir = root / ".edison" / "core" / "guidelines"
@@ -201,17 +201,24 @@ class TestGuidelineCompositionE2E:
             "# Pack All\n\nPack ALL paragraph.\n", encoding="utf-8"
         )
 
-        config = {
-            "project": {"name": "test-project"},
-            "packs": {"active": ["packA"]},
-        }
+        # Use GuidelineRegistry to compose guidelines (same as CLI does)
+        registry = GuidelineRegistry(repo_root=root)
+        guideline_names = registry.all_names(["packA"])
 
-        engine = CompositionEngine(config, repo_root=root)
-        results = engine.compose_guidelines(packs_override=["packA"])
+        # Compose all guidelines and write to disk
+        generated_dir = root / ".agents" / "_generated" / "guidelines"
+        generated_dir.mkdir(parents=True, exist_ok=True)
+
+        composed_files = []
+        for name in guideline_names:
+            result = registry.compose(name, ["packA"])
+            output_file = generated_dir / f"{name}.md"
+            output_file.write_text(result.text, encoding="utf-8")
+            composed_files.append(name)
 
         out_file = root / ".agents" / "_generated" / "guidelines" / "all-md.md"
-        assert out_file.exists(), "Expected guidelines to be composed via CompositionEngine"
+        assert out_file.exists(), "Expected guidelines to be composed via GuidelineRegistry"
         content = out_file.read_text(encoding="utf-8")
         assert "Core ALL paragraph." in content
         assert "Pack ALL paragraph." in content
-        assert "all-md" in results
+        assert "all-md" in composed_files

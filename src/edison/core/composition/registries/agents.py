@@ -43,10 +43,10 @@ def compose(
     content_type: str,
     name: str,
     packs: List[str],
-    repo_root: Optional[Path] = None,
+    project_root: Optional[Path] = None,
 ) -> str:
     """Compose a single entity using the layered composition system."""
-    composer = LayeredComposer(repo_root=repo_root, content_type=content_type)
+    composer = LayeredComposer(repo_root=project_root, content_type=content_type)
     return composer.compose(name, packs)
 
 
@@ -101,8 +101,8 @@ class AgentRegistry(BaseRegistry[CoreAgent]):
     
     entity_type: str = "agent"
 
-    def __init__(self, repo_root: Optional[Path] = None) -> None:
-        super().__init__(repo_root)
+    def __init__(self, project_root: Optional[Path] = None) -> None:
+        super().__init__(project_root)
 
         # Use unified composer for ALL discovery
         self._composer = LayeredComposer(repo_root=self.project_root, content_type="agents")
@@ -232,7 +232,7 @@ This constitution contains:
                 content_type="agents",
                 name=agent_name,
                 packs=packs,
-                repo_root=self.repo_root,
+                project_root=self.project_root,
             )
         except CompositionValidationError as e:
             if "not found" in str(e).lower():
@@ -340,10 +340,30 @@ This constitution contains:
         """
         return list(self.discover_core().values())
 
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """Return metadata for all core agents.
 
-def compose_agent(agent_name: str, packs: List[str], *, repo_root: Optional[Path] = None) -> str:
+        Returns:
+            List of metadata dictionaries with 'name', 'type', 'model', 'description'
+        """
+        core_agents = self.discover_core()
+        metadata_list = []
+
+        for name, agent in core_agents.items():
+            front_matter = self._read_front_matter(agent.core_path)
+            metadata_list.append({
+                'name': name,
+                'type': front_matter.get('type', 'implementer'),
+                'model': front_matter.get('model', 'codex'),
+                'description': front_matter.get('description', ''),
+            })
+
+        return metadata_list
+
+
+def compose_agent(agent_name: str, packs: List[str], *, project_root: Optional[Path] = None) -> str:
     """Functional wrapper for AgentRegistry.compose_agent."""
-    registry = AgentRegistry(repo_root=repo_root)
+    registry = AgentRegistry(project_root=project_root)
     return registry.compose_agent(agent_name, packs)
 
 

@@ -24,7 +24,7 @@ def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], pr
 
     AgentRegistry = agents_module.AgentRegistry
 
-    registry = AgentRegistry(repo_root=repo_root)
+    registry = AgentRegistry(project_root=repo_root)
     # Ensure project overlays resolve to the provided project_dir during tests
     registry.project_dir = project_dir
     agents: Dict[str, List[str]] = {

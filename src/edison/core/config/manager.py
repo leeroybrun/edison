@@ -256,7 +256,10 @@ class ConfigManager:
             cfg = self.load_yaml(defaults_path)
 
         if self.core_config_dir.exists():
-            for path in sorted(self.core_config_dir.glob("*.yaml")):
+            # Support both .yml and .yaml extensions for core config files
+            yml_files = list(self.core_config_dir.glob("*.yml"))
+            yaml_files = list(self.core_config_dir.glob("*.yaml"))
+            for path in sorted(yml_files + yaml_files):
                 if path.name == "defaults.yaml":
                     continue
                 module_cfg = self.load_yaml(path)

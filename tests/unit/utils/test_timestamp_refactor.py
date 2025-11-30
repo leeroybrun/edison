@@ -7,8 +7,6 @@ from datetime import datetime
 import re
 
 from edison.core.config.domains import OrchestratorConfig
-from edison.core.orchestrator import OrchestratorLauncher
-from edison.core.session.core.context import SessionContext
 from edison.core.session.lifecycle.recovery import handle_timeout
 from edison.core.utils.time import utc_timestamp
 
@@ -52,6 +50,9 @@ def test_orchestrator_config_timestamp_format(valid_repo):
 
 def test_orchestrator_launcher_log_timestamp(valid_repo):
     """Test that launcher logs use canonical timestamp."""
+    # Import locally to avoid circular import at module level
+    from edison.core.orchestrator import OrchestratorLauncher
+
     config = OrchestratorConfig(repo_root=valid_repo)
 
     if "test" not in config.list_profiles():
@@ -63,7 +64,7 @@ def test_orchestrator_launcher_log_timestamp(valid_repo):
         session_worktree = valid_repo
         session_id = "test_session"
         session = {"meta": {"id": "test_session"}}
-        
+
     launcher = OrchestratorLauncher(config, DummyContext())
     
     log_path = valid_repo / "launcher.log"

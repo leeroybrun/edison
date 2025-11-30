@@ -106,18 +106,19 @@ class SettingsComposer(IDEComposerBase):
         project_settings = self._load_project_settings()
         settings = self.deep_merge_settings(settings, project_settings)
 
-        # Include hooks section when hooks are enabled
-        if (self.config.get("hooks") or {}).get("enabled"):
-            try:
-                from .hooks import HookComposer
+        # Include hooks section (HookComposer loads defaults from bundled config)
+        try:
+            from .hooks import HookComposer
 
-                hook_composer = HookComposer(self.config, self.repo_root)
-                if hasattr(hook_composer, "generate_settings_json_hooks_section"):
-                    hooks_section = hook_composer.generate_settings_json_hooks_section()
-                    if hooks_section:
-                        settings["hooks"] = hooks_section
-            except Exception:
-                pass
+            hook_composer = HookComposer(self.config, self.repo_root)
+            hooks_cfg = hook_composer._hooks_cfg()
+            # Check if hooks are enabled (defaults to True from bundled config)
+            if hooks_cfg.get("enabled", True) is not False:
+                hooks_section = hook_composer.generate_settings_json_hooks_section()
+                if hooks_section:
+                    settings["hooks"] = hooks_section
+        except Exception:
+            pass
 
         # Strip Edison internal control keys that are not valid Claude Code settings
         for key in EDISON_INTERNAL_KEYS:

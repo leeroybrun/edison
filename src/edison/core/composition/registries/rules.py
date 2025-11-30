@@ -22,68 +22,12 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from edison.core.entity import BaseRegistry
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_project_config_dir
+from edison.core.utils.text import extract_anchor_content as _extract_anchor_content
 from edison.data import read_yaml as read_bundled_yaml
 
 from ..includes import resolve_includes, ComposeError
 from ..core.errors import AnchorNotFoundError, RulesCompositionError
 from edison.data import get_data_path
-
-
-def extract_anchor_content(source_file: Path, anchor: str) -> str:
-    """
-    Extract content between ANCHOR markers in a guideline file.
-
-    Supports both explicit END markers and implicit termination at the next
-    ANCHOR marker (or EOF when no END marker is present).
-
-    Args:
-        source_file: Path to the guideline file
-        anchor: Name of the anchor to extract
-
-    Returns:
-        The content between the anchor markers
-
-    Raises:
-        FileNotFoundError: If the source file doesn't exist
-        AnchorNotFoundError: If the anchor isn't found in the file
-    """
-    if not source_file.exists():
-        raise FileNotFoundError(f"Guideline file not found: {source_file}")
-
-    lines = source_file.read_text(encoding="utf-8").splitlines()
-    start_idx: Optional[int] = None
-    end_idx: Optional[int] = None
-
-    start_marker = f"<!-- ANCHOR: {anchor} -->"
-    end_marker = f"<!-- END ANCHOR: {anchor} -->"
-    # Any ANCHOR start (used to detect implicit end)
-    anchor_start_re = re.compile(r"<!--\s*ANCHOR:\s*.+?-->")
-
-    for i, line in enumerate(lines):
-        if start_marker in line:
-            start_idx = i + 1  # content begins after the marker
-            break
-
-    if start_idx is None:
-        raise AnchorNotFoundError(f"Anchor '{anchor}' not found in {source_file}")
-
-    for j in range(start_idx, len(lines)):
-        line = lines[j]
-        if end_marker in line:
-            end_idx = j
-            break
-        if anchor_start_re.search(line):
-            end_idx = j
-            break
-
-    if end_idx is None:
-        end_idx = len(lines)
-
-    body_lines = lines[start_idx:end_idx]
-    body = "\n".join(body_lines).rstrip()
-    if body:
-        body += "\n"
-    return body
 
 
 class RulesRegistry(BaseRegistry[Dict[str, Any]]):
@@ -131,8 +75,34 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         self.packs_root = config_dir / "packs"
         self.project_config_dir = config_dir
     
+    # ------- Utility Methods -------
+
+    @staticmethod
+    def extract_anchor_content(source_file: Path, anchor: str) -> str:
+        """
+        Extract content between ANCHOR markers in a guideline file.
+
+        This is a convenience wrapper around the canonical implementation
+        in edison.core.utils.text.anchors for backwards compatibility.
+
+        Supports both explicit END markers and implicit termination at the next
+        ANCHOR marker (or EOF when no END marker is present).
+
+        Args:
+            source_file: Path to the guideline file
+            anchor: Name of the anchor to extract
+
+        Returns:
+            The content between the anchor markers
+
+        Raises:
+            FileNotFoundError: If the source file doesn't exist
+            AnchorNotFoundError: If the anchor isn't found in the file
+        """
+        return _extract_anchor_content(source_file, anchor)
+
     # ------- BaseRegistry Interface Implementation -------
-    
+
     def discover_core(self) -> Dict[str, Dict[str, Any]]:
         """Discover core rules from bundled registry."""
         registry = self.load_core_registry()
@@ -260,7 +230,7 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
 
         if source_file is not None:
             if anchor:
-                anchor_text = extract_anchor_content(source_file, anchor)
+                anchor_text = self.extract_anchor_content(source_file, anchor)
             else:
                 anchor_text = source_file.read_text(encoding="utf-8")
 
@@ -527,6 +497,10 @@ def filter_rules(context: Dict[str, Any]) -> List[Dict[str, Any]]:
         rules = [r for r in rules if r.get('category') == context['category']]
 
     return rules
+
+
+# Module-level export - delegates to canonical implementation in utils.text.anchors
+extract_anchor_content = _extract_anchor_content
 
 
 __all__ = [

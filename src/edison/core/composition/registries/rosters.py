@@ -26,11 +26,11 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
     """
     ensure_directory(output_path.parent)
 
-    registry = AgentRegistry(repo_root=repo_root)
+    registry = AgentRegistry(project_root=repo_root)
     agents = registry.get_all_metadata()
-    
+
     # Use composition path resolver instead of direct get_project_config_dir
-    resolver = CompositionPathResolver(repo_root or registry.repo_root)
+    resolver = CompositionPathResolver(repo_root or registry.project_root)
     project_dir = resolver.project_dir
     cfg_mgr = ConfigManager(repo_root=repo_root)
 
@@ -52,7 +52,7 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
         content,
         project_dir=project_dir,
         target_path=output_path,
-        repo_root=repo_root or registry.repo_root,
+        repo_root=repo_root or registry.project_root,
     )
     output_path.write_text(content, encoding="utf-8")
 
@@ -70,7 +70,7 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
     ensure_directory(output_path.parent)
 
     # Get validators from registry
-    registry = ValidatorRegistry(repo_root=repo_root)
+    registry = ValidatorRegistry(project_root=repo_root)
     validators_by_tier = registry.get_all_grouped()
 
     # Extract validators by tier
@@ -79,9 +79,9 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
     specialized_validators = validators_by_tier.get('specialized', [])
 
     cfg_mgr = ConfigManager(repo_root=repo_root)
-    
+
     # Use composition path resolver instead of direct get_project_config_dir
-    resolver = CompositionPathResolver(repo_root or registry.repo_root)
+    resolver = CompositionPathResolver(repo_root or registry.project_root)
     project_dir = resolver.project_dir
 
     content = (
@@ -116,7 +116,7 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
         content,
         project_dir=project_dir,
         target_path=output_path,
-        repo_root=repo_root or registry.repo_root,
+        repo_root=repo_root or registry.project_root,
     )
     output_path.write_text(content, encoding="utf-8")
 

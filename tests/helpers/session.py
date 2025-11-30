@@ -7,11 +7,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, Iterator
 
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session.lifecycle.manager import SessionManager
-from edison.core.session.worktree.config_helpers import _get_worktree_base
+from edison.core.session.worktree.config_helpers import (
+    _get_worktree_base,
+    _get_project_name as _core_get_project_name,
+)
+from edison.core.session.lifecycle.transaction import (
+    ValidationTransaction,
+    validation_transaction as _core_validation_transaction,
+)
+from edison.core.session.persistence.database import (
+    _get_database_url as _core_get_database_url,
+)
 
 
 def ensure_session(session_id: str, state: str = "active") -> Path:
@@ -74,3 +84,54 @@ def handle_timeout(session_dir: Path) -> Path:
     mgr.transition_state(sid, "recovery")
     repo = SessionRepository()
     return repo.get_session_json_path(sid).parent
+
+
+def validation_transaction(session_id: str, wave: str) -> Iterator[ValidationTransaction]:
+    """Context manager for validation transactions.
+
+    This is a test helper wrapper around the core validation_transaction
+    context manager from edison.core.session.lifecycle.transaction.
+
+    Args:
+        session_id: The session ID for the validation transaction
+        wave: The validation wave identifier
+
+    Yields:
+        ValidationTransaction: The transaction object that can be committed or aborted
+
+    Example:
+        >>> with validation_transaction(session_id="sess-001", wave="wave1") as tx:
+        ...     # Write validation artifacts to tx.staging_root
+        ...     tx.commit()
+    """
+    return _core_validation_transaction(session_id=session_id, wave=wave)
+
+
+def _get_project_name() -> str:
+    """Get the active project name from configuration.
+
+    This is a test helper wrapper around the core _get_project_name
+    function from edison.core.session.worktree.config_helpers.
+
+    Returns:
+        str: The project name resolved from config, env, or repo folder name
+
+    Raises:
+        ValueError: If project name cannot be determined
+    """
+    return _core_get_project_name()
+
+
+def _get_database_url() -> str:
+    """Get the database URL from configuration.
+
+    This is a test helper wrapper around the core _get_database_url
+    function from edison.core.session.persistence.database.
+
+    Returns:
+        str: The database URL from configuration or environment
+
+    Raises:
+        ValueError: If database.url is not configured when database.enabled is true
+    """
+    return _core_get_database_url()

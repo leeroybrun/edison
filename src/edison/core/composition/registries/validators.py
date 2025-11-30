@@ -28,20 +28,20 @@ from ..core import CompositionPathResolver
 def _discover_validator_file(
     validator_id: str,
     *,
-    repo_root: Path,
+    project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
 ) -> Optional[Path]:
     """Discover validator file using unified path resolution.
-    
+
     Search order (priority):
     1. Generated validators in project
     2. Project validators (explicit project_dir for test compatibility)
     3. Core validators (global, critical, specialized subdirs)
     4. Pack validators
     """
-    resolver = CompositionPathResolver(repo_root, "validators")
+    resolver = CompositionPathResolver(project_root, "validators")
     
     # 1. Check generated validators
     generated_path = resolver.project_dir / "_generated" / "validators" / f"{validator_id}.md"
@@ -84,7 +84,7 @@ def _discover_validator_file(
 def infer_validator_metadata(
     validator_id: str,
     *,
-    repo_root: Path,
+    project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
@@ -96,7 +96,7 @@ def infer_validator_metadata(
 
     Args:
         validator_id: Validator identifier (e.g., "python-imports")
-        repo_root: Repository root path
+        project_root: Project root path
         project_dir: Project configuration directory
         packs_dir: Packs directory path
         active_packs: List of active pack names
@@ -116,7 +116,7 @@ def infer_validator_metadata(
     # Use unified discovery with explicit paths for compatibility
     path = _discover_validator_file(
         validator_id,
-        repo_root=repo_root,
+        project_root=project_root,
         project_dir=project_dir,
         packs_dir=packs_dir,
         active_packs=active_packs,
@@ -157,7 +157,7 @@ def normalize_validator_entries(
     raw_entries,
     *,
     fallback_map: Dict[str, Dict],
-    repo_root: Path,
+    project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
@@ -173,7 +173,7 @@ def normalize_validator_entries(
     Args:
         raw_entries: List of validator entries (dicts or strings)
         fallback_map: Map of validator ID to full metadata dict
-        repo_root: Repository root path
+        project_root: Project root path
         project_dir: Project configuration directory
         packs_dir: Packs directory path
         active_packs: List of active pack names
@@ -194,7 +194,7 @@ def normalize_validator_entries(
                 normalized.append(
                     infer_validator_metadata(
                         entry,
-                        repo_root=repo_root,
+                        project_root=project_root,
                         project_dir=project_dir,
                         packs_dir=packs_dir,
                         active_packs=active_packs,
@@ -228,7 +228,7 @@ def _merge_rosters(
     base_roster: Dict[str, List[Dict]],
     override_roster: Dict[str, List[Dict]],
     *,
-    repo_root: Path,
+    project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
@@ -243,7 +243,7 @@ def _merge_rosters(
     Args:
         base_roster: Base validator roster (from validation config)
         override_roster: Override roster (from validators config)
-        repo_root: Repository root path
+        project_root: Project root path
         project_dir: Project configuration directory
         packs_dir: Packs directory path
         active_packs: List of active pack names
@@ -258,7 +258,7 @@ def _merge_rosters(
         base_entries = normalize_validator_entries(
             base_roster.get(bucket, []),
             fallback_map=base_map,
-            repo_root=repo_root,
+            project_root=project_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=active_packs,
@@ -267,7 +267,7 @@ def _merge_rosters(
         override_entries = normalize_validator_entries(
             override_roster.get(bucket, []),
             fallback_map=base_map,
-            repo_root=repo_root,
+            project_root=project_root,
             project_dir=project_dir,
             packs_dir=packs_dir,
             active_packs=active_packs,
@@ -289,7 +289,7 @@ def _merge_rosters(
 def collect_validators(
     config: Dict,
     *,
-    repo_root: Path,
+    project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
@@ -302,7 +302,7 @@ def collect_validators(
 
     Args:
         config: Full configuration dict
-        repo_root: Repository root path
+        project_root: Project root path
         project_dir: Project configuration directory
         packs_dir: Packs directory path
         active_packs: List of active pack names
@@ -319,7 +319,7 @@ def collect_validators(
     return _merge_rosters(
         base_roster,
         override_roster,
-        repo_root=repo_root,
+        project_root=project_root,
         project_dir=project_dir,
         packs_dir=packs_dir,
         active_packs=active_packs,
@@ -339,11 +339,9 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
     
     entity_type: str = "validator"
 
-    def __init__(self, repo_root: Optional[Path] = None) -> None:
+    def __init__(self, project_root: Optional[Path] = None) -> None:
         """Initialize validator registry with configuration discovery."""
-        super().__init__(repo_root)
-        # Alias for compatibility
-        self.repo_root = self.project_root
+        super().__init__(project_root)
 
         # Use composition path resolver (SINGLE SOURCE OF TRUTH)
         path_resolver = CompositionPathResolver(self.project_root, "validators")
@@ -385,7 +383,7 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
 
         # Load configuration
         from edison.core.config import ConfigManager
-        cfg_mgr = ConfigManager(self.repo_root)
+        cfg_mgr = ConfigManager(self.project_root)
         try:
             config = cfg_mgr.load_config(validate=False)
         except FileNotFoundError:
@@ -399,7 +397,7 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
         # Collect validators
         roster = collect_validators(
             config,
-            repo_root=self.repo_root,
+            project_root=self.project_root,
             project_dir=self.project_dir,
             packs_dir=self.packs_dir,
             active_packs=packs,
@@ -473,7 +471,7 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
         # Collect validators grouped by tier
         roster = collect_validators(
             config,
-            repo_root=self.project_root,
+            project_root=self.project_root,
             project_dir=self.project_dir,
             packs_dir=self.packs_dir,
             active_packs=packs,

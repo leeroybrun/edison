@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from edison.core.session.next import compute_next
 from edison.core.session.lifecycle import manager as session_manager
 from edison.core.session.core.id import validate_session_id
 from edison.core.session.core.context import SessionContext
 from edison.core.session import persistence as graph
 from edison.core.task import TaskRepository
-from edison.core.qa import QARepository
 from edison.core import task  # for read_metadata
 from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.utils.io import read_json as io_read_json
@@ -20,7 +19,9 @@ from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
 from edison.core.utils.cli.arguments import parse_common_args
 from edison.core.utils.cli.output import output_json, error, success
-import argparse
+
+if TYPE_CHECKING:
+    from edison.core.qa.workflow.repository import QARepository
 
 
 def _latest_round_dir(task_id: str) -> Optional[Path]:
@@ -33,6 +34,10 @@ def _latest_round_dir(task_id: str) -> Optional[Path]:
 
 
 def verify_session_health(session_id: str) -> Dict[str, Any]:
+    # Lazy import to avoid circular dependency
+    from edison.core.qa.workflow.repository import QARepository
+    from edison.core.session.next import compute_next
+
     session_id = validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
         session = session_manager.get_session(session_id)

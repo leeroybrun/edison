@@ -163,7 +163,7 @@ def test_session_next_scans_management_tasks(mgmt_repo: Tuple[Path, Path]) -> No
 
 def test_session_autostart_logs_under_management_dir(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo
-    import edison.core.session.autostart as autostart
+    from edison.core.session.lifecycle import autostart
 
     importlib.reload(autostart)
     sa = autostart.SessionAutoStart(project_root=repo)

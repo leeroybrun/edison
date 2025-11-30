@@ -122,6 +122,46 @@ def graceful_degradation(fallback_value: Any):
     return decorator
 
 
+def list_recoverable_sessions() -> list[Path]:
+    """List all recoverable sessions from the recovery directory.
+
+    Returns a list of session directories in the recovery folder,
+    sorted by recovery.json modification time (oldest first).
+    Symlinks are followed but not recursed into to prevent cycles.
+
+    Returns:
+        List of Path objects representing recoverable session directories
+    """
+    from edison.core.session._utils import get_sessions_root
+
+    sessions_root = get_sessions_root()
+    recovery_root = sessions_root / "recovery"
+
+    if not recovery_root.exists():
+        return []
+
+    sessions = []
+    for entry in recovery_root.iterdir():
+        # Skip symlinks to prevent recursion cycles
+        if entry.is_symlink():
+            continue
+
+        # Only include directories with recovery.json
+        if entry.is_dir() and (entry / "recovery.json").exists():
+            sessions.append(entry)
+
+    # Sort by recovery.json modification time (oldest first)
+    def get_recovery_mtime(session_dir: Path) -> float:
+        recovery_json = session_dir / "recovery.json"
+        try:
+            return recovery_json.stat().st_mtime
+        except (FileNotFoundError, OSError):
+            return 0.0
+
+    sessions.sort(key=get_recovery_mtime)
+    return sessions
+
+
 def resume_from_recovery(recovery_dir: Path) -> Path:
     """Move a session from ``recovery`` back to ``active``.
 
@@ -152,7 +192,7 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     payload = io_utils.read_json(sess_json, default={})
     if not isinstance(payload, dict):
         payload = {}
-        
+
     payload["state"] = "Active"
     io_utils.write_json_atomic(sess_json, payload, ensure_ascii=False)
     return dest_dir

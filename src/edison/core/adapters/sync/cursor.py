@@ -413,7 +413,7 @@ class CursorSync:
 
     def _auto_compose_agents(self, src_dir: Path) -> int:
         """Compose agents into `<project_config_dir>/_generated/agents` when missing."""
-        registry = AgentRegistry(repo_root=self.repo_root)
+        registry = AgentRegistry(project_root=self.repo_root)
         core_agents = registry.discover_core()
         if not core_agents:
             return 0
@@ -424,7 +424,7 @@ class CursorSync:
         count = 0
         for name in sorted(core_agents.keys()):
             try:
-                text = compose_agent(name, packs=packs, repo_root=self.repo_root)
+                text = compose_agent(name, packs=packs, project_root=self.repo_root)
             except AgentError:
                 continue
             out_file = src_dir / f"{name}.md"

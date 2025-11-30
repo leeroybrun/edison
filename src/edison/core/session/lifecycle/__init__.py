@@ -37,7 +37,12 @@ from .autostart import (
     SessionAutoStartError,
     SessionAutoStart,
 )
-from .verify import verify_session_health
+
+# verify_session_health is imported lazily to avoid circular import with qa module
+def verify_session_health(session_id: str):
+    """Verify session health. Lazy wrapper to avoid circular import."""
+    from .verify import verify_session_health as _verify
+    return _verify(session_id)
 
 __all__ = [
     # Manager

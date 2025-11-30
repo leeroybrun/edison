@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover - handled at runtime
     Template = None  # type: ignore[assignment]
 
 from edison.core.utils.io import ensure_directory
+from edison.data import get_data_path
 from .base import IDEComposerBase
 
 
@@ -50,14 +51,18 @@ class HookComposer(IDEComposerBase):
 
     def __init__(self, config: Optional[Dict] = None, repo_root: Optional[Path] = None) -> None:
         super().__init__(config=config, repo_root=repo_root)
-        self.templates_dir = self.core_dir / "templates" / "hooks"
+        # Use bundled Edison data for templates (not project's core_dir)
+        self.templates_dir = get_data_path("templates", "hooks")
+        # Bundled Edison config directory
+        self._bundled_config_dir = get_data_path("config")
 
     # ----- Public API -----
     def load_definitions(self) -> Dict[str, HookDefinition]:
         """Load and merge hook definitions from core, packs, and project overrides."""
         merged: Dict[str, Dict[str, Any]] = {}
 
-        core_file = self.core_dir / "config" / "hooks.yaml"
+        # Load from bundled Edison core config first
+        core_file = self._bundled_config_dir / "hooks.yaml"
         merged = self._merge_from_file(merged, core_file)
 
         for pack in self._active_packs():
@@ -205,9 +210,10 @@ class HookComposer(IDEComposerBase):
         if not name:
             return None
 
+        # Priority: project templates > bundled Edison templates
         candidates = [
             self.project_dir / "templates" / "hooks" / name,
-            self.core_dir / "templates" / "hooks" / name,
+            self.templates_dir / name,  # Bundled Edison templates
         ]
         for candidate in candidates:
             if candidate.exists():
@@ -233,13 +239,25 @@ class HookComposer(IDEComposerBase):
         }
 
         if template_path and template_path.exists():
+            raw = template_path.read_text(encoding="utf-8")
+            # Check if template uses Jinja2 block tags that require full Jinja2
+            if Template is None and self._uses_jinja2_block_tags(raw):
+                raise RuntimeError(
+                    f"Template '{template_path.name}' uses Jinja2 block tags "
+                    f"({{% set %}}, {{% if %}}, {{% for %}}, etc.) but Jinja2 is not installed. "
+                    f"Install Jinja2 with: pip install Jinja2>=3.0"
+                )
             if Template is None:
-                raw = template_path.read_text(encoding="utf-8")
                 return self._render_basic_template(raw, context)
             template = Template(template_path.read_text(encoding="utf-8"))
             return template.render(**context)
 
         raise ValueError(f"Template not found for hook: {hook_def.id}")
+
+    def _uses_jinja2_block_tags(self, text: str) -> bool:
+        """Check if template text contains Jinja2 block tags that require full Jinja2."""
+        # Match {% ... %} block tags (set, if, for, endif, endfor, else, elif, etc.)
+        return bool(re.search(r"{%\s*\w+", text))
 
     def _render_basic_template(self, text: str, context: Dict) -> str:
         """Very small placeholder renderer for when Jinja2 is unavailable."""

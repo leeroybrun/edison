@@ -10,7 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
-from edison.core.git import status as git_status
 
 SUMMARY = "Run pre-commit validations"
 
@@ -33,6 +32,9 @@ def main(args: argparse.Namespace) -> int:
     repo_root = get_repo_root(args)
 
     try:
+        # Import from centralized utils.git package
+        from edison.core.utils.git import status as git_status
+
         # Get staged files
         result = git_status.get_status(repo_root=repo_root)
         staged_files = result.get("staged", [])

@@ -12,6 +12,7 @@ import sys
 from edison.cli import add_json_flag, OutputFormatter
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
+from edison.core.session.current import get_current_session
 
 SUMMARY = "Display current session status"
 
@@ -35,27 +36,29 @@ def main(args: argparse.Namespace) -> int:
         session_id = args.session_id
         if session_id:
             session_id = validate_session_id(session_id)
-            session = session_manager.get_session(session_id)
         else:
-            # Get current/active session
-            sessions = session_manager.list_sessions()
-            active = [s for s in sessions if s.get("status") == "active"]
-            if active:
-                session = active[0]
-                session_id = session.get("id", "unknown")
-            else:
+            # Get current/active session using the proper resolver
+            session_id = get_current_session()
+            if not session_id:
                 formatter.error("No active session found.", error_code="no_session")
                 return 1
+
+        # Get full session data
+        session = session_manager.get_session(session_id)
 
         if formatter.json_mode:
             formatter.json_output(session)
         else:
             formatter.text(f"Session: {session_id}")
-            formatter.text(f"Status: {session.get('status', 'unknown')}")
-            if session.get("task"):
-                formatter.text(f"Task: {session.get('task')}")
-            if session.get("owner"):
-                formatter.text(f"Owner: {session.get('owner')}")
+            # Session data uses 'state' not 'status' based on lifecycle/manager.py
+            state = session.get("state") or session.get("meta", {}).get("status", "unknown")
+            formatter.text(f"Status: {state}")
+            task = session.get("task") or session.get("meta", {}).get("task")
+            if task:
+                formatter.text(f"Task: {task}")
+            owner = session.get("owner") or session.get("meta", {}).get("owner")
+            if owner:
+                formatter.text(f"Owner: {owner}")
 
         return 0
 

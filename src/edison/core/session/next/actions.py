@@ -4,7 +4,8 @@ Functions for building action recommendations and related task discovery.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import fnmatch
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from edison.core.session import lifecycle as session_manager
 from edison.core.qa.evidence import (
@@ -17,8 +18,9 @@ from edison.core.qa.evidence import (
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.utils.io import read_json as io_read_json
 from edison.core.task import TaskRepository, safe_relative
-from edison.core.qa import QARepository
-import fnmatch
+
+if TYPE_CHECKING:
+    from edison.core.qa.workflow.repository import QARepository
 
 
 def infer_task_status(task_id: str) -> str:
@@ -33,6 +35,8 @@ def infer_task_status(task_id: str) -> str:
 
 def infer_qa_status(task_id: str) -> str:
     """Infer QA status from filesystem location."""
+    # Lazy import to avoid circular dependency
+    from edison.core.qa.workflow.repository import QARepository
     try:
         qa_repo = QARepository()
         p = qa_repo.get_path(task_id)

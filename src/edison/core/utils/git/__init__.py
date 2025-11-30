@@ -26,6 +26,7 @@ from .worktree import (
     is_worktree_registered,
     list_worktrees,
 )
+from .status import get_status
 
 __all__ = [
     # repository
@@ -44,6 +45,8 @@ __all__ = [
     "get_current_branch",
     "is_clean_working_tree",
     "get_changed_files",
+    # status
+    "get_status",
 ]
 
 

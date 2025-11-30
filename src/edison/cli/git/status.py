@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.git import status as git_status
 
 SUMMARY = "Show Edison-aware git status"
 
@@ -38,6 +37,9 @@ def main(args: argparse.Namespace) -> int:
 
     
     try:
+        # Import from centralized utils.git package
+        from edison.core.utils.git import status as git_status
+
         repo_root = get_repo_root(args)
 
         # Get git status

@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
     "PyYAML>=6.0",
     "jsonschema>=4.0",
+    "Jinja2>=3.0",
 ]
 
 [project.optional-dependencies]
