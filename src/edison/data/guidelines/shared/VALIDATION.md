@@ -110,7 +110,7 @@ Repeat until APPROVE or escalate
 
 1. **Read rejection report**: Understand ALL issues
 2. **Fix ALL issues**: Don't fix one and re-submit
-3. **Re-run failed validators**: Use `edison validate --validators=<failed>`
+3. **Re-run failed validators**: Use `edison qa validate --validators=<failed>`
 4. **Document fixes**: Update implementation report
 
 ### Maximum Rounds
@@ -144,7 +144,7 @@ Session completion enforces: parent is `tasks/validated/` with QA in `qa/done|va
 
 ### Non-blocking follow-ups - create but do not link
 - For non-blocking follow-ups reported by validators, tasks MUST be created in `tasks/todo/` before QA can move `wip -> done`, but MUST NOT be linked as children of the parent (to avoid gating the parent's promotion).
-- The guard `edison qa promote` enforces this by calling `edison tasks ensure-followups --source validator --enforce`.
+- The guard `edison qa promote` enforces this by calling `edison task ensure_followups --source validator --enforce`.
 
 ### When to create follow-up tasks
 - Validators may suggest improvements that are not blocking (e.g., "consider adding more edge case tests")

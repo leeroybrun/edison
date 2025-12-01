@@ -50,7 +50,7 @@ edison session next sess-001
 ### Create New Session
 
 ```bash
-edison session new --owner <owner> --mode start
+edison session create --session-id <id>
 ```
 
 **Purpose**: Create a session record in `sessions/wip/`
@@ -58,7 +58,7 @@ edison session new --owner <owner> --mode start
 
 **Example:**
 ```bash
-edison session new --owner claude-orchestrator --mode start
+edison session create --session-id sess-001
 ```
 
 ---
@@ -122,7 +122,7 @@ edison session complete <session-id>
 ### List Ready Tasks
 
 ```bash
-edison tasks ready
+edison task ready
 ```
 
 **Purpose**: Show tasks ready to be claimed
@@ -139,7 +139,7 @@ TASK-124  [todo]   Add email validation
 ### Claim Task
 
 ```bash
-edison tasks claim <task-id> [--session <session-id>]
+edison task claim <task-id> [--session <session-id>]
 ```
 
 **Purpose**: Claim a task from `todo → wip` and bind to session
@@ -147,7 +147,7 @@ edison tasks claim <task-id> [--session <session-id>]
 
 **Example:**
 ```bash
-edison tasks claim TASK-123 --session sess-001
+edison task claim TASK-123 --session sess-001
 ```
 
 **Effects:**
@@ -160,7 +160,7 @@ edison tasks claim TASK-123 --session sess-001
 ### Task Status
 
 ```bash
-edison tasks status <task-id> [--json]
+edison task status <task-id> [--json]
 ```
 
 **Purpose**: Inspect task state and metadata
@@ -168,7 +168,7 @@ edison tasks status <task-id> [--json]
 
 **Example:**
 ```bash
-edison tasks status TASK-123 --json
+edison task status TASK-123 --json
 ```
 
 ---
@@ -176,7 +176,7 @@ edison tasks status TASK-123 --json
 ### Task Ready (Promote to Done)
 
 ```bash
-edison tasks ready <task-id> [--session <session-id>]
+edison task ready <task-id> [--session <session-id>]
 ```
 
 **Purpose**: Move task from `wip → done` with evidence checks
@@ -190,7 +190,7 @@ edison tasks ready <task-id> [--session <session-id>]
 
 **Example:**
 ```bash
-edison tasks ready TASK-123 --session sess-001
+edison task ready TASK-123 --session sess-001
 ```
 
 **Effects:**
@@ -338,10 +338,10 @@ edison rules show-for-context context budget
 edison session next sess-001
 
 # 2. List ready tasks
-edison tasks ready
+edison task ready
 
 # 3. Claim task
-edison tasks claim TASK-123 --session sess-001
+edison task claim TASK-123 --session sess-001
 
 # 4. Delegate implementation
 # (use Task tool to delegate to appropriate agent)
@@ -354,10 +354,10 @@ edison session next sess-001
 
 ```bash
 # 1. Verify implementation complete
-edison tasks status TASK-123
+edison task status TASK-123
 
 # 2. Promote to done
-edison tasks ready TASK-123 --session sess-001
+edison task ready TASK-123 --session sess-001
 
 # 3. Start validation
 edison qa promote --task TASK-123 --to todo
@@ -376,8 +376,8 @@ edison session next sess-001
 
 ```bash
 # 1. Claim multiple independent tasks
-edison tasks claim TASK-123 --session sess-001
-edison tasks claim TASK-124 --session sess-001
+edison task claim TASK-123 --session sess-001
+edison task claim TASK-124 --session sess-001
 
 # 2. Delegate to multiple agents concurrently
 # (use Task tool with parallel invocations)

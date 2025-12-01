@@ -16,7 +16,7 @@ This guide covers CLI commands relevant to agents and implementers working on as
 ### Task Status
 
 ```bash
-edison tasks status <task-id>
+edison task status <task-id>
 ```
 
 **Purpose**: Check the current state of your assigned task
@@ -39,10 +39,10 @@ edison tasks status <task-id>
 **Common usage:**
 ```bash
 # Check current task
-edison tasks status TASK-123
+edison task status TASK-123
 
 # JSON output for parsing
-edison tasks status TASK-123 --json
+edison task status TASK-123 --json
 ```
 
 ---
@@ -50,7 +50,7 @@ edison tasks status TASK-123 --json
 ### Implementation Tracking
 
 ```bash
-edison track start --task <task-id> --type implementation --round <N>
+edison session track start --task <task-id> --type implementation
 ```
 
 **Purpose**: Prepare evidence directory for implementation work
@@ -58,13 +58,13 @@ edison track start --task <task-id> --type implementation --round <N>
 
 **Example:**
 ```bash
-edison track start --task TASK-123 --type implementation --round 1
+edison session track start --task TASK-123 --type implementation
 ```
 
 ---
 
 ```bash
-edison track complete --task <task-id> --type implementation --round <N> --model <model>
+edison session track complete --task <task-id>
 ```
 
 **Purpose**: Record completion of implementation work
@@ -72,7 +72,7 @@ edison track complete --task <task-id> --type implementation --round <N> --model
 
 **Example:**
 ```bash
-edison track complete --task TASK-123 --type implementation --round 1 --model claude
+edison session track complete --task TASK-123
 ```
 
 **This writes**: `.project/qa/validation-evidence/TASK-123/round-1/implementation-report.json`
@@ -114,12 +114,12 @@ Parameters:
 
 **❌ DO NOT run these commands** (orchestrator-only):
 - `edison session next/start/status/close` - Session management
-- `edison tasks claim/ready` - Task orchestration
+- `edison task claim/ready` - Task orchestration
 - `edison qa promote` - QA state transitions
 - Any delegation commands
 
 **❌ DO NOT run these commands** (validator-only):
-- `edison validators validate` - Run validation
+- `edison qa validate` - Run validation
 - `edison qa bundle` - Create validation bundles
 - Any validator execution commands
 
@@ -129,16 +129,16 @@ Parameters:
 
 ```bash
 # 1. Check task details
-edison tasks status TASK-123
+edison task status TASK-123
 
 # 2. Prepare evidence directory
-edison track start --task TASK-123 --type implementation --round 1
+edison session track start --task TASK-123 --type implementation
 
 # 3. Implement feature (your actual work)
 # ... make code changes, write tests, etc ...
 
 # 4. Record completion
-edison track complete --task TASK-123 --type implementation --round 1 --model claude
+edison session track complete --task TASK-123
 
 # 5. Report back to orchestrator
 # "Implementation complete. Ready for validation."
@@ -166,7 +166,7 @@ get-library-docs(
 
 ```bash
 # Verify current state
-edison tasks status TASK-123 --json
+edison task status TASK-123 --json
 
 # Check validation requirements from output
 # Ensure all implementation is complete
@@ -190,8 +190,8 @@ edison tasks status TASK-123 --json
 
 ## Best Practices
 
-1. **Always track work**: Use `edison track start` before implementation
-2. **Complete tracking**: Use `edison track complete` when done
+1. **Always track work**: Use `edison session track start` before implementation
+2. **Complete tracking**: Use `edison session track complete` when done
 3. **Check task status**: Verify task details before and after work
 4. **Use Context7**: Look up current documentation, don't rely on outdated info
 5. **Report clearly**: Tell orchestrator when implementation is complete

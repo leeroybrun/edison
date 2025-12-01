@@ -48,6 +48,6 @@ Read full: `.edison/_generated/guidelines/shared/CONTEXT7.md`.
 <!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED END -->
 
 ## Auto-detection & enforcement
-- `edison tasks ready` auto-detects post-training packages from the git diff and blocks readiness if matching markers are absent.
+- `edison task ready` auto-detects post-training packages from the git diff and blocks readiness if matching markers are absent.
 - State machine guards reuse the detection results; you cannot bypass Context7 by skipping the ready step.
 - Use `--session <id>` so detection runs against the correct session worktree.

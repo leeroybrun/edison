@@ -23,7 +23,7 @@ Every task follows this three-phase workflow:
 
 ```bash
 # Claim the task assigned by orchestrator
-edison tasks claim <task-id>
+edison task claim <task-id>
 ```
 
 **What this does**:
@@ -69,7 +69,7 @@ npm run build
 
 ```bash
 # Mark task ready for validation
-edison tasks ready <task-id>
+edison task ready <task-id>
 ```
 
 **What this does**:
@@ -114,16 +114,16 @@ Every implementation round must provide:
 ### Task Management
 ```bash
 # List tasks ready to claim
-edison tasks ready
+edison task ready
 
 # Claim a task
-edison tasks claim <task-id>
+edison task claim <task-id>
 
 # Check task status
-edison tasks status <task-id>
+edison task status <task-id>
 
 # Mark task ready for validation
-edison tasks ready <task-id>
+edison task ready <task-id>
 ```
 
 ### QA and Evidence
@@ -138,7 +138,7 @@ edison qa status <task-id>
 ### Validation
 ```bash
 # Orchestrator runs validation (agents do NOT run this)
-edison validators validate <task-id>
+edison qa validate <task-id>
 ```
 
 ## Critical Rules

@@ -4,17 +4,22 @@
 
 You are resuming session: `{{session_id}}`
 
-Run the resume command:
+Check session status:
 ```bash
-edison session resume {{session_id}}
+edison session status {{session_id}}
+```
+
+Then resume work by running:
+```bash
+edison session next {{session_id}}
 ```
 
 ## Recovery Checklist
 
 1. ✅ Re-read your constitution: `.edison/_generated/constitutions/ORCHESTRATORS.md`
 2. ✅ Check session state: `edison session status`
-3. ✅ Review in-progress tasks: `edison tasks list --status=wip`
-4. ✅ Check for blocked tasks: `edison tasks list --status=blocked`
+3. ✅ Review in-progress tasks: `edison task list --status=wip`
+4. ✅ Check for blocked tasks: `edison task list --status=blocked`
 
 ## State Assessment
 
@@ -51,9 +56,9 @@ Valid state transitions:
 - NEW → WIP → READY → VALIDATING → COMPLETE
 
 Transition triggers:
-- NEW → WIP: claim a task (`edison tasks claim <task-id>`)
+- NEW → WIP: claim a task (`edison task claim <task-id>`)
 - WIP → READY: mark ready after TDD green and evidence
-- READY → VALIDATING: run validators (`edison validate <task-id>`)
+- READY → VALIDATING: run validators (`edison qa validate <task-id>`)
 - VALIDATING → COMPLETE: validators approve with no blockers
 
 State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).

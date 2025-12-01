@@ -308,12 +308,12 @@ Example:
 ## Workflows
 
 ### Mandatory Implementation Workflow
-1. Claim task via `edison tasks claim`.
+1. Claim task via `edison task claim`.
 2. Create QA brief via `edison qa new`.
 3. Perform the review, validating RED -> GREEN -> REFACTOR sequencing by the implementer and running checks as needed.
 4. Use Context7 for freshness when libraries are touched; annotate markers.
 5. Generate the review report (implementation report format) with findings and evidence.
-6. Mark ready via `edison tasks ready`.
+6. Mark ready via `edison task ready`.
 
 ### Delegation Workflow
 - Scope is review-only; if asked to implement, return `MISMATCH` with rationale.

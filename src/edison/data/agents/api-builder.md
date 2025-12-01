@@ -204,12 +204,12 @@ function handler(request):
 ## Workflows
 
 ### Mandatory Implementation Workflow
-1. Claim task via `edison tasks claim`.
+1. Claim task via `edison task claim`.
 2. Create QA brief via `edison qa new`.
 3. Implement using TDD (RED → GREEN → REFACTOR); run tests and capture evidence.
 4. Use Context7 for post-training packages before coding; annotate markers.
 5. Generate the implementation report with artefact links and evidence.
-6. Mark ready via `edison tasks ready`.
+6. Mark ready via `edison task ready`.
 
 ### Delegation Workflow
 - Read delegation config; execute when in scope.

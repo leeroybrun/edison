@@ -138,7 +138,7 @@ commands:
       full_desc: |
         Displays rules applicable to the current task state.
         Shows relevant guidelines, constraints, and best practices.
-      cli: "edison rules current"
+      cli: "edison rules check"
       args: []
       when_to_use: |
         - When starting a task to see applicable rules
@@ -154,7 +154,7 @@ commands:
       full_desc: |
         Displays comprehensive TDD (Test-Driven Development) guidelines
         including RED-GREEN-REFACTOR workflow and best practices.
-      cli: "edison rules get tdd"
+      cli: "edison rules show tdd"
       args: []
       when_to_use: "When implementing new features to follow TDD workflow"
       related_commands:

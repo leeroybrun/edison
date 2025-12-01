@@ -58,7 +58,7 @@ Your work is validated by the roster in `AVAILABLE_VALIDATORS.md`, organized int
 ```
 Agent completes work
         ↓
-Agent marks task ready (edison tasks ready <task-id>)
+Agent marks task ready (edison task ready <task-id>)
         ↓
 Orchestrator runs validators (batched parallel waves)
         ↓
@@ -167,16 +167,16 @@ Evidence stored in: `.project/qa/validation-evidence/<task-id>/round-N/`
 
 ```bash
 # Mark task ready for validation (agent)
-edison tasks ready <task-id>
+edison task ready <task-id>
 
 # Check validation status (orchestrator)
-edison validators status <task-id>
+edison qa validate <task-id>
 
 # View validator reports (after validation)
 cat .project/qa/validation-evidence/<task-id>/round-N/bundle-*.json
 ```
 
-**NOTE**: Agents do NOT run `edison validators validate` - the orchestrator does.
+**NOTE**: Agents do NOT run `edison qa validate` - the orchestrator does.
 
 ## References
 

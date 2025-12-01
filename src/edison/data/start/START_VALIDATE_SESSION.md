@@ -8,7 +8,7 @@ This session is for running validators only, not implementation.
 
 1. ✅ Read validator constitution: `.edison/_generated/constitutions/VALIDATORS.md`
 2. ✅ Load validator roster: `.edison/_generated/AVAILABLE_VALIDATORS.md`
-3. ✅ Identify tasks ready for validation: `edison tasks list --status=ready`
+3. ✅ Identify tasks ready for validation: `edison task list --status=ready`
 
 ## Validation Protocol
 
@@ -29,10 +29,10 @@ For each task ready for validation:
 
 ```bash
 # Validate a specific task
-edison validate <task-id>
+edison qa validate <task-id>
 
 # Validate all ready tasks
-edison validate --all-ready
+edison qa validate --all-ready
 ```
 
 ## Session State Machine
@@ -46,9 +46,9 @@ Valid state transitions:
 - NEW → WIP → READY → VALIDATING → COMPLETE
 
 Transition triggers:
-- NEW → WIP: claim a task (`edison tasks claim <task-id>`)
+- NEW → WIP: claim a task (`edison task claim <task-id>`)
 - WIP → READY: mark ready after TDD green and evidence
-- READY → VALIDATING: run validators (`edison validate <task-id>`)
+- READY → VALIDATING: run validators (`edison qa validate <task-id>`)
 - VALIDATING → COMPLETE: validators approve with no blockers
 
 State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).

@@ -50,7 +50,7 @@ Session state names map to on-disk directories as follows:
   - `edison session detect-stale` detects and automatically cleans up expired sessions.
   - Cleanup restores all session-scoped tasks/QA back to the global queues and moves the session JSON from `sessions/wip/` → `sessions/done/`.
   - `meta.expiredAt` is stamped and an Activity Log entry is appended for auditability.
-- All claim paths fail-closed: `edison tasks claim` refuses operations into an expired session.
+- All claim paths fail-closed: `edison task claim` refuses operations into an expired session.
 - Clock skew handling: small positive skew (≤ 5 minutes) in timestamps is tolerated; otherwise the detector treats timestamps conservatively and never leaves sessions indefinitely active.
 
 ## Quick checklist (fail-closed) - ORCHESTRATOR
@@ -65,7 +65,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `tasks/wip/` and QA in `qa/waiting/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow `.edison/_generated/STATE_MACHINE.md`; use guards (`edison tasks ready`, `edison validators bundle`) not manual moves.
+- [ ] State transitions follow `.edison/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
 - [ ] Auto-start ran (`edison session start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
@@ -88,10 +88,10 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 | Task State | Required QA State | What to do | Scripts & Notes |
 |------------|------------------|------------|-----------------|
-| `tasks/todo/` (new follow-ups created during the session) | `qa/waiting/` | Decide whether to claim now. If claimed, move task → `wip/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison tasks status <id> --status wip`<br/>`edison qa new <id> --session <session-id>` |
-| `tasks/wip/` | `qa/waiting/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison tasks claim <id> --session <session-id>` updates timestamps + session record. |
+| `tasks/todo/` (new follow-ups created during the session) | `qa/waiting/` | Decide whether to claim now. If claimed, move task → `wip/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison task status <id> --status wip`<br/>`edison qa new <id> --session <session-id>` |
+| `tasks/wip/` | `qa/waiting/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
 | `tasks/wip/` (ready for validation) | `qa/todo/` | Move QA to `todo/` when implementation is in `done/`. Do **not** move the task to `done/` until QA is ready. | `edison qa promote --task <task-id> --to todo` |
-| `tasks/done/` | `qa/wip/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison validators bundle <task-id>` to produce the manifest, then `edison qa promote --task <task-id> --to wip` to begin validation. |
+| `tasks/done/` | `qa/wip/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote --task <task-id> --to wip` to begin validation. |
 | `tasks/wip/` (after rejection) | `qa/waiting/` | Task returns/stays in `wip/` until fixes are validated. QA re-enters `waiting/` with a “Round N” section summarizing findings. | Spawn follow-ups in `tasks/todo/` + `qa/waiting/` immediately; link them in both task + QA documents. |
 | `tasks/validated/` | `qa/validated/` or `qa/done/` | Only promote when **all** blocking validators approve and evidence is linked. Then update the session Activity Log and remove the task from the scope list. | `edison session verify --phase closing` transitions the session to closing, then `edison session close <session-id>` moves the session to `sessions/validated/`. |
 
@@ -101,18 +101,18 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 - Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the Markdown view for humans/LLMs.
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY START -->
-- Use `edison tasks new --parent <id>` or `edison tasks link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison tasks link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
+- Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- RULE: RULE.LINK.SESSION_SCOPE_ONLY END -->
-- Before promoting a task to `done/`, run `edison tasks ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
-- Before invoking validators, run `edison validators bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
-- Use `edison me whoami|tasks|bundle` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
+- Before promoting a task to `done/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
+- Before invoking validators, run `edison qa bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
+- Use `edison session status` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED START -->
-> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison tasks status`, `edison qa promote`, `edison qa round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
+> All status moves are fail-closed and MUST go through guarded Python CLIs (`edison task status`, `edison qa promote`, `edison qa round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
 <!-- RULE: RULE.GUARDS.FAIL_CLOSED END -->
 
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES START -->
-All task/QA moves MUST go through guarded CLIs (`edison tasks status`, `edison qa promote`, `edison qa round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
+All task/QA moves MUST go through guarded CLIs (`edison task status`, `edison qa promote`, `edison qa round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
 <!-- RULE: RULE.GUARDS.NO_MANUAL_MOVES END -->
 
 <!-- RULE: RULE.QA.PAIR_ON_WIP START -->
@@ -129,7 +129,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ## 1. Keep the session record alive
 1. Use `edison session status <session-id>` at least every two hours to confirm every scoped task/QA still lives where you expect.
-2. Every time you run `edison tasks claim`/`status` or `edison qa new`, pass `--session <session-id>` so the scope lists stay accurate and the session’s `Last Active` is refreshed.
+2. Every time you run `edison task claim`/`status` or `edison qa new`, pass `--session <session-id>` so the scope lists stay accurate and the session's `Last Active` is refreshed.
 3. Work inside the session worktree shown by `edison session status` (typically `../${PROJECT}-worktrees/<session-id>`). If missing, restore with `edison git worktree-restore <session-id>` (or `worktree-create` for new sessions).
 4. Log meaningful milestones (delegation dispatched, validators launched, follow-ups spawned, blockers encountered) in the session file’s Activity Log. This is the source of truth for resuming after crashes.
 
@@ -162,17 +162,17 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
    ```
 
 2. **Sub-agent will handle:**
-   - ✅ Calling `edison track start` (their mandatory first step)
+   - ✅ Calling `edison session track start` (their mandatory first step)
    - ✅ Following TDD (RED → GREEN → REFACTOR)
    - ✅ Querying Context7 for post-training packages
    - ✅ Filling implementation report as they work
    - ✅ Running automation commands (type-check, lint, test, build)
-   - ✅ Calling `edison track complete` (their mandatory last step)
+   - ✅ Calling `edison session track complete` (their mandatory last step)
 
 3. **Monitor progress:**
    ```bash
-   edison track active  # See if sub-agent is still working
-   edison track stale   # Detect if sub-agent crashed
+   edison session track active  # See if sub-agent is still working
+   edison session track stale   # Detect if sub-agent crashed
    ```
 
 4. **When sub-agent reports back:**
@@ -187,9 +187,9 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 **If you must implement yourself:**
 
 1. **YOU must follow `.edison/_generated/constitutions/AGENTS.md`:**
-   - Call `edison track start --task <id> --type implementation --model claude`
+   - Call `edison session track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
-   - Call `edison track complete`
+   - Call `edison session track complete`
 
 2. **This is the SAME process sub-agents follow** - you get no shortcuts!
 
@@ -199,13 +199,13 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 2. **Spawn follow-up tasks** (if any discovered):
    - Create in `tasks/todo/` with paired QA in `qa/waiting/`
-   - Link to parent via `edison tasks link`
+   - Link to parent via `edison task link`
    - Decide if they belong in current session (claim now) or future session (leave in todo/)
 
 3. **Update session Activity Log** with implementation milestone.
 
 4. **When ALL related work is done** (task + all follow-ups):
-   - Run `edison validators bundle <root-task-id>` to generate validation manifest
+   - Run `edison qa bundle <root-task-id>` to generate validation manifest
    - Paste manifest into root task's QA brief
    - Move QA from `waiting/` → `todo/` to signal ready for validation
 
@@ -213,7 +213,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 **Run readiness check:**
 ```bash
-edison tasks ready <task-id> --session <session-id> [--run] [--disable-tdd --reason \"justification\"]
+edison task ready <task-id> --session <session-id> [--run] [--disable-tdd --reason \"justification\"]
 ```
 
 This guard verifies:
@@ -380,21 +380,21 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 **Note**: Specific models, blocking status, and trigger patterns are defined in `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` based on active packs.
 
 **Each validator will handle:**
-- ✅ Calling `edison track start` (their mandatory first step)
+- ✅ Calling `edison session track start` (their mandatory first step)
 - ✅ Loading context (QA brief, implementation report, evidence, git diff)
 - ✅ Querying Context7 (if context7Required in their config)
 - ✅ Filling validator report as they validate
 - ✅ Determining verdict (approve/reject/blocked)
-- ✅ Calling `edison track complete` (their mandatory last step)
+- ✅ Calling `edison session track complete` (their mandatory last step)
 
 ### 3.4. Monitor Validators
 
 ```bash
 # See which validators are running
-edison track active
+edison session track active
 
 # Detect crashed validators
-edison track stale
+edison session track stale
 ```
 
 **If validator crashes:** Remove stale report, investigate logs, re-launch validator.
@@ -478,9 +478,9 @@ edison track stale
 ```
 
 > **💡 MONITORING UTILITIES:**
-> - `edison track active` - See all running validators (PIDs, models, start times)
-> - `edison track stale` - Detect crashed validators (PID no longer running)
-> - `edison track heartbeat` - Not typically needed (validators should complete quickly)
+> - `edison session track active` - See all running validators (PIDs, models, start times)
+> - `edison session track stale` - Detect crashed validators (PID no longer running)
+> - `edison session track heartbeat` - Not typically needed (validators should complete quickly)
 
 ## 4. Handling rejections & follow-ups
 1. Rejected tasks **stay** in `.project/tasks/wip/`. Never move them back to `todo/`—they are still active work.
@@ -502,20 +502,20 @@ edison track stale
 ### Linking semantics for follow-ups (fail-closed)
 - Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done` or `validated`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
-- The readiness gate runs `edison tasks ensure-followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
+- The readiness gate runs `edison task ensure_followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
 <!-- RULE: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING END -->
 
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST START -->
 ### Duplicate prevention before creation
 - Before creating any follow-up, search existing tasks by slug/title similarity. If a near-duplicate (≥0.82) exists, do NOT create a new task—link/record the existing ID where appropriate.
-- The helper `edison tasks ensure-followups` performs this check automatically.
+- The helper `edison task ensure_followups` performs this check automatically.
 <!-- RULE: RULE.FOLLOWUPS.DEDUPE_FIRST END -->
 
 ### Parent Requeue (auto‑suggested)
-- When a parent task is set to `blocked` and all its child follow‑ups are `done` or `validated`, the Active Session “next” plan will suggest:
-  - `task.unblock.wip` → `edison tasks status <parent> --status wip`
+- When a parent task is set to `blocked` and all its child follow‑ups are `done` or `validated`, the Active Session "next" plan will suggest:
+  - `task.unblock.wip` → `edison task status <parent> --status wip`
   - If automation evidence is present for the parent (type/lint/test/build + implementation‑report), it will also suggest:
-    - `task.promote.done` → `edison tasks status <parent> --status done`
+    - `task.promote.done` → `edison task status <parent> --status done`
     - Followed by the usual QA `waiting → todo` then validator waves.
 - Rationale: this keeps the parent on rails without manual bookkeeping once dependent work finishes.
 
@@ -530,8 +530,8 @@ edison track stale
 
 ## 6. Crash recovery / continuation
 - Session interruped? Run `edison session status <session-id>` to regenerate the scope snapshot, reopen each listed task/QA, and continue from the recorded Activity Log.
-- Rejoining later? Claim/resume each task via `edison tasks claim --session <session-id>` so `Last Active` timestamps confirm the work is in progress.
-- Handing off? Mention the session ID inside each task/QA file’s metadata so the next orchestrator can pick it up.
+- Rejoining later? Claim/resume each task via `edison task claim --session <session-id>` so `Last Active` timestamps confirm the work is in progress.
+- Handing off? Mention the session ID inside each task/QA file's metadata so the next orchestrator can pick it up.
 
 ---
 

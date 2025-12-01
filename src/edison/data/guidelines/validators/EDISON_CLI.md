@@ -16,7 +16,7 @@ This guide covers CLI commands for validators who review implementation work, ru
 ### Run Validation
 
 ```bash
-edison validators validate --task <task-id> [--round <N>] [--session <session-id>]
+edison qa validate --task <task-id> [--round <N>] [--session <session-id>]
 ```
 
 **Purpose**: Validate validator reports for a task or bundle
@@ -31,16 +31,16 @@ edison validators validate --task <task-id> [--round <N>] [--session <session-id
 **Example:**
 ```bash
 # Validate latest round
-edison validators validate --task TASK-123
+edison qa validate --task TASK-123
 
 # Validate specific round
-edison validators validate --task TASK-123 --round 2
+edison qa validate --task TASK-123 --round 2
 
 # Bundle mode (validate children in session)
-edison validators validate --task TASK-123 --session sess-001
+edison qa validate --task TASK-123 --session sess-001
 
 # Enforce continuation tracking
-edison validators validate --task TASK-123 --continuation-id CONT-abc123
+edison qa validate --task TASK-123 --continuation-id CONT-abc123
 ```
 
 **Input location**: `.project/qa/validation-evidence/<task-id>/round-N/`
@@ -191,7 +191,7 @@ Validators produce JSON reports in this structure:
 
 ```bash
 # 1. Check task is ready for validation
-edison tasks status TASK-123
+edison task status TASK-123
 
 # Task should be in 'done' state with implementation-report.json
 
@@ -201,7 +201,7 @@ edison qa bundle TASK-123
 # Review evidence directory and required validators
 
 # 3. Run validation
-edison validators validate --task TASK-123
+edison qa validate --task TASK-123
 
 # This checks all required validator reports exist
 
@@ -209,7 +209,7 @@ edison validators validate --task TASK-123
 edison qa round --task TASK-123 --status needs-work
 
 # 5. After fixes, re-validate
-edison validators validate --task TASK-123 --round 2
+edison qa validate --task TASK-123 --round 2
 
 # 6. Record approval
 edison qa round --task TASK-123 --status approved
@@ -227,7 +227,7 @@ edison qa bundle TASK-123 --session sess-001
 # Shows parent task + child tasks in session
 
 # 2. Validate all tasks in bundle
-edison validators validate --task TASK-123 --session sess-001
+edison qa validate --task TASK-123 --session sess-001
 
 # Validates parent + all children
 
@@ -239,12 +239,12 @@ edison validators validate --task TASK-123 --session sess-001
 
 ```bash
 # Round 1: Initial validation
-edison validators validate --task TASK-123 --round 1
+edison qa validate --task TASK-123 --round 1
 
 # Issues found - developer fixes
 
 # Round 2: Re-validate after fixes
-edison validators validate --task TASK-123 --round 2
+edison qa validate --task TASK-123 --round 2
 
 # Continue until approved
 ```
@@ -315,7 +315,7 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active 
 
 **❌ DO NOT run these commands** (orchestrator-only):
 - `edison session next/start/status/close` - Session management
-- `edison tasks claim/ready` - Task claiming and promotion
+- `edison task claim/ready` - Task claiming and promotion
 - `edison qa promote` - QA state transitions (orchestrator does this after validation)
 
 **❌ DO NOT run these commands** (agent-only):

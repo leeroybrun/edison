@@ -17,8 +17,8 @@ Use this roster instead of repeating the table in each agent file:
 ## Edison CLI & Validation Tools
 
 ### Edison CLI
-- `edison tasks claim <task-id>` - Claim a task for implementation
-- `edison tasks ready [--run] [--disable-tdd --reason \"...\"]` - Mark task ready for validation
+- `edison task claim <task-id>` - Claim a task for implementation
+- `edison task ready [--run] [--disable-tdd --reason \"...\"]` - Mark task ready for validation
 - `edison qa new <task-id>` - Create QA brief for task
 - `edison session next [<session-id>]` - Get next recommended action
 - `edison git worktree-create <session-id>` - Create isolated worktree for session
@@ -26,12 +26,12 @@ Use this roster instead of repeating the table in each agent file:
 - `edison prompts compose [--type TYPE]` - Regenerate composed prompts
 
 ### Context7 Tools
-- Context7 package detection (automatic in `edison tasks ready`)
+- Context7 package detection (automatic in `edison task ready`)
 - HMAC evidence stamping (when enabled in config)
 
 ### Validation Tools
 - Validator execution (automatic in QA workflow)
-- Bundle generation (automatic in `edison validators bundle`)
+- Bundle generation (automatic in `edison qa bundle`)
 
 {{SECTION:Tools}}
 

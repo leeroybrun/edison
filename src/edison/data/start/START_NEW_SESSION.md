@@ -13,7 +13,7 @@ Before beginning work:
 
 Run the session start command:
 ```bash
-edison session start
+edison session create --session-id <session-id>
 ```
 
 This will:
@@ -42,12 +42,11 @@ This provides guidance on the next action based on session state.
 ## Session Loop
 
 Repeat until all tasks complete:
-1. Claim task → `edison tasks claim <task-id>`
+1. Claim task → `edison task claim <task-id>`
 2. Implement following TDD and delegation rules
-3. Mark ready → `edison tasks ready <task-id>`
-4. Run validators → `edison validate <task-id>`
+3. Mark ready → `edison task ready <task-id>`
+4. Run validators → `edison qa validate <task-id>`
 5. Address any rejections
-6. Complete task → `edison tasks complete <task-id>`
 
 ## Session State Machine
 
@@ -57,13 +56,12 @@ not assume defaults. Use `edison session next` to stay aligned with the configur
 state machine.
 
 Valid state transitions:
-- NEW → WIP → READY → VALIDATING → COMPLETE
+- todo → wip → done → validated
 
 Transition triggers:
-- NEW → WIP: claim a task (`edison tasks claim <task-id>`)
-- WIP → READY: mark ready after TDD green and evidence
-- READY → VALIDATING: run validators (`edison validate <task-id>`)
-- VALIDATING → COMPLETE: validators approve with no blockers
+- todo → wip: claim a task (`edison task claim <task-id>`)
+- wip → done: mark ready after TDD green and evidence (`edison task ready <task-id>`)
+- done → validated: run validators (`edison qa validate <task-id>`) and validators approve with no blockers
 
 State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
 
