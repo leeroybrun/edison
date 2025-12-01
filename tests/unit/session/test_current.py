@@ -96,7 +96,8 @@ def _create_session_file(project_root: Path, session_id: str, state: str = "wip"
     sessions_dir = project_root / ".project" / "sessions" / state
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
-    session_file = sessions_dir / f"{session_id}.json"
+    session_file = sessions_dir / session_id / "session.json"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     session_data = {
         "meta": {
@@ -120,6 +121,7 @@ def _create_session_file(project_root: Path, session_id: str, state: str = "wip"
         ],
     }
 
+    session_file.parent.mkdir(parents=True, exist_ok=True)
     session_file.write_text(json.dumps(session_data, indent=2))
     return session_file
 

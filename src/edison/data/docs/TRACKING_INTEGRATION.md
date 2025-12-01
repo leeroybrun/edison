@@ -33,7 +33,7 @@ Additional providers follow the same YAML-driven contract; nothing in code hardc
        done: done
    ```
 
-2) If you need shared/org defaults, place them under `.edison/core/config/tracking.yml`; Edison merges defaults → org overrides → project overlay just like other configs.
+2) If you need shared/org defaults, place them under `.edison/config/tracking.yml`; Edison merges defaults → org overrides → project overlay just like other configs.
 
 3) Keep secrets out of YAML by referencing environment variables; Edison’s config loader already resolves `${VAR}` expansions.
 

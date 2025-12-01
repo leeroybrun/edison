@@ -4,11 +4,11 @@
 ## Next.js Validation Context
 
 ### Guidelines
-{{include:.edison/packs/nextjs/guidelines/app-router.md}}
-{{include:.edison/packs/nextjs/guidelines/route-handlers.md}}
-{{include:.edison/packs/nextjs/guidelines/server-actions.md}}
-{{include:.edison/packs/nextjs/guidelines/metadata.md}}
-{{include:.edison/packs/nextjs/guidelines/caching.md}}
+{{include:.edison/_generated/guidelines/nextjs/app-router.md}}
+{{include:.edison/_generated/guidelines/nextjs/route-handlers.md}}
+{{include:.edison/_generated/guidelines/nextjs/server-actions.md}}
+{{include:.edison/_generated/guidelines/nextjs/metadata.md}}
+{{include:.edison/_generated/guidelines/nextjs/caching.md}}
 
 ### Concrete Checks
 - Use the App Router (`app/` directory) and Server Components by default.

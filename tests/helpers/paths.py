@@ -37,3 +37,29 @@ def get_repo_root() -> Path:
     return last_git_root
 
 
+def get_core_root() -> Path:
+    """Get the Edison core root directory.
+
+    Returns:
+        Path: Absolute path to the .edison/core directory or bundled data path
+
+    Raises:
+        RuntimeError: If core root cannot be found
+    """
+    repo_root = get_repo_root()
+
+    # First try .edison/core directory
+    core_root = repo_root / ".edison" / "core"
+    if core_root.exists():
+        return core_root
+
+    # Fallback to bundled edison.data path
+    try:
+        from edison.data import get_data_path
+        return Path(get_data_path(""))
+    except ImportError:
+        pass
+
+    raise RuntimeError(f"Could not find core directory at {core_root}")
+
+

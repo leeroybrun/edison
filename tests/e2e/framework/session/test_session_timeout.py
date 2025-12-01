@@ -93,7 +93,7 @@ def write_session_age(env_data: dict, session_id: str, hours_old: float, tz_vari
     tz_variant: 'Z' or '+00:00'
     """
     # Create session via CLI if missing
-    sess_path = env_data["tmp"] / ".project" / "sessions" / "wip" / f"{session_id}.json"
+    sess_path = env_data["tmp"] / ".project" / "sessions" / "wip" / session_id / "session.json"
     if not sess_path.exists():
         run_cli(env_data, env_data["session_cli"], "new", "--owner", "tester", "--session-id", session_id)
     data = json.loads(sess_path.read_text())
@@ -136,7 +136,7 @@ class TestSessionTimeout:
         global_path = session_timeout_env["tmp"] / ".project" / "tasks" / "wip" / f"{task_id}.md"
         assert global_path.exists(), f"Task should be restored globally: {global_path}"
         # Verify session moved to done and stamped
-        sess_done = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / f"{sid}.json"
+        sess_done = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / sid / "session.json"
         assert sess_done.exists(), f"Session JSON should move to done: {sess_done}"
         data = json.loads(sess_done.read_text())
         assert "expiredAt" in data.get("meta", {}), "Session should be stamped with expiredAt"
@@ -195,5 +195,5 @@ class TestSessionTimeout:
         # Verify final state
         global_path = session_timeout_env["tmp"] / ".project" / "tasks" / "wip" / f"{task_id}.md"
         assert global_path.exists()
-        done_json = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / f"{sid}.json"
+        done_json = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / sid / "session.json"
         assert done_json.exists()

@@ -53,7 +53,7 @@ def test_tasks_split_creates_children_and_qas(project_dir: TestProjectDir):
         assert qa_path.exists(), f"missing child QA: {qa_path}"
 
     # Verify links recorded in session JSON
-    sess_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    sess_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(sess_path.read_text())
     assert set(data["tasks"][parent_id]["childIds"]) == set(ids)
     for cid in ids:

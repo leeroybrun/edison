@@ -55,7 +55,7 @@ def test_session_created_timestamp(project_dir: TestProjectDir):
     )
     assert_command_success(result)
 
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     assert_file_exists(session_path)
     session_data = json.loads(session_path.read_text())
 
@@ -112,7 +112,7 @@ def test_task_tracking_timestamps(project_dir: TestProjectDir):
     assert "- **Last Active:**" in content
 
     # Verify timestamps also tracked inside session JSON entry
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
     assert task_id in session_data["tasks"], "Task should be registered in session.tasks"
     entry = session_data["tasks"][task_id]
@@ -144,7 +144,7 @@ def test_session_last_active_tracking(project_dir: TestProjectDir):
     line = next((l for l in hb_result.stdout.splitlines() if "heartbeat" in l), "")
     echoed_ts = line.split(" at ")[-1].strip() if " at " in line else None
 
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
     assert_json_has_field(session_data, "meta.lastActive")
     if echoed_ts:
@@ -186,7 +186,7 @@ def test_activity_log_entries(project_dir: TestProjectDir):
     )
 
     # Verify activity log contains expected messages
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(session_path.read_text())
     assert "activityLog" in data
     messages = [e.get("message", "") for e in data["activityLog"]]
@@ -266,7 +266,7 @@ def test_continuation_id_end_to_end(project_dir: TestProjectDir):
     assert f"- **Continuation ID:** {cid}" in content
 
     # Verify session JSON persisted continuation under task automation
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(session_path.read_text())
     entry = data.get("tasks", {}).get(task_id, {})
     assert entry and (entry.get("automation", {}).get("continuationId") == cid)
@@ -301,7 +301,7 @@ def test_session_task_list_tracking(project_dir: TestProjectDir):
             run_script("tasks/claim", [tid, "--session", session_id], cwd=project_dir.tmp_path)
         )
 
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
     assert isinstance(session_data.get("tasks"), dict)
     for num, wave, slug in tasks:
@@ -342,7 +342,7 @@ def test_session_duration_tracking(project_dir: TestProjectDir):
     assert_command_success(complete_result)
 
     # Verify moved to validated and status updated
-    session_path_validated = project_dir.project_root / "sessions" / "validated" / f"{session_id}.json"
+    session_path_validated = project_dir.project_root / "sessions" / "validated" / session_id / "session.json"
     assert_file_exists(session_path_validated)
     data_after = json.loads(session_path_validated.read_text())
     assert_json_field(data_after, "meta.status", "validated")
@@ -381,7 +381,7 @@ def test_complete_tracking_workflow(project_dir: TestProjectDir):
         run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     )
 
-    session_wip_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_wip_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(session_wip_path.read_text())
     assert_json_has_field(data, "meta.createdAt")
     assert_json_has_field(data, "meta.lastActive")
@@ -400,7 +400,7 @@ def test_complete_tracking_workflow(project_dir: TestProjectDir):
     )
     assert_command_success(complete_result)
 
-    validated_path = project_dir.project_root / "sessions" / "validated" / f"{session_id}.json"
+    validated_path = project_dir.project_root / "sessions" / "validated" / session_id / "session.json"
     assert_file_exists(validated_path)
     final_data = json.loads(validated_path.read_text())
     assert_json_field(final_data, "meta.status", "validated")

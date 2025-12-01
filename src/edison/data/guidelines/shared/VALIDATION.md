@@ -1,11 +1,10 @@
 # Validation (Core)
 
-> **Extended Version:** For full validator architecture, wave orchestration, and bundle rules, see [Extended Validation Guide](../../guides/extended/VALIDATION.md)
 
 Run after implementation is complete and before a task can advance beyond `done/`. QA briefs are the canonical validation record.
 
 ## Validation Checklist (fail-closed)
-- Load the validator config via ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`) for triggers, blocking rules, and `postTrainingPackages` (Context7 list).
+- Load the validator config via ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`) for triggers, blocking rules, and `postTrainingPackages` (Context7 list).
 - Automation passing for the round (type-check, lint, test, build or project equivalent).
 - QA brief exists in `qa/{waiting|todo|wip}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).
@@ -19,7 +18,7 @@ See `AVAILABLE_VALIDATORS.md` (generated from the ValidatorRegistry) for the cur
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/config/validators.yml`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
 

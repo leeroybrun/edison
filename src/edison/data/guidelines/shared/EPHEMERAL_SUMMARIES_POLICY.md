@@ -1,8 +1,7 @@
 # Ephemeral Summaries Policy (Condensed, Mandatory)
 
-> **Extended Version:** For detailed rationale, examples, and enforcement notes, see [Extended Ephemeral Summaries Policy](../../guides/extended/EPHEMERAL_SUMMARIES_POLICY.md)
 
-See extended guide: .edison/core/guides/extended/EPHEMERAL_SUMMARIES_POLICY.md
+See extended guide: .edison/_generated/guidelines/shared/EPHEMERAL_SUMMARIES_POLICY.md
 
 ## Default
 - Do **not** create ad-hoc summary/report/status files.

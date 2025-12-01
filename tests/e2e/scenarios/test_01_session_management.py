@@ -49,7 +49,7 @@ def test_create_basic_session(project_dir: TestProjectDir):
     assert_command_success(result)
 
     # Validate session file was created in .project/sessions/wip/ (NOT .agents/sessions/)
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     assert_file_exists(session_path)
 
     # Validate session JSON has required fields (REAL structure from CLI)
@@ -94,7 +94,7 @@ def test_create_worktree_session(project_dir: TestProjectDir):
     assert_command_success(result)
 
     # Validate session file exists
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     assert_file_exists(session_path)
 
     # Verify session has git metadata (REAL CLI creates worktrees automatically)
@@ -153,7 +153,7 @@ def test_session_task_tracking(project_dir: TestProjectDir):
     assert_command_success(claim_result)
 
     # Verify task was registered in session JSON
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
 
     # Real sessions use tasks as dict, keyed by task ID
@@ -220,13 +220,13 @@ def test_multiple_sessions(project_dir: TestProjectDir):
 
     # Verify all exist in .project/sessions/wip/
     for session_id in sessions:
-        session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+        session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
         assert_file_exists(session_path)
 
     # Each should have unique session ID in meta
     session_ids = set()
     for session_id in sessions:
-        session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+        session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
         data = json.loads(session_path.read_text())
         session_ids.add(data["meta"]["sessionId"])
 
@@ -276,7 +276,7 @@ def test_session_qa_tracking(project_dir: TestProjectDir):
     assert_file_exists(qa_path)
 
     # Verify QA was registered in session JSON
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
 
     # Real sessions use qa as dict, keyed by QA ID

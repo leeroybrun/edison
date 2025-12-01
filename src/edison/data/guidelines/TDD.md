@@ -1,6 +1,5 @@
 # TDD (Test-Driven Development)
 
-> **Extended Version:** For detailed patterns, examples, and evidence expectations, see [Extended TDD Guide](../guides/extended/TDD.md).
 > **Canonical Checklist:** The full condensed guidance lives at [./shared/TDD.md](./shared/TDD.md). This file surfaces the shared patterns for legacy references to this path.
 
 ## Patterns

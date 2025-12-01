@@ -23,7 +23,7 @@ def _write_minimal_validator_templates(root: Path) -> None:
     packs_dir = root / ".edison" / "packs"
     roster = collect_validators(
         config,
-        repo_root=root,
+        project_root=root,
         project_dir=project_dir,
         packs_dir=packs_dir,
         active_packs=(config.get("packs", {}) or {}).get("active", []) or [],

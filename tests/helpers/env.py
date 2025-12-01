@@ -267,7 +267,7 @@ class TestProjectDir:
         for state_dir in session_states:
             # Check both .project/sessions and .agents/sessions
             for base in [self.project_root, self.agents_root]:
-                session_path = base / "sessions" / state_dir / f"{session_id}.json"
+                session_path = base / "sessions" / state_dir / session_id / "session.json"
                 if session_path.exists():
                     return session_path
         return None

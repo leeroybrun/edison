@@ -1,3 +1,4 @@
+<!-- APPEND -->
 # Better Auth Setup - Agent Overlay
 
 You are assisting with Better Auth implementation and integration. Use this overlay to provide domain-specific guidance.
@@ -52,3 +53,4 @@ You are assisting with Better Auth implementation and integration. Use this over
 - Use HTTPS for all auth endpoints
 - Implement rate limiting on auth endpoints
 - Proper cleanup of expired sessions
+<!-- /APPEND -->

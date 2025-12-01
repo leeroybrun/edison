@@ -4,9 +4,9 @@
 ## Fastify API Validation Context
 
 ### Guidelines
-{{include:.edison/packs/fastify/guidelines/schema-validation.md}}
-{{include:.edison/packs/fastify/guidelines/error-handling.md}}
-{{include:.edison/packs/fastify/guidelines/auth.md}}
+{{include:.edison/_generated/guidelines/fastify/schema-validation.md}}
+{{include:.edison/_generated/guidelines/fastify/error-handling.md}}
+{{include:.edison/_generated/guidelines/fastify/auth.md}}
 
 ### Concrete Checks
 - Validate request input (params, query, body) using a schema.

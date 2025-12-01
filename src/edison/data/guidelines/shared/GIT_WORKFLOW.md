@@ -1,8 +1,7 @@
 # Git Workflow (Condensed, Mandatory)
 
-> **Extended Version:** For detailed branching, commit, and review practices, see [Extended Git Workflow Guide](../../guides/extended/GIT_WORKFLOW.md)
 
-See extended guide: .edison/core/guides/extended/GIT_WORKFLOW.md
+See extended guide: .edison/_generated/guidelines/shared/GIT_WORKFLOW.md
 
 ## Git Checklist
 - [ ] Safety: no force‑push to main; no `--no‑verify`; no destructive commands
@@ -32,4 +31,4 @@ See extended guide: .edison/core/guides/extended/GIT_WORKFLOW.md
 - `edison session start` will create or restore the external worktree automatically when configured; stay inside that worktree for all session work.
 - Never share a worktree across sessions; guard rails should reject mixed-session worktrees.
 
-Read full: `.edison/core/guides/extended/GIT_WORKFLOW.md`.
+Read full: `.edison/_generated/guidelines/shared/GIT_WORKFLOW.md`.

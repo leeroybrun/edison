@@ -75,7 +75,7 @@ def test_session_malformed_json(project_dir: TestProjectDir):
     )
     assert_command_success(created)
 
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     assert_file_exists(session_path)
     session_path.write_text('{"sessionId": "test-malformed", invalid json')
 
@@ -308,7 +308,7 @@ def test_session_with_archived_worktree_path(project_dir: TestProjectDir):
     )
     assert_command_success(res)
 
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(session_path.read_text())
     data.setdefault("git", {})["worktreePath"] = str(project_dir.tmp_path / ".worktrees" / "_archived" / session_id)
     session_path.write_text(json.dumps(data, indent=2))
@@ -398,7 +398,7 @@ def test_worktree_path_does_not_exist(project_dir: TestProjectDir):
     assert_command_success(res)
 
     fake_path = project_dir.tmp_path / ".worktrees" / "non-existent"
-    sess_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    sess_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     data = json.loads(sess_path.read_text())
     data.setdefault("git", {})["worktreePath"] = str(fake_path)
     sess_path.write_text(json.dumps(data, indent=2))
@@ -449,9 +449,9 @@ def test_session_invalid_state_directory(project_dir: TestProjectDir):
     """session status fails when the session file lives under an unknown state directory."""
     session_id = "test-invalid-state"
 
-    invalid_dir = project_dir.project_root / "sessions" / "invalid"
+    invalid_dir = project_dir.project_root / "sessions" / "invalid" / session_id
     invalid_dir.mkdir(parents=True, exist_ok=True)
-    (invalid_dir / f"{session_id}.json").write_text(json.dumps({
+    (invalid_dir / "session.json").write_text(json.dumps({
         "meta": {"sessionId": session_id, "owner": "tester", "status": "invalid", "mode": "start", "createdAt": "2025-01-01T00:00:00Z", "lastActive": "2025-01-01T00:00:00Z"},
         "tasks": {},
         "qa": {},

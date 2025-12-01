@@ -27,13 +27,13 @@ Authoritative, configuration-driven checklist for diagnosing and fixing validato
 - Open `src/edison/data/config/validators.yaml` for the base roster, triggers, and defaults.
 - Overlay precedence (fail-closed, no fallbacks):
   1) Base config above
-  2) Optional org overlays: `.edison/core/config/*.yml`
+  2) Optional org overlays: `.edison/config/*.yml`
   3) Project overlays: `.edison/config/*.yml` (final authority)
 - Generated views: `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` and `_generated/validators/*.md` mirror the effective config; regenerate via the bundle command when overlays change.
 - Verify `validation.maxRounds`, `blocking_validators`, trigger patterns, and `zenRole` mappings only through YAML; if values look wrong, fix overlays and rebuild instead of patching code.
 
 ## How to add custom validators
-1. **Define YAML entry**: Add a new validator under the appropriate roster section in `.edison/config/validators.yml` (or another project overlay). Specify `id`, `specFile`, `zenRole`, `triggers`, `model`, `interface`, and whether it `blocksOnFail`—all in YAML, not code.
+1. **Define YAML entry**: Add a new validator under the appropriate roster section in `.edison/_generated/AVAILABLE_VALIDATORS.md` (or another project overlay). Specify `id`, `specFile`, `zenRole`, `triggers`, `model`, `interface`, and whether it `blocksOnFail`—all in YAML, not code.
 2. **Provide spec content**: Create the validator spec document under `.edison/config/validators/<path>.md` or another configured location referenced by `specFile`.
 3. **Register triggers**: Ensure `triggers` match the files the validator should watch; prefer precise globs to avoid accidental runs.
 4. **Regenerate manifests**: Run `edison validators bundle <task-id>` to rebuild `_generated/validators/` and `AVAILABLE_VALIDATORS.md`, then commit the generated artifacts if your workflow requires.

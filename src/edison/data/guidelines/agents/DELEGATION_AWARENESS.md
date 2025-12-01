@@ -11,7 +11,7 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Config**: `.edison/config/delegation.yaml` (single source of truth for model selection)
+**Delegation Config**: `.edison/_generated/constitutions/ORCHESTRATORS.md` (single source of truth for model selection)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
@@ -22,7 +22,7 @@ The orchestrator uses this configuration to assign tasks to the most appropriate
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `.edison/config/delegation.yaml` to understand your scope
+1. **READ** `.edison/_generated/constitutions/ORCHESTRATORS.md` to understand your scope
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -82,7 +82,7 @@ Orchestrator → component-builder (UI work)
 
 ```pseudocode
 // Example: Reading your scope
-config = load_yaml('.edison/config/delegation.yaml')
+config = load_yaml('.edison/_generated/constitutions/ORCHESTRATORS.md')
 
 // Check file pattern rules
 filePatterns = config.filePatternRules
@@ -162,7 +162,7 @@ Or for MISMATCH:
 
 ```bash
 # View delegation config
-cat .edison/config/delegation.yaml
+cat .edison/_generated/constitutions/ORCHESTRATORS.md
 
 # Check which agent handles a file pattern (orchestrator tool)
 edison delegation check "<path-to-file>"
@@ -175,9 +175,9 @@ edison agents scope api-builder
 
 ## References
 
-- Delegation guide: `.edison/core/guidelines/DELEGATION.md`
-- Extended patterns: `.edison/core/guidelines/shared/DELEGATION.md`
-- Config schema: `.edison/core/schemas/delegation-config.schema.json`
+- Delegation guide: `.edison/_generated/guidelines/DELEGATION.md`
+- Extended patterns: `.edison/_generated/guidelines/shared/DELEGATION.md`
+- Config schema: `.edison/_generated/constitutions/ORCHESTRATORS.md`
 
 ---
 

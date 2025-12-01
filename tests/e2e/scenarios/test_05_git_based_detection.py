@@ -61,7 +61,7 @@ def _create_session_with_worktree(test_root: Path, session_id: str) -> Path:
     assert_command_success(result)
 
     # Read session JSON to get worktree path
-    session_json = test_root / ".project" / "sessions" / "wip" / f"{session_id}.json"
+    session_json = test_root / ".project" / "sessions" / "wip" / session_id / "session.json"
     assert_file_exists(session_json)
     session_data = json.loads(session_json.read_text())
     worktree_path = Path(session_data["git"]["worktreePath"]).resolve()

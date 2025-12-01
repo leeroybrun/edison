@@ -80,9 +80,9 @@ def _find_log(repo_root: Path, session_id: str) -> Optional[Path]:
 
 def _load_session(repo_root: Path, session_id: str) -> Dict[str, Any]:
     candidates = [
-        repo_root / ".project" / "sessions" / "wip" / f"{session_id}.json",
-        repo_root / ".project" / "sessions" / "active" / f"{session_id}.json",
-        repo_root / ".project" / "sessions" / "done" / f"{session_id}.json",
+        repo_root / ".project" / "sessions" / "wip" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "active" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "done" / session_id / "session.json",
     ]
     session_path = next((p for p in candidates if p.exists()), None)
     assert session_path is not None, f"session.json not found for {session_id}"

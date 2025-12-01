@@ -303,7 +303,7 @@ def test_scenario_5_partial_splits_recovery(project: TestProjectDir):
     assert len(child_ids) == 3, "Should create 3 children"
 
     # Verify proper linking in session JSON
-    session_path = project.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
 
     # Parent should list all children

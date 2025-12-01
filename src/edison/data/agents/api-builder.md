@@ -25,9 +25,9 @@ metadata:
 
 ## Context7 Knowledge Refresh (MANDATORY)
 
-- Follow `.edison/core/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
+- Follow `.edison/_generated/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
 - Prioritize Context7 lookups for the packages listed in this file’s `context7_ids` before coding.
-- Versions + topics live in `config/context7.yml` (never hardcode).
+- Versions + topics live in `config/context7.yaml` (never hardcode).
 - Required refresh set: react, tailwindcss, prisma, zod, motion
 - Next.js 16
 - React 19
@@ -67,12 +67,12 @@ await mcp__context7__get-library-docs({
 
 ## MANDATORY GUIDELINES (Read Before Any Task)
 
-- Read `.edison/core/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
-- Use `.edison/core/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
+- Read `.edison/_generated/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
+- Use `.edison/_generated/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
 
 ## Tools
 
-- Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
+- Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
 {{SECTION:Tools}}
 
@@ -216,7 +216,7 @@ function handler(request):
 - If scope mismatch, return `MISMATCH` with rationale; do not re-delegate. Orchestrator coordinates validators.
 
 ## Output Format Requirements
-- Follow `.edison/core/guidelines/agents/OUTPUT_FORMAT.md` for the implementation report JSON; store one `implementation-report.json` per round under `.project/qa/validation-evidence/<task-id>/round-<N>/`.
+- Follow `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md` for the implementation report JSON; store one `implementation-report.json` per round under `.project/qa/validation-evidence/<task-id>/round-<N>/`.
 - Ensure the JSON captures required fields: `taskId`, `round`, `implementationApproach`, `primaryModel`, `completionStatus` (`complete | blocked | partial`), `followUpTasks`, `notesForValidator`, `tracking`, plus delegations/blockers/tests when applicable.
 - Evidence: include git log markers that show RED→GREEN ordering and reference automation outputs; add Context7 marker files for every post-training package consulted.
 - Set `completionStatus` to `complete` only when acceptance criteria are met; use `partial` or `blocked` with blockers and follow-ups when work remains.

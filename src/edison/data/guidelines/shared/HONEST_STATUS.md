@@ -1,8 +1,7 @@
 # Honest Status (Condensed, Mandatory)
 
-> **Extended Version:** For detailed status reporting rules, evidence expectations, and examples, see [Extended Honest Status Guide](../../guides/extended/HONEST_STATUS.md)
 
-See extended guide: .edison/core/guides/extended/HONEST_STATUS.md
+See extended guide: .edison/_generated/guidelines/shared/HONEST_STATUS.md
 
 ## Honesty Checklist
 - [ ] Status entries are factual, timestamped, and live inside the task/QA files.

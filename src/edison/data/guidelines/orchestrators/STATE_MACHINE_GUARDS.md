@@ -7,7 +7,7 @@ This document defines the canonical task and QA state machines and how guards ar
 - Task: `todo → wip ↔ blocked → done → validated` (reopen: `done → wip`, `wip → todo` allowed)
 - QA: `waiting → todo → wip → done → validated` (reopen: `done → wip`)
 
-The authoritative definition lives in `.edison/core/defaults.yaml` under `statemachine` and is loaded by `lib/task.validate_state_transition`.
+The authoritative definition lives in `.edison/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
 
 ## Enforcement Points
 

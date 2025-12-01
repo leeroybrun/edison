@@ -44,7 +44,7 @@ def _has_zen_mcp_setup() -> bool:
             has_zen_scripts = (edison_dir / "scripts" / "zen").exists()
             has_mcp_json = (current / ".mcp.json").exists()
 
-            if has_zen_server or has_zen_scripts or has_mcp_json:
+            if has_zen_server and has_zen_scripts and has_mcp_json:
                 return True
 
         if current.parent == current:

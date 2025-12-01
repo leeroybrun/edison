@@ -31,5 +31,5 @@ context = {
     "related_commands": ["edison-session-status"],
 }
 
-text = Template(Path(".edison/core/templates/commands/claude-command.md.template").read_text()).render(**context)
+text = Template(Path(".edison/config/templates/commands/claude-command.md.template").read_text()).render(**context)
 ```

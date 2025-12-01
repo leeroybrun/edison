@@ -1,7 +1,7 @@
 """
 Edison compose all command.
 
-SUMMARY: Compose all artifacts (validators, constitutions, guidelines)
+SUMMARY: Compose all artifacts (agents, validators, constitutions, guidelines, start prompts)
 """
 
 from __future__ import annotations
@@ -22,12 +22,18 @@ from edison.core.composition import (
 from edison.core.config import ConfigManager
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.adapters import ClaudeSync, CursorSync, ZenSync
+from edison.data import get_data_path
 
-SUMMARY = "Compose all artifacts (validators, constitutions, guidelines)"
+SUMMARY = "Compose all artifacts (agents, validators, constitutions, guidelines, start prompts)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
+    parser.add_argument(
+        "--agents",
+        action="store_true",
+        help="Only compose agents",
+    )
     parser.add_argument(
         "--validators",
         action="store_true",
@@ -42,6 +48,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--guidelines",
         action="store_true",
         help="Only compose guidelines",
+    )
+    parser.add_argument(
+        "--start",
+        action="store_true",
+        help="Only compose start prompts",
     )
     parser.add_argument(
         "--platforms",
@@ -83,9 +94,11 @@ def main(args: argparse.Namespace) -> int:
 
         # Determine what to compose
         compose_all_types = not any([
+            args.agents,
             args.validators,
             args.guidelines,
             args.constitutions,
+            args.start,
         ])
 
         if args.dry_run:
@@ -116,6 +129,21 @@ def main(args: argparse.Namespace) -> int:
             ]
             results["state_machine"] = str(output_path / "STATE_MACHINE.md")
 
+        # Compose agents using LayeredComposer
+        if compose_all_types or args.agents:
+            agent_composer = LayeredComposer(repo_root=repo_root, content_type="agents")
+            agent_results = agent_composer.compose_all(active_packs)
+            
+            # Write agents to _generated/agents/
+            generated_agents_dir = config_dir / "_generated" / "agents"
+            generated_agents_dir.mkdir(parents=True, exist_ok=True)
+            
+            results["agents"] = {}
+            for agent_name, text in agent_results.items():
+                output_file = generated_agents_dir / f"{agent_name}.md"
+                output_file.write_text(text, encoding="utf-8")
+                results["agents"][agent_name] = str(output_file)
+
         if compose_all_types or args.guidelines:
             # Use GuidelineRegistry for concatenate + dedupe composition
             guideline_registry = GuidelineRegistry(repo_root=repo_root)
@@ -127,7 +155,14 @@ def main(args: argparse.Namespace) -> int:
             for name in guideline_names:
                 try:
                     result = guideline_registry.compose(name, active_packs)
-                    output_file = generated_guidelines_dir / f"{name}.md"
+                    # Preserve subfolder structure from source
+                    subfolder = guideline_registry.get_subfolder(name, active_packs)
+                    if subfolder:
+                        output_dir = generated_guidelines_dir / subfolder
+                        output_dir.mkdir(parents=True, exist_ok=True)
+                    else:
+                        output_dir = generated_guidelines_dir
+                    output_file = output_dir / f"{name}.md"
                     output_file.write_text(result.text, encoding="utf-8")
                     guideline_files.append(output_file)
                 except Exception:
@@ -149,6 +184,51 @@ def main(args: argparse.Namespace) -> int:
                 output_file = generated_validators_dir / f"{vid}.md"
                 output_file.write_text(text, encoding="utf-8")
                 results["validators"][vid] = str(output_file)
+
+        # Compose start prompts
+        if compose_all_types or args.start:
+            generated_start_dir = config_dir / "_generated" / "start"
+            generated_start_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Get core start files from edison.data/start/
+            core_start_dir = get_data_path("start")
+            project_start_dir = config_dir / "start"
+            project_overlays_dir = project_start_dir / "overlays"
+            
+            start_files = []
+            if core_start_dir.exists():
+                for start_file in core_start_dir.glob("*.md"):
+                    name = start_file.stem
+                    content = start_file.read_text(encoding="utf-8")
+                    
+                    # Check for project overlay
+                    project_overlay = project_overlays_dir / f"{name}.md"
+                    if project_overlay.exists():
+                        overlay_content = project_overlay.read_text(encoding="utf-8")
+                        content = content + "\n\n" + overlay_content
+                    
+                    # Check for project-level new start file (completely replaces core)
+                    project_new = project_start_dir / f"{name}.md"
+                    if project_new.exists() and not project_overlay.exists():
+                        content = project_new.read_text(encoding="utf-8")
+                    
+                    output_file = generated_start_dir / f"{name}.md"
+                    output_file.write_text(content, encoding="utf-8")
+                    start_files.append(output_file)
+            
+            # Also check for project-only start files (new start prompts defined at project level)
+            if project_start_dir.exists():
+                for start_file in project_start_dir.glob("*.md"):
+                    name = start_file.stem
+                    # Skip if already processed from core
+                    if (generated_start_dir / f"{name}.md").exists():
+                        continue
+                    content = start_file.read_text(encoding="utf-8")
+                    output_file = generated_start_dir / f"{name}.md"
+                    output_file.write_text(content, encoding="utf-8")
+                    start_files.append(output_file)
+            
+            results["start"] = [str(f) for f in start_files]
 
         # Sync to clients
         if args.claude:

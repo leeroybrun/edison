@@ -202,7 +202,7 @@ def test_session_json_file_contains_registrations(isolated_project_env):
     )
 
     # Read session.json directly from disk
-    session_path = project_root / ".project" / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_root / ".project" / "sessions" / "wip" / session_id / "session.json"
     assert session_path.exists(), "Session JSON file should exist"
 
     with open(session_path) as f:

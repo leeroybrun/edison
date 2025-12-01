@@ -68,11 +68,10 @@ def _write_file(rd: Path, name: str, body: str) -> None:
 
 
 def _sync_session_git_metadata(project: TestProjectDir, session_id: str, worktree_path: Path, base_branch: str = "main") -> None:
-    """Ensure session JSON includes git worktree metadata in both layouts."""
+    """Ensure session JSON includes git worktree metadata in nested layout."""
     session_root = project.project_root / "sessions" / "wip"
     candidates = [
         session_root / session_id / "session.json",
-        session_root / f"{session_id}.json",
     ]
 
     data = None

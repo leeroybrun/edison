@@ -103,7 +103,7 @@ todo → wip → validating → done
 
 Every implementation round must provide:
 
-1. **Implementation Report JSON** (per `.edison/implementation/OUTPUT_FORMAT.md`)
+1. **Implementation Report JSON** (per `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`)
 2. **TDD Evidence** - Proof that tests were written first
 3. **Test Results** - All tests passing
 4. **Build Verification** - Type-check, lint, build all pass
@@ -151,9 +151,9 @@ edison validators validate <task-id>
 
 ## References
 
-- Extended workflow: `.edison/core/guidelines/agents/AGENT_WORKFLOW.md`
-- Output format: `.edison/implementation/OUTPUT_FORMAT.md`
-- Session workflow: `.edison/core/guidelines/SESSION_WORKFLOW.md`
+- Extended workflow: `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md`
+- Output format: `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`
+- Session workflow: `.edison/_generated/guidelines/SESSION_WORKFLOW.md`
 
 ---
 

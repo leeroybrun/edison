@@ -154,7 +154,7 @@ Validators produce JSON reports in this structure:
 ### Global Validators (Always Run)
 
 **Global validators** are defined in validator configuration:
-- Check `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for current global validators
+- Check `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for current global validators
 - Typically includes multiple models for diverse perspectives
 - Most global validators are blocking
 
@@ -295,7 +295,7 @@ Check active pack guidelines for framework-specific validation criteria:
 - **Database Tools**: Schema design, migration strategy
 - **Styling Systems**: Design tokens, responsive patterns
 
-Refer to `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for active pack validators and their specific focus areas.
+Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active pack validators and their specific focus areas.
 
 ---
 
@@ -332,11 +332,11 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/orchestrator-manifest.json` for acti
 
 ## Related Documentation
 
-- `.edison/core/guidelines/validators/VALIDATOR_GUIDELINES.md` - Full validator guidelines
-- `.edison/core/guidelines/validators/VALIDATOR_WORKFLOW.md` - Validation workflow
-- `.edison/core/guidelines/validators/OUTPUT_FORMAT.md` - Report format requirements
-- `.edison/core/guidelines/validators/code-quality.md` - Code quality standards
-- `.edison/core/guidelines/validators/testing.md` - Testing requirements
+- `.edison/_generated/guidelines/validators/VALIDATOR_GUIDELINES.md` - Full validator guidelines
+- `.edison/_generated/guidelines/validators/VALIDATOR_WORKFLOW.md` - Validation workflow
+- `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` - Report format requirements
+- `.edison/_generated/guidelines/validators/code-quality.md` - Code quality standards
+- `.edison/_generated/guidelines/validators/testing.md` - Testing requirements
 
 ---
 

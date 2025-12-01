@@ -6,8 +6,8 @@ This session is for running validators only, not implementation.
 
 ## Pre-Validation Checklist
 
-1. ✅ Read validator constitution: `constitutions/VALIDATORS.md`
-2. ✅ Load validator roster: `AVAILABLE_VALIDATORS.md`
+1. ✅ Read validator constitution: `.edison/_generated/constitutions/VALIDATORS.md`
+2. ✅ Load validator roster: `.edison/_generated/AVAILABLE_VALIDATORS.md`
 3. ✅ Identify tasks ready for validation: `edison tasks list --status=ready`
 
 ## Validation Protocol
@@ -37,7 +37,7 @@ edison validate --all-ready
 
 ## Session State Machine
 
-Read the generated state machine reference in `STATE_MACHINE.md` (under `_generated`).
+Read the generated state machine reference in `.edison/_generated/STATE_MACHINE.md`.
 Follow the allowed transitions for session, task, and QA domains defined there—do
 not assume defaults. Use `edison session next` to stay aligned with the configured
 state machine during validation-only sessions.
@@ -51,8 +51,8 @@ Transition triggers:
 - READY → VALIDATING: run validators (`edison validate <task-id>`)
 - VALIDATING → COMPLETE: validators approve with no blockers
 
-State diagram: See `STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
+State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
 
 ## Constitution Reference
 
-Your full validator instructions are at: `constitutions/VALIDATORS.md`
+Your full validator instructions are at: `.edison/_generated/constitutions/VALIDATORS.md`

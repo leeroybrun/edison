@@ -94,10 +94,6 @@ def _ensure_base_evidence(project_root: Path, task_id: str, round_num: int = 1) 
             "complete",
             "--task",
             task_id,
-            "--type",
-            "implementation",
-            "--round",
-            str(round_num),
         ],
         cwd=project_root.parent,
     )
@@ -330,7 +326,7 @@ def test_context7_detection_from_file_extensions(combined_env):
 
     # Make changes in worktree
     # Locate worktree from session file
-    session_json = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_json = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     sess = json.loads(session_json.read_text())
     worktree_path = Path(sess["git"]["worktreePath"]) if sess.get("git", {}).get("worktreePath") else None
     if worktree_path and worktree_path.exists():
@@ -382,7 +378,7 @@ def test_context7_detection_from_imports(combined_env):
     qa_waiting.mkdir(parents=True, exist_ok=True)
     (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
-    session_json = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_json = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     sess2 = json.loads(session_json.read_text())
     wt2_raw = sess2.get("git", {}).get("worktreePath")
     wt2 = Path(wt2_raw) if wt2_raw else None
@@ -474,7 +470,7 @@ def test_context7_cross_check_task_metadata_vs_git_diff(combined_env):
     (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Change Zod‑pattern file in worktree
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     worktree_raw = sess.get("git", {}).get("worktreePath")
     worktree_path = Path(worktree_raw) if worktree_raw else None
     if worktree_path and worktree_path.exists():
@@ -607,7 +603,7 @@ def test_context7_complete_enforcement_workflow(combined_env):
     run_script("qa/new", [task_id, "--owner", session_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Git diff shows Zod (schema.ts)
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     wt_raw = sess.get("git", {}).get("worktreePath")
     worktree_path = Path(wt_raw) if wt_raw else None
     if worktree_path and worktree_path.exists():
@@ -660,7 +656,7 @@ def test_context7_prisma_schema_enforcement(combined_env):
     run_script("qa/new", [task_id, "--owner", session_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Add prisma schema file to worktree
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     wt_raw = sess.get("git", {}).get("worktreePath")
     worktree_path = Path(wt_raw) if wt_raw else None
     if worktree_path and worktree_path.exists():
@@ -723,7 +719,7 @@ def test_context7_prisma_migration_enforcement(combined_env):
     (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Add prisma migration files to worktree
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     wt_raw = sess.get("git", {}).get("worktreePath")
     worktree_path = Path(wt_raw) if wt_raw else None
     if worktree_path and worktree_path.exists():
@@ -773,7 +769,7 @@ def test_context7_prisma_seeds_enforcement(combined_env):
     (qa_waiting / f"{task_id}-qa.md").write_text("# QA\n\n## Validators\n- global-codex\n")
 
     # Add prisma seed files to worktree
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     wt_raw = sess.get("git", {}).get("worktreePath")
     worktree_path = Path(wt_raw) if wt_raw else None
     if worktree_path and worktree_path.exists():
@@ -875,7 +871,7 @@ def test_context7_zod_not_triggered_by_route_only(combined_env):
     run_script("qa/new", [task_id, "--owner", session_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Create only route.ts and a tsx file; no zod files
-    sess = json.loads((project_dir.project_root / "sessions" / "wip" / f"{session_id}.json").read_text())
+    sess = json.loads((project_dir.project_root / "sessions" / "wip" / session_id / "session.json").read_text())
     wt = Path(sess["git"]["worktreePath"]) if sess.get("git", {}).get("worktreePath") else None
     if wt and wt.exists():
         (wt / "app/api/hello").mkdir(parents=True, exist_ok=True)

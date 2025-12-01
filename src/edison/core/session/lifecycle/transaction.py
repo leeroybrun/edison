@@ -59,11 +59,12 @@ def _sid_dir(session_id: str) -> Path:
     # But _append_tx_log doesn't take state.
     # We might need to search for the session.
     from ..persistence.repository import SessionRepository
+    from edison.core.entity.exceptions import EntityNotFoundError
     try:
         repo = SessionRepository()
         json_path = repo.get_session_json_path(session_id)
         return json_path.parent
-    except (FileNotFoundError, OSError) as e:
+    except (FileNotFoundError, OSError, EntityNotFoundError) as e:
         # Fallback: If session doesn't exist yet, use default "wip" state location
         # This allows validation transactions to work even before session is fully initialized
         logger.debug("Session directory not found for %s, using default: %s", session_id, e)

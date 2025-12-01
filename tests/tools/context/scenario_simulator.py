@@ -321,10 +321,10 @@ class ScenarioSimulator:
             default_state = get_default_value("session", "state")
 
             # Create minimal session structure
-            sessions_dir = temp_path / ".project" / "sessions" / default_state
+            sessions_dir = temp_path / ".project" / "sessions" / default_state / session_id
             sessions_dir.mkdir(parents=True, exist_ok=True)
 
-            session_file = sessions_dir / f"{session_id}.json"
+            session_file = sessions_dir / "session.json"
             session_data = {
                 "sessionId": session_id,
                 "status": default_state,

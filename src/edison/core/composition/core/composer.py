@@ -20,6 +20,7 @@ from .sections import (
     SectionParser,
     SectionRegistry,
 )
+from ..includes import resolve_includes
 
 
 class LayeredComposer:
@@ -107,7 +108,9 @@ class LayeredComposer:
         registry: SectionRegistry,
     ) -> None:
         """Parse overlay file and add sections to registry."""
-        content = source.path.read_text(encoding="utf-8")
+        raw_content = source.path.read_text(encoding="utf-8")
+        # Resolve includes in overlay content
+        content, _deps = resolve_includes(raw_content, source.path)
         sections = self.parser.parse(content, source.layer)
         
         for section in sections:
@@ -128,40 +131,51 @@ class LayeredComposer:
         Returns:
             Composed Markdown content
         """
-        # 1. Discover core
+        # 1. Discover core entities
         core_entities = self.discover_core()
-        if name not in core_entities:
-            raise CompositionValidationError(
-                f"Core {self.content_type} '{name}' not found.\n"
-                f"Available: {sorted(core_entities.keys())}"
-            )
         
-        core_source = core_entities[name]
-        template = core_source.path.read_text(encoding="utf-8")
-        
-        # 2. Initialize registry with known sections
-        registry = self._init_registry()
-        
-        # 3. Collect all existing names (core + pack-new from earlier packs)
+        # 2. Build complete existing set FIRST by discovering ALL pack-new entities
+        # This ensures overlays can reference entities defined in earlier packs
         existing: Set[str] = set(core_entities.keys())
-        
-        # 4. Process pack layers in order
         for pack in packs:
-            # Get pack overlays for this entity
-            pack_overlays = self.discover_pack_overlays(pack, existing)
-            if name in pack_overlays:
-                self._process_overlay(pack_overlays[name], registry)
-            
-            # Discover pack-new entities (updates existing set)
             pack_new = self.discover_pack_new(pack, existing)
             existing.update(pack_new.keys())
         
-        # 5. Process project overlay
+        # 3. Validate that the entity exists (either in core or pack-new)
+        if name not in existing:
+            raise CompositionValidationError(
+                f"{self.content_type.title()} '{name}' not found in core or packs.\n"
+                f"Available: {sorted(existing)}"
+            )
+        
+        # 4. Get template from core or pack-new
+        if name in core_entities:
+            template = core_entities[name].path.read_text(encoding="utf-8")
+        else:
+            # Find the pack that defines this entity
+            check_existing: Set[str] = set(core_entities.keys())
+            for pack in packs:
+                pack_new = self.discover_pack_new(pack, check_existing)
+                if name in pack_new:
+                    template = pack_new[name].path.read_text(encoding="utf-8")
+                    break
+                check_existing.update(pack_new.keys())
+        
+        # 5. Initialize registry with known sections
+        registry = self._init_registry()
+        
+        # 6. Process pack overlays in order (with complete existing set)
+        for pack in packs:
+            pack_overlays = self.discover_pack_overlays(pack, existing)
+            if name in pack_overlays:
+                self._process_overlay(pack_overlays[name], registry)
+        
+        # 7. Process project overlay
         project_overlays = self.discover_project_overlays(existing)
         if name in project_overlays:
             self._process_overlay(project_overlays[name], registry)
         
-        # 6. Compose final output
+        # 8. Compose final output
         return self.section_composer.compose(template, registry)
     
     def compose_all(self, packs: List[str]) -> Dict[str, str]:

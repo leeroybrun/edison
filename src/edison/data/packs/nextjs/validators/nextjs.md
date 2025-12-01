@@ -687,8 +687,8 @@ Human-readable report (required):
 ---
 
 **Validator**: Next.js
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
-**Specification**: `.edison/packs/nextjs/validators/nextjs.md`
+**Configuration**: ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`)
+**Specification**: `.edison/_generated/validators/nextjs.md`
 ```
 
 Machine-readable JSON report (required):

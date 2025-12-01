@@ -180,6 +180,32 @@ content_types:
     extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
     append_placeholder: "{{APPEND_SECTIONS}}"
 
+  start:
+    description: "Session start prompts for orchestrators (new, resume, validate)"
+    
+    # Start prompts use full-document composition (concatenate + dedupe)
+    composition_mode: concatenate
+    dedupe: true
+    
+    known_sections:
+      - name: Checklist
+        placeholder: "{{SECTION:Checklist}}"
+        mode: append
+        description: "Pre-session checklist items"
+        
+      - name: Protocol
+        placeholder: "{{SECTION:Protocol}}"
+        mode: append
+        description: "Session protocol steps"
+        
+      - name: Commands
+        placeholder: "{{SECTION:Commands}}"
+        mode: append
+        description: "CLI commands for the session type"
+    
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+
 # Directory conventions (unified across all types)
 directory_conventions:
   overlays_subfolder: "overlays"
@@ -317,6 +343,15 @@ outputs:
     output_path: "{{PROJECT_EDISON_DIR}}/_generated/guidelines"
     # Preserve source directory structure
     preserve_structure: true
+    filename_pattern: "{name}.md"
+
+  # -------------------------------------------------------------------------
+  # Start Prompts
+  # -------------------------------------------------------------------------
+  # Session start prompts for orchestrators.
+  start:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/start"
     filename_pattern: "{name}.md"
 
   # -------------------------------------------------------------------------

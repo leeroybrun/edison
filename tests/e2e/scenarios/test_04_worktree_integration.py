@@ -36,7 +36,7 @@ WORKTREE_ROOT_NAMES = {f"{PROJECT_NAME}-worktrees", ".worktrees"}
 # ----------------------------------------------------------------------------
 # Local helpers (real git utilities)
 # ----------------------------------------------------------------------------
-def _run_run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+def _run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
     return run_with_timeout(["git", *args], cwd=cwd, capture_output=True, text=True)
 
 

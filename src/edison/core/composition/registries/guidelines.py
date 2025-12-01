@@ -329,7 +329,12 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
         pack_paths: Dict[str, List[Path]] = {}
         def _add_pack_paths(paths: List[Path]) -> None:
             for p in paths:
-                pack_name = p.parent.parent.name
+                # Structure: packs/{pack}/guidelines/{subfolder}/file.md
+                # Navigate up to find the pack name (folder containing "guidelines")
+                parent = p.parent
+                while parent.name != "guidelines" and parent.parent != parent:
+                    parent = parent.parent
+                pack_name = parent.parent.name if parent.name == "guidelines" else p.parent.parent.name
                 pack_paths.setdefault(pack_name, []).append(p)
 
         _add_pack_paths(pack_paths_list)

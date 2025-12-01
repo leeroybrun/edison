@@ -415,9 +415,9 @@ edison session next sess-001
 
 ## Related Documentation
 
-- `.edison/core/guidelines/SESSION_WORKFLOW.md` - Full session workflow
-- `.edison/core/guidelines/DELEGATION.md` - Delegation priority chain
-- `.edison/core/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
+- `.edison/_generated/guidelines/SESSION_WORKFLOW.md` - Full session workflow
+- `.edison/_generated/guidelines/DELEGATION.md` - Delegation priority chain
+- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
 
 ---
 

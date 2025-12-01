@@ -8,8 +8,8 @@
 ---
 
 ## Mandatory Reads
-- `.edison/core/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
-- `.edison/core/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
+- `.edison/_generated/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
+- `.edison/_generated/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
 
 ---
 

@@ -11,7 +11,7 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "stdin"
-        path: ".edison/core/guides/START.SESSION.md"
+        path: ".edison/_generated/start/START_NEW_SESSION.md"
 
     codex:
       command: "codex"
@@ -20,7 +20,7 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "stdin"
-        path: ".edison/core/guides/START.SESSION.md"
+        path: ".edison/_generated/start/START_NEW_SESSION.md"
 
     gemini:
       command: "gemini"

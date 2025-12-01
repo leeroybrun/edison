@@ -4,10 +4,10 @@
 ## Vitest Validation Context
 
 ### Guidelines
-{{include:.edison/packs/vitest/guidelines/tdd-workflow.md}}
-{{include:.edison/packs/vitest/guidelines/test-quality.md}}
-{{include:.edison/packs/vitest/guidelines/api-testing.md}}
-{{include:.edison/packs/vitest/guidelines/component-testing.md}}
+{{include:.edison/_generated/guidelines/vitest/tdd-workflow.md}}
+{{include:.edison/_generated/guidelines/vitest/test-quality.md}}
+{{include:.edison/_generated/guidelines/vitest/api-testing.md}}
+{{include:.edison/_generated/guidelines/vitest/component-testing.md}}
 
 ### Concrete Checks
 - Follow RED→GREEN→REFACTOR; tests precede implementation.

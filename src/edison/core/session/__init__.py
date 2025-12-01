@@ -42,6 +42,7 @@ from . import worktree
 
 # Core submodules
 from .core import id
+from .core import models
 
 # Next submodule
 from . import next
@@ -71,9 +72,6 @@ __all__ = [
     "SessionIdError",
     # Repository & Persistence
     "SessionRepository",
-    "archive",
-    "database",
-    "graph",
     # Lifecycle submodules
     "lifecycle",
     "recovery",
@@ -83,6 +81,7 @@ __all__ = [
     "worktree",
     # Core submodules
     "id",
+    "models",
     # Next
     "next",
     # Path resolution

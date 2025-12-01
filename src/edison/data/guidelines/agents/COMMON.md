@@ -1,18 +1,18 @@
 # Agent Common Guidelines (MANDATORY)
 
-Read this alongside your role file and the shared common instructions in `.edison/core/guidelines/shared/COMMON.md`.
+Read this alongside your role file and the shared common instructions in `.edison/_generated/guidelines/shared/COMMON.md`.
 
 ## Canonical Guideline Roster
 Use this roster instead of repeating the table in each agent file:
 
 | # | Guideline | Path | Purpose |
 |---|-----------|------|---------|
-| 1 | **Workflow** | `.edison/core/guidelines/agents/MANDATORY_WORKFLOW.md` | Claim → Implement → Ready cycle |
-| 2 | **TDD** | `.edison/core/guidelines/agents/TDD_REQUIREMENT.md` | RED-GREEN-REFACTOR protocol |
-| 3 | **Validation** | `.edison/core/guidelines/agents/VALIDATION_AWARENESS.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
-| 4 | **Delegation** | `.edison/core/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
-| 5 | **Context7** | `.edison/core/guidelines/agents/CONTEXT7_REQUIREMENT.md` | Post-training package docs |
-| 6 | **Rules** | `.edison/core/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
+| 1 | **Workflow** | `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Claim → Implement → Ready cycle |
+| 2 | **TDD** | `.edison/_generated/guidelines/agents/TDD_REQUIREMENT.md` | RED-GREEN-REFACTOR protocol |
+| 3 | **Validation** | `.edison/_generated/guidelines/agents/VALIDATION_AWARENESS.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
+| 4 | **Delegation** | `.edison/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
+| 5 | **Context7** | `.edison/_generated/guidelines/agents/CONTEXT7_REQUIREMENT.md` | Post-training package docs |
+| 6 | **Rules** | `.edison/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
 
 ## Edison CLI & Validation Tools
 

@@ -19,6 +19,9 @@ from edison.core.session.lifecycle.transaction import (
     ValidationTransaction,
     validation_transaction as _core_validation_transaction,
 )
+from edison.core.session.lifecycle.recovery import (
+    recover_incomplete_validation_transactions as _core_recover_incomplete_validation_transactions,
+)
 from edison.core.session.persistence.database import (
     _get_database_url as _core_get_database_url,
 )
@@ -39,10 +42,29 @@ def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]
     return session.to_dict()
 
 
-def transition_state(session_id: str, to_state: str, reason: Optional[str] = None) -> Path:
-    """Transition a session to a new state."""
+def transition_state(
+    session_id: Union[str, Path], to_state: str, reason: Optional[str] = None
+) -> bool:
+    """Transition a session to a new state.
+
+    Args:
+        session_id: Session ID as string or Path (extracts directory name if Path)
+        to_state: Target state to transition to
+        reason: Optional reason for the transition
+
+    Returns:
+        bool: True if transition succeeded, False if it failed
+    """
+    # Handle Path input - extract session ID from directory name
+    if isinstance(session_id, Path):
+        session_id = session_id.name
+
     mgr = SessionManager()
-    return mgr.transition_state(session_id, to_state)
+    try:
+        mgr.transition_state(str(session_id), to_state)
+        return True
+    except Exception:
+        return False
 
 
 def close_session(session_id: str) -> Path:
@@ -135,3 +157,50 @@ def _get_database_url() -> str:
         ValueError: If database.url is not configured when database.enabled is true
     """
     return _core_get_database_url()
+
+
+def recover_incomplete_validation_transactions(session_id: str) -> int:
+    """Recover incomplete validation transactions for a session.
+
+    This is a test helper wrapper around the core function from
+    edison.core.session.lifecycle.recovery.
+
+    Args:
+        session_id: The session ID to recover transactions for
+
+    Returns:
+        int: Number of recovered transactions
+    """
+    return _core_recover_incomplete_validation_transactions(session_id)
+
+
+def get_session_json_path(base_path: Path, state: str, session_id: str) -> Path:
+    """Get the path to a session's JSON file using the NESTED layout.
+
+    Sessions are stored as: {base_path}/sessions/{state}/{session_id}/session.json
+
+    Args:
+        base_path: Base path (project root or .project directory)
+        state: Session state (wip, active, validated, etc.)
+        session_id: Session identifier
+
+    Returns:
+        Path: Path to the session.json file
+    """
+    return base_path / "sessions" / state / session_id / "session.json"
+
+
+def get_session_dir_path(base_path: Path, state: str, session_id: str) -> Path:
+    """Get the path to a session's directory using the NESTED layout.
+
+    Sessions are stored in: {base_path}/sessions/{state}/{session_id}/
+
+    Args:
+        base_path: Base path (project root or .project directory)
+        state: Session state (wip, active, validated, etc.)
+        session_id: Session identifier
+
+    Returns:
+        Path: Path to the session directory
+    """
+    return base_path / "sessions" / state / session_id

@@ -24,8 +24,8 @@ This document provides condensed orchestration guidance for Claude Code when wor
    - Generated from: `edison compose all`
 
 2. **Core Workflow**:
-   - `.edison/core/guidelines/SESSION_WORKFLOW.md` - Session workflow and state machine
-   - `.edison/core/guidelines/DELEGATION.md` - Delegation priority chain
+   - `.edison/_generated/guidelines/SESSION_WORKFLOW.md` - Session workflow and state machine
+   - `.edison/_generated/guidelines/DELEGATION.md` - Delegation priority chain
 
 3. **Project Configuration**:
    - `.edison/config.yml` - Project config and pack activation
@@ -166,7 +166,7 @@ If orchestrator encounters errors:
 
 1. **Path resolution errors**: Check `AGENTS_PROJECT_ROOT` env var is set correctly
 2. **Missing constitution**: Run `edison compose all` to regenerate constitutions
-3. **Broken rules**: Check `.edison/core/rules/registry.yml` paths
+3. **Broken rules**: Check `.edison/_generated/AVAILABLE_VALIDATORS.md` paths
 4. **Validation failures**: Read validator reports in `.project/qa/validation-evidence/`
 
 ## Summary

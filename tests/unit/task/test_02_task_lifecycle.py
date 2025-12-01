@@ -184,6 +184,6 @@ def test_task_ownership(project_dir: TestProjectDir):
     assert "**Owner:**" in task_content, "Task should have Owner field"
 
     # Verify task was registered in session
-    session_path = project_dir.project_root / "sessions" / "wip" / f"{session_id}.json"
+    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
     assert task_id in session_data["tasks"], f"Task {task_id} should be registered in session"

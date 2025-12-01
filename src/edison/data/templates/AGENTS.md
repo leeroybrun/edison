@@ -10,9 +10,9 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.edison/manifest.json` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison tasks claim`) injects rules proactively.
+1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATORS.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison tasks claim`) injects rules proactively.
 
-2. **Correct intake prompt** – Start every session via `.edison/START.SESSION.md`. That checklist handles QA sweeps + task selection.
+2. **Correct intake prompt** – Start every session via `.edison/_generated/constitutions/ORCHESTRATORS.md`. That checklist handles QA sweeps + task selection.
 
 3. **Session record alive** – Every session has a JSON file under `.project/sessions/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison scripts.
 
@@ -20,7 +20,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `.edison/config/delegation.yaml`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `.edison/_generated/constitutions/ORCHESTRATORS.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
 7. **Context7 first** – Query Context7 before coding against any package listed under `postTrainingPackages` in validator config. Never guess about post-training APIs.
 
@@ -46,27 +46,27 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 ### Framework Guidelines (Always)
 
-- `.edison/core/guidelines/SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `.edison/core/guidelines/HONEST_STATUS.md` - Status integrity rules
-- `.edison/core/guidelines/VALIDATION.md` - Validator requirements and waves
-- `.edison/core/guidelines/QUALITY.md` - Code quality standards
-- `.edison/core/guidelines/TDD.md` - Test-driven development enforcement
-- `.edison/core/guidelines/CONTEXT7.md` - Post-training package query rules
-- `.edison/core/guidelines/GIT_WORKFLOW.md` - Git commit and branch patterns
-- `.edison/core/guidelines/DELEGATION.md` - Delegation patterns and rules
-- `.edison/core/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition guards
+- `.edison/_generated/guidelines/SESSION_WORKFLOW.md` - Canonical session lifecycle
+- `.edison/_generated/guidelines/HONEST_STATUS.md` - Status integrity rules
+- `.edison/_generated/guidelines/VALIDATION.md` - Validator requirements and waves
+- `.edison/_generated/guidelines/QUALITY.md` - Code quality standards
+- `.edison/_generated/guidelines/TDD.md` - Test-driven development enforcement
+- `.edison/_generated/guidelines/CONTEXT7.md` - Post-training package query rules
+- `.edison/_generated/guidelines/GIT_WORKFLOW.md` - Git commit and branch patterns
+- `.edison/_generated/guidelines/DELEGATION.md` - Delegation patterns and rules
+- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition guards
 
 ### Project Configuration (Always)
 
-- `.edison/manifest.json` - Authoritative preload list (project-specific)
-- `.edison/validators/config.json` - Validator roster and triggers (project-specific)
-- `.edison/config/delegation.yaml` - Delegation model routing (project-specific)
+- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Authoritative preload list (project-specific)
+- `.edison/_generated/AVAILABLE_VALIDATORS.md` - Validator roster and triggers (project-specific)
+- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Delegation model routing (project-specific)
 
 ### Project-Specific Client Rules (Conditional)
 
-Configured in `.edison/manifest.json` under `mandatory` array. May include:
-- Claude-specific rules (`.edison/packs/clients/claude/CLAUDE.md`)
-- Cursor-specific rules (`.edison/packs/clients/cursor/rules/*.mdc`)
+Configured in `.edison/_generated/constitutions/ORCHESTRATORS.md` under `mandatory` array. May include:
+- Claude-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
+- Cursor-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
 - Other client packs as needed
 
 **Proactive Loading Mechanism**:
@@ -85,14 +85,14 @@ Edison CLI injects rules automatically:
 ### Guidelines vs Guides (Know the Difference)
 
 **Guidelines** (Condensed, Mandatory)
-- Location: `.edison/core/guidelines/`
+- Location: `.edison/_generated/guidelines/`
 - Purpose: Concise rules for active workflows
 - When: Always loaded at session start
 - Examples: SESSION_WORKFLOW, TDD, VALIDATION
 - Length: Optimized for AI context windows
 
 **Guides** (Deep Dives, On-Demand)
-- Location: `.edison/core/guides/` + `.edison/guides/`
+- Location: `.edison/_generated/guidelines/` + `.edison/_generated/guidelines/`
 - Purpose: Extended patterns, examples, deep technical explanations
 - When: Load only when needed (preserves context budget)
 - Examples: TDD_GUIDE (extended), QUALITY_GUIDE (deep patterns)
@@ -108,7 +108,7 @@ Edison CLI injects rules automatically:
 
 ## Rule Registry
 
-Edison guidelines contain **anchored rule IDs** indexed in `.edison/core/rules/registry.yml`.
+Edison guidelines contain **anchored rule IDs** indexed in `.edison/_generated/AVAILABLE_VALIDATORS.md`.
 
 **Discovery**:
 ```bash
@@ -131,10 +131,10 @@ edison rules require <RULE_ID>
 
 ## Session Workflow
 
-See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
+See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
 
 **Key Phases**:
-1. **Session Intake** (via START.SESSION.md checklist)
+1. **Session Intake** (via ORCHESTRATORS.md constitution checklist)
 2. **Task Claiming** (moves files to session scope)
 3. **Implementation** (TDD cycle with evidence logging)
 4. **Validation** (automated checks + validator waves)
@@ -187,7 +187,7 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 - Session-scoped queues prevent race conditions
 
 ### Delegation
-- Route complex work through `.edison/config/delegation.yaml`
+- Route complex work through `.edison/_generated/constitutions/ORCHESTRATORS.md`
 - Match file patterns to model capabilities
 - Specialized implementers for frontend/backend/database/testing
 
@@ -210,21 +210,21 @@ See `.edison/core/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle sp
 ### Core Configuration
 
 **Framework Defaults**:
-- `.edison/core/defaults.yaml` - Edison framework default configuration
+- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Framework orchestration
 
 **Project Overlay**:
 - `edison.yaml` - Project-specific configuration overrides
-- `.edison/manifest.json` - Authoritative preload list
+- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Authoritative preload list
 
 **State Machine**:
-- `.edison/core/templates/session-workflow.json` - State definitions and transitions
-- `.edison/core/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - Guard enforcement rules
+- `.edison/_generated/STATE_MACHINE.md` - State definitions and transitions
+- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - Guard enforcement rules
 
 ### Guidelines (Mandatory Reading)
 
-All in `.edison/core/guidelines/`:
+All in `.edison/_generated/guidelines/`:
 - `SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `DELEGATION.md` + `.edison/config/delegation.yaml` - Delegation routing
+- `DELEGATION.md` + `.edison/_generated/constitutions/ORCHESTRATORS.md` - Delegation routing
 - `TDD.md` - Test-driven development enforcement (RED→GREEN→REFACTOR)
 - `QUALITY.md` - Code quality standards and patterns
 - `HONEST_STATUS.md` - Status integrity and directory-name truth
@@ -240,8 +240,8 @@ All in `.edison/core/guidelines/`:
 - `.project/qa/TEMPLATE.md` - QA brief structure with validator verdicts
 
 **Session Templates**:
-- `.edison/core/templates/session-workflow.json` - State machine definitions
-- `.edison/START.SESSION.md` - Session intake checklist
+- `.edison/_generated/STATE_MACHINE.md` - State machine definitions
+- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Session intake checklist
 
 ### CLI Reference (Automation)
 
@@ -372,7 +372,7 @@ Once bundle validated, each implementer completes their session.
 - Follows full TDD + validation workflow
 - Evidence logged in own task file
 
-See `.edison/core/guidelines/SESSION_WORKFLOW.md` section "Parallel Sessions and Task Splitting" for detailed workflow.
+See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` section "Parallel Sessions and Task Splitting" for detailed workflow.
 
 ---
 
@@ -382,10 +382,10 @@ This template provides the Edison framework orchestration hub. **Projects extend
 
 ### Example: Project Overlay
 
-`.edison/AGENTS.md` structure:
+`.edison/_generated/constitutions/AGENTS.md` structure:
 ```markdown
-\{\{include:.edison/core/templates/AGENTS.md\}\}
-\{\{include:.edison/AGENTS.{PROJECT_NAME}.md\}\}
+\{\{include:.edison/_generated/constitutions/AGENTS.md\}\}
+{{include:.edison/_generated/constitutions/AGENTS.md}}
 ```
 
 Project overlay adds:
@@ -438,4 +438,4 @@ This orchestration hub ensures:
 - ✅ Delegation patterns (route complex work to specialists)
 - ✅ Post-training safety (Context7 queries mandatory)
 
-**Next Step**: Read `.edison/START.SESSION.md` to begin a session correctly.
+**Next Step**: Read `.edison/_generated/constitutions/ORCHESTRATORS.md` to begin a session correctly.

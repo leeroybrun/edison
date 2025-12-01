@@ -741,7 +741,7 @@ describe('LeadCard', () => {
 ---
 
 **Validator**: Testing
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
+**Configuration**: ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`)
 ```
 
 ---

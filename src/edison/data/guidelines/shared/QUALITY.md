@@ -1,6 +1,5 @@
 # Quality Standards (Core)
 
-> **Extended Version:** For detailed quality gates, evidence expectations, and examples, see [Extended Quality Guide](../../guides/extended/QUALITY.md)
 
 ## Quality Checklist
 - **Type Safety:** No untyped escape hatches; justify any suppressions.

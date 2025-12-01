@@ -10,8 +10,8 @@
 ---
 
 ## Mandatory Reads
-- `.edison/core/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
-- `.edison/core/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
+- `.edison/_generated/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
+- `.edison/_generated/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
 
 ---
 
@@ -732,8 +732,8 @@ Human-readable report (required):
 ---
 
 **Validator**: Performance
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
-**Specification**: `.edison/core/validators/critical/performance.md`
+**Configuration**: ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`)
+**Specification**: `.edison/_generated/validators/critical/performance.md`
 ```
 
 Machine-readable JSON report (required):
@@ -776,12 +776,12 @@ Machine-readable JSON report (required):
 
 **Load pack performance rules before validating.** Packs surface their own performance guidance through YAML registries created in T-032.
 
-- Core registry: `.edison/core/rules/registry.yml`
-- Pack registry: `.edison/packs/<pack>/rules/registry.yml`
+- Core registry: `.edison/_generated/AVAILABLE_VALIDATORS.md`
+- Pack registry: `.edison/_generated/AVAILABLE_VALIDATORS.md (pack rules merged)`
 - Compose both with `RulesRegistry.compose(packs=["nextjs", ...])`; validators must merge core + pack performance rules when reviewing a task.
 
 ### How to load pack-specific performance rules
-1. Read the active packs from ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`).
+1. Read the active packs from ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`).
 2. Call `RulesRegistry.compose(packs=[...])` to pull the pack performance rules alongside core rules. Composition loads the core rule bodies first, then appends pack guidance, carries forward `blocking` flags, and records `origins` (e.g., `pack:nextjs`).
 3. Fail fast if a referenced pack registry is missing or unreadable; the validator is BLOCKED until the pack registry exists.
 
@@ -797,4 +797,4 @@ Machine-readable JSON report (required):
 3. Document which rules came from core vs pack in the validation report; surfaced pack findings must be blocking when the merged rule is blocking.
 
 ## Edison validation guards (current)
-See `.edison/core/guidelines/validators/COMMON.md#edison-validation-guards-current` for the guardrails that apply to every validation run; treat violations as blocking before issuing PASS.
+See `.edison/_generated/guidelines/validators/COMMON.md#edison-validation-guards-current` for the guardrails that apply to every validation run; treat violations as blocking before issuing PASS.

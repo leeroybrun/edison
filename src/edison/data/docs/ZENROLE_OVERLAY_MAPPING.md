@@ -4,12 +4,12 @@ This note explains how Edison keeps zenRole identifiers project-agnostic while l
 
 ## What are zenRoles
 
-zenRoles are stable identifiers that tie a persona to its prompts, tools, and validation posture. Core agent specs (for example `feature-implementer.md` in `.edison/core/agents/`) reference zenRoles through template variables instead of fixed strings. This keeps the core catalog reusable while letting each project decide the exact role names it registers with Zen.
+zenRoles are stable identifiers that tie a persona to its prompts, tools, and validation posture. Core agent specs (for example `feature-implementer.md` in `.edison/_generated/agents/`) reference zenRoles through template variables instead of fixed strings. This keeps the core catalog reusable while letting each project decide the exact role names it registers with Zen.
 
 ### How they work in Edison
 
 1) Core content (agents, validators, orchestration manifests) declares `zenRole: "{{project.zenRoles.<id>}}"`.  
-2) ConfigManager loads defaults from `edison.data.config/*.yaml`, then merges any overlays in `.edison/core/config/*.yaml` and finally the project overlays under `.edison/config/*.yml`.  
+2) ConfigManager loads defaults from `edison.data.config/*.yaml`, then merges any overlays in `.edison/config/*.yaml` and finally the project overlays under `.edison/config/*.yml`.  
 3) When prompts or manifests are composed, the template variable is resolved to the value defined in the project overlay. Missing entries fail fast so you notice gaps before execution.
 
 ## Project overlays (.edison/)
@@ -41,7 +41,7 @@ How the mapping is applied:
 ### Overlay precedence
 
 1) Core defaults: `src/edison/data/config/*.yaml`  
-2) Optional shared overrides: `.edison/core/config/*.yaml` (useful for org-wide defaults)  
+2) Optional shared overrides: `.edison/config/*.yaml` (useful for org-wide defaults)  
 3) Project overlay: `.edison/config/*.yml` (final authority for a repository)  
 
 Later layers replace or extend earlier ones, so define zenRole strings in the project overlay to avoid surprises.

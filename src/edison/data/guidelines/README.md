@@ -5,11 +5,11 @@ validations. Project layers extend these via includes and project-specific overl
 
 ## Structure & Contracts
 
-- **Guidelines** (`.edison/core/guidelines/<role>/*.md`): Condensed, mandatory checklists and rules. Always loaded by agents.
-- **Extended Guides** (`.edison/core/guides/extended/*.md`): Deep-dive explanations, examples, and philosophy. Referenced by guidelines.
-- **Reference** (`.edison/core/guides/reference/*.md`): Specific reference material (APIs, commands).
+- **Guidelines** (`.edison/_generated/guidelines/<role>/*.md`): Condensed, mandatory checklists and rules. Always loaded by agents.
+- **Extended Guides** (`.edison/_generated/guidelines/extended/*.md`): Deep-dive explanations, examples, and philosophy. Referenced by guidelines.
+- **Reference** (`.edison/_generated/guidelines/reference/*.md`): Specific reference material (APIs, commands).
 
-Role folders under `.edison/core/guidelines/`:
+Role folders under `.edison/_generated/guidelines/`:
 - `shared/` — Applies to all roles.
 - `agents/` — Implementation-focused guidance.
 - `validators/` — QA, review, and test quality guidance.
@@ -18,15 +18,14 @@ Role folders under `.edison/core/guidelines/`:
 For topics that exist in both layers (for example `TDD.md`, `SESSION_WORKFLOW.md`):
 
 - The **guideline** includes, near the top of the file, a canonical cross-link of the form  
-  `> **Extended Version**: See [core/guides/extended/X.md](../../guides/extended/X.md) for full details.`
 - The **extended guide** includes, near the top of the file, a canonical cross-link of the form  
   `> **Condensed Summary**: See [core/guidelines/X.md](../../guidelines/X.md) for the mandatory checklist.`
 
-These bidirectional links are enforced by tests under `.edison/core/tests/guidelines/` so agents can reliably jump between condensed and extended views.
+These bidirectional links are enforced by tests under `tests/guidelines/` so agents can reliably jump between condensed and extended views.
 
 ### Pack Guidelines (Namespacing Convention)
 
-- Packs MAY contribute additional guidelines under `.edison/packs/<pack>/guidelines/*.md`.
+- Packs MAY contribute additional guidelines under `.edison/_generated/guidelines/<pack>/*.md`.
 - Guideline filenames should be **namespaced by pack** to avoid collisions in the global registry, for example:
   - `framework-routing.md`, `framework-metadata.md`
   - `orm-migrations.md`, `orm-query-optimization.md`

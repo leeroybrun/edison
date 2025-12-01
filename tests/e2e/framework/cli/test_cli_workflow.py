@@ -152,7 +152,7 @@ class TestScriptWorkflow:
         session_id = "claude-pid-777"
         env_vars = {"project_OWNER": session_id}
         run_cli(cli_workflow_env, [cli_workflow_env["session_script"], "new", "--session-id", session_id], extra_env=env_vars)
-        session_file = cli_workflow_env["sessions_root"] / "wip" / f"{session_id}.json"
+        session_file = cli_workflow_env["sessions_root"] / "wip" / session_id / "session.json"
         assert session_file.exists(), "Session file should be created for the PID-based ID"
 
         duplicate = run_cli(cli_workflow_env, [cli_workflow_env["session_script"], "new", "--session-id", session_id], extra_env=env_vars, check=False)
@@ -167,7 +167,7 @@ class TestScriptWorkflow:
         create_task_file(cli_workflow_env, task_id)
 
         run_cli(cli_workflow_env, [cli_workflow_env["session_script"], "new", "--session-id", session_id], extra_env=env_vars)
-        session_wip = cli_workflow_env["sessions_root"] / "wip" / f"{session_id}.json"
+        session_wip = cli_workflow_env["sessions_root"] / "wip" / session_id / "session.json"
         assert session_wip.exists()
 
         # Intake summary (no --session flags required after creation)
@@ -247,7 +247,7 @@ class TestScriptWorkflow:
         qa_done = cli_workflow_env["qa_root"] / "done" / f"{task_id}-qa.md"
         assert task_validated.exists()
         assert qa_done.exists()
-        session_validated = cli_workflow_env["sessions_root"] / "validated" / f"{session_id}.json"
+        session_validated = cli_workflow_env["sessions_root"] / "validated" / session_id / "session.json"
         assert session_validated.exists(), "Session file should move to validated/"
         session_data = json.loads(session_validated.read_text())
         assert session_data["meta"]["status"] == "validated"

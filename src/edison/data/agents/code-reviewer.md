@@ -26,9 +26,9 @@ metadata:
 
 ## Context7 Knowledge Refresh (MANDATORY)
 
-- Follow `.edison/core/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
+- Follow `.edison/_generated/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
 - Prioritize Context7 lookups for the packages listed in this file’s `context7_ids` before coding.
-- Versions + topics live in `config/context7.yml` (never hardcode).
+- Versions + topics live in `config/context7.yaml` (never hardcode).
 - Required refresh set: react, tailwindcss, prisma, zod, motion
 - Next.js 16
 - React 19
@@ -83,12 +83,12 @@ await mcp__context7__get-library-docs({
 
 ## MANDATORY GUIDELINES (Read Before Any Task)
 
-- Read `.edison/core/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
-- Use `.edison/core/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
+- Read `.edison/_generated/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
+- Use `.edison/_generated/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
 
 ## Tools
 
-- Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
+- Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
 {{SECTION:Tools}}
 
@@ -320,7 +320,7 @@ Example:
 - Never delegate to another model; orchestrator owns delegation and validator routing.
 
 ## Output Format Requirements
-- Follow `.edison/core/guidelines/validators/OUTPUT_FORMAT.md` for verdict structure (status line -> findings -> follow-ups -> evidence pointers).
+- Follow `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` for verdict structure (status line -> findings -> follow-ups -> evidence pointers).
 - Reference evidence files under `.project/qa/validation-evidence/<task-id>/` so the QA owner can cross-link them verbatim.
 - Ensure findings include severity, file:line references, and actionable fix suggestions.
 

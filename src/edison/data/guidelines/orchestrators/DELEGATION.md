@@ -1,10 +1,10 @@
 # Delegation Models (Orchestrators)
 
-> Canonical path: `.edison/core/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
+> Canonical path: `.edison/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
 
 ## Delegation Criteria
 
-- Load delegation config first: `.edison/core/config/delegation.yaml` → pack overlays → `.edison/config/delegation.yml` (fail if missing).
+- Load delegation config first: `.edison/_generated/constitutions/ORCHESTRATORS.md` → pack overlays → `.edison/config/delegation.yml` (fail if missing).
 - Delegate by default; orchestrators implement only when criteria say **Handle Directly**.
 - Enforce the priority chain (user instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers). Stop if ambiguous.
 

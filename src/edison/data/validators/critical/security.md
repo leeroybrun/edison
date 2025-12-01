@@ -10,8 +10,8 @@
 ---
 
 ## Mandatory Reads
-- `.edison/core/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
-- `.edison/core/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
+- `.edison/_generated/guidelines/shared/COMMON.md` — shared Context7, TDD, and configuration guardrails.
+- `.edison/_generated/guidelines/validators/COMMON.md` — validation guards and maintainability baselines that apply to every validator.
 
 ---
 
@@ -796,8 +796,8 @@ Human-readable report (required):
 ---
 
 **Validator**: Security
-**Configuration**: ConfigManager overlays (`.edison/core/config/validators.yaml` → pack overlays → `.edison/config/validators.yml`)
-**Specification**: `.edison/core/validators/critical/security.md`
+**Configuration**: ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`)
+**Specification**: `.edison/_generated/validators/critical/security.md`
 ```
 
 Machine-readable JSON report (required):
@@ -843,7 +843,7 @@ Machine-readable JSON report (required):
 ### Pack-aware security rules
 
 - Load **pack-specific security rules** with `RulesRegistry` / `compose_rules(packs=[...])` so the validator sees both the core registry and any pack overlays.
-- Pack rule registries (added in **T-032**) live at `.edison/packs/<pack>/rules/registry.yml`; each pack can register additional security rules or extend core rules.
+- Pack rule registries (added in **T-032**) live at `.edison/_generated/AVAILABLE_VALIDATORS.md (pack rules merged)`; each pack can register additional security rules or extend core rules.
 - When a pack shares a rule id with core, **merge core + pack security rules**: the pack can append guidance, add contexts, and elevate `blocking` to `True` while keeping the core text intact.
 - Use pack guidance that is security-heavy (e.g., an auth-centric pack like **better-auth** adds MFA/session rules; a data pack like **prisma** adds query-hardening guidance) to review code paths touched by the task.
 
@@ -857,9 +857,9 @@ rules = RulesRegistry().compose(packs=["nextjs", "prisma"])  # include active pa
 security_rules = [r for r in rules["rules"].values() if "security" in r.get("category", "").lower()]
 ```
 
-- Core registry path: `.edison/core/rules/registry.yml`
-- Pack registries: `.edison/packs/<pack>/rules/registry.yml`
-- Project overrides (highest priority): `.edison/rules/registry.yml`
+- Core registry path: `.edison/_generated/AVAILABLE_VALIDATORS.md`
+- Pack registries: `.edison/_generated/AVAILABLE_VALIDATORS.md (pack rules merged)`
+- Project overrides (highest priority): `.edison/_generated/AVAILABLE_VALIDATORS.md`
 
 Validators MUST read from the composed registry output above (never hardcode rules) before evaluating security changes.
 
@@ -876,4 +876,4 @@ Validators MUST read from the composed registry output above (never hardcode rul
 **If this section is empty**, the validator will apply generic OWASP principles only.
 
 ## Edison validation guards (current)
-- See `.edison/core/guidelines/validators/COMMON.md#edison-validation-guards-current` for the guardrails that apply to every validation run; treat violations as blocking before issuing PASS.
+- See `.edison/_generated/guidelines/validators/COMMON.md#edison-validation-guards-current` for the guardrails that apply to every validation run; treat violations as blocking before issuing PASS.

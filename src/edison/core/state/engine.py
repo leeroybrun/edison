@@ -136,7 +136,7 @@ class RichStateMachine:
         transition = self._find_transition(str(current), str(target))
         if transition is None:
             raise StateTransitionError(
-                f"Invalid transition {current!r} -> {target!r}",
+                f"Invalid transition {current!r} -> {target!r}: not allowed",
                 context={"domain": self.name, "from": current, "to": target},
             )
         self._check_guard(transition, ctx)

@@ -22,11 +22,11 @@ Your work is validated by the roster in `AVAILABLE_VALIDATORS.md`, organized int
 - Any critical validator rejection blocks promotion, even if globals approve.
 
 #### Tier 3: Specialized Validators (pattern-triggered)
-- Triggered by file patterns defined in `.edison/config/validators.yml`.
+- Triggered by file patterns defined in `.edison/_generated/AVAILABLE_VALIDATORS.md`.
 - Active specialized validators and their triggers are documented in `AVAILABLE_VALIDATORS.md`.
 - These validators can block if `blocksOnFail=true` in config.
 
-**Specialized validators run based on changed files**. Active packs contribute specialized validators for their frameworks. Check `.edison/config/validators.yml` for current triggers and validator configuration.
+**Specialized validators run based on changed files**. Active packs contribute specialized validators for their frameworks. Check `.edison/_generated/AVAILABLE_VALIDATORS.md` for current triggers and validator configuration.
 
 ### Your Role: Produce Excellent Work
 
@@ -181,9 +181,9 @@ cat .project/qa/validation-evidence/<task-id>/round-N/bundle-*.json
 ## References
 
 - Validator roster (dynamic): `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`
-- Extended validation guide: `.edison/core/guidelines/shared/VALIDATION.md`
-- Validator configuration: `.edison/validators/config.json`
-- Validation output format: `.edison/validators/OUTPUT_FORMAT.md`
+- Extended validation guide: `.edison/_generated/guidelines/shared/VALIDATION.md`
+- Validator configuration: `.edison/_generated/AVAILABLE_VALIDATORS.md`
+- Validation output format: `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md`
 
 ---
 

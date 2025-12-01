@@ -26,9 +26,9 @@ metadata:
 
 ## Context7 Knowledge Refresh (MANDATORY)
 
-- Follow `.edison/core/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
+- Follow `.edison/_generated/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` for the canonical workflow and evidence markers.
 - Prioritize Context7 lookups for the packages listed in this file’s `context7_ids` before coding.
-- Versions + topics live in `config/context7.yml` (never hardcode).
+- Versions + topics live in `config/context7.yaml` (never hardcode).
 - Required refresh set: react, tailwindcss, prisma, zod, motion
 - Next.js 16
 - React 19
@@ -67,12 +67,12 @@ await mcp__context7__get-library-docs({
 
 ## MANDATORY GUIDELINES (Read Before Any Task)
 
-- Read `.edison/core/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
-- Use `.edison/core/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
+- Read `.edison/_generated/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, and TDD evidence).
+- Use `.edison/_generated/guidelines/agents/COMMON.md#canonical-guideline-roster` for the mandatory agent guideline table and tooling baseline.
 
 ## Tools
 
-- Baseline commands and validation tooling live in `.edison/core/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
+- Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
 {{SECTION:Tools}}
 
@@ -422,7 +422,7 @@ Otherwise: **Build it fully and return complete results.**
 
 | Guide | When to Use | Why Critical |
 |-------|-------------|--------------|
-| `.edison/core/guidelines/TDD.md` | Every implementation | RED-GREEN-REFACTOR workflow |
-| `.edison/core/guidelines/DELEGATION.md` | Every task start | Delegation decisions |
-| `.edison/core/guidelines/VALIDATION.md` | Before completion | Multi-validator approval |
+| `.edison/_generated/guidelines/TDD.md` | Every implementation | RED-GREEN-REFACTOR workflow |
+| `.edison/_generated/guidelines/DELEGATION.md` | Every task start | Delegation decisions |
+| `.edison/_generated/guidelines/VALIDATION.md` | Before completion | Multi-validator approval |
 | Project DESIGN.md | UI components | Design system tokens |

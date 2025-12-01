@@ -4,10 +4,10 @@
 ## React Validation Context
 
 ### Guidelines
-{{include:.edison/packs/react/guidelines/hooks-patterns.md}}
-{{include:.edison/packs/react/guidelines/component-design.md}}
-{{include:.edison/packs/react/guidelines/server-client-components.md}}
-{{include:.edison/packs/react/guidelines/accessibility.md}}
+{{include:.edison/_generated/guidelines/react/hooks-patterns.md}}
+{{include:.edison/_generated/guidelines/react/component-design.md}}
+{{include:.edison/_generated/guidelines/react/server-client-components.md}}
+{{include:.edison/_generated/guidelines/react/accessibility.md}}
 
 ### Concrete Checks
 - Follow Rules of Hooks; no conditional hooks.
