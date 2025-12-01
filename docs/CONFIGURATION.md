@@ -1,0 +1,1607 @@
+# Edison Configuration Guide
+
+Complete reference for configuring the Edison Framework.
+
+## Table of Contents
+
+- [Configuration Hierarchy](#configuration-hierarchy)
+- [Environment Variables](#environment-variables)
+- [Core Configuration Files](#core-configuration-files)
+- [Pack Configuration](#pack-configuration)
+- [Project Configuration](#project-configuration)
+- [Configuration Examples](#configuration-examples)
+
+---
+
+## Configuration Hierarchy
+
+Edison uses a layered configuration system with the following priority (highest to lowest):
+
+1. **Environment variables** (`EDISON_*`)
+2. **Project overrides** (`.edison/config/`)
+3. **Pack configurations** (`.edison/packs/{pack}/config/`)
+4. **Bundled defaults** (`edison.data.config/`)
+
+### How Merging Works
+
+- **Deep merge**: Nested objects merge recursively
+- **List operations**:
+  - `EDISON_KEY__0=value` - Set specific index
+  - `EDISON_KEY__APPEND=value` - Append to list
+- **Type coercion**: Environment variables are automatically converted to booleans, integers, floats, or JSON
+
+---
+
+## Environment Variables
+
+### Standard Edison Variables
+
+All Edison configuration can be overridden via environment variables using the `EDISON_` prefix:
+
+```bash
+# Simple values
+export EDISON_TDD__ENFORCE_RED_GREEN_REFACTOR=true
+export EDISON_SESSION__RECOVERY__TIMEOUT_HOURS=12
+
+# Deep paths (use double underscores)
+export EDISON_DELEGATION__RESILIENCE__RETRY__MAX_ATTEMPTS=5
+export EDISON_DELEGATION__RESILIENCE__CIRCUIT_BREAKER__THRESHOLD=10
+
+# Lists - set specific index
+export EDISON_AGENTS__0=codex
+export EDISON_AGENTS__1=claude
+
+# Lists - append
+export EDISON_PACKS__APPEND=testing
+export EDISON_AGENTS__APPEND=gemini
+
+# JSON values
+export EDISON_JSON_OBJECT='{"key": "value"}'
+export EDISON_JSON_ARRAY='["a", "b", "c"]'
+
+# New keys (preserve case for new keys)
+export EDISON_QUALITY__LEVEL=gold  # Creates {"quality": {"LEVEL": "gold"}}
+export EDISON_RUNTIME__LOG_LEVEL=debug  # Creates {"RUNTIME": {"LOG_LEVEL": "debug"}}
+```
+
+### Path Configuration
+
+```bash
+# Override project config directory (default: .edison)
+export EDISON_paths__project_config_dir=.custom_config
+```
+
+### Project Variables
+
+```bash
+# Project identification (optional)
+export PROJECT_NAME=my-app
+```
+
+### Reserved Variables (Set by Edison)
+
+These are set by Edison and should not be manually configured:
+
+- `EDISON_SESSION_ID` - Current session identifier (set by session manager)
+- `CLAUDE_CODE_MAX_OUTPUT_TOKENS` - Claude Code output token limit
+
+---
+
+## Core Configuration Files
+
+All core configuration files are located in `src/edison/data/config/` and can be overridden in your project's `.edison/config/` directory.
+
+### state-machine.yaml
+
+Defines state machines for tasks, QA, and sessions.
+
+```yaml
+statemachine:
+  task:
+    states:
+      todo:
+        description: "Task awaiting claim"
+        initial: true
+        allowed_transitions:
+          - to: wip
+            guard: can_start_task
+            conditions:
+              - name: task_claimed
+          - to: done
+            guard: can_finish_task
+            conditions:
+              - name: all_work_complete
+              - name: no_pending_commits
+            actions:
+              - name: record_completion_time
+          - to: blocked
+            guard: has_blockers
+            actions:
+              - name: record_blocker_reason
+
+      wip:
+        description: "Task in progress"
+        allowed_transitions:
+          - to: blocked
+            guard: has_blockers
+          - to: done
+            guard: can_finish_task
+          - to: todo
+            guard: always_allow
+          - to: validated
+            guard: always_allow
+
+      blocked:
+        description: "Waiting on external blockers"
+        allowed_transitions:
+          - to: wip
+            guard: can_start_task
+          - to: todo
+            guard: always_allow
+
+      done:
+        description: "Implementation complete, awaiting validation"
+        allowed_transitions:
+          - to: validated
+            guard: can_finish_task
+          - to: wip
+            guard: always_allow
+
+      validated:
+        description: "Validated and complete"
+        final: true
+        allowed_transitions: []
+
+  qa:
+    states:
+      waiting:
+        initial: true
+        description: "Pending hand-off from implementation"
+      todo:
+        description: "QA backlog"
+      wip:
+        description: "QA in progress"
+      done:
+        description: "QA review complete"
+      validated:
+        description: "QA validated"
+        final: true
+
+  session:
+    states:
+      draft:
+        description: "Session in draft state, not yet active"
+        allowed_transitions:
+          - to: active
+            guard: can_activate_session
+            conditions:
+              - name: has_task
+              - name: task_claimed
+            actions:
+              - name: create_worktree
+                when: config.worktrees_enabled
+              - name: record_activation_time
+
+      active:
+        description: "Session is active, work in progress"
+        initial: true
+        allowed_transitions:
+          - to: done
+            guard: can_complete_session
+          - to: blocked
+            guard: has_blockers
+          - to: closing
+            guard: can_complete_session
+          - to: recovery
+            guard: always_allow
+
+      blocked:
+        description: "Session blocked due to validation or dependencies"
+
+      done:
+        description: "Session work complete"
+
+      closing:
+        description: "Session closing and awaiting validation"
+
+      validated:
+        description: "Session validated"
+        allowed_transitions:
+          - to: archived
+            guard: always_allow
+
+      recovery:
+        description: "Session in recovery after timeout or failure"
+
+      archived:
+        description: "Session archived"
+        final: true
+```
+
+**Override Example** (`.edison/config/state-machine.yaml`):
+
+```yaml
+# Add custom task state
+statemachine:
+  task:
+    states:
+      review:
+        description: "Code review in progress"
+        allowed_transitions:
+          - to: wip
+            guard: always_allow
+          - to: done
+            guard: can_finish_task
+```
+
+---
+
+### session.yaml
+
+Session management, recovery, and worktree configuration.
+
+```yaml
+session:
+  paths:
+    root: ".project/sessions"
+    archive: ".project/archive"
+    tx: ".project/sessions/_tx"
+    templates:
+      primary: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
+      repo: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
+
+  recovery:
+    timeoutHours: 8
+    staleCheckIntervalHours: 1
+    clockSkewAllowanceSeconds: 300
+    defaultTimeoutMinutes: 60
+
+  validation:
+    idRegex: "^[a-zA-Z0-9_\\-\\.]+$"
+    maxLength: 64
+
+  states:
+    draft: "draft"
+    active: "wip"
+    wip: "wip"
+    done: "done"
+    closing: "done"
+    validated: "validated"
+    recovery: "recovery"
+    archived: "archived"
+
+  defaults:
+    initialState: "active"
+
+  lookupOrder:
+    - "wip"
+    - "active"
+    - "done"
+    - "validated"
+    - "closing"
+    - "recovery"
+    - "archived"
+
+  worktree:
+    uuidSuffixLength: 6
+    timeouts:
+      health_check: 10
+      fetch: 60
+      checkout: 30
+      worktree_add: 30
+      clone: 60
+      install: 300
+      branch_check: 10
+      prune: 10
+
+  transaction:
+    minDiskHeadroom: 5242880  # ~5MB
+```
+
+**Common Overrides**:
+
+```bash
+# Increase session timeout
+export EDISON_SESSION__RECOVERY__TIMEOUT_HOURS=12
+
+# Adjust worktree install timeout
+export EDISON_SESSION__WORKTREE__TIMEOUTS__INSTALL=600
+```
+
+---
+
+### validators.yaml
+
+Validation framework configuration with validator roster and execution settings.
+
+```yaml
+validation:
+  # Validation dimensions and weights
+  dimensions:
+    functionality: 30
+    reliability: 25
+    security: 20
+    maintainability: 15
+    performance: 10
+
+  # Cache directory for generated validators
+  cache:
+    directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
+
+  # Required evidence files
+  requiredEvidenceFiles:
+    - command-type-check.txt
+    - command-lint.txt
+    - command-test.txt
+    - command-build.txt
+
+  # Execution settings
+  execution:
+    mode: parallel        # parallel | sequential
+    concurrency: 4        # max parallel validators
+    timeout: 300          # per-validator timeout in seconds
+
+  # Validator roster
+  roster:
+    global:
+      - id: global-codex
+        name: Global Validator (Codex)
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-global-codex
+        specFile: _generated/validators/global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Global (Codex)"
+
+      - id: global-claude
+        name: Global Validator (Claude)
+        model: claude
+        interface: Task
+        role: code-reviewer
+        zenRole: validator-global-claude
+        specFile: _generated/validators/global.md
+        triggers: ["*"]
+        alwaysRun: true
+        priority: 1
+        context7Required: true
+        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
+        scope: comprehensive
+        outputFormat: GlobalValidationReport
+        reportSection: "Validator Findings & Verdicts > Global (Claude)"
+
+    critical:
+      - id: security
+        name: Security Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-security
+        specFile: critical/security.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, zod]
+        focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
+        blocksOnFail: true
+        outputFormat: SecurityReport
+
+      - id: performance
+        name: Performance Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-performance
+        specFile: critical/performance.md
+        triggers: ["*"]
+        alwaysRun: false
+        priority: 2
+        context7Required: true
+        context7Packages: [next, react]
+        focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
+        blocksOnFail: true
+        outputFormat: PerformanceReport
+
+    specialized:
+      - id: react
+        name: React Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-react
+        specFile: specialized/react.md
+        triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [react, uistylescss]
+        blocksOnFail: false
+
+      - id: prisma
+        name: Prisma Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-database
+        specFile: specialized/database.md
+        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "schema.prisma"]
+        alwaysRun: false
+        priority: 3
+        context7Required: true
+        context7Packages: [prisma]
+        blocksOnFail: true
+
+  # Blocking validators (task cannot complete if these fail)
+  blocking_validators:
+    - global-codex
+    - global-claude
+    - security
+    - performance
+    - database
+    - testing
+```
+
+**Common Overrides**:
+
+```bash
+# Run validators sequentially for debugging
+export EDISON_VALIDATION__EXECUTION__MODE=sequential
+
+# Increase validator timeout
+export EDISON_VALIDATION__EXECUTION__TIMEOUT=600
+
+# Disable a specific validator
+# (Create .edison/config/validators.yaml)
+```
+
+---
+
+### delegation.yaml
+
+Agent delegation rules based on file patterns and task types.
+
+```yaml
+delegation:
+  implementers:
+    primary: codex
+    fallbackChain: [gemini, claude]
+    maxFallbackAttempts: 3
+
+  resilience:
+    circuitBreaker:
+      enabled: false
+      failureThreshold: 3
+      resetTimeoutSeconds: 60
+    retryLogic:
+      enabled: false
+      maxRetries: 4
+      backoffMultiplier: 2
+      maxBackoffSeconds: 30
+
+  # File pattern rules
+  filePatternRules:
+    "*.tsx":
+      preferredModel: claude
+      reason: "UI/UX thinking, component design, accessibility"
+      subAgentType: component-builder-nextjs
+      excludePatterns: ["**/*.test.tsx", "**/*.spec.tsx"]
+      preferredZenRole: component-builder-nextjs
+      confidence: high
+
+    "**/route.ts":
+      preferredModel: codex
+      reason: "API security, precise validation, error handling, type safety"
+      subAgentType: api-builder
+      delegateVia: zen-mcp
+      preferredZenRole: api-builder
+      confidence: very-high
+
+    "**/*.test.ts":
+      preferredModel: codex
+      reason: "Systematic test coverage, edge case generation, TDD compliance"
+      subAgentType: test-engineer
+      delegateVia: zen-mcp
+      preferredZenRole: test-engineer
+      confidence: high
+
+    "schema.prisma":
+      preferredModel: codex
+      reason: "Schema precision, relationship correctness, migration safety"
+      subAgentType: database-architect-prisma
+      delegateVia: zen-mcp
+      preferredZenRole: database-architect-prisma
+      confidence: very-high
+
+  # Task type rules
+  taskTypeRules:
+    ui-component:
+      preferredModel: claude
+      subAgentType: component-builder-nextjs
+      reason: "Component design needs UX thinking, accessibility"
+      delegation: required
+      preferredZenRole: component-builder-nextjs
+
+    api-route:
+      preferredModel: codex
+      subAgentType: api-builder
+      reason: "API security, validation, error handling precision"
+      delegation: required
+      preferredZenRole: api-builder
+
+    full-stack-feature:
+      preferredModel: multi
+      preferredModels: [gemini, codex]
+      subAgentType: feature-implementer
+      reason: "UI parts use Gemini; backend uses Codex (multi-model)"
+      delegation: partial
+      preferredZenRole: feature-implementer
+```
+
+---
+
+### composition.yaml
+
+Prompt composition and content generation configuration.
+
+```yaml
+version: "1.0"
+
+# Default composition settings
+defaults:
+  extensible_sections: true
+  append_sections: true
+  dedupe_strategy: shingles  # 12-word shingles for deduplication
+  dedupe_min_shingles: 3
+
+# Content type definitions
+content_types:
+  agents:
+    description: "Agent prompt templates with tools and guidelines"
+    known_sections:
+      - name: Role
+        mode: replace
+      - name: Tools
+        placeholder: "{{SECTION:Tools}}"
+        mode: append
+      - name: Guidelines
+        placeholder: "{{SECTION:Guidelines}}"
+        mode: append
+      - name: Architecture
+        placeholder: "{{SECTION:Architecture}}"
+        mode: append
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+
+  validators:
+    description: "Validator prompt templates with checks and criteria"
+    known_sections:
+      - name: Purpose
+        mode: replace
+      - name: Checks
+        placeholder: "{{SECTION:Checks}}"
+        mode: append
+    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
+    append_placeholder: "{{APPEND_SECTIONS}}"
+
+# Output configuration
+outputs:
+  # Canonical entry point (AGENTS.md)
+  canonical_entry:
+    enabled: true
+    output_path: "."
+    filename: "AGENTS.md"
+    template: "canonical/AGENTS.md"
+
+  # Client files
+  clients:
+    claude:
+      enabled: true
+      output_path: ".claude"
+      filename: "CLAUDE.md"
+      template: "clients/claude.md"
+    zen:
+      enabled: true
+      output_path: ".zen/conf"
+      filename: "zen.md"
+      template: "clients/zen.md"
+
+  # Constitutions
+  constitutions:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/constitutions"
+    files:
+      orchestrators:
+        enabled: true
+        filename: "ORCHESTRATORS.md"
+      agents:
+        enabled: true
+        filename: "AGENTS.md"
+      validators:
+        enabled: true
+        filename: "VALIDATORS.md"
+
+  # Generated agents
+  agents:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+    filename_pattern: "{name}.md"
+
+  # Generated validators
+  validators:
+    enabled: true
+    output_path: "{{PROJECT_EDISON_DIR}}/_generated/validators"
+    filename_pattern: "{name}.md"
+
+# Composition workflow settings
+composition:
+  dryDetection:
+    minShingles: 5
+    shingleSize: 12
+    threshold: 0.37
+    minSimilarity: 0.3
+
+  includes:
+    max_depth: 3
+```
+
+**Override Example** (`.edison/config/composition.yaml`):
+
+```yaml
+# Disable validator output
+outputs:
+  validators:
+    enabled: false
+
+# Change agents output directory
+outputs:
+  agents:
+    output_path: "{{PROJECT_EDISON_DIR}}/custom/agents"
+```
+
+---
+
+### constitution.yaml
+
+Defines mandatory reads for each role type.
+
+```yaml
+version: "1.0.0"
+
+mandatoryReads:
+  orchestrator:
+    - path: constitutions/ORCHESTRATORS.md
+      purpose: Main orchestrator constitution
+    - path: guidelines/orchestrators/SESSION_WORKFLOW.md
+      purpose: Session lifecycle management
+    - path: guidelines/shared/DELEGATION.md
+      purpose: Delegation rules and patterns
+    - path: AVAILABLE_AGENTS.md
+      purpose: Dynamic agent roster
+    - path: AVAILABLE_VALIDATORS.md
+      purpose: Dynamic validator roster
+    - path: guidelines/shared/TDD.md
+      purpose: TDD enforcement requirements
+
+  agents:
+    - path: guidelines/shared/COMMON.md
+      purpose: Shared Context7, TDD, and configuration guardrails
+    - path: constitutions/AGENTS.md
+      purpose: Agent constitution
+    - path: guidelines/agents/MANDATORY_WORKFLOW.md
+      purpose: Implementation workflow
+    - path: guidelines/shared/TDD.md
+      purpose: TDD requirements
+    - path: guidelines/shared/CONTEXT7.md
+      purpose: Context7 usage requirements
+
+  validators:
+    - path: guidelines/shared/COMMON.md
+      purpose: Shared Context7, TDD, and configuration guardrails
+    - path: constitutions/VALIDATORS.md
+      purpose: Validator constitution
+    - path: guidelines/validators/VALIDATOR_WORKFLOW.md
+      purpose: Validation workflow
+    - path: guidelines/shared/CONTEXT7.md
+      purpose: Context7 knowledge refresh
+```
+
+---
+
+### commands.yaml
+
+IDE slash command generation configuration.
+
+```yaml
+commands:
+  enabled: true
+  platforms: [claude, cursor, codex]
+
+  # Selection strategy
+  selection:
+    mode: "domains"  # all | domains | explicit
+    domains:
+      - session
+      - task
+      - qa
+      - rules
+    exclude:
+      - setup
+      - internal
+      - migrate
+
+  # Platform configurations
+  platform_config:
+    claude:
+      enabled: true
+      output_dir: ".claude/commands"
+      prefix: "edison-"
+      max_short_desc: 80
+      template: "claude-command.md.template"
+      allow_bash: true
+
+    cursor:
+      enabled: true
+      output_dir: ".cursor/commands"
+      prefix: "edison-"
+      max_short_desc: 120
+      template: "cursor-command.md.template"
+      allow_bash: true
+
+  # Core command definitions
+  definitions:
+    - id: session-next
+      domain: session
+      command: next
+      short_desc: "Show next session steps"
+      full_desc: |
+        Shows recommended next actions for the current Edison session.
+      cli: "edison session next"
+      args: []
+      when_to_use: |
+        - After completing a task
+        - When unsure about current workflow step
+
+    - id: task-claim
+      domain: task
+      command: claim
+      short_desc: "Claim and move task to wip"
+      cli: "edison task claim $1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+```
+
+**Override Example** (`.edison/config/commands.yaml`):
+
+```yaml
+# Add custom command
+commands:
+  definitions:
+    - id: custom-report
+      domain: reporting
+      command: report
+      short_desc: "Generate custom report"
+      cli: "edison custom report"
+      args: []
+```
+
+---
+
+### models.yaml
+
+Model delegation configuration with capabilities and strengths.
+
+```yaml
+delegation:
+  models:
+    codex:
+      displayName: "Codex (ChatGPT PRO)"
+      provider: zen-mcp
+      interface: clink
+      roles: [default, planner, codereviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        generateTests: true
+      costTier: medium
+      rateLimit:
+        requests: 300
+        window: "5 hours"
+      strengths:
+        - precise-refactoring
+        - security-auditing
+        - performance-analysis
+        - type-inference
+        - test-generation
+        - api-implementation
+        - database-schemas
+      optimalFor:
+        - "API routes and backend logic"
+        - "Database schemas and migrations"
+        - "Security-critical code"
+        - "Type-safe refactoring"
+
+    claude:
+      displayName: "Claude Sonnet 4.5"
+      provider: anthropic
+      interface: direct
+      roles: [default, code-reviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        designComponents: true
+      costTier: high
+      strengths:
+        - architecture-design
+        - ui-ux-thinking
+        - component-composition
+        - integration-work
+        - documentation
+      optimalFor:
+        - "React components and UI"
+        - "System architecture"
+        - "Feature planning"
+
+    gemini:
+      displayName: "Gemini 2.5 Pro/Flash"
+      provider: zen-mcp
+      interface: clink
+      roles: [default, planner, codereviewer]
+      capabilities:
+        editFiles: true
+        readFiles: true
+        runCommands: true
+        reviewCode: true
+        multimodal: true
+      strengths:
+        - fast-iteration
+        - multimodal-analysis
+        - creative-tasks
+        - large-context-window
+      optimalFor:
+        - "Rapid prototyping"
+        - "Image/diagram analysis"
+        - "Large codebase analysis"
+```
+
+---
+
+### tdd.yaml
+
+Test-Driven Development enforcement settings.
+
+```yaml
+tdd:
+  enforceRedGreenRefactor: true
+  requireEvidence: true
+  hmacValidation: false
+```
+
+**Override Example**:
+
+```bash
+export EDISON_TDD__ENFORCE_RED_GREEN_REFACTOR=false
+```
+
+---
+
+### qa.yaml
+
+Quality assurance and validation workflow configuration.
+
+```yaml
+version: "1.0.0"
+
+validation:
+  defaultSessionId: "validation-session"
+
+  requiredEvidenceFiles:
+    - command-type-check.txt
+    - command-lint.txt
+    - command-test.txt
+    - command-build.txt
+
+  evidence:
+    minRequiredFiles: 4
+    patterns:
+      - "command-*.txt"
+      - "context7-*.md"
+      - "context7-*.txt"
+      - "validator-*-report.json"
+
+  transaction:
+    maxAgeHours: 24
+    autoCleanup: true
+
+orchestration:
+  maxConcurrentAgents: 4
+  validatorTimeout: 300
+  executionMode: parallel
+```
+
+---
+
+### worktrees.yaml
+
+Git worktree management for session isolation.
+
+```yaml
+worktrees:
+  enabled: true
+  baseBranch: "main"
+  baseDirectory: "../{PROJECT_NAME}-worktrees"
+  archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
+  branchPrefix: "session/"
+  pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  cleanup:
+    autoArchive: true
+    archiveAfterDays: 30
+    deleteAfterDays: 90
+```
+
+**Override Example**:
+
+```yaml
+# .edison/config/worktrees.yaml
+worktrees:
+  enabled: false  # Disable worktrees
+```
+
+Or via environment:
+
+```bash
+export EDISON_WORKTREES__ENABLED=false
+```
+
+---
+
+### hooks.yaml
+
+Claude Code hooks for workflow enforcement and context injection.
+
+```yaml
+hooks:
+  enabled: true
+  platforms: [claude]
+
+  settings:
+    timeout_seconds: 60
+    parallel_execution: true
+    log_output: true
+
+  definitions:
+    # Context injection hooks
+    inject-session-context:
+      type: UserPromptSubmit
+      hook_type: prompt
+      enabled: true
+      description: "Inject current session context before prompt"
+      template: "inject-session-context.sh.template"
+      config:
+        include_worktree: true
+        include_task_state: true
+        max_length: 500
+
+    # Guard hooks (can block)
+    commit-guard:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Bash(git commit:*)"
+      enabled: true
+      blocking: true
+      description: "Block commits with failing tests"
+      template: "commit-guard.sh.template"
+      config:
+        require_tests_pass: true
+        require_coverage: true
+        coverage_threshold: 90
+
+    # Validation hooks
+    auto-format:
+      type: PostToolUse
+      hook_type: command
+      matcher: "Write|Edit"
+      enabled: true
+      blocking: false
+      description: "Auto-format code after modifications"
+      template: "auto-format.sh.template"
+      config:
+        tools: [prettier, eslint]
+```
+
+---
+
+### mcp.yaml
+
+MCP (Model Context Protocol) server configuration.
+
+```yaml
+mcp:
+  config_file: ".mcp.json"
+  tool_names:
+    edison_zen_clink: "mcp__edison-zen__clink"
+
+  servers:
+    edison-zen:
+      # Portable: use uvx to run zen-mcp-server from git
+      command: "uvx"
+      args:
+        - "--from"
+        - "git+https://github.com/BeehiveInnovations/zen-mcp-server.git"
+        - "zen-mcp-server"
+      env:
+        ZEN_WORKING_DIR: "{PROJECT_ROOT}"
+      setup:
+        require:
+          commands:
+            - "uvx"
+        instructions: |
+          Install uvx: pip install uv
+          Configure API keys in {PROJECT_ROOT}/.zen/.env
+
+    context7:
+      command: "npx"
+      args:
+        - "-y"
+        - "@upstash/context7-mcp@latest"
+      env: {}
+      setup:
+        require:
+          commands:
+            - "npx"
+
+    sequential-thinking:
+      command: "npx"
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-sequential-thinking"
+      env: {}
+```
+
+**Project Override Example** (`.edison/config/mcp.yml`):
+
+```yaml
+mcp:
+  servers:
+    edison-zen:
+      # Use local script for development
+      command: "./scripts/zen/run-server.sh"
+      args: []
+      env: {}
+```
+
+---
+
+### settings.yaml
+
+Claude Code settings generation.
+
+```yaml
+settings:
+  enabled: true
+  platforms: [claude]
+
+  claude:
+    enabled: true
+    generate: true
+    preserve_custom: true
+    backup_before: true
+
+    # Permissions
+    permissions:
+      allow:
+        - "Read(./**)"
+        - "Edit(./**)"
+        - "Write(./**)"
+        - "Bash(git:*)"
+        - "WebSearch"
+        - "WebFetch"
+
+      deny:
+        - "Read(./.env*)"
+        - "Edit(./.env*)"
+        - "Bash(sudo:*)"
+        - "Bash(rm -rf /:*)"
+
+      ask:
+        - "Bash(git push:*)"
+        - "Bash(npm publish:*)"
+
+    # Environment
+    env:
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: "64000"
+
+    enableAllProjectMcpServers: true
+    cleanupPeriodDays: 120
+```
+
+---
+
+### paths.yaml
+
+Path configuration for Edison project structure.
+
+```yaml
+paths:
+  project_config_dir: ".edison"
+  legacy_project_config_dir: ".project-config"
+```
+
+---
+
+## Pack Configuration
+
+Packs extend Edison with technology-specific configurations, guidelines, and validators.
+
+### Available Packs
+
+Edison includes the following bundled packs:
+
+- `typescript` - TypeScript support
+- `react` - React component development
+- `nextjs` - Next.js application framework
+- `prisma` - Prisma ORM and database
+- `tailwind` - Tailwind CSS styling
+- `vitest` - Vitest testing framework
+- `fastify` - Fastify API framework
+
+### Pack Structure
+
+Each pack is located in `src/edison/data/packs/{pack}/` with:
+
+```
+packs/{pack}/
+├── config/
+│   ├── setup.yml          # Setup questions and config templates
+│   ├── commands.yml       # Pack-specific commands (optional)
+│   └── hooks.yml          # Pack-specific hooks (optional)
+├── agents/
+│   └── overlays/          # Agent prompt extensions
+├── validators/
+│   └── specialized/       # Pack-specific validators
+├── guidelines/
+│   └── overlays/          # Guideline extensions
+└── pack-dependencies.yaml # Pack dependencies
+```
+
+### pack-dependencies.yaml
+
+Defines pack dependencies and npm packages.
+
+**Example** (`nextjs/pack-dependencies.yaml`):
+
+```yaml
+dependencies:
+  - react
+  - typescript
+```
+
+**Example** (`typescript/pack-dependencies.yaml`):
+
+```yaml
+requiredPacks: []
+dependencies: {}
+devDependencies:
+  typescript: "^5.7.2"
+  tsx: "^4.0.0"
+```
+
+### Pack Setup Configuration
+
+Packs can define setup questions.
+
+**Example** (`typescript/config/setup.yml`):
+
+```yaml
+setup:
+  questions:
+    - id: typescript_strict
+      prompt: "Enable TypeScript strict mode?"
+      type: boolean
+      default: true
+      mode: basic
+      category: packs
+      help: "Strict mode enables all strict type-checking options"
+      depends_on:
+        - pack: typescript
+          enabled: true
+
+    - id: typescript_target
+      prompt: "TypeScript compilation target"
+      type: choice
+      source: static
+      options: [ES2020, ES2021, ES2022, ESNext]
+      default: ES2022
+      mode: advanced
+      category: packs
+
+  config_template:
+    typescript:
+      strict: "{{ typescript_strict }}"
+      target: "{{ typescript_target }}"
+      module: "{{ typescript_module }}"
+```
+
+### Enabling Packs
+
+Packs are configured in `.edison/config/packs.yaml`:
+
+```yaml
+packs:
+  enabled: true
+  directory: ".edison/packs"
+  composition:
+    strategy: deep-merge
+    sections:
+      - dependencies
+      - devDependencies
+      - scripts
+
+  loadOrder:
+    algorithm: toposort
+    dependencyFile: "pack-dependencies.yaml"
+```
+
+### Default Pack Scripts
+
+Edison provides default scripts for common packs:
+
+```yaml
+defaults:
+  nextjs:
+    scripts:
+      "next:dev": "next dev"
+      "next:build": "next build"
+      "next:start": "next start"
+
+  prisma:
+    scripts:
+      "db:generate": "prisma generate"
+      "db:migrate": "prisma migrate dev"
+      "db:studio": "prisma studio"
+
+  typescript:
+    scripts:
+      "type-check": "tsc --noEmit"
+
+  vitest:
+    scripts:
+      "test": "vitest run"
+```
+
+---
+
+## Project Configuration
+
+Project-specific overrides are placed in `.edison/config/`.
+
+### Directory Structure
+
+```
+.edison/
+├── config/
+│   ├── delegation.yaml      # Override delegation rules
+│   ├── validators.yaml      # Override validator config
+│   ├── composition.yaml     # Override composition settings
+│   ├── session.yaml         # Override session settings
+│   ├── mcp.yml             # Override MCP servers
+│   └── ...                  # Any core config file
+├── agents/
+│   └── overlays/            # Extend or override agent prompts
+├── validators/
+│   └── specialized/         # Add project-specific validators
+├── guidelines/
+│   └── overlays/            # Extend guidelines
+└── packs.yaml              # Enable/configure packs
+```
+
+### Merge Behavior
+
+- **Objects**: Deep merge with project config taking precedence
+- **Lists**: Project config can:
+  - Replace entire list
+  - Append items (`EDISON_KEY__APPEND`)
+  - Set specific indices (`EDISON_KEY__0`)
+- **Scalars**: Project config replaces default
+
+### Example Overrides
+
+**`.edison/config/delegation.yaml`**:
+
+```yaml
+# Add custom file pattern rule
+delegation:
+  filePatternRules:
+    "**/custom/**/*.ts":
+      preferredModel: claude
+      reason: "Custom logic requires architectural thinking"
+      subAgentType: feature-implementer
+      confidence: high
+```
+
+**`.edison/config/validators.yaml`**:
+
+```yaml
+# Disable a validator
+validation:
+  roster:
+    specialized:
+      - id: react
+        name: React Validator
+        enabled: false  # Disable React validator
+```
+
+**`.edison/config/session.yaml`**:
+
+```yaml
+# Increase session timeout
+session:
+  recovery:
+    timeoutHours: 16
+
+  worktree:
+    timeouts:
+      install: 600
+```
+
+---
+
+## Configuration Examples
+
+### Example 1: Increase Session Timeout
+
+**Via Environment**:
+
+```bash
+export EDISON_SESSION__RECOVERY__TIMEOUT_HOURS=16
+```
+
+**Via Project Config** (`.edison/config/session.yaml`):
+
+```yaml
+session:
+  recovery:
+    timeoutHours: 16
+```
+
+---
+
+### Example 2: Disable Worktrees
+
+**Via Environment**:
+
+```bash
+export EDISON_WORKTREES__ENABLED=false
+```
+
+**Via Project Config** (`.edison/config/worktrees.yaml`):
+
+```yaml
+worktrees:
+  enabled: false
+```
+
+---
+
+### Example 3: Add Custom Validator
+
+**`.edison/config/validators.yaml`**:
+
+```yaml
+validation:
+  roster:
+    specialized:
+      - id: custom-accessibility
+        name: Accessibility Validator
+        model: claude
+        interface: Task
+        role: code-reviewer
+        zenRole: validator-accessibility
+        specFile: specialized/accessibility.md
+        triggers: ["**/*.tsx", "**/*.jsx"]
+        alwaysRun: false
+        priority: 3
+        context7Required: false
+        blocksOnFail: false
+```
+
+Then create `.edison/validators/specialized/accessibility.md`:
+
+```markdown
+# Accessibility Validator
+
+## Purpose
+Validate WCAG 2.1 AA compliance and accessibility best practices.
+
+## Checks
+- Semantic HTML usage
+- ARIA attributes
+- Keyboard navigation
+- Color contrast ratios
+- Screen reader compatibility
+
+## Examples
+...
+```
+
+---
+
+### Example 4: Custom Delegation Rule
+
+**`.edison/config/delegation.yaml`**:
+
+```yaml
+delegation:
+  filePatternRules:
+    "**/utils/analytics/*.ts":
+      preferredModel: codex
+      reason: "Analytics tracking requires precision"
+      subAgentType: api-builder
+      preferredZenRole: api-builder
+      confidence: high
+```
+
+---
+
+### Example 5: Configure MCP Server
+
+**`.edison/config/mcp.yml`**:
+
+```yaml
+mcp:
+  servers:
+    custom-mcp:
+      command: "npx"
+      args:
+        - "-y"
+        - "my-custom-mcp-server"
+      env:
+        CUSTOM_API_KEY: "{API_KEY}"
+      setup:
+        require:
+          commands:
+            - "npx"
+        instructions: |
+          Set CUSTOM_API_KEY in .env file
+```
+
+---
+
+### Example 6: Sequential Validator Execution
+
+**Via Environment**:
+
+```bash
+export EDISON_VALIDATION__EXECUTION__MODE=sequential
+export EDISON_VALIDATION__EXECUTION__CONCURRENCY=1
+```
+
+**Via Project Config** (`.edison/config/validators.yaml`):
+
+```yaml
+validation:
+  execution:
+    mode: sequential
+    concurrency: 1
+```
+
+---
+
+### Example 7: Disable TDD Enforcement
+
+**Via Environment**:
+
+```bash
+export EDISON_TDD__ENFORCE_RED_GREEN_REFACTOR=false
+export EDISON_TDD__REQUIRE_EVIDENCE=false
+```
+
+**Via Project Config** (`.edison/config/tdd.yaml`):
+
+```yaml
+tdd:
+  enforceRedGreenRefactor: false
+  requireEvidence: false
+```
+
+---
+
+### Example 8: Custom Project Config Directory
+
+```bash
+export EDISON_paths__project_config_dir=.custom_edison
+
+# Edison will now look for config in .custom_edison/ instead of .edison/
+```
+
+---
+
+## Best Practices
+
+1. **Use Environment Variables for Temporary Overrides**
+   - CI/CD settings
+   - Developer-specific preferences
+   - Testing configurations
+
+2. **Use Project Config for Permanent Overrides**
+   - Team-wide standards
+   - Project-specific rules
+   - Custom validators and delegation rules
+
+3. **Document Your Overrides**
+   - Add comments explaining why overrides exist
+   - Keep override files minimal - only override what's necessary
+
+4. **Test Configuration Changes**
+   - Use `edison config validate` to check config validity
+   - Test in isolation before committing
+
+5. **Version Control**
+   - Commit `.edison/config/` to version control
+   - Do NOT commit `.env` files
+   - Use `.gitignore` for sensitive config
+
+6. **Configuration Debugging**
+   - Use `edison config show` to see merged configuration
+   - Check precedence with `edison config explain <key>`
+
+---
+
+## Placeholder Variables
+
+Edison supports the following placeholder variables in configuration:
+
+- `{PROJECT_ROOT}` - Project root directory
+- `{PROJECT_NAME}` - Project name
+- `{PROJECT_CONFIG_DIR}` or `{{PROJECT_EDISON_DIR}}` - Edison config directory (default: `.edison`)
+- `{API_KEY}` - Placeholder for API keys (replace with actual values)
+
+These are automatically resolved when configuration is loaded.
+
+---
+
+## Related Documentation
+
+- [Architecture Overview](./ARCHITECTURE.md)
+- [Getting Started](./GETTING_STARTED.md)
+- [CLI Reference](./CLI_REFERENCE.md)
+- [Validation Guide](./VALIDATION.md)
+
+---
+
+## Configuration Reference Summary
+
+| File | Purpose | Key Settings |
+|------|---------|-------------|
+| `state-machine.yaml` | State machines | Task/QA/Session states and transitions |
+| `session.yaml` | Session management | Paths, recovery, worktrees, timeouts |
+| `validators.yaml` | Validation framework | Validator roster, execution, dimensions |
+| `delegation.yaml` | Agent delegation | File patterns, task types, model preferences |
+| `composition.yaml` | Prompt composition | Content types, outputs, deduplication |
+| `constitution.yaml` | Role requirements | Mandatory reads per role |
+| `commands.yaml` | IDE commands | Slash command generation |
+| `models.yaml` | Model capabilities | Model strengths, costs, rate limits |
+| `tdd.yaml` | TDD enforcement | Red-Green-Refactor, evidence |
+| `qa.yaml` | QA workflow | Evidence files, orchestration |
+| `worktrees.yaml` | Worktree management | Branch prefix, cleanup, paths |
+| `hooks.yaml` | Claude Code hooks | Context injection, guards, validation |
+| `mcp.yaml` | MCP servers | Server definitions, setup |
+| `settings.yaml` | Claude settings | Permissions, environment |
+| `paths.yaml` | Path configuration | Config directory location |
+| `packs.yaml` | Pack system | Load order, composition strategy |
+
+---
+
+**Last Updated**: 2025-12-01
