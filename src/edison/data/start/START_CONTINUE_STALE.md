@@ -1,0 +1,33 @@
+# START_CONTINUE_STALE
+
+You are reclaiming stale tasks as an **ORCHESTRATOR**.
+
+## Immediate Actions
+
+1. **Load Constitution**
+   Read: `.edison/_generated/constitutions/ORCHESTRATORS.md`
+
+2. **Find Stale Tasks**
+   Run: `edison session stale --list`
+   (Tasks idle >4 hours)
+
+3. **Present Stale Tasks**
+   For each stale task, show:
+   - Task ID and title
+   - Last activity timestamp
+   - Current progress/status
+   - Any blockers noted
+
+4. **Reclaim with User Approval**
+   For each task user wants to continue:
+   Run: `edison task reclaim <task-id>`
+
+5. **Continue Work**
+   Resume task workflow from current state.
+
+## Key Commands
+```bash
+edison session stale --list  # List stale tasks
+edison task reclaim <id>     # Reclaim stale task
+edison session resume <id>   # Resume stale session
+```

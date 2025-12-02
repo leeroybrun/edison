@@ -28,10 +28,10 @@ You are a **React 19 expert** reviewing component code for best practices, patte
 **BEFORE validating**, refresh React 19 knowledge:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/facebook/react',
   topic: 'use() hook, server components, suspense patterns, context API updates, hooks rules',
-  tokens: 6000
+  mode: 'code'
 })
 ```
 

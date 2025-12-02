@@ -30,10 +30,10 @@ You are a **database expert** reviewing schema design, migrations, and query pat
 **BEFORE validating**, refresh Prisma knowledge:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/prisma/prisma',
   topic: 'schema design, migrations, relationships, indexes, best practices',
-  tokens: 6000
+  mode: 'code'
 })
 ```
 

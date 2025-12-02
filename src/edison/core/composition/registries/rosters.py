@@ -135,7 +135,7 @@ def _format_validator_table(validators: List[Dict[str, Any]]) -> str:
 
     rows = []
     for v in validators:
-        blocking = "✅" if v.get('blocking', False) else "❌"
+        blocking = "✅" if v.get('blocksOnFail', False) else "❌"
         name = v.get('name', v.get('id', 'Unknown'))
         model = v.get('model', 'codex')
         description = v.get('description', '')
@@ -159,7 +159,7 @@ def _format_specialized_validator_table(validators: List[Dict[str, Any]]) -> str
 
     rows = []
     for v in validators:
-        blocking = "✅" if v.get('blocking', False) else "❌"
+        blocking = "✅" if v.get('blocksOnFail', False) else "❌"
         name = v.get('name', v.get('id', 'Unknown'))
         model = v.get('model', 'codex')
         triggers = v.get('fileTriggers', v.get('triggers', []))
@@ -201,9 +201,66 @@ def _format_agent_details(agents: List[Dict[str, Any]]) -> str:
     return "\n".join(sections)
 
 
+def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None) -> None:
+    """Generate AGENTS.md canonical entry point from template.
+
+    Uses the canonical/AGENTS.md template and substitutes:
+    - {{source_layers}}: List of composition sources
+    - {{timestamp}}: Current generation timestamp
+    - {{PROJECT_EDISON_DIR}}: Project config directory path
+    - {{EXTENSIBLE_SECTIONS}}: Empty (for future layered composition)
+    - {{APPEND_SECTIONS}}: Empty (for future layered composition)
+
+    Args:
+        output_path: Path where the generated file should be written
+        repo_root: Optional repository root path for testing
+    """
+    from datetime import datetime
+    from edison.data import get_data_path
+
+    ensure_directory(output_path.parent)
+
+    # Load template
+    template_path = get_data_path("canonical", "AGENTS.md")
+    if not template_path.exists():
+        raise FileNotFoundError(f"Canonical entry template not found at {template_path}")
+
+    template = template_path.read_text(encoding="utf-8")
+
+    # Use composition path resolver
+    resolver = CompositionPathResolver(repo_root)
+    project_dir = resolver.project_dir
+    cfg_mgr = ConfigManager(repo_root=repo_root)
+
+    # Build source layers info
+    source_layers = "Core framework"
+    config = cfg_mgr.load_config(validate=False)
+    active_packs = (config.get("packs", {}) or {}).get("active", [])
+    if active_packs:
+        source_layers += f" + Packs ({', '.join(active_packs)})"
+
+    # Substitute placeholders
+    content = template
+    content = content.replace("{{source_layers}}", source_layers)
+    content = content.replace("{{timestamp}}", datetime.now().isoformat())
+    content = content.replace("{{EXTENSIBLE_SECTIONS}}", "")
+    content = content.replace("{{APPEND_SECTIONS}}", "")
+
+    # Resolve {{PROJECT_EDISON_DIR}} placeholders
+    content = resolve_project_dir_placeholders(
+        content,
+        project_dir=project_dir,
+        target_path=output_path,
+        repo_root=repo_root or resolver.project_root,
+    )
+
+    output_path.write_text(content, encoding="utf-8")
+
+
 __all__ = [
     "generate_available_agents",
     "generate_available_validators",
+    "generate_canonical_entry",
 ]
 
 

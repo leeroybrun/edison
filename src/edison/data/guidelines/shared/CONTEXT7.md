@@ -10,14 +10,15 @@ See extended guide: .edison/_generated/guidelines/shared/CONTEXT7.md
 ## Workflow (two steps)
 1) Resolve library ID first
 ```ts
-const pkgId = await mcp__context7__resolve-library-id({ libraryName: '<package-name>' })
+const pkgId = await mcp__context7__resolve_library_id({ libraryName: '<package-name>' })
 ```
 2) Query docs using resolved ID
 ```ts
-await mcp__context7__get-library-docs({
+await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: pkgId,
-  topic: '<relevant topics>',
-  tokens: 5000
+  topic: '<relevant topic>',
+  mode: 'code',
+  page: 1
 })
 ```
 

@@ -23,6 +23,7 @@ TEMPLATES = [
         "path": REPO_ROOT / "src/edison/data/constitutions/orchestrator-base.md",
         "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATORS.md",
         "mandatory_block": "{{#each mandatoryReads.orchestrator}}",
+        "optional_block": "{{#each optionalReads.orchestrator}}",
         "rules_block": "{{#each rules.orchestrator}}",
         "workflow_section": "Session Workflow",
         "workflow_ref": "guidelines/orchestrators/SESSION_WORKFLOW.md",
@@ -41,6 +42,7 @@ TEMPLATES = [
         "path": REPO_ROOT / "src/edison/data/constitutions/agents-base.md",
         "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md",
         "mandatory_block": "{{#each mandatoryReads.agents}}",
+        "optional_block": "{{#each optionalReads.agents}}",
         "rules_block": "{{#each rules.agent}}",
         "workflow_section": "Workflow Requirements",
         "workflow_ref": "MANDATORY_WORKFLOW.md",
@@ -59,6 +61,7 @@ TEMPLATES = [
         "path": REPO_ROOT / "src/edison/data/constitutions/validators-base.md",
         "constitution_path": "{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md",
         "mandatory_block": "{{#each mandatoryReads.validators}}",
+        "optional_block": "{{#each optionalReads.validators}}",
         "rules_block": "{{#each rules.validator}}",
         "workflow_section": "Validation Workflow",
         "workflow_ref": "OUTPUT_FORMAT.md",
@@ -123,9 +126,11 @@ def test_constitution_template_core_sections(template: dict) -> None:
         assert bullet in content
 
     assert template["mandatory_block"] in content
+    assert template["optional_block"] in content
     assert template["rules_block"] in content
 
     _require_block_closed(content, template["mandatory_block"])
+    _require_block_closed(content, template["optional_block"])
     _require_block_closed(content, template["rules_block"])
     for extra in template["extra_blocks"]:
         _require_block_closed(content, extra)

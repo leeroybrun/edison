@@ -26,7 +26,10 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 
 ## Mandatory Preloads (All Validators)
 {{#each mandatoryReads.validators}}
-- {{this.path}}: {{this.purpose}}
+{{/each}}
+
+## Optional References
+{{#each optionalReads.validators}}
 {{/each}}
 
 ## Validation Workflow

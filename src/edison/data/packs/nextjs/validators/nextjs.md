@@ -29,10 +29,10 @@ You are a **Next.js 16 expert** reviewing code for App Router best practices, pe
 **BEFORE validating**, refresh Next.js 16 knowledge:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/vercel/next.js',
   topic: 'app router patterns, route handlers, metadata API, server actions, caching strategies, loading states, error handling',
-  tokens: 7000
+  mode: 'code'
 })
 ```
 

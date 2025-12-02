@@ -1,7 +1,7 @@
 """
 Edison compose all command.
 
-SUMMARY: Compose all artifacts (agents, validators, constitutions, guidelines, start prompts)
+SUMMARY: Compose all artifacts (agents, validators, constitutions, guidelines, schemas, start prompts)
 """
 
 from __future__ import annotations
@@ -15,16 +15,19 @@ from edison.core.composition import (
     generate_all_constitutions,
     generate_available_agents,
     generate_available_validators,
+    generate_canonical_entry,
     generate_state_machine_doc,
     GuidelineRegistry,
     LayeredComposer,
 )
+from edison.core.composition.registries.rules import RulesRegistry
+from edison.core.composition.registries.schemas import JsonSchemaComposer
 from edison.core.config import ConfigManager
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.adapters import ClaudeSync, CursorSync, ZenSync
 from edison.data import get_data_path
 
-SUMMARY = "Compose all artifacts (agents, validators, constitutions, guidelines, start prompts)"
+SUMMARY = "Compose all artifacts (agents, validators, constitutions, guidelines, schemas, start prompts, hooks, settings, commands)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -53,6 +56,31 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--start",
         action="store_true",
         help="Only compose start prompts",
+    )
+    parser.add_argument(
+        "--hooks",
+        action="store_true",
+        help="Only compose hooks",
+    )
+    parser.add_argument(
+        "--settings",
+        action="store_true",
+        help="Only compose IDE settings",
+    )
+    parser.add_argument(
+        "--commands",
+        action="store_true",
+        help="Only compose IDE commands",
+    )
+    parser.add_argument(
+        "--rules",
+        action="store_true",
+        help="Only compose rules",
+    )
+    parser.add_argument(
+        "--schemas",
+        action="store_true",
+        help="Only compose JSON schemas",
     )
     parser.add_argument(
         "--platforms",
@@ -99,6 +127,11 @@ def main(args: argparse.Namespace) -> int:
             args.guidelines,
             args.constitutions,
             args.start,
+            getattr(args, "hooks", False),
+            getattr(args, "settings", False),
+            getattr(args, "commands", False),
+            getattr(args, "rules", False),
+            getattr(args, "schemas", False),
         ])
 
         if args.dry_run:
@@ -116,6 +149,14 @@ def main(args: argparse.Namespace) -> int:
             generate_available_agents(output_path / "AVAILABLE_AGENTS.md", repo_root=repo_root)
             generate_available_validators(output_path / "AVAILABLE_VALIDATORS.md", repo_root=repo_root)
             generate_state_machine_doc(output_path / "STATE_MACHINE.md", repo_root=repo_root)
+
+            # Generate canonical entry point (AGENTS.md at repo root)
+            from edison.core.composition.output import OutputConfigLoader
+            output_config = OutputConfigLoader(repo_root=repo_root)
+            canonical_path = output_config.get_canonical_entry_path()
+            if canonical_path:
+                generate_canonical_entry(canonical_path, repo_root=repo_root)
+                results["canonical_entry"] = str(canonical_path)
 
             # Generate constitutions for all roles
             generate_all_constitutions(cfg_mgr, output_path)
@@ -174,16 +215,36 @@ def main(args: argparse.Namespace) -> int:
             # Use LayeredComposer for section-based validator composition
             validator_composer = LayeredComposer(repo_root=repo_root, content_type="validators")
             validator_results = validator_composer.compose_all(active_packs)
-            
+
             # Write validators to .agents/_generated/validators/
             generated_validators_dir = config_dir / "_generated" / "validators"
             generated_validators_dir.mkdir(parents=True, exist_ok=True)
-            
+
             results["validators"] = {}
             for vid, text in validator_results.items():
                 output_file = generated_validators_dir / f"{vid}.md"
                 output_file.write_text(text, encoding="utf-8")
                 results["validators"][vid] = str(output_file)
+
+        # Compose rules
+        if compose_all_types or getattr(args, "rules", False):
+            rules_registry = RulesRegistry(project_root=repo_root)
+            output_dir = config_dir / "_generated" / "rules"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            rules_output = output_dir / "registry.json"
+            rules_registry.write_output(rules_output, packs=active_packs)
+            results["rules"] = str(rules_output)
+
+        # Compose schemas
+        if compose_all_types or getattr(args, "schemas", False):
+            schema_composer = JsonSchemaComposer(repo_root, active_packs)
+            output_dir = config_dir / "_generated" / "schemas"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            count = schema_composer.write_schemas(output_dir)
+            results["schemas"] = {
+                "count": count,
+                "output_dir": str(output_dir),
+            }
 
         # Compose start prompts
         if compose_all_types or args.start:
@@ -229,6 +290,30 @@ def main(args: argparse.Namespace) -> int:
                     start_files.append(output_file)
             
             results["start"] = [str(f) for f in start_files]
+
+        # Compose hooks
+        if compose_all_types or getattr(args, "hooks", False):
+            from edison.core.composition.ide.hooks import HookComposer
+            hook_composer = HookComposer(config=config, repo_root=repo_root)
+            hooks = hook_composer.compose_hooks()
+            results["hooks"] = {name: str(path) for name, path in hooks.items()}
+
+        # Compose commands
+        if compose_all_types or getattr(args, "commands", False):
+            from edison.core.composition.ide.commands import CommandComposer
+            cmd_composer = CommandComposer(config=config, repo_root=repo_root)
+            commands = cmd_composer.compose_all()
+            results["commands"] = {
+                platform: {name: str(path) for name, path in cmds.items()}
+                for platform, cmds in commands.items()
+            }
+
+        # Compose settings (must come after hooks since it references hook paths)
+        if compose_all_types or getattr(args, "settings", False):
+            from edison.core.composition.ide.settings import SettingsComposer
+            settings_composer = SettingsComposer(config=config, repo_root=repo_root)
+            settings_path = settings_composer.write_settings_file()
+            results["settings"] = str(settings_path)
 
         # Sync to clients
         if args.claude:

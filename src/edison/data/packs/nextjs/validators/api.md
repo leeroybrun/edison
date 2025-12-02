@@ -28,16 +28,16 @@ You are an **API design expert** reviewing route handlers for validation, error 
 **BEFORE validating**, refresh knowledge on API patterns:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/vercel/next.js',
   topic: 'route handlers, API routes, error handling, request validation',
-  tokens: 5000
+  mode: 'code'
 })
 
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/colinhacks/zod',
   topic: 'schema validation, error handling, transforms, refinements',
-  tokens: 5000
+  mode: 'code'
 })
 ```
 

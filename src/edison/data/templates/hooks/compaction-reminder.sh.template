@@ -12,12 +12,15 @@ if [[ ! -f "$SESSION_FILE" ]]; then
   exit 0  # No Edison session, skip hook
 fi
 
+{% set cfg = config if config is defined else {} %}
+{% set log_cfg = cfg.get("log", {}) %}
+
 # Configuration from hooks.yaml
-ROLE="{{ config.default_role | default('agents') }}"
-MESSAGE_TEMPLATE="{{ config.message_template | default('⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md') }}"
-NOTIFY="{{ config.notify | default('true') }}"
-LOG_ENABLED="{{ config.log.enabled | default('false') }}"
-LOG_PATH="{{ config.log.path | default('.edison/logs/compaction.log') }}"
+ROLE="{{ cfg.get('default_role', 'agents') }}"
+MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution at: .edison/_generated/constitutions/{ROLE}.md') }}"
+NOTIFY="{{ cfg.get('notify', True) }}"
+LOG_ENABLED="{{ log_cfg.get('enabled', False) }}"
+LOG_PATH="{{ log_cfg.get('path', '.edison/logs/compaction.log') }}"
 
 # Expand {ROLE} placeholder in message template
 MESSAGE="${MESSAGE_TEMPLATE//\{ROLE\}/$ROLE}"
@@ -28,7 +31,7 @@ if [ "$NOTIFY" = "true" ] || [ "$NOTIFY" = "True" ]; then
 fi
 
 # Log compaction event if enabled
-{% if config.log.enabled %}
+{% if log_cfg.get('enabled', False) %}
 if [ "$LOG_ENABLED" = "true" ] || [ "$LOG_ENABLED" = "True" ]; then
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     mkdir -p "$(dirname "$LOG_PATH")" 2>/dev/null || true

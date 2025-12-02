@@ -30,16 +30,16 @@ You are a **TDD expert** reviewing tests for quality, coverage, and Test-Driven 
 **BEFORE validating**, refresh testing knowledge:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/vitest-dev/vitest',
   topic: 'test structure, assertions, mocking, async testing, best practices',
-  tokens: 5000
+  mode: 'code'
 })
 
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/testing-library/react-testing-library',
   topic: 'component testing, queries, events, async utilities',
-  tokens: 4000
+  mode: 'code'
 })
 ```
 

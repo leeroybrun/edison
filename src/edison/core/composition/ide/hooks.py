@@ -116,7 +116,17 @@ class HookComposer(IDEComposerBase):
 
         Returns the hooks grouped by lifecycle event type (e.g., PreToolUse, PostToolUse).
         The caller should assign this directly to settings["hooks"].
+
+        Claude Code hook format:
+        - Tool events (PreToolUse, PostToolUse) use "matcher" to filter by tool name
+        - Non-tool events (UserPromptSubmit, SessionStart, SessionEnd, Stop, SubagentStop)
+          should NOT have a "matcher" field
+        - Shell scripts always use type: "command" with a "command" field
+        - type: "prompt" is for LLM evaluation prompts (text), not shell scripts
         """
+        # Events that don't use tool matchers
+        NON_TOOL_EVENTS = {"UserPromptSubmit", "SessionStart", "SessionEnd", "Stop", "SubagentStop", "PreCompact"}
+
         scripts = self.compose_hooks()
         definitions = self.load_definitions()
 
@@ -124,15 +134,19 @@ class HookComposer(IDEComposerBase):
         for hook_id, hook_def in definitions.items():
             if not hook_def.enabled or hook_id not in scripts:
                 continue
-            entry: Dict[str, Any] = {
-                "matcher": hook_def.matcher or "*",
-                "hooks": [],
-            }
+
+            entry: Dict[str, Any] = {"hooks": []}
+
+            # Only add matcher for tool-based events
+            if hook_def.type not in NON_TOOL_EVENTS:
+                entry["matcher"] = hook_def.matcher or "*"
+
             path_str = str(scripts[hook_id])
-            if hook_def.hook_type == "prompt":
-                entry["hooks"].append({"type": "prompt", "prompt": path_str})
-            else:  # default to command hook
-                entry["hooks"].append({"type": "command", "command": path_str})
+            # Shell scripts always use type: command
+            # (Edison's hook_type: prompt meant stdout injection, but Claude Code
+            # handles that automatically for UserPromptSubmit command hooks)
+            entry["hooks"].append({"type": "command", "command": path_str})
+
             grouped.setdefault(hook_def.type, []).append(entry)
 
         return grouped
@@ -210,11 +224,23 @@ class HookComposer(IDEComposerBase):
         if not name:
             return None
 
-        # Priority: project templates > bundled Edison templates
+        # Priority: project templates > pack templates > bundled Edison templates
+        # Build list of candidates in priority order
         candidates = [
             self.project_dir / "templates" / "hooks" / name,
-            self.templates_dir / name,  # Bundled Edison templates
         ]
+
+        # Add pack templates in reverse order (later packs override earlier ones)
+        # So we check in forward order: last pack's template wins
+        for pack in reversed(self._active_packs()):
+            # Check bundled pack templates first
+            candidates.append(self.bundled_packs_dir / pack / "templates" / "hooks" / name)
+            # Also check project-level pack templates (for user overrides)
+            candidates.append(self.project_packs_dir / pack / "templates" / "hooks" / name)
+
+        # Finally, bundled Edison core templates
+        candidates.append(self.templates_dir / name)
+
         for candidate in candidates:
             if candidate.exists():
                 return candidate

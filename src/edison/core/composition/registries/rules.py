@@ -430,6 +430,20 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
 
         return rules_list
 
+    def write_output(self, output_path: Path, packs: Optional[List[str]] = None) -> None:
+        """
+        Write composed rules to JSON file.
+
+        Args:
+            output_path: Path where the composed rules JSON should be written
+            packs: Optional list of pack names to include in composition
+        """
+        import json
+        rules_data = self.compose(packs=packs)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(rules_data, f, indent=2, ensure_ascii=False)
+
 
 def compose_rules(packs: Optional[List[str]] = None, project_root: Optional[Path] = None) -> Dict[str, Any]:
     """

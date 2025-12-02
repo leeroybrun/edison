@@ -17,6 +17,7 @@ def _make_config_manager(repo_root: Path, packs: list[str] | None = None, consti
         )
 
     if constitution_cfg is not None:
+        # Write to the project config directory (.edison/config/constitution.yaml)
         write_yaml(
             repo_root / ".edison" / "config" / "constitution.yaml",
             constitution_cfg,
@@ -92,11 +93,14 @@ def test_compose_constitution_merges_core_pack_project(tmp_path: Path, monkeypat
 def test_render_constitution_template_replaces_placeholders(tmp_path: Path) -> None:
     repo_root = tmp_path
     constitution_cfg = {
-        "mandatoryReads": {
-            "agents": [
-                {"path": "docs/A.md", "purpose": "Alpha"},
-                {"path": "docs/B.md", "purpose": "Beta"},
-            ]
+        "constitutions": {
+            "agents": {
+                "mandatoryReads": [
+                    {"path": "docs/A.md", "purpose": "Alpha"},
+                    {"path": "docs/B.md", "purpose": "Beta"},
+                ],
+                "optionalReads": []
+            }
         }
     }
     cfg_mgr = _make_config_manager(repo_root, constitution_cfg=constitution_cfg)

@@ -131,15 +131,15 @@ edison session next <session-id>
 Key commands for orchestration:
 
 **Task Management**:
-- `edison tasks ready` - List tasks ready to claim
-- `edison tasks claim <task-id>` - Claim task for session
-- `edison tasks status` - Check task state and validation
+- `edison task ready` - List tasks ready to claim
+- `edison task claim <task-id>` - Claim task for session
+- `edison task status` - Check task state and validation
 
 **Session Management**:
 - `edison session next <session-id>` - Get next action (CRITICAL - run before every action)
 
 **Validation**:
-- `edison validators validate <task-id>` - Run validators
+- `edison qa validate <task-id>` - Run validators
 - `edison qa promote <task-id>` - Promote after validation passes
 
 **Rules**:

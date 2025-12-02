@@ -4,11 +4,15 @@
 # Description: {{ description }}
 # Blocking: {{ "YES" if blocking else "NO" }} (can block edits to protected files)
 
-set -e
+# Fast check: Skip if no Edison session file exists
+SESSION_FILE=".project/.session-id"
+if [[ ! -f "$SESSION_FILE" ]]; then
+  exit 0  # No Edison session, skip hook
+fi
 
-# Parse input JSON
-INPUT=$(cat)
-FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // ""')
+# Parse input JSON (with timeout to prevent hanging)
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // empty' 2>/dev/null || echo "")
 
 {% set cfg = config if config is defined else {} %}
 {% set protected_patterns = cfg.get("protected_patterns", []) %}

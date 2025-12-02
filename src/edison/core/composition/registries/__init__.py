@@ -36,6 +36,7 @@ from .constitutions import (
 from .rosters import (
     generate_available_agents,
     generate_available_validators,
+    generate_canonical_entry,
 )
 from .rules import (
     RulesRegistry,
@@ -47,6 +48,9 @@ from .rules import (
 )
 from .file_patterns import (
     FilePatternRegistry,
+)
+from .schemas import (
+    JsonSchemaComposer,
 )
 from ..core.errors import (
     AnchorNotFoundError,
@@ -81,6 +85,7 @@ __all__ = [
     # Rosters
     "generate_available_agents",
     "generate_available_validators",
+    "generate_canonical_entry",
     # Rules
     "RulesRegistry",
     "compose_rules",
@@ -89,6 +94,7 @@ __all__ = [
     "get_rules_for_role_api",
     "filter_rules",
     "FilePatternRegistry",
+    "JsonSchemaComposer",
     "AnchorNotFoundError",
     "RulesCompositionError",
 ]

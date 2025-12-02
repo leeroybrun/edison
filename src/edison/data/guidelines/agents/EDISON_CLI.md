@@ -85,18 +85,18 @@ Agents have access to Context7 MCP for up-to-date library documentation.
 
 **Resolve library ID:**
 ```
-Use MCP tool: mcp__context7__resolve-library-id
+Use MCP tool: mcp__context7__resolve_library_id
 Parameter: libraryName (e.g., library names from active packs)
 ```
 
 **Fetch documentation:**
 ```
-Use MCP tool: mcp__context7__get-library-docs
+Use MCP tool: mcp__context7__get_library_docs
 Parameters:
   - context7CompatibleLibraryID (from resolve step)
   - mode: "code" (API refs) or "info" (conceptual guides)
   - topic: (optional) specific area (e.g., routing, data-access)
-  - page: pagination for large docs
+  - page: (optional) pagination for large docs (1-10)
 ```
 
 **When to use:**
@@ -105,8 +105,8 @@ Parameters:
 - Finding code examples for features
 
 **Example workflow:**
-1. Resolve: `resolve-library-id("<library-name>")` → `/<org>/<library>`
-2. Fetch: `get-library-docs("/<org>/<library>", mode="code", topic="<topic>")`
+1. Resolve: `mcp__context7__resolve_library_id({ libraryName: "<library-name>" })` → `/<org>/<library>`
+2. Fetch: `mcp__context7__get_library_docs({ context7CompatibleLibraryID: "/<org>/<library>", mode: "code", topic: "<topic>" })`
 
 ---
 
@@ -146,20 +146,24 @@ edison session track complete --task TASK-123
 
 ### Looking Up Library Documentation
 
-```bash
-# Via MCP tools (within agent context):
+```typescript
+// Via MCP tools (within agent context):
 
-# Step 1: Resolve library (use names from active packs)
-resolve-library-id("<library-name>") → "/<org>/<library>"
+// Step 1: Resolve library (use names from active packs)
+const libraryId = await mcp__context7__resolve_library_id({
+  libraryName: "<library-name>"
+})
+// Returns: "/<org>/<library>"
 
-# Step 2: Get API docs
-get-library-docs(
-  context7CompatibleLibraryID="/<org>/<library>",
-  mode="code",
-  topic="<relevant-topic>"
-)
+// Step 2: Get API docs
+const docs = await mcp__context7__get_library_docs({
+  context7CompatibleLibraryID: libraryId,
+  mode: "code",  // or "info" for conceptual guides
+  topic: "<relevant-topic>",
+  page: 1  // optional pagination
+})
 
-# Step 3: Use information in implementation
+// Step 3: Use information in implementation
 ```
 
 ### Checking Task Before Completion

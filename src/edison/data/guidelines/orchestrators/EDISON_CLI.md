@@ -242,7 +242,7 @@ Orchestrators trigger validation but don't run validators directly.
 ```
 Use Task/Delegation tool to invoke validator agent:
 - Agent: code-reviewer (or specialized validator)
-- Command: edison validators validate --task <task-id>
+- Command: edison qa validate --task <task-id>
 - Monitor: Validator writes reports to evidence directory
 ```
 

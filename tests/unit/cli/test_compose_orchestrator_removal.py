@@ -10,6 +10,7 @@ from pathlib import Path
 from argparse import Namespace, ArgumentParser
 from edison.cli.compose.all import main, register_args
 from edison.core.utils.paths.project import get_project_config_dir
+from tests.conftest import REPO_ROOT
 import yaml
 
 
@@ -32,12 +33,31 @@ def _setup_minimal_edison_structure(repo_root: Path) -> None:
     guidelines_dir = core_dir / "guidelines"
     guidelines_dir.mkdir(parents=True, exist_ok=True)
 
-    for guideline_name in ["SESSION_WORKFLOW", "DELEGATION", "TDD", "VALIDATION"]:
+    # Create minimal guideline files with required anchors from rules registry
+    guideline_contents = {
+        "SESSION_WORKFLOW": (
+            "# SESSION_WORKFLOW\n\n"
+            "<!-- ANCHOR: context-budget -->\n"
+            "Context budget guidelines.\n"
+            "<!-- END ANCHOR: context-budget -->\n"
+        ),
+        "DELEGATION": (
+            "# DELEGATION\n\n"
+            "<!-- ANCHOR: priority-chain -->\n"
+            "Test delegation content.\n"
+            "<!-- END ANCHOR: priority-chain -->\n"
+        ),
+        "TDD": "# TDD\n\nTest guideline content.\n",
+        "VALIDATION": (
+            "# VALIDATION\n\n"
+            "<!-- ANCHOR: validation-first -->\n"
+            "Validation first guidelines.\n"
+            "<!-- END ANCHOR: validation-first -->\n"
+        ),
+    }
+    for guideline_name, content in guideline_contents.items():
         guideline_file = guidelines_dir / f"{guideline_name}.md"
-        guideline_file.write_text(
-            f"# {guideline_name}\n\nTest guideline content.\n",
-            encoding="utf-8",
-        )
+        guideline_file.write_text(content, encoding="utf-8")
 
     # Create core config
     core_config_dir = core_dir / "config"
@@ -110,20 +130,30 @@ def _setup_minimal_edison_structure(repo_root: Path) -> None:
         encoding="utf-8",
     )
 
-    # Create constitution.yaml with mandatory reads
+    # Create constitution.yaml with new schema: constitutions.<role>.mandatoryReads/optionalReads
     constitution_config = core_config_dir / "constitution.yaml"
     constitution_data = {
-        "mandatoryReads": {
-            "orchestrator": [
-                {"path": "guidelines/SESSION_WORKFLOW.md", "purpose": "Session workflow"},
-            ],
-            "agents": [
-                {"path": "guidelines/TDD.md", "purpose": "Test-driven development"},
-            ],
-            "validators": [
-                {"path": "guidelines/VALIDATION.md", "purpose": "Validation guidelines"},
-            ],
-        }
+        "version": "1.0.0",
+        "constitutions": {
+            "orchestrator": {
+                "mandatoryReads": [
+                    {"path": "guidelines/SESSION_WORKFLOW.md", "purpose": "Session workflow"},
+                ],
+                "optionalReads": [],
+            },
+            "agents": {
+                "mandatoryReads": [
+                    {"path": "guidelines/TDD.md", "purpose": "Test-driven development"},
+                ],
+                "optionalReads": [],
+            },
+            "validators": {
+                "mandatoryReads": [
+                    {"path": "guidelines/VALIDATION.md", "purpose": "Validation guidelines"},
+                ],
+                "optionalReads": [],
+            },
+        },
     }
     constitution_config.write_text(yaml.dump(constitution_data), encoding="utf-8")
 
@@ -156,12 +186,19 @@ def _setup_minimal_edison_structure(repo_root: Path) -> None:
 
 @pytest.fixture
 def real_args():
-    """Create real args namespace."""
+    """Create real args namespace with all compose command flags."""
     args = Namespace()
     args.repo_root = None
     args.validators = False
     args.constitutions = False
     args.guidelines = False
+    args.agents = False
+    args.start = False
+    args.hooks = False
+    args.settings = False
+    args.commands = False
+    args.rules = False
+    args.schemas = False
     args.dry_run = False
     args.json = False
     args.claude = False
@@ -212,14 +249,14 @@ def test_compose_all_without_orchestrator_flag(tmp_path, real_args):
 def test_compose_all_check_excludes_orchestrator():
     """Test that the compose_all boolean check does NOT reference orchestrator."""
     # Read the CLI source
-    cli_path = Path(__file__).parent.parent.parent / "src" / "edison" / "cli" / "compose" / "all.py"
+    cli_path = REPO_ROOT / "src" / "edison" / "cli" / "compose" / "all.py"
     content = cli_path.read_text(encoding="utf-8")
 
-    # Find the compose_all check
+    # Find the compose_all_types check (renamed from compose_all)
     lines = content.split("\n")
     compose_all_line = None
     for i, line in enumerate(lines):
-        if "compose_all = not any([" in line:
+        if "compose_all_types = not any([" in line:
             # Get the full any() block
             compose_all_block = []
             j = i
@@ -230,8 +267,8 @@ def test_compose_all_check_excludes_orchestrator():
             compose_all_line = "\n".join(compose_all_block)
             break
 
-    assert compose_all_line is not None, "Could not find compose_all check"
+    assert compose_all_line is not None, "Could not find compose_all_types check"
 
     # Verify orchestrator is NOT in the check
     assert "orchestrator" not in compose_all_line, \
-        "compose_all check should NOT reference args.orchestrator"
+        "compose_all_types check should NOT reference args.orchestrator"

@@ -69,10 +69,10 @@ Validators run in waves for efficiency and fast feedback:
 - Can proceed with warnings noted
 
 ## Bundle-first rule
-Before any validator wave, run the guarded bundle helper (`edison validators bundle <root-task>`). Paste the manifest into the QA brief. Validators must load only what the bundle lists.
+Before any validator wave, run the guarded bundle helper (`edison qa bundle <root-task>`). Paste the manifest into the QA brief. Validators must load only what the bundle lists.
 
 ### Bundle approval marker
-- Generate bundle manifest with `edison validators bundle <root-task>`; paste into QA before any validator runs.
+- Generate bundle manifest with `edison qa bundle <root-task>`; paste into QA before any validator runs.
 - After all blocking validators approve, produce `bundle-approved.json` in the round evidence directory (guards enforce its presence). Promotion `qa wip→done` and `task done→validated` is blocked until `approved=true` in this file.
 - QA promotion guards (`edison qa promote` and `edison qa promote --to validated`) now enforce both bundle manifest + `bundle-approved.json` existence.
 
@@ -126,9 +126,9 @@ Repeat until APPROVE or escalate
 
 ## Parent vs Child Tasks (Parallel Implementation)
 
-Bundle validation (cluster): Validators MUST review the entire cluster - the parent task + parent QA and all child tasks + their QA - using the bundle manifest from `edison validators bundle`.
+Bundle validation (cluster): Validators MUST review the entire cluster - the parent task + parent QA and all child tasks + their QA - using the bundle manifest from `edison qa bundle`.
 
-- Run the unified validator: `edison validators validate --task <parent> --session <sid>`.
+- Run the unified validator: `edison qa validate --task <parent> --session <sid>`.
 - It writes a single `bundle-approved.json` under the parent's evidence directory with:
   - `approved` (overall cluster decision)
   - `tasks[]` array with per-task `approved` booleans for every task in the bundle (parent and children).
@@ -160,19 +160,19 @@ Use the guarded CLI to create/update validator reports without hand-editing JSON
 
 ```bash
 # Approve example
-edison validators report --task <task-id> --validator global-codex --model codex --round 1 \
+edison qa report --task <task-id> --validator global-codex --model codex --round 1 \
   --verdict approve --summary "All checks green" \
   --add-strength "Solid test coverage" \
   --add-evidence .project/qa/validation-evidence/<task-id>/round-1/command-test.txt
 
 # Reject example with finding and follow-up
-edison validators report --task <task-id> --validator security --model codex \
+edison qa report --task <task-id> --validator security --model codex \
   --verdict reject \
   --add-finding "severity=high,category=security,description=JWT not validated,location=apps/api/src/auth.ts:120,recommendation=Validate JWT signature,blocking=true" \
   --add-follow-up "title=Add JWT validation middleware,severity=high,blocking=true"
 
 # Validate a single report file
-edison validators validate .project/qa/validation-evidence/<task-id>/round-1/validator-security-report.json
+edison qa validate .project/qa/validation-evidence/<task-id>/round-1/validator-security-report.json
 ```
 
 ## Promotion rules

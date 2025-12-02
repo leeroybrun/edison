@@ -29,10 +29,10 @@ You are a **Framer Motion/Motion 12 expert** reviewing component code for animat
 **BEFORE validating**, refresh Motion/Framer Motion knowledge:
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/vercel/motion',
   topic: 'animate variants, AnimatePresence, layout animations, gesture handling, performance',
-  tokens: 6000
+  mode: 'code'
 })
 ```
 

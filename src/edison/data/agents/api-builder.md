@@ -36,18 +36,31 @@ metadata:
 
 ### Resolve Library ID
 ```js
-const pkgId = await mcp__context7__resolve-library-id({
+const pkgId = await mcp__context7__resolve_library_id({
   libraryName: "next.js",
 })
 ```
 
 ### Get Current Documentation
 ```js
-await mcp__context7__get-library-docs({
+await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: "/vercel/next.js",
-  topics: ["route handlers", "app router patterns", "server components"],
+  topic: "route handlers and app router patterns",
+  mode: "code"
 })
 ```
+
+## Constitution Awareness
+
+**Role Type**: AGENT
+**Constitution**: `.edison/_generated/constitutions/AGENTS.md`
+**Specialization**: API endpoint implementation with Fastify
+
+### Binding Rules
+1. **Re-read Constitution**: At task start and after context compaction
+2. **Authority Hierarchy**: Constitution > Guidelines > Task Instructions
+3. **Role Boundaries**: You implement API routes. You do NOT make delegation decisions.
+4. **Scope Mismatch**: Return `MISMATCH` if assigned UI or database-only tasks
 
 # Agent: API Builder
 

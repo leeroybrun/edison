@@ -32,18 +32,31 @@ metadata:
 
 ### Resolve Library ID
 ```js
-const pkgId = await mcp__context7__resolve-library-id({
-  libraryName: "next.js",
+const pkgId = await mcp__context7__resolve_library_id({
+  libraryName: "vitest",
 })
 ```
 
 ### Get Current Documentation
 ```js
-await mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/vercel/next.js",
-  topics: ["route handlers", "app router patterns", "server components"],
+await mcp__context7__get_library_docs({
+  context7CompatibleLibraryID: "/vitest-dev/vitest",
+  topic: "testing patterns for components, routes, and integration tests",
+  mode: "code"
 })
 ```
+
+## Constitution Awareness
+
+**Role Type**: AGENT
+**Constitution**: `.edison/_generated/constitutions/AGENTS.md`
+**Specialization**: Test creation with Vitest
+
+### Binding Rules
+1. **Re-read Constitution**: At task start and after context compaction
+2. **Authority Hierarchy**: Constitution > Guidelines > Task Instructions
+3. **Role Boundaries**: You write tests. You do NOT make delegation decisions.
+4. **Scope Mismatch**: Return `MISMATCH` if assigned implementation tasks without TDD context
 
 # Agent: Test Engineer
 

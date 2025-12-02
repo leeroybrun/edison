@@ -9,12 +9,15 @@ if [[ ! -f "$SESSION_FILE" ]]; then
   exit 0  # No Edison session, skip hook
 fi
 
-echo "🚀 Edison Session Starting..."
+# Get session ID (from file or edison command)
+SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+if [[ -z "$SESSION_ID" ]]; then
+  SESSION_ID=$(edison session status --json 2>/dev/null | jq -r '.id // empty' 2>/dev/null || echo "")
+fi
 
-# Initialize session context
-SESSION_ID=$(edison session status --json 2>/dev/null | jq -r '.id' 2>/dev/null || echo "unknown")
-
-echo "   Session: $SESSION_ID"
-echo ""
+# Only output if we have a valid session
+if [[ -n "$SESSION_ID" ]]; then
+  echo "Edison Session: $SESSION_ID"
+fi
 
 exit 0

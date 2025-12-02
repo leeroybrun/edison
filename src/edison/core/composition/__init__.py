@@ -65,6 +65,7 @@ from .registries import (
     # Rosters
     generate_available_agents,
     generate_available_validators,
+    generate_canonical_entry,
 )
 
 # Output handling
@@ -190,6 +191,7 @@ __all__ = [
     # Registries - Rosters
     "generate_available_agents",
     "generate_available_validators",
+    "generate_canonical_entry",
     # Output
     "OutputConfig",
     "ClientOutputConfig",

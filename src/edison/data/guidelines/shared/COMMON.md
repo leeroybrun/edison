@@ -6,10 +6,11 @@ These instructions apply to **all agents and validators**. Read alongside role-s
 - Your training data is stale for post-training packages. Always refresh docs before coding or validating.
 - Resolve the library ID, then pull current docs via Context7 MCP:
 ```ts
-const pkgId = await mcp__context7__resolve-library-id({ libraryName: "<package-name>" })
-await mcp__context7__get-library-docs({
+const pkgId = await mcp__context7__resolve_library_id({ libraryName: "<package-name>" })
+await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: pkgId,
-  topic: "<relevant topics>",
+  topic: "<relevant topic>",
+  mode: "code"
 })
 ```
 - Check `config/context7.yml` for active versions. Expect major diffs in **Next.js 16**, **React 19**, **Tailwind CSS 4**, **Prisma 6**, and other post-training packages.

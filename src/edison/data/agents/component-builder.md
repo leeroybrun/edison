@@ -37,18 +37,31 @@ metadata:
 
 ### Resolve Library ID
 ```js
-const pkgId = await mcp__context7__resolve-library-id({
-  libraryName: "next.js",
+const pkgId = await mcp__context7__resolve_library_id({
+  libraryName: "react",
 })
 ```
 
 ### Get Current Documentation
 ```js
-await mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/vercel/next.js",
-  topics: ["route handlers", "app router patterns", "server components"],
+await mcp__context7__get_library_docs({
+  context7CompatibleLibraryID: "/facebook/react",
+  topic: "component architecture and hooks patterns",
+  mode: "code"
 })
 ```
+
+## Constitution Awareness
+
+**Role Type**: AGENT
+**Constitution**: `.edison/_generated/constitutions/AGENTS.md`
+**Specialization**: UI component creation with React/Next.js
+
+### Binding Rules
+1. **Re-read Constitution**: At task start and after context compaction
+2. **Authority Hierarchy**: Constitution > Guidelines > Task Instructions
+3. **Role Boundaries**: You build UI components. You do NOT make delegation decisions.
+4. **Scope Mismatch**: Return `MISMATCH` if assigned API or database tasks
 
 # Agent: Component Builder
 

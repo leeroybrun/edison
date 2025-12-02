@@ -10,13 +10,13 @@
 ## 1. Trigger validators
 1. Generate the manifest the validators will trust:
    ```bash
-   edison validators bundle <task-id> [--session <session-id>]
+   edison qa bundle <task-id> [--session <session-id>]
    ```
    Paste the bundle snippet into the QA brief. Validators must reject if the bundle is missing or stale.
 2. Determine the wave/trigger set from `AVAILABLE_VALIDATORS.md`. Specialized validators are driven by the triggers listed there; do not guess.
 3. Launch validation for the next round (defaults to the next integer if `--round` is omitted):
    ```bash
-   edison validators validate <task-id> [--session <session-id>] [--validators <id>...] [--blocking-only]
+   edison qa validate <task-id> [--session <session-id>] [--validators <id>...] [--blocking-only]
    ```
    - Use `--validators` only to re-run a failed subset; never to skip required blocking validators.
    - The command resolves triggered validators based on the bundle + roster; captures round number in the evidence tree.

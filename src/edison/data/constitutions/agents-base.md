@@ -27,7 +27,10 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 
 ## Mandatory Preloads (All Agents)
 {{#each mandatoryReads.agents}}
-- {{this.path}}: {{this.purpose}}
+{{/each}}
+
+## Optional References
+{{#each optionalReads.agents}}
 {{/each}}
 
 ## Workflow Requirements

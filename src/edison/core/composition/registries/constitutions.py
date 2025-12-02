@@ -11,9 +11,16 @@ layered sources:
 Templates use a small Handlebars-style syntax. Rendering covers:
   - {{source_layers}}                → provenance of the composed layers
   - {{generated_date}}               → ISO timestamp
-  - {{#each mandatoryReads.<role>}}  → bullet list from constitution.yaml
+  - {{#each mandatoryReads.<role>}}  → bullet list from constitution.yaml (mandatory)
+  - {{#each optionalReads.<role>}}   → bullet list from constitution.yaml (optional)
   - {{#each rules.<role>}}           → rules filtered by applies_to
   - {{#each delegationRules}}        → delegation rules (when provided)
+
+Constitution.yaml schema (v1.0.0+):
+  constitutions:
+    <role>:
+      mandatoryReads: [...]
+      optionalReads: [...]
 """
 
 from pathlib import Path
@@ -210,16 +217,36 @@ def render_constitution_template(
 
     # Load constitution config with project overlay precedence
     core_cfg = config.load_yaml(config.core_config_dir / "constitution.yaml")
-    project_cfg_path = config.project_config_dir.parent / "constitution.yml"
+    # Project config should be in .edison/config/constitution.yaml (or .yml)
+    project_cfg_path = config.project_config_dir / "constitution.yaml"
+    if not project_cfg_path.exists():
+        project_cfg_path = config.project_config_dir / "constitution.yml"
     project_cfg = config.load_yaml(project_cfg_path) if project_cfg_path.exists() else {}
 
     constitution_cfg = config.deep_merge(core_cfg, project_cfg) if project_cfg else core_cfg
-    mandatory_reads = constitution_cfg.get("mandatoryReads", {}).get(role_cfg_key, [])
+
+    # Support both old schema (mandatoryReads.<role>) and new schema (constitutions.<role>.mandatoryReads)
+    role_config = constitution_cfg.get("constitutions", {}).get(role_cfg_key, {})
+    if role_config:
+        # New schema: constitutions.<role>.mandatoryReads/optionalReads
+        mandatory_reads = role_config.get("mandatoryReads", [])
+        optional_reads = role_config.get("optionalReads", [])
+    else:
+        # Legacy schema fallback: mandatoryReads.<role>
+        mandatory_reads = constitution_cfg.get("mandatoryReads", {}).get(role_cfg_key, [])
+        optional_reads = []
 
     # Render mandatory reads
     reads_section = "\n".join(
         f"- {item.get('path')}: {item.get('purpose')}"
         for item in mandatory_reads
+        if isinstance(item, dict)
+    )
+
+    # Render optional reads
+    optional_reads_section = "\n".join(
+        f"- {item.get('path')}: {item.get('purpose')}"
+        for item in optional_reads
         if isinstance(item, dict)
     )
 
@@ -250,6 +277,11 @@ def render_constitution_template(
         rendered,
         f"mandatoryReads.{role_cfg_key}",
         reads_section,
+    )
+    rendered = _replace_each_block(
+        rendered,
+        f"optionalReads.{role_cfg_key}",
+        optional_reads_section,
     )
     rendered = _replace_each_block(
         rendered,

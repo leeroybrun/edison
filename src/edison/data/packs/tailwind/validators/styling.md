@@ -30,10 +30,10 @@ You are a **Tailwind v4 specialist** validating styling changes for correctness,
 ### Step 1: Context7 Knowledge Refresh (MANDATORY)
 
 ```typescript
-mcp__context7__get-library-docs({
+mcp__context7__get_library_docs({
   context7CompatibleLibraryID: '/tailwindlabs/tailwindcss',
   topic: 'v4 syntax, directives (@import, @config, @plugin, @theme, @source), responsive variants, theme tokens, dark mode, performance patterns',
-  tokens: 4000
+  mode: 'code'
 })
 ```
 

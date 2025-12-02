@@ -42,7 +42,7 @@ framework_name = get_framework_from_active_pack()
 library_id = mcp__context7__resolve_library_id({
   libraryName: framework_name  // e.g., framework from pack
 })
-// Returns: Context7-compatible ID (e.g., '/org/project')
+// Returns: Context7-compatible ID (e.g., '/org/project' or '/org/project/version')
 ```
 
 #### Step 3: Query Documentation
@@ -51,7 +51,8 @@ library_id = mcp__context7__resolve_library_id({
 documentation = mcp__context7__get_library_docs({
   context7CompatibleLibraryID: library_id,
   topic: 'your_specific_topic',  // Be specific to your implementation need
-  tokens: 5000  // Adjust based on complexity
+  mode: 'code',  // 'code' for API refs/examples, 'info' for conceptual guides
+  page: 1  // Optional pagination (1-10)
 })
 // Returns: Current documentation and examples
 ```
@@ -72,7 +73,7 @@ library_id = resolve_framework_from_pack('api')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: library_id,
   topic: 'API route handler request validation patterns',
-  tokens: 5000
+  mode: 'code'
 })
 
 // For validation frameworks specified in active packs
@@ -80,7 +81,7 @@ validation_lib = resolve_framework_from_pack('validation')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: validation_lib,
   topic: 'schema validation and transformation',
-  tokens: 3000
+  mode: 'code'
 })
 ```
 
@@ -91,7 +92,7 @@ ui_framework = resolve_framework_from_pack('ui')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: ui_framework,
   topic: 'component architecture best practices',
-  tokens: 5000
+  mode: 'code'
 })
 
 // For styling frameworks in active packs
@@ -99,7 +100,7 @@ styling_lib = resolve_framework_from_pack('styling')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: styling_lib,
   topic: 'current syntax and configuration',
-  tokens: 5000
+  mode: 'code'
 })
 
 // For animation frameworks if present
@@ -107,7 +108,7 @@ animation_lib = resolve_framework_from_pack('animation')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: animation_lib,
   topic: 'animation patterns',
-  tokens: 3000
+  mode: 'code'
 })
 ```
 
@@ -118,14 +119,14 @@ orm_framework = resolve_framework_from_pack('orm')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: orm_framework,
   topic: 'schema design and relationships',
-  tokens: 5000
+  mode: 'code'
 })
 
 // For migrations
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: orm_framework,
   topic: 'migration workflows',
-  tokens: 3000
+  mode: 'code'
 })
 ```
 
@@ -136,7 +137,7 @@ test_framework = resolve_framework_from_pack('testing')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: test_framework,
   topic: 'testing patterns for [component/route/schema]',
-  tokens: 5000
+  mode: 'code'
 })
 
 // For testing libraries specific to UI frameworks
@@ -144,7 +145,7 @@ testing_lib = resolve_framework_from_pack('ui-testing')
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: testing_lib,
   topic: 'async user interaction testing',
-  tokens: 3000
+  mode: 'code'
 })
 ```
 
@@ -155,7 +156,7 @@ framework = identify_framework_from_file_path()
 await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: framework,
   topic: '[pattern being reviewed]',
-  tokens: 5000
+  mode: 'code'
 })
 
 // Read current documentation
@@ -238,7 +239,8 @@ library_id = mcp__context7__resolve_library_id({
 documentation = mcp__context7__get_library_docs({
   context7CompatibleLibraryID: library_id,
   topic: specific_implementation_topic,
-  tokens: complexity_based_token_count
+  mode: 'code',  // or 'info' for conceptual guides
+  page: 1  // optional pagination (1-10)
 })
 ```
 
@@ -246,7 +248,8 @@ documentation = mcp__context7__get_library_docs({
 - These are MCP function calls, not bash/shell commands
 - Framework names come from `.edison/_generated/constitutions/ORCHESTRATORS.md`
 - Topics should be specific to implementation needs
-- Token count scales with query complexity (typical range: 3000-5000)
+- Use `mode: 'code'` for API references and examples, `mode: 'info'` for conceptual guides
+- Optional `page` parameter for pagination (default: 1, max: 10)
 
 ## References
 

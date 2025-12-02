@@ -10,7 +10,7 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATORS.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison tasks claim`) injects rules proactively.
+1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATORS.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
 
 2. **Correct intake prompt** – Start every session via `.edison/_generated/constitutions/ORCHESTRATORS.md`. That checklist handles QA sweeps + task selection.
 
@@ -73,7 +73,7 @@ Configured in `.edison/_generated/constitutions/ORCHESTRATORS.md` under `mandato
 
 Edison CLI injects rules automatically:
 - **On planning**: `edison session next <session> --with-rules`
-- **On claim**: `edison tasks claim <id> --with-rules`
+- **On claim**: `edison task claim <id> --with-rules`
 - **On QA creation**: `edison qa new <id> --with-rules`
 
 **Fail-Closed**: If manifest or required configs missing, CLI refuses to proceed.
@@ -251,11 +251,11 @@ All in `.edison/_generated/guidelines/`:
 - `edison session verify` - Guard validation
 
 **Task Operations**:
-- `edison tasks claim` - Claim task into session (moves file)
-- `edison tasks status` - Check task state
-- `edison tasks ready` - Mark task done (triggers validation)
-- `edison tasks split` - Create child tasks for parallel work
-- `edison tasks link` - Link parent-child relationships
+- `edison task claim` - Claim task into session (moves file)
+- `edison task status` - Check task state
+- `edison task ready` - Mark task done (triggers validation)
+- `edison task split` - Create child tasks for parallel work
+- `edison task link` - Link parent-child relationships
 
 **QA Operations**:
 - `edison qa new` - Create QA brief for task
@@ -264,8 +264,8 @@ All in `.edison/_generated/guidelines/`:
 - `edison qa bundle` - Bundle validation for parent+children
 
 **Validator Orchestration**:
-- `edison validators run-wave` - Execute validator wave (batched)
-- `edison validators validate` - Aggregate validator verdicts
+- `edison qa run-wave` - Execute validator wave (batched)
+- `edison qa validate` - Aggregate validator verdicts
 
 **Delegation**:
 - `edison delegation validate` - Validate delegation config schema
@@ -316,7 +316,7 @@ For large tasks requiring multiple implementers working simultaneously:
 ### Step 1: Split Task
 
 ```bash
-edison tasks split <parent-task-id> --children 3
+edison task split <parent-task-id> --children 3
 ```
 
 Creates:
@@ -329,13 +329,13 @@ Each implementer claims one child task into their own session:
 
 ```bash
 # Implementer A
-edison tasks claim 105 --session session-a
+edison task claim 105 --session session-a
 
 # Implementer B
-edison tasks claim 110 --session session-b
+edison task claim 110 --session session-b
 
 # Implementer C
-edison tasks claim 115 --session session-c
+edison task claim 115 --session session-c
 ```
 
 ### Step 3: Implement in Parallel
@@ -350,7 +350,7 @@ Each follows standard workflow:
 Parent task coordinates validation:
 
 ```bash
-edison validators run-wave <parent-task-id> --bundle
+edison qa run-wave <parent-task-id> --bundle
 ```
 
 Runs validators on **entire cluster** (parent + all children).

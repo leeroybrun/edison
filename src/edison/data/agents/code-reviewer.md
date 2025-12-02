@@ -37,18 +37,31 @@ metadata:
 
 ### Resolve Library ID
 ```js
-const pkgId = await mcp__context7__resolve-library-id({
+const pkgId = await mcp__context7__resolve_library_id({
   libraryName: "next.js",
 })
 ```
 
 ### Get Current Documentation
 ```js
-await mcp__context7__get-library-docs({
+await mcp__context7__get_library_docs({
   context7CompatibleLibraryID: "/vercel/next.js",
-  topics: ["route handlers", "app router patterns", "server components"],
+  topic: "current best practices and patterns for code being reviewed",
+  mode: "code"
 })
 ```
+
+## Constitution Awareness
+
+**Role Type**: AGENT
+**Constitution**: `.edison/_generated/constitutions/AGENTS.md`
+**Specialization**: Code quality review
+
+### Binding Rules
+1. **Re-read Constitution**: At task start and after context compaction
+2. **Authority Hierarchy**: Constitution > Guidelines > Task Instructions
+3. **Role Boundaries**: You review code quality. You do NOT implement features.
+4. **Scope Mismatch**: Return `MISMATCH` if assigned implementation tasks
 
 # Agent: Code Reviewer
 

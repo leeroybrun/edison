@@ -21,24 +21,25 @@ fi
 CONTEXT=""
 
 {% if include_worktree %}
-WORKTREE=$(edison session status --json | jq -r '.worktree')
+WORKTREE=$(edison session status --json 2>/dev/null | jq -r '.worktree // empty' 2>/dev/null)
 if [[ -n "$WORKTREE" && "$WORKTREE" != "null" ]]; then
-  CONTEXT+="\U0001F4C1 Worktree: $WORKTREE"$'\n'
+  CONTEXT+="Worktree: $WORKTREE"$'\n'
 fi
 {% endif %}
 
 {% if include_task_state %}
-TASK_STATE=$(edison task status --current --json 2>/dev/null | jq -r '.state' || echo "none")
-TASK_ID=$(edison task status --current --json 2>/dev/null | jq -r '.id' || echo "none")
-if [[ "$TASK_STATE" != "none" ]]; then
-  CONTEXT+="\U0001F4CB Current Task: $TASK_ID (state: $TASK_STATE)"$'\n'
+TASK_JSON=$(edison task status --current --json 2>/dev/null || echo '{}')
+TASK_STATE=$(echo "$TASK_JSON" | jq -r '.state // empty' 2>/dev/null)
+TASK_ID=$(echo "$TASK_JSON" | jq -r '.id // empty' 2>/dev/null)
+if [[ -n "$TASK_STATE" && -n "$TASK_ID" ]]; then
+  CONTEXT+="Current Task: $TASK_ID (state: $TASK_STATE)"$'\n'
 fi
 {% endif %}
 
 {% if include_pack_list %}
-PACKS=$(edison config get packs.active --json 2>/dev/null | jq -r '.[]' | tr '\n' ', ' | sed 's/,$//')
+PACKS=$(edison config get packs.active --json 2>/dev/null | jq -r '.[]' 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
 if [[ -n "$PACKS" ]]; then
-  CONTEXT+="\U0001F3A8 Active Packs: $PACKS"$'\n'
+  CONTEXT+="Active Packs: $PACKS"$'\n'
 fi
 {% endif %}
 
