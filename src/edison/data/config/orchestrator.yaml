@@ -32,13 +32,13 @@ orchestrators:
 
     happy:
       command: "happy"
-      args: ["--config", ".happy/config.yml"]
+      args: []
       type: "wrapper"
       cwd: "{session_worktree}"
       initial_prompt:
         enabled: true
-        method: "file"
-        path: ".edison/_generated/constitutions/ORCHESTRATORS.md"
+        method: "stdin"
+        path: ".edison/_generated/start/START_NEW_SESSION.md"
 
     mock:
       command: "echo"
