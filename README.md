@@ -33,13 +33,14 @@ The framework enforces strict workflows through state machines, requires test-dr
 - Test-first development required by default
 - Validation checks for test coverage, type checking, linting, and builds
 - Evidence files automatically collected for each validation round
-- Required evidence: command-type-check.txt, command-lint.txt, command-test.txt, command-build.txt
+- Required evidence: command-type-check.txt, command-lint.txt, command-test.txt, command-build.txt, command-coderabbit.txt
 
 ### Multi-Model Validation
 - Same task validated by multiple LLMs for consensus
 - Parallel or sequential validator execution
 - Configurable timeout per validator (default: 300s)
 - Maximum concurrent validators (default: 4)
+- External validators (CodeRabbit CLI) with LLM-driven report transformation
 - Comprehensive validation reports in JSON format
 
 ### Configurable via YAML
@@ -53,12 +54,12 @@ The framework enforces strict workflows through state machines, requires test-dr
 - Section-based composition with placeholders and overlays
 - HTML comment syntax for extending core content
 - Automatic deduplication using 12-word shingles
-- Supports: agents, validators, guidelines, constitutions, start prompts
+- Supports: agents, validators, guidelines, constitutions, start prompts, CodeRabbit config
 
 ### Technology Packs
 - Framework-specific rules and validations
 - Available packs: React, Next.js, TypeScript, Tailwind, Prisma, Vitest, FastAPI, Better Auth, Motion
-- Each pack provides validators, guidelines, and examples
+- Each pack provides validators, guidelines, examples, and CodeRabbit review instructions
 - Auto-activation based on file patterns (e.g., `**/*.ts` activates TypeScript pack)
 - Custom packs supported via template
 
@@ -109,6 +110,7 @@ edison compose validators
 edison compose guidelines
 edison compose constitutions
 edison compose start
+edison compose coderabbit
 ```
 
 ### Create and Work on Tasks
@@ -518,6 +520,7 @@ edison compose validators                        # Compose validator prompts
 edison compose guidelines                        # Compose guidelines
 edison compose constitutions                     # Compose constitutions
 edison compose start                             # Compose start prompts
+edison compose coderabbit                        # Compose .coderabbit.yaml
 edison compose validate                          # Validate composed output
 edison compose hooks                             # Setup git hooks
 ```

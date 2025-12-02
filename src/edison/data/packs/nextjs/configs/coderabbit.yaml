@@ -1,0 +1,38 @@
+# Next.js pack overlay for CodeRabbit
+
+path_instructions:
+  - path: "app/**/*.tsx"
+    instructions: |
+      Review Next.js App Router patterns:
+      - Proper Server vs Client Component usage ('use client' directive)
+      - Data fetching patterns (async components, streaming)
+      - Loading and error states
+      - Parallel and intercepting routes
+      - Dynamic routes and params handling
+
+  - path: "**/route.ts"
+    instructions: |
+      Focus on API route security and quality:
+      - Input validation and sanitization
+      - Authentication and authorization checks
+      - Proper error handling and status codes
+      - Rate limiting considerations
+      - Request/response type safety
+
+  - path: "**/layout.tsx"
+    instructions: |
+      Evaluate layout implementation:
+      - Proper metadata generation
+      - Loading states and suspense boundaries
+      - Layout composition and nesting
+      - Shared UI patterns
+      - Performance implications
+
+  - path: "**/page.tsx"
+    instructions: |
+      Review page components for:
+      - SEO optimization (metadata, structured data)
+      - Proper data fetching strategies
+      - Error boundaries
+      - Loading states
+      - Static vs dynamic rendering decisions

@@ -124,7 +124,8 @@ edison.core/
 │   ├── manager.py         # QA lifecycle operations
 │   ├── validator/         # Validator management
 │   │   ├── roster.py      # Validator roster building
-│   │   └── delegation.py  # Validator delegation
+│   │   ├── delegation.py  # Validator delegation
+│   │   └── external.py    # External CLI validator runner (CodeRabbit)
 │   ├── evidence/          # Validation evidence
 │   │   ├── io.py          # Evidence file I/O
 │   │   ├── analysis.py    # Evidence analysis
@@ -156,7 +157,8 @@ edison.core/
 │   ├── ide/               # IDE integration
 │   │   ├── settings.py    # Settings composition (.claude, .cursor, .zen)
 │   │   ├── commands.py    # Slash command composition
-│   │   └── hooks.py       # Git hook composition
+│   │   ├── hooks.py       # Git hook composition
+│   │   └── coderabbit.py  # CodeRabbit config composition
 │   └── output/            # Output generation
 │       ├── config.py      # Configuration output
 │       ├── formatting.py  # Content formatting
@@ -782,18 +784,62 @@ Agents are defined in `edison.data/agents/`:
 ### Validator Roster
 
 Validators are defined in `edison.data/validators/`:
-- **Critical validators**: Must pass for QA to succeed
+- **Critical validators**: Must pass for QA to succeed (includes CodeRabbit)
 - **Global validators**: Run on all tasks
 - **Pack validators**: Technology-specific checks
+- **External validators**: CLI tools (e.g., CodeRabbit) executed separately with LLM report transformation
 
 ### Delegation Flow
 
 1. **Orchestrator** identifies task requiring delegation
 2. **Rule engine** suggests appropriate agent/validator
 3. **Orchestrator** delegates via `edison qa run` or manual delegation
-4. **Agent/Validator** executes in isolated context (Zen MCP)
-5. **Evidence** collected in `.edison/qa/validation-evidence/{task-id}/`
-6. **Orchestrator** reviews evidence and decides next action
+4. **External validators** (e.g., CodeRabbit) execute first, capturing output as evidence
+5. **Agent/Validator** executes in isolated context (Zen MCP)
+6. **Evidence** collected in `.edison/qa/validation-evidence/{task-id}/`
+7. **Orchestrator** reviews evidence and decides next action
+
+### External Validator Flow (CodeRabbit)
+
+External validators follow a hybrid execution model:
+
+```
+┌─────────────────────┐
+│  Edison CLI         │
+│  (qa validate)      │
+└──────────┬──────────┘
+           │
+           │ 1. Execute CodeRabbit CLI
+           │    coderabbit review --prompt-only
+           ↓
+┌─────────────────────┐
+│  CodeRabbit CLI     │
+│  (7-30 min)         │
+└──────────┬──────────┘
+           │
+           │ 2. Capture plain text output
+           ↓
+┌─────────────────────┐
+│  Evidence File      │
+│  command-coderabbit.txt
+└──────────┬──────────┘
+           │
+           │ 3. LLM Validator reads evidence
+           ↓
+┌─────────────────────┐
+│  LLM Validator      │
+│  (coderabbit.md)    │
+└──────────┬──────────┘
+           │
+           │ 4. Transform to structured report
+           ↓
+┌─────────────────────┐
+│  Edison Report      │
+│  (JSON)             │
+└─────────────────────┘
+```
+
+This approach avoids LLM timeout issues while still leveraging LLM intelligence for report transformation.
 
 ---
 
@@ -1128,6 +1174,7 @@ EdisonError (base)
 ## Glossary
 
 - **Agent**: Specialized AI assistant for specific tasks (e.g., API builder, test engineer)
+- **CodeRabbit**: External AI-powered code review tool integrated as a hybrid validator
 - **Composition**: Process of merging content from Core/Packs/Project layers
 - **Constitution**: Foundational rules for a role (agent, orchestrator, validator)
 - **Entity**: First-class object with state, metadata, and persistence (Task, Session, QARecord)
@@ -1140,6 +1187,7 @@ EdisonError (base)
 - **Session**: Work context with associated tasks, QA records, and git worktree
 - **State Machine**: Declarative definition of entity lifecycle with states and transitions
 - **Validator**: AI assistant that validates task implementation quality
+- **External Validator**: CLI tool (e.g., CodeRabbit) executed separately with output transformed by LLM
 - **Worktree**: Git worktree isolated for a session's work
 
 ---

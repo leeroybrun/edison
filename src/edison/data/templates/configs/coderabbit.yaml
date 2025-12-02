@@ -1,0 +1,78 @@
+# Core CodeRabbit configuration template
+# This template is composed with pack and project overlays
+
+reviews:
+  # Review profile: chill, balanced, or assertive
+  # Can be overridden by Edison validation.dimensions.security.weight
+  profile: chill
+
+  # Request changes workflow
+  request_changes_workflow: true
+
+  # Auto-review settings
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - master
+      - develop
+
+  # High-level summary
+  high_level_summary: true
+
+  # Review status comment
+  review_status_comment: true
+
+  # Poem generation (off by default for professional use)
+  poem: false
+
+  # Collapse walkthrough on resolution
+  collapse_walkthrough: false
+
+  # Auto-approve settings
+  auto_approve:
+    enabled: false
+
+# Chat settings
+chat:
+  auto_reply: true
+
+# Knowledge base settings
+knowledge_base:
+  # Learnings from previous reviews
+  learnings:
+    scope: project
+
+# Language-specific settings
+language: en-US
+
+# Early access features
+early_access: false
+
+# Base path instructions
+# Packs and project overlays will append to this list
+path_instructions:
+  - path: "**/*.md"
+    instructions: |
+      Review documentation for:
+      - Clarity and accuracy
+      - Proper formatting
+      - Working links
+      - Code example correctness
+
+  - path: "tests/**/*"
+    instructions: |
+      Review tests for:
+      - Adequate coverage
+      - Clear test names
+      - Proper assertions
+      - Edge case handling
+
+  - path: "**/README.md"
+    instructions: |
+      Review README for:
+      - Clear project description
+      - Installation instructions
+      - Usage examples
+      - Contributing guidelines

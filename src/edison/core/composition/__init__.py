@@ -129,6 +129,9 @@ from .ide import (
     ALLOWED_TYPES,
     SettingsComposer,
     merge_permissions,
+    # CodeRabbit composition
+    CodeRabbitComposer,
+    compose_coderabbit_config,
 )
 
 __all__ = [
@@ -234,4 +237,7 @@ __all__ = [
     "ALLOWED_TYPES",
     "SettingsComposer",
     "merge_permissions",
+    # Config composition
+    "CodeRabbitComposer",
+    "compose_coderabbit_config",
 ]

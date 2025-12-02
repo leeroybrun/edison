@@ -1603,6 +1603,70 @@ edison compose hooks [options]
 
 ---
 
+### compose coderabbit - Compose CodeRabbit Configuration
+
+Compose `.coderabbit.yaml` configuration from layered sources (Core → Packs → Project).
+
+```bash
+edison compose coderabbit [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--output` | Custom output directory (default: repo root) |
+| `--dry-run` | Show composed config without writing |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Generating CodeRabbit configuration for AI-powered code reviews
+- Updating CodeRabbit settings after enabling new packs
+- Customizing code review instructions per project
+
+**Configuration Sources:**
+
+1. **Core template**: `src/edison/data/templates/configs/coderabbit.yaml`
+2. **Pack overlays**: `src/edison/data/packs/{pack}/configs/coderabbit.yaml`
+3. **Project overrides**: `.edison/configs/coderabbit.yaml`
+
+**Special Merging:**
+
+The `path_instructions` array is **appended** across layers (not replaced), allowing packs to add technology-specific review instructions.
+
+**Examples:**
+
+```bash
+# Compose and write to repo root
+edison compose coderabbit
+
+# Preview without writing
+edison compose coderabbit --dry-run
+
+# Output to custom directory
+edison compose coderabbit --output ./config
+
+# Get JSON output
+edison compose coderabbit --json
+```
+
+**Output:**
+
+Creates `.coderabbit.yaml` with merged configuration including:
+- Review profile settings (chill, balanced, assertive)
+- Auto-review configuration
+- Knowledge base settings
+- Path-specific review instructions from all active packs
+
+**Exit Codes:**
+
+- `0` - Configuration composed successfully
+- `1` - Error during composition
+
+---
+
 ### compose settings - Compose IDE Settings
 
 Compose IDE settings files from configuration.

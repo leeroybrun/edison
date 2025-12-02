@@ -15,6 +15,7 @@ from .base import (
 )
 from .delegation import enhance_delegation_hint, simple_delegation_hint
 from .roster import build_validator_roster
+from .external import ExternalValidatorRunner
 
 __all__ = [
     "validate_dimension_weights",
@@ -23,4 +24,5 @@ __all__ = [
     "build_validator_roster",
     "process_validator_template",
     "run_validator",
+    "ExternalValidatorRunner",
 ]

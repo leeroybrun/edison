@@ -96,7 +96,25 @@ validation:
         focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
         blocksOnFail: true
         outputFormat: PerformanceReport
-    reportSection: "Validator Findings & Verdicts > Performance"
+        reportSection: "Validator Findings & Verdicts > Performance"
+      - id: coderabbit
+        name: CodeRabbit AI Review
+        type: external  # NEW: external tool validator
+        model: codex    # LLM that processes the output
+        interface: clink
+        role: codereviewer
+        zenRole: validator-coderabbit
+        specFile: critical/coderabbit.md
+        command: "coderabbit review --prompt-only --type uncommitted"
+        triggers: ["*"]
+        alwaysRun: false  # Run on demand or when explicitly requested
+        priority: 2
+        timeout: 600
+        blocksOnFail: true
+        context7Required: false
+        outputFormat: CodeRabbitReport
+        reportSection: "Validator Findings & Verdicts > CodeRabbit"
+        evidenceFile: "command-coderabbit.txt"
     specialized:
       - id: react
         name: React Validator

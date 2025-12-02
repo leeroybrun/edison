@@ -355,6 +355,15 @@ outputs:
     filename_pattern: "{name}.md"
 
   # -------------------------------------------------------------------------
+  # CodeRabbit Configuration
+  # -------------------------------------------------------------------------
+  # CodeRabbit AI code review tool configuration.
+  coderabbit:
+    enabled: true
+    output_path: "."
+    filename: ".coderabbit.yaml"
+
+  # -------------------------------------------------------------------------
   # Client Sync Outputs
   # -------------------------------------------------------------------------
   # Where synced files are written for each client.
@@ -366,7 +375,7 @@ outputs:
       agents_path: ".claude/agents"
       # Agent filename pattern
       agents_filename_pattern: "{name}.md"
-    
+
     zen:
       enabled: true
       # Zen prompts synced to .zen/conf/systemprompts/

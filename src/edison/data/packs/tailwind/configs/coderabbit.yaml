@@ -1,0 +1,21 @@
+# Tailwind pack overlay for CodeRabbit
+
+path_instructions:
+  - path: "**/*.{tsx,jsx}"
+    instructions: |
+      Review Tailwind CSS usage:
+      - Proper utility class usage and composition
+      - Responsive design patterns (sm:, md:, lg:, xl:)
+      - Dark mode support where applicable
+      - Avoid arbitrary values unless necessary
+      - Consistent spacing and sizing scale
+      - Accessibility (focus states, contrast)
+
+  - path: "**/globals.css"
+    instructions: |
+      Evaluate global CSS organization:
+      - Proper @layer usage (base, components, utilities)
+      - Custom utility definitions
+      - CSS variable usage
+      - Theme customization
+      - Import order and structure

@@ -1,0 +1,29 @@
+# Prisma pack overlay for CodeRabbit
+
+path_instructions:
+  - path: "prisma/**/*"
+    instructions: |
+      Review database code for:
+      - N+1 query prevention (use include/select wisely)
+      - Proper index usage for performance
+      - Referential integrity and cascade behavior
+      - Migration safety (data loss prevention)
+      - Transaction usage where needed
+
+  - path: "**/*.prisma"
+    instructions: |
+      Evaluate schema design:
+      - Proper relation definitions and naming
+      - Appropriate field types and constraints
+      - Index optimization for common queries
+      - Data model normalization
+      - Enum usage and validation
+
+  - path: "**/db/**/*"
+    instructions: |
+      Focus on database access patterns:
+      - Query efficiency and optimization
+      - Proper error handling
+      - Connection management
+      - Transaction boundaries
+      - Data validation before persistence

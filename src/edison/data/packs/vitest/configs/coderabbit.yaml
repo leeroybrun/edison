@@ -1,0 +1,32 @@
+# Vitest pack overlay for CodeRabbit
+
+path_instructions:
+  - path: "**/*.test.ts"
+    instructions: |
+      Enforce TDD compliance and test quality:
+      - NO MOCKS - tests must use real implementations
+      - Real assertions with meaningful expectations
+      - Edge cases and error scenarios coverage
+      - Test isolation and independence
+      - Clear test descriptions and structure
+      - Proper setup and teardown
+
+  - path: "**/*.test.tsx"
+    instructions: |
+      Review component testing practices:
+      - User-centric testing (user-event, not fireEvent)
+      - Accessibility testing (screen readers, ARIA)
+      - Real user interactions and behaviors
+      - NO MOCKS - test real component behavior
+      - Proper async handling and waiting
+      - Integration over isolated unit tests
+
+  - path: "**/*.spec.ts"
+    instructions: |
+      Evaluate integration test patterns:
+      - End-to-end workflow testing
+      - Real dependencies and services
+      - Proper test data management
+      - Error handling verification
+      - Performance considerations
+      - Test maintainability

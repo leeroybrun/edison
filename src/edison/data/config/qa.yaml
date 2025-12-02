@@ -24,6 +24,7 @@ validation:
     # File patterns that should be collected as evidence
     patterns:
       - "command-*.txt"
+      - "command-coderabbit.txt"
       - "context7-*.md"
       - "context7-*.txt"
       - "validator-*-report.json"
