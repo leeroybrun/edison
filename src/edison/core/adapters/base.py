@@ -1,18 +1,26 @@
+"""Base class for provider-specific prompt adapters.
+
+Adapters operate purely on Edison `_generated` artifacts and are
+responsible only for provider-specific formatting and filesystem
+layout. Composition (includes, pack overlays, DRY checks, etc.) is
+handled by the Edison engine before adapters run.
+
+Uses ConfigMixin for unified config loading.
+"""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+from ._config import ConfigMixin
 
 
-class PromptAdapter(ABC):
+class PromptAdapter(ConfigMixin, ABC):
     """Base class for provider-specific prompt adapters.
 
-    Adapters operate purely on Edison `_generated` artifacts and are
-    responsible only for provider-specific formatting and filesystem
-    layout. Composition (includes, pack overlays, DRY checks, etc.) is
-    handled by the Edison engine before adapters run.
-    
+    Inherits from ConfigMixin to provide unified config loading with caching.
+
     The unified composition engine produces:
     - _generated/agents/*.md - Agent prompts
     - _generated/validators/*.md - Validator prompts
@@ -22,7 +30,14 @@ class PromptAdapter(ABC):
     """
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
+        """Initialize adapter with generated root and repo root.
+
+        Args:
+            generated_root: Path to _generated directory.
+            repo_root: Optional repository root. If not provided, will be inferred.
+        """
         self.generated_root: Path = generated_root.resolve()
+
         # Best-effort repo root inference when not provided explicitly.
         if repo_root is not None:
             self.repo_root = repo_root.resolve()
@@ -33,7 +48,10 @@ class PromptAdapter(ABC):
             except IndexError:
                 self.repo_root = Path.cwd().resolve()
 
-    # ----- Abstract API -----
+        # Initialize ConfigMixin's cache
+        self._cached_config: Optional[Dict[str, Any]] = None
+
+    # ----- Default API -----
     def render_agent(self, agent_name: str) -> str:
         """Render a single agent prompt from `_generated/agents/`.
 

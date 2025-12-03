@@ -1,4 +1,4 @@
-<!-- APPEND -->
+<!-- EXTEND: composed-additions -->
 # Next.js API Validation Context
 
 {{include:.edison/_generated/guidelines/nextjs/route-handlers.md}}
@@ -10,4 +10,4 @@
 - Validate inputs server-side (Zod) and return typed JSON with correct status codes; no client-only APIs in handlers.
 - Declare caching/streaming explicitly (`dynamic`, `revalidate`, `cache` headers) to avoid serving stale authenticated data.
 - Use `cookies()`/`headers()` from `next/headers` and built-in utilities instead of custom request parsing.
-<!-- /APPEND -->
+<!-- /EXTEND -->

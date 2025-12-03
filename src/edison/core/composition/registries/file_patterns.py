@@ -47,19 +47,16 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
         except (EdisonPathError, ValueError):
             # Fall back to cwd when path resolution fails (defensive guard for tests)
             resolved_root = Path.cwd()
-        
+
         super().__init__(resolved_root)
+
+        # Note: bundled_packs_dir, project_packs_dir, project_dir are inherited from BaseRegistry
 
         # Core rules are ALWAYS from bundled data
         self.core_rules_dir = get_data_path("rules") / "file_patterns"
-        
-        # Pack roots: bundled + project
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_config_dir = get_project_config_dir(self.project_root, create=False)
-        self.project_packs_dir = self.project_config_dir / "packs"
-        
-        # Project-level file pattern overrides
-        self.project_rules_dir = self.project_config_dir / "rules" / "file_patterns"
+
+        # Project-level file pattern overrides (use inherited project_dir)
+        self.project_rules_dir = self.project_dir / "rules" / "file_patterns"
     
     # ------- BaseRegistry Interface Implementation -------
     
@@ -95,10 +92,13 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
         """Get all file pattern rules from core."""
         return list(self.discover_core().values())
 
-    @staticmethod
-    def _load_yaml(path: Path) -> Dict[str, Any]:
-        from edison.core.utils.io import read_yaml
-        data = read_yaml(path, raise_on_error=True) or {}
+    def _load_yaml(self, path: Path) -> Dict[str, Any]:
+        """Load and validate file pattern YAML file.
+
+        Uses inherited cfg_mgr from BaseRegistry for consistent YAML loading.
+        """
+        # Use inherited cfg_mgr from BaseRegistry for consistent YAML loading
+        data = self.cfg_mgr.load_yaml(path) or {}
         if not isinstance(data, dict):
             raise ValueError(f"{path} must parse to a mapping")
         data["_path"] = str(path)

@@ -88,13 +88,34 @@ def main(args: argparse.Namespace) -> int:
             session_id = result.get("session_id")
             worktree_path = result.get("worktree_path")
             pid = result.get("orchestrator_pid")
+            process = result.get("orchestrator_process")
 
-            formatter.text(f"Started session: {session_id}")
-            if worktree_path:
-                formatter.text(f"  Worktree: {worktree_path}")
-            if pid:
-                formatter.text(f"  Orchestrator PID: {pid}")
-            return 0
+            # In interactive mode (not detached), wait for the process
+            if not args.detach and process is not None:
+                formatter.text(f"Started session: {session_id}")
+                if worktree_path:
+                    formatter.text(f"  Worktree: {worktree_path}")
+                formatter.text("")  # Blank line before interactive session
+                try:
+                    # Wait for the orchestrator process to complete
+                    return_code = process.wait()
+                    return return_code
+                except KeyboardInterrupt:
+                    # User cancelled - gracefully terminate
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except Exception:
+                        process.kill()
+                    return 130  # Standard exit code for Ctrl+C
+            else:
+                # Detached mode - just report and exit
+                formatter.text(f"Started session: {session_id}")
+                if worktree_path:
+                    formatter.text(f"  Worktree: {worktree_path}")
+                if pid:
+                    formatter.text(f"  Orchestrator PID: {pid}")
+                return 0
         else:
             formatter.error(f"Failed to start: {result.get('error', 'Unknown error')}", error_code="start_error")
             return 1

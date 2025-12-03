@@ -51,43 +51,70 @@ class LayeredComposer:
         # Use composition path resolver (SINGLE SOURCE OF TRUTH)
         path_resolver = CompositionPathResolver(self.repo_root, content_type)
         self.core_dir = path_resolver.core_dir
-        self.packs_dir = path_resolver.packs_dir
+        self.bundled_packs_dir = path_resolver.packs_dir
+        self.project_packs_dir = path_resolver.project_packs_dir
         self.project_dir = path_resolver.project_dir
+        # Backward-compatible alias
+        self.packs_dir = path_resolver.packs_dir
         
         # Initialize components
         self.schema = CompositionSchema.load()
-        self.discovery = LayerDiscovery(
+        # Discovery for bundled packs
+        self.bundled_discovery = LayerDiscovery(
             content_type=content_type,
             core_dir=self.core_dir,
-            packs_dir=self.packs_dir,
+            packs_dir=self.bundled_packs_dir,
+            project_dir=self.project_dir,
+        )
+        # Discovery for project packs (.edison/packs/)
+        self.project_packs_discovery = LayerDiscovery(
+            content_type=content_type,
+            core_dir=self.core_dir,
+            packs_dir=self.project_packs_dir,
             project_dir=self.project_dir,
         )
         self.parser = SectionParser()
         self.section_composer = SectionComposer()
     
     # -------------------------------------------------------------------------
-    # Discovery (delegate to LayerDiscovery)
+    # Discovery (merges bundled packs + project packs)
     # -------------------------------------------------------------------------
     
     def discover_core(self) -> Dict[str, LayerSource]:
         """Discover all core entity definitions."""
-        return self.discovery.discover_core()
+        return self.bundled_discovery.discover_core()
     
     def discover_pack_overlays(self, pack: str, existing: Set[str]) -> Dict[str, LayerSource]:
-        """Discover pack overlays (must reference existing entities)."""
-        return self.discovery.discover_pack_overlays(pack, existing)
+        """Discover pack overlays from bundled AND project packs.
+        
+        Validation errors from either source are always propagated.
+        """
+        entities: Dict[str, LayerSource] = {}
+        # First try bundled packs
+        entities.update(self.bundled_discovery.discover_pack_overlays(pack, existing))
+        # Then try project packs - validation errors always propagate
+        entities.update(self.project_packs_discovery.discover_pack_overlays(pack, existing))
+        return entities
     
     def discover_pack_new(self, pack: str, existing: Set[str]) -> Dict[str, LayerSource]:
-        """Discover new pack-defined entities (must NOT shadow existing)."""
-        return self.discovery.discover_pack_new(pack, existing)
+        """Discover new pack-defined entities from bundled AND project packs.
+        
+        Validation errors from either source are always propagated.
+        """
+        entities: Dict[str, LayerSource] = {}
+        # First try bundled packs
+        entities.update(self.bundled_discovery.discover_pack_new(pack, existing))
+        # Then try project packs - validation errors always propagate
+        entities.update(self.project_packs_discovery.discover_pack_new(pack, existing))
+        return entities
     
     def discover_project_overlays(self, existing: Set[str]) -> Dict[str, LayerSource]:
         """Discover project overlays (must reference existing entities)."""
-        return self.discovery.discover_project_overlays(existing)
+        return self.bundled_discovery.discover_project_overlays(existing)
     
     def discover_project_new(self, existing: Set[str]) -> Dict[str, LayerSource]:
         """Discover new project-defined entities (must NOT shadow existing)."""
-        return self.discovery.discover_project_new(existing)
+        return self.bundled_discovery.discover_project_new(existing)
     
     # -------------------------------------------------------------------------
     # Composition
@@ -97,29 +124,31 @@ class LayeredComposer:
         """Initialize section registry with known sections from schema."""
         known_sections = self.schema.get_known_sections(self.content_type)
         return SectionRegistry(
-            known_sections={name: [] for name in known_sections},
-            extensible_sections={},
-            append_sections=[],
+            sections={name: [] for name in known_sections},
+            extensions={},
         )
-    
+
     def _process_overlay(
         self,
         source: LayerSource,
         registry: SectionRegistry,
     ) -> None:
-        """Parse overlay file and add sections to registry."""
+        """Parse overlay file and add sections to registry.
+
+        Uses the unified section system:
+        - SECTION: Defines a new section (added to registry.sections)
+        - EXTEND: Extends an existing section (added to registry.extensions)
+        """
         raw_content = source.path.read_text(encoding="utf-8")
         # Resolve includes in overlay content
         content, _deps = resolve_includes(raw_content, source.path)
         sections = self.parser.parse(content, source.layer)
-        
+
         for section in sections:
             if section.mode == SectionMode.EXTEND:
                 registry.add_extension(section.name, section.content)
-            elif section.mode == SectionMode.NEW_SECTION:
-                registry.add_new_section(section.name, section.content)
-            elif section.mode == SectionMode.APPEND:
-                registry.add_append(section.content)
+            elif section.mode == SectionMode.SECTION:
+                registry.add_section(section.name, section.content)
     
     def compose(self, name: str, packs: List[str]) -> str:
         """Compose a single entity from all layers.

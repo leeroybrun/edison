@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from edison.core.config import ConfigManager
-from edison.core.utils.io import ensure_directory
+from edison.core.composition.output.writer import CompositionFileWriter
 
 from .headers import build_generated_header
 from ..path_utils import resolve_project_dir_placeholders
@@ -207,7 +207,6 @@ def generate_state_machine_doc(output_path: Path, repo_root: Optional[Path] = No
         content_parts.append(_render_domain(domain, spec))
         content_parts.append("")
 
-    ensure_directory(output_path.parent)
     full_text = "\n".join(content_parts).strip() + "\n"
 
     # Resolve placeholders
@@ -219,7 +218,10 @@ def generate_state_machine_doc(output_path: Path, repo_root: Optional[Path] = No
         repo_root=cfg_mgr.repo_root,
     )
 
-    output_path.write_text(full_text, encoding="utf-8")
+    # Use CompositionFileWriter for unified file writing
+    writer = CompositionFileWriter(base_dir=cfg_mgr.repo_root)
+    writer.write_text(output_path, full_text)
+
     return output_path
 
 

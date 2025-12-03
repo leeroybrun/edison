@@ -13,11 +13,25 @@ def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) 
     root = isolated_project_env
     project_dir = get_project_config_dir(root, create=True)
 
-    # Using unified naming: one 'global' validator file
-    validator_id = "global"
+    # Use a custom validator name that doesn't shadow bundled validators
+    # NOTE: .edison/core/ is LEGACY and NOT SUPPORTED - core content is always bundled
+    # We need to create this as a pack-new entity so it's discovered during composition
+    validator_id = "test-validator"
+    base_pack = "test-base"
 
-    # Create minimal validator core with section markers
-    validators_dir = project_dir / "core" / "validators" / "global"
+    # Create base pack with the validator template
+    base_pack_dir = project_dir / "packs" / base_pack
+    base_pack_dir.mkdir(parents=True, exist_ok=True)
+    write_yaml(
+        base_pack_dir / "pack.yml",
+        {
+            "name": base_pack,
+            "version": "1.0.0",
+            "description": "Test base pack with validator template",
+        },
+    )
+
+    validators_dir = base_pack_dir / "validators"
     validators_dir.mkdir(parents=True, exist_ok=True)
     validator_path = validators_dir / f"{validator_id}.md"
     write_text(
@@ -30,9 +44,11 @@ def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) 
                 "Base checks for validator.",
                 "",
                 "## Tech-Stack Context",
-                "{{SECTION:TechStack}}",
+                "<!-- SECTION: tech-stack -->",
+                "<!-- /SECTION: tech-stack -->",
                 "",
-                "{{EXTENSIBLE_SECTIONS}}",
+                "<!-- SECTION: composed-additions -->",
+                "<!-- /SECTION: composed-additions -->",
             ]
         ),
     )
@@ -56,14 +72,15 @@ def test_pack_sections_are_deduplicated_and_ordered(isolated_project_env: Path) 
         overlays_dir.mkdir(parents=True, exist_ok=True)
         write_text(
             overlays_dir / f"{validator_id}.md",
-            f"<!-- EXTEND: TechStack -->\n## {pack.capitalize()} Pack Context\n- guidance from {pack}\n<!-- /EXTEND -->",
+            f"<!-- EXTEND: tech-stack -->\n## {pack.capitalize()} Pack Context\n- guidance from {pack}\n<!-- /EXTEND -->",
         )
 
     # Use LayeredComposer directly with deduplicated packs
     composer = LayeredComposer(repo_root=root, content_type="validators")
-    
+
     # Packs should be deduplicated before passing to compose
-    unique_packs = list(dict.fromkeys(["react", "next", "react", "next"]))  # Dedupe preserving order
+    # Include base_pack first to define the validator, then overlay packs
+    unique_packs = list(dict.fromkeys([base_pack, "react", "next", "react", "next"]))  # Dedupe preserving order
     text = composer.compose(validator_id, unique_packs)
 
     react_count = text.count("React Pack Context")

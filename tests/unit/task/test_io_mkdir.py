@@ -93,9 +93,9 @@ def task_env(tmp_path, monkeypatch):
         {
             "session": {
                 "paths": {
-                    "root": ".edison/sessions",
-                    "archive": ".edison/sessions/archive",
-                    "template": ".edison/sessions/TEMPLATE.json",
+                    "root": ".project/sessions",
+                    "archive": ".project/sessions/archive",
+                    "template": ".project/sessions/TEMPLATE.json",
                 }
             }
         }
@@ -164,25 +164,15 @@ def test_claim_task_ensures_session_directories(task_env):
         create_qa=True,
     )
 
-    # Create session directory and metadata (sessions live in .project/sessions per ManagementPaths)
+    # Create session using SessionRepository
     session_id = "test-session-001"
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
+    session_repo = SessionRepository(task_env)
+    session = Session.create(session_id, state="wip")
+    session_repo.create(session)
+    
     session_dir = task_env / ".project" / "sessions" / "wip" / session_id
-    session_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create minimal session.json
-    import json
-    session_file = session_dir / "session.json"
-    session_file.write_text(
-        json.dumps({
-            "meta": {
-                "sessionId": session_id,
-                "status": "wip",
-                "owner": "test",
-            },
-            "tasks": {},
-        }),
-        encoding="utf-8"
-    )
 
     # Claim task - should move to session directories
     task = workflow.claim_task(task_id="T-003", session_id=session_id)
@@ -215,18 +205,15 @@ def test_complete_task_ensures_done_directories(task_env):
     )
 
     session_id = "test-session-002"
+    
+    # Use SessionRepository to create a proper session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
+    session_repo = SessionRepository(task_env)
+    session = Session.create(session_id, state="wip")
+    session_repo.create(session)
+    
     session_dir = task_env / ".project" / "sessions" / "wip" / session_id
-    session_dir.mkdir(parents=True, exist_ok=True)
-
-    import json
-    session_file = session_dir / "session.json"
-    session_file.write_text(
-        json.dumps({
-            "meta": {"sessionId": session_id, "status": "wip", "owner": "test"},
-            "tasks": {},
-        }),
-        encoding="utf-8"
-    )
 
     workflow.claim_task(task_id="T-004", session_id=session_id)
 

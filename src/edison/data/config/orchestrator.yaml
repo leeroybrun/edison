@@ -4,31 +4,31 @@ orchestrators:
   profiles:
     claude:
       command: "claude"
-      args: ["--project", "{project_root}"]
+      args: []
       cwd: "{session_worktree}"
       env:
         CLAUDE_CONFIG: ".claude/config.json"
       initial_prompt:
         enabled: true
-        method: "stdin"
+        method: "arg"  # Use positional argument (claude accepts prompt as argument)
         path: ".edison/_generated/start/START_NEW_SESSION.md"
 
     codex:
       command: "codex"
-      args: ["--model", "gpt-4.1"]
+      args: []
       cwd: "{session_worktree}"
       initial_prompt:
         enabled: true
-        method: "stdin"
+        method: "arg"  # Use positional argument
         path: ".edison/_generated/start/START_NEW_SESSION.md"
 
     gemini:
       command: "gemini"
-      args: ["chat"]
+      args: []
       cwd: "{session_worktree}"
       initial_prompt:
         enabled: true
-        method: "stdin"
+        method: "arg"  # Use positional argument
 
     happy:
       command: "happy"

@@ -1,8 +1,5 @@
 # Ephemeral Summaries Policy (Condensed, Mandatory)
 
-
-See extended guide: .edison/_generated/guidelines/shared/EPHEMERAL_SUMMARIES_POLICY.md
-
 ## Default
 - Do **not** create ad-hoc summary/report/status files.
 - Task + QA files under `.project/tasks/` and `.project/qa/` are the only approved tracking artifacts.
@@ -19,5 +16,5 @@ See extended guide: .edison/_generated/guidelines/shared/EPHEMERAL_SUMMARIES_POL
 - Archive/analysis files go under `docs/archive/` only when explicitly requested.
 
 ## Enforcement
-- Before marking work complete, ensure there are no stray `*_SUMMARY.md` / `*_ANALYSIS.md` files outside `.project/qa/validation-evidence/` or the legacy archive under `docs/project/validation-evidence/`.
+- Before marking work complete, ensure there are no stray `*_SUMMARY.md` / `*_ANALYSIS.md` files or similar
 - Delete unapproved summaries, note the cleanup in the relevant task file, and rely on the canonical directories instead.

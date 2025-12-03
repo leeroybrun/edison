@@ -58,19 +58,18 @@ class HookComposer(IDEComposerBase):
 
     # ----- Public API -----
     def load_definitions(self) -> Dict[str, HookDefinition]:
-        """Load and merge hook definitions from core, packs, and project overrides."""
-        merged: Dict[str, Dict[str, Any]] = {}
+        """Load and merge hook definitions from core, packs, and project overrides.
 
-        # Load from bundled Edison core config first
-        core_file = self._bundled_config_dir / "hooks.yaml"
-        merged = self._merge_from_file(merged, core_file)
+        Uses unified _load_layered_config() from CompositionBase to load from:
+        1. Core: bundled edison.data/config/hooks.yaml
+        2. Packs: edison.data/packs/{pack}/config/hooks.yaml
+        3. Project: .edison/config/hooks.yml
+        """
+        # Use unified layered config loading
+        data = self._load_layered_config("hooks", subdirs=["config"])
 
-        for pack in self._active_packs():
-            pack_file = self.packs_dir / pack / "config" / "hooks.yml"
-            merged = self._merge_from_file(merged, pack_file)
-
-        project_file = self.project_dir / "config" / "hooks.yml"
-        merged = self._merge_from_file(merged, project_file)
+        # Extract definitions from the loaded data
+        merged = self._extract_hook_definitions(data)
 
         return self._dicts_to_defs(merged)
 
@@ -103,11 +102,8 @@ class HookComposer(IDEComposerBase):
 
             outfile = self._output_filename(hook_def)
             out_path = output_dir / outfile
-            ensure_directory(out_path.parent)
-            out_path.write_text(rendered, encoding="utf-8")
-            # Ensure executable bit for hook scripts
-            out_path.chmod(out_path.stat().st_mode | 0o111)
-            results[hook_id] = out_path
+            written_path = self.writer.write_executable(out_path, rendered)
+            results[hook_id] = written_path
 
         return results
 
@@ -155,15 +151,15 @@ class HookComposer(IDEComposerBase):
     def _hooks_cfg(self) -> Dict:
         return (self.config or {}).get("hooks", {}) or {}
 
-    def _merge_from_file(self, merged: Dict[str, Dict[str, Any]], path: Path) -> Dict[str, Dict[str, Any]]:
-        """Load hook definitions from ``path`` and merge into ``merged`` by id."""
-        data = self._load_yaml_hooks(path)
-        # Use base class generic merge method (handles dict-based definitions)
-        return self._merge_definitions(merged, data)
+    def _extract_hook_definitions(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Extract hook definitions from loaded layered config data.
 
-    def _load_yaml_hooks(self, path: Path) -> Dict[str, Dict[str, Any]]:
-        """Load hook ``definitions`` mapping from YAML path (empty when missing)."""
-        data = self.cfg_mgr.load_yaml(path)
+        Args:
+            data: Merged config data from _load_layered_config()
+
+        Returns:
+            Dict of hook definitions keyed by hook id
+        """
         if not isinstance(data, dict):
             return {}
 
@@ -172,6 +168,7 @@ class HookComposer(IDEComposerBase):
             defs = hooks.get("definitions")
             if isinstance(defs, dict):
                 return defs
+
         return {}
 
     def _dicts_to_defs(self, merged: Dict[str, Dict[str, Any]]) -> Dict[str, HookDefinition]:

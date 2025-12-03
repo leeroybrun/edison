@@ -14,7 +14,7 @@
 - Ensure accessibility (labels, focus, keyboard) and responsive layouts aligned to design system.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: ReactComponentPatterns -->
+<!-- SECTION: ReactComponentPatterns -->
 ## Client Components Pattern
 
 When you need interactivity, state, or browser APIs, use the `'use client'` directive:
@@ -201,7 +201,7 @@ export function AnimatedList({ items }) {
 - Import from `motion/react` (not `framer-motion`)
 - Use `AnimatePresence` for exit animations
 - Prefer `variants` for coordinated animations
-<!-- /NEW_SECTION -->
+<!-- /SECTION: ReactComponentPatterns -->
 
 
 

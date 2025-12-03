@@ -17,8 +17,9 @@ from edison.core.entity import (
     PersistenceError,
 )
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.text import parse_html_comment, format_html_comment, parse_title
+from edison.core.utils.text import parse_frontmatter, format_frontmatter, has_frontmatter, parse_title
 from edison.core.config.domains import TaskConfig
+from edison.core.utils.time import utc_timestamp
 
 from .models import Task
 
@@ -276,27 +277,42 @@ class TaskRepository(
     # ---------- File Format Helpers ----------
 
     def _task_to_markdown(self, task: Task) -> str:
-        """Convert task to markdown format.
+        """Convert task to markdown format with YAML frontmatter.
 
-        Uses format_html_comment from utils/text for consistent metadata formatting.
+        State is NOT stored in the frontmatter - it's derived from the directory.
+        All other task metadata is stored in YAML frontmatter for single source of truth.
         """
-        lines: List[str] = []
+        # Build frontmatter data (exclude None values)
+        frontmatter_data: Dict[str, Any] = {
+            "id": task.id,
+            "title": task.title,
+            "owner": task.metadata.created_by,
+            "session_id": task.session_id,
+            "parent_id": task.parent_id,
+            "child_ids": task.child_ids if task.child_ids else None,
+            "depends_on": task.depends_on if task.depends_on else None,
+            "blocks_tasks": task.blocks_tasks if task.blocks_tasks else None,
+            "claimed_at": task.claimed_at,
+            "last_active": task.last_active,
+            "continuation_id": task.continuation_id,
+            "created_at": task.metadata.created_at,
+            "updated_at": task.metadata.updated_at,
+            "tags": task.tags if task.tags else None,
+        }
 
-        # Metadata comments using shared utility
-        if task.metadata.created_by:
-            lines.append(format_html_comment("Owner", task.metadata.created_by))
-        lines.append(format_html_comment("Status", task.state))
-        if task.session_id:
-            lines.append(format_html_comment("Session", task.session_id))
+        # Format as YAML frontmatter
+        yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
 
-        lines.append("")
-        lines.append(f"# {task.title}")
-        lines.append("")
+        # Build markdown body
+        body_lines: List[str] = [
+            f"# {task.title}",
+            "",
+        ]
 
         if task.description:
-            lines.append(task.description)
+            body_lines.append(task.description)
 
-        return "\n".join(lines)
+        return yaml_header + "\n".join(body_lines)
 
     def _load_task_from_file(self, path: Path) -> Optional[Task]:
         """Load a task from a markdown file."""
@@ -312,52 +328,80 @@ class TaskRepository(
         content: str,
         path: Path,
     ) -> Task:
-        """Parse task from markdown content.
+        """Parse task from markdown content with YAML frontmatter.
 
-        Uses parse_html_comment and parse_title from utils/text for consistent parsing.
+        State is ALWAYS derived from directory location, never from file content.
+        
+        NOTE: Only YAML frontmatter format is supported. Legacy HTML comment
+        format must be migrated using `edison migrate task_frontmatter`.
 
         Args:
             task_id: Task ID from filename
-            content: Markdown content
-            path: File path (for state inference)
+            content: Markdown content with YAML frontmatter
+            path: File path (for state derivation)
 
         Returns:
             Task instance
+            
+        Raises:
+            ValueError: If content does not have valid YAML frontmatter
         """
-        owner = None
-        state = None
-        session_id = None
-        title = ""
+        # State is ALWAYS derived from directory - single source of truth
+        state = path.parent.name
+
+        # Parse YAML frontmatter (only supported format)
+        if not has_frontmatter(content):
+            raise ValueError(
+                f"Task {task_id} does not have YAML frontmatter. "
+                "Run `edison migrate task_frontmatter` to convert legacy files."
+            )
+
+        doc = parse_frontmatter(content)
+        fm = doc.frontmatter
+
+        # Extract title from frontmatter or markdown heading
+        title = fm.get("title", "")
+        if not title:
+            # Try to find title in markdown content
+            for line in doc.content.split("\n"):
+                if parsed := parse_title(line):
+                    title = parsed
+                    break
+
+        # Extract description from markdown body (after title)
         description_lines: List[str] = []
-        in_description = False
-
-        for line in content.split("\n"):
-            # Use shared utilities for parsing
-            if parsed := parse_html_comment(line, "Owner"):
-                owner = parsed
-            elif parsed := parse_html_comment(line, "Status"):
-                state = parsed
-            elif parsed := parse_html_comment(line, "Session"):
-                session_id = parsed
-            elif not title and (parsed := parse_title(line)):
-                title = parsed
-                in_description = True
-            elif in_description:
+        found_title = False
+        for line in doc.content.split("\n"):
+            if not found_title and parse_title(line):
+                found_title = True
+                continue
+            if found_title:
                 description_lines.append(line)
-
-        # Infer state from path if not in content
-        if not state:
-            state = path.parent.name
-
         description = "\n".join(description_lines).strip()
 
+        # Build metadata
+        metadata = EntityMetadata(
+            created_at=fm.get("created_at", ""),
+            updated_at=fm.get("updated_at", ""),
+            created_by=fm.get("owner"),
+            session_id=fm.get("session_id"),
+        )
+
         return Task(
-            id=task_id,
-            state=state,
+            id=fm.get("id", task_id),
+            state=state,  # Always from directory
             title=title,
             description=description,
-            session_id=session_id,
-            metadata=EntityMetadata.create(created_by=owner, session_id=session_id),
+            session_id=fm.get("session_id"),
+            metadata=metadata,
+            tags=fm.get("tags", []) or [],
+            parent_id=fm.get("parent_id"),
+            child_ids=fm.get("child_ids", []) or [],
+            depends_on=fm.get("depends_on", []) or [],
+            blocks_tasks=fm.get("blocks_tasks", []) or [],
+            claimed_at=fm.get("claimed_at"),
+            last_active=fm.get("last_active"),
+            continuation_id=fm.get("continuation_id"),
         )
 
 

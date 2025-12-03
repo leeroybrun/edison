@@ -14,7 +14,7 @@
 - Keep performance in mind: add indexes for FK and common filters; analyze query plans when adding joins.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: PrismaSchemaPatterns -->
+<!-- SECTION: PrismaSchemaPatterns -->
 ## Prisma Schema Patterns
 
 ### Schema Structure
@@ -203,7 +203,7 @@ model LeadTag {
   @@map("dashboard_lead_tags")
 }
 ```
-<!-- /NEW_SECTION -->
+<!-- /SECTION: PrismaSchemaPatterns -->
 
 
 

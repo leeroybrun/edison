@@ -41,7 +41,7 @@ edison session next
 
 ## Recovery Notes
 
-- Tasks marked WIP remain yours
+- Tasks marked wip remain yours
 - QA briefs in progress remain assigned
 - Validators may need re-running if state is unclear
 
@@ -52,14 +52,15 @@ Follow the allowed transitions for session, task, and QA domains defined there�
 not assume defaults. Use `edison session next` to stay aligned with the configured
 state machine after resuming.
 
-Valid state transitions:
-- NEW → WIP → READY → VALIDATING → COMPLETE
+Valid task state transitions:
+- todo → wip → done → validated
 
 Transition triggers:
-- NEW → WIP: claim a task (`edison task claim <task-id>`)
-- WIP → READY: mark ready after TDD green and evidence
-- READY → VALIDATING: run validators (`edison qa validate <task-id>`)
-- VALIDATING → COMPLETE: validators approve with no blockers
+- todo → wip: claim a task (`edison task claim <task-id>`)
+- wip → done: mark done after TDD green and evidence
+- done → validated: run validators (`edison qa validate <task-id>`)
+
+Task states can also transition to blocked if blockers are encountered.
 
 State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
 

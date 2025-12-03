@@ -64,7 +64,7 @@ class CompositionPathResolver:
         - Project-level overrides/additions are at .edison/<type>/ directories:
           .edison/guidelines/, .edison/validators/, .edison/agents/, .edison/rules/
         - Project packs are at .edison/packs/
-        - NO support for .edison/core/ - that is legacy structure
+        - NO .edison/core/ - that is LEGACY and NOT SUPPORTED
     
     This is the SINGLE SOURCE OF TRUTH for path resolution within composition.
     All composition registries should use this class.

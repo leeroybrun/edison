@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skip(reason="Utils verify-setup CLI has not been implem
 
 
 def run(script: str, args: list[str], env: dict, check: bool = True) -> subprocess.CompletedProcess:
-    cmd = [sys.executable, str(SCRIPTS_DIR / script), *args]
+    cmd = [sys.executable, str(EDISON_ROOT / "scripts" / script), *args]
     return subprocess.run(
         cmd,
         text=True,
@@ -36,18 +36,23 @@ def test_verify_setup_reports_missing(tmp_path: Path):
 
 
 def test_verify_setup_passes_when_files_present(tmp_path: Path):
+    """Test that verify-setup passes when project structure is valid.
+    
+    NOTE: This test uses the correct architecture:
+    - Config: .edison/config/
+    - NO .edison/core/ - core content is from bundled edison.data
+    """
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(tmp_path)
 
-    # Prepare required files
-    agents_dir = tmp_path / ".agents"
-    agents_dir.mkdir(parents=True, exist_ok=True)
-    (agents_dir / "config.yml").write_text("project: {}\n")
-    (tmp_path / ".edison" / "core").mkdir(parents=True, exist_ok=True)
-    (tmp_path / ".edison" / "core" / "defaults.yaml").write_text("cli: {}")
-    include_dir = tmp_path / ".edison" / "core" / "scripts" / "include"
-    include_dir.mkdir(parents=True, exist_ok=True)
-    (include_dir / "render-md.sh").write_text("#!/bin/bash\necho render\n")
+    # Prepare project structure (NOT .edison/core - that is legacy)
+    edison_dir = tmp_path / ".edison"
+    edison_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Project-level config overrides
+    config_dir = edison_dir / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "defaults.yaml").write_text("# Project defaults override\n")
 
     proc = run("utils/verify-setup.py", ["--json"], env)
     payload = json.loads(proc.stdout.strip())

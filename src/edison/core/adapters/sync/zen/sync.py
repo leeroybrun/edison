@@ -96,7 +96,7 @@ class ZenSyncMixin:
             combined = "\n\n".join(sections)
             target = prompts_dir / f"{model_key}.txt"
             final_text = self._attach_workflow_loop(combined, target if target.exists() else None)
-            target.write_text(final_text, encoding="utf-8")
+            self.writer.write_text(target, final_text)
             for role in generic_roles:
                 results[role] = target
 
@@ -105,7 +105,7 @@ class ZenSyncMixin:
             target = prompts_dir / f"{role}.txt"
             text = self.compose_zen_prompt(role=role, model=model_key, packs=packs)
             final_text = self._attach_workflow_loop(text, target if target.exists() else None)
-            target.write_text(final_text, encoding="utf-8")
+            self.writer.write_text(target, final_text)
             results[role] = target
 
         return results

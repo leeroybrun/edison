@@ -1,8 +1,4 @@
-#!/usr/bin/env python3
-from __future__ import annotations
-
-"""
-Cursor Sync Adapter (full-featured)
+"""Cursor Sync Adapter (full-featured).
 
 Complete integration layer between the Edison composition system
 and Cursor's configuration surface:
@@ -16,22 +12,18 @@ Responsibilities:
   - Sync composed agents from `<project_config_dir>/_generated/agents/` into
     `.cursor/agents/`
 """
+from __future__ import annotations
 
 import difflib
 import hashlib
-import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml  # type: ignore
-
-from ...utils.paths import PathResolver
+from .base import SyncAdapter
 from edison.core.utils.paths import get_project_config_dir
 from ...composition.registries import agents as _agents
-from ...config import ConfigManager
-from ...config.domains import PacksConfig
 from ...composition import GuidelineRegistry
+from ...composition.output.writer import CompositionFileWriter
 from ...rules import RulesRegistry, RulesCompositionError  # type: ignore
 from ...utils.time import utc_timestamp
 from edison.core.utils.io import write_json_atomic, ensure_directory
@@ -45,32 +37,37 @@ AUTOGEN_BEGIN = "<!-- EDISON_CURSOR_AUTOGEN:BEGIN -->"
 AUTOGEN_END = "<!-- EDISON_CURSOR_AUTOGEN:END -->"
 
 
-@dataclass
-class CursorSync:
-    """Adapter between Edison composition and Cursor config files."""
+class CursorSync(SyncAdapter):
+    """Adapter between Edison composition and Cursor config files.
 
-    repo_root: Path
-    config: Dict[str, Any]
-    guideline_registry: GuidelineRegistry
-    rules_registry: RulesRegistry
+    Inherits from SyncAdapter which provides:
+    - repo_root resolution via PathResolver
+    - config property via ConfigMixin
+    - active_packs property via ConfigMixin
+    - packs_config property via ConfigMixin
+    """
+
     last_auto_composed_agents: int = 0
 
-    def __init__(self, project_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> None:
-        root = project_root.resolve() if project_root else PathResolver.resolve_project_root()
-        cfg_mgr = ConfigManager(root)
-        # ConfigManager enforces defaults.yaml + project config overlays in real projects.
-        # For isolated tests we tolerate missing config by falling back to empty.
-        try:
-            loaded_cfg = cfg_mgr.load_config(validate=False)
-        except FileNotFoundError:
-            loaded_cfg = {}
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(repo_root=project_root)
 
-        self.repo_root = root
+        # Merge any passed config with loaded config
+        if config:
+            from edison.core.config import ConfigManager
+            self._cached_config = ConfigManager(self.repo_root).deep_merge(
+                self.config, config
+            )
+
         self.project_config_dir = get_project_config_dir(self.repo_root)
-        self.config = config or loaded_cfg
-        self.guideline_registry = GuidelineRegistry(repo_root=root)
-        self.rules_registry = RulesRegistry(project_root=root)
+        self.guideline_registry = GuidelineRegistry(repo_root=self.repo_root)
+        self.rules_registry = RulesRegistry(project_root=self.repo_root)
         self.last_auto_composed_agents = 0
+        self._writer: Optional[CompositionFileWriter] = None
 
     # ------------------------------------------------------------------
     # Path helpers
@@ -105,17 +102,19 @@ class CursorSync:
     def _snapshot_meta_path(self) -> Path:
         return self._cursor_cache_dir / "cursorrules.meta.json"
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
     @property
-    def _packs_config(self) -> PacksConfig:
-        """Lazy PacksConfig accessor."""
-        return PacksConfig(repo_root=self.repo_root)
+    def writer(self) -> CompositionFileWriter:
+        """Lazy-initialized file writer for composition outputs."""
+        if self._writer is None:
+            self._writer = CompositionFileWriter(base_dir=self.repo_root)
+        return self._writer
 
-    def _active_packs(self) -> List[str]:
-        """Get active packs via PacksConfig."""
-        return self._packs_config.active_packs
+    # ------------------------------------------------------------------
+    # Internal helpers (use ConfigMixin properties)
+    # ------------------------------------------------------------------
+    def _get_active_packs(self) -> List[str]:
+        """Get active packs via ConfigMixin."""
+        return self.active_packs
 
     @staticmethod
     def _split_autogen_block(text: str) -> tuple[str, str, str]:
@@ -226,17 +225,17 @@ class CursorSync:
         if rule.get("dependencies"):
             meta["dependencies"] = rule["dependencies"]
 
-        from edison.core.utils.io import dump_yaml_string
-        front_matter = dump_yaml_string(meta, sort_keys=False).rstrip()
+        from edison.core.utils.text import format_frontmatter
+
+        # Use shared frontmatter formatter for consistency
+        frontmatter_str = format_frontmatter(meta, exclude_none=True)
 
         body = (rule.get("body") or "").strip()
         if not body:
             body = "_No body defined for this rule._"
 
         sections: List[str] = [
-            "---",
-            front_matter,
-            "---",
+            frontmatter_str.rstrip(),
             "",
             f"# {title}",
             "",
@@ -248,7 +247,7 @@ class CursorSync:
 
     def _render_cursorrules(self) -> str:
         """Render full `.cursorrules` content with autogen markers."""
-        packs = self._active_packs()
+        packs = self._get_active_packs()
         guidelines_block = self._compose_guidelines_block(packs)
         rules_block = self._compose_rules_block(packs)
 
@@ -284,7 +283,7 @@ class CursorSync:
 
     def _write_snapshot(self, content: str, generated_hash: str) -> None:
         ensure_directory(self._cursor_cache_dir)
-        self._snapshot_path.write_text(content, encoding="utf-8")
+        self.writer.write_text(self._snapshot_path, content)
         meta = {
             "generatedAt": utc_timestamp(),
             "hash": generated_hash,
@@ -315,7 +314,7 @@ class CursorSync:
             # Attempt conservative merge preserving manual sections.
             final = self.merge_cursor_overrides(generated_content=generated)
 
-        self._cursorrules_path.write_text(final, encoding="utf-8")
+        self.writer.write_text(self._cursorrules_path, final)
         self._write_snapshot(final, gen_hash)
         return self._cursorrules_path
 
@@ -328,7 +327,7 @@ class CursorSync:
           - delegation.mdc
           - context.mdc
         """
-        packs = self._active_packs()
+        packs = self._get_active_packs()
         grouped = self._group_rules_by_category(packs)
         if not grouped:
             return []
@@ -339,7 +338,8 @@ class CursorSync:
         for category, rules in sorted(grouped.items()):
             path = self._cursor_rules_dir / f"{category}.mdc"
             sections = [self._render_structured_rule(rule) for rule in rules]
-            path.write_text("\n\n".join(sections).rstrip() + "\n", encoding="utf-8")
+            content = "\n\n".join(sections).rstrip() + "\n"
+            self.writer.write_text(path, content)
             written.append(path)
 
         return written
@@ -418,7 +418,7 @@ class CursorSync:
         if not core_agents:
             return 0
 
-        packs = self._active_packs()
+        packs = self._get_active_packs()
         ensure_directory(src_dir)
 
         count = 0
@@ -428,7 +428,7 @@ class CursorSync:
             except AgentError:
                 continue
             out_file = src_dir / f"{name}.md"
-            out_file.write_text(text, encoding="utf-8")
+            self.writer.write_text(out_file, text)
             count += 1
         return count
 
@@ -455,10 +455,36 @@ class CursorSync:
 
         for src in sorted(src_dir.glob("*.md")):
             dest = self._cursor_agents_dir / src.name
-            dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            content = src.read_text(encoding="utf-8")
+            self.writer.write_text(dest, content)
             copied.append(dest)
 
         return copied
+
+    def sync_all(self) -> Dict[str, Any]:
+        """Execute complete synchronization workflow.
+
+        Syncs:
+        - .cursorrules (guidelines + rules)
+        - .cursor/rules/*.mdc (structured rules)
+        - .cursor/agents/*.md (agents)
+
+        Returns:
+            Dictionary containing sync results.
+        """
+        result: Dict[str, Any] = {
+            "cursorrules": [],
+            "rules": [],
+            "agents": [],
+        }
+
+        cursorrules_path = self.sync_to_cursorrules()
+        result["cursorrules"].append(cursorrules_path)
+
+        result["rules"] = self.sync_structured_rules()
+        result["agents"] = self.sync_agents_to_cursor(auto_compose=True)
+
+        return result
 
 
 __all__ = [

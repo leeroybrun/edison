@@ -18,6 +18,7 @@ from .models import Task
 from .repository import TaskRepository
 from .workflow import TaskQAWorkflow
 from .paths import safe_relative
+from .index import TaskIndex, TaskSummary, QASummary, TaskGraph
 
 # Compatibility layer removed - use TaskRepository directly
 
@@ -88,4 +89,9 @@ __all__ = [
     "safe_relative",
     # State validation
     "validate_state_transition",
+    # Task indexing
+    "TaskIndex",
+    "TaskSummary",
+    "QASummary",
+    "TaskGraph",
 ]

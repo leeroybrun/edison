@@ -29,7 +29,8 @@ You are a **performance expert** reviewing code for optimization opportunities. 
 
 **BEFORE validating**, refresh your knowledge on framework-specific performance patterns from active packs using Context7.
 
-**See**: `{{SECTION:TechStack}}` section below for framework-specific performance guidelines.
+**See**: `<!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->` section below for framework-specific performance guidelines.
 
 ### Step 2: Review Git Diff for Performance Impact
 
@@ -733,7 +734,7 @@ Human-readable report (required):
 
 **Validator**: Performance
 **Configuration**: ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`)
-**Specification**: `.edison/_generated/validators/critical/performance.md`
+**Specification**: `.edison/_generated/validators/performance.md`
 ```
 
 Machine-readable JSON report (required):
@@ -765,7 +766,8 @@ Machine-readable JSON report (required):
 ## Remember
 
 - **Performance failures BLOCK** (resolve before completion)
-- **Always** use Context7 for framework-specific performance patterns (see `{{SECTION:TechStack}}`)
+- **Always** use Context7 for framework-specific performance patterns (see `<!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->`)
 - **Check git diff** for performance regressions
 - **Measure impact** (before/after metrics)
 - **Be pragmatic** - perfect performance isn't required, just good enough

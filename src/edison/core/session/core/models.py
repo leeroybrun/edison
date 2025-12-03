@@ -110,8 +110,13 @@ class GitInfo:
 class Session:
     """A session entity representing a work session.
     
-    Sessions track the work being done, including tasks, QA records,
-    git worktrees, and activity logs.
+    Sessions track session-level data only. Task and QA data is now stored
+    in the task/QA files themselves (single source of truth).
+    
+    Use TaskIndex to query tasks/QA for this session:
+        from edison.core.task import TaskIndex
+        index = TaskIndex()
+        tasks = index.list_tasks_in_session(session.id)
     
     Attributes:
         id: Unique session identifier
@@ -119,18 +124,24 @@ class Session:
         phase: Current session phase
         owner: Session owner
         metadata: Entity metadata (timestamps, ownership)
+        meta_extra: Additional arbitrary metadata (autoStarted, orchestratorProfile, etc.)
         state_history: List of state transitions
-        tasks: Dict of task entries keyed by task ID
-        qa_records: Dict of QA entries keyed by QA ID
         git: Git-related information
         activity_log: List of activity log entries
+        ready: Whether session is ready for work
+        
+    Deprecated (for migration compatibility):
+        tasks: Dict of task entries - DEPRECATED, use TaskIndex
+        qa_records: Dict of QA entries - DEPRECATED, use TaskIndex
     """
     id: str
     state: str
     phase: str = "implementation"
     owner: Optional[str] = None
     metadata: EntityMetadata = field(default_factory=lambda: EntityMetadata.create())
+    meta_extra: Dict[str, Any] = field(default_factory=dict)  # For arbitrary metadata
     state_history: List[StateHistoryEntry] = field(default_factory=list)
+    # DEPRECATED: Task/QA data now lives in task/QA files. Keep for migration.
     tasks: Dict[str, TaskEntry] = field(default_factory=dict)
     qa_records: Dict[str, QAEntry] = field(default_factory=dict)
     git: GitInfo = field(default_factory=GitInfo)
@@ -165,17 +176,22 @@ class Session:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""
+        # Build meta dict with core fields
+        meta: Dict[str, Any] = {
+            "sessionId": self.id,
+            "owner": self.owner,
+            "createdAt": self.metadata.created_at,
+            "lastActive": self.metadata.updated_at,
+            "status": self.state,
+        }
+        # Merge in any extra metadata (autoStarted, orchestratorProfile, etc.)
+        meta.update(self.meta_extra)
+        
         data: Dict[str, Any] = {
             "id": self.id,
             "state": self.state,
             "phase": self.phase,
-            "meta": {
-                "sessionId": self.id,
-                "owner": self.owner,
-                "createdAt": self.metadata.created_at,
-                "lastActive": self.metadata.updated_at,
-                "status": self.state,
-            },
+            "meta": meta,
             "ready": self.ready,
         }
         
@@ -210,6 +226,10 @@ class Session:
             created_by=meta.get("owner"),
             session_id=data.get("id"),
         )
+        
+        # Extract extra metadata (fields not in core meta schema)
+        core_meta_keys = {"sessionId", "owner", "createdAt", "lastActive", "status"}
+        meta_extra = {k: v for k, v in meta.items() if k not in core_meta_keys}
         
         # Handle state history
         history_data = data.get("stateHistory", [])
@@ -257,6 +277,7 @@ class Session:
             phase=data.get("phase", "implementation"),
             owner=meta.get("owner"),
             metadata=metadata,
+            meta_extra=meta_extra,
             state_history=state_history,
             tasks=tasks,
             qa_records=qa_records,

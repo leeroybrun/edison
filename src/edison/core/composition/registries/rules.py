@@ -58,20 +58,19 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
             resolved_root = project_root or PathResolver.resolve_project_root()
         except (EdisonPathError, ValueError) as exc:  # pragma: no cover - defensive
             raise RulesCompositionError(str(exc)) from exc
-        
+
         super().__init__(resolved_root)
 
-        self.project_config_dir = get_project_config_dir(self.project_root, create=False)
+        # Note: project_dir, packs_dir are inherited from BaseRegistry
+        # But we still need bundled-specific paths for rules
 
         # Core registry is ALWAYS from bundled data
         self.core_registry_path = get_data_path("rules", "registry.yml")
-        
+
         # Bundled data directory for resolving guideline paths
         self.bundled_data_dir = Path(get_data_path(""))
-        
-        # Pack directories (bundled + project)
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = self.project_config_dir / "packs"
+
+        # Pack directories: use inherited bundled_packs_dir from BaseRegistry
     
     # ------- Utility Methods -------
 
@@ -121,7 +120,8 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
         """Discover project-level rule overrides at .edison/rules/."""
-        path = self.project_config_dir / "rules" / "registry.yml"
+        # Use inherited project_dir from BaseRegistry
+        path = self.project_dir / "rules" / "registry.yml"
         registry = self._load_yaml(path, required=False)
         rules = registry.get("rules", [])
         return {rule.get("id", f"project-rule-{i}"): rule for i, rule in enumerate(rules) if isinstance(rule, dict)}
@@ -141,15 +141,18 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
     # ------------------------------------------------------------------
     # Registry loading
     # ------------------------------------------------------------------
-    @staticmethod
-    def _load_yaml(path: Path, *, required: bool) -> Dict[str, Any]:
+    def _load_yaml(self, path: Path, *, required: bool) -> Dict[str, Any]:
+        """Load and validate rules YAML file.
+
+        Uses inherited cfg_mgr from BaseRegistry for consistent YAML loading.
+        """
         if not path.exists():
             if required:
                 raise RulesCompositionError(f"Rules registry not found at {path}")
             return {"version": None, "rules": []}
 
-        from edison.core.utils.io import read_yaml
-        data = read_yaml(path, raise_on_error=True) or {}
+        # Use inherited cfg_mgr from BaseRegistry for consistent YAML loading
+        data = self.cfg_mgr.load_yaml(path) or {}
         if not isinstance(data, dict):
             raise RulesCompositionError(
                 f"Invalid rules registry at {path}: expected mapping at top level"
@@ -168,15 +171,36 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return self._load_yaml(self.core_registry_path, required=True)
 
     def load_pack_registry(self, pack_name: str) -> Dict[str, Any]:
-        """Load pack-specific rules registry (bundled or project)."""
-        # Try bundled pack first
+        """Load pack-specific rules registry, merging bundled + project.
+
+        Architecture:
+        - Bundled pack rules: edison.data/packs/<pack>/rules/registry.yml (base)
+        - Project pack rules: .edison/packs/<pack>/rules/registry.yml (extends/overrides)
+        - Merge strategy: project rules are appended to bundled rules
+        """
+        # Load bundled pack registry (base layer)
         bundled_path = self.bundled_packs_dir / pack_name / "rules" / "registry.yml"
-        if bundled_path.exists():
-            return self._load_yaml(bundled_path, required=False)
-        
-        # Fall back to project pack
+        bundled_registry = self._load_yaml(bundled_path, required=False)
+
+        # Load project pack registry (override layer)
         project_path = self.project_packs_dir / pack_name / "rules" / "registry.yml"
-        return self._load_yaml(project_path, required=False)
+        project_registry = self._load_yaml(project_path, required=False)
+
+        # If only one exists, return it
+        if not bundled_registry.get("rules"):
+            return project_registry
+        if not project_registry.get("rules"):
+            return bundled_registry
+
+        # Merge: combine rules from both registries
+        # Project rules are appended (they can override by having same ID)
+        merged_rules = list(bundled_registry.get("rules", []))
+        merged_rules.extend(project_registry.get("rules", []))
+
+        return {
+            "version": project_registry.get("version") or bundled_registry.get("version") or "1.0.0",
+            "rules": merged_rules,
+        }
 
     # ------------------------------------------------------------------
     # Composition helpers
@@ -202,7 +226,23 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         
         # Project-relative paths starting with .edison/
         if file_part.startswith(".edison/"):
-            source_path = (self.project_root / file_part).resolve()
+            project_path = (self.project_root / file_part).resolve()
+            if project_path.exists():
+                source_path = project_path
+            else:
+                # Fall back to bundled data if project file doesn't exist
+                # Convert .edison/_generated/X to X for bundled lookup
+                bundled_ref = file_part
+                if "/_generated/" in bundled_ref:
+                    bundled_ref = bundled_ref.split("/_generated/", 1)[1]
+                elif bundled_ref.startswith(".edison/"):
+                    bundled_ref = bundled_ref[len(".edison/"):]
+                bundled_path = (self.bundled_data_dir / bundled_ref).resolve()
+                if bundled_path.exists():
+                    source_path = bundled_path
+                else:
+                    # If neither exists, use project path (will error on read)
+                    source_path = project_path
         # Absolute paths
         elif file_part.startswith("/"):
             source_path = (self.project_root / file_part.lstrip("/")).resolve()
@@ -212,8 +252,8 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
             if bundled_path.exists():
                 source_path = bundled_path
             else:
-                # Fall back to project directory for project-level content
-                project_path = (self.project_config_dir / file_part).resolve()
+                # Fall back to project directory for project-level content (use inherited project_dir)
+                project_path = (self.project_dir / file_part).resolve()
                 source_path = project_path
 
         return source_path, str(anchor) if anchor else None

@@ -8,7 +8,8 @@ def test_command_composer_uses_dynamic_project_dir(tmp_path):
     # Arrange
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / ".edison" / "core").mkdir(parents=True)
+    # Project config dir is .edison (NOT .edison/core - that is legacy)
+    (repo / ".edison").mkdir(parents=True)
     
     # Act
     composer = CommandComposer(repo_root=repo)
@@ -25,7 +26,8 @@ def test_command_composer_respects_env_var(tmp_path, monkeypatch):
     # Arrange
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / ".edison" / "core").mkdir(parents=True)
+    # Project config dir is .edison (NOT .edison/core - that is legacy)
+    (repo / ".edison").mkdir(parents=True)
     custom_dir = repo / ".custom_config"
     custom_dir.mkdir()
     

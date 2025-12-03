@@ -32,6 +32,7 @@ from edison.core.utils.io import ensure_directory
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.paths import get_project_config_dir
 from ..output.headers import resolve_version
+from ..output.writer import CompositionFileWriter
 from ..path_utils import resolve_project_dir_placeholders
 from .rules import get_rules_for_role as _get_rules_for_role_api
 
@@ -304,6 +305,9 @@ def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None
     out_dir = (Path(output_path) / "constitutions").resolve()
     ensure_directory(out_dir)
 
+    # Use CompositionFileWriter for consistent file output
+    writer = CompositionFileWriter()
+
     for role, filename in [
         ("orchestrator", "ORCHESTRATORS.md"),
         ("agents", "AGENTS.md"),
@@ -317,7 +321,7 @@ def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None
             target_path=out_path,
             repo_root=config.repo_root,
         )
-        out_path.write_text(rendered, encoding="utf-8")
+        writer.write_text(out_path, rendered)
 
 
 __all__ = [

@@ -97,7 +97,7 @@ When validation fails:
 ```
 Round 1: Initial Validation
     ↓ (REJECT)
-Task returns to WIP
+Task returns to wip
     ↓
 Fix issues identified
     ↓

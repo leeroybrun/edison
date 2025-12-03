@@ -74,34 +74,44 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         super().__init__(repo_root)
+
+        # Core guidelines from bundled data (NOT .edison/core/ - that is legacy)
+        self.core_guidelines_dir = self.core_dir / "guidelines"
+        # Project guidelines at .edison/guidelines/
         self.project_guidelines_dir = self.project_dir / "guidelines"
-        
+        # Pack directories for discovery
+        self.bundled_guidelines_packs_dir = self.bundled_packs_dir
+        self.project_guidelines_packs_dir = self.project_packs_dir
+
         # Use core composer for discovery
         self._composer = LayeredComposer(repo_root=self.project_root, content_type="guidelines")
-        self.core_dir = self._composer.core_dir / "guidelines"
-        self.packs_dir = self._composer.packs_dir
     
     # ------- BaseRegistry Interface Implementation -------
     
     def discover_core(self) -> Dict[str, Path]:
         """Discover core guidelines (returns paths)."""
         result: Dict[str, Path] = {}
-        if self.core_dir.exists():
-            for f in self.core_dir.rglob("*.md"):
+        if self.core_guidelines_dir.exists():
+            for f in self.core_guidelines_dir.rglob("*.md"):
                 if f.is_file() and not f.stem.startswith("_"):
                     result[f.stem] = f
         return result
     
     def discover_packs(self, packs: List[str]) -> Dict[str, Path]:
-        """Discover guidelines from packs (returns paths)."""
+        """Discover guidelines from bundled AND project packs (returns paths)."""
         result: Dict[str, Path] = {}
+        
+        # Check both bundled and project packs
+        pack_dirs = [self.bundled_guidelines_packs_dir, self.project_guidelines_packs_dir]
+        
         for pack in packs:
-            pdir = self.packs_dir / pack / "guidelines"
-            if not pdir.exists():
-                continue
-            for f in pdir.rglob("*.md"):
-                if f.is_file() and not f.stem.startswith("_"):
-                    if f.stem not in result:  # First occurrence wins
+            for base_dir in pack_dirs:
+                pdir = base_dir / pack / "guidelines"
+                if not pdir.exists():
+                    continue
+                for f in pdir.rglob("*.md"):
+                    if f.is_file() and not f.stem.startswith("_"):
+                        # Project packs override bundled packs
                         result[f.stem] = f
         return result
     
@@ -146,24 +156,28 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
     
     def core_path(self, name: str) -> Optional[Path]:
         """Find a core guideline (supports nested directories)."""
-        if not self.core_dir.exists():
+        if not self.core_guidelines_dir.exists():
             return None
-        matches = sorted(self.core_dir.rglob(f"{name}.md"))
+        matches = sorted(self.core_guidelines_dir.rglob(f"{name}.md"))
         return matches[0] if matches else None
 
     def pack_paths(self, name: str, packs: List[str]) -> List[Path]:
-        """Find pack guideline files (supports nested directories).
+        """Find pack guideline files from bundled AND project packs.
         
         For 'concatenate' mode, same-name files are extensions, not shadows.
+        Searches both bundled packs and project packs.
         """
         paths: List[Path] = []
+        pack_dirs = [self.bundled_guidelines_packs_dir, self.project_guidelines_packs_dir]
+        
         for pack in packs:
-            pdir = self.packs_dir / pack / "guidelines"
-            if not pdir.exists():
-                continue
-            # Find in root or nested subdirectories
-            matches = sorted(pdir.rglob(f"{name}.md"))
-            paths.extend(matches)
+            for base_dir in pack_dirs:
+                pdir = base_dir / pack / "guidelines"
+                if not pdir.exists():
+                    continue
+                # Find in root or nested subdirectories
+                matches = sorted(pdir.rglob(f"{name}.md"))
+                paths.extend(matches)
         return paths
 
     def project_override_path(self, name: str) -> Optional[Path]:
@@ -174,23 +188,28 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
         return matches[0] if matches else None
 
     def all_names(self, packs: List[str], *, include_project: bool = True) -> List[str]:
-        """Return all guideline names discovered across layers."""
+        """Return all guideline names discovered across layers.
+        
+        Searches bundled core, bundled packs, project packs, and project overrides.
+        """
         names: Set[str] = set()
 
-        # Core guidelines
-        if self.core_dir.exists():
-            for f in self.core_dir.rglob("*.md"):
+        # Core guidelines (bundled)
+        if self.core_guidelines_dir.exists():
+            for f in self.core_guidelines_dir.rglob("*.md"):
                 if f.is_file() and not f.stem.startswith("_"):
                     names.add(f.stem)
 
-        # Pack guidelines
+        # Pack guidelines (bundled AND project packs)
+        pack_dirs = [self.bundled_guidelines_packs_dir, self.project_guidelines_packs_dir]
         for pack in packs:
-            pdir = self.packs_dir / pack / "guidelines"
-            if not pdir.exists():
-                continue
-            for f in pdir.rglob("*.md"):
-                if f.is_file() and not f.stem.startswith("_"):
-                    names.add(f.stem)
+            for base_dir in pack_dirs:
+                pdir = base_dir / pack / "guidelines"
+                if not pdir.exists():
+                    continue
+                for f in pdir.rglob("*.md"):
+                    if f.is_file() and not f.stem.startswith("_"):
+                        names.add(f.stem)
 
         # Project guidelines
         if include_project and self.project_guidelines_dir.exists():
@@ -211,22 +230,24 @@ class GuidelineRegistry(BaseRegistry[GuidelineCompositionResult]):
             except ValueError:
                 pass
         
-        # Check packs
+        # Check packs (both bundled and project)
+        pack_dirs = [self.bundled_guidelines_packs_dir, self.project_guidelines_packs_dir]
         for pack in packs:
-            pack_dir = self.packs_dir / pack / "guidelines"
-            pack_paths = self.pack_paths(name, [pack])
-            for p in pack_paths:
-                try:
-                    rel_path = p.parent.relative_to(pack_dir)
-                    return str(rel_path) if str(rel_path) != "." else None
-                except ValueError:
-                    pass
+            for base_dir in pack_dirs:
+                pack_dir = base_dir / pack / "guidelines"
+                pack_paths_list = self.pack_paths(name, [pack])
+                for p in pack_paths_list:
+                    try:
+                        rel_path = p.parent.relative_to(pack_dir)
+                        return str(rel_path) if str(rel_path) != "." else None
+                    except ValueError:
+                        pass
         
         # Check core
         core_path = self.core_path(name)
-        if core_path and self.core_dir.exists():
+        if core_path and self.core_guidelines_dir.exists():
             try:
-                rel_path = core_path.parent.relative_to(self.core_dir)
+                rel_path = core_path.parent.relative_to(self.core_guidelines_dir)
                 return str(rel_path) if str(rel_path) != "." else None
             except ValueError:
                 pass

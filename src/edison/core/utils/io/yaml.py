@@ -11,6 +11,17 @@ try:
     import yaml
 
     HAS_YAML = True
+
+    # Custom representer for multiline strings - use literal block style (|)
+    def _str_representer(dumper: yaml.SafeDumper, data: str) -> yaml.ScalarNode:
+        """Represent multiline strings with literal block style."""
+        if "\n" in data:
+            # Use literal block style for multiline strings
+            return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+    yaml.add_representer(str, _str_representer, Dumper=yaml.SafeDumper)
+
 except ImportError:
     HAS_YAML = False
 

@@ -139,18 +139,64 @@ class CommandComposer(IDEComposerBase):
 
     # ----- Public API -----
     def load_definitions(self) -> List[CommandDefinition]:
-        """Load and merge command definitions from core, packs, and project overrides."""
+        """Load and merge command definitions from core, packs, and project overrides.
+
+        Uses unified _load_layered_config() to load from all layers, but handles
+        list-based command definitions with special merging by id.
+
+        Note: Commands use a list-based schema (commands.definitions: [...]), so we
+        load each layer separately and merge the lists manually rather than relying
+        on deep_merge which would replace lists.
+        """
         merged: Dict[str, Dict] = {}
 
-        core_file = self.core_dir / "config" / "commands.yaml"
-        merged = self._merge_from_file(merged, core_file)
+        # Load and merge from each layer manually (commands need list merging by id)
+        # Load .yaml first, then .yml to allow .yml to override .yaml
+        # 1. Core layer
+        core_yaml = self.core_dir / "config" / "commands.yaml"
+        if core_yaml.exists():
+            core_data = self._extract_command_definitions(self.load_yaml_safe(core_yaml))
+            merged = self._merge_command_list(merged, core_data)
 
-        for pack in self._active_packs():
-            pack_file = self.packs_dir / pack / "config" / "commands.yml"
-            merged = self._merge_from_file(merged, pack_file)
+        core_yml = self.core_dir / "config" / "commands.yml"
+        if core_yml.exists():
+            core_data = self._extract_command_definitions(self.load_yaml_safe(core_yml))
+            merged = self._merge_command_list(merged, core_data)
 
-        project_file = self.project_dir / "config" / "commands.yml"
-        merged = self._merge_from_file(merged, project_file)
+        # 2. Pack layers
+        for pack in self.get_active_packs():
+            # Bundled pack (.yaml then .yml)
+            pack_yaml = self.bundled_packs_dir / pack / "config" / "commands.yaml"
+            if pack_yaml.exists():
+                pack_data = self._extract_command_definitions(self.load_yaml_safe(pack_yaml))
+                merged = self._merge_command_list(merged, pack_data)
+
+            pack_yml = self.bundled_packs_dir / pack / "config" / "commands.yml"
+            if pack_yml.exists():
+                pack_data = self._extract_command_definitions(self.load_yaml_safe(pack_yml))
+                merged = self._merge_command_list(merged, pack_data)
+
+            # Project pack (.yaml then .yml)
+            project_pack_yaml = self.project_packs_dir / pack / "config" / "commands.yaml"
+            if project_pack_yaml.exists():
+                project_pack_data = self._extract_command_definitions(self.load_yaml_safe(project_pack_yaml))
+                merged = self._merge_command_list(merged, project_pack_data)
+
+            project_pack_yml = self.project_packs_dir / pack / "config" / "commands.yml"
+            if project_pack_yml.exists():
+                project_pack_data = self._extract_command_definitions(self.load_yaml_safe(project_pack_yml))
+                merged = self._merge_command_list(merged, project_pack_data)
+
+        # 3. Project layer (load .yaml first, then .yml to allow .yml to override)
+        project_yaml = self.project_dir / "config" / "commands.yaml"
+        if project_yaml.exists():
+            project_data = self._extract_command_definitions(self.load_yaml_safe(project_yaml))
+            merged = self._merge_command_list(merged, project_data)
+
+        project_yml = self.project_dir / "config" / "commands.yml"
+        if project_yml.exists():
+            project_data = self._extract_command_definitions(self.load_yaml_safe(project_yml))
+            merged = self._merge_command_list(merged, project_data)
 
         return self._dicts_to_defs(merged)
 
@@ -179,15 +225,14 @@ class CommandComposer(IDEComposerBase):
         for cmd in defs:
             rendered = adapter.render_command(cmd, self.config.get("commands", {}))
             out_path = adapter.get_output_path(cmd.id, output_dir)
-            ensure_directory(out_path.parent)
             rendered = resolve_project_dir_placeholders(
                 rendered,
                 project_dir=self.project_dir,
                 target_path=out_path,
                 repo_root=self.repo_root,
             )
-            out_path.write_text(rendered, encoding="utf-8")
-            results[cmd.id] = out_path
+            written_path = self.writer.write_text(out_path, rendered)
+            results[cmd.id] = written_path
         return results
 
     def compose_all(self) -> Dict[str, Dict[str, Path]]:
@@ -201,15 +246,15 @@ class CommandComposer(IDEComposerBase):
         return results
 
     # ----- Helpers -----
-    def _merge_from_file(self, merged: Dict[str, Dict], path: Path) -> Dict[str, Dict]:
-        """Load YAML commands from ``path`` and merge into ``merged`` by id."""
-        data = self._load_yaml_commands(path)
-        # Use base class generic merge method
-        return self._merge_definitions(merged, data, key_getter=lambda d: d.get("id"))
+    def _extract_command_definitions(self, data: Dict) -> List[Dict]:
+        """Extract command definitions list from loaded config data.
 
-    def _load_yaml_commands(self, path: Path) -> List[Dict]:
-        """Load command ``definitions`` list from YAML path (empty when missing)."""
-        data = self.cfg_mgr.load_yaml(path)
+        Args:
+            data: Config data (could be from file or _load_layered_config())
+
+        Returns:
+            List of command definition dicts
+        """
         if not isinstance(data, dict):
             return []
 
@@ -222,6 +267,26 @@ class CommandComposer(IDEComposerBase):
                 return [c for c in definitions if isinstance(c, dict)]
 
         return []
+
+    def _merge_command_list(self, merged: Dict[str, Dict], commands_list: List[Dict]) -> Dict[str, Dict]:
+        """Merge a list of command definitions into the merged dict by id.
+
+        Args:
+            merged: Existing merged commands dict (keyed by id)
+            commands_list: New commands list to merge in
+
+        Returns:
+            Updated merged dict
+        """
+        for cmd_dict in commands_list:
+            if not isinstance(cmd_dict, dict):
+                continue
+            cmd_id = cmd_dict.get("id")
+            if not cmd_id:
+                continue
+            existing = merged.get(cmd_id, {})
+            merged[cmd_id] = self.cfg_mgr.deep_merge(existing, cmd_dict)
+        return merged
 
     def _dicts_to_defs(self, merged: Dict[str, Dict]) -> List[CommandDefinition]:
         """Convert merged dicts to dataclass instances."""

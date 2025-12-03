@@ -1,116 +1,121 @@
 """Tests for section registry management.
 
-TDD: These tests define the expected behavior for the section registry.
-Write tests first (RED), then implement (GREEN), then refactor.
+TDD: These tests define the expected behavior for the unified section registry.
+The registry now uses a simplified model with just sections and extensions.
 """
 from __future__ import annotations
 
-import pytest
-
-from edison.core.composition import (
-    SectionRegistry,
-    CompositionValidationError,
-)
+from edison.core.composition import SectionRegistry
 
 
 class TestSectionRegistry:
     """Tests for section registry management."""
 
-    def test_add_extension_to_known_section(self) -> None:
-        """Extending known section should add content."""
+    def test_add_section(self) -> None:
+        """Adding a section should create entry in sections dict."""
         registry = SectionRegistry(
-            known_sections={"Tools": [], "Guidelines": []},
-            extensible_sections={},
-            append_sections=[],
+            sections={"tools": []},
+            extensions={},
         )
 
-        registry.add_extension("Tools", "Tool from pack")
-        registry.add_extension("Tools", "Another tool")
+        registry.add_section("tools", "Tool content 1")
+        registry.add_section("tools", "Tool content 2")
 
-        assert len(registry.known_sections["Tools"]) == 2
-        assert "Tool from pack" in registry.known_sections["Tools"]
+        assert len(registry.sections["tools"]) == 2
+        assert "Tool content 1" in registry.sections["tools"]
+        assert "Tool content 2" in registry.sections["tools"]
 
-    def test_add_extension_to_extensible_section(self) -> None:
-        """Extending pack-defined section should add content."""
+    def test_add_section_new_name(self) -> None:
+        """Adding content to new section name creates the section."""
         registry = SectionRegistry(
-            known_sections={"Tools": []},
-            extensible_sections={"Architecture": ["Base arch"]},
-            append_sections=[],
+            sections={},
+            extensions={},
         )
 
-        registry.add_extension("Architecture", "Project arch")
+        registry.add_section("architecture", "Arch content")
 
-        assert len(registry.extensible_sections["Architecture"]) == 2
+        assert "architecture" in registry.sections
+        assert registry.sections["architecture"] == ["Arch content"]
 
-    def test_add_extension_to_unknown_section_raises(self) -> None:
-        """Extending non-existent section should raise error."""
+    def test_add_extension(self) -> None:
+        """Adding an extension should create entry in extensions dict."""
         registry = SectionRegistry(
-            known_sections={"Tools": []},
-            extensible_sections={},
-            append_sections=[],
+            sections={"tools": []},
+            extensions={},
         )
 
-        with pytest.raises(CompositionValidationError) as exc_info:
-            registry.add_extension("NonExistent", "Content")
+        registry.add_extension("tools", "Extension 1")
+        registry.add_extension("tools", "Extension 2")
 
-        assert "NonExistent" in str(exc_info.value)
-        assert "not a known or extensible section" in str(exc_info.value)
+        assert len(registry.extensions["tools"]) == 2
+        assert "Extension 1" in registry.extensions["tools"]
+        assert "Extension 2" in registry.extensions["tools"]
 
-    def test_add_new_section_creates_extensible(self) -> None:
-        """NEW_SECTION should create new extensible section."""
+    def test_add_extension_new_name(self) -> None:
+        """Adding extension to new name creates the extensions entry."""
         registry = SectionRegistry(
-            known_sections={"Tools": []},
-            extensible_sections={},
-            append_sections=[],
+            sections={},
+            extensions={},
         )
 
-        registry.add_new_section("Architecture", "Arch content")
+        registry.add_extension("architecture", "Extension content")
 
-        assert "Architecture" in registry.extensible_sections
-        assert registry.extensible_sections["Architecture"] == ["Arch content"]
+        assert "architecture" in registry.extensions
+        assert registry.extensions["architecture"] == ["Extension content"]
 
-    def test_add_new_section_can_be_extended(self) -> None:
-        """NEW_SECTION can be extended by later layers."""
+    def test_get_section_content_combines_base_and_extensions(self) -> None:
+        """Getting section content should combine base and extensions."""
         registry = SectionRegistry(
-            known_sections={},
-            extensible_sections={},
-            append_sections=[],
+            sections={"tools": ["Base tool"]},
+            extensions={"tools": ["Extended tool"]},
         )
 
-        # Pack A creates new section
-        registry.add_new_section("Architecture", "Pack A arch")
+        content = registry.get_section_content("tools")
 
-        # Pack B extends it
-        registry.add_extension("Architecture", "Pack B additions")
+        assert "Base tool" in content
+        assert "Extended tool" in content
 
-        # Project extends it
-        registry.add_extension("Architecture", "Project additions")
-
-        assert len(registry.extensible_sections["Architecture"]) == 3
-
-    def test_add_new_section_shadowing_known_raises(self) -> None:
-        """Creating new section that shadows known section should raise."""
+    def test_get_section_content_empty(self) -> None:
+        """Getting non-existent section returns empty string."""
         registry = SectionRegistry(
-            known_sections={"Tools": []},
-            extensible_sections={},
-            append_sections=[],
+            sections={},
+            extensions={},
         )
 
-        with pytest.raises(CompositionValidationError) as exc_info:
-            registry.add_new_section("Tools", "Content")
+        content = registry.get_section_content("nonexistent")
 
-        assert "Tools" in str(exc_info.value)
-        assert "already a known section" in str(exc_info.value)
+        assert content == ""
 
-    def test_add_append_content(self) -> None:
-        """APPEND content should be added to catch-all."""
+    def test_get_section_content_only_sections(self) -> None:
+        """Getting section with only base content works."""
         registry = SectionRegistry(
-            known_sections={},
-            extensible_sections={},
-            append_sections=[],
+            sections={"tools": ["Tool 1", "Tool 2"]},
+            extensions={},
         )
 
-        registry.add_append("Random content 1")
-        registry.add_append("Random content 2")
+        content = registry.get_section_content("tools")
 
-        assert len(registry.append_sections) == 2
+        assert "Tool 1" in content
+        assert "Tool 2" in content
+
+    def test_get_section_content_only_extensions(self) -> None:
+        """Getting section with only extensions works."""
+        registry = SectionRegistry(
+            sections={},
+            extensions={"tools": ["Extension 1"]},
+        )
+
+        content = registry.get_section_content("tools")
+
+        assert "Extension 1" in content
+
+    def test_registry_initialization(self) -> None:
+        """Registry can be initialized with sections and extensions."""
+        registry = SectionRegistry(
+            sections={"tools": ["Tool"], "guidelines": ["Guide"]},
+            extensions={"tools": ["Tool ext"]},
+        )
+
+        assert "tools" in registry.sections
+        assert "guidelines" in registry.sections
+        assert "tools" in registry.extensions

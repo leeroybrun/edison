@@ -1,7 +1,7 @@
 """Tests for template composition with sections.
 
 TDD: These tests define the expected behavior for the section composer.
-Write tests first (RED), then implement (GREEN), then refactor.
+The section composer uses the unified section system with HTML comment markers.
 """
 from __future__ import annotations
 
@@ -14,96 +14,126 @@ from edison.core.composition import (
 class TestSectionComposer:
     """Tests for template composition with sections."""
 
-    def test_compose_known_sections(self) -> None:
-        """Known sections should be substituted at placeholders."""
+    def test_compose_section_with_base_content(self) -> None:
+        """Base section content should be included in output."""
         template = """# Agent: Test
 
-## Tools
-{{SECTION:Tools}}
+<!-- SECTION: tools -->
+- Base tool
+<!-- /SECTION: tools -->
 
-## Guidelines
-{{SECTION:Guidelines}}
+<!-- SECTION: guidelines -->
+Base guideline
+<!-- /SECTION: guidelines -->
 """
         registry = SectionRegistry(
-            known_sections={
-                "Tools": ["- Tool A", "- Tool B"],
-                "Guidelines": ["Guideline 1"],
+            sections={
+                "tools": ["- Extra Tool A", "- Extra Tool B"],
+                "guidelines": ["Extra Guideline 1"],
             },
-            extensible_sections={},
-            append_sections=[],
+            extensions={},
         )
 
         composer = SectionComposer()
         result = composer.compose(template, registry)
 
-        assert "- Tool A" in result
-        assert "- Tool B" in result
-        assert "Guideline 1" in result
-        assert "{{SECTION:" not in result  # All placeholders replaced
+        # Base content from template section markers is replaced by registry content
+        assert "- Extra Tool A" in result
+        assert "- Extra Tool B" in result
+        assert "Extra Guideline 1" in result
 
-    def test_compose_extensible_sections(self) -> None:
-        """Extensible sections should be rendered at placeholder."""
+    def test_compose_with_extensions(self) -> None:
+        """Extensions should be merged into section content."""
         template = """# Agent: Test
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: tools -->
+- Base tool
+<!-- /SECTION: tools -->
 """
         registry = SectionRegistry(
-            known_sections={},
-            extensible_sections={
-                "Architecture": ["Arch from pack A", "Arch from pack B"],
-                "Security": ["Security content"],
+            sections={
+                "tools": ["- Base tool"],
             },
-            append_sections=[],
+            extensions={
+                "tools": ["- Extended tool from pack"],
+            },
         )
 
         composer = SectionComposer()
         result = composer.compose(template, registry)
 
-        assert "Arch from pack A" in result
-        assert "Arch from pack B" in result
-        assert "Security content" in result
-        assert "{{EXTENSIBLE_SECTIONS}}" not in result
+        assert "- Base tool" in result
+        assert "- Extended tool from pack" in result
 
-    def test_compose_append_sections(self) -> None:
-        """Append sections should be rendered at placeholder."""
+    def test_compose_composed_additions_section(self) -> None:
+        """Composed-additions section collects pack/project extensions."""
         template = """# Agent: Test
 
-{{APPEND_SECTIONS}}
+<!-- SECTION: composed-additions -->
+<!-- /SECTION: composed-additions -->
 """
         registry = SectionRegistry(
-            known_sections={},
-            extensible_sections={},
-            append_sections=["## Custom Notes\nContent 1", "Content 2"],
+            sections={
+                "composed-additions": [],
+            },
+            extensions={
+                "composed-additions": ["## Pack Content\nFrom pack A", "## More Content\nFrom pack B"],
+            },
         )
 
         composer = SectionComposer()
         result = composer.compose(template, registry)
 
-        assert "Custom Notes" in result
-        assert "Content 1" in result
-        assert "Content 2" in result
+        assert "From pack A" in result
+        assert "From pack B" in result
 
     def test_compose_empty_sections_cleaned(self) -> None:
-        """Empty section placeholders should be cleaned up."""
+        """Empty sections should result in minimal output."""
         template = """# Agent: Test
 
-## Tools
-{{SECTION:Tools}}
+<!-- SECTION: tools -->
+<!-- /SECTION: tools -->
 
-{{EXTENSIBLE_SECTIONS}}
-
-{{APPEND_SECTIONS}}
+<!-- SECTION: composed-additions -->
+<!-- /SECTION: composed-additions -->
 """
         registry = SectionRegistry(
-            known_sections={"Tools": []},
-            extensible_sections={},
-            append_sections=[],
+            sections={"tools": [], "composed-additions": []},
+            extensions={},
         )
 
         composer = SectionComposer()
         result = composer.compose(template, registry)
 
-        # No placeholders should remain
-        assert "{{SECTION:" not in result
-        assert "{{EXTENSIBLE_SECTIONS}}" not in result
-        assert "{{APPEND_SECTIONS}}" not in result
+        # No section markers should remain after composition
+        assert "<!-- SECTION:" not in result
+        assert "<!-- /SECTION:" not in result
+
+    def test_compose_multiple_sections(self) -> None:
+        """Multiple sections should all be processed."""
+        template = """# Agent: Test
+
+<!-- SECTION: tools -->
+<!-- /SECTION: tools -->
+
+<!-- SECTION: guidelines -->
+<!-- /SECTION: guidelines -->
+
+<!-- SECTION: patterns -->
+<!-- /SECTION: patterns -->
+"""
+        registry = SectionRegistry(
+            sections={
+                "tools": ["Tool content"],
+                "guidelines": ["Guideline content"],
+                "patterns": ["Pattern content"],
+            },
+            extensions={},
+        )
+
+        composer = SectionComposer()
+        result = composer.compose(template, registry)
+
+        assert "Tool content" in result
+        assert "Guideline content" in result
+        assert "Pattern content" in result

@@ -16,7 +16,7 @@
 - Memoize animated components to prevent unnecessary re-renders
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: MotionComponentPatterns -->
+<!-- SECTION: MotionComponentPatterns -->
 ## AnimatePresence Pattern
 
 When components mount/unmount, use AnimatePresence for smooth transitions:

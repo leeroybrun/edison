@@ -16,6 +16,7 @@ from typing import List, Optional
 
 from edison.core.utils.io import ensure_directory
 from ...composition.output import OutputConfigLoader
+from ...composition.output.writer import CompositionFileWriter
 from ..base import PromptAdapter
 from edison.core.config.domains import AdaptersConfig
 
@@ -31,6 +32,14 @@ class ZenPromptAdapter(PromptAdapter):
         self.project_config_dir_name = self.generated_root.parent.name
         self._config = OutputConfigLoader(repo_root=self.repo_root)
         self._adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
+        self._writer: Optional[CompositionFileWriter] = None
+
+    @property
+    def writer(self) -> CompositionFileWriter:
+        """Lazy-initialized file writer for composition outputs."""
+        if self._writer is None:
+            self._writer = CompositionFileWriter(base_dir=self.repo_root)
+        return self._writer
 
     def _workflow_loop_block(self) -> str:
         """Return shared workflow loop block for all Zen prompts."""
@@ -119,7 +128,7 @@ class ZenPromptAdapter(PromptAdapter):
         # Write client file
         try:
             client_content = self.render_client("zen")
-            (output_dir / "zen.txt").write_text(client_content, encoding="utf-8")
+            self.writer.write_text(output_dir / "zen.txt", client_content)
         except FileNotFoundError:
             pass
         
@@ -128,7 +137,7 @@ class ZenPromptAdapter(PromptAdapter):
             try:
                 text = self.render_agent(agent_name)
                 filename = filename_pattern.format(name=agent_name)
-                (output_dir / filename).write_text(text, encoding="utf-8")
+                self.writer.write_text(output_dir / filename, text)
             except FileNotFoundError:
                 continue
         
@@ -137,7 +146,7 @@ class ZenPromptAdapter(PromptAdapter):
             try:
                 text = self.render_validator(validator_name)
                 filename = filename_pattern.format(name=validator_name)
-                (output_dir / filename).write_text(text, encoding="utf-8")
+                self.writer.write_text(output_dir / filename, text)
             except FileNotFoundError:
                 continue
 

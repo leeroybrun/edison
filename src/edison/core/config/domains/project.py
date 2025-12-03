@@ -55,12 +55,33 @@ class ProjectConfig(BaseDomainConfig):
     def owner(self) -> Optional[str]:
         """Get the project owner.
 
+        Resolution order:
+        1. AGENTS_OWNER environment variable (highest priority)
+        2. Config file (project.owner in YAML)
+        3. Process tree detection (edison or LLM process)
+
         Returns:
-            Owner string if configured, None otherwise.
+            Owner string, or None if no owner could be determined.
         """
+        # Check env var first (highest priority)
+        env_owner = os.environ.get("AGENTS_OWNER", "").strip()
+        if env_owner:
+            return env_owner
+
+        # Check config file
         owner_raw = self.section.get("owner")
         if isinstance(owner_raw, str) and owner_raw.strip():
             return owner_raw.strip()
+
+        # Fall back to process detection
+        try:
+            from edison.core.utils.process.inspector import find_topmost_process
+            process_name, _ = find_topmost_process()
+            if process_name:
+                return process_name
+        except Exception:
+            pass
+
         return None
 
     @cached_property

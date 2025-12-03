@@ -14,7 +14,7 @@
 - Align with design system classes; prefer shared utilities from `@/lib/*`.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: NextJSComponentPatterns -->
+<!-- SECTION: NextJSComponentPatterns -->
 ## Server Components (Default)
 
 Server Components are the default in Next.js App Router. Use them for:
@@ -129,7 +129,7 @@ export default function Error({
   )
 }
 ```
-<!-- /NEW_SECTION -->
+<!-- /SECTION: NextJSComponentPatterns -->
 
 
 

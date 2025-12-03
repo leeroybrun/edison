@@ -12,9 +12,9 @@ This file configures Zen MCP for this project.
 
 This file will direct you to the appropriate constitution based on your role.
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: composed-additions -->
 
-{{APPEND_SECTIONS}}
+<!-- /SECTION: composed-additions -->
 
 
 

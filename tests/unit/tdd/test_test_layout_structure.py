@@ -3,8 +3,10 @@ from pathlib import Path
 
 _THIS_FILE = Path(__file__).resolve()
 _PROJECT_ROOT = None
+
+# Find project root by looking for pyproject.toml or tests directory
 for _parent in _THIS_FILE.parents:
-    if (_parent / ".edison" / "core" / "lib").exists():
+    if (_parent / "pyproject.toml").exists() or (_parent / "tests").is_dir():
         _PROJECT_ROOT = _parent
         break
 
@@ -13,7 +15,8 @@ if _PROJECT_ROOT is None:
     _PROJECT_ROOT = _THIS_FILE.parents[4]
 
 PROJECT_ROOT = _PROJECT_ROOT
-PYTEST_ROOT = PROJECT_ROOT / ".edison" / "core" / "tests"
+# Tests are now in the root tests/ directory (migrated from .edison/core/tests)
+PYTEST_ROOT = PROJECT_ROOT / "tests"
 
 
 def _iter_test_files(root: Path):
@@ -73,14 +76,10 @@ def test_no_duplicate_test_files_across_locations():
 
 
 def test_import_paths_for_framework_e2e_target_location():
-    """RED: importing framework e2e tests from target location works.
+    """Verify framework E2E tests exist at expected location.
 
     Target structure expects framework E2E tests under
-    .edison/core/tests/e2e/framework/.
-
-    Here we simulate the post-migration import path by asserting
-    that the package path we expect to use can be resolved as a
-    directory. This will fail until the files are moved.
+    tests/e2e/framework/ (migrated from .edison/core/tests).
     """
     target_framework_dir = PYTEST_ROOT / "e2e" / "framework"
     assert target_framework_dir.is_dir(), target_framework_dir

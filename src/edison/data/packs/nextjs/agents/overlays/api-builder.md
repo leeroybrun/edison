@@ -17,7 +17,7 @@
 - Use Prisma for database queries (when not proxying)
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: NextJSRoutePatterns -->
+<!-- SECTION: NextJSRoutePatterns -->
 ### Next.js Route Handler Pattern (Full Implementation)
 
 **File location**: `apps/dashboard/src/app/api/v1/[resource]/route.ts`
@@ -191,7 +191,7 @@ export async function GET(
 - Keep handlers thin: authenticate with `requireAuth`, validate input with Zod, and return `NextResponse` objects with structured error envelopes.
 - Use pagination bounds (`page`, `limit`), typed enums for statuses, and consistent ordering; avoid unbounded queries.
 - When a Fastify upstream exists, treat the handler as a proxy: forward auth headers, propagate status codes, and do not reimplement business logic.
-<!-- /NEW_SECTION -->
+<!-- /SECTION: NextJSRoutePatterns -->
 
 
 

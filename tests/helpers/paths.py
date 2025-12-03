@@ -38,28 +38,18 @@ def get_repo_root() -> Path:
 
 
 def get_core_root() -> Path:
-    """Get the Edison core root directory.
+    """Get the Edison core root directory (bundled data).
+    
+    Core content is ALWAYS from the bundled edison.data package.
+    NO .edison/core/ support - that is legacy.
 
     Returns:
-        Path: Absolute path to the .edison/core directory or bundled data path
+        Path: Absolute path to the bundled edison.data directory
 
     Raises:
-        RuntimeError: If core root cannot be found
+        RuntimeError: If bundled data cannot be found
     """
-    repo_root = get_repo_root()
-
-    # First try .edison/core directory
-    core_root = repo_root / ".edison" / "core"
-    if core_root.exists():
-        return core_root
-
-    # Fallback to bundled edison.data path
-    try:
-        from edison.data import get_data_path
-        return Path(get_data_path(""))
-    except ImportError:
-        pass
-
-    raise RuntimeError(f"Could not find core directory at {core_root}")
+    from edison.data import get_data_path
+    return Path(get_data_path(""))
 
 

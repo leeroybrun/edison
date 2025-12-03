@@ -1,7 +1,4 @@
-# Honest Status (Condensed, Mandatory)
-
-
-See extended guide: .edison/_generated/guidelines/shared/HONEST_STATUS.md
+# Honest Status (Mandatory)
 
 ## Honesty Checklist
 - [ ] Status entries are factual, timestamped, and live inside the task/QA files.
@@ -16,5 +13,3 @@ See extended guide: .edison/_generated/guidelines/shared/HONEST_STATUS.md
 - Use the `Status Updates` + `Findings` sections in the task file for implementation progress.
 - Use the QA file for validator outcomes, evidence links, and follow-up recommendations.
 - When validators request new work, create a new numbered task (e.g., `123.1-security-hardening.md`) and reference it from both the original task and QA notes.
-
-Phase docs and the master plan are retired; the directories under `.project/tasks/` and `.project/qa/` are now the single source of truth.

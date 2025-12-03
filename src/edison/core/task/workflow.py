@@ -171,9 +171,14 @@ class TaskQAWorkflow:
         wip_state = workflow_config.get_semantic_state("task", "wip")
 
         # 2. Update task entity
+        from edison.core.utils.time import utc_timestamp
+        now = utc_timestamp()
+        
         old_state = task.state
         task.state = wip_state
         task.session_id = session_id
+        task.claimed_at = task.claimed_at or now  # Only set if not already claimed
+        task.last_active = now
         task.record_transition(old_state, wip_state, reason="claimed")
 
         # 3. Save (handles move)
@@ -238,8 +243,12 @@ class TaskQAWorkflow:
         done_state = workflow_config.get_semantic_state("task", "done")
 
         # 2. Update task entity
+        from edison.core.utils.time import utc_timestamp
+        now = utc_timestamp()
+        
         old_state = task.state
         task.state = done_state
+        task.last_active = now
         task.record_transition(old_state, done_state, reason="completed")
 
         # 3. Save (handles move)

@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import sys
 from pathlib import Path
 from textwrap import dedent
+from typing import List, Optional
+import subprocess
 
 import pytest
 import yaml
@@ -27,6 +30,98 @@ from tests.helpers.env_setup import setup_project_root
 
 # Import target under test (implementation added in this task)
 from edison.core.session.lifecycle.autostart import SessionAutoStart, SessionAutoStartError
+
+
+def kill_process_tree(pid: int, sig: int = signal.SIGTERM) -> None:
+    """Kill a process and all its children.
+    
+    Uses process groups on Unix to ensure all child processes are terminated.
+    Falls back to individual process termination if group kill fails.
+    """
+    try:
+        # Try to get all child processes first
+        import psutil
+        try:
+            parent = psutil.Process(pid)
+            children = parent.children(recursive=True)
+            # Kill children first
+            for child in children:
+                try:
+                    child.terminate()
+                except psutil.NoSuchProcess:
+                    pass
+            # Then kill parent
+            try:
+                parent.terminate()
+            except psutil.NoSuchProcess:
+                pass
+            # Wait briefly for graceful termination
+            gone, alive = psutil.wait_procs([parent] + children, timeout=2)
+            # Force kill any remaining
+            for p in alive:
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    pass
+        except psutil.NoSuchProcess:
+            pass
+    except ImportError:
+        # Fallback without psutil - just kill the main process
+        try:
+            os.kill(pid, sig)
+        except (ProcessLookupError, OSError):
+            pass
+
+
+class ProcessTracker:
+    """Tracks spawned processes for cleanup after tests."""
+    
+    def __init__(self) -> None:
+        self._processes: List[subprocess.Popen] = []
+        self._pids: List[int] = []
+    
+    def register(self, process: Optional[subprocess.Popen] = None, pid: Optional[int] = None) -> None:
+        """Register a process or PID for cleanup."""
+        if process is not None:
+            self._processes.append(process)
+        if pid is not None:
+            self._pids.append(pid)
+    
+    def cleanup(self) -> None:
+        """Kill all registered processes and their children."""
+        # First, terminate Popen objects
+        for proc in self._processes:
+            if proc.poll() is None:  # Still running
+                try:
+                    kill_process_tree(proc.pid)
+                except Exception:
+                    pass
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=2)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+        
+        # Then kill any registered PIDs
+        for pid in self._pids:
+            try:
+                kill_process_tree(pid)
+            except Exception:
+                pass
+        
+        self._processes.clear()
+        self._pids.clear()
+
+
+@pytest.fixture
+def process_tracker() -> ProcessTracker:
+    """Fixture that tracks and cleans up spawned processes after each test."""
+    tracker = ProcessTracker()
+    yield tracker
+    tracker.cleanup()
 
 
 class AutoStartEnv:
@@ -179,8 +274,10 @@ class AutoStartEnv:
         from edison.core.session import lifecycle as session_manager
         from edison.core.config.domains import SessionConfig
         from edison.core.session._config import reset_config_cache
+        from edison.core.config.cache import clear_all_caches
         
-        # Reset config cache to pick up new project root
+        # Clear ALL config caches (global cache + session-specific)
+        clear_all_caches()
         reset_config_cache()
         
         # Create new configs for this test root
@@ -217,7 +314,7 @@ def autostart_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AutoStartE
 # --- Tests ---------------------------------------------------------------
 
 
-def test_autostart_creates_session_metadata(autostart_env: AutoStartEnv) -> None:
+def test_autostart_creates_session_metadata(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script, log = autostart_env.make_orchestrator_script("mock")
     profiles = {
         "mock": {
@@ -229,7 +326,12 @@ def test_autostart_creates_session_metadata(autostart_env: AutoStartEnv) -> None
     autostart_env.write_orchestrator_config(profiles, default="mock")
     autostart = autostart_env.build_autostart()
 
-    result = autostart.start(process="TASK-123", orchestrator_profile="mock")
+    # Use detach=True for background mode (needed for tests to avoid stdin issues)
+    result = autostart.start(process="TASK-123", orchestrator_profile="mock", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     session = SessionManager(project_root=autostart_env.root).get_session(result["session_id"])
     assert session["meta"].get("autoStarted") is True
@@ -237,7 +339,7 @@ def test_autostart_creates_session_metadata(autostart_env: AutoStartEnv) -> None
     assert session["meta"].get("process") == "TASK-123"
 
 
-def test_autostart_creates_worktree(autostart_env: AutoStartEnv) -> None:
+def test_autostart_creates_worktree(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script, _ = autostart_env.make_orchestrator_script("mock")
     autostart_env.write_orchestrator_config(
         {
@@ -251,14 +353,19 @@ def test_autostart_creates_worktree(autostart_env: AutoStartEnv) -> None:
     )
     autostart = autostart_env.build_autostart()
 
-    result = autostart.start(process="TASK-123", orchestrator_profile="mock")
+    # Use detach=True for background mode (needed for tests to avoid stdin issues)
+    result = autostart.start(process="TASK-123", orchestrator_profile="mock", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     worktree_path = Path(result["worktree_path"])
     assert worktree_path.exists()
     assert (worktree_path / ".git").exists()
 
 
-def test_autostart_launches_orchestrator(autostart_env: AutoStartEnv) -> None:
+def test_autostart_launches_orchestrator(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script, log = autostart_env.make_orchestrator_script("mock")
     autostart_env.write_orchestrator_config(
         {
@@ -272,14 +379,20 @@ def test_autostart_launches_orchestrator(autostart_env: AutoStartEnv) -> None:
     )
     autostart = autostart_env.build_autostart()
 
-    result = autostart.start(process="TASK-123", orchestrator_profile="mock")
+    # Use detach=True for background mode - needed for log file checks
+    result = autostart.start(process="TASK-123", orchestrator_profile="mock", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
-    assert result["orchestrator_pid"] > 0
+    # In detach mode, PID is not returned (process runs in background)
+    assert result["orchestrator_pid"] is None
     assert wait_for_file(log)
     assert "pid=" in log.read_text()
 
 
-def test_autostart_with_initial_prompt(autostart_env: AutoStartEnv, tmp_path: Path) -> None:
+def test_autostart_with_initial_prompt(autostart_env: AutoStartEnv, tmp_path: Path, process_tracker: ProcessTracker) -> None:
     script, log = autostart_env.make_orchestrator_script("mock")
     autostart_env.write_orchestrator_config(
         {
@@ -295,18 +408,24 @@ def test_autostart_with_initial_prompt(autostart_env: AutoStartEnv, tmp_path: Pa
     prompt_file.write_text("HELLO WORLD", encoding="utf-8")
     autostart = autostart_env.build_autostart()
 
-    autostart.start(
+    # Use detach=True for background mode - needed for log file checks
+    result = autostart.start(
         process="TASK-123",
         orchestrator_profile="mock",
         initial_prompt_path=prompt_file,
+        detach=True,
     )
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert wait_for_file(log)
     log_text = log.read_text()
     assert "prompt:HELLO WORLD" in log_text
 
 
-def test_autostart_with_detach(autostart_env: AutoStartEnv) -> None:
+def test_autostart_with_detach(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script, log = autostart_env.make_orchestrator_script("mock")
     profiles = {
         "mock": {
@@ -320,13 +439,17 @@ def test_autostart_with_detach(autostart_env: AutoStartEnv) -> None:
     autostart = autostart_env.build_autostart()
 
     result = autostart.start(process="TASK-DETACH", orchestrator_profile="mock", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert result["orchestrator_pid"] is None
     medium_sleep()
     assert wait_for_file(log)
 
 
-def test_autostart_with_no_worktree(autostart_env: AutoStartEnv) -> None:
+def test_autostart_with_no_worktree(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script, _ = autostart_env.make_orchestrator_script("mock")
     autostart_env.write_orchestrator_config(
         {
@@ -339,7 +462,12 @@ def test_autostart_with_no_worktree(autostart_env: AutoStartEnv) -> None:
     )
     autostart = autostart_env.build_autostart()
 
-    result = autostart.start(process="TASK-123", orchestrator_profile="mock", no_worktree=True)
+    # Use detach=True for background mode (needed for tests to avoid stdin issues)
+    result = autostart.start(process="TASK-123", orchestrator_profile="mock", no_worktree=True, detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert result["worktree_path"] is None
     session = SessionManager(project_root=autostart_env.root).get_session(result["session_id"])
@@ -360,7 +488,8 @@ def test_autostart_rollback_on_worktree_failure(autostart_env: AutoStartEnv) -> 
     autostart = autostart_env.build_autostart()
 
     with pytest.raises(SessionAutoStartError):
-        autostart.start(process="FAIL-WT", orchestrator_profile="mock")
+        # Use detach=True for background mode (needed for tests to avoid stdin issues)
+        autostart.start(process="FAIL-WT", orchestrator_profile="mock", detach=True)
 
     session_jsons = list((autostart_env.root / ".project" / "sessions").rglob("session.json"))
     assert not session_jsons
@@ -375,7 +504,8 @@ def test_autostart_rollback_on_orchestrator_failure(autostart_env: AutoStartEnv)
     autostart = autostart_env.build_autostart()
 
     with pytest.raises(SessionAutoStartError):
-        autostart.start(process="FAIL-ORCH")
+        # Use detach=True for background mode (needed for tests to avoid stdin issues)
+        autostart.start(process="FAIL-ORCH", detach=True)
 
     sessions = list((autostart_env.root / ".project" / "sessions").rglob("session.json"))
     assert not sessions
@@ -383,7 +513,7 @@ def test_autostart_rollback_on_orchestrator_failure(autostart_env: AutoStartEnv)
     assert not any(wt_root.glob("*"))
 
 
-def test_autostart_uses_pid_based_naming(autostart_env: AutoStartEnv) -> None:
+def test_autostart_uses_pid_based_naming(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     # Note: reset_session_naming_counter is now called by autouse fixture
     autostart_env.write_session_config(naming_strategy="owner")
     script, _ = autostart_env.make_orchestrator_script("claude")
@@ -393,12 +523,17 @@ def test_autostart_uses_pid_based_naming(autostart_env: AutoStartEnv) -> None:
     )
     autostart = autostart_env.build_autostart()
 
-    result = autostart.start(process="TASK-123", orchestrator_profile="claude")
+    # Use detach=True for background mode (needed for tests to avoid stdin issues)
+    result = autostart.start(process="TASK-123", orchestrator_profile="claude", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert result["session_id"] == infer_session_id()
 
 
-def test_autostart_uses_config_default_orchestrator(autostart_env: AutoStartEnv) -> None:
+def test_autostart_uses_config_default_orchestrator(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script_default, log_default = autostart_env.make_orchestrator_script("default")
     script_other, _ = autostart_env.make_orchestrator_script("other")
     profiles = {
@@ -408,13 +543,18 @@ def test_autostart_uses_config_default_orchestrator(autostart_env: AutoStartEnv)
     autostart_env.write_orchestrator_config(profiles, default="default")
     autostart = autostart_env.build_autostart()
 
-    autostart.start(process="TASK-123")
+    # Use detach=True for background mode - needed for log file checks
+    result = autostart.start(process="TASK-123", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert wait_for_file(log_default)
     assert "pid=" in log_default.read_text()
 
 
-def test_autostart_override_orchestrator(autostart_env: AutoStartEnv) -> None:
+def test_autostart_override_orchestrator(autostart_env: AutoStartEnv, process_tracker: ProcessTracker) -> None:
     script_default, log_default = autostart_env.make_orchestrator_script("default")
     script_override, log_override = autostart_env.make_orchestrator_script("override")
     profiles = {
@@ -424,7 +564,12 @@ def test_autostart_override_orchestrator(autostart_env: AutoStartEnv) -> None:
     autostart_env.write_orchestrator_config(profiles, default="default")
     autostart = autostart_env.build_autostart()
 
-    autostart.start(process="TASK-123", orchestrator_profile="override")
+    # Use detach=True for background mode - needed for log file checks
+    result = autostart.start(process="TASK-123", orchestrator_profile="override", detach=True)
+    
+    # Register process for cleanup
+    if result.get("orchestrator_process"):
+        process_tracker.register(process=result["orchestrator_process"])
 
     assert wait_for_file(log_override)
     assert "pid=" in log_override.read_text()
@@ -459,5 +604,6 @@ def test_autostart_cli_start_command(autostart_env: AutoStartEnv) -> None:
     run_with_timeout(cmd, cwd=autostart_env.root, check=True)
 
     assert wait_for_file(log)
-    sessions = list((autostart_env.root / ".project" / "sessions" / "wip").glob("*.json"))
+    # Sessions are stored as {session_id}/session.json directories
+    sessions = list((autostart_env.root / ".project" / "sessions" / "wip").glob("*/session.json"))
     assert sessions

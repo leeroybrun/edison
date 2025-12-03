@@ -343,12 +343,9 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
         """Initialize validator registry with configuration discovery."""
         super().__init__(project_root)
 
-        # Use composition path resolver (SINGLE SOURCE OF TRUTH)
-        path_resolver = CompositionPathResolver(self.project_root, "validators")
-        self.core_dir = path_resolver.core_dir
-        self.packs_dir = path_resolver.packs_dir
-        self.project_dir = path_resolver.project_dir
-        
+        # Note: core_dir, packs_dir, project_dir are inherited from BaseRegistry
+        # No need to override them - they're already set correctly
+
         self._validators_cache: Optional[Dict[str, Dict]] = None
     
     # ------- BaseRegistry Interface Implementation -------

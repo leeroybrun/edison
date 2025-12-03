@@ -17,7 +17,7 @@ from edison.core.entity import (
     PersistenceError,
 )
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.text import parse_html_comment, format_html_comment, parse_title
+from edison.core.utils.text import parse_frontmatter, format_frontmatter, has_frontmatter, parse_title
 from edison.core.config.domains import TaskConfig
 
 from ..models import QARecord
@@ -236,34 +236,43 @@ class QARepository(
     # ---------- File Format Helpers ----------
 
     def _qa_to_markdown(self, qa: QARecord) -> str:
-        """Convert QA record to markdown format.
+        """Convert QA record to markdown format with YAML frontmatter.
 
-        Uses format_html_comment from utils/text for consistent metadata formatting.
+        State is NOT stored in the frontmatter - it's derived from the directory.
+        All other QA metadata is stored in YAML frontmatter for single source of truth.
         """
-        lines: List[str] = []
+        from typing import Any, Dict
 
-        # Metadata comments using shared utility
-        lines.append(format_html_comment("Task", qa.task_id))
-        lines.append(format_html_comment("Status", qa.state))
-        if qa.session_id:
-            lines.append(format_html_comment("Session", qa.session_id))
-        lines.append(format_html_comment("Round", qa.round))
-        if qa.metadata.created_by:
-            lines.append(format_html_comment("Validator", qa.metadata.created_by))
-
-        # Persist metadata timestamps
-        lines.append(format_html_comment("CreatedAt", qa.metadata.created_at))
-        lines.append(format_html_comment("UpdatedAt", qa.metadata.updated_at))
-
-        # Persist state history as JSON in a comment
+        # Build state history as serializable list
+        state_history_data = None
         if qa.state_history:
-            history_data = [h.to_dict() for h in qa.state_history]
-            history_json = json.dumps(history_data)
-            lines.append(format_html_comment("StateHistory", history_json))
+            state_history_data = [h.to_dict() for h in qa.state_history]
 
-        lines.append("")
-        lines.append(f"# {qa.title}")
-        return "\n".join(lines)
+        # Build frontmatter data (exclude None values)
+        frontmatter_data: Dict[str, Any] = {
+            "id": qa.id,
+            "task_id": qa.task_id,
+            "title": qa.title,
+            "round": qa.round,
+            "validator_owner": qa.validator_owner or qa.metadata.created_by,
+            "session_id": qa.session_id,
+            "validators": qa.validators if qa.validators else None,
+            "evidence": qa.evidence if qa.evidence else None,
+            "created_at": qa.metadata.created_at,
+            "updated_at": qa.metadata.updated_at,
+            "state_history": state_history_data,
+        }
+
+        # Format as YAML frontmatter
+        yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
+
+        # Build markdown body
+        body_lines: List[str] = [
+            f"# {qa.title}",
+            "",
+        ]
+
+        return yaml_header + "\n".join(body_lines)
 
     def _load_qa_from_file(self, path: Path) -> Optional[QARecord]:
         """Load a QA record from a markdown file."""
@@ -279,71 +288,73 @@ class QARepository(
         content: str,
         path: Path,
     ) -> QARecord:
-        """Parse QA record from markdown content.
+        """Parse QA record from markdown content with YAML frontmatter.
 
-        Uses parse_html_comment and parse_title from utils/text for consistent parsing.
+        State is ALWAYS derived from directory location, never from file content.
+        
+        NOTE: Only YAML frontmatter format is supported. Legacy HTML comment
+        format must be migrated using `edison migrate task_frontmatter`.
+
+        Args:
+            qa_id: QA ID from filename
+            content: Markdown content with YAML frontmatter
+            path: File path (for state derivation)
+
+        Returns:
+            QARecord instance
+            
+        Raises:
+            ValueError: If content does not have valid YAML frontmatter
         """
-        import json
         from edison.core.entity import StateHistoryEntry
 
-        task_id = ""
+        # State is ALWAYS derived from directory - single source of truth
         state = path.parent.name
-        session_id = None
-        round_num = 1
-        title = ""
-        validator = None
-        created_at = None
-        updated_at = None
-        state_history: List[StateHistoryEntry] = []
 
-        for line in content.split("\n"):
-            # Use shared utilities for parsing
-            if parsed := parse_html_comment(line, "Task"):
-                task_id = parsed
-            elif parsed := parse_html_comment(line, "Status"):
-                state = parsed
-            elif parsed := parse_html_comment(line, "Session"):
-                session_id = parsed
-            elif parsed := parse_html_comment(line, "Round"):
-                try:
-                    round_num = int(parsed)
-                except ValueError:
-                    pass
-            elif parsed := parse_html_comment(line, "Validator"):
-                validator = parsed
-            elif parsed := parse_html_comment(line, "CreatedAt"):
-                created_at = parsed
-            elif parsed := parse_html_comment(line, "UpdatedAt"):
-                updated_at = parsed
-            elif parsed := parse_html_comment(line, "StateHistory"):
-                try:
-                    history_data = json.loads(parsed)
-                    state_history = [StateHistoryEntry.from_dict(h) for h in history_data]
-                except (ValueError, json.JSONDecodeError):
-                    pass
-            elif not title and (parsed := parse_title(line)):
-                title = parsed
-
-        # Build metadata with persisted timestamps if available
-        if created_at and updated_at:
-            metadata = EntityMetadata(
-                created_at=created_at,
-                updated_at=updated_at,
-                created_by=validator,
-                session_id=session_id,
+        # Parse YAML frontmatter (only supported format)
+        if not has_frontmatter(content):
+            raise ValueError(
+                f"QA record {qa_id} does not have YAML frontmatter. "
+                "Run `edison migrate task_frontmatter` to convert legacy files."
             )
-        else:
-            metadata = EntityMetadata.create(created_by=validator, session_id=session_id)
+
+        doc = parse_frontmatter(content)
+        fm = doc.frontmatter
+
+        # Extract title from frontmatter or markdown heading
+        title = fm.get("title", "")
+        if not title:
+            for line in doc.content.split("\n"):
+                if parsed := parse_title(line):
+                    title = parsed
+                    break
+
+        # Build state history from frontmatter
+        state_history: List = []
+        history_data = fm.get("state_history", [])
+        if history_data:
+            state_history = [StateHistoryEntry.from_dict(h) for h in history_data]
+
+        # Build metadata
+        metadata = EntityMetadata(
+            created_at=fm.get("created_at", ""),
+            updated_at=fm.get("updated_at", ""),
+            created_by=fm.get("validator_owner"),
+            session_id=fm.get("session_id"),
+        )
 
         return QARecord(
-            id=qa_id,
-            task_id=task_id,
-            state=state,
+            id=fm.get("id", qa_id),
+            task_id=fm.get("task_id", ""),
+            state=state,  # Always from directory
             title=title,
-            session_id=session_id,
+            session_id=fm.get("session_id"),
+            validator_owner=fm.get("validator_owner"),
             metadata=metadata,
             state_history=state_history,
-            round=round_num,
+            validators=fm.get("validators", []) or [],
+            evidence=fm.get("evidence", []) or [],
+            round=fm.get("round", 1),
         )
 
 

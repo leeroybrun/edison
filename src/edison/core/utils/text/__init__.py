@@ -42,6 +42,17 @@ from .markdown import (
     parse_title,
 )
 
+# Re-export from frontmatter module
+from .frontmatter import (
+    ParsedDocument,
+    parse_frontmatter,
+    format_frontmatter,
+    extract_frontmatter_batch,
+    has_frontmatter,
+    update_frontmatter,
+    FRONTMATTER_PATTERN,
+)
+
 
 __all__ = [
     # Core
@@ -61,4 +72,12 @@ __all__ = [
     "parse_html_comment",
     "format_html_comment",
     "parse_title",
+    # Frontmatter
+    "ParsedDocument",
+    "parse_frontmatter",
+    "format_frontmatter",
+    "extract_frontmatter_batch",
+    "has_frontmatter",
+    "update_frontmatter",
+    "FRONTMATTER_PATTERN",
 ]

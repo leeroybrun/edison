@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
+from edison.core.utils.io import read_json
 from .base import IDEComposerBase
 
 # Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
@@ -47,30 +47,80 @@ class SettingsComposer(IDEComposerBase):
         self.project_config_dir = self.project_dir / "config"
 
     # ----- Loaders -----
-    def load_core_settings(self) -> Dict:
-        path = self.core_dir / "config" / "settings.yaml"
-        if not path.exists():
-            path = self.core_dir / "config" / "settings.yml"
-        data = self.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
+    def load_all_settings(self) -> Dict:
+        """Load and merge settings from all layers with special permissions/env handling.
 
-    def _load_pack_settings(self, pack: str) -> Dict:
-        path = self.packs_dir / pack / "config" / "settings.yml"
-        if not path.exists():
-            path = self.packs_dir / pack / "config" / "settings.yaml"
-        data = self.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
+        Returns the merged 'settings.claude' section from core → packs → project.
 
-    def _load_project_settings(self) -> Dict:
-        path = self.project_config_dir / "settings.yml"
-        if not path.exists():
-            path = self.project_config_dir / "settings.yaml"
-        data = self.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
+        Note: Uses manual layered loading instead of _load_layered_config() because
+        settings require special merge behavior for permissions (array concat) and env (dict merge).
+        """
+        settings: Dict = {}
+
+        # Helper to extract claude settings from loaded data
+        def extract_claude_settings(data: Dict) -> Dict:
+            if isinstance(data, dict):
+                settings_section = data.get("settings") or {}
+                if isinstance(settings_section, dict):
+                    return settings_section.get("claude", {}) or {}
+            return {}
+
+        # 1. Core layer
+        core_file = self.core_dir / "config" / "settings.yaml"
+        if not core_file.exists():
+            core_file = self.core_dir / "config" / "settings.yml"
+        if core_file.exists():
+            core_data = extract_claude_settings(self.load_yaml_safe(core_file))
+            settings = self.deep_merge_settings(settings, core_data)
+
+        # 2. Pack layers
+        for pack in self.get_active_packs():
+            # Bundled pack
+            pack_file = self.bundled_packs_dir / pack / "config" / "settings.yaml"
+            if not pack_file.exists():
+                pack_file = self.bundled_packs_dir / pack / "config" / "settings.yml"
+            if pack_file.exists():
+                pack_data = extract_claude_settings(self.load_yaml_safe(pack_file))
+                settings = self.deep_merge_settings(settings, pack_data)
+
+            # Project pack (if exists)
+            project_pack_file = self.project_packs_dir / pack / "config" / "settings.yaml"
+            if not project_pack_file.exists():
+                project_pack_file = self.project_packs_dir / pack / "config" / "settings.yml"
+            if project_pack_file.exists():
+                project_pack_data = extract_claude_settings(self.load_yaml_safe(project_pack_file))
+                settings = self.deep_merge_settings(settings, project_pack_data)
+
+        # 3. Project layer
+        project_file = self.project_dir / "config" / "settings.yaml"
+        if not project_file.exists():
+            project_file = self.project_dir / "config" / "settings.yml"
+        if project_file.exists():
+            project_data = extract_claude_settings(self.load_yaml_safe(project_file))
+            settings = self.deep_merge_settings(settings, project_data)
+
+        return settings
 
     def extract_pack_permissions(self, pack: str) -> Dict:
-        settings = self._load_pack_settings(pack)
-        return settings.get("permissions", {}) if isinstance(settings, dict) else {}
+        """Extract permissions from a specific pack's settings.
+
+        Note: This method loads from a single pack, not using layered loading.
+        """
+        # Load single pack settings (not layered)
+        pack_file = self.bundled_packs_dir / pack / "config" / "settings.yaml"
+        if not pack_file.exists():
+            pack_file = self.bundled_packs_dir / pack / "config" / "settings.yml"
+
+        if pack_file.exists():
+            data = self.load_yaml_safe(pack_file)
+            if isinstance(data, dict):
+                settings_section = data.get("settings") or {}
+                if isinstance(settings_section, dict):
+                    claude_settings = settings_section.get("claude", {}) or {}
+                    if isinstance(claude_settings, dict):
+                        return claude_settings.get("permissions", {}) or {}
+
+        return {}
 
     # ----- Merging helpers -----
     def deep_merge_settings(self, base: Dict, overlay: Dict) -> Dict:
@@ -94,17 +144,14 @@ class SettingsComposer(IDEComposerBase):
 
     # ----- Composition -----
     def compose_settings(self) -> Dict:
-        """Return settings dictionary ready to write to settings.json."""
-        settings = self.load_core_settings()
+        """Return settings dictionary ready to write to settings.json.
 
-        # Merge pack overlays
-        for pack in self._active_packs():
-            pack_settings = self._load_pack_settings(pack)
-            settings = self.deep_merge_settings(settings, pack_settings)
-
-        # Merge project overrides
-        project_settings = self._load_project_settings()
-        settings = self.deep_merge_settings(settings, project_settings)
+        Uses unified _load_layered_config() to load from all layers.
+        Note: The special merging for permissions/env is handled by deep_merge
+        in the config manager during layered loading.
+        """
+        # Load all settings using unified layered config
+        settings = self.load_all_settings()
 
         # Include hooks section (HookComposer loads defaults from bundled config)
         try:
@@ -138,7 +185,6 @@ class SettingsComposer(IDEComposerBase):
         """Write settings.json to .claude/, merging with existing file if present."""
         settings = self.compose_settings()
         target = self.repo_root / ".claude" / "settings.json"
-        ensure_directory(target.parent)
 
         claude_cfg = self._claude_config()
 
@@ -147,7 +193,7 @@ class SettingsComposer(IDEComposerBase):
             # Always backup before modifying
             if claude_cfg.get("backup_before", True):
                 backup = target.with_suffix(".json.bak")
-                backup.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+                self.writer.write_text(backup, target.read_text(encoding="utf-8"))
 
             # Load existing settings
             existing = read_json(target, default=None)
@@ -157,8 +203,8 @@ class SettingsComposer(IDEComposerBase):
                 if claude_cfg.get("preserve_custom", True):
                     settings = self.deep_merge_settings(settings, existing)
 
-        write_json_atomic(target, settings, indent=2)
-        return target
+        written_path = self.writer.write_json(target, settings, indent=2)
+        return written_path
 
 
 __all__ = ["SettingsComposer", "merge_permissions"]

@@ -96,13 +96,18 @@ def main(args: argparse.Namespace) -> int:
             owner=args.owner,
         )
 
+        # Get task file path (relative to project root for portability)
+        task_path = manager._repo.get_path(task_entity.id)
+        rel_path = task_path.relative_to(repo_root) if task_path.is_relative_to(repo_root) else task_path
+
         formatter.json_output({
             "status": "created",
             "task_id": task_entity.id,
             "state": task_entity.state,
             "title": task_entity.title,
+            "path": str(rel_path),
         }) if formatter.json_mode else formatter.text(
-            f"Created task: {task_entity.id} ({task_entity.state})"
+            f"Created task: {task_entity.id} ({task_entity.state})\n  @{rel_path}"
         )
 
         return 0

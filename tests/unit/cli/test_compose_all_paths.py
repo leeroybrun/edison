@@ -72,9 +72,16 @@ def real_args():
     """Create real args namespace instead of mocking."""
     args = Namespace()
     args.repo_root = None
+    args.agents = False
     args.validators = False
     args.constitutions = False
     args.guidelines = False
+    args.start = False
+    args.hooks = False
+    args.settings = False
+    args.commands = False
+    args.rules = False
+    args.schemas = False
     args.dry_run = False
     args.json = False
     args.claude = False

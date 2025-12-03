@@ -6,7 +6,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.io import write_yaml, ensure_directory
 from .base import IDEComposerBase
 
 
@@ -20,30 +19,30 @@ class CodeRabbitComposer(IDEComposerBase):
     # ----- Loaders -----
     def load_core_coderabbit_config(self) -> Dict[str, Any]:
         """Load bundled CodeRabbit configuration from templates."""
-        # Core template is in templates/configs/
-        path = self.core_dir / "templates" / "configs" / "coderabbit.yaml"
+        # Core template is in templates/config/
+        path = self.core_dir / "templates" / "config" / "coderabbit.yaml"
         if not path.exists():
-            path = self.core_dir / "templates" / "configs" / "coderabbit.yml"
+            path = self.core_dir / "templates" / "config" / "coderabbit.yml"
         if path.exists():
             return self.cfg_mgr.load_yaml(path) or {}
         return {}
 
     def _load_pack_coderabbit_config(self, pack: str) -> Dict[str, Any]:
         """Load pack-level CodeRabbit configuration."""
-        # Pack configs are in packs/{pack}/configs/
-        path = self.packs_dir / pack / "configs" / "coderabbit.yaml"
+        # Pack configs are in packs/{pack}/config/
+        path = self.packs_dir / pack / "config" / "coderabbit.yaml"
         if not path.exists():
-            path = self.packs_dir / pack / "configs" / "coderabbit.yml"
+            path = self.packs_dir / pack / "config" / "coderabbit.yml"
         if path.exists():
             return self.cfg_mgr.load_yaml(path) or {}
         return {}
 
     def _load_project_coderabbit_config(self) -> Dict[str, Any]:
         """Load project-level CodeRabbit configuration."""
-        # Project configs are in .edison/configs/
-        path = self.project_dir / "configs" / "coderabbit.yaml"
+        # Project configs are in .edison/config/
+        path = self.project_dir / "config" / "coderabbit.yaml"
         if not path.exists():
-            path = self.project_dir / "configs" / "coderabbit.yml"
+            path = self.project_dir / "config" / "coderabbit.yml"
         if path.exists():
             return self.cfg_mgr.load_yaml(path) or {}
         return {}
@@ -135,9 +134,8 @@ class CodeRabbitComposer(IDEComposerBase):
                 # Default to repo root
                 target = self.repo_root / ".coderabbit.yaml"
 
-        ensure_directory(target.parent)
-        write_yaml(target, config)
-        return target
+        written_path = self.writer.write_yaml(target, config)
+        return written_path
 
 
 def compose_coderabbit_config(

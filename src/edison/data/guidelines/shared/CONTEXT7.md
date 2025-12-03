@@ -1,7 +1,9 @@
 # Context7 (Condensed, Mandatory)
 
+## Extended Guide
 
-See extended guide: .edison/_generated/guidelines/shared/CONTEXT7.md
+For agent-specific patterns, detailed examples, and deep-dive workflows, see:
+`.edison/_generated/guidelines/agents/CONTEXT7_REQUIREMENT.md`
 
 ## When to use
 - For post‑training packages configured in your project

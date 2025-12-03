@@ -164,7 +164,18 @@ def test_tasks_new_creates_file(tmp_path: Path):
 def test_tasks_status_moves_file(tmp_path: Path):
     root = make_project_root(tmp_path)
     task_path = root / ".project" / "tasks" / "todo" / "150-wave1-demo.md"
-    task_path.write_text("status: todo\n")
+    task_path.parent.mkdir(parents=True, exist_ok=True)
+    # Create proper task file with YAML frontmatter
+    task_path.write_text("""---
+id: "150-wave1-demo"
+title: "Demo Task"
+state: "todo"
+---
+
+# Demo Task
+
+Demo description
+""")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
     run("task", "status", ["150-wave1-demo", "--status", "wip", "--json"], env)
@@ -179,13 +190,35 @@ def test_tasks_ready_moves_wip_to_done(tmp_path: Path):
     # session scoped wip task + qa waiting
     wip_task = root / ".project" / "sessions" / "wip" / "s1" / "tasks" / "wip"
     wip_task.mkdir(parents=True, exist_ok=True)
-    wip_path = wip_task / f"task-{task_id}.md"
-    wip_path.write_text("status: wip\n")
+    wip_path = wip_task / f"{task_id}.md"
+    wip_path.write_text(f"""---
+id: "{task_id}"
+title: "Demo Task"
+state: "wip"
+session_id: "s1"
+---
 
-    qa_waiting = root / ".project" / "sessions" / "waiting" / "s1" / "qa" / "waiting"
+# Demo Task
+
+Demo description
+""")
+
+    qa_waiting = root / ".project" / "sessions" / "wip" / "s1" / "qa" / "waiting"
     qa_waiting.mkdir(parents=True, exist_ok=True)
     qa_wait_path = qa_waiting / f"{task_id}-qa.md"
-    qa_wait_path.write_text("# qa waiting\n")
+    qa_wait_path.write_text(f"""---
+id: "{task_id}-qa"
+task_id: "{task_id}"
+title: "QA for {task_id}"
+state: "waiting"
+round: 1
+session_id: "s1"
+---
+
+# QA for {task_id}
+
+Validation scope
+""")
 
     # evidence files
     evidence = root / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
@@ -198,10 +231,12 @@ def test_tasks_ready_moves_wip_to_done(tmp_path: Path):
     env["AGENTS_PROJECT_ROOT"] = str(root)
     run("task", "ready", [task_id, "--session", "s1", "--json"], env)
 
-    done_path = root / ".project" / "sessions" / "done" / "s1" / "tasks" / "done" / f"task-{task_id}.md"
-    qa_todo = root / ".project" / "sessions" / "todo" / "s1" / "qa" / "todo" / f"{task_id}-qa.md"
-    assert done_path.exists()
-    assert qa_todo.exists()
+    # Task should be moved to done state
+    done_path = root / ".project" / "sessions" / "wip" / "s1" / "tasks" / "done" / f"{task_id}.md"
+    # QA should be promoted to todo state
+    qa_todo = root / ".project" / "sessions" / "wip" / "s1" / "qa" / "todo" / f"{task_id}-qa.md"
+    assert done_path.exists(), f"Expected task at {done_path}"
+    assert qa_todo.exists(), f"Expected QA at {qa_todo}"
 
 
 def test_qa_bundle_outputs_manifest(tmp_path: Path):
@@ -224,21 +259,34 @@ def test_qa_bundle_outputs_manifest(tmp_path: Path):
 
 def test_qa_promote_moves_state(tmp_path: Path):
     root = make_project_root(tmp_path)
-    qa_waiting = root / ".project" / "qa" / "waiting" / "150-wave1-demo-qa.md"
-    qa_waiting.write_text("status: waiting\n")
+    qa_waiting_dir = root / ".project" / "qa" / "waiting"
+    qa_waiting_dir.mkdir(parents=True, exist_ok=True)
+    qa_waiting = qa_waiting_dir / "150-wave1-demo-qa.md"
+    qa_waiting.write_text("""---
+id: "150-wave1-demo-qa"
+task_id: "150-wave1-demo"
+title: "QA for 150-wave1-demo"
+state: "waiting"
+round: 1
+---
+
+# QA for 150-wave1-demo
+
+Validation scope
+""")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    run("qa", "promote", ["--task", "150-wave1-demo", "--to", "todo", "--json"], env)
+    run("qa", "promote", ["150-wave1-demo", "--status", "todo", "--json"], env)
     qa_todo = root / ".project" / "qa" / "todo" / "150-wave1-demo-qa.md"
     assert qa_todo.exists()
 
 
 def test_guidelines_audit_writes_evidence(tmp_path: Path):
     root = make_project_root(tmp_path)
-    # create a simple guideline file
-    gdir = root / ".edison" / "core" / "guidelines"
+    # create a project-level guideline file (NOT .edison/core/ - that is legacy)
+    gdir = root / ".edison" / "guidelines"
     gdir.mkdir(parents=True, exist_ok=True)
-    (gdir / "core.md").write_text("Core guideline text")
+    (gdir / "project-guideline.md").write_text("Project guideline text")
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)

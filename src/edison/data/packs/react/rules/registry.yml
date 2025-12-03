@@ -6,7 +6,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/react/guidelines/component-design.md
+    sourcePath: packs/react/guidelines/react/component-design.md
     guidance: "Favor composition over inheritance; extract pure presentational pieces."
 
   - id: RULE.REACT.SINGLE_RESPONSIBILITY
@@ -14,7 +14,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/component-design.md
+    sourcePath: packs/react/guidelines/react/component-design.md
     guidance: "Keep components small and focused; single responsibility per component."
 
   - id: RULE.REACT.SEMANTIC_HTML
@@ -22,7 +22,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/react/guidelines/component-design.md
+    sourcePath: packs/react/guidelines/react/component-design.md
     guidance: "Use semantic HTML and descriptive props; avoid boolean prop proliferation."
 
   - id: RULE.REACT.HOOKS_PATTERNS
@@ -30,7 +30,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/react/guidelines/hooks-patterns.md
+    sourcePath: packs/react/guidelines/react/hooks-patterns.md
     guidance: "Follow React hooks best practices and patterns."
 
   - id: RULE.REACT.RULES_OF_HOOKS
@@ -38,7 +38,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "Only call hooks at top level; no conditional hooks, hooks in loops, or in nested functions."
 
   - id: RULE.REACT.USE_HOOK
@@ -46,7 +46,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "Use the use() hook to unwrap promises in components; prefer over useEffect for data fetching."
 
   - id: RULE.REACT.USE_FORM_STATUS
@@ -54,7 +54,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "Use useFormStatus hook to track form submission state with server actions."
 
   - id: RULE.REACT.USE_OPTIMISTIC
@@ -62,7 +62,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "Use useOptimistic to provide immediate UI feedback while server actions complete."
 
   - id: RULE.REACT.SERVER_CLIENT_BOUNDARY
@@ -70,7 +70,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/server-client-components.md
+    sourcePath: packs/react/guidelines/react/server-client-components.md
     guidance: "Prefer Server Components by default; use Client Components only for interactivity, hooks, browser APIs."
 
   - id: RULE.REACT.SUSPENSE_BOUNDARIES
@@ -78,7 +78,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/server-client-components.md
+    sourcePath: packs/react/guidelines/react/server-client-components.md
     guidance: "Wrap async Server Components in Suspense with meaningful fallback UI; avoid loading states without fallback."
 
   - id: RULE.REACT.ACCESSIBILITY
@@ -86,7 +86,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/accessibility.md
+    sourcePath: packs/react/guidelines/react/accessibility.md
     guidance: "All components must meet accessibility standards (WCAG 2.1 AA minimum): semantic HTML, ARIA labels, keyboard navigation."
 
   - id: RULE.REACT.COLOCATE_TESTS
@@ -94,7 +94,7 @@ rules:
     category: testing
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/react/guidelines/component-design.md
+    sourcePath: packs/react/guidelines/react/component-design.md
     guidance: "Co-locate tests and stories with components when appropriate."
 
   - id: RULE.REACT.NO_USE_EFFECT_FETCHING
@@ -102,7 +102,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "In React 19, prefer Server Components or use() hook over useEffect for data fetching to improve performance."
 
   - id: RULE.REACT.MEMOIZATION_DELIBERATE
@@ -110,7 +110,7 @@ rules:
     category: performance
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/HOOKS.md
+    sourcePath: packs/react/guidelines/react/HOOKS.md
     guidance: "Use useMemo and useCallback deliberately for expensive operations; avoid premature optimization."
 
   - id: RULE.REACT.FORM_ACTIONS
@@ -118,5 +118,5 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/react/guidelines/server-client-components.md
+    sourcePath: packs/react/guidelines/react/server-client-components.md
     guidance: "Prefer Server Actions with form elements over client-side data fetching in React 19."

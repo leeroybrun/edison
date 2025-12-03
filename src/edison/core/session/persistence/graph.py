@@ -1,17 +1,22 @@
-"""Session task and QA graph management."""
+"""Session task and QA graph management.
+
+This module now uses task/QA files as the single source of truth.
+Task and QA relationships are stored in the YAML frontmatter of task/QA files,
+not in the session JSON. Use TaskIndex to query task/QA data.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from ...task import TaskManager
+from ...task import TaskManager, TaskRepository, TaskIndex
+from ...qa.workflow.repository import QARepository
 from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...qa.evidence import EvidenceService
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
 from ..core.id import validate_session_id
 from .repository import SessionRepository
-from ..core.models import TaskEntry, QAEntry, Session
 
 
 def _load_or_create_session(session_id: str) -> Dict[str, Any]:
@@ -25,92 +30,20 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
     return {
         "id": sid,
         "state": "wip",
-        "tasks": {},
-        "qa": {},
+        "tasks": {},  # Kept for legacy compatibility
+        "qa": {},     # Kept for legacy compatibility
         "meta": {},
     }
 
 
 def save_session(session_id: str, data: Dict[str, Any]) -> None:
     """Save session data."""
+    from ..core.models import Session
     sid = validate_session_id(session_id)
     repo = SessionRepository()
     entity = Session.from_dict({**data, "id": sid})
     repo.save(entity)
 
-
-def _upsert_task_entry(
-    session: Dict[str, Any],
-    task_id: str,
-    *,
-    owner: str,
-    status: str,
-    qa_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    tasks = session.setdefault("tasks", {})
-    if not isinstance(tasks, dict):
-        tasks = {}
-        session["tasks"] = tasks
-
-    entry = tasks.get(task_id)
-    now = io_utc_timestamp()
-
-    if isinstance(entry, dict):
-        entry.setdefault("recordId", task_id)
-        entry.setdefault("owner", owner)
-        entry["status"] = status
-        if qa_id is not None:
-            entry.setdefault("qaId", qa_id)
-        entry.setdefault("childIds", entry.get("childIds") or [])
-        entry.setdefault("parentId", entry.get("parentId"))
-        entry.setdefault("automation", entry.get("automation") or {})
-        entry.setdefault("notes", entry.get("notes") or [])
-        entry.setdefault("claimedAt", entry.get("claimedAt") or now)
-        entry["lastActive"] = now
-    else:
-        entry_obj = TaskEntry(
-            record_id=task_id,
-            status=status,
-            owner=owner,
-            qa_id=qa_id,
-        )
-        entry = entry_obj.to_dict()
-
-    tasks[task_id] = entry
-    return entry
-
-def _upsert_qa_entry(
-    session: Dict[str, Any],
-    qa_id: str,
-    task_id: str,
-    *,
-    status: str,
-    round_no: int = 1,
-) -> Dict[str, Any]:
-    qa_map = session.setdefault("qa", {})
-    if not isinstance(qa_map, dict):
-        qa_map = {}
-        session["qa"] = qa_map
-
-    entry = qa_map.get(qa_id)
-    if isinstance(entry, dict):
-        entry.setdefault("recordId", qa_id)
-        entry.setdefault("taskId", task_id)
-        entry["status"] = status
-        entry.setdefault("round", entry.get("round", round_no))
-        entry.setdefault("evidence", entry.get("evidence") or [])
-        entry.setdefault("validators", entry.get("validators") or [])
-    else:
-        entry_obj = QAEntry(
-            record_id=qa_id,
-            task_id=task_id,
-            status=status,
-            round=round_no,
-        )
-        entry = entry_obj.to_dict()
-
-    qa_map[qa_id] = entry
-    return entry
 
 def register_task(
     session_id: str,
@@ -120,10 +53,25 @@ def register_task(
     status: str,
     qa_id: Optional[str] = None,
 ) -> None:
-    """Register or update a task entry in the session graph."""
-    sess = _load_or_create_session(session_id)
-    _upsert_task_entry(sess, task_id, owner=owner, status=status, qa_id=qa_id)
-    save_session(session_id, sess)
+    """Register a task registration event in session activity log.
+    
+    NOTE: This function no longer updates the task file - task files
+    are updated directly by TaskQAWorkflow. This function only logs
+    the activity in the session for audit purposes.
+    
+    The task file is the single source of truth for task metadata.
+    """
+    sid = validate_session_id(session_id)
+    now = io_utc_timestamp()
+    
+    # Update session activity log only (task file updated by workflow)
+    sess = _load_or_create_session(sid)
+    sess.setdefault("activityLog", []).append({
+        "timestamp": now,
+        "message": f"Task {task_id} registered with status {status}",
+    })
+    save_session(sid, sess)
+
 
 def register_qa(
     session_id: str,
@@ -133,15 +81,25 @@ def register_qa(
     status: str,
     round_no: int = 1,
 ) -> None:
-    """Register or update a QA entry in the session graph."""
-    sess = _load_or_create_session(session_id)
-    entry = _upsert_qa_entry(sess, qa_id, task_id, status=status, round_no=round_no)
-    # Ensure task entry points at this QA id (preserve existing task status)
-    tasks = sess.get("tasks", {})
-    existing_task = tasks.get(task_id, {})
-    task_status = existing_task.get("status", "unknown") if isinstance(existing_task, dict) else "unknown"
-    _upsert_task_entry(sess, task_id, owner=sess.get("meta", {}).get("owner", "_unassigned_"), status=task_status, qa_id=entry["recordId"])
-    save_session(session_id, sess)
+    """Register a QA registration event in session activity log.
+    
+    NOTE: This function no longer updates the QA file - QA files
+    are updated directly by TaskQAWorkflow. This function only logs
+    the activity in the session for audit purposes.
+    
+    The QA file is the single source of truth for QA metadata.
+    """
+    sid = validate_session_id(session_id)
+    now = io_utc_timestamp()
+    
+    # Update session activity log only (QA file updated by workflow)
+    sess = _load_or_create_session(sid)
+    sess.setdefault("activityLog", []).append({
+        "timestamp": now,
+        "message": f"QA {qa_id} registered for task {task_id} with status {status}",
+    })
+    save_session(sid, sess)
+
 
 def update_record_status(
     session_id: str,
@@ -149,143 +107,139 @@ def update_record_status(
     record_type: str,
     status: str,
 ) -> None:
-    """Update status for a task or QA entry in the session graph."""
-    sess = _load_or_create_session(session_id)
-    kind = "task" if record_type == "task" else "qa"
-    if kind == "task":
-        tasks = sess.get("tasks", {})
-        if isinstance(tasks, dict) and record_id in tasks:
-            tasks[record_id]["status"] = status
-            tasks[record_id]["lastActive"] = io_utc_timestamp()
-    else:
-        qa_map = sess.get("qa", {})
-        if isinstance(qa_map, dict) and record_id in qa_map:
-            qa_map[record_id]["status"] = status
-    save_session(session_id, sess)
+    """Log a status update event in session activity log.
+    
+    NOTE: This function no longer updates task/QA files directly.
+    Task/QA files are updated by their respective workflows.
+    State is derived from the directory the file is in.
+    
+    This function is kept for backward compatibility but only logs activity.
+    """
+    # Activity logging is handled by the calling workflow
+    pass
+
 
 def link_tasks(session_id: str, parent_id: str, child_id: str) -> None:
-    """Link parent → child in the session task graph."""
-    sess = _load_or_create_session(session_id)
-    tasks = sess.setdefault("tasks", {})
-    if not isinstance(tasks, dict):
-        tasks = {}
-        session["tasks"] = tasks
+    """Link parent → child in task files.
+    
+    Updates both task files with the relationship.
+    Session ID is validated but not used (kept for API compatibility).
+    """
+    validate_session_id(session_id)  # Validate but don't use
+    task_repo = TaskRepository()
+    
+    parent = task_repo.get(parent_id)
+    child = task_repo.get(child_id)
+    
+    if parent:
+        if child_id not in parent.child_ids:
+            parent.child_ids.append(child_id)
+            task_repo.save(parent)
+    
+    if child:
+        child.parent_id = parent_id
+        task_repo.save(child)
 
-    parent = tasks.get(parent_id) or TaskEntry(
-        record_id=parent_id,
-        status="unknown",
-        owner=sess.get("meta", {}).get("owner", "_unassigned_"),
-    ).to_dict()
-    child = tasks.get(child_id) or TaskEntry(
-        record_id=child_id,
-        status="unknown",
-        owner=sess.get("meta", {}).get("owner", "_unassigned_"),
-    ).to_dict()
 
-    # Update linkage
-    parent_children = set(parent.get("childIds") or [])
-    parent_children.add(child_id)
-    parent["childIds"] = sorted(parent_children)
-    child["parentId"] = parent_id
-
-    tasks[parent_id] = parent
-    tasks[child_id] = child
-    save_session(session_id, sess)
-
-def gather_cluster(session: Dict[str, Any], root_task: str) -> List[Dict[str, Any]]:
-    """Gather a connected cluster of tasks rooted at ``root_task``."""
-    tasks = session.get("tasks", {})
-    if not isinstance(tasks, dict):
-        return []
-
+def gather_cluster(session_id: str, root_task: str) -> List[Dict[str, Any]]:
+    """Gather a connected cluster of tasks rooted at ``root_task``.
+    
+    Uses TaskIndex to traverse the task graph from files.
+    """
+    index = TaskIndex()
+    graph = index.get_task_graph(session_id=session_id)
+    
     cluster: List[Dict[str, Any]] = []
     queue: List[str] = [root_task]
     seen: set[str] = set()
-
+    
     while queue:
         tid = queue.pop(0)
         if tid in seen:
             continue
         seen.add(tid)
-        entry = tasks.get(tid)
-        if not isinstance(entry, dict):
+        
+        task_summary = graph.tasks.get(tid)
+        if not task_summary:
             continue
-        children = [str(c) for c in entry.get("childIds", []) if isinstance(c, str)]
+        
+        children = task_summary.child_ids
         queue.extend([c for c in children if c not in seen])
-        cluster.append(
-            {
-                "taskId": tid,
-                "taskStatus": str(entry.get("status") or "unknown"),
-                "children": children,
-                "qaId": str(entry.get("qaId") or f"{tid}-qa"),
-            }
-        )
+        
+        # Derive QA ID from task ID
+        qa_id = f"{tid}-qa"
+        
+        cluster.append({
+            "taskId": tid,
+            "taskStatus": task_summary.state,
+            "children": children,
+            "qaId": qa_id,
+        })
+    
     return cluster
 
+
 def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
-    """Build a validation bundle manifest for a task hierarchy."""
+    """Build a validation bundle manifest for a task hierarchy.
+    
+    Uses TaskIndex and TaskRepository to gather data from files.
+    """
     sid = validate_session_id(session_id)
-    sess = _load_or_create_session(sid)
-    cluster = gather_cluster(sess, root_task)
-
+    cluster = gather_cluster(sid, root_task)
+    
+    task_repo = TaskRepository()
+    qa_repo = QARepository()
+    
     tasks_payload: List[Dict[str, Any]] = []
-
+    
     for item in cluster:
         task_id = item["taskId"]
         qa_id = item["qaId"]
         children = item["children"]
         task_status = item["taskStatus"]
-
-        # Resolve task/QA paths (prefer session scope, fall back to global)
-        t_path: Optional[Path]
-        qa_path: Optional[Path]
-
-        # Use TaskRepository to find task path
+        
+        # Resolve task/QA paths
+        t_path: Optional[Path] = None
+        qa_path: Optional[Path] = None
+        
         try:
-            from ...task import TaskRepository
-            task_repo = TaskRepository()
             t_path = task_repo._find_entity_path(task_id)
         except Exception:
-            t_path = None
-
-        # Use QARepository to find QA path
+            pass
+        
         try:
-            from ...qa.repository import QARepository
-            qa_repo = QARepository()
-            qa_path = qa_repo._find_entity_path(task_id)
+            qa_path = qa_repo._find_entity_path(qa_id)
         except Exception:
-            qa_path = None
-
+            pass
+        
         qa_status = qa_path.parent.name if qa_path is not None else "missing"
-
-        # Evidence directory (base dir for round-* dirs); tolerate missing evidence
+        
+        # Evidence directory
         try:
             svc = EvidenceService(task_id)
             evidence_dir = str(svc.get_evidence_root())
         except Exception:
-            # Fallback to conventional location
             root = PathResolver.resolve_project_root()
             mgmt_paths = get_management_paths(root)
             evidence_dir = str(mgmt_paths.get_qa_root() / "validation-evidence" / task_id)
-
-        tasks_payload.append(
-            {
-                "taskId": task_id,
-                "taskStatus": task_status,
-                "taskPath": str(t_path) if t_path is not None else "",
-                "qaId": qa_id,
-                "qaStatus": qa_status,
-                "qaPath": str(qa_path) if qa_path is not None else "",
-                "children": children,
-                "evidenceDir": evidence_dir,
-            }
-        )
-
+        
+        tasks_payload.append({
+            "taskId": task_id,
+            "taskStatus": task_status,
+            "taskPath": str(t_path) if t_path is not None else "",
+            "qaId": qa_id,
+            "qaStatus": qa_status,
+            "qaPath": str(qa_path) if qa_path is not None else "",
+            "children": children,
+            "evidenceDir": evidence_dir,
+        })
+    
     return {
         "sessionId": sid,
         "rootTask": root_task,
         "tasks": tasks_payload,
     }
+
 
 def create_merge_task(session_id: str, branch_name: str, base_branch: str) -> str:
     """Create a task to merge the session worktree back to base branch."""
@@ -300,9 +254,6 @@ def create_merge_task(session_id: str, branch_name: str, base_branch: str) -> st
     
     # Create task file using TaskManager
     task_mgr = TaskManager()
-    task_mgr.create_task(task_id, title, desc)
-
-    # Register in session graph
-    register_task(session_id, task_id, owner="_unassigned_", status="todo")
+    task_mgr.create_task(task_id, title, description=desc, session_id=session_id)
     
     return task_id

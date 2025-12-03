@@ -2,11 +2,15 @@
 
 Consolidates markdown parsing logic for extracting structured data from
 task and QA markdown files.
+
+NOTE: All task/QA files use YAML frontmatter format (not HTML comments).
 """
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
 def parse_task_metadata(content: str, task_id: str, state: Optional[str] = None) -> Dict[str, Any]:
@@ -20,6 +24,16 @@ def parse_task_metadata(content: str, task_id: str, state: Optional[str] = None)
     Returns:
         Dict with parsed metadata fields
     """
+    # Try YAML frontmatter first
+    doc = parse_frontmatter(content)
+    if doc.frontmatter:
+        metadata = dict(doc.frontmatter)
+        metadata["id"] = metadata.get("id", task_id)
+        if state is not None:
+            metadata["state"] = state
+        return metadata
+
+    # Fallback for legacy format (shouldn't happen with new code)
     metadata: Dict[str, Any] = {"id": task_id}
     if state is not None:
         metadata["state"] = state
@@ -49,6 +63,16 @@ def parse_qa_metadata(content: str, qa_id: str, state: Optional[str] = None) -> 
     Returns:
         Dict with parsed metadata fields
     """
+    # Try YAML frontmatter first
+    doc = parse_frontmatter(content)
+    if doc.frontmatter:
+        metadata = dict(doc.frontmatter)
+        metadata["id"] = metadata.get("id", qa_id)
+        if state is not None:
+            metadata["state"] = state
+        return metadata
+
+    # Fallback for legacy format (shouldn't happen with new code)
     metadata: Dict[str, Any] = {"id": qa_id}
     if state is not None:
         metadata["state"] = state
@@ -94,7 +118,7 @@ def create_task_file(
     state: str = "todo",
     session_id: str | None = None,
 ) -> Path:
-    """Create a markdown task file.
+    """Create a markdown task file with YAML frontmatter.
 
     Args:
         path: Where to create the file
@@ -107,14 +131,18 @@ def create_task_file(
         Path to created file
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [
-        f"<!-- Status: {state} -->",
-        f"# {title}",
-        f"Task ID: {task_id}",
-    ]
+
+    frontmatter_data: Dict[str, Any] = {
+        "id": task_id,
+        "title": title,
+    }
     if session_id:
-        lines.append(f"Session: {session_id}")
-    path.write_text("\n".join(lines), encoding="utf-8")
+        frontmatter_data["session_id"] = session_id
+
+    content = format_frontmatter(frontmatter_data)
+    content += f"\n# {title}\n\nTask description here.\n"
+
+    path.write_text(content, encoding="utf-8")
     return path
 
 
@@ -124,8 +152,9 @@ def create_qa_file(
     title: str = "Test QA",
     state: str = "pending",
     validator: str = "test-validator",
+    task_id: str | None = None,
 ) -> Path:
-    """Create a markdown QA file.
+    """Create a markdown QA file with YAML frontmatter.
 
     Args:
         path: Where to create the file
@@ -133,18 +162,25 @@ def create_qa_file(
         title: QA title
         state: QA state
         validator: Validator owner
+        task_id: Associated task ID
 
     Returns:
         Path to created file
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [
-        f"<!-- Status: {state} -->",
-        f"# {title}",
-        f"QA ID: {qa_id}",
-        f"Validator: {validator}",
-    ]
-    path.write_text("\n".join(lines), encoding="utf-8")
+
+    frontmatter_data: Dict[str, Any] = {
+        "id": qa_id,
+        "title": title,
+        "validator_owner": validator,
+    }
+    if task_id:
+        frontmatter_data["task_id"] = task_id
+
+    content = format_frontmatter(frontmatter_data)
+    content += f"\n# {title}\n\nQA description here.\n"
+
+    path.write_text(content, encoding="utf-8")
     return path
 
 
@@ -155,7 +191,7 @@ def create_markdown_task(
     state: str | None = None,
     session_id: str | None = None,
 ) -> None:
-    """Create a raw markdown task file for testing.
+    """Create a raw markdown task file for testing with YAML frontmatter.
 
     This helper creates task files directly as markdown, bypassing the repository layer.
     Used for testing task discovery and parsing logic.
@@ -171,6 +207,7 @@ def create_markdown_task(
         - Creates parent directories if they don't exist
         - If state is not provided, uses path.parent.name as the state
         - This matches the filesystem convention where tasks are in state-named directories
+        - Uses YAML frontmatter format (not HTML comments)
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -178,10 +215,14 @@ def create_markdown_task(
     if state is None:
         state = path.parent.name
 
-    content = [f"<!-- Status: {state} -->"]
+    frontmatter_data: Dict[str, Any] = {
+        "id": task_id,
+        "title": title,
+    }
     if session_id:
-        content.append(f"<!-- Session: {session_id} -->")
+        frontmatter_data["session_id"] = session_id
 
-    content.extend(["", f"# {title}", "", "Task description here."])
+    content = format_frontmatter(frontmatter_data)
+    content += f"\n# {title}\n\nTask description here.\n"
 
-    path.write_text("\n".join(content), encoding="utf-8")
+    path.write_text(content, encoding="utf-8")

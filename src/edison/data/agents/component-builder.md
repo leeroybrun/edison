@@ -87,7 +87,8 @@ await mcp__context7__get_library_docs({
 
 - Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{SECTION:Tools}}
+<!-- SECTION: tools -->
+<!-- /SECTION: tools -->
 
 ## Guidelines
 - Apply TDD; write component tests first and include evidence in the implementation report.
@@ -95,14 +96,16 @@ await mcp__context7__get_library_docs({
 - Deliver accessible, responsive components that match the design system; prefer semantic HTML and strong typing.
 - Keep error handling and state management predictable; document behaviours in the report.
 
-{{SECTION:Guidelines}}
+<!-- SECTION: guidelines -->
+<!-- /SECTION: guidelines -->
 
 ## Architecture
-{{SECTION:Architecture}}
+<!-- SECTION: architecture -->
+<!-- /SECTION: architecture -->
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: composed-additions -->
 
-{{APPEND_SECTIONS}}
+<!-- /SECTION: composed-additions -->
 
 ## IMPORTANT RULES
 - **Design-system fidelity:** Use tokens/layout rules from config; no hardcoded colors/spacings; keep props typed and minimal.
@@ -435,7 +438,7 @@ Otherwise: **Build it fully and return complete results.**
 
 | Guide | When to Use | Why Critical |
 |-------|-------------|--------------|
-| `.edison/_generated/guidelines/TDD.md` | Every implementation | RED-GREEN-REFACTOR workflow |
-| `.edison/_generated/guidelines/DELEGATION.md` | Every task start | Delegation decisions |
-| `.edison/_generated/guidelines/VALIDATION.md` | Before completion | Multi-validator approval |
+| `.edison/_generated/guidelines/shared/TDD.md` | Every implementation | RED-GREEN-REFACTOR workflow |
+| `.edison/_generated/guidelines/shared/DELEGATION.md` | Every task start | Delegation decisions |
+| `.edison/_generated/guidelines/shared/VALIDATION.md` | Before completion | Multi-validator approval |
 | Project DESIGN.md | UI components | Design system tokens |

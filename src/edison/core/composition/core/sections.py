@@ -1,30 +1,32 @@
 """Section parsing and registry for layered composition.
 
-HTML comment syntax for overlays:
-- <!-- EXTEND: SectionName --> content <!-- /EXTEND -->
-- <!-- NEW_SECTION: SectionName --> content <!-- /NEW_SECTION -->
-- <!-- APPEND --> content <!-- /APPEND -->
+Unified section system with two core patterns:
+- <!-- SECTION: name --> content <!-- /SECTION: name -->  (Define section)
+- <!-- EXTEND: name --> content <!-- /EXTEND -->  (Extend existing section)
+
+Convention: `composed-additions` section for pack/project new content.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .errors import CompositionValidationError
 
 
 class SectionMode(Enum):
     """Mode for section handling in overlays."""
-    EXTEND = "extend"       # Extend existing known/extensible section
-    NEW_SECTION = "new"     # Define new extensible section
-    APPEND = "append"       # Append to catch-all section
+
+    SECTION = "section"  # Define a named section (extensible + extractable)
+    EXTEND = "extend"  # Extend an existing section
 
 
 @dataclass
 class ParsedSection:
-    """A parsed section from an overlay file."""
+    """A parsed section from a content file."""
+
     name: str
     mode: SectionMode
     content: str
@@ -34,144 +36,193 @@ class ParsedSection:
 @dataclass
 class SectionRegistry:
     """Registry managing sections across composition layers.
-    
+
     Tracks:
-    - known_sections: Core-defined sections (can be extended)
-    - extensible_sections: Pack/project-defined sections (can be extended by later layers)
-    - append_sections: Catch-all content
+    - sections: Named sections that can be extended and extracted
+    - extensions: Content to be added to existing sections
     """
-    known_sections: Dict[str, List[str]] = field(default_factory=dict)
-    extensible_sections: Dict[str, List[str]] = field(default_factory=dict)
-    append_sections: List[str] = field(default_factory=list)
-    
+
+    sections: Dict[str, List[str]] = field(default_factory=dict)
+    extensions: Dict[str, List[str]] = field(default_factory=dict)
+
+    def add_section(self, name: str, content: str) -> None:
+        """Define or add to a named section."""
+        if name not in self.sections:
+            self.sections[name] = []
+        self.sections[name].append(content)
+
     def add_extension(self, name: str, content: str) -> None:
-        """Extend a known or extensible section."""
-        if name in self.known_sections:
-            self.known_sections[name].append(content)
-        elif name in self.extensible_sections:
-            self.extensible_sections[name].append(content)
-        else:
-            available_known = sorted(self.known_sections.keys())
-            available_extensible = sorted(self.extensible_sections.keys())
-            raise CompositionValidationError(
-                f"Cannot extend section '{name}' - not a known or extensible section.\n"
-                f"Known sections: {available_known}\n"
-                f"Extensible sections: {available_extensible}\n"
-                f"Use NEW_SECTION to define a new extensible section, "
-                f"or APPEND for catch-all content."
-            )
-    
-    def add_new_section(self, name: str, content: str) -> None:
-        """Define a new extensible section (can be extended by later layers)."""
-        if name in self.known_sections:
-            raise CompositionValidationError(
-                f"Cannot create new section '{name}' - already a known section in core.\n"
-                f"Use EXTEND to add to it instead."
-            )
-        if name not in self.extensible_sections:
-            self.extensible_sections[name] = []
-        self.extensible_sections[name].append(content)
-    
-    def add_append(self, content: str) -> None:
-        """Add catch-all content."""
-        self.append_sections.append(content)
+        """Add extension content for a section.
+
+        Extensions are merged into sections during composition.
+        """
+        if name not in self.extensions:
+            self.extensions[name] = []
+        self.extensions[name].append(content)
+
+    def get_section_content(self, name: str) -> str:
+        """Get composed content for a section (base + extensions)."""
+        base_content = "\n\n".join(self.sections.get(name, []))
+        ext_content = "\n\n".join(self.extensions.get(name, []))
+
+        if base_content and ext_content:
+            return f"{base_content}\n{ext_content}"
+        return base_content or ext_content
 
 
 class SectionParser:
-    """Parse HTML comment markers in overlay files.
-    
+    """Parse HTML comment markers in content files.
+
     Supported markers:
-    - <!-- EXTEND: SectionName --> content <!-- /EXTEND -->
-    - <!-- NEW_SECTION: SectionName --> content <!-- /NEW_SECTION -->
-    - <!-- APPEND --> content <!-- /APPEND -->
+    - <!-- SECTION: name --> content <!-- /SECTION: name -->
+    - <!-- EXTEND: name --> content <!-- /EXTEND -->
     """
-    
+
+    # Pattern for section definitions
+    SECTION_PATTERN = re.compile(
+        r"<!--\s*SECTION:\s*([\w-]+)\s*-->(.*?)<!--\s*/SECTION:\s*\1\s*-->",
+        re.DOTALL | re.IGNORECASE,
+    )
+
+    # Pattern for section extensions
     EXTEND_PATTERN = re.compile(
-        r'<!--\s*EXTEND:\s*(\w+)\s*-->\s*(.*?)\s*<!--\s*/EXTEND\s*-->',
-        re.DOTALL | re.IGNORECASE
+        r"<!--\s*EXTEND:\s*([\w-]+)\s*-->(.*?)<!--\s*/EXTEND\s*-->",
+        re.DOTALL | re.IGNORECASE,
     )
-    NEW_SECTION_PATTERN = re.compile(
-        r'<!--\s*NEW_SECTION:\s*(\w+)\s*-->\s*(.*?)\s*<!--\s*/NEW_SECTION\s*-->',
-        re.DOTALL | re.IGNORECASE
-    )
-    APPEND_PATTERN = re.compile(
-        r'<!--\s*APPEND\s*-->\s*(.*?)\s*<!--\s*/APPEND\s*-->',
-        re.DOTALL | re.IGNORECASE
-    )
-    
+
     def parse(self, content: str, layer: str = "unknown") -> List[ParsedSection]:
-        """Parse overlay content into structured sections."""
+        """Parse content into structured sections."""
         sections: List[ParsedSection] = []
-        
+
+        # Parse SECTION definitions
+        for match in self.SECTION_PATTERN.finditer(content):
+            sections.append(
+                ParsedSection(
+                    name=match.group(1),
+                    mode=SectionMode.SECTION,
+                    content=match.group(2).strip(),
+                    source_layer=layer,
+                )
+            )
+
         # Parse EXTEND sections
         for match in self.EXTEND_PATTERN.finditer(content):
-            sections.append(ParsedSection(
-                name=match.group(1),
-                mode=SectionMode.EXTEND,
-                content=match.group(2).strip(),
-                source_layer=layer,
-            ))
-        
-        # Parse NEW_SECTION
-        for match in self.NEW_SECTION_PATTERN.finditer(content):
-            sections.append(ParsedSection(
-                name=match.group(1),
-                mode=SectionMode.NEW_SECTION,
-                content=match.group(2).strip(),
-                source_layer=layer,
-            ))
-        
-        # Parse APPEND
-        for match in self.APPEND_PATTERN.finditer(content):
-            sections.append(ParsedSection(
-                name="_append",
-                mode=SectionMode.APPEND,
-                content=match.group(1).strip(),
-                source_layer=layer,
-            ))
-        
+            sections.append(
+                ParsedSection(
+                    name=match.group(1),
+                    mode=SectionMode.EXTEND,
+                    content=match.group(2).strip(),
+                    source_layer=layer,
+                )
+            )
+
         return sections
 
+    def parse_sections(self, content: str) -> Dict[str, str]:
+        """Parse and return a dict of section name -> content."""
+        result: Dict[str, str] = {}
+        for match in self.SECTION_PATTERN.finditer(content):
+            result[match.group(1)] = match.group(2).strip()
+        return result
 
-class SectionComposer:
-    """Compose final output from template and section registry."""
-    
-    # Pattern for section placeholders: {{SECTION:Name}}
-    SECTION_PLACEHOLDER = re.compile(r'\{\{SECTION:(\w+)\}\}')
-    
-    def compose(self, template: str, registry: SectionRegistry) -> str:
-        """Render final output by substituting sections into template."""
-        result = template
-        
-        # 1. Replace known section placeholders
-        for name, chunks in registry.known_sections.items():
-            placeholder = f"{{{{SECTION:{name}}}}}"
-            content = "\n\n".join(c for c in chunks if c)
-            result = result.replace(placeholder, content)
-        
-        # 2. Build extensible sections block
-        extensible_parts: List[str] = []
-        for name, chunks in registry.extensible_sections.items():
-            section_content = "\n\n".join(c for c in chunks if c)
-            if section_content:
-                extensible_parts.append(section_content)
-        extensible_block = "\n\n".join(extensible_parts)
-        result = result.replace("{{EXTENSIBLE_SECTIONS}}", extensible_block)
-        
-        # 3. Build append sections block
-        append_block = "\n\n".join(c for c in registry.append_sections if c)
-        result = result.replace("{{APPEND_SECTIONS}}", append_block)
-        
-        # 4. Clean up empty/unused placeholders
-        result = self.SECTION_PLACEHOLDER.sub('', result)
-        result = result.replace("{{EXTENSIBLE_SECTIONS}}", "")
-        result = result.replace("{{APPEND_SECTIONS}}", "")
-        
-        # 5. Clean up excessive blank lines (max 2 consecutive)
-        result = re.sub(r'\n{3,}', '\n\n', result)
-        
+    def parse_extensions(self, content: str) -> Dict[str, List[str]]:
+        """Parse and return a dict of section name -> list of extension content."""
+        result: Dict[str, List[str]] = {}
+        for match in self.EXTEND_PATTERN.finditer(content):
+            name = match.group(1)
+            if name not in result:
+                result[name] = []
+            result[name].append(match.group(2).strip())
+        return result
+
+    def extract_section(self, content: str, section_name: str) -> Optional[str]:
+        """Extract a specific section's content from composed content.
+
+        Args:
+            content: Content containing section markers
+            section_name: Name of the section to extract
+
+        Returns:
+            Section content or None if not found
+        """
+        pattern = re.compile(
+            rf"<!--\s*SECTION:\s*{re.escape(section_name)}\s*-->(.*?)<!--\s*/SECTION:\s*{re.escape(section_name)}\s*-->",
+            re.DOTALL | re.IGNORECASE,
+        )
+        match = pattern.search(content)
+        if match:
+            return match.group(1).strip()
+        return None
+
+    def merge_extensions(
+        self,
+        content: str,
+        extensions: Dict[str, List[str]],
+    ) -> str:
+        """Merge EXTEND content into SECTION regions.
+
+        Args:
+            content: Base content with SECTION markers
+            extensions: Dict mapping section names to list of extension content
+
+        Returns:
+            Content with extensions merged into sections
+        """
+
+        def replacer(match: re.Match[str]) -> str:
+            section_name = match.group(1)
+            section_content = match.group(2)
+
+            if section_name in extensions:
+                # Append extension content before closing marker
+                extended = section_content.rstrip()
+                for ext in extensions[section_name]:
+                    if ext:  # Skip empty extensions
+                        extended += "\n" + ext
+                return f"<!-- SECTION: {section_name} -->{extended}\n<!-- /SECTION: {section_name} -->"
+
+            return match.group(0)
+
+        return self.SECTION_PATTERN.sub(replacer, content)
+
+    def strip_markers(self, content: str) -> str:
+        """Remove all section markers from content, keeping only the content.
+
+        Useful for final output where markers should not be visible.
+        """
+        # Replace SECTION markers, keeping inner content
+        result = self.SECTION_PATTERN.sub(r"\2", content)
+        # Replace EXTEND markers, keeping inner content
+        result = self.EXTEND_PATTERN.sub(r"\2", result)
+        # Clean up excessive blank lines
+        result = re.sub(r"\n{3,}", "\n\n", result)
         return result.strip()
 
 
+class SectionComposer:
+    """Compose final output from template and section registry.
 
+    Note: This class is being deprecated in favor of TemplateEngine.
+    Kept for backward compatibility during migration.
+    """
 
+    def compose(self, template: str, registry: SectionRegistry) -> str:
+        """Render final output by composing sections."""
+        result = template
+
+        # Replace section content
+        for name, chunks in registry.sections.items():
+            # Include extensions
+            all_chunks = chunks + registry.extensions.get(name, [])
+            content = "\n\n".join(c for c in all_chunks if c)
+            # Replace section marker with composed content
+            pattern = re.compile(
+                rf"<!--\s*SECTION:\s*{re.escape(name)}\s*-->(.*?)<!--\s*/SECTION:\s*{re.escape(name)}\s*-->",
+                re.DOTALL,
+            )
+            result = pattern.sub(content, result)
+
+        # Clean up excessive blank lines
+        result = re.sub(r"\n{3,}", "\n\n", result)
+
+        return result.strip()

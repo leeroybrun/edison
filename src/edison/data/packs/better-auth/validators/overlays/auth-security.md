@@ -1,4 +1,4 @@
-<!-- APPEND -->
+<!-- EXTEND: composed-additions -->
 # Better Auth Security Validation - Overlay
 
 Security validation rules for Better Auth implementations to ensure safe authentication and authorization practices.
@@ -56,4 +56,4 @@ Security validation rules for Better Auth implementations to ensure safe authent
 - [ ] User roles/permissions properly checked
 - [ ] Resource ownership verified before access
 - [ ] Authorization logic centralized and tested
-<!-- /APPEND -->
+<!-- /EXTEND -->

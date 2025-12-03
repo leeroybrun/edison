@@ -12,6 +12,7 @@ from typing import List, Optional, Set, Tuple
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.io import write_json_atomic, read_json, ensure_directory
 from edison.core.config.manager import ConfigManager
+from edison.core.composition.output.writer import CompositionFileWriter
 
 from edison.core.utils.paths import get_project_config_dir
 from ..utils.text import ENGINE_VERSION
@@ -218,7 +219,11 @@ def _cache_dir() -> Path:
 def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: str) -> Path:
     out_dir = ensure_directory(_cache_dir())
     out_path = out_dir / f"{validator_id}.md"
-    out_path.write_text(text, encoding="utf-8")
+
+    # Use CompositionFileWriter for unified file writing
+    writer = CompositionFileWriter(base_dir=_repo_root())
+    writer.write_text(out_path, text)
+
     # Write manifest entry per artifact for traceability
     manifest_path = out_dir / "manifest.json"
     try:

@@ -59,6 +59,7 @@ class OrchestratorLauncher:
         profile_name: str,
         initial_prompt: Optional[str] = None,
         log_path: Optional[Path] = None,
+        detach: bool = False,
     ) -> subprocess.Popen:
         """
         Launch orchestrator with given profile.
@@ -66,6 +67,9 @@ class OrchestratorLauncher:
         Args:
             profile_name: Name of orchestrator profile from config
             initial_prompt: Optional initial prompt text to deliver
+            log_path: Optional path for log file (used in detached mode)
+            detach: If False, run interactively connected to terminal.
+                    If True (default), run in background with log file.
 
         Returns:
             subprocess.Popen object for the launched orchestrator
@@ -78,7 +82,8 @@ class OrchestratorLauncher:
 
         tokens = self._build_tokens()
         log_file = None
-        if log_path:
+        # Only use log file in detached mode
+        if detach and log_path:
             ensure_directory(log_path.parent)
             log_file = log_path.open("a", encoding="utf-8")
             log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
@@ -142,7 +147,10 @@ class OrchestratorLauncher:
                     "Initial prompt enabled but no prompt provided via argument or path"
                 )
 
-        stdin_pipe = subprocess.PIPE if prompt_method == "stdin" and prompt_text is not None else None
+        # Determine stdin handling based on prompt delivery method
+        stdin_pipe: Optional[int] = None
+        if prompt_method == "stdin" and prompt_text is not None:
+            stdin_pipe = subprocess.PIPE
 
         try:
             if prompt_text is not None:
@@ -168,13 +176,29 @@ class OrchestratorLauncher:
                 else:
                     raise OrchestratorConfigError(f"Unsupported prompt method '{prompt_method}'")
 
+            # Configure stdio based on detach mode
+            if detach:
+                # Background mode: redirect stdout to log file, use DEVNULL for stdin
+                # to prevent blocking on stdin reads
+                stdout_target = log_file or None
+                stderr_target = subprocess.STDOUT if log_file else None
+                # For background mode without prompt, use DEVNULL to prevent stdin blocking
+                if stdin_pipe is None:
+                    stdin_pipe = subprocess.DEVNULL
+            else:
+                # Interactive mode: inherit terminal stdio (no redirection)
+                stdout_target = None
+                stderr_target = None
+                # For interactive mode without prompt via stdin, inherit stdin from terminal
+                # (stdin_pipe stays None to inherit)
+
             process = subprocess.Popen(
                 [resolved_command, *args_list],
                 cwd=str(cwd_path) if cwd_path else None,
                 env=env,
                 stdin=stdin_pipe,
-                stdout=log_file or None,
-                stderr=subprocess.STDOUT if log_file else None,
+                stdout=stdout_target,
+                stderr=stderr_target,
                 text=True,
             )
 

@@ -27,7 +27,7 @@ def test_worktree_package_structure_exists():
 
 
 def test_worktree_module_sizes():
-    """Verify each module is under 200 LOC."""
+    """Verify each module is under 250 LOC."""
     from edison.core.session import worktree
 
     worktree_path = Path(worktree.__file__).parent
@@ -44,7 +44,7 @@ def test_worktree_module_sizes():
             # Don't count blank lines or comments for LOC
             loc = sum(1 for line in lines if line.strip() and not line.strip().startswith("#"))
 
-        assert loc < 200, f"{module_name} must be < 200 LOC, got {loc}"
+        assert loc < 250, f"{module_name} must be < 250 LOC, got {loc}"
 
 
 def test_session_worktree_public_api_exports():

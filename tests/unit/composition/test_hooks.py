@@ -286,11 +286,15 @@ def test_generate_settings_json_section(tmp_path: Path) -> None:
     found_inject = False
     for entry in hooks_section["UserPromptSubmit"]:
         for h in entry.get("hooks", []):
-            if h.get("prompt", "").endswith(".claude/hooks/custom-inject.sh"):
+            # According to Edison's hook design (lines 120-125 in hooks.py),
+            # shell scripts always use type: "command", not type: "prompt"
+            # The hook_type: "prompt" was for stdout injection, but Claude Code
+            # handles that automatically for UserPromptSubmit command hooks
+            if h.get("command", "").endswith(".claude/hooks/custom-inject.sh"):
                 found_inject = True
-                assert h["type"] == "prompt"
+                assert h["type"] == "command"
                 break
-    assert found_inject, "custom-inject hook not found in settings"
+    assert found_inject, f"custom-inject hook not found in settings. UserPromptSubmit section: {hooks_section.get('UserPromptSubmit', [])}"
 
 def test_hook_types_validation(tmp_path: Path) -> None:
     defs: Dict[str, Dict[str, Any]] = {}

@@ -284,7 +284,7 @@ class SessionManager:
 
         Args:
             session_id: Optional session ID (auto-generated if not provided)
-            metadata: Additional metadata
+            metadata: Additional metadata (autoStarted, orchestratorProfile, etc.)
             owner: Session owner
 
         Returns:
@@ -297,15 +297,20 @@ class SessionManager:
         # Update metadata for downstream consumers
         session = self._repo.get(sid)
         if session:
-            meta = session.to_dict().get("meta", {})
+            # Merge provided metadata into session's meta_extra
+            if metadata:
+                session.meta_extra.update(metadata)
+            
+            # Add naming strategy if configured
             strategy_used = self._config.get_naming_config().get("strategy")
             if strategy_used:
-                meta["namingStrategy"] = strategy_used
+                session.meta_extra["namingStrategy"] = strategy_used
+            
+            # Add orchestrator profile if owner provided
             if owner:
-                meta["orchestratorProfile"] = owner
-            session_dict = session.to_dict()
-            session_dict["meta"] = meta
-            self._repo.save(Session.from_dict(session_dict))
+                session.meta_extra["orchestratorProfile"] = owner
+            
+            self._repo.save(session)
         return path
 
     def get_session(self, session_id: str) -> Dict[str, Any]:

@@ -27,42 +27,13 @@ Active packs define which frameworks require Context7 refresh. Check `.edison/_g
 
 ### The Context7 Workflow Pattern
 
-**BEFORE implementing ANYTHING**, follow this workflow:
+**Quick Reference**: See `.edison/_generated/guidelines/shared/CONTEXT7.md` for the condensed 2-step workflow with code examples.
 
-#### Step 1: Identify Framework from Active Packs
-```pseudocode
-// Check .edison/_generated/constitutions/ORCHESTRATORS.md for active packs
-// Example: if 'web-framework' pack is active, identify its main framework
-framework_name = get_framework_from_active_pack()
-```
-
-#### Step 2: Resolve Library ID
-```pseudocode
-// Use Context7 MCP to resolve the framework name to a Context7-compatible ID
-library_id = mcp__context7__resolve_library_id({
-  libraryName: framework_name  // e.g., framework from pack
-})
-// Returns: Context7-compatible ID (e.g., '/org/project' or '/org/project/version')
-```
-
-#### Step 3: Query Documentation
-```pseudocode
-// Query for specific implementation patterns
-documentation = mcp__context7__get_library_docs({
-  context7CompatibleLibraryID: library_id,
-  topic: 'your_specific_topic',  // Be specific to your implementation need
-  mode: 'code',  // 'code' for API refs/examples, 'info' for conceptual guides
-  page: 1  // Optional pagination (1-10)
-})
-// Returns: Current documentation and examples
-```
-
-#### Step 4: Implement Using Current Patterns
-```pseudocode
-// Use patterns from Context7 docs, not training data memory
-// Implement based on queried documentation
-// Document which queries informed your implementation
-```
+**BEFORE implementing ANYTHING**, follow this pattern:
+1. Identify framework from active packs (check `.edison/_generated/constitutions/ORCHESTRATORS.md`)
+2. Resolve library ID using `mcp__context7__resolve_library_id`
+3. Query documentation using `mcp__context7__get_library_docs`
+4. Implement using current patterns from queried docs (not training data memory)
 
 ### Query Topics by Agent Type
 
@@ -227,22 +198,9 @@ When providing implementation, document Context7 queries:
 
 ## MCP Tool Interface
 
-Context7 is accessed via MCP tools (not CLI commands):
+Context7 is accessed via MCP tools (not CLI commands).
 
-```pseudocode
-// Step 1: Resolve library ID from framework name
-library_id = mcp__context7__resolve_library_id({
-  libraryName: framework_name_from_pack
-})
-
-// Step 2: Query documentation for specific topic
-documentation = mcp__context7__get_library_docs({
-  context7CompatibleLibraryID: library_id,
-  topic: specific_implementation_topic,
-  mode: 'code',  // or 'info' for conceptual guides
-  page: 1  // optional pagination (1-10)
-})
-```
+**See `.edison/_generated/guidelines/shared/CONTEXT7.md` for complete workflow code examples.**
 
 **Key Points**:
 - These are MCP function calls, not bash/shell commands
@@ -253,9 +211,7 @@ documentation = mcp__context7__get_library_docs({
 
 ## References
 
-- Context7 usage guide: `.edison/_generated/guidelines/CONTEXT7.md`
-- Extended patterns: `.edison/_generated/guidelines/shared/CONTEXT7.md`
-- Tech stack reference: `.edison/_generated/guidelines/TECH_STACK.md`
+- Context7 usage guide: `.edison/_generated/guidelines/shared/CONTEXT7.md`
 
 ---
 

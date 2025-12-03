@@ -316,22 +316,20 @@ This constitution contains:
     
     @staticmethod
     def _read_front_matter(path: Path) -> Dict[str, Any]:
-        """Extract YAML front matter from an agent file."""
+        """Extract YAML front matter from an agent file.
+        
+        Uses the shared parse_frontmatter utility for consistency.
+        """
+        from edison.core.utils.text import parse_frontmatter
+        
         try:
             text = path.read_text(encoding="utf-8")
+            # Handle BOM if present
+            text = text.lstrip("\ufeff")
+            doc = parse_frontmatter(text)
+            return doc.frontmatter
         except Exception:
             return {}
-
-        cleaned = text.lstrip("\ufeff")
-        if not cleaned.startswith("---"):
-            return {}
-
-        parts = cleaned.split("---", 2)
-        if len(parts) < 3:
-            return {}
-
-        data = parse_yaml_string(parts[1], default={})
-        return data if isinstance(data, dict) else {}
 
     def get_all(self) -> List[CoreAgent]:
         """Return all core agents.

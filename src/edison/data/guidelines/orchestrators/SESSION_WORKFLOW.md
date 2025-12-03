@@ -71,9 +71,10 @@ Session state names map to on-disk directories as follows:
 ## Context Budget (token minimization)
 
 <!-- RULE: RULE.CONTEXT.BUDGET_MINIMIZE START -->
-<!-- ANCHOR: context-budget -->
+<!-- SECTION: context-budget -->
 Keep orchestrator context under roughly 50K tokens by default. Prefer concise summaries and diffs over full files, and aggressively trim stale or redundant content from the session.
 Use focused snippets around the relevant change (for example, 80–120 lines of code or a single section of a document) instead of entire files whenever possible.
+<!-- /SECTION: context-budget -->
 <!-- RULE: RULE.CONTEXT.BUDGET_MINIMIZE END -->
 
 <!-- RULE: RULE.CONTEXT.NO_BIG_FILES START -->

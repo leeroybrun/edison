@@ -15,8 +15,8 @@ def read_text(path: Path) -> str:
 def test_start_prompts_include_state_machine_documentation():
     required_snippets = (
         "Session State Machine",
-        "NEW → WIP → READY → VALIDATING → COMPLETE",
-        "Valid state transitions",
+        "todo → wip → done → validated",
+        "Valid task state transitions",
         "Transition triggers",
     )
     diagram_markers = ("```mermaid", "ASCII diagram", "State diagram")

@@ -153,7 +153,7 @@ edison qa validate <task-id>
 
 - Extended workflow: `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md`
 - Output format: `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`
-- Session workflow: `.edison/_generated/guidelines/SESSION_WORKFLOW.md`
+- Session workflow: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
 
 ---
 

@@ -1,34 +1,43 @@
-from __future__ import annotations
-
-"""
-Cursor prompt adapter.
+"""Cursor prompt adapter.
 
 Projects Edison prompts for Cursor IDE using composition.yaml configuration.
 All paths are configurable - NO hardcoded paths.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, Optional
 
 from ..base import PromptAdapter
-from .._config import ConfigMixin
 from ...composition.output import OutputConfigLoader
+from ...composition.output.writer import CompositionFileWriter
 from edison.core.utils.io import ensure_directory
 from edison.core.config.domains import AdaptersConfig
 
 
-class CursorPromptAdapter(PromptAdapter, ConfigMixin):
+class CursorPromptAdapter(PromptAdapter):
     """Provider adapter for Cursor IDE.
+
+    Inherits from PromptAdapter which provides:
+    - config property via ConfigMixin
+    - active_packs property via ConfigMixin
 
     Uses composition.yaml for all path configuration.
     """
 
     def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
         super().__init__(generated_root, repo_root)
-        self._cached_config: Optional[Dict] = None
         self._output_config = OutputConfigLoader(repo_root=self.repo_root)
         adapters_cfg = AdaptersConfig(repo_root=self.repo_root)
         self.cursor_dir = adapters_cfg.get_client_path("cursor")
+        self._writer: Optional[CompositionFileWriter] = None
+
+    @property
+    def writer(self) -> CompositionFileWriter:
+        """Lazy-initialized file writer for composition outputs."""
+        if self._writer is None:
+            self._writer = CompositionFileWriter(base_dir=self.repo_root)
+        return self._writer
 
     def generate_commands(self) -> Dict[str, Path]:
         """Generate slash commands for Cursor."""
@@ -44,14 +53,14 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
 
     def write_outputs(self, output_root: Path) -> None:
         """Write prompts into output_root.
-        
+
         Uses composition.yaml configuration for paths and settings.
         """
         # Check if cursor client is enabled
         client_cfg = self._output_config.get_client_config("cursor")
         if client_cfg is not None and not client_cfg.enabled:
             return
-        
+
         ensure_directory(output_root)
 
         adapter_config = self.config.get("adapters", {}).get("cursor", {})
@@ -61,7 +70,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
             orchestrator_filename = adapter_config.get("orchestrator_filename", "cursor-orchestrator.txt")
             orchestrator_path = output_root / orchestrator_filename
             content = self._render_constitution()
-            orchestrator_path.write_text(content, encoding="utf-8")
+            self.writer.write_text(orchestrator_path, content)
 
         # Write agents
         agents_dirname = adapter_config.get("agents_dirname", "cursor-agents")
@@ -71,7 +80,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         for agent_name in self.list_agents():
             content = self.render_agent(agent_name)
             agent_path = agents_output_dir / f"{agent_name}.md"
-            agent_path.write_text(content, encoding="utf-8")
+            self.writer.write_text(agent_path, content)
 
         # Write validators
         validators_dirname = adapter_config.get("validators_dirname", "cursor-validators")
@@ -81,7 +90,7 @@ class CursorPromptAdapter(PromptAdapter, ConfigMixin):
         for validator_name in self.list_validators():
             content = self.render_validator(validator_name)
             validator_path = validators_output_dir / f"{validator_name}.md"
-            validator_path.write_text(content, encoding="utf-8")
+            self.writer.write_text(validator_path, content)
 
         # Commands
         commands = self.generate_commands()

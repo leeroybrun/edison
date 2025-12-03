@@ -20,19 +20,10 @@ import json
 from tests.helpers.paths import get_repo_root
 from tests.helpers.fixtures import create_repo_with_git
 
-# Add Edison core to path
+# NOTE: Core content is ALWAYS from bundled edison.data package
+# NO .edison/core/ - that is LEGACY
 _THIS_FILE = Path(__file__).resolve()
-_CORE_ROOT = None
-for _parent in _THIS_FILE.parents:
-    candidate = _parent / ".edison" / "core"
-    if (candidate / "lib").exists():
-        _CORE_ROOT = candidate
-        break
-
-if _CORE_ROOT is None:
-    _CORE_ROOT = get_repo_root()
-
-CORE_ROOT = _CORE_ROOT
+CORE_ROOT = get_repo_root()
 from edison.core.config import ConfigManager
 
 from helpers.io_utils import write_yaml
@@ -308,17 +299,12 @@ def test_scenario_6c_schema_validation_failure(tmp_path: Path):
 
     repo = make_tmp_repo(tmp_path, core_defaults, project_overlays={"project": project_overlay})
 
-    # Copy bundled schema to tmp repo (schemas are in bundled data)
-    real_schema = get_data_path("schemas", "edison.schema.json")
-    if real_schema.exists():
-        import shutil
-        (repo / ".edison" / "core" / "schemas").mkdir(parents=True, exist_ok=True)
-        shutil.copy(real_schema, repo / ".edison" / "core" / "schemas" / "edison.schema.json")
+    # ConfigManager uses bundled schema from get_data_path("schemas")
+    # NO .edison/core/schemas - that is legacy
+    mgr = ConfigManager(repo_root=repo)
 
-        mgr = ConfigManager(repo_root=repo)
-
-        with pytest.raises(Exception):  # jsonschema.ValidationError
-            mgr.load_config(validate=True)
+    with pytest.raises(Exception):  # jsonschema.ValidationError
+        mgr.load_config(validate=True)
 
 
 def test_scenario_6d_type_mismatch_in_config(tmp_path: Path):
@@ -327,8 +313,6 @@ def test_scenario_6d_type_mismatch_in_config(tmp_path: Path):
     - Config expects boolean/number, gets string
     - Schema validation catches these
     """
-    from edison.data import get_data_path
-
     core_defaults = {}
 
     project_overlay = {
@@ -340,17 +324,12 @@ def test_scenario_6d_type_mismatch_in_config(tmp_path: Path):
 
     repo = make_tmp_repo(tmp_path, core_defaults, project_overlays={"project": project_overlay})
 
-    # Copy bundled schema to tmp repo (schemas are in bundled data)
-    real_schema = get_data_path("schemas", "edison.schema.json")
-    if real_schema.exists():
-        import shutil
-        (repo / ".edison" / "core" / "schemas").mkdir(parents=True, exist_ok=True)
-        shutil.copy(real_schema, repo / ".edison" / "core" / "schemas" / "edison.schema.json")
+    # ConfigManager uses bundled schema from get_data_path("schemas")
+    # NO .edison/core/schemas - that is legacy
+    mgr = ConfigManager(repo_root=repo)
 
-        mgr = ConfigManager(repo_root=repo)
-
-        with pytest.raises(Exception):  # jsonschema.ValidationError
-            mgr.load_config(validate=True)
+    with pytest.raises(Exception):  # jsonschema.ValidationError
+        mgr.load_config(validate=True)
 
 
 # ==================== ADDITIONAL COVERAGE TESTS ====================

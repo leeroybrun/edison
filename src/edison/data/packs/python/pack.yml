@@ -1,0 +1,32 @@
+name: python
+version: 1.0.0
+description: Python pack with pytest, mypy, ruff, and modern Python 3.12+ patterns
+category: language
+tags: [python, pytest, mypy, ruff, asyncio, typing, dataclasses]
+
+triggers:
+  filePatterns:
+    - "**/*.py"
+    - "pyproject.toml"
+    - "setup.py"
+    - "setup.cfg"
+    - "requirements*.txt"
+    - "Pipfile"
+    - "poetry.lock"
+
+dependencies: []
+
+validators:
+  - python.md
+
+guidelines:
+  - python/PYTHON.md
+  - python/TYPING.md
+  - python/TESTING.md
+  - python/ASYNC.md
+
+agents:
+  - python-developer.md
+
+examples:
+  - module-example.py

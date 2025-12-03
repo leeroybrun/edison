@@ -177,7 +177,8 @@ CodeRabbit CLI produces line-by-line findings in plain text format, typically in
 
 ### Step 4: Cross-Reference with Project Standards
 
-**Consult Project Tech Stack** (see `{{SECTION:TechStack}}` section below):
+**Consult Project Tech Stack** (see `<!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->` section below):
 
 1. **Framework-Specific Patterns**:
    - Check if CodeRabbit findings align with framework best practices
@@ -345,7 +346,8 @@ Required fields:
 - Lines Removed: [count]
 
 **Tech Stack Context**:
-- Framework: [from {{SECTION:TechStack}}]
+- Framework: [from <!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->]
 - Key Dependencies: [relevant libs]
 
 ---
@@ -382,7 +384,7 @@ Required fields:
 
 **Validator**: CodeRabbit Output Analyzer
 **Configuration**: `.edison/config/validators.yaml`
-**Specification**: `src/edison/data/validators/critical/coderabbit.md`
+**Specification**: `.edison/_generated/validators/coderabbit.md`
 **CodeRabbit CLI**: Pre-executed (output from evidence directory)
 ```
 
@@ -598,7 +600,8 @@ When analyzing CodeRabbit findings, consider active pack rules and patterns:
 
 Framework-specific validation rules and patterns are provided via pack overlays.
 
-{{SECTION:TechStack}}
+<!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->
 
 **This section is populated by the composition engine with framework-specific guidance:**
 - Authentication patterns (align CodeRabbit findings with project auth patterns)
@@ -625,11 +628,12 @@ See `.edison/_generated/guidelines/validators/COMMON.md#edison-validation-guards
 - **Adjust severity contextually** - Consider project standards and pack rules
 - **Block on critical/high** - Security and major performance issues must block
 - **Provide actionable recommendations** - Every finding needs a clear fix
-- **Cross-reference with tech stack** - Use `{{SECTION:TechStack}}` for context
+- **Cross-reference with tech stack** - Use `<!-- SECTION: tech-stack -->
+<!-- /SECTION: tech-stack -->` for context
 - **Structure output properly** - Both markdown and JSON reports required
 
 **Your transformation ensures CodeRabbit insights integrate seamlessly into Edison's validation pipeline.**
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: composed-additions -->
 
-{{APPEND_SECTIONS}}
+<!-- /SECTION: composed-additions -->

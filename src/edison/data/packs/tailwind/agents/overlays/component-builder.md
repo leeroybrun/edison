@@ -13,7 +13,7 @@
 - Follow Context7 for React 19/Next 16/Tailwind v4 updates before coding.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: TailwindV4Patterns -->
+<!-- SECTION: TailwindV4Patterns -->
 ## CRITICAL: Tailwind CSS v4 Syntax
 
 **Tailwind v4 is DIFFERENT from v3!** Using v3 syntax will break styling.
@@ -150,7 +150,7 @@ export function MetricCard({
   )
 }
 ```
-<!-- /NEW_SECTION -->
+<!-- /SECTION: TailwindV4Patterns -->
 
 
 

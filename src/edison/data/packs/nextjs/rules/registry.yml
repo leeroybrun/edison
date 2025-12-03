@@ -6,7 +6,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/nextjs/guidelines/app-router.md
+    sourcePath: packs/nextjs/guidelines/nextjs/app-router.md
     guidance: "Use Server Components unless client interactivity needed. Mark Client Components with 'use client' only when strictly necessary."
 
   - id: RULE.NEXTJS.APP_ROUTER
@@ -14,7 +14,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/nextjs/guidelines/app-router.md
+    sourcePath: packs/nextjs/guidelines/nextjs/app-router.md
     guidance: "All routes must use App Router (app/ directory), not Pages Router. Organize routes under app/ using nested folders, page.tsx, and layout.tsx."
 
   - id: RULE.NEXTJS.COLOCATE_UI_STATES
@@ -22,7 +22,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/nextjs/guidelines/app-router.md
+    sourcePath: packs/nextjs/guidelines/nextjs/app-router.md
     guidance: "Co-locate loading and error UI with loading.tsx and error.tsx files."
 
   - id: RULE.NEXTJS.ROUTE_HANDLERS
@@ -30,7 +30,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/nextjs/guidelines/route-handlers.md
+    sourcePath: packs/nextjs/guidelines/nextjs/route-handlers.md
     guidance: "Follow Next.js route handler conventions and best practices."
 
   - id: RULE.NEXTJS.SERVER_ACTIONS
@@ -38,7 +38,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/nextjs/guidelines/server-actions.md
+    sourcePath: packs/nextjs/guidelines/nextjs/server-actions.md
     guidance: "Use server actions for form submissions and data mutations when appropriate."
 
   - id: RULE.NEXTJS.ROUTING_STRUCTURE
@@ -46,7 +46,7 @@ rules:
     category: architecture
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/nextjs/guidelines/ROUTING.md
+    sourcePath: packs/nextjs/guidelines/nextjs/ROUTING.md
     guidance: "Follow Next.js routing conventions and file-based routing structure."
 
   - id: RULE.NEXTJS.METADATA
@@ -54,7 +54,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/nextjs/guidelines/metadata.md
+    sourcePath: packs/nextjs/guidelines/nextjs/metadata.md
     guidance: "Implement Metadata API best practices including static metadata export and dynamic generateMetadata function."
 
   - id: RULE.NEXTJS.CACHING
@@ -62,5 +62,5 @@ rules:
     category: performance
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/nextjs/guidelines/caching.md
+    sourcePath: packs/nextjs/guidelines/nextjs/caching.md
     guidance: "Optimize performance using caching strategies: leverage fetch options, cache tags, revalidate, and dynamic segment config."

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from edison.core.rules import RulesEngine
+from edison.core.rules import get_rules_for_role, load_bundled_rules
 from edison.core.config import ConfigManager
 from edison.core.composition import collect_validators
 from edison.core.utils.paths.project import get_project_config_dir
@@ -29,7 +29,9 @@ def _write_minimal_validator_templates(root: Path) -> None:
         active_packs=(config.get("packs", {}) or {}).get("active", []) or [],
     )
 
-    validators_dir = root / ".edison" / "core" / "validators" / "global"
+    # Create project-level validators (NOT .edison/core/ - that is legacy)
+    # Core validators come from bundled edison.data, project adds custom validators
+    validators_dir = root / ".edison" / "validators" / "global"
     validators_dir.mkdir(parents=True, exist_ok=True)
 
     validator_ids = set()
@@ -75,8 +77,11 @@ class TestAgentsConstitutionGeneration:
 
         assert "<!-- Role: AGENT -->" in content
 
+        # Read constitution config from bundled data (not project config)
+        from edison.data import get_data_path
+        constitution_cfg_path = get_data_path("config/constitution.yaml")
         constitution_cfg = yaml.safe_load(
-            (root / ".edison" / "config" / "constitution.yaml").read_text(encoding="utf-8")
+            constitution_cfg_path.read_text(encoding="utf-8")
         )
         # Support new schema: constitutions.<role>.mandatoryReads
         agents_config = constitution_cfg.get("constitutions", {}).get("agents", {})
@@ -87,7 +92,7 @@ class TestAgentsConstitutionGeneration:
             expected_line = f"- {entry['path']}: {entry['purpose']}"
             assert expected_line in content, f"Missing mandatory read: {expected_line}"
 
-        agent_rule_ids = {rule["id"] for rule in RulesEngine.get_rules_for_role("agent")}
+        agent_rule_ids = {rule["id"] for rule in get_rules_for_role("agent")}
         assert agent_rule_ids, "Rules registry should expose agent rules"
 
         found_rule_ids = {
@@ -97,7 +102,8 @@ class TestAgentsConstitutionGeneration:
         assert found_rule_ids, "Generated constitution should list agent-applicable rules"
         assert found_rule_ids.issubset(agent_rule_ids)
 
+        all_rules = load_bundled_rules()
         non_agent_rule = next(
-            rule for rule in RulesEngine.get_all() if "agent" not in (rule.get("applies_to") or [])
+            rule for rule in all_rules if "agent" not in (rule.get("applies_to") or [])
         )
         assert non_agent_rule["id"] not in content, "Non-agent rules must be excluded"

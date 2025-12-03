@@ -110,8 +110,8 @@ def repo_env(tmp_path, monkeypatch):
         config_dir / "state-machine.yaml",
         {
             "statemachine": {
-                "task": {"states": ["todo", "wip", "done"]},
-                "qa": {"states": ["waiting", "todo", "wip", "done"]}
+                "task": {"states": ["todo", "wip", "done", "validated"]},
+                "qa": {"states": ["waiting", "todo", "wip", "done", "validated"]}
             }
         }
     )

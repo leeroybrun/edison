@@ -64,71 +64,93 @@ def test_command_definition_dataclass() -> None:
     assert cmd.related_commands == ["open-file"]
 
 def test_load_core_definitions(tmp_path: Path) -> None:
-    """Core commands are loaded from .edison/config/commands.yaml."""
-    core_cmd = _sample_command_def("core-cmd")
+    """Core commands are loaded from bundled edison.data (plus any project additions).
+    
+    Architecture: Core commands come from bundled data, project can ADD commands.
+    """
+    # Create a project-level command that will be added to bundled core
+    project_cmd = _sample_command_def("project-cmd")
     write_yaml(
         tmp_path / ".edison/config/commands.yaml",
-        {"commands": {"definitions": [core_cmd]}},
+        {"commands": {"definitions": [project_cmd]}},
     )
 
     composer = CommandComposer(config={"commands": {}}, repo_root=tmp_path)
     defs = composer.load_definitions()
+    defs_by_id = {d.id: d for d in defs}
 
-    assert len(defs) == 1
-    loaded = defs[0]
-    assert loaded.id == "core-cmd"
-    assert loaded.args[0].name == "target"
+    # Should include bundled core commands
+    assert len(defs) >= 1, "Should load bundled core commands"
+    
+    # Should also include our project command
+    assert "project-cmd" in defs_by_id, "Should include project commands"
+    assert defs_by_id["project-cmd"].args[0].name == "target"
 
 def test_merge_pack_definitions(tmp_path: Path) -> None:
-    """Pack command definitions override and extend core definitions."""
-    core_cmd = _sample_command_def("shared", short_desc="core desc", args=[{"name": "a1", "description": "core"}])
-    pack_override = _sample_command_def("shared", short_desc="pack desc", args=[{"name": "a2", "description": "pack"}])
+    """Pack command definitions extend bundled commands and can be overridden by project.
+
+    Architecture precedence: project > pack > core
+    This test verifies that packs can override bundled core commands.
+    """
+    # Use a bundled command (session-next) and override it at pack level
+    pack_override = _sample_command_def("session-next", short_desc="pack desc", args=[{"name": "a2", "description": "pack"}])
     pack_only = _sample_command_def("pack-only", domain="pack", short_desc="from pack")
 
-    write_yaml(
-        tmp_path / ".edison/config/commands.yaml",
-        {"commands": {"definitions": [core_cmd]}},
-    )
     write_yaml(
         tmp_path / ".edison/packs/pack1/config/commands.yml",
         {"commands": {"definitions": [pack_override, pack_only]}},
     )
+    # Write packs.active config so PacksConfig can read it
+    write_yaml(tmp_path / ".edison/config/edison.yaml", {"packs": {"active": ["pack1"]}})
 
-    config = {"commands": {}, "packs": {"active": ["pack1"]}}
+    config = {"commands": {}}
     composer = CommandComposer(config=config, repo_root=tmp_path)
     defs = composer.load_definitions()
     defs_by_id = {d.id: d for d in defs}
 
-    assert defs_by_id["shared"].short_desc == "pack desc"
-    assert defs_by_id["shared"].args[0].name == "a2"
+    # Pack should override bundled core command
+    assert defs_by_id["session-next"].short_desc == "pack desc"
+    assert defs_by_id["session-next"].args[0].name == "a2"
+    # Pack-only should be included
     assert "pack-only" in defs_by_id
 
 def test_apply_project_overrides(tmp_path: Path) -> None:
-    """Project overrides in .edison/config/commands.yml take highest precedence."""
-    core_cmd = _sample_command_def("shared", full_desc="core description")
-    pack_override = _sample_command_def("shared", full_desc="pack description")
-    project_override = _sample_command_def("shared", full_desc="project description", args=[{"name": "proj", "description": "proj arg"}])
+    """Project .yml overrides take highest precedence over .yaml definitions.
 
+    Layer order: bundled core → bundled packs → project packs → project.yaml → project.yml
+    The test uses a unique command name to avoid conflicts with bundled commands.
+    """
+    # Define a unique command that doesn't exist in bundled data
+    base_cmd = _sample_command_def("my-test-cmd", full_desc="yaml description")
+    pack_override = _sample_command_def("my-test-cmd", full_desc="pack description")
+    project_override = _sample_command_def("my-test-cmd", full_desc="project description", args=[{"name": "proj", "description": "proj arg"}])
+
+    # Base definition in .yaml
     write_yaml(
         tmp_path / ".edison/config/commands.yaml",
-        {"commands": {"definitions": [core_cmd]}},
+        {"commands": {"definitions": [base_cmd]}},
     )
+    # Pack override
     write_yaml(
         tmp_path / ".edison/packs/pack1/config/commands.yml",
         {"commands": {"definitions": [pack_override]}},
     )
+    # Project override in .yml (highest priority)
     write_yaml(
         tmp_path / ".edison/config/commands.yml",
         {"commands": {"definitions": [project_override]}},
     )
+    # Write packs.active config so PacksConfig can read it
+    write_yaml(tmp_path / ".edison/config/edison.yaml", {"packs": {"active": ["pack1"]}})
 
-    config = {"commands": {}, "packs": {"active": ["pack1"]}}
+    config = {"commands": {}}
     composer = CommandComposer(config=config, repo_root=tmp_path)
     defs = composer.load_definitions()
-    shared = {d.id: d for d in defs}["shared"]
+    my_cmd = {d.id: d for d in defs}["my-test-cmd"]
 
-    assert shared.full_desc == "project description"
-    assert shared.args[0].name == "proj"
+    # .yml override should win
+    assert my_cmd.full_desc == "project description"
+    assert my_cmd.args[0].name == "proj"
 
 def test_filter_by_domains(tmp_path: Path) -> None:
     """Domain selection filters commands."""
@@ -289,13 +311,10 @@ def test_compose_for_platform(tmp_path: Path) -> None:
     assert "Run demo" in content
 
 def test_compose_all_platforms(tmp_path: Path) -> None:
-    """compose_all renders for every configured platform."""
-    core_cmd = _sample_command_def("demo")
-    write_yaml(
-        tmp_path / ".edison/config/commands.yaml",
-        {"commands": {"definitions": [core_cmd]}},
-    )
-
+    """compose_all renders for every configured platform.
+    
+    The bundled core commands should be rendered for all platforms.
+    """
     config = {
         "commands": {
             "platforms": ["claude", "cursor", "codex"],
@@ -311,19 +330,24 @@ def test_compose_all_platforms(tmp_path: Path) -> None:
     result = composer.compose_all()
 
     assert set(result.keys()) == {"claude", "cursor", "codex"}
-    for mapping in result.values():
-        assert "demo" in mapping
-        assert mapping["demo"].exists()
+    # Each platform should have rendered bundled commands
+    for platform, mapping in result.items():
+        assert len(mapping) > 0, f"Should have rendered commands for {platform}"
+        for cmd_id, path in mapping.items():
+            assert path.exists(), f"Command file should exist for {cmd_id}"
 
 def test_truncate_short_desc(tmp_path: Path) -> None:
     """Short descriptions are truncated to the configured maximum."""
     long_desc = "x" * 120
-    cmd_def = _sample_command_def("long", short_desc=long_desc)
-    write_yaml(tmp_path / ".edison/config/commands.yaml", {"commands": [cmd_def]})
+    cmd_def = _sample_command_def("long-cmd", short_desc=long_desc)
+    write_yaml(tmp_path / ".edison/config/commands.yaml", {"commands": {"definitions": [cmd_def]}})
 
     composer = CommandComposer(config={"commands": {}}, repo_root=tmp_path)
     defs = composer.load_definitions()
-    short = defs[0].short_desc
-
-    assert len(short) <= 80
-    assert short.endswith("...")
+    
+    # Find our specific command
+    long_cmd = next((d for d in defs if d.id == "long-cmd"), None)
+    assert long_cmd is not None, "Should find the long-cmd command"
+    
+    assert len(long_cmd.short_desc) <= 80
+    assert long_cmd.short_desc.endswith("...")

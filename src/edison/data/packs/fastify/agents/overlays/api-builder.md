@@ -11,7 +11,7 @@
 Business logic stays in the Fastify API (`apps/api` + `packages/api-core`). Next.js route handlers are thin proxies only.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: FastifyRoutePatterns -->
+<!-- SECTION: FastifyRoutePatterns -->
 ### Fastify Route Pattern (Primary)
 
 **File location**: `apps/api/src/routes/v1/[resource]/index.ts`
@@ -213,7 +213,7 @@ export default fp(errorHandler, { name: 'error-handler' })
 - Use `fastify.log` for structured logging
 - Register plugins with `fastify-plugin` (fp) for encapsulation control
 - Keep business logic in service layer (`packages/api-core`), routes are thin
-<!-- /NEW_SECTION -->
+<!-- /SECTION: FastifyRoutePatterns -->
 
 
 

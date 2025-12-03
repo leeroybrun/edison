@@ -1,26 +1,31 @@
 # Unified Composition Schema
 # Defines section handling for all composable content types
 #
-# Each content type specifies:
-# - known_sections: Core-defined sections with placeholders (can be extended)
-# - extensible_sections: Whether packs/project can define NEW sections
-# - append_sections: Whether arbitrary content can be appended
+# ============================================================================
+# SECTION SYNTAX (Unified 4-Concept System)
+# ============================================================================
 #
-# Section modes:
-# - replace: Only core defines this section (no extensions)
-# - append: Each layer adds to this section
+# 1. DEFINE SECTION: <!-- SECTION: name -->content<!-- /SECTION: name -->
+#    Creates a named, extensible, extractable region in a template.
 #
-# HTML comment syntax for overlays:
-# - <!-- EXTEND: SectionName --> content <!-- /EXTEND -->
-# - <!-- NEW_SECTION: SectionName --> content <!-- /NEW_SECTION -->
-# - <!-- APPEND --> content <!-- /APPEND -->
+# 2. EXTEND SECTION: <!-- EXTEND: name -->content<!-- /EXTEND -->
+#    Adds content to an existing section from pack/project overlays.
+#
+# 3. INCLUDE SECTION: {{include-section:path#name}}
+#    Embeds extracted section content from another file.
+#
+# 4. REFERENCE SECTION: {{reference-section:path#name|purpose}}
+#    Creates a pointer to a section without embedding content.
+#
+# Convention: Use <!-- SECTION: composed-additions --> for pack/project content.
+# Packs extend via <!-- EXTEND: composed-additions -->content<!-- /EXTEND -->
+#
+# ============================================================================
 
-version: "1.0"
+version: "2.0"
 
 # Default composition settings
 defaults:
-  extensible_sections: true
-  append_sections: true
   dedupe_strategy: shingles  # 12-word shingles for deduplication
   dedupe_min_shingles: 3
 
@@ -30,58 +35,53 @@ content_types:
     description: "Agent prompt templates with tools and guidelines"
     
     known_sections:
-      - name: Role
+      - name: role
         mode: replace
         description: "Core role definition (not extensible)"
         
-      - name: Tools
-        placeholder: "{{SECTION:Tools}}"
+      - name: tools
         mode: append
         description: "Available tools for the agent"
         
-      - name: Guidelines
-        placeholder: "{{SECTION:Guidelines}}"
+      - name: guidelines
         mode: append
         description: "Guidelines and best practices"
         
-      - name: Architecture
-        placeholder: "{{SECTION:Architecture}}"
+      - name: architecture
         mode: append
         description: "Architecture patterns and constraints"
         
-      - name: Examples
-        placeholder: "{{SECTION:Examples}}"
+      - name: examples
         mode: append
         description: "Code examples and patterns"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
     
   validators:
     description: "Validator prompt templates with checks and criteria"
     
     known_sections:
-      - name: Purpose
+      - name: purpose
         mode: replace
         description: "Core purpose definition"
         
-      - name: Checks
-        placeholder: "{{SECTION:Checks}}"
+      - name: checks
         mode: append
         description: "Validation checks to perform"
         
-      - name: Examples
-        placeholder: "{{SECTION:Examples}}"
+      - name: examples
         mode: append
         description: "Code examples showing pass/fail cases"
         
-      - name: TechStack
-        placeholder: "{{SECTION:TechStack}}"
+      - name: tech-stack
         mode: append
         description: "Tech-stack specific validation rules"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
     
   guidelines:
     description: "Guideline documents with best practices"
@@ -91,53 +91,49 @@ content_types:
     dedupe: true
     
     known_sections:
-      - name: Overview
+      - name: overview
         mode: replace
         description: "Core overview"
         
-      - name: Principles
-        placeholder: "{{SECTION:Principles}}"
+      - name: principles
         mode: append
         description: "Guiding principles"
         
-      - name: Practices
-        placeholder: "{{SECTION:Practices}}"
+      - name: practices
         mode: append
         description: "Best practices"
         
-      - name: Examples
-        placeholder: "{{SECTION:Examples}}"
+      - name: examples
         mode: append
         description: "Examples and patterns"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
     
   constitutions:
     description: "Role constitutions with mandatory rules"
     
     known_sections:
-      - name: Identity
+      - name: identity
         mode: replace
         description: "Core role identity"
         
-      - name: MandatoryReads
-        placeholder: "{{SECTION:MandatoryReads}}"
+      - name: mandatory-reads
         mode: append
         description: "Required document reads"
         
-      - name: Rules
-        placeholder: "{{SECTION:Rules}}"
+      - name: rules
         mode: append
         description: "Applicable rules"
         
-      - name: Workflow
-        placeholder: "{{SECTION:Workflow}}"
+      - name: workflow
         mode: append
         description: "Workflow steps"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
     
   rules:
     description: "Rule definitions from YAML registries"
@@ -153,32 +149,33 @@ content_types:
     
     # Canonical entry is mostly static - minimal extension points
     known_sections:
-      - name: MandatoryRead
+      - name: mandatory-read
         mode: replace
         description: "Mandatory constitution read instructions (not extensible)"
         
-      - name: RoleDetermination
+      - name: role-determination
         mode: replace
         description: "How to determine role (not extensible)"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
 
   clients:
     description: "Client-specific configuration files (Claude, Zen, Codex)"
     
     known_sections:
-      - name: EntryPoint
+      - name: entry-point
         mode: replace
         description: "Reference to AGENTS.md entry point"
         
-      - name: ClientSpecific
-        placeholder: "{{SECTION:ClientSpecific}}"
+      - name: client-specific
         mode: append
         description: "Client-specific instructions"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
 
   start:
     description: "Session start prompts for orchestrators (new, resume, validate)"
@@ -188,23 +185,21 @@ content_types:
     dedupe: true
     
     known_sections:
-      - name: Checklist
-        placeholder: "{{SECTION:Checklist}}"
+      - name: checklist
         mode: append
         description: "Pre-session checklist items"
         
-      - name: Protocol
-        placeholder: "{{SECTION:Protocol}}"
+      - name: protocol
         mode: append
         description: "Session protocol steps"
         
-      - name: Commands
-        placeholder: "{{SECTION:Commands}}"
+      - name: commands
         mode: append
         description: "CLI commands for the session type"
-    
-    extensible_placeholder: "{{EXTENSIBLE_SECTIONS}}"
-    append_placeholder: "{{APPEND_SECTIONS}}"
+        
+      - name: composed-additions
+        mode: append
+        description: "Pack/project additional content"
 
 # Directory conventions (unified across all types)
 directory_conventions:
@@ -231,7 +226,7 @@ validation:
   # Error if new definition shadows existing entity
   no_shadowing: true
   
-  # Warn on sections that don't match any known/extensible section
+  # Warn on sections that don't match any known section
   warn_unknown_sections: true
 
 # =============================================================================
@@ -401,7 +396,7 @@ composition:
   generatedFileHeader: |
     <!--
       AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
-      Generated by: Edison Framework v1.0.0
+      Generated by: Edison Framework v2.0.0
       Template: {{template}}
       Generated at: {{timestamp}}
       Project config root: {{PROJECT_EDISON_DIR}}

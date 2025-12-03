@@ -50,8 +50,8 @@ class TestClaudeAdapterUnit:
         assert claude_agent in changed
         content = claude_agent.read_text(encoding="utf-8")
 
-        # Frontmatter metadata
-        assert content.startswith("name: feature-implementer")
+        # Frontmatter metadata (YAML format with --- delimiters)
+        assert content.startswith("---\nname: feature-implementer")
         assert "description: Full-stack feature orchestrator." in content
         # Body still contains key sections from Edison agent
         assert "# Agent: feature-implementer" in content

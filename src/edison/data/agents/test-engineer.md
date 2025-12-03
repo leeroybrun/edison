@@ -92,7 +92,8 @@ await mcp__context7__get_library_docs({
 
 - Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{SECTION:Tools}}
+<!-- SECTION: tools -->
+<!-- /SECTION: tools -->
 
 ## Guidelines
 
@@ -131,14 +132,16 @@ await mcp__context7__get_library_docs({
 - Latest framework features -> Query Context7 for current patterns
 - Any post-training package -> Query Context7
 
-{{SECTION:Guidelines}}
+<!-- SECTION: guidelines -->
+<!-- /SECTION: guidelines -->
 
 ## Architecture
-{{SECTION:Architecture}}
+<!-- SECTION: architecture -->
+<!-- /SECTION: architecture -->
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: composed-additions -->
 
-{{APPEND_SECTIONS}}
+<!-- /SECTION: composed-additions -->
 
 ## IMPORTANT RULES
 - **Tests lead delivery:** Start with failing tests that exercise real behaviour (no mocks for internal systems); keep RED→GREEN evidence.

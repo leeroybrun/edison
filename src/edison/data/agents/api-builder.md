@@ -87,7 +87,8 @@ await mcp__context7__get_library_docs({
 
 - Baseline commands and validation tooling live in `.edison/_generated/guidelines/agents/COMMON.md#edison-cli--validation-tools`; apply pack overlays below.
 
-{{SECTION:Tools}}
+<!-- SECTION: tools -->
+<!-- /SECTION: tools -->
 
 ## Guidelines
 - Follow TDD (RED → GREEN → REFACTOR); write tests before code and include evidence in the implementation report each round.
@@ -95,14 +96,16 @@ await mcp__context7__get_library_docs({
 - Apply security first: validate inputs, authenticate/authorize, and emit structured errors/logs with strict typing.
 - Keep API contracts stable and align with feature/database agents; document behaviours in the report.
 
-{{SECTION:Guidelines}}
+<!-- SECTION: guidelines -->
+<!-- /SECTION: guidelines -->
 
 ## Architecture
-{{SECTION:Architecture}}
+<!-- SECTION: architecture -->
+<!-- /SECTION: architecture -->
 
-{{EXTENSIBLE_SECTIONS}}
+<!-- SECTION: composed-additions -->
 
-{{APPEND_SECTIONS}}
+<!-- /SECTION: composed-additions -->
 
 ## IMPORTANT RULES
 - **Fail-safe contracts:** Define request/response schemas, reject contract drift, and return typed errors with correct HTTP codes.

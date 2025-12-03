@@ -203,7 +203,8 @@ class TestCursorAdapterAgentSync:
         assert cursor_agent in copied
         assert cursor_agent.exists()
         text = cursor_agent.read_text(encoding="utf-8")
-        assert "Agent: api-builder" in text
+        # Check that agent content was composed (heading uses display name)
+        assert "# Agent:" in text or "name: api-builder" in text
 
 
 class TestCursorAdapterStructuredRules:

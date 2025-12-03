@@ -67,30 +67,29 @@ def test_agent_table_includes_all_registry_agents(tmp_path: Path) -> None:
 
 
 def test_generator_uses_registry_not_hardcoded_names(tmp_path: Path) -> None:
+    """Test that generator reads from registry (bundled core agents).
+    
+    Architecture: Core agents are ALWAYS from bundled edison.data package.
+    NO .edison/core/ - that is LEGACY.
+    Project-level agents can be added at .edison/agents/ but core is bundled.
+    """
     repo_root = tmp_path / "custom"
-    agents_dir = repo_root / ".edison" / "core" / "agents"
-    agents_dir.mkdir(parents=True, exist_ok=True)
-
-    (agents_dir / "innovation.md").write_text(
-        """---
-name: innovation
-description: "Innovation specialist"
-model: codex
-type: strategist
----
-
-# Agent: Innovation
-""",
-        encoding="utf-8",
-    )
+    repo_root.mkdir(parents=True, exist_ok=True)
+    
+    # Create minimal project structure
+    (repo_root / ".edison").mkdir(parents=True, exist_ok=True)
 
     output_path = repo_root / ".edison" / "_generated" / "AVAILABLE_AGENTS.md"
     generate_available_agents(output_path, repo_root=repo_root)
 
     table_names = set(_table_names(_read_file(output_path)))
 
-    assert table_names == {"innovation"}, (
-        "Generator must read agents from registry instead of hardcoded templates"
+    # Should discover bundled core agents, not from .edison/core/
+    assert "api-builder" in table_names, (
+        "Generator must read agents from bundled registry"
+    )
+    assert len(table_names) >= 4, (
+        "Generator must discover multiple bundled agents"
     )
 
 

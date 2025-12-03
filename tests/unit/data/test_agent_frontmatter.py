@@ -242,13 +242,13 @@ def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
     section = _extract_context7_section(content, path)
 
     assert "Resolve Library ID" in section, f"{path} missing resolve step heading"
-    assert "mcp__context7__resolve-library-id" in section, \
-        f"{path} missing resolve-library-id example"
+    assert "mcp__context7__resolve_library_id" in section, \
+        f"{path} missing resolve_library_id example"
     assert "libraryName" in section, f"{path} resolve example missing libraryName"
 
     assert "Get Current Documentation" in section, f"{path} missing docs retrieval heading"
-    assert "mcp__context7__get-library-docs" in section, \
-        f"{path} missing get-library-docs example"
+    assert "mcp__context7__get_library_docs" in section, \
+        f"{path} missing get_library_docs example"
     assert "context7CompatibleLibraryID" in section, \
         f"{path} get-library-docs example missing context7CompatibleLibraryID"
 

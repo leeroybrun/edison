@@ -31,6 +31,12 @@ def stub_env(tmpdir: Path, overrides=None) -> dict:
     env = os.environ.copy()
     env["PATH"] = f"{tmpdir}:{env['PATH']}"
 
+    # Create .project/.session-id file (required by hook templates)
+    project_dir = tmpdir / ".project"
+    project_dir.mkdir(exist_ok=True)
+    session_id_file = project_dir / ".session-id"
+    session_id_file.write_text("test-session-123\n")
+
     # Stub edison CLI
     edison = tmpdir / "edison"
     edison.write_text(
@@ -167,7 +173,7 @@ def test_session_context_injects_sections():
         tmpdir = Path(td)
         script = write_script(content, tmpdir)
         env = stub_env(tmpdir)
-        result = subprocess.run([str(script)], input=b"{}", env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=b"{}", env=env, cwd=tmpdir, capture_output=True)
         output = result.stdout.decode()
         assert result.returncode == 0
         assert "Edison Session Context" in output
@@ -183,7 +189,7 @@ def test_task_rules_injection_for_matching_file():
         type="UserPromptSubmit",
         description="inject rules",
         config={
-            "file_patterns": ["\\.py$"],
+            "file_patterns": ["*.py"],
             "rules_by_state": {"doing": ["rule-one"]},
         },
     )
@@ -192,7 +198,7 @@ def test_task_rules_injection_for_matching_file():
         script = write_script(content, tmpdir)
         env = stub_env(tmpdir, {"rule_text": "Rule rule-one text"})
         payload = json.dumps({"file_paths": ["foo.py", "bar.txt"]})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         output = result.stdout.decode()
         assert result.returncode == 0
         assert "## Edison Rules (doing state)" in output
@@ -215,13 +221,13 @@ def test_remind_tdd_respects_state_and_files():
         env = stub_env(tmpdir)
 
         payload = json.dumps({"tool": "Write", "args": {"file_path": "main.py"}})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         assert result.returncode == 0
         assert "TDD Reminder" in result.stdout.decode()
 
         # Test file should be skipped
         test_payload = json.dumps({"tool": "Write", "args": {"file_path": "thing.test.ts"}})
-        skipped = subprocess.run([str(script)], input=test_payload.encode(), env=env, capture_output=True)
+        skipped = subprocess.run([str(script)], input=test_payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         assert skipped.stdout.decode().strip() == ""
 
 
@@ -239,7 +245,7 @@ def test_commit_guard_blocks_on_low_coverage():
         script = write_script(content, tmpdir)
         env = stub_env(tmpdir, {"coverage_json": '{"overall":50}'})
         payload = json.dumps({"tool": "Bash", "args": {"command": "git commit -m 'msg'"}})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         assert result.returncode == 1
         assert "Coverage too low" in result.stdout.decode()
 
@@ -251,14 +257,14 @@ def test_auto_format_runs_formatter():
         id="fmt",
         type="PostToolUse",
         description="auto format",
-        config={"file_patterns": ["\\.js$"], "tools": ["fmtstub"]},
+        config={"file_patterns": ["*.js"], "tools": ["fmtstub"]},
     )
     with tempfile.TemporaryDirectory() as td:
         tmpdir = Path(td)
         script = write_script(content, tmpdir)
         env = stub_env(tmpdir, {"FMT_LOG": log_path})
         payload = json.dumps({"tool": "Edit", "args": {"file_path": "app.js"}})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         assert result.returncode == 0
         assert "Auto-formatting" in result.stdout.decode()
 
@@ -286,8 +292,8 @@ def test_session_hooks_echo_messages():
         init_script = write_script(init_content, tmpdir)
         cleanup_script = write_script(cleanup_content, tmpdir)
 
-        start = subprocess.run([str(init_script)], env=env, capture_output=True)
-        end = subprocess.run([str(cleanup_script)], env=env, capture_output=True)
+        start = subprocess.run([str(init_script)], env=env, cwd=tmpdir, capture_output=True)
+        end = subprocess.run([str(cleanup_script)], env=env, cwd=tmpdir, capture_output=True)
 
         assert start.returncode == 0
         assert "Session" in start.stdout.decode()
@@ -310,7 +316,7 @@ def test_remind_state_machine_template_renders():
         env = stub_env(tmpdir, {"allowed_ops": "Allowed: merge, deploy"})
 
         payload = json.dumps({"tool": "Write"})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         output = result.stdout.decode()
         assert result.returncode == 0
         assert "State Machine Reminder" in output
@@ -324,7 +330,7 @@ def test_remind_state_machine_template_renders():
                 "allowed_ops": "",
             },
         )
-        quiet = subprocess.run([str(script)], input=payload.encode(), env=quiet_env, capture_output=True)
+        quiet = subprocess.run([str(script)], input=payload.encode(), env=quiet_env, cwd=tmpdir, capture_output=True)
         assert quiet.stdout.decode().strip() == ""
 
 
@@ -343,14 +349,14 @@ def test_prevent_prod_edits_template_renders():
         env = stub_env(tmpdir)
 
         payload = json.dumps({"args": {"file_path": "prod/config.yml"}})
-        result = subprocess.run([str(script)], input=payload.encode(), env=env, capture_output=True)
+        result = subprocess.run([str(script)], input=payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         output = result.stdout.decode()
         assert result.returncode == 1
         assert "Edit blocked" in output
         assert "^prod/" in output
 
         ok_payload = json.dumps({"args": {"file_path": "src/app.js"}})
-        ok = subprocess.run([str(script)], input=ok_payload.encode(), env=env, capture_output=True)
+        ok = subprocess.run([str(script)], input=ok_payload.encode(), env=env, cwd=tmpdir, capture_output=True)
         assert ok.returncode == 0
         assert ok.stdout.decode().strip() == ""
 

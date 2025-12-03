@@ -17,7 +17,7 @@
 - Clean up mocks between tests with `vi.clearAllMocks()` or `vi.resetAllMocks()`.
 <!-- /EXTEND -->
 
-<!-- NEW_SECTION: VitestPatterns -->
+<!-- SECTION: VitestPatterns -->
 ## Vitest Tech Stack
 - **Vitest**: Unit + integration tests
 - **React Testing Library**: Component tests
@@ -170,7 +170,7 @@ pnpm test -- -t "should filter by status"
 # Run with verbose output
 pnpm test -- --reporter=verbose
 ```
-<!-- /NEW_SECTION -->
+<!-- /SECTION: VitestPatterns -->
 
 
 

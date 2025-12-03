@@ -20,17 +20,14 @@ subdirectories:
     sessions: "sessions"
     
   # Under .edison/ or .agents/
+  # NOTE: .edison/core and scripts/ are LEGACY - use edison CLI instead
   edison:
     sessions: "sessions"
     rules: "rules"
-    scripts: "scripts"
     config: "config"
     validators: "validators"
-    
-  # Under scripts/
-  scripts:
-    lib: "lib"
-    tasks: "tasks"
+    _generated: "_generated"
+    packs: "packs"
     
   # Under qa/
   qa:

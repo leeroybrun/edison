@@ -1,19 +1,21 @@
-"""Test that tasks and QA are properly registered in session.json.
+"""Test that tasks and QA are properly registered when created/claimed.
 
-This test verifies the fix for the session tracking issue where tasks/QA
-were being created but not registered in the session's tasks/qa dictionaries.
+Per the Single Source of Truth architecture, task/QA data lives in the files
+themselves. Session activity_log records registration events, and task/QA
+files are the canonical source for their data.
 """
 import json
 import pytest
 from pathlib import Path
 
 from edison.core.task.workflow import TaskQAWorkflow
+from edison.core.task.repository import TaskRepository
 from edison.core.session.persistence.repository import SessionRepository
 from edison.core.session.core.models import Session
 
 
 def test_create_task_registers_in_session(isolated_project_env):
-    """When creating a task with session_id, it should register in session.json."""
+    """When creating a task with session_id, it should be logged in session activity."""
     project_root = isolated_project_env
     session_id = "test-session-001"
     task_id = "T-001"
@@ -34,20 +36,25 @@ def test_create_task_registers_in_session(isolated_project_env):
         create_qa=True,
     )
 
-    # Reload session and verify task is registered
+    # Reload session and verify activity was logged
     session = session_repo.get(session_id)
     assert session is not None
-    assert task_id in session.tasks, f"Task {task_id} should be registered in session.tasks"
+    
+    # Check activity log has registration entry
+    activity_messages = [e.get("message", "") for e in session.activity_log]
+    assert any(task_id in msg and "registered" in msg for msg in activity_messages), \
+        f"Task {task_id} registration should be in activity_log"
 
-    # Verify task entry has correct data
-    task_entry = session.tasks[task_id]
-    assert task_entry.record_id == task_id
-    assert task_entry.owner == "test-user"
-    assert task_entry.status == "todo"
+    # Verify task file exists and has correct data (single source of truth)
+    task_repo = TaskRepository(project_root=project_root)
+    loaded_task = task_repo.get(task_id)
+    assert loaded_task is not None, f"Task {task_id} file should exist"
+    assert loaded_task.metadata.created_by == "test-user"
+    assert loaded_task.state == "todo"
 
 
 def test_create_task_registers_qa_in_session(isolated_project_env):
-    """When creating a task with QA, the QA should also be registered."""
+    """When creating a task with QA, the QA should be logged in session activity."""
     project_root = isolated_project_env
     session_id = "test-session-002"
     task_id = "T-002"
@@ -68,20 +75,26 @@ def test_create_task_registers_qa_in_session(isolated_project_env):
         create_qa=True,
     )
 
-    # Reload session and verify QA is registered
+    # Reload session and verify activity was logged
     session = session_repo.get(session_id)
     assert session is not None
-    assert qa_id in session.qa_records, f"QA {qa_id} should be registered in session.qa_records"
+    
+    # Check activity log has QA registration entry
+    activity_messages = [e.get("message", "") for e in session.activity_log]
+    assert any(qa_id in msg and "registered" in msg for msg in activity_messages), \
+        f"QA {qa_id} registration should be in activity_log"
 
-    # Verify QA entry has correct data
-    qa_entry = session.qa_records[qa_id]
-    assert qa_entry.record_id == qa_id
-    assert qa_entry.task_id == task_id
-    assert qa_entry.status == "waiting"
+    # Verify QA file exists and has correct data (single source of truth)
+    from edison.core.qa.workflow.repository import QARepository
+    qa_repo = QARepository(project_root=project_root)
+    loaded_qa = qa_repo.get(qa_id)
+    assert loaded_qa is not None, f"QA {qa_id} file should exist"
+    assert loaded_qa.task_id == task_id
+    assert loaded_qa.state == "waiting"
 
 
 def test_claim_task_registers_in_session(isolated_project_env):
-    """When claiming a task into a session, it should register in session.json."""
+    """When claiming a task into a session, it should be logged in session activity."""
     project_root = isolated_project_env
     session_id = "test-session-003"
     task_id = "T-003"
@@ -103,18 +116,25 @@ def test_claim_task_registers_in_session(isolated_project_env):
     # Claim task into session
     task = workflow.claim_task(task_id, session_id)
 
-    # Reload session and verify task is registered
+    # Reload session and verify activity was logged
     session = session_repo.get(session_id)
     assert session is not None
-    assert task_id in session.tasks, f"Task {task_id} should be registered when claimed"
+    
+    # Check activity log has claim entry
+    activity_messages = [e.get("message", "") for e in session.activity_log]
+    assert any(task_id in msg and "wip" in msg for msg in activity_messages), \
+        f"Task {task_id} claim should be in activity_log"
 
-    # Verify task entry shows wip status
-    task_entry = session.tasks[task_id]
-    assert task_entry.status == "wip"
+    # Verify task file has wip state (single source of truth)
+    task_repo = TaskRepository(project_root=project_root)
+    loaded_task = task_repo.get(task_id)
+    assert loaded_task is not None
+    assert loaded_task.state == "wip"
+    assert loaded_task.session_id == session_id
 
 
 def test_complete_task_updates_session(isolated_project_env):
-    """When completing a task, session.json should be updated."""
+    """When completing a task, session activity should be logged."""
     project_root = isolated_project_env
     session_id = "test-session-004"
     task_id = "T-004"
@@ -137,18 +157,15 @@ def test_complete_task_updates_session(isolated_project_env):
     # Complete task
     task = workflow.complete_task(task_id, session_id)
 
-    # Reload session and verify task status updated
-    session = session_repo.get(session_id)
-    assert session is not None
-    assert task_id in session.tasks
-
-    # Verify task entry shows done status
-    task_entry = session.tasks[task_id]
-    assert task_entry.status == "done"
+    # Verify task file has done state (single source of truth)
+    task_repo = TaskRepository(project_root=project_root)
+    loaded_task = task_repo.get(task_id)
+    assert loaded_task is not None
+    assert loaded_task.state == "done"
 
 
 def test_complete_task_updates_qa_in_session(isolated_project_env):
-    """When completing a task, QA status should update in session.json."""
+    """When completing a task, QA should advance to todo state."""
     project_root = isolated_project_env
     session_id = "test-session-005"
     task_id = "T-005"
@@ -170,18 +187,21 @@ def test_complete_task_updates_qa_in_session(isolated_project_env):
     workflow.claim_task(task_id, session_id)
     workflow.complete_task(task_id, session_id)
 
-    # Reload session and verify QA status updated
-    session = session_repo.get(session_id)
-    assert session is not None
-    assert qa_id in session.qa_records
+    # Verify QA file shows todo status (single source of truth)
+    from edison.core.qa.workflow.repository import QARepository
+    qa_repo = QARepository(project_root=project_root)
+    loaded_qa = qa_repo.get(qa_id)
+    assert loaded_qa is not None
+    # QA should advance from waiting to todo when task completes
+    assert loaded_qa.state == "todo"
 
-    # Verify QA entry shows todo status (advanced from waiting)
-    qa_entry = session.qa_records[qa_id]
-    assert qa_entry.status == "todo"
 
-
-def test_session_json_file_contains_registrations(isolated_project_env):
-    """Verify session.json file on disk contains task/QA registrations."""
+def test_session_json_file_contains_activity_log(isolated_project_env):
+    """Verify session.json file has activity log entries for task/QA operations.
+    
+    Per Single Source of Truth: session.json stores activity_log, while
+    task/QA data lives in their respective files.
+    """
     project_root = isolated_project_env
     session_id = "test-session-006"
     task_id = "T-006"
@@ -208,15 +228,21 @@ def test_session_json_file_contains_registrations(isolated_project_env):
     with open(session_path) as f:
         session_data = json.load(f)
 
-    # Verify structure
-    assert "tasks" in session_data
-    assert "qa" in session_data
-    assert isinstance(session_data["tasks"], dict)
-    assert isinstance(session_data["qa"], dict)
-
-    # Verify registrations
-    assert task_id in session_data["tasks"], f"Task {task_id} should be in session.json tasks"
-    assert qa_id in session_data["qa"], f"QA {qa_id} should be in session.json qa"
+    # Verify activity_log exists and has entries
+    assert "activityLog" in session_data
+    activity_messages = [e.get("message", "") for e in session_data["activityLog"]]
+    
+    # Verify task registration was logged
+    assert any(task_id in msg for msg in activity_messages), \
+        f"Task {task_id} operation should be in activityLog"
+    
+    # Verify task/QA files exist (single source of truth)
+    task_repo = TaskRepository(project_root=project_root)
+    assert task_repo.get(task_id) is not None, f"Task file for {task_id} should exist"
+    
+    from edison.core.qa.workflow.repository import QARepository
+    qa_repo = QARepository(project_root=project_root)
+    assert qa_repo.get(qa_id) is not None, f"QA file for {qa_id} should exist"
 
 
 def test_create_task_without_session_does_not_register(isolated_project_env):

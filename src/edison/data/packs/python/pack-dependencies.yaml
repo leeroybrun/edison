@@ -1,0 +1,15 @@
+# Python pack has no pack dependencies (it's a base language pack)
+# Project dependencies are managed via pyproject.toml, not here
+
+requiredPacks: []
+
+# Common Python development dependencies (for reference)
+# These would be in pyproject.toml, not here
+pythonDependencies:
+  dev:
+    - pytest
+    - pytest-asyncio
+    - pytest-cov
+    - mypy
+    - ruff
+    - hypothesis

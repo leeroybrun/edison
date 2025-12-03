@@ -10,7 +10,7 @@ constitutions:
         purpose: Main orchestrator constitution
       - path: guidelines/orchestrators/SESSION_WORKFLOW.md
         purpose: Session lifecycle management
-      - path: guidelines/shared/DELEGATION.md
+      - path: guidelines/shared/SHARED_DELEGATION.md
         purpose: Delegation rules and patterns
       - path: AVAILABLE_AGENTS.md
         purpose: Dynamic agent roster
@@ -30,7 +30,7 @@ constitutions:
     mandatoryReads:
       - path: constitutions/AGENTS.md
         purpose: Agent constitution
-      - path: guidelines/shared/COMMON.md
+      - path: guidelines/shared/SHARED_COMMON.md
         purpose: Shared Context7, TDD, and configuration guardrails
       - path: guidelines/agents/COMMON.md
         purpose: Shared agent workflow roster and tooling baseline
@@ -56,9 +56,9 @@ constitutions:
     mandatoryReads:
       - path: constitutions/VALIDATORS.md
         purpose: Validator constitution
-      - path: guidelines/shared/COMMON.md
+      - path: guidelines/shared/SHARED_COMMON.md
         purpose: Shared Context7, TDD, and configuration guardrails
-      - path: guidelines/validators/COMMON.md
+      - path: guidelines/validators/VALIDATOR_COMMON.md
         purpose: Validation guards and maintainability baseline
       - path: guidelines/validators/VALIDATOR_WORKFLOW.md
         purpose: Validation workflow

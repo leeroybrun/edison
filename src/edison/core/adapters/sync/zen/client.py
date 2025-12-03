@@ -1,12 +1,16 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Optional, Any
+"""Zen MCP sync client.
 
-from edison.core.utils.paths import PathResolver
-from ....config import ConfigManager
-from ....config.domains import PacksConfig
+Full-featured adapter between Edison composition and Zen MCP prompts.
+Inherits from SyncAdapter for unified config loading.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from ..base import SyncAdapter
 from ....composition import GuidelineRegistry
+from ....composition.output.writer import CompositionFileWriter
 from ....rules import RulesRegistry
 
 from .discovery import ZenDiscoveryMixin
@@ -14,38 +18,63 @@ from .composer import ZenComposerMixin
 from .sync import ZenSyncMixin
 
 
-@dataclass
-class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
-    """Full-featured adapter between Edison composition and Zen MCP prompts."""
+class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin, SyncAdapter):
+    """Full-featured adapter between Edison composition and Zen MCP prompts.
 
-    repo_root: Path
-    config: Dict[str, Any]
-    guideline_registry: GuidelineRegistry
-    rules_registry: RulesRegistry
+    Inherits from SyncAdapter which provides:
+    - repo_root resolution via PathResolver
+    - config property via ConfigMixin
+    - active_packs property via ConfigMixin
+    - packs_config property via ConfigMixin
+    """
+
     _zen_roles_config: Dict[str, Any]
     _role_config_validated: bool
 
-    def __init__(self, repo_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> None:
-        root = repo_root.resolve() if repo_root else PathResolver.resolve_project_root()
-        cfg_mgr = ConfigManager(root)
-        self.repo_root = root
-        self.config = config or cfg_mgr.load_config(validate=False)
-        self.guideline_registry = GuidelineRegistry(repo_root=root)
-        self.rules_registry = RulesRegistry(project_root=root)
+    def __init__(
+        self,
+        repo_root: Optional[Path] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        # Initialize SyncAdapter (handles repo_root, config via ConfigMixin)
+        super().__init__(repo_root=repo_root)
+
+        # Merge any passed config with loaded config
+        if config:
+            from edison.core.config import ConfigManager
+            self._cached_config = ConfigManager(self.repo_root).deep_merge(
+                self.config, config
+            )
+
+        # Initialize registries
+        self.guideline_registry = GuidelineRegistry(repo_root=self.repo_root)
+        self.rules_registry = RulesRegistry(project_root=self.repo_root)
+
+        # Zen-specific state
         self._zen_roles_config = {}
         self._role_config_validated = False
+
+        # Lazy writer initialization
+        self._writer: Optional[CompositionFileWriter] = None
+
+    @property
+    def writer(self) -> CompositionFileWriter:
+        """Lazy-initialized file writer for composition outputs."""
+        if self._writer is None:
+            self._writer = CompositionFileWriter(base_dir=self.repo_root)
+        return self._writer
 
     # ------------------------------------------------------------------
     # Public API: role-aware discovery
     # ------------------------------------------------------------------
-    @property
-    def _packs_config(self) -> PacksConfig:
-        """Lazy PacksConfig accessor."""
-        return PacksConfig(repo_root=self.repo_root)
+    def _get_active_packs(self) -> List[str]:
+        """Get active packs via ConfigMixin."""
+        return self.active_packs
 
+    # Alias for backward compatibility with mixins
     def _active_packs(self) -> List[str]:
-        """Get active packs via PacksConfig."""
-        return self._packs_config.active_packs
+        """Get active packs via ConfigMixin."""
+        return self.active_packs
 
     # ---------- Role configuration helpers ----------
     def _load_zen_roles_config(self) -> Dict[str, Any]:
@@ -113,3 +142,22 @@ class ZenSync(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin):
                 return roles_cfg[lowered[generic]]
 
         return None
+
+    def sync_all(self) -> Dict[str, Any]:
+        """Execute complete synchronization workflow.
+
+        Syncs role prompts for all discovered roles and models.
+
+        Returns:
+            Dictionary containing sync results.
+        """
+        result: Dict[str, Any] = {
+            "prompts": {},
+            "verification": {},
+        }
+
+        # Verify and sync CLI prompts
+        verification = self.verify_cli_prompts(sync=True)
+        result["verification"] = verification
+
+        return result

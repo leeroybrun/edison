@@ -120,6 +120,7 @@ class SessionAutoStart:
                 worktree_path=worktree_path,
                 should_launch=should_launch,
                 prompt_text=prompt_text,
+                detach=detach,
             )
 
             # Build and return result
@@ -277,8 +278,17 @@ class SessionAutoStart:
         worktree_path: Optional[Path],
         should_launch: bool,
         prompt_text: Optional[str],
+        detach: bool = True,
     ) -> Any:
         """Launch orchestrator process.
+
+        Args:
+            session_id: Session identifier
+            profile: Orchestrator profile name
+            worktree_path: Optional worktree path
+            should_launch: Whether to actually launch the orchestrator
+            prompt_text: Optional initial prompt text
+            detach: If True, run in background. If False, run interactively.
 
         Returns:
             Process object if launched, None otherwise.
@@ -307,11 +317,11 @@ class SessionAutoStart:
             if worktree_path:
                 with SessionContext.in_session_worktree(session_id):
                     process_obj = launcher.launch(
-                        profile, initial_prompt=prompt_text, log_path=log_path
+                        profile, initial_prompt=prompt_text, log_path=log_path, detach=detach
                     )
             else:
                 process_obj = launcher.launch(
-                    profile, initial_prompt=prompt_text, log_path=log_path
+                    profile, initial_prompt=prompt_text, log_path=log_path, detach=detach
                 )
         else:
             # Record prompt even when not launching to aid audits

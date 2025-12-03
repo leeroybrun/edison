@@ -1,4 +1,4 @@
-<!-- APPEND -->
+<!-- EXTEND: composed-additions -->
 # Fastify API Validation Context
 
 {{include:.edison/_generated/guidelines/fastify/schema-validation.md}}
@@ -10,4 +10,4 @@
 - Use Fastify plugins/hooks for auth and error handling; avoid ad-hoc middleware that skips lifecycle hooks.
 - Return errors via `reply.code(...).send(...)` and never leak stack traces; map validation failures to 400 with details.
 - Keep handlers small—extract reusable schemas/plugins and register them with `fastify.register` for composability.
-<!-- /APPEND -->
+<!-- /EXTEND -->

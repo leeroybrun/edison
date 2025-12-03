@@ -15,13 +15,14 @@ from edison.core.utils.io import ensure_directory
 from .agents import AgentRegistry
 from .validators import ValidatorRegistry
 from ..output.headers import build_generated_header
+from ..output.writer import CompositionFileWriter
 from ..path_utils import resolve_project_dir_placeholders
 from ..core import CompositionPathResolver
 
 
 def generate_available_agents(output_path: Path, repo_root: Optional[Path] = None) -> None:
     """Generate AVAILABLE_AGENTS.md from AgentRegistry.
-    
+
     Uses composition path resolution for consistent discovery.
     """
     ensure_directory(output_path.parent)
@@ -54,7 +55,10 @@ def generate_available_agents(output_path: Path, repo_root: Optional[Path] = Non
         target_path=output_path,
         repo_root=repo_root or registry.project_root,
     )
-    output_path.write_text(content, encoding="utf-8")
+
+    # Use CompositionFileWriter for consistent file output
+    writer = CompositionFileWriter()
+    writer.write_text(output_path, content)
 
 
 def generate_available_validators(output_path: Path, repo_root: Optional[Path] = None) -> None:
@@ -118,7 +122,10 @@ def generate_available_validators(output_path: Path, repo_root: Optional[Path] =
         target_path=output_path,
         repo_root=repo_root or registry.project_root,
     )
-    output_path.write_text(content, encoding="utf-8")
+
+    # Use CompositionFileWriter for consistent file output
+    writer = CompositionFileWriter()
+    writer.write_text(output_path, content)
 
 
 def _format_validator_table(validators: List[Dict[str, Any]]) -> str:
@@ -208,8 +215,6 @@ def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None
     - {{source_layers}}: List of composition sources
     - {{timestamp}}: Current generation timestamp
     - {{PROJECT_EDISON_DIR}}: Project config directory path
-    - {{EXTENSIBLE_SECTIONS}}: Empty (for future layered composition)
-    - {{APPEND_SECTIONS}}: Empty (for future layered composition)
 
     Args:
         output_path: Path where the generated file should be written
@@ -239,12 +244,10 @@ def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None
     if active_packs:
         source_layers += f" + Packs ({', '.join(active_packs)})"
 
-    # Substitute placeholders
+    # Substitute context variables
     content = template
     content = content.replace("{{source_layers}}", source_layers)
     content = content.replace("{{timestamp}}", datetime.now().isoformat())
-    content = content.replace("{{EXTENSIBLE_SECTIONS}}", "")
-    content = content.replace("{{APPEND_SECTIONS}}", "")
 
     # Resolve {{PROJECT_EDISON_DIR}} placeholders
     content = resolve_project_dir_placeholders(
@@ -254,7 +257,9 @@ def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None
         repo_root=repo_root or resolver.project_root,
     )
 
-    output_path.write_text(content, encoding="utf-8")
+    # Use CompositionFileWriter for consistent file output
+    writer = CompositionFileWriter()
+    writer.write_text(output_path, content)
 
 
 __all__ = [

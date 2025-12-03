@@ -52,6 +52,13 @@ from .file_patterns import (
 from .schemas import (
     JsonSchemaComposer,
 )
+from .documents import (
+    DocumentTemplateRegistry,
+    DocumentTemplateError,
+    DocumentTemplateNotFoundError,
+    DocumentTemplate,
+    compose_document,
+)
 from ..core.errors import (
     AnchorNotFoundError,
     RulesCompositionError,
@@ -95,6 +102,13 @@ __all__ = [
     "filter_rules",
     "FilePatternRegistry",
     "JsonSchemaComposer",
+    # Documents
+    "DocumentTemplateRegistry",
+    "DocumentTemplateError",
+    "DocumentTemplateNotFoundError",
+    "DocumentTemplate",
+    "compose_document",
+    # Errors
     "AnchorNotFoundError",
     "RulesCompositionError",
 ]
