@@ -103,32 +103,32 @@ Then parse each YAML block with Python's `yaml.safe_load()`.
 
 1. **Create core task template** [`src/edison/data/templates/documents/TASK.md`](src/edison/data/templates/documents/TASK.md)
 
-                        - YAML frontmatter with ALL task fields
-                        - Handlebars variables for dynamic values
-                        - Extensible sections for packs/project
+                                                                                                - YAML frontmatter with ALL task fields
+                                                                                                - Handlebars variables for dynamic values
+                                                                                                - Extensible sections for packs/project
 
 2. **Create core QA template** [`src/edison/data/templates/documents/QA.md`](src/edison/data/templates/documents/QA.md)
 
-                        - YAML frontmatter with ALL QA fields
-                        - Evidence section structure
+                                                                                                - YAML frontmatter with ALL QA fields
+                                                                                                - Evidence section structure
 
 ### Phase 2: Update Parsing Layer
 
 3. **Create frontmatter parser** [`src/edison/core/utils/text/frontmatter.py`](src/edison/core/utils/text/frontmatter.py)
 
-                        - `parse_frontmatter(content: str) -> dict` - Extract and parse YAML
-                        - `format_frontmatter(data: dict) -> str` - Format dict as YAML frontmatter
-                        - Batch extraction support for ripgrep integration
+                                                                                                - `parse_frontmatter(content: str) -> dict` - Extract and parse YAML
+                                                                                                - `format_frontmatter(data: dict) -> str` - Format dict as YAML frontmatter
+                                                                                                - Batch extraction support for ripgrep integration
 
 4. **Update TaskRepository** [`src/edison/core/task/repository.py`](src/edison/core/task/repository.py)
 
-                        - `_parse_task_markdown()` - Use frontmatter parser, derive state from directory
-                        - `_task_to_markdown()` - Generate YAML frontmatter
-                        - Add all new fields to Task model
+                                                                                                - `_parse_task_markdown()` - Use frontmatter parser, derive state from directory
+                                                                                                - `_task_to_markdown()` - Generate YAML frontmatter
+                                                                                                - Add all new fields to Task model
 
 5. **Update QARepository** [`src/edison/core/qa/workflow/repository.py`](src/edison/core/qa/workflow/repository.py)
 
-                        - Same changes as TaskRepository
+                                                                                                - Same changes as TaskRepository
 
 ### Phase 3: Update Task
 
