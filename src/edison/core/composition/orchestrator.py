@@ -3,8 +3,7 @@ from __future__ import annotations
 """Orchestrator discovery helpers.
 
 Provides agent and pack discovery functions used by registries.
-All legacy manifest/Claude composition functions have been removed -
-use the unified composition engine instead.
+Uses the unified composition system for all discovery operations.
 """
 
 from pathlib import Path
@@ -15,54 +14,68 @@ from .packs import yaml
 from .validators import collect_validators
 
 
-def collect_agents(repo_root: Path, packs_dir: Path, active_packs: List[str], project_dir: Path) -> Dict[str, List[str]]:
+def collect_agents(
+    repo_root: Path,
+    packs_dir: Path,
+    active_packs: List[str],
+    project_dir: Path,
+) -> Dict[str, List[str]]:
     """Collect agents from Core + Packs + Project using AgentRegistry.
-    
-    Uses unified AgentRegistry for all discovery - no manual globs.
-    """
-    from . import agents as agents_module
 
-    AgentRegistry = agents_module.AgentRegistry
+    Uses unified AgentRegistry for all discovery - no manual globs.
+
+    Args:
+        repo_root: Project root path
+        packs_dir: Packs directory (for backward compat, not used)
+        active_packs: List of active pack names
+        project_dir: Project config directory (for backward compat, not used)
+
+    Returns:
+        Dict with keys: generic (core), specialized (pack overlays/new), project
+    """
+    from .registries.agents import AgentRegistry
 
     registry = AgentRegistry(project_root=repo_root)
-    # Ensure project overlays resolve to the provided project_dir during tests
-    registry.project_dir = project_dir
+
     agents: Dict[str, List[str]] = {
         "generic": [],
         "specialized": [],
         "project": [],
     }
 
+    # Core agents (generic)
     core_agents = registry.discover_core()
-    generic_names = sorted(core_agents.keys())
-    agents["generic"] = generic_names
+    agents["generic"] = sorted(core_agents.keys())
 
+    # Discover all entities across layers
+    all_entities = registry.discover_all(active_packs)
+    core_names = set(core_agents.keys())
+
+    # Specialized: pack-new or pack-overlaid agents
     specialized_set: Set[str] = set()
-    for name in generic_names:
-        overlays = registry.discover_pack_overlays(name, active_packs)
-        if overlays:
-            specialized_set.add(name)
+    pack_entities = registry.discover_packs(active_packs)
+    specialized_set.update(pack_entities.keys())
 
-    for name in registry.discover_pack_agent_names(active_packs):
-        if name not in core_agents:
+    # Also check for core agents with pack overlays
+    for name in core_names:
+        if name in all_entities and all_entities[name] != core_agents.get(name):
             specialized_set.add(name)
 
     agents["specialized"] = sorted(specialized_set)
 
-    # Use unified discovery for project agents - no manual glob
-    project_names: List[str] = []
-    existing_names = set(core_agents.keys())
-    
-    # Get agents with project overlays
-    for name in generic_names:
-        if registry.project_overlay_path(name) is not None:
-            project_names.append(name)
-    
-    # Get project-new agents via unified discovery
-    project_new = registry._composer.discover_project_new(existing_names)
-    for name in project_new:
+    # Project: new project entities or project overlays
+    project_entities = registry.discover_project()
+    project_names: Set[str] = set(project_entities.keys())
+
+    # Also include core/pack agents with project overlays
+    for name in all_entities:
+        # If it's in all but path differs from core/pack, it has project overlay
         if name not in project_names:
-            project_names.append(name)
+            core_path = core_agents.get(name)
+            pack_path = pack_entities.get(name)
+            all_path = all_entities.get(name)
+            if all_path and all_path != core_path and all_path != pack_path:
+                project_names.add(name)
 
     agents["project"] = sorted(project_names)
     return agents
@@ -73,7 +86,6 @@ def collect_packs(packs_dir: Path, active_packs: Iterable[str]) -> List[Dict[str
 
     Falls back to sensible defaults if pack.yml is missing or PyYAML is unavailable.
     """
-
     packs: List[Dict[str, str]] = []
     for pack_name in active_packs:
         base_meta = {

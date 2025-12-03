@@ -2,7 +2,7 @@ import pytest
 import types
 from pathlib import Path
 import edison.core.adapters.sync.zen as zen_pkg
-from edison.core.adapters.sync.zen import ZenSync, WORKFLOW_HEADING
+from edison.core.adapters import ZenAdapter, WORKFLOW_HEADING
 
 def test_zen_is_package():
     """Verify that edison.core.adapters.sync.zen is a package, not a single file."""
@@ -35,6 +35,6 @@ def test_zensync_instantiation(tmp_path):
     """Verify basic instantiation works."""
     # We pass a tmp_path as repo_root to avoid it trying to find real project root
     # and to keep it isolated.
-    zs = ZenSync(repo_root=tmp_path, config={})
+    zs = ZenAdapter(project_root=tmp_path, config={})
     assert zs.repo_root == tmp_path
     assert isinstance(zs.config, dict)

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
-from edison.core.composition.ide.hooks import HookComposer
+from edison.core.adapters.components.hooks import HookComposer
 from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
 
 SUMMARY = "Compose Claude Code hooks from configuration"

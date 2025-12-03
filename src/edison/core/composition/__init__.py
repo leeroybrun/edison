@@ -1,4 +1,8 @@
-"""Composition package exposing include resolution and composition engines."""
+"""Composition package exposing include resolution and composition engines.
+
+Note: Registry classes are NOT re-exported here to avoid circular imports.
+Import them directly from edison.core.composition.registries instead.
+"""
 from __future__ import annotations
 
 # Core composition engine
@@ -36,38 +40,6 @@ from .core import (
     ParsedSection,
 )
 
-# Registries
-from .registries import (
-    # Agents
-    AgentRegistry,
-    AgentError,
-    AgentNotFoundError,
-    AgentTemplateError,
-    CoreAgent,
-    PackOverlay,
-    compose_agent,
-    # Validators
-    ValidatorRegistry,
-    collect_validators,
-    infer_validator_metadata,
-    normalize_validator_entries,
-    # Guidelines
-    GuidelineRegistry,
-    GuidelineCompositionResult,
-    GuidelinePaths,
-    compose_guideline,
-    # Constitutions
-    get_rules_for_role,
-    load_constitution_layer,
-    compose_constitution,
-    render_constitution_template,
-    generate_all_constitutions,
-    # Rosters
-    generate_available_agents,
-    generate_available_validators,
-    generate_canonical_entry,
-)
-
 # Output handling
 from .output import (
     # Config
@@ -84,8 +56,6 @@ from .output import (
     format_for_zen,
     format_rules_context,
     compose_for_role,
-    # Document generation
-    generate_state_machine_doc,
 )
 
 # Includes
@@ -114,26 +84,73 @@ from .audit import (
     PACK_TECH_TERMS,
 )
 
-# IDE composition
-from .ide import (
-    CommandArg,
-    CommandDefinition,
-    CommandComposer,
-    PlatformAdapter,
-    ClaudeCommandAdapter,
-    CursorCommandAdapter,
-    CodexCommandAdapter,
-    compose_commands,
-    HookComposer,
-    HookDefinition,
-    compose_hooks,
-    ALLOWED_TYPES,
-    SettingsComposer,
-    merge_permissions,
-    # CodeRabbit composition
-    CodeRabbitComposer,
-    compose_coderabbit_config,
-)
+# IDE composition imports are now lazy (see __getattr__ below) to avoid circular imports
+
+
+# Lazy imports for registries to avoid circular imports
+def __getattr__(name: str):
+    """Lazy import registry classes to avoid circular imports."""
+    # Registry classes
+    registry_imports = {
+        "AgentRegistry": ".registries.agents",
+        "AgentError": ".registries.agents",
+        "AgentNotFoundError": ".registries.agents",
+        "compose_agent": ".registries.agents",
+        "ValidatorRegistry": ".registries.validators",
+        "collect_validators": ".registries.validators",
+        "infer_validator_metadata": ".registries.validators",
+        "normalize_validator_entries": ".registries.validators",
+        "GuidelineRegistry": ".registries.guidelines",
+        "GuidelineCompositionResult": ".registries.guidelines",
+        "GuidelinePaths": ".registries.guidelines",
+        "compose_guideline": ".registries.guidelines",
+        "get_rules_for_role": ".registries.constitutions",
+        "load_constitution_layer": ".registries.constitutions",
+        "compose_constitution": ".registries.constitutions",
+        "render_constitution_template": ".registries.constitutions",
+        "generate_all_constitutions": ".registries.constitutions",
+        "generate_canonical_entry": ".registries.rosters",
+    }
+
+    # IDE composition classes (from adapters.components and adapters.platforms)
+    ide_imports = {
+        # Commands
+        "CommandArg": ("edison.core.adapters.components.commands", True),
+        "CommandDefinition": ("edison.core.adapters.components.commands", True),
+        "CommandComposer": ("edison.core.adapters.components.commands", True),
+        "PlatformAdapter": ("edison.core.adapters.components.commands", True),
+        "ClaudeCommandAdapter": ("edison.core.adapters.components.commands", True),
+        "CursorCommandAdapter": ("edison.core.adapters.components.commands", True),
+        "CodexCommandAdapter": ("edison.core.adapters.components.commands", True),
+        "compose_commands": ("edison.core.adapters.components.commands", True),
+        # Hooks
+        "HookComposer": ("edison.core.adapters.components.hooks", True),
+        "HookDefinition": ("edison.core.adapters.components.hooks", True),
+        "compose_hooks": ("edison.core.adapters.components.hooks", True),
+        # Settings
+        "ALLOWED_TYPES": ("edison.core.adapters.components.settings", True),
+        "SettingsComposer": ("edison.core.adapters.components.settings", True),
+        "merge_permissions": ("edison.core.adapters.components.settings", True),
+        # CodeRabbit
+        "CodeRabbitComposer": ("edison.core.adapters.platforms.coderabbit", False),  # Needs alias
+    }
+
+    if name in registry_imports:
+        import importlib
+        module = importlib.import_module(registry_imports[name], package="edison.core.composition")
+        return getattr(module, name)
+
+    if name in ide_imports:
+        import importlib
+        module_path, direct = ide_imports[name]
+        module = importlib.import_module(module_path)
+        if name == "CodeRabbitComposer":
+            # Special case: CodeRabbitComposer is an alias for CoderabbitAdapter
+            return getattr(module, "CoderabbitAdapter")
+        return getattr(module, name)
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Core
@@ -164,33 +181,28 @@ __all__ = [
     "SectionRegistry",
     "SectionMode",
     "ParsedSection",
-    # Registries - Agents
+    # Registries - Agents (lazy)
     "AgentRegistry",
     "AgentError",
     "AgentNotFoundError",
-    "AgentTemplateError",
-    "CoreAgent",
-    "PackOverlay",
     "compose_agent",
-    # Registries - Validators
+    # Registries - Validators (lazy)
     "ValidatorRegistry",
     "collect_validators",
     "infer_validator_metadata",
     "normalize_validator_entries",
-    # Registries - Guidelines
+    # Registries - Guidelines (lazy)
     "GuidelineRegistry",
     "GuidelineCompositionResult",
     "GuidelinePaths",
     "compose_guideline",
-    # Registries - Constitutions
+    # Registries - Constitutions (lazy)
     "get_rules_for_role",
     "load_constitution_layer",
     "compose_constitution",
     "render_constitution_template",
     "generate_all_constitutions",
-    # Registries - Rosters
-    "generate_available_agents",
-    "generate_available_validators",
+    # Registries - Rosters (lazy)
     "generate_canonical_entry",
     # Output
     "OutputConfig",
@@ -204,7 +216,6 @@ __all__ = [
     "format_for_zen",
     "format_rules_context",
     "compose_for_role",
-    "generate_state_machine_doc",
     # Includes
     "ComposeError",
     "resolve_includes",
@@ -241,5 +252,4 @@ __all__ = [
     "merge_permissions",
     # Config composition
     "CodeRabbitComposer",
-    "compose_coderabbit_config",
 ]

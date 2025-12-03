@@ -1,208 +1,249 @@
-"""Base class for provider-specific prompt adapters.
+"""Base class for platform adapters.
 
-Adapters operate purely on Edison `_generated` artifacts and are
-responsible only for provider-specific formatting and filesystem
-layout. Composition (includes, pack overlays, DRY checks, etc.) is
-handled by the Edison engine before adapters run.
+PlatformAdapter is the unified base for ALL platform integrations.
+It merges the functionality of PromptAdapter and SyncAdapter into a single hierarchy.
 
-Uses ConfigMixin for unified config loading.
+Adapters handle:
+- Platform-specific formatting and sync
+- Reading from Edison _generated artifacts
+- Writing to platform-specific layouts
+- Configuration management
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
-from ._config import ConfigMixin
+from edison.core.composition.core.base import CompositionBase
+from edison.core.utils.io import ensure_directory
+
+if TYPE_CHECKING:
+    from edison.core.config.domains import AdaptersConfig
+    from edison.core.composition.output.config import OutputConfigLoader
 
 
-class PromptAdapter(ConfigMixin, ABC):
-    """Base class for provider-specific prompt adapters.
+class PlatformAdapter(CompositionBase, ABC):
+    """Unified base for ALL platform adapters.
 
-    Inherits from ConfigMixin to provide unified config loading with caching.
+    Inherits from CompositionBase to provide:
+    - Unified path resolution (project_root, project_dir, core_dir, etc.)
+    - Config management (cfg_mgr, config)
+    - YAML utilities (load_yaml_safe, _load_layered_config)
+    - Definition helpers (merge_definitions)
+    - Lazy writer (writer property)
 
-    The unified composition engine produces:
-    - _generated/agents/*.md - Agent prompts
-    - _generated/validators/*.md - Validator prompts
-    - _generated/constitutions/*.md - Role constitutions
-    - _generated/clients/*.md - Client-specific files (claude.md, zen.md)
-    - _generated/guidelines/*.md - Composed guidelines
+    Adds platform-specific:
+    - platform_name property (identify the platform)
+    - adapters_config property (adapter configurations)
+    - output_config property (output path configuration)
+    - sync_all() method (main sync entry point)
+    - sync_agents_from_generated() helper (common agent sync pattern)
+
+    Platform adapters integrate Edison's composition system with specific
+    IDE/client configurations. They handle:
+    - Configuration loading and validation
+    - Syncing composed outputs to platform-specific formats
+    - Platform-specific formatting (frontmatter, etc.)
+    - Providing unified sync interfaces
+
+    Subclasses must implement:
+    - platform_name property: Unique identifier for the platform
+    - sync_all(): Execute complete synchronization workflow
+
+    Example:
+        class MyPlatformAdapter(PlatformAdapter):
+            @property
+            def platform_name(self) -> str:
+                return "my_platform"
+
+            def sync_all(self) -> Dict[str, Any]:
+                # Sync all components
+                return {"synced": [...]}
     """
 
-    def __init__(self, generated_root: Path, repo_root: Optional[Path] = None) -> None:
-        """Initialize adapter with generated root and repo root.
+    # Lazy-loaded config objects
+    _adapters_config: Optional["AdaptersConfig"] = None
+    _output_config: Optional["OutputConfigLoader"] = None
+
+    def __init__(self, project_root: Optional[Path] = None) -> None:
+        """Initialize the platform adapter.
 
         Args:
-            generated_root: Path to _generated directory.
-            repo_root: Optional repository root. If not provided, will be inferred.
+            project_root: Project root directory. If not provided, will be resolved
+                         automatically using PathResolver.
         """
-        self.generated_root: Path = generated_root.resolve()
+        # Initialize CompositionBase
+        super().__init__(project_root=project_root)
 
-        # Best-effort repo root inference when not provided explicitly.
-        if repo_root is not None:
-            self.repo_root = repo_root.resolve()
-        else:
-            # Typical layout: <repo>/<project_config_dir>/_generated
-            try:
-                self.repo_root = self.generated_root.parents[1]
-            except IndexError:
-                self.repo_root = Path.cwd().resolve()
+        # Initialize lazy config loaders
+        self._adapters_config = None
+        self._output_config = None
 
-        # Initialize ConfigMixin's cache
-        self._cached_config: Optional[Dict[str, Any]] = None
+    def _setup_composition_dirs(self) -> None:
+        """Setup composition directories for platform adapters.
 
-    # ----- Default API -----
-    def render_agent(self, agent_name: str) -> str:
-        """Render a single agent prompt from `_generated/agents/`.
+        Platform adapters use:
+        - core_dir: Bundled edison.data package
+        - bundled_packs_dir: Bundled packs (edison.data/packs)
+        - project_packs_dir: Project packs (.edison/packs)
+        """
+        from edison.data import get_data_path
 
-        Default implementation reads the agent file and applies post-processing.
-        Override _post_process_agent() to customize formatting instead of this method.
+        # Core content is ALWAYS from bundled edison.data package
+        self.core_dir = Path(get_data_path(""))
+        self.bundled_packs_dir = Path(get_data_path("packs"))
+        self.project_packs_dir = self.project_dir / "packs"
 
-        Args:
-            agent_name: Name of the agent to render.
+    # =========================================================================
+    # Abstract Properties and Methods
+    # =========================================================================
+
+    @property
+    @abstractmethod
+    def platform_name(self) -> str:
+        """Return the unique identifier for this platform.
 
         Returns:
-            Rendered agent content.
-
-        Raises:
-            FileNotFoundError: If agent file does not exist.
+            Platform name (e.g., "claude", "cursor", "zen", "codex").
         """
-        source = self.agents_dir / f"{agent_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Agent not found: {source}")
-        content = source.read_text(encoding="utf-8")
-        return self._post_process_agent(agent_name, content)
-
-    def render_validator(self, validator_name: str) -> str:
-        """Render a single validator prompt from `_generated/validators/`.
-
-        Default implementation reads the validator file and applies post-processing.
-        Override _post_process_validator() to customize formatting instead of this method.
-
-        Args:
-            validator_name: Name of the validator to render.
-
-        Returns:
-            Rendered validator content.
-
-        Raises:
-            FileNotFoundError: If validator file does not exist.
-        """
-        source = self.validators_dir / f"{validator_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Validator not found: {source}")
-        content = source.read_text(encoding="utf-8")
-        return self._post_process_validator(validator_name, content)
-
-    def render_client(self, client_name: str) -> str:
-        """Render a client file from `_generated/clients/`.
-
-        Args:
-            client_name: Name of the client (e.g., 'claude', 'zen').
-
-        Returns:
-            Client file content.
-
-        Raises:
-            FileNotFoundError: If client file does not exist.
-        """
-        source = self.clients_dir / f"{client_name}.md"
-        if not source.exists():
-            raise FileNotFoundError(f"Client file not found: {source}")
-        return source.read_text(encoding="utf-8")
+        pass
 
     @abstractmethod
-    def write_outputs(self, output_root: Path) -> None:
-        """Write all generated prompts to provider-specific location."""
+    def sync_all(self) -> Dict[str, Any]:
+        """Execute complete synchronization workflow.
 
-    # ----- Extension Hooks -----
-    def _post_process_agent(self, agent_name: str, content: str) -> str:
-        """Hook for subclasses to format agent content.
-
-        Override this method to add provider-specific formatting to agents.
-        Default implementation returns content unchanged.
-
-        Args:
-            agent_name: Name of the agent.
-            content: Raw agent content from file.
+        This is the main entry point for syncing all Edison outputs to the
+        target platform format. The exact behavior and return structure
+        depends on the specific adapter implementation.
 
         Returns:
-            Formatted agent content.
+            Dictionary containing sync results. Structure varies by adapter
+            but typically includes lists of paths for synced files.
+
+        Example return values:
+            - ClaudeAdapter: {"claude_md": [Path], "agents": [Path]}
+            - CursorAdapter: {"cursorrules": [Path], "agents": [Path], "rules": [Path]}
+            - ZenAdapter: {"roles": {role: [Path]}, "workflows": [Path]}
         """
-        return content
+        pass
 
-    def _post_process_validator(self, validator_name: str, content: str) -> str:
-        """Hook for subclasses to format validator content.
+    # =========================================================================
+    # Config Properties
+    # =========================================================================
 
-        Override this method to add provider-specific formatting to validators.
-        Default implementation returns content unchanged.
-
-        Args:
-            validator_name: Name of the validator.
-            content: Raw validator content from file.
+    @property
+    def adapters_config(self) -> "AdaptersConfig":
+        """Lazy-load AdaptersConfig.
 
         Returns:
-            Formatted validator content.
+            AdaptersConfig instance for adapter-specific configurations.
         """
-        return content
+        if self._adapters_config is None:
+            from edison.core.config.domains import AdaptersConfig
 
-    # ----- Shared path helpers -----
-    @property
-    def agents_dir(self) -> Path:
-        """Path to _generated/agents/."""
-        return self.generated_root / "agents"
+            self._adapters_config = AdaptersConfig(repo_root=self.project_root)
+        return self._adapters_config
 
     @property
-    def validators_dir(self) -> Path:
-        """Path to _generated/validators/."""
-        return self.generated_root / "validators"
+    def output_config(self) -> "OutputConfigLoader":
+        """Lazy-load OutputConfigLoader.
 
-    @property
-    def constitutions_dir(self) -> Path:
-        """Path to _generated/constitutions/."""
-        return self.generated_root / "constitutions"
+        Returns:
+            OutputConfigLoader instance for output path configuration.
+        """
+        if self._output_config is None:
+            from edison.core.composition.output.config import OutputConfigLoader
 
-    @property
-    def clients_dir(self) -> Path:
-        """Path to _generated/clients/."""
-        return self.generated_root / "clients"
+            self._output_config = OutputConfigLoader(repo_root=self.project_root)
+        return self._output_config
 
-    @property
-    def guidelines_dir(self) -> Path:
-        """Path to _generated/guidelines/."""
-        return self.generated_root / "guidelines"
+    # =========================================================================
+    # Common Sync Utilities
+    # =========================================================================
 
-    # ----- Constitution paths -----
-    @property
-    def orchestrator_constitution_path(self) -> Path:
-        """Path to orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md)."""
-        return self.constitutions_dir / "ORCHESTRATORS.md"
+    def validate_structure(
+        self,
+        target_dir: Path,
+        *,
+        create_missing: bool = True,
+    ) -> Path:
+        """Ensure target directory structure exists.
 
-    @property
-    def agent_constitution_path(self) -> Path:
-        """Path to agent constitution."""
-        return self.constitutions_dir / "AGENTS.md"
+        Args:
+            target_dir: Directory to validate/create.
+            create_missing: If True, create missing directories. Default: True.
 
-    @property
-    def validator_constitution_path(self) -> Path:
-        """Path to validator constitution."""
-        return self.constitutions_dir / "VALIDATORS.md"
+        Returns:
+            The target directory path.
 
-    # ----- List helpers -----
-    def list_agents(self) -> List[str]:
-        """List all agent names from _generated/agents/."""
-        if not self.agents_dir.exists():
+        Raises:
+            RuntimeError: If directory doesn't exist and create_missing=False.
+        """
+        if not target_dir.exists():
+            if not create_missing:
+                raise RuntimeError(f"Missing directory: {target_dir}")
+            ensure_directory(target_dir)
+        return target_dir
+
+    def sync_agents_from_generated(
+        self,
+        target_dir: Path,
+        *,
+        add_frontmatter: bool = False,
+        frontmatter_fn: Optional[Callable[[str, str], str]] = None,
+    ) -> List[Path]:
+        """Common pattern: sync _generated/agents/ to target directory.
+
+        Args:
+            target_dir: Destination directory for agent files.
+            add_frontmatter: If True, use frontmatter_fn to add frontmatter.
+            frontmatter_fn: Function(agent_name, content) -> content_with_frontmatter.
+
+        Returns:
+            List of created/updated file paths.
+        """
+        # Find generated agents directory
+        generated_agents = self.project_dir / "_generated" / "agents"
+
+        if not generated_agents.exists():
             return []
-        return sorted(p.stem for p in self.agents_dir.glob("*.md"))
 
-    def list_validators(self) -> List[str]:
-        """List all validator names from _generated/validators/."""
-        if not self.validators_dir.exists():
-            return []
-        return sorted(p.stem for p in self.validators_dir.glob("*.md"))
+        # Ensure target exists
+        self.validate_structure(target_dir)
 
-    def list_clients(self) -> List[str]:
-        """List all client names from _generated/clients/."""
-        if not self.clients_dir.exists():
-            return []
-        return sorted(p.stem for p in self.clients_dir.glob("*.md"))
+        result: List[Path] = []
+
+        for source_file in generated_agents.glob("*.md"):
+            agent_name = source_file.stem
+            content = source_file.read_text(encoding="utf-8")
+
+            # Apply frontmatter if requested
+            if add_frontmatter and frontmatter_fn:
+                content = frontmatter_fn(agent_name, content)
+
+            # Write to target
+            target_file = target_dir / source_file.name
+            self.writer.write_text(target_file, content)
+            result.append(target_file)
+
+        return result
+
+    # =========================================================================
+    # Factory Methods
+    # =========================================================================
+
+    @classmethod
+    def create(cls, project_root: Optional[Path] = None) -> "PlatformAdapter":
+        """Factory method for standard initialization.
+
+        Args:
+            project_root: Optional project root directory.
+
+        Returns:
+            Initialized platform adapter instance.
+        """
+        return cls(project_root=project_root)
+
+
+__all__ = ["PlatformAdapter"]

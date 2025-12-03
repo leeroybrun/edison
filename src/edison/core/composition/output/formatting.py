@@ -76,7 +76,7 @@ def compose_for_role(
         # It's an adapter/engine object
         repo_root = adapter_or_repo_root.repo_root
         cfg = getattr(adapter_or_repo_root, 'config', {}) or {}
-        packs = adapter_or_repo_root._active_packs() if hasattr(adapter_or_repo_root, '_active_packs') else []
+        packs = adapter_or_repo_root.get_active_packs() if hasattr(adapter_or_repo_root, 'get_active_packs') else []
     
     parts: List[str] = []
     

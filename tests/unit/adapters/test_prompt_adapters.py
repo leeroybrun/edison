@@ -107,16 +107,16 @@ class TestCodexAdapter:
             adapter.render_agent("nonexistent")
 
 
-class TestCursorPromptAdapter:
+class TestCursorAdapter:
     def test_cursor_adapter_writes_prompts(self, isolated_project_env: Path) -> None:
         pytest.skip("Pre-existing: composition.commands module doesn't exist yet")
-        from edison.core.adapters import CursorPromptAdapter
+        from edison.core.adapters import CursorAdapter
         repo_root = isolated_project_env
         _write_adapter_config(repo_root)
         generated_root = _seed_generated(repo_root)
 
         out_root = repo_root / ".cursor" / "prompts"
-        adapter = CursorPromptAdapter(generated_root=generated_root, repo_root=repo_root)
+        adapter = CursorAdapter(generated_root=generated_root, repo_root=repo_root)
         adapter.write_outputs(out_root)
 
         orchestrator = out_root / "cursor-orchestrator.txt"
@@ -133,12 +133,12 @@ class TestCursorPromptAdapter:
         assert "Workflow" in orchestrator_text
 
     def test_cursor_adapter_missing_validator_raises(self, isolated_project_env: Path) -> None:
-        from edison.core.adapters import CursorPromptAdapter
+        from edison.core.adapters import CursorAdapter
         repo_root = isolated_project_env
         _write_adapter_config(repo_root)
         generated_root = _seed_generated(repo_root)
 
-        adapter = CursorPromptAdapter(generated_root=generated_root, repo_root=repo_root)
+        adapter = CursorAdapter(generated_root=generated_root, repo_root=repo_root)
 
         with pytest.raises(FileNotFoundError):
             adapter.render_validator("does-not-exist")

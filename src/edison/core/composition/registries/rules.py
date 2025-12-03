@@ -13,7 +13,7 @@ Architecture:
 
     BaseEntityManager
     └── BaseRegistry
-        └── RulesRegistry (this module)
+        └── RulesRegistry (this module) + YamlLayerMixin
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from edison.core.entity import BaseRegistry
+from edison.core.composition.core.yaml_layer import YamlLayerMixin
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.text import extract_anchor_content as _extract_anchor_content
@@ -32,15 +33,15 @@ from ..core.errors import AnchorNotFoundError, RulesCompositionError
 from edison.data import get_data_path
 
 
-class RulesRegistry(BaseRegistry[Dict[str, Any]]):
+class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
     """
     Load and compose rules from bundled + pack YAML registries.
-    
+
     Extends BaseRegistry with rule-specific functionality:
-    - YAML-based rule loading
+    - YAML-based rule loading (via YamlLayerMixin)
     - Anchor extraction from guidelines
     - Include resolution
-    
+
     Registry locations:
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
       - Packs: .edison/packs/<pack>/rules/registry.yml (bundled + project)
@@ -139,20 +140,20 @@ class RulesRegistry(BaseRegistry[Dict[str, Any]]):
         return list(self.discover_core().values())
 
     # ------------------------------------------------------------------
-    # Registry loading
+    # Registry loading (uses YamlLayerMixin)
     # ------------------------------------------------------------------
     def _load_yaml(self, path: Path, *, required: bool) -> Dict[str, Any]:
         """Load and validate rules YAML file.
 
-        Uses inherited cfg_mgr from BaseRegistry for consistent YAML loading.
+        Uses YamlLayerMixin._load_yaml_file() for consistent YAML loading.
         """
-        if not path.exists():
+        try:
+            data = self._load_yaml_file(path, required=required)
+        except FileNotFoundError:
             if required:
                 raise RulesCompositionError(f"Rules registry not found at {path}")
             return {"version": None, "rules": []}
 
-        # Use inherited cfg_mgr from BaseRegistry for consistent YAML loading
-        data = self.cfg_mgr.load_yaml(path) or {}
         if not isinstance(data, dict):
             raise RulesCompositionError(
                 f"Invalid rules registry at {path}: expected mapping at top level"

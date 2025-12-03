@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from edison.core.composition.ide.settings import SettingsComposer
+from edison.core.adapters.components.settings import SettingsComposer
 
 def test_write_settings_file_creates_json(tmp_path):
     # Setup SettingsComposer with tmp_path as repo_root

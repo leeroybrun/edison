@@ -30,7 +30,7 @@ class TestClaudeAdapterUnit:
     def test_validate_claude_structure_creates_dirs(self, isolated_project_env: Path) -> None:
         """validate_structure creates .claude and agents subdir when missing."""
         root = isolated_project_env
-        adapter = ClaudeSync(repo_root=root)
+        adapter = ClaudeAdapter(project_root=root)
 
         claude_dir = adapter.validate_structure()
 
@@ -43,7 +43,7 @@ class TestClaudeAdapterUnit:
         root = isolated_project_env
         src = write_generated_agent(root, "feature-implementer", role_text="Full-stack feature orchestrator.")
 
-        adapter = ClaudeSync(repo_root=root)
+        adapter = ClaudeAdapter(project_root=root)
         changed = adapter.sync_agents()
 
         claude_agent = root / ".claude" / "agents" / "feature-implementer.md"

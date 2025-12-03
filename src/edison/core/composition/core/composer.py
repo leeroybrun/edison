@@ -54,8 +54,6 @@ class LayeredComposer:
         self.bundled_packs_dir = path_resolver.packs_dir
         self.project_packs_dir = path_resolver.project_packs_dir
         self.project_dir = path_resolver.project_dir
-        # Backward-compatible alias
-        self.packs_dir = path_resolver.packs_dir
         
         # Initialize components
         self.schema = CompositionSchema.load()

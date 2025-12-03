@@ -19,7 +19,7 @@ from edison.core.task.paths import _get_root as task_paths_get_root
 from edison.core.composition import includes as composition_includes
 from edison.core.composition.registries import guidelines as composition_guidelines
 # from edison.core.adapters.sync import zen as zen_adapter
-from edison.core.adapters.sync import cursor as cursor_adapter
+from edison.core.adapters.platforms import cursor as cursor_adapter
 from tests.helpers.cache_utils import reset_edison_caches
 from tests.helpers.env_setup import setup_project_root
 

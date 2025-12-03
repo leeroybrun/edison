@@ -1,7 +1,7 @@
 import json
 import pytest
 from pathlib import Path
-from edison.core.adapters.sync.cursor import CursorSync
+from edison.core.adapters.platforms.cursor import CursorSync
 
 def test_write_snapshot_creates_meta_json(tmp_path):
     # Setup CursorSync with tmp_path as repo_root

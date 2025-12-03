@@ -193,7 +193,7 @@ class TestZenAdapterUnit:
         self._write_basic_config(root)
         self._write_guidelines(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
 
         default_guides = adapter.get_applicable_guidelines("default")
         assert {"QUALITY", "security", "performance", "architecture"} <= set(default_guides)
@@ -214,7 +214,7 @@ class TestZenAdapterUnit:
         self._write_basic_config(root)
         self._write_rules_registry(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
 
         all_rules = adapter.get_applicable_rules("default")
         assert {r["id"] for r in all_rules} == {
@@ -245,7 +245,7 @@ class TestZenAdapterUnit:
         self._write_config_with_project_roles(root)
         self._write_guidelines_with_packs_and_overlays(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
 
         names = adapter.get_applicable_guidelines("project-api-builder")
 
@@ -266,7 +266,7 @@ class TestZenAdapterUnit:
         self._write_config_with_project_roles(root)
         self._write_rules_with_packs(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
         rules = adapter.get_applicable_rules("project-api-builder")
         ids = {r["id"] for r in rules}
 
@@ -290,7 +290,7 @@ class TestZenAdapterUnit:
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
 
         text = adapter.compose_zen_prompt(role="codereviewer", model="codex", packs=[])
 
@@ -312,7 +312,7 @@ class TestZenAdapterUnit:
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenSync(repo_root=root)
+        adapter = ZenAdapter(project_root=root)
         text = adapter.compose_zen_prompt(role="default", model=model, packs=[])
 
         assert f"Model: {model}" in text

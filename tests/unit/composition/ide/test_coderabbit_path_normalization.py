@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.composition.ide.coderabbit import CodeRabbitComposer
+from edison.core.adapters.platforms.coderabbit import CodeRabbitComposer
 from tests.helpers.io_utils import write_yaml
 
 

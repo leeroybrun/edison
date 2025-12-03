@@ -32,12 +32,12 @@ class CompositionBase(ABC):
 
     Subclasses MUST implement _setup_composition_dirs() to set:
     - self.core_dir
-    - self.packs_dir (and optionally bundled_packs_dir, project_packs_dir)
+    - self.bundled_packs_dir
+    - self.project_packs_dir
     """
 
     # Declare attributes for type checking
     core_dir: Path
-    packs_dir: Path
     bundled_packs_dir: Path
     project_packs_dir: Path
 
@@ -64,22 +64,37 @@ class CompositionBase(ABC):
         # Active packs - UNIFIED (lazy via property)
         self._packs_config_cache: Optional[PacksConfig] = None
 
+        # Lazy writer - UNIFIED
+        self._writer: Optional["CompositionFileWriter"] = None  # type: ignore[name-defined]
+
         # Subclass-specific paths
         self._setup_composition_dirs()
+
+    # =========================================================================
+    # Writer Property
+    # =========================================================================
+
+    @property
+    def writer(self) -> "CompositionFileWriter":  # type: ignore[name-defined]
+        """Lazy-initialized CompositionFileWriter.
+
+        Returns:
+            CompositionFileWriter instance for writing files.
+        """
+        if self._writer is None:
+            from edison.core.composition.output.writer import CompositionFileWriter
+
+            self._writer = CompositionFileWriter(base_dir=self.project_root)
+        return self._writer
 
     @abstractmethod
     def _setup_composition_dirs(self) -> None:
         """Setup core/packs directories. Override in subclasses.
 
-        BaseRegistry implementation:
-            self.core_dir = self.project_dir / "core"
-            self.packs_dir = self.project_dir / "packs"
-
-        IDEComposerBase implementation:
+        Standard implementation:
             self.core_dir = Path(get_data_path(""))
             self.bundled_packs_dir = Path(get_data_path("packs"))
             self.project_packs_dir = self.project_dir / "packs"
-            self.packs_dir = self.bundled_packs_dir  # backward compat
         """
         pass
 
@@ -98,11 +113,6 @@ class CompositionBase(ABC):
         """Get active packs list (cached)."""
         return self._packs_config.active_packs
 
-    # Alias for backward compatibility
-    def _active_packs(self) -> List[str]:
-        """Get active packs via PacksConfig."""
-        return self.get_active_packs()
-
     # =========================================================================
     # YAML Loading Utilities
     # =========================================================================
@@ -112,11 +122,6 @@ class CompositionBase(ABC):
         if not path.exists():
             return {}
         return self.cfg_mgr.load_yaml(path) or {}
-
-    # Alias for backward compatibility
-    def _load_yaml_safe(self, path: Path) -> Dict[str, Any]:
-        """Load YAML file, returning empty dict if not found."""
-        return self.load_yaml_safe(path)
 
     def _load_yaml_with_fallback(
         self,
@@ -148,16 +153,6 @@ class CompositionBase(ABC):
             return base
         return self.cfg_mgr.deep_merge(base, data)
 
-    # Alias for backward compatibility
-    def _merge_from_file(
-        self,
-        base: Dict[str, Any],
-        path: Path,
-        key: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Merge YAML file contents into base dict."""
-        return self.merge_yaml(base, path, key)
-
     def merge_definitions(
         self,
         merged: Dict[str, Dict[str, Any]],
@@ -185,6 +180,69 @@ class CompositionBase(ABC):
             return merged
 
         return merged
+
+    def _extract_definitions(
+        self,
+        data: Dict[str, Any],
+        key: str,
+    ) -> List[Dict[str, Any]]:
+        """Extract definitions list from config data by key path.
+
+        Supports nested paths using dot notation (e.g., "ide.claude.hooks").
+
+        Args:
+            data: Configuration data dictionary.
+            key: Key path to extract (supports dot notation for nested keys).
+
+        Returns:
+            List of definition dicts, or empty list if not found or not a list.
+        """
+        # Navigate to nested key
+        current = data
+        for part in key.split("."):
+            if not isinstance(current, dict):
+                return []
+            current = current.get(part)
+            if current is None:
+                return []
+
+        # Return as list if it's a list, otherwise empty
+        if isinstance(current, list):
+            return current
+        return []
+
+    def _merge_definitions_by_id(
+        self,
+        base: Dict[str, Dict[str, Any]],
+        new_defs: List[Dict[str, Any]],
+        id_key: str = "id",
+    ) -> Dict[str, Dict[str, Any]]:
+        """Merge definitions list into base dict by ID.
+
+        This is the overlay pattern: later definitions extend/override earlier ones.
+
+        Args:
+            base: Existing definitions dict (id -> definition).
+            new_defs: List of new definitions to merge.
+            id_key: Key to use as identifier (default: "id").
+
+        Returns:
+            Merged definitions dict.
+        """
+        result = dict(base)
+
+        for def_dict in new_defs:
+            if not isinstance(def_dict, dict):
+                continue
+
+            def_id = def_dict.get(id_key)
+            if not def_id:
+                continue
+
+            existing = result.get(def_id, {})
+            result[def_id] = self.cfg_mgr.deep_merge(existing, def_dict)
+
+        return result
 
     def _load_layered_config(
         self,
@@ -223,9 +281,8 @@ class CompositionBase(ABC):
         result = merge_with_ext_fallback(result, self.core_dir.joinpath(*subdirs))
 
         # 2. Pack layers - bundled packs
-        packs_base = getattr(self, "bundled_packs_dir", self.packs_dir)
         for pack in self.get_active_packs():
-            pack_dir = packs_base / pack / Path(*subdirs)
+            pack_dir = self.bundled_packs_dir / pack / Path(*subdirs)
             result = merge_with_ext_fallback(result, pack_dir)
 
         # 3. Pack layers - project packs (for IDE composers, allow project-level pack overrides)

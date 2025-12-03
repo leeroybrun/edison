@@ -1,7 +1,9 @@
 """Output handling for composition.
 
-Includes output path configuration, formatting utilities, header resolution,
-and document generation (state machine docs, etc.).
+Includes output path configuration, formatting utilities, and header resolution.
+
+Note: Document generation (state machine, rosters) has been moved to
+composition/generators/ module.
 """
 from __future__ import annotations
 
@@ -22,7 +24,6 @@ from .formatting import (
     format_rules_context,
     compose_for_role,
 )
-from .state_machine import generate_state_machine_doc
 
 __all__ = [
     # Config
@@ -39,6 +40,4 @@ __all__ = [
     "format_for_zen",
     "format_rules_context",
     "compose_for_role",
-    # Document generation
-    "generate_state_machine_doc",
 ]

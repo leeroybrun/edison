@@ -62,7 +62,8 @@ class BaseRegistry(Generic[T]):
         project_root: Root path of the project
         project_dir: Project configuration directory
         core_dir: Directory for core/bundled content
-        packs_dir: Directory for pack content
+        bundled_packs_dir: Directory for bundled pack content
+        project_packs_dir: Directory for project pack content
     """
 
     # Entity type identifier - subclasses should override
@@ -76,7 +77,6 @@ class BaseRegistry(Generic[T]):
     project_root: Path
     project_dir: Path
     core_dir: Path
-    packs_dir: Path
     bundled_packs_dir: Path
     project_packs_dir: Path
     cfg_mgr: Any
@@ -127,9 +127,6 @@ class BaseRegistry(Generic[T]):
         self.core_dir = Path(get_data_path(""))
         self.bundled_packs_dir = Path(get_data_path("packs"))
         self.project_packs_dir = self.project_dir / "packs"
-        # packs_dir defaults to bundled for backward compatibility
-        # but registries should use both bundled_packs_dir and project_packs_dir
-        self.packs_dir = self.bundled_packs_dir
 
     # =========================================================================
     # Active Packs (from CompositionBase pattern)
@@ -142,10 +139,6 @@ class BaseRegistry(Generic[T]):
             self._packs_config_cache = PacksConfig(repo_root=self.project_root)
         return self._packs_config_cache.active_packs
 
-    def _active_packs(self) -> List[str]:
-        """Alias for get_active_packs()."""
-        return self.get_active_packs()
-
     # =========================================================================
     # YAML Loading Utilities (from CompositionBase pattern)
     # =========================================================================
@@ -155,10 +148,6 @@ class BaseRegistry(Generic[T]):
         if not path.exists():
             return {}
         return self.cfg_mgr.load_yaml(path) or {}
-
-    def _load_yaml_safe(self, path: Path) -> Dict[str, Any]:
-        """Alias for load_yaml_safe()."""
-        return self.load_yaml_safe(path)
 
     def merge_yaml(
         self,

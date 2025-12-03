@@ -17,10 +17,10 @@ from typing import Any, Dict
 import pytest
 
 from tests.helpers.io_utils import write_yaml
-from edison.core.composition.ide.hooks import HookComposer
-from edison.core.composition.ide.commands import CommandComposer
-from edison.core.composition.ide.settings import SettingsComposer
-from edison.core.composition.ide.coderabbit import CodeRabbitComposer
+from edison.core.adapters.components.hooks import HookComposer
+from edison.core.adapters.components.commands import CommandComposer
+from edison.core.adapters.components.settings import SettingsComposer
+from edison.core.adapters.platforms.coderabbit import CodeRabbitComposer
 
 
 # =========================================================================

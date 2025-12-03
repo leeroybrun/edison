@@ -28,9 +28,10 @@ class TestAgentCompositionBasic:
         core_agents = registry.discover_core()
 
         # api-builder is a real bundled agent
+        # discover_core() returns Dict[str, Path]
         assert "api-builder" in core_agents
-        assert core_agents["api-builder"].name == "api-builder"
-        assert core_agents["api-builder"].core_path.exists()
+        assert core_agents["api-builder"].exists()
+        assert core_agents["api-builder"].name == "api-builder.md"
 
     @pytest.mark.skip(reason="Pack overlays only supported from bundled packs, not project packs")
     def test_pack_overlay_merging(self, isolated_project_env: Path) -> None:

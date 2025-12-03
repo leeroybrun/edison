@@ -1,7 +1,7 @@
 
 import pytest
 from pathlib import Path
-from edison.core.composition.ide.settings import SettingsComposer
+from edison.core.adapters.components.settings import SettingsComposer
 
 def test_write_settings_file_resilience_to_bad_encoding(tmp_path):
     """

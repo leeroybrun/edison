@@ -6,7 +6,7 @@ This test verifies that BOTH old and new ZenAdapter implementations
 are available from the adapters module after the merge.
 
 RED: This test will fail initially because the merge hasn't happened yet.
-GREEN: After merging, both ZenAdapter and ZenPromptAdapter will be importable.
+GREEN: After merging, both ZenAdapter and ZenAdapter will be importable.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ class TestZenAdapterMerged:
     """Test that ZenAdapter functionality is available from canonical location."""
 
     def test_can_import_zen_prompt_adapter_from_adapters(self):
-        """Verify ZenPromptAdapter is importable from canonical location."""
-        from edison.core.adapters import ZenPromptAdapter
+        """Verify ZenAdapter is importable from canonical location."""
+        from edison.core.adapters import ZenAdapter
 
-        assert ZenPromptAdapter is not None
-        assert hasattr(ZenPromptAdapter, '__init__')
+        assert ZenAdapter is not None
+        assert hasattr(ZenAdapter, '__init__')
 
     def test_can_import_zen_sync_from_adapters(self):
         """Verify ZenSync (full adapter) is importable from canonical location."""
@@ -54,7 +54,7 @@ class TestZenAdapterMerged:
         repo_root.mkdir()
 
         # ZenSync should instantiate without errors
-        adapter = ZenSync(repo_root=repo_root, config={})
+        adapter = ZenAdapter(project_root=repo_root, config={})
 
         assert adapter is not None
         assert adapter.repo_root == repo_root

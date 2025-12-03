@@ -9,7 +9,7 @@ import pytest
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-from edison.core.composition.ide.settings import SettingsComposer, merge_permissions  # type: ignore  # noqa: E402
+from edison.core.adapters.components.settings import SettingsComposer, merge_permissions  # type: ignore  # noqa: E402
 
 from helpers.io_utils import write_yaml
 

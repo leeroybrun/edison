@@ -1,7 +1,7 @@
 """Tests for ConfigMixin shared across all adapters.
 
 This test suite verifies the shared config loading pattern used by all
-adapter classes (ClaudeAdapter, CursorPromptAdapter, CodexAdapter, etc.)
+adapter classes (ClaudeAdapter, CursorAdapter, CodexAdapter, etc.)
 """
 from __future__ import annotations
 

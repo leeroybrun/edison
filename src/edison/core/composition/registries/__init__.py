@@ -9,9 +9,6 @@ from .agents import (
     AgentRegistry,
     AgentError,
     AgentNotFoundError,
-    AgentTemplateError,
-    CoreAgent,
-    PackOverlay,
     compose_agent,
 )
 from .validators import (
@@ -33,11 +30,10 @@ from .constitutions import (
     render_constitution_template,
     generate_all_constitutions,
 )
-from .rosters import (
-    generate_available_agents,
-    generate_available_validators,
-    generate_canonical_entry,
-)
+# Note: Rosters (generate_available_agents, generate_available_validators)
+# have been moved to composition/generators/
+# generate_canonical_entry is still defined here for now
+
 from .rules import (
     RulesRegistry,
     compose_rules,
@@ -69,9 +65,6 @@ __all__ = [
     "AgentRegistry",
     "AgentError",
     "AgentNotFoundError",
-    "AgentTemplateError",
-    "CoreAgent",
-    "PackOverlay",
     "compose_agent",
     # Validators
     "ValidatorRegistry",
@@ -89,9 +82,7 @@ __all__ = [
     "compose_constitution",
     "render_constitution_template",
     "generate_all_constitutions",
-    # Rosters
-    "generate_available_agents",
-    "generate_available_validators",
+    # Rosters (generate_canonical_entry still available if rosters.py exists)
     "generate_canonical_entry",
     # Rules
     "RulesRegistry",
@@ -112,6 +103,3 @@ __all__ = [
     "AnchorNotFoundError",
     "RulesCompositionError",
 ]
-
-
-

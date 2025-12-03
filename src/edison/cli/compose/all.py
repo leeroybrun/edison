@@ -13,12 +13,14 @@ from pathlib import Path
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 from edison.core.composition import (
     generate_all_constitutions,
-    generate_available_agents,
-    generate_available_validators,
     generate_canonical_entry,
-    generate_state_machine_doc,
     GuidelineRegistry,
     LayeredComposer,
+)
+from edison.core.composition.generators import (
+    AgentRosterGenerator,
+    ValidatorRosterGenerator,
+    StateMachineGenerator,
 )
 from edison.core.composition.output.writer import CompositionFileWriter
 from edison.core.composition.registries.rules import RulesRegistry
@@ -153,9 +155,14 @@ def main(args: argparse.Namespace) -> int:
             output_path = config_dir / "_generated"
 
             # Generate rosters first so constitutions can reference them
-            generate_available_agents(output_path / "AVAILABLE_AGENTS.md", repo_root=repo_root)
-            generate_available_validators(output_path / "AVAILABLE_VALIDATORS.md", repo_root=repo_root)
-            generate_state_machine_doc(output_path / "STATE_MACHINE.md", repo_root=repo_root)
+            agent_gen = AgentRosterGenerator(project_root=repo_root)
+            agent_gen.write(output_path)
+
+            validator_gen = ValidatorRosterGenerator(project_root=repo_root)
+            validator_gen.write(output_path)
+
+            sm_gen = StateMachineGenerator(project_root=repo_root)
+            sm_gen.write(output_path)
 
             # Generate canonical entry point (AGENTS.md at repo root)
             from edison.core.composition.output import OutputConfigLoader
@@ -306,14 +313,14 @@ def main(args: argparse.Namespace) -> int:
 
         # Compose hooks
         if compose_all_types or getattr(args, "hooks", False):
-            from edison.core.composition.ide.hooks import HookComposer
+            from edison.core.adapters.components.hooks import HookComposer
             hook_composer = HookComposer(config=config, repo_root=repo_root)
             hooks = hook_composer.compose_hooks()
             results["hooks"] = {name: str(path) for name, path in hooks.items()}
 
         # Compose commands
         if compose_all_types or getattr(args, "commands", False):
-            from edison.core.composition.ide.commands import CommandComposer
+            from edison.core.adapters.components.commands import CommandComposer
             cmd_composer = CommandComposer(config=config, repo_root=repo_root)
             commands = cmd_composer.compose_all()
             results["commands"] = {
@@ -323,7 +330,7 @@ def main(args: argparse.Namespace) -> int:
 
         # Compose settings (must come after hooks since it references hook paths)
         if compose_all_types or getattr(args, "settings", False):
-            from edison.core.composition.ide.settings import SettingsComposer
+            from edison.core.adapters.components.settings import SettingsComposer
             settings_composer = SettingsComposer(config=config, repo_root=repo_root)
             settings_path = settings_composer.write_settings_file()
             results["settings"] = str(settings_path)
@@ -376,7 +383,7 @@ def main(args: argparse.Namespace) -> int:
 
         # Compose CodeRabbit configuration - always runs with compose_all_types
         if compose_all_types:
-            from edison.core.composition.ide.coderabbit import CodeRabbitComposer
+            from edison.core.adapters.platforms.coderabbit import CodeRabbitAdapter as CodeRabbitComposer
             coderabbit_composer = CodeRabbitComposer(config=config, repo_root=repo_root)
             coderabbit_path = coderabbit_composer.write_coderabbit_config()
             results["coderabbit"] = str(coderabbit_path)

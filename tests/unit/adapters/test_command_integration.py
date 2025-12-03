@@ -7,9 +7,9 @@ from typing import Dict
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-from edison.core.composition.ide.commands import compose_commands  # type: ignore  # noqa: E402
+from edison.core.adapters.components.commands import compose_commands  # type: ignore  # noqa: E402
 from edison.core.config import ConfigManager  # type: ignore  # noqa: E402
-from edison.core.adapters import ClaudeAdapter, CursorPromptAdapter, CodexAdapter  # type: ignore  # noqa: E402
+from edison.core.adapters import ClaudeAdapter, CursorAdapter, CodexAdapter  # type: ignore  # noqa: E402
 
 from helpers.io_utils import write_yaml
 
@@ -68,7 +68,7 @@ def test_generate_commands_all_platforms(tmp_path: Path) -> None:
 
     # Adapter helpers should also generate per-platform
     claude = ClaudeAdapter(generated_root, repo_root=tmp_path)
-    cursor = CursorPromptAdapter(generated_root, repo_root=tmp_path)
+    cursor = CursorAdapter(generated_root, repo_root=tmp_path)
     codex = CodexAdapter(generated_root, repo_root=tmp_path)
 
     claude_cmds = claude.generate_commands()

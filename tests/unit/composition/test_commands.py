@@ -11,7 +11,7 @@ import pytest
 from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
-from edison.core.composition.ide.commands import (  # type: ignore  # noqa: E402
+from edison.core.adapters.components.commands import (  # type: ignore  # noqa: E402
     CommandArg,
     CommandDefinition,
     CommandComposer,

@@ -1,15 +1,16 @@
 """JSON Schema Composer - composes schemas from core → packs → project.
 
 Uses CompositionFileWriter for unified file output.
+Uses ConfigManager.deep_merge() for schema merging (no duplicate code).
 """
 from __future__ import annotations
 
 import json
 import importlib.resources
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from edison.core.config import ConfigManager
 from ..output.writer import CompositionFileWriter
 
 
@@ -17,6 +18,7 @@ class JsonSchemaComposer:
     """Composes JSON schemas from core → packs → project.
 
     Uses CompositionFileWriter for consistent file output.
+    Uses ConfigManager.deep_merge() for consistent merging.
     """
 
     def __init__(
@@ -33,6 +35,7 @@ class JsonSchemaComposer:
         self.project_root = project_root
         self.active_packs = active_packs or []
         self._writer = CompositionFileWriter()
+        self._cfg_mgr = ConfigManager(project_root)
 
     def compose_all(self) -> Dict[str, Dict[str, Any]]:
         """Compose all schemas from core, packs, and project.
@@ -51,7 +54,7 @@ class JsonSchemaComposer:
             pack_schemas = self._load_pack_schemas(pack)
             for name, schema in pack_schemas.items():
                 if name in schemas:
-                    schemas[name] = self._deep_merge(schemas[name], schema)
+                    schemas[name] = self._cfg_mgr.deep_merge(schemas[name], schema)
                 else:
                     schemas[name] = schema
 
@@ -59,7 +62,7 @@ class JsonSchemaComposer:
         project_schemas = self._load_project_schemas()
         for name, schema in project_schemas.items():
             if name in schemas:
-                schemas[name] = self._deep_merge(schemas[name], schema)
+                schemas[name] = self._cfg_mgr.deep_merge(schemas[name], schema)
             else:
                 schemas[name] = schema
 
@@ -116,22 +119,6 @@ class JsonSchemaComposer:
                     schemas[name] = json.load(f)
 
         return schemas
-
-    def _deep_merge(
-        self,
-        base: Dict[str, Any],
-        overlay: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """Deep merge overlay into base."""
-        result = deepcopy(base)
-
-        for key, value in overlay.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = deepcopy(value)
-
-        return result
 
     def write_schemas(self, output_dir: Path) -> int:
         """Write composed schemas to output directory.

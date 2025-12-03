@@ -42,6 +42,11 @@ from .sections import (
     SectionMode,
     ParsedSection,
 )
+from ..strategies import (
+    CompositionContext,
+    LayerContent,
+    MarkdownCompositionStrategy,
+)
 from .types import ComposeResult
 
 __all__ = [
@@ -78,6 +83,10 @@ __all__ = [
     "SectionRegistry",
     "SectionMode",
     "ParsedSection",
+    # Strategies
+    "CompositionContext",
+    "LayerContent",
+    "MarkdownCompositionStrategy",
 ]
 
 

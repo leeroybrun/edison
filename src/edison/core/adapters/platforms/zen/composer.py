@@ -1,0 +1,101 @@
+"""Zen composer mixin for role/model prompt composition.
+
+This module provides ZenComposerMixin which handles composing
+prompts for different Zen roles and models.
+"""
+from __future__ import annotations
+from typing import List, TYPE_CHECKING
+
+from edison.core.composition.output.formatting import compose_for_role
+from .discovery import _canonical_role
+
+if TYPE_CHECKING:
+    from .adapter import ZenAdapter
+
+
+def _canonical_model(model: str) -> str:
+    """Normalize model identifier to codex|claude|gemini."""
+    low = (model or "").strip().lower()
+    if low.startswith("codex"):
+        return "codex"
+    if low.startswith("claude"):
+        return "claude"
+    if low.startswith("gemini"):
+        return "gemini"
+    return low or "codex"
+
+
+class ZenComposerMixin:
+    """Mixin for composing Zen prompts."""
+
+    def compose_zen_prompt(self: ZenAdapter, role: str, model: str, packs: List[str]) -> str:
+        """Generate prompt text for a given role/model combination.
+
+        The prompt includes:
+          - Model/role header with model-specific context hints
+          - Base Edison context (via composition registries)
+          - Role-specific guideline excerpts
+          - Role-specific rules summary
+
+        Args:
+            role: Zen role identifier
+            model: Model identifier (codex/claude/gemini)
+            packs: List of active packs
+
+        Returns:
+            Composed prompt text for the role/model combination
+        """
+        model_key = _canonical_model(model)
+        canonical_role = _canonical_role(role)
+
+        # Base content derives from the model-specific role used for validators.
+        base_content = compose_for_role(self, model_key)
+
+        guideline_names = self.get_applicable_guidelines(role)
+        guideline_sections: List[str] = []
+        for name in guideline_names:
+            result = self.guideline_registry.compose(name, packs, project_overrides=True)
+            guideline_sections.append(f"## Guideline: {name}\n\n{result.text.strip()}")
+        guidelines_block = "\n\n".join(guideline_sections)
+
+        rules = self.get_applicable_rules(role)
+        rule_lines: List[str] = []
+        if rules:
+            rule_lines.append("## Role-Specific Rules")
+            for rule_obj in rules:
+                rid = rule_obj.get("id") or ""
+                title = rule_obj.get("title") or rid
+                category = rule_obj.get("category") or ""
+                blocking = bool(rule_obj.get("blocking"))
+                level = "BLOCKING" if blocking else "NON-BLOCKING"
+                label = f"[{level}] {title}"
+                if category:
+                    label = f"{label} (category: {category})"
+                rule_lines.append(f"- {label}")
+        rules_block = "\n".join(rule_lines)
+
+        header_lines: List[str] = [
+            "=== Edison / Zen MCP Prompt ===",
+            f"Model: {model_key}",
+            f"Role: {canonical_role}",
+        ]
+        # Model-specific context window hints (token-aware formatting)
+        if model_key == "codex":
+            header_lines.append("Context window: ~200k tokens (approximate)")
+        elif model_key == "claude":
+            header_lines.append("Context window: ~200k+ tokens; prefer concise reasoning.")
+        elif model_key == "gemini":
+            header_lines.append("Context window: ~1M tokens; richer references allowed.")
+
+        header = "\n".join(header_lines)
+
+        sections: List[str] = [header, base_content]
+        if guidelines_block:
+            sections.append("=== Role-Specific Guidelines ===\n\n" + guidelines_block)
+        if rules_block:
+            sections.append(rules_block)
+
+        return "\n\n".join([section for section in sections if section]).rstrip() + "\n"
+
+
+__all__ = ["ZenComposerMixin", "_canonical_model"]

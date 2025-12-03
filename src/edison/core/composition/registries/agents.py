@@ -1,53 +1,24 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+"""Edison Agent Registry.
 
-"""
-Edison Agent Composition Engine
+Thin wrapper around ComposableRegistry for agent composition.
+ALL discovery and composition is handled by the unified composition system.
 
-Thin wrapper around the core composition system for agents.
-All discovery and composition logic is delegated to LayeredComposer.
-
-Agent-specific responsibilities:
+Agent-specific features:
 - Constitution header injection
-- Conditional includes processing
 - Front matter metadata extraction
-- Roster generation
-
-Uses the core composition system with HTML comment markers for overlays.
 
 Architecture:
-    BaseEntityManager
-    └── BaseRegistry
-        └── AgentRegistry (this module)
+    CompositionBase → ComposableRegistry → AgentRegistry
 """
+from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.entity import BaseRegistry
-from edison.core.utils.io import parse_yaml_string
-from edison.core.utils.text import dry_duplicate_report, render_conditional_includes
+from edison.core.entity.composable_registry import ComposableRegistry
+from edison.core.utils.text import render_conditional_includes
 from ..path_utils import resolve_project_dir_placeholders
-
-# Import from core composition system - ALL discovery and composition
-from ..core import (
-    LayeredComposer,
-    LayerSource,
-    SectionParser,
-    CompositionValidationError,
-)
-
-
-def compose(
-    content_type: str,
-    name: str,
-    packs: List[str],
-    project_root: Optional[Path] = None,
-) -> str:
-    """Compose a single entity using the layered composition system."""
-    composer = LayeredComposer(repo_root=project_root, content_type=content_type)
-    return composer.compose(name, packs)
 
 
 class AgentError(RuntimeError):
@@ -55,152 +26,29 @@ class AgentError(RuntimeError):
 
 
 class AgentNotFoundError(AgentError):
-    """Raised when a requested agent does not have a core template."""
+    """Raised when a requested agent does not exist."""
 
 
-class AgentTemplateError(AgentError):
-    """Raised when a core agent template is structurally invalid."""
+class AgentRegistry(ComposableRegistry[str]):
+    """Registry for discovering and composing Edison agents.
 
-
-@dataclass
-class CoreAgent:
-    """Core agent reference."""
-    name: str
-    core_path: Path
-    
-    @classmethod
-    def from_layer_source(cls, source: LayerSource) -> "CoreAgent":
-        """Create CoreAgent from unified LayerSource."""
-        return cls(name=source.entity_name, core_path=source.path)
-
-
-@dataclass
-class PackOverlay:
-    """Pack overlay reference."""
-    pack: str
-    path: Path
-    
-    @classmethod
-    def from_layer_source(cls, source: LayerSource) -> "PackOverlay":
-        """Create PackOverlay from unified LayerSource."""
-        # Extract pack name from layer string "pack:{name}"
-        pack_name = source.layer.replace("pack:", "") if source.layer.startswith("pack:") else source.layer
-        return cls(pack=pack_name, path=source.path)
-
-
-class AgentRegistry(BaseRegistry[CoreAgent]):
-    """Discover and compose Edison agents using the core composition system.
-    
-    Extends BaseRegistry with agent-specific functionality:
+    Extends ComposableRegistry with agent-specific:
     - Constitution header injection
-    - Conditional includes processing
     - Front matter metadata extraction
-    
-    ALL discovery is delegated to LayeredComposer.
     """
-    
-    entity_type: str = "agent"
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
-        super().__init__(project_root)
+    content_type: ClassVar[str] = "agents"
+    file_pattern: ClassVar[str] = "*.md"
+    strategy_config: ClassVar[Dict[str, Any]] = {
+        "enable_sections": True,
+        "enable_dedupe": False,
+        "enable_template_processing": True,
+    }
 
-        # Use unified composer for ALL discovery
-        self._composer = LayeredComposer(repo_root=self.project_root, content_type="agents")
-    
-    # ------- BaseRegistry Interface Implementation -------
-    
-    def discover_core(self) -> Dict[str, CoreAgent]:
-        """Discover core agents via LayeredComposer."""
-        sources = self._composer.discover_core()
-        return {name: CoreAgent.from_layer_source(src) for name, src in sources.items()}
-    
-    def discover_packs(self, packs: List[str]) -> Dict[str, CoreAgent]:
-        """Discover agents from packs (both new and overlays)."""
-        result: Dict[str, CoreAgent] = {}
-        existing = set(self._composer.discover_core().keys())
-        
-        for pack in packs:
-            # Get pack-new agents
-            pack_new = self._composer.discover_pack_new(pack, existing)
-            for name, source in pack_new.items():
-                result[name] = CoreAgent.from_layer_source(source)
-            existing.update(pack_new.keys())
-        
-        return result
-    
-    def discover_project(self) -> Dict[str, CoreAgent]:
-        """Discover project-level agents."""
-        existing = set(self._composer.discover_core().keys())
-        project_new = self._composer.discover_project_new(existing)
-        return {name: CoreAgent.from_layer_source(src) for name, src in project_new.items()}
+    # ------- Constitution Header (agent-specific) -------
 
-    # ------- Discovery (delegated to unified system) -------
-
-    def resolve_core_agent(self, name: str) -> CoreAgent:
-        """Resolve a specific core agent."""
-        agents = self.discover_core()
-        if name not in agents:
-            raise AgentNotFoundError(
-                f"Core agent '{name}' not found. Available: {sorted(agents.keys())}"
-            )
-        return agents[name]
-
-    def exists(self, name: str) -> bool:
-        """Check if an agent exists in the registry."""
-        return name in self._composer.discover_core()
-
-    def get(self, name: str) -> Optional[CoreAgent]:
-        """Get an agent by name.
-        
-        Returns:
-            CoreAgent if found, None otherwise
-        """
-        agents = self.discover_core()
-        return agents.get(name)
-
-    def discover_pack_overlays(self, agent_name: str, packs: List[str]) -> List[PackOverlay]:
-        """Discover pack overlays for a given agent via unified system."""
-        overlays: List[PackOverlay] = []
-        existing = set(self._composer.discover_core().keys())
-        
-        for pack in packs:
-            pack_overlays = self._composer.discover_pack_overlays(pack, existing)
-            if agent_name in pack_overlays:
-                overlays.append(PackOverlay.from_layer_source(pack_overlays[agent_name]))
-            # Update existing for next pack (pack-new entities become existing)
-            pack_new = self._composer.discover_pack_new(pack, existing)
-            existing.update(pack_new.keys())
-        
-        return overlays
-
-    def discover_pack_agent_names(self, packs: List[str]) -> List[str]:
-        """Discover new agent names defined by packs (not overlays)."""
-        names: List[str] = []
-        existing = set(self._composer.discover_core().keys())
-        
-        for pack in packs:
-            pack_new = self._composer.discover_pack_new(pack, existing)
-            for name in pack_new:
-                if name not in names:
-                    names.append(name)
-            existing.update(pack_new.keys())
-        
-        return names
-
-    def project_overlay_path(self, agent_name: str) -> Optional[Path]:
-        """Return project overlay path if it exists."""
-        existing = set(self._composer.discover_core().keys())
-        # Add pack entities to existing (project overlays can extend pack-new)
-        # Note: This simplified version only checks core agents
-        project_overlays = self._composer.discover_project_overlays(existing)
-        if agent_name in project_overlays:
-            return project_overlays[agent_name].path
-        return None
-
-    # ------- Constitution Reference (agent-specific) ------- 
-    
     def _build_constitution_header(self) -> str:
-        """Build the constitution reference header to inject at the top of agent prompts."""
+        """Build constitution reference header for agent prompts."""
         return """## MANDATORY: Read Constitution First
 
 Before starting any work, you MUST read the Agent Constitution at:
@@ -219,161 +67,127 @@ This constitution contains:
 
 ---"""
 
-    # ------- Composition (unified + agent post-processing) ------- 
-    
-    def compose_agent(self, agent_name: str, packs: List[str]) -> str:
-        """Compose a single agent from core + pack + project overlays.
-        
-        Uses the unified composition system, then applies agent-specific post-processing.
-        """
-        # Use unified composition system for section-based composition
-        try:
-            composed = compose(
-                content_type="agents",
-                name=agent_name,
-                packs=packs,
-                project_root=self.project_root,
-            )
-        except CompositionValidationError as e:
-            if "not found" in str(e).lower():
-                raise AgentNotFoundError(str(e)) from e
-            raise AgentError(str(e)) from e
-        
-        # Agent-specific post-processing
+    # ------- Agent-Specific Post-Processing -------
+
+    def _post_compose(self, name: str, content: str) -> str:
+        """Apply agent-specific post-processing."""
+        packs = self.get_active_packs()
+
+        # Conditional includes
         if packs:
-            composed = render_conditional_includes(composed, packs)
-        
-        constitution_header = self._build_constitution_header()
-        composed = f"{constitution_header}\n\n{composed}"
-        
-        target_path = self.project_dir / "_generated" / "agents" / f"{agent_name}.md"
-        composed = resolve_project_dir_placeholders(
-            composed,
+            content = render_conditional_includes(content, packs)
+
+        # Constitution header
+        header = self._build_constitution_header()
+        content = f"{header}\n\n{content}"
+
+        # Resolve placeholders
+        target_path = self.project_dir / "_generated" / "agents" / f"{name}.md"
+        content = resolve_project_dir_placeholders(
+            content,
             project_dir=self.project_dir,
             target_path=target_path,
             repo_root=self.project_root,
         )
-        
-        return composed
 
-    # ------- DRY analysis (uses unified discovery) ------- 
-    
-    def dry_duplicate_report_for_agent(
-        self,
-        agent_name: str,
-        packs: List[str],
-        dry_min_shingles: Optional[int] = None,
-    ) -> Dict:
-        """Return DRY duplication report using unified discovery."""
-        parser = SectionParser()
-        
-        def extract_content(text: str) -> str:
-            sections = parser.parse(text)
-            return "\n\n".join(s.content for s in sections if s.content.strip())
-        
-        # Get core content
-        core_entities = self._composer.discover_core()
-        if agent_name not in core_entities:
-            raise AgentNotFoundError(f"Agent '{agent_name}' not found in core")
-        core_text = core_entities[agent_name].path.read_text(encoding="utf-8")
-        core_sections = extract_content(core_text) or core_text
-        
-        # Get pack overlay content
-        existing = set(core_entities.keys())
-        pack_chunks: List[str] = []
-        for pack in packs:
-            pack_overlays = self._composer.discover_pack_overlays(pack, existing)
-            if agent_name in pack_overlays:
-                text = pack_overlays[agent_name].path.read_text(encoding="utf-8")
-                content = extract_content(text)
-                if content:
-                    pack_chunks.append(content)
-            pack_new = self._composer.discover_pack_new(pack, existing)
-            existing.update(pack_new.keys())
-        packs_text = "\n\n".join(pack_chunks)
-        
-        # Get project overlay content
-        overlay_text = ""
-        project_overlays = self._composer.discover_project_overlays(existing)
-        if agent_name in project_overlays:
-            proj_text = project_overlays[agent_name].path.read_text(encoding="utf-8")
-            overlay_text = extract_content(proj_text)
-        
-        # Get DRY config
-        from edison.core.config import ConfigManager
-        cfg = ConfigManager().load_config(validate=False)
-        dry_config = cfg.get("composition", {}).get("dryDetection", {})
-        min_s = dry_min_shingles if dry_min_shingles is not None else dry_config.get("minShingles", 2)
-        k = dry_config.get("shingleSize", 12)
-        
-        return dry_duplicate_report(
-            {"core": core_sections, "packs": packs_text, "overlay": overlay_text},
-            min_shingles=min_s,
-            k=k,
-        )
+        return content
 
-    # ------- Roster metadata (agent-specific) ------- 
-    
+    # ------- Front Matter Metadata (agent-specific) -------
+
     @staticmethod
     def _read_front_matter(path: Path) -> Dict[str, Any]:
-        """Extract YAML front matter from an agent file.
-        
-        Uses the shared parse_frontmatter utility for consistency.
-        """
+        """Extract YAML front matter from an agent file."""
         from edison.core.utils.text import parse_frontmatter
-        
+
         try:
-            text = path.read_text(encoding="utf-8")
-            # Handle BOM if present
-            text = text.lstrip("\ufeff")
+            text = path.read_text(encoding="utf-8").lstrip("\ufeff")
             doc = parse_frontmatter(text)
             return doc.frontmatter
         except Exception:
             return {}
 
-    def get_all(self) -> List[CoreAgent]:
-        """Return all core agents.
+    def get_metadata(self, name: str) -> Dict[str, Any]:
+        """Get metadata for a single agent."""
+        paths = self.discover_core()
+        if name not in paths:
+            return {"name": name, "type": "implementer", "model": "codex", "description": ""}
 
-        Implements BaseRegistry interface.
-        """
-        return list(self.discover_core().values())
+        fm = self._read_front_matter(paths[name])
+        return {
+            "name": name,
+            "type": fm.get("type", "implementer"),
+            "model": fm.get("model", "codex"),
+            "description": fm.get("description", ""),
+        }
 
     def get_all_metadata(self) -> List[Dict[str, Any]]:
-        """Return metadata for all core agents.
+        """Get metadata for all core agents."""
+        return [self.get_metadata(name) for name in sorted(self.discover_core().keys())]
+
+    # ------- DRY Report (agent-specific) -------
+
+    def dry_duplicate_report_for_agent(
+        self,
+        agent_name: str,
+        packs: List[str],
+        *,
+        dry_min_shingles: int = 2,
+    ) -> Dict[str, Any]:
+        """Generate DRY duplicate report for agent content.
+
+        Analyzes content from core, pack overlays, and project overlays
+        to detect potential duplicate content across layers.
+
+        Args:
+            agent_name: Name of the agent to analyze
+            packs: List of active pack names
+            dry_min_shingles: Minimum shingles for duplicate detection
 
         Returns:
-            List of metadata dictionaries with 'name', 'type', 'model', 'description'
+            Dict with counts and violations/duplicates
         """
-        core_agents = self.discover_core()
-        metadata_list = []
+        from edison.core.utils.text import dry_duplicate_report
 
-        for name, agent in core_agents.items():
-            front_matter = self._read_front_matter(agent.core_path)
-            metadata_list.append({
-                'name': name,
-                'type': front_matter.get('type', 'implementer'),
-                'model': front_matter.get('model', 'codex'),
-                'description': front_matter.get('description', ''),
-            })
+        # Gather content from each layer
+        layers = self._gather_layers(agent_name, packs)
 
-        return metadata_list
+        # Organize by source type
+        core_text = ""
+        packs_text = ""
+        overlay_text = ""
+
+        for layer in layers:
+            if layer.source == "core":
+                core_text = layer.content
+            elif layer.source.startswith("pack:"):
+                packs_text += "\n\n" + layer.content
+            elif layer.source == "project":
+                overlay_text = layer.content
+
+        # Generate DRY report
+        return dry_duplicate_report(
+            {"core": core_text, "packs": packs_text.strip(), "overlay": overlay_text},
+            min_shingles=dry_min_shingles,
+        )
 
 
-def compose_agent(agent_name: str, packs: List[str], *, project_root: Optional[Path] = None) -> str:
-    """Functional wrapper for AgentRegistry.compose_agent."""
+def compose_agent(
+    agent_name: str,
+    packs: List[str],
+    *,
+    project_root: Optional[Path] = None,
+) -> str:
+    """Functional wrapper for composing a single agent."""
     registry = AgentRegistry(project_root=project_root)
-    return registry.compose_agent(agent_name, packs)
+    result = registry.compose(agent_name, packs)
+    if result is None:
+        raise AgentNotFoundError(f"Agent '{agent_name}' not found")
+    return result
 
 
 __all__ = [
     "AgentRegistry",
     "AgentError",
     "AgentNotFoundError",
-    "AgentTemplateError",
-    "CoreAgent",
-    "PackOverlay",
     "compose_agent",
 ]
-
-
-

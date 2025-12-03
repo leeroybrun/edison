@@ -1,28 +1,28 @@
-from __future__ import annotations
+#!/usr/bin/env python3
+"""Edison Validator Registry.
 
-"""Validator roster collection, merging, and metadata utilities.
-
-Collects validators from merged configuration (validation + validators sections)
-and handles roster merging, normalization, and metadata enrichment.
-
-Uses CompositionPathResolver for consistent path resolution.
+ValidatorRegistry extends ComposableRegistry[str] for FILE-BASED composition
+(like AgentRegistry), while also maintaining config-based roster for metadata.
 
 Architecture:
-    BaseEntityManager
-    └── BaseRegistry
-        └── ValidatorRegistry (this module)
+    CompositionBase → ComposableRegistry → ValidatorRegistry
+
+Features:
+- File-based composition: compose_validator() for prompt generation from layers
+- Config-based roster: get_all_grouped() for validator metadata from YAML
 """
+from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Iterable, Optional
+from typing import Any, ClassVar, Dict, List, Iterable, Optional
 
-from edison.core.entity import BaseRegistry
-from ..core import CompositionPathResolver
+from edison.core.entity.composable_registry import ComposableRegistry
+from edison.core.composition.core.paths import CompositionPathResolver
 
 
 # ---------------------------------------------------------------------------
-# Validator Metadata Inference
+# Validator Metadata Inference (for validators defined only by id)
 # ---------------------------------------------------------------------------
 
 def _discover_validator_file(
@@ -37,26 +37,25 @@ def _discover_validator_file(
 
     Search order (priority):
     1. Generated validators in project
-    2. Project validators (explicit project_dir for test compatibility)
+    2. Project validators
     3. Core validators (global, critical, specialized subdirs)
     4. Pack validators
     """
     resolver = CompositionPathResolver(project_root, "validators")
-    
+
     # 1. Check generated validators
     generated_path = resolver.project_dir / "_generated" / "validators" / f"{validator_id}.md"
     if generated_path.exists():
         return generated_path
-    
-    # 2. Check project validators (explicit project_dir for compatibility)
-    # Also check resolver.project_dir in case they differ
+
+    # 2. Check project validators
     for proj_dir in [project_dir, resolver.project_dir]:
         if proj_dir and proj_dir.exists():
             for subdir in ("validators/specialized", "validators"):
                 path = proj_dir / subdir / f"{validator_id}.md"
                 if path.exists():
                     return path
-    
+
     # 3. Check core validators (multiple subdirs)
     core_validators = resolver.core_dir / "validators"
     if core_validators.exists():
@@ -64,20 +63,18 @@ def _discover_validator_file(
             path = core_validators / subdir / f"{validator_id}.md"
             if path.exists():
                 return path
-    
-    # 4. Check pack validators (explicit packs_dir for compatibility)
+
+    # 4. Check pack validators
     for pack in active_packs:
-        # Check explicit packs_dir first
         if packs_dir and packs_dir.exists():
             path = packs_dir / pack / "validators" / f"{validator_id}.md"
             if path.exists():
                 return path
-        # Then check resolver's packs_dir
         if resolver.packs_dir.exists():
             path = resolver.packs_dir / pack / "validators" / f"{validator_id}.md"
             if path.exists():
                 return path
-    
+
     return None
 
 
@@ -88,23 +85,12 @@ def infer_validator_metadata(
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
-) -> Dict:
+) -> Dict[str, Any]:
     """Best-effort metadata extraction for validators defined only by id.
 
-    Uses unified path resolution to search for validator markdown files.
     Falls back to sensible defaults if file not found or parsing fails.
-
-    Args:
-        validator_id: Validator identifier (e.g., "python-imports")
-        project_root: Project root path
-        project_dir: Project configuration directory
-        packs_dir: Packs directory path
-        active_packs: List of active pack names
-
-    Returns:
-        Dict with validator metadata: id, name, model, triggers, alwaysRun, blocksOnFail
     """
-    inferred: Dict[str, object] = {
+    inferred: Dict[str, Any] = {
         "id": validator_id,
         "name": validator_id.replace("-", " ").title(),
         "model": "codex",
@@ -113,7 +99,6 @@ def infer_validator_metadata(
         "blocksOnFail": False,
     }
 
-    # Use unified discovery with explicit paths for compatibility
     path = _discover_validator_file(
         validator_id,
         project_root=project_root,
@@ -121,7 +106,7 @@ def infer_validator_metadata(
         packs_dir=packs_dir,
         active_packs=active_packs,
     )
-    
+
     if not path:
         return inferred
 
@@ -150,38 +135,20 @@ def infer_validator_metadata(
     if re.search(r"\*\*Blocks on Fail\*\*:\s*✅\s*YES", text, flags=re.IGNORECASE):
         inferred["blocksOnFail"] = True
 
-    return inferred  # type: ignore[return-value]
+    return inferred
 
 
 def normalize_validator_entries(
-    raw_entries,
+    raw_entries: Any,
     *,
-    fallback_map: Dict[str, Dict],
+    fallback_map: Dict[str, Dict[str, Any]],
     project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
-) -> List[Dict]:
-    """Normalize roster entries into dicts, enriching ids with inferred metadata.
-
-    Processes a list of validator entries that may be dicts or strings:
-    - Dict entries with 'id' are passed through unchanged
-    - String entries are looked up in fallback_map if available
-    - Unknown string entries trigger metadata inference
-    - Empty strings/None are filtered out
-
-    Args:
-        raw_entries: List of validator entries (dicts or strings)
-        fallback_map: Map of validator ID to full metadata dict
-        project_root: Project root path
-        project_dir: Project configuration directory
-        packs_dir: Packs directory path
-        active_packs: List of active pack names
-
-    Returns:
-        List of normalized validator dicts with full metadata
-    """
-    normalized: List[Dict] = []
+) -> List[Dict[str, Any]]:
+    """Normalize roster entries into dicts, enriching ids with inferred metadata."""
+    normalized: List[Dict[str, Any]] = []
     for entry in raw_entries or []:
         if isinstance(entry, dict):
             if "id" in entry:
@@ -207,16 +174,9 @@ def normalize_validator_entries(
 # Roster Collection and Merging
 # ---------------------------------------------------------------------------
 
-def _validator_map(roster: Dict[str, List[Dict]]) -> Dict[str, Dict]:
-    """Build quick lookup map of validator definitions keyed by id.
-
-    Args:
-        roster: Validator roster dict with buckets (global, critical, specialized)
-
-    Returns:
-        Dict mapping validator ID to full validator definition
-    """
-    mapping: Dict[str, Dict] = {}
+def _validator_map(roster: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Dict[str, Any]]:
+    """Build quick lookup map of validator definitions keyed by id."""
+    mapping: Dict[str, Dict[str, Any]] = {}
     for entries in roster.values():
         for entry in entries or []:
             if isinstance(entry, dict) and entry.get("id"):
@@ -225,33 +185,16 @@ def _validator_map(roster: Dict[str, List[Dict]]) -> Dict[str, Dict]:
 
 
 def _merge_rosters(
-    base_roster: Dict[str, List[Dict]],
-    override_roster: Dict[str, List[Dict]],
+    base_roster: Dict[str, List[Dict[str, Any]]],
+    override_roster: Dict[str, List[Dict[str, Any]]],
     *,
     project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
-) -> Dict[str, List[Dict]]:
-    """Merge validation + validators rosters without hardcoded ids.
-
-    Processes each bucket (global, critical, specialized) by:
-    1. Normalizing entries (expanding string IDs to full metadata)
-    2. Merging override entries over base entries
-    3. Preserving order with overrides first
-
-    Args:
-        base_roster: Base validator roster (from validation config)
-        override_roster: Override roster (from validators config)
-        project_root: Project root path
-        project_dir: Project configuration directory
-        packs_dir: Packs directory path
-        active_packs: List of active pack names
-
-    Returns:
-        Merged validator roster with normalized entries
-    """
-    result: Dict[str, List[Dict]] = {}
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Merge validation + validators rosters."""
+    result: Dict[str, List[Dict[str, Any]]] = {}
     base_map = _validator_map(base_roster)
 
     for bucket in ("global", "critical", "specialized"):
@@ -275,7 +218,7 @@ def _merge_rosters(
 
         if override_entries:
             seen = {e["id"] for e in override_entries if isinstance(e, dict) and e.get("id")}
-            merged: List[Dict] = list(override_entries)
+            merged: List[Dict[str, Any]] = list(override_entries)
             for entry in base_entries:
                 if entry.get("id") not in seen:
                     merged.append(entry)
@@ -287,29 +230,14 @@ def _merge_rosters(
 
 
 def collect_validators(
-    config: Dict,
+    config: Dict[str, Any],
     *,
     project_root: Path,
     project_dir: Path,
     packs_dir: Path,
     active_packs: Iterable[str],
-) -> Dict[str, List[Dict]]:
-    """Collect validator roster from merged configuration (validation + validators).
-
-    Extracts validator rosters from both 'validation' and 'validators' config
-    sections, merges them (validators overrides validation), and normalizes
-    all entries to full metadata dicts.
-
-    Args:
-        config: Full configuration dict
-        project_root: Project root path
-        project_dir: Project configuration directory
-        packs_dir: Packs directory path
-        active_packs: List of active pack names
-
-    Returns:
-        Dict with validator buckets: global, critical, specialized
-    """
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Collect validator roster from merged configuration."""
     validation_cfg = ((config or {}).get("validation", {}) or {})
     validators_cfg = ((config or {}).get("validators", {}) or {})
 
@@ -327,69 +255,66 @@ def collect_validators(
 
 
 # ---------------------------------------------------------------------------
-# ValidatorRegistry
+# ValidatorRegistry - Extends ComposableRegistry (file-based + config-based)
 # ---------------------------------------------------------------------------
 
-class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
-    """Discover and access Edison validators from configuration.
-    
-    Extends BaseRegistry with config-based validator discovery.
-    Uses CompositionPathResolver for consistent path resolution.
+class ValidatorRegistry(ComposableRegistry[str]):
+    """Registry for discovering and composing validators.
+
+    Extends ComposableRegistry for FILE-BASED composition (like AgentRegistry).
+    Also maintains config-based roster for metadata.
+
+    Features:
+    - compose_validator(): Compose validator prompts from markdown files with layers
+    - get_all_grouped(): Get validator metadata from YAML config
     """
-    
-    entity_type: str = "validator"
+
+    # ComposableRegistry required attributes
+    content_type: ClassVar[str] = "validators"
+    file_pattern: ClassVar[str] = "*.md"
+    strategy_config: ClassVar[Dict[str, Any]] = {
+        "enable_sections": True,
+        "enable_dedupe": False,
+        "enable_template_processing": True,
+    }
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
-        """Initialize validator registry with configuration discovery."""
+        """Initialize validator registry."""
         super().__init__(project_root)
+        self._validators_cache: Optional[Dict[str, Dict[str, Any]]] = None
 
-        # Note: core_dir, packs_dir, project_dir are inherited from BaseRegistry
-        # No need to override them - they're already set correctly
+    # =========================================================================
+    # File-based Composition Interface (NEW - like AgentRegistry)
+    # =========================================================================
 
-        self._validators_cache: Optional[Dict[str, Dict]] = None
-    
-    # ------- BaseRegistry Interface Implementation -------
-    
-    def discover_core(self) -> Dict[str, Dict[str, Any]]:
-        """Discover core validators.
-        
-        Note: Validators are loaded from config, not discovered from files.
-        This returns an empty dict as validators are managed via config.
-        """
-        # Validators are config-based, not file-discovered
-        return {}
-    
-    def discover_packs(self, packs: List[str]) -> Dict[str, Dict[str, Any]]:
-        """Discover validators from packs.
-        
-        Note: Validators are loaded from config, not discovered from files.
-        """
-        return {}
-    
-    def discover_project(self) -> Dict[str, Dict[str, Any]]:
-        """Discover project validators.
-        
-        Note: Validators are loaded from config, not discovered from files.
-        """
-        return {}
+    def compose_validator(self, name: str, packs: Optional[List[str]] = None) -> Optional[str]:
+        """Compose validator prompt from layers (like compose_agent).
 
-    def _load_validators(self) -> Dict[str, Dict]:
+        Uses MarkdownCompositionStrategy for SECTION/EXTEND markers.
+
+        Args:
+            name: Validator name (without extension)
+            packs: Optional list of active packs (uses get_active_packs() if None)
+
+        Returns:
+            Composed validator prompt string, or None if not found
+        """
+        return self.compose(name, packs)
+
+    # =========================================================================
+    # Config-based Roster Interface (KEEP - existing functionality)
+    # =========================================================================
+
+    def _load_validators(self) -> Dict[str, Dict[str, Any]]:
         """Load all validators from configuration."""
         if self._validators_cache is not None:
             return self._validators_cache
 
         # Load configuration
-        from edison.core.config import ConfigManager
-        cfg_mgr = ConfigManager(self.project_root)
-        try:
-            config = cfg_mgr.load_config(validate=False)
-        except FileNotFoundError:
-            config = {}
+        config = self.config
 
         # Get active packs
-        packs = ((config.get("packs", {}) or {}).get("active", []) or [])
-        if not isinstance(packs, list):
-            packs = []
+        packs = self.get_active_packs()
 
         # Collect validators
         roster = collect_validators(
@@ -401,7 +326,7 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
         )
 
         # Build validator map
-        validators: Dict[str, Dict] = {}
+        validators: Dict[str, Dict[str, Any]] = {}
         for bucket in ("global", "critical", "specialized"):
             for entry in roster.get(bucket, []) or []:
                 if isinstance(entry, dict) and entry.get("id"):
@@ -412,18 +337,12 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
 
     def exists(self, name: str) -> bool:
         """Check if a validator exists in the registry."""
-        validators = self._load_validators()
-        return name in validators
+        return name in self._load_validators()
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get validator metadata by name.
-        
-        Returns:
-            Validator metadata dict if found, None otherwise
-        """
-        validators = self._load_validators()
-        return validators.get(name)
-    
+        """Get validator metadata by name."""
+        return self._load_validators().get(name)
+
     def get_or_raise(self, name: str) -> Dict[str, Any]:
         """Get validator metadata by name, raising if not found."""
         validators = self._load_validators()
@@ -431,42 +350,21 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
             from edison.core.entity import EntityNotFoundError
             raise EntityNotFoundError(
                 f"Validator '{name}' not found in registry",
-                entity_type=self.entity_type,
+                entity_type="validator",
                 entity_id=name,
             )
         return validators[name]
 
     def get_all(self) -> List[Dict[str, Any]]:
-        """Get all validators as a flat list.
-        
-        Implements BaseRegistry interface.
-        """
+        """Get all validators as a flat list."""
         return list(self._load_validators().values())
-    
-    def get_all_grouped(self) -> Dict[str, List[Dict]]:
-        """Get all validators grouped by tier (global, critical, specialized).
 
-        For backward compatibility with code expecting grouped results.
+    def get_all_grouped(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all validators grouped by tier (global, critical, specialized)."""
+        config = self.config
+        packs = self.get_active_packs()
 
-        Returns:
-            Dict with keys 'global', 'critical', 'specialized', each containing
-            a list of validator metadata dicts.
-        """
-        # Load configuration
-        from edison.core.config import ConfigManager
-        cfg_mgr = ConfigManager(self.project_root)
-        try:
-            config = cfg_mgr.load_config(validate=False)
-        except FileNotFoundError:
-            config = {}
-
-        # Get active packs
-        packs = ((config.get("packs", {}) or {}).get("active", []) or [])
-        if not isinstance(packs, list):
-            packs = []
-
-        # Collect validators grouped by tier
-        roster = collect_validators(
+        return collect_validators(
             config,
             project_root=self.project_root,
             project_dir=self.project_dir,
@@ -474,7 +372,9 @@ class ValidatorRegistry(BaseRegistry[Dict[str, Any]]):
             active_packs=packs,
         )
 
-        return roster
+    def list_names(self) -> List[str]:
+        """List all validator names."""
+        return sorted(self._load_validators().keys())
 
 
 __all__ = [
@@ -486,6 +386,3 @@ __all__ = [
     # Registry
     "ValidatorRegistry",
 ]
-
-
-

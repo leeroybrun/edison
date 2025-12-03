@@ -13,7 +13,7 @@ Architecture:
 
     BaseEntityManager
     └── BaseRegistry
-        └── FilePatternRegistry (this module)
+        └── FilePatternRegistry (this module) + YamlLayerMixin
 """
 from __future__ import annotations
 
@@ -21,18 +21,19 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.entity import BaseRegistry
+from edison.core.composition.core.yaml_layer import YamlLayerMixin
 from edison.data import get_data_path
 from edison.core.utils.paths import PathResolver, EdisonPathError
 from edison.core.utils.paths import get_project_config_dir
 
 
-class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
+class FilePatternRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
     """Load file pattern rules from bundled core plus optional packs.
-    
+
     Extends BaseRegistry with file-pattern-specific functionality:
-    - YAML-based pattern loading from directories
+    - YAML-based pattern loading from directories (via YamlLayerMixin)
     - Pack-aware pattern composition
-    
+
     Architecture:
     - Core patterns: ALWAYS from bundled edison.data/rules/file_patterns/
     - Pack patterns: bundled packs + project packs
@@ -77,7 +78,7 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
         """Discover project-level file pattern overrides at .edison/rules/file_patterns/."""
-        rules = self._load_dir(self.project_rules_dir, "project")
+        rules = self._load_yaml_dir(self.project_rules_dir, "project")
         return {rule.get("name", rule.get("_path", f"project-rule-{i}")): rule for i, rule in enumerate(rules)}
     
     def exists(self, name: str) -> bool:
@@ -95,42 +96,32 @@ class FilePatternRegistry(BaseRegistry[Dict[str, Any]]):
     def _load_yaml(self, path: Path) -> Dict[str, Any]:
         """Load and validate file pattern YAML file.
 
-        Uses inherited cfg_mgr from BaseRegistry for consistent YAML loading.
+        Uses YamlLayerMixin._load_yaml_file() for consistent YAML loading.
         """
-        # Use inherited cfg_mgr from BaseRegistry for consistent YAML loading
-        data = self.cfg_mgr.load_yaml(path) or {}
+        data = self._load_yaml_file(path, required=True)
         if not isinstance(data, dict):
             raise ValueError(f"{path} must parse to a mapping")
         data["_path"] = str(path)
         return data
 
-    def _load_dir(self, dir_path: Path, origin: str) -> List[Dict[str, Any]]:
-        if not dir_path.exists():
-            return []
-
-        rules: List[Dict[str, Any]] = []
-        for path in sorted(dir_path.glob("*.yaml")):
-            payload = self._load_yaml(path)
-            payload["_origin"] = origin
-            rules.append(payload)
-        return rules
+    # Note: Uses _load_yaml_dir() from YamlLayerMixin
 
     def load_core_rules(self) -> List[Dict[str, Any]]:
         """Return file pattern rules from bundled core (generic only)."""
-        return self._load_dir(self.core_rules_dir, "core")
+        return self._load_yaml_dir(self.core_rules_dir, "core")
 
     def load_pack_rules(self, pack_name: str) -> List[Dict[str, Any]]:
         """Return file pattern rules from the given pack (bundled or project)."""
         # Try bundled pack first
         bundled_candidate = self.bundled_packs_dir / pack_name / "rules" / "file_patterns"
         if bundled_candidate.exists():
-            return self._load_dir(bundled_candidate, f"pack:{pack_name}")
-        
+            return self._load_yaml_dir(bundled_candidate, f"pack:{pack_name}")
+
         # Try project pack
         project_candidate = self.project_packs_dir / pack_name / "rules" / "file_patterns"
         if project_candidate.exists():
-            return self._load_dir(project_candidate, f"pack:{pack_name}")
-        
+            return self._load_yaml_dir(project_candidate, f"pack:{pack_name}")
+
         return []
 
     def compose(self, *, active_packs: Optional[List[str]] = None) -> List[Dict[str, Any]]:

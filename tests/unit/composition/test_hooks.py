@@ -11,7 +11,7 @@ from tests.helpers.paths import get_repo_root
 
 ROOT = get_repo_root()
 core_path = ROOT / ".edison" / "core"
-from edison.core.composition.ide.hooks import HookComposer, HookDefinition  # type: ignore  # noqa: E402
+from edison.core.adapters.components.hooks import HookComposer, HookDefinition  # type: ignore  # noqa: E402
 
 ALLOWED_TYPES = [
     "PreToolUse",

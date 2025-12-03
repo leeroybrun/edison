@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
-from edison.core.composition.ide.coderabbit import CodeRabbitComposer
+from edison.core.adapters.platforms.coderabbit import CodeRabbitAdapter as CodeRabbitComposer
 from edison.core.config import ConfigManager
 
 SUMMARY = "Compose CodeRabbit configuration from Edison config"
