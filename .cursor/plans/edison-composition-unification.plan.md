@@ -78,9 +78,11 @@ Consolidate all template processing into a single `TemplateEngine` with a dramat
 
 | `{{reference-section:path#name\|purpose}}` | Templates | Point without embedding |
 
-| `{{if:pack:name}}...{{/if}}` | Templates | Pack conditional |
+| `{{include-if:CONDITION:path}}` | Templates | Conditional file include |
 
-| `{{if:config.path}}...{{/if}}` | Templates | Config conditional |
+| `{{if:CONDITION}}...{{/if}}` | Templates | Conditional block |
+
+| `{{if:CONDITION}}...{{else}}...{{/if}}` | Templates | Conditional if-else block |
 
 | `{{config.path.to.value}}` | Templates | Config variable |
 
@@ -250,12 +252,13 @@ for file in generated_dir.rglob("*.md"):
 │  2. SECTION EXTRACTION   {{include-section:path#name}}                  │
 │     Extract content from composed sections                               │
 │                                                                          │
-│  3. CONDITIONALS         {{if:pack:name}}...{{/if}}                     │
-│                          {{if:config.path}}...{{/if}}                   │
-│     Conditional content based on packs or config                         │
+│  3. CONDITIONALS         {{include-if:CONDITION:path}}                  │
+│                          {{if:CONDITION}}...{{else}}...{{/if}}          │
+│     Function-based conditions: has-pack(), config(), env(), etc.         │
 │                                                                          │
 │  4. LOOPS                {{#each collection}}...{{/each}}               │
-│     Iterate over arrays from context                                     │
+│                          (Handlebars-style for constitutions)            │
+│     Iterate over arrays from context (mandatoryReads, optionalReads)     │
 │                                                                          │
 │  5. CONFIG VARS          {{config.path.to.value}}                       │
 │     Substitute from YAML configuration                                   │
@@ -364,6 +367,39 @@ src/edison/core/composition/
 
 This plan replaces the original 8 task files. Execute phases in order.
 
+### Phase 0: Syntax Consolidation (WTPL-000) - PREREQUISITE
+
+**Goal:** Unify all template syntax before main implementation.
+
+**Changes:**
+1. **Keep** `{{include-if:CONDITION:path}}` for conditional file inclusion
+2. **Unify** block conditionals to `{{if:CONDITION}}...{{/if}}` with function-based conditions
+3. **Add** `{{else}}` support for if-else blocks
+4. **Migrate** `<!-- ANCHOR: -->` to `<!-- SECTION: -->`
+5. **Remove** deprecated: `{{SECTION:Name}}`, `{{EXTENSIBLE_SECTIONS}}`, `{{APPEND_SECTIONS}}`
+6. **Update** all templates in `edison.data`
+7. **Create** migration guide for existing projects
+
+**Condition Functions to Implement:**
+- `has-pack(name)` - Check if pack is active
+- `config(path)` - Check config value truthy
+- `config-eq(path, value)` - Config equals value
+- `env(name)` - Environment variable set
+- `file-exists(path)` - File exists in project
+- `not(expr)`, `and(expr1, expr2)`, `or(expr1, expr2)` - Logical operators
+
+**Files to modify:**
+```
+src/edison/data/**/*.md                     # All templates
+src/edison/core/composition/transformers/conditionals.py  # ConditionEvaluator
+```
+
+**Verification:**
+- Run `grep -r "ANCHOR:" src/edison/data` should return 0 results
+- Run `grep -r "{{#if pack:" src/edison/data` should return 0 results (old Handlebars syntax)
+
+---
+
 ### Phase 1: Marker Migration and SectionParser Update
 
 **Goal:** Migrate all markers from ANCHOR→SECTION, remove redundant markers, update SectionParser.
@@ -461,37 +497,205 @@ src/edison/core/composition/ide/*.py                  # Use shared utilities
 
 **Step 4.2:** Update IDEComposerBase to extend CompositionBase
 
-**Step 4.3:** Update GuidelineRegistry to use LayeredComposer
+**Step 4.3:** Update GuidelineRegistry to use LayeredComposer and LayerDiscovery
 
-**Step 4.4:** Update sync adapters to use ConfigMixin
+**Step 4.4:** Update FilePatternRegistry to use CompositionPathResolver (currently uses PathResolver)
 
-**Step 4.5:** Add `_load_layered_config()` to IDEComposerBase
+**Step 4.5:** Update JsonSchemaComposer to use CompositionFileWriter
+
+**Step 4.6:** Update sync adapters to use ConfigMixin
+
+**Step 4.7:** Add `_load_layered_config()` to IDEComposerBase
+
+**Step 4.8:** Consolidate PromptAdapter base classes (adapters/base.py + adapters/prompt/base.py → single file)
 
 ### Execution Order
 
 ```
-Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
-   │           │           │           │
-   ↓           ↓           ↓           ↓
-  PR #1       PR #2       PR #3       PR #4
+Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
+   │           │           │           │           │
+   ↓           ↓           ↓           ↓           ↓
+  PR #0       PR #1       PR #2       PR #3       PR #4
+(Syntax)   (Markers)  (Engine)   (Infra)    (Unify)
+```
+
+**Phase Dependencies:**
+- Phase 0 (WTPL-000): No dependencies - can start immediately
+- Phase 1: Depends on Phase 0 (syntax consolidated before marker migration)
+- Phase 2: Depends on Phase 1 (markers unified before engine implementation)
+- Phase 3: Depends on Phase 2 (engine exists before infrastructure extraction)
+- Phase 4: Depends on Phase 3 (base classes exist before registry/adapter migration)
+
+---
+
+## Part 6: Unified Condition Expression System
+
+### Problem
+
+Multiple competing syntaxes for conditionals:
+- `{{include-if:has-pack(name):path}}` - function-based, file inclusion
+- `{{#if pack:name}}...{{/if}}` - block-based, Handlebars style
+- `{{if:pack:name}}...{{/if}}` - simplified block syntax
+
+### Solution: Function-Based Condition Expressions
+
+Implement a unified condition expression system with functions:
+
+#### Directive Types
+
+| Directive | Syntax | Purpose |
+|-----------|--------|---------|
+| **Conditional Include** | `{{include-if:CONDITION:path}}` | Include file if condition true |
+| **Conditional Block** | `{{if:CONDITION}}...{{/if}}` | Include content block if condition true |
+| **Conditional Else** | `{{if:CONDITION}}...{{else}}...{{/if}}` | If-else blocks |
+
+#### Condition Functions
+
+| Function | Example | Returns | Purpose |
+|----------|---------|---------|---------|
+| `has-pack(name)` | `has-pack(python)` | bool | Check if pack is active |
+| `config(path)` | `config(features.auth)` | bool (truthy) | Check config value exists and truthy |
+| `config-eq(path, value)` | `config-eq(project.type, api)` | bool | Config equals value |
+| `env(name)` | `env(CI)` | bool | Check environment variable set |
+| `file-exists(path)` | `file-exists(.eslintrc)` | bool | Check file exists in project |
+| `not(expr)` | `not(has-pack(legacy))` | bool | Negate condition |
+| `and(expr1, expr2)` | `and(has-pack(python), config(strict))` | bool | Both conditions true |
+| `or(expr1, expr2)` | `or(has-pack(vitest), has-pack(jest))` | bool | Either condition true |
+
+#### Examples
+
+```markdown
+# Conditional file inclusion
+{{include-if:has-pack(python):guidelines/PYTHON.md}}
+{{include-if:config(features.auth):guidelines/AUTH.md}}
+{{include-if:and(has-pack(python), config(strict)):guidelines/STRICT_PYTHON.md}}
+
+# Conditional blocks
+{{if:has-pack(vitest)}}
+## Vitest Configuration
+Use `describe` and `it` blocks for test organization.
+{{/if}}
+
+{{if:config-eq(project.type, api)}}
+## API Guidelines
+Follow REST conventions.
+{{else}}
+## General Guidelines
+Follow standard patterns.
+{{/if}}
+
+# Negation
+{{if:not(has-pack(legacy))}}
+Use modern patterns only.
+{{/if}}
+
+# Complex conditions
+{{include-if:or(has-pack(vitest), has-pack(jest)):guidelines/TESTING.md}}
+```
+
+#### Implementation
+
+```python
+class ConditionEvaluator:
+    """Evaluate condition expressions."""
+
+    FUNCTION_PATTERN = re.compile(r'^(\w+(?:-\w+)*)\(([^)]*)\)$')
+
+    def __init__(self, context: "CompositionContext"):
+        self.context = context
+        self.functions = {
+            "has-pack": self._has_pack,
+            "config": self._config_truthy,
+            "config-eq": self._config_eq,
+            "env": self._env,
+            "file-exists": self._file_exists,
+            "not": self._not,
+            "and": self._and,
+            "or": self._or,
+        }
+
+    def evaluate(self, expr: str) -> bool:
+        """Evaluate a condition expression."""
+        expr = expr.strip()
+        match = self.FUNCTION_PATTERN.match(expr)
+        if not match:
+            raise ValueError(f"Invalid condition expression: {expr}")
+
+        func_name = match.group(1)
+        args_str = match.group(2)
+
+        if func_name not in self.functions:
+            raise ValueError(f"Unknown condition function: {func_name}")
+
+        args = self._parse_args(args_str)
+        return self.functions[func_name](*args)
+
+    def _has_pack(self, pack_name: str) -> bool:
+        return pack_name in self.context.active_packs
+
+    def _config_truthy(self, path: str) -> bool:
+        value = self.context.get_config(path)
+        return bool(value)
+
+    def _config_eq(self, path: str, expected: str) -> bool:
+        value = self.context.get_config(path)
+        return str(value) == expected
+
+    def _env(self, name: str) -> bool:
+        return bool(os.environ.get(name))
+
+    def _file_exists(self, path: str) -> bool:
+        return (self.context.project_root / path).exists()
+
+    def _not(self, expr: str) -> bool:
+        return not self.evaluate(expr)
+
+    def _and(self, expr1: str, expr2: str) -> bool:
+        return self.evaluate(expr1) and self.evaluate(expr2)
+
+    def _or(self, expr1: str, expr2: str) -> bool:
+        return self.evaluate(expr1) or self.evaluate(expr2)
 ```
 
 ---
 
-## Part 6: WTPL-000 - Syntax Consolidation (New Task)
+## Part 6b: WTPL-000 - Syntax Consolidation Details
 
-### Problem
+### Changes Required
 
-- Two pack conditional syntaxes: `{{include-if:has-pack(name):path}}` and `{{#if pack:name}}`
-- Multiple section/anchor markers to migrate
+1. **Keep** `{{include-if:CONDITION:path}}` - clearer for file inclusion
+2. **Unify** block conditionals to `{{if:CONDITION}}...{{/if}}`
+3. **Add** `{{else}}` support for if blocks
+4. **Migrate** `<!-- ANCHOR: -->` to `<!-- SECTION: -->`
+5. **Remove** deprecated: `{{SECTION:Name}}`, `{{EXTENSIBLE_SECTIONS}}`, `{{APPEND_SECTIONS}}`
+6. **Update** all templates in `edison.data`
+7. **Create** migration guide for existing projects
 
-### Solution
+### Migration Examples
 
-1. Unify pack conditionals to `{{if:pack:name}}...{{/if}}`
-2. Migrate `<!-- ANCHOR: -->` to `<!-- SECTION: -->`
-3. Remove `{{SECTION:Name}}`, `{{EXTENSIBLE_SECTIONS}}`, `{{APPEND_SECTIONS}}`
-4. Update all templates in `edison.data`
-5. Create migration guide
+**Before:**
+```markdown
+{{#if pack:python}}
+Python content
+{{/if}}
+```
+
+**After:**
+```markdown
+{{if:has-pack(python)}}
+Python content
+{{/if}}
+```
+
+**Before:**
+```markdown
+{{include-if:has-pack(vitest):path}}
+```
+
+**After:** (unchanged - this syntax is good!)
+```markdown
+{{include-if:has-pack(vitest):path}}
+```
 
 ---
 
@@ -1498,6 +1702,8 @@ src/edison/core/composition/transformers/variables.py
 src/edison/core/composition/transformers/references.py
 src/edison/core/composition/core/base.py
 src/edison/core/composition/core/report.py
+src/edison/core/composition/core/errors.py            # Unified error hierarchy
+src/edison/core/composition/core/metadata.py          # MetadataExtractor for frontmatter
 src/edison/core/composition/output/writer.py
 src/edison/core/composition/output/resolver.py
 src/edison/core/composition/registries/config_based.py
@@ -1514,8 +1720,15 @@ src/edison/core/composition/ide/hooks.py
 src/edison/core/composition/ide/commands.py
 src/edison/core/composition/ide/settings.py
 src/edison/core/composition/ide/coderabbit.py
-src/edison/core/composition/registries/guidelines.py
+src/edison/core/composition/registries/agents.py              # Use unified errors
+src/edison/core/composition/registries/guidelines.py          # Use LayerDiscovery
 src/edison/core/composition/registries/validators.py
+src/edison/core/composition/registries/file_patterns.py       # Use CompositionPathResolver
+src/edison/core/composition/registries/schemas.py             # Use CompositionFileWriter
+src/edison/core/composition/registries/documents.py           # Document as good pattern
+src/edison/core/composition/registries/constitutions.py       # TemplateEngine integration
+src/edison/core/composition/registries/rules.py               # Unified errors
+src/edison/core/adapters/base.py                               # Consolidate with prompt/base.py
 src/edison/core/adapters/sync/base.py
 src/edison/core/adapters/sync/claude.py
 src/edison/core/adapters/sync/cursor.py
@@ -1531,11 +1744,22 @@ src/edison/core/adapters/sync/zen/composer.py
 src/edison/core/adapters/sync/zen/sync.py
 src/edison/core/adapters/sync/zen/client.py
 src/edison/core/adapters/sync/zen/__init__.py
+src/edison/core/adapters/prompt/base.py                # Consolidated into adapters/base.py
 ```
 
 ---
 
 ## Part 20: Verification Checklists
+
+### Phase 0: Syntax Consolidation (WTPL-000)
+- [ ] `{{include-if:CONDITION:path}}` syntax retained (clearer for file inclusion)
+- [ ] Block conditionals unified to `{{if:CONDITION}}...{{/if}}` with function syntax
+- [ ] `{{else}}` support added for if-else blocks
+- [ ] ConditionEvaluator implemented with 8 functions (has-pack, config, config-eq, env, file-exists, not, and, or)
+- [ ] All `<!-- ANCHOR:` → `<!-- SECTION:`
+- [ ] All deprecated placeholders removed
+- [ ] Migration guide created
+- [ ] Tests pass for all condition functions
 
 ### Phase 1: Marker Migration
 - [ ] SectionParser simplified to SECTION/EXTEND only
@@ -1562,12 +1786,17 @@ src/edison/core/adapters/sync/zen/__init__.py
 - [ ] Tests pass
 
 ### Phase 4: Unification
-- [ ] GuidelineRegistry uses LayeredComposer
+- [ ] GuidelineRegistry uses LayeredComposer and LayerDiscovery
+- [ ] FilePatternRegistry uses CompositionPathResolver
+- [ ] JsonSchemaComposer uses CompositionFileWriter
 - [ ] _load_layered_config added to IDEComposerBase
-- [ ] IDE composers migrated
-- [ ] ZenSync consolidated (4 files -> 1)
+- [ ] IDE composers migrated (HookComposer, CommandComposer, SettingsComposer, CodeRabbitComposer)
+- [ ] ZenSync consolidated (5 files -> 1)
+- [ ] PromptAdapter base classes consolidated (2 files -> 1)
 - [ ] CodexAdapter uses ConfigMixin
 - [ ] Zen directory deleted
+- [ ] Unified error hierarchy adopted across all registries
+- [ ] MetadataExtractor used for frontmatter parsing
 - [ ] ~200+ lines duplication eliminated
 - [ ] All tests pass
 
@@ -1575,15 +1804,18 @@ src/edison/core/adapters/sync/zen/__init__.py
 
 ## Part 21: Success Criteria
 
-1. **Single TemplateEngine** handles ALL template processing
-2. **4-concept section system** replaces 12+ markers
+1. **Single TemplateEngine** handles ALL template processing (9-step pipeline)
+2. **4-concept section system** replaces 12+ markers (SECTION, EXTEND, include-section, reference-section)
 3. **Two-phase composition** ensures cross-file references get fully composed content
-4. **CompositionBase** eliminates ~90 lines of duplication
-5. **CompositionFileWriter** centralizes all file I/O
-6. **OutputPathResolver** single source of truth for paths
-7. **~200+ lines** of duplication eliminated total
-8. **All tests pass**
-9. **`edison compose all`** produces fully processed output
+4. **CompositionBase** eliminates ~90 lines of duplication (BaseRegistry + IDEComposerBase)
+5. **CompositionFileWriter** centralizes all file I/O (18 write points migrated)
+6. **OutputPathResolver** single source of truth for paths (merges OutputConfigLoader + CompositionPathResolver)
+7. **Unified error hierarchy** with `CompositionError` base class and 10+ specific errors
+8. **MetadataExtractor** unified frontmatter parsing across all content types
+9. **4 composition modes documented** and all flowing through TemplateEngine Phase 2
+10. **~200+ lines** of duplication eliminated total
+11. **All tests pass** (unit, integration, e2e)
+12. **`edison compose all`** produces fully processed output with comprehensive report
 
 ---
 
@@ -1665,10 +1897,58 @@ class CompositionValidationError(CompositionError):
 
 class ConfigVariableNotFoundError(CompositionError):
     """Config variable path not found in configuration."""
-    
+
     def __init__(self, var_path: str):
         super().__init__(f"Config variable not found: {{{{config.{var_path}}}}}")
         self.var_path = var_path
+
+
+class AgentNotFoundError(EntityNotFoundError):
+    """Agent not found in registry."""
+
+    def __init__(self, agent_id: str):
+        super().__init__("agent", agent_id)
+
+
+class AgentTemplateError(CompositionError):
+    """Error in agent template processing."""
+
+    def __init__(self, agent_id: str, reason: str):
+        super().__init__(f"Agent template error for '{agent_id}': {reason}")
+        self.agent_id = agent_id
+        self.reason = reason
+
+
+class ValidatorNotFoundError(EntityNotFoundError):
+    """Validator not found in registry."""
+
+    def __init__(self, validator_id: str):
+        super().__init__("validator", validator_id)
+
+
+class DocumentTemplateNotFoundError(EntityNotFoundError):
+    """Document template not found."""
+
+    def __init__(self, template_id: str):
+        super().__init__("document_template", template_id)
+
+
+class AnchorNotFoundError(CompositionError):
+    """Anchor not found in guideline file."""
+
+    def __init__(self, anchor_name: str, file_path: str):
+        super().__init__(f"Anchor '{anchor_name}' not found in {file_path}")
+        self.anchor_name = anchor_name
+        self.file_path = file_path
+
+
+class RulesCompositionError(CompositionError):
+    """Error during rules composition."""
+
+    def __init__(self, rule_id: str, reason: str):
+        super().__init__(f"Rules composition error for '{rule_id}': {reason}")
+        self.rule_id = rule_id
+        self.reason = reason
 ```
 
 ---
@@ -1954,6 +2234,64 @@ tests/unit/composition/
     └── test_resolver.py     # Path resolver tests
 ```
 
+### Key Test Cases for ConditionEvaluator
+
+```python
+class TestConditionEvaluator:
+    """Tests for function-based condition evaluation."""
+
+    def test_has_pack_active(self, context_with_packs):
+        """Test has-pack(python) returns True when python pack active."""
+
+    def test_has_pack_inactive(self, context_without_packs):
+        """Test has-pack(python) returns False when python pack not active."""
+
+    def test_config_truthy(self, context_with_config):
+        """Test config(features.auth) returns True for truthy value."""
+
+    def test_config_falsy(self, context_with_config):
+        """Test config(features.disabled) returns False for falsy value."""
+
+    def test_config_eq_match(self, context_with_config):
+        """Test config-eq(project.type, api) matches."""
+
+    def test_config_eq_no_match(self, context_with_config):
+        """Test config-eq(project.type, web) doesn't match."""
+
+    def test_env_set(self, monkeypatch):
+        """Test env(CI) returns True when CI env var set."""
+
+    def test_env_not_set(self):
+        """Test env(NONEXISTENT) returns False."""
+
+    def test_file_exists_true(self, tmp_path):
+        """Test file-exists(.eslintrc) when file exists."""
+
+    def test_file_exists_false(self, tmp_path):
+        """Test file-exists(.eslintrc) when file doesn't exist."""
+
+    def test_not_operator(self, context_with_packs):
+        """Test not(has-pack(legacy)) negates result."""
+
+    def test_and_both_true(self, context_with_packs):
+        """Test and(has-pack(python), has-pack(vitest)) both true."""
+
+    def test_and_one_false(self, context_with_packs):
+        """Test and(has-pack(python), has-pack(legacy)) one false."""
+
+    def test_or_one_true(self, context_with_packs):
+        """Test or(has-pack(vitest), has-pack(jest)) one true."""
+
+    def test_or_both_false(self, context_without_packs):
+        """Test or(has-pack(vitest), has-pack(jest)) both false."""
+
+    def test_nested_conditions(self, context_with_packs):
+        """Test and(has-pack(python), not(has-pack(legacy))) nested."""
+
+    def test_invalid_function_raises(self, context):
+        """Test unknown function raises ValueError."""
+```
+
 ### Key Test Cases for TemplateEngine
 
 ```python
@@ -1962,37 +2300,49 @@ class TestTemplateEngine:
 
     def test_process_include(self, tmp_path):
         """Test {{include:path}} resolution."""
-        
+
     def test_process_include_optional_missing(self, tmp_path):
         """Test {{include-optional:path}} returns empty for missing file."""
-        
+
     def test_process_section_include(self, tmp_path):
         """Test {{include-section:path#name}} extraction."""
-        
-    def test_process_pack_conditional_active(self, tmp_path):
-        """Test {{if:pack:name}} includes content when pack active."""
-        
-    def test_process_pack_conditional_inactive(self, tmp_path):
-        """Test {{if:pack:name}} excludes content when pack inactive."""
-        
+
+    def test_process_include_if_true(self, tmp_path):
+        """Test {{include-if:has-pack(python):path}} includes when true."""
+
+    def test_process_include_if_false(self, tmp_path):
+        """Test {{include-if:has-pack(legacy):path}} skips when false."""
+
+    def test_process_if_block_true(self, tmp_path):
+        """Test {{if:has-pack(python)}}...{{/if}} includes content."""
+
+    def test_process_if_block_false(self, tmp_path):
+        """Test {{if:has-pack(legacy)}}...{{/if}} excludes content."""
+
+    def test_process_if_else_true_branch(self, tmp_path):
+        """Test {{if:COND}}A{{else}}B{{/if}} returns A when true."""
+
+    def test_process_if_else_false_branch(self, tmp_path):
+        """Test {{if:COND}}A{{else}}B{{/if}} returns B when false."""
+
     def test_process_config_variable(self, tmp_path):
         """Test {{config.path}} substitution."""
-        
+
     def test_process_config_variable_missing(self, tmp_path):
         """Test missing config var is tracked in report."""
-        
+
     def test_process_context_variable(self, tmp_path):
         """Test {{source_layers}} substitution from context."""
-        
+
     def test_process_path_variable(self, tmp_path):
         """Test {{PROJECT_EDISON_DIR}} resolution."""
-        
+
     def test_process_reference(self, tmp_path):
         """Test {{reference-section:path#name|purpose}} output."""
-        
+
     def test_transformation_order(self, tmp_path):
         """Test transformations happen in correct order."""
-        
+
     def test_two_phase_integration(self, tmp_path):
         """Test Phase 1 compose + Phase 2 process flow."""
 ```
@@ -2020,5 +2370,178 @@ class TestSectionParser:
         
     def test_composed_additions_convention(self):
         """Test composed-additions section for new content."""
+```
+
+---
+
+## Appendix G: Composition Modes Documentation
+
+The codebase currently has 4 distinct composition modes that need to be understood:
+
+### Mode 1: Section-Based Composition (Agents, Validators, Documents)
+
+Uses `LayeredComposer` with `SectionParser`:
+- `<!-- SECTION: name -->...<!-- /SECTION: name -->` defines sections
+- `<!-- EXTEND: name -->...<!-- /EXTEND -->` extends sections
+- Sections are merged in layer order: Core → Packs → Project
+
+**Used by:** `AgentRegistry`, `ValidatorRegistry`, `DocumentTemplateRegistry`
+
+### Mode 2: Concatenate + Dedupe (Guidelines)
+
+Direct file concatenation with DRY detection:
+- Files from all layers concatenated
+- Shingle-based deduplication (configurable)
+- No section markers, just raw content
+
+**Used by:** `GuidelineRegistry`
+
+**NOTE:** Should migrate to use `LayerDiscovery` for consistent discovery patterns
+
+### Mode 3: YAML Merge (Rules, FilePatterns, Schemas)
+
+YAML deep-merge across layers:
+- Core YAML → Pack YAML → Project YAML
+- Uses `deep_merge()` from ConfigManager
+- Key-based override
+
+**Used by:** `RulesRegistry`, `FilePatternRegistry`, `JsonSchemaComposer`
+
+### Mode 4: Template Rendering (Constitutions)
+
+Handlebars-style templates with:
+- `{{#each collection}}...{{/each}}` loops
+- `{{variable}}` substitution
+- Direct string replacement
+
+**Used by:** `constitutions.py` (functional module)
+
+**NOTE:** Should integrate with unified `TemplateEngine`
+
+### Unification Strategy
+
+After this refactoring, all modes should flow through `TemplateEngine`:
+1. **Layer composition** (Phase 1) handles mode-specific merging
+2. **Template processing** (Phase 2) handles all `{{...}}` patterns uniformly
+
+---
+
+## Appendix H: MetadataExtractor
+
+**Location:** `src/edison/core/composition/core/metadata.py`
+
+**Purpose:** Unified frontmatter/metadata extraction for all content types.
+
+```python
+"""Unified metadata extraction for Edison content."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
+
+import yaml
+
+
+@dataclass
+class ContentMetadata:
+    """Extracted metadata from content file."""
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: list[str] = None
+    dependencies: list[str] = None
+    raw: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.tags is None:
+            self.tags = []
+        if self.dependencies is None:
+            self.dependencies = []
+        if self.raw is None:
+            self.raw = {}
+
+
+class MetadataExtractor:
+    """Extract metadata from content files.
+
+    Handles:
+    - YAML frontmatter (--- ... ---)
+    - HTML comment frontmatter (<!-- FRONTMATTER ... -->)
+    - Inline metadata (first H1, description paragraphs)
+    """
+
+    FRONTMATTER_PATTERN = re.compile(
+        r'^---\s*\n(.*?)\n---\s*\n',
+        re.DOTALL
+    )
+    HTML_FRONTMATTER_PATTERN = re.compile(
+        r'^<!--\s*FRONTMATTER\s*\n(.*?)\n\s*-->\s*\n',
+        re.DOTALL
+    )
+
+    def extract(self, content: str, default_name: str = "unknown") -> Tuple[ContentMetadata, str]:
+        """Extract metadata and return (metadata, remaining_content)."""
+        metadata_dict = {}
+        remaining = content
+
+        # Try YAML frontmatter first
+        match = self.FRONTMATTER_PATTERN.match(content)
+        if match:
+            try:
+                metadata_dict = yaml.safe_load(match.group(1)) or {}
+                remaining = content[match.end():]
+            except yaml.YAMLError:
+                pass
+
+        # Try HTML comment frontmatter
+        if not metadata_dict:
+            match = self.HTML_FRONTMATTER_PATTERN.match(content)
+            if match:
+                try:
+                    metadata_dict = yaml.safe_load(match.group(1)) or {}
+                    remaining = content[match.end():]
+                except yaml.YAMLError:
+                    pass
+
+        # Extract title from first H1 if not in frontmatter
+        if "title" not in metadata_dict:
+            title_match = re.search(r'^#\s+(.+)$', remaining, re.MULTILINE)
+            if title_match:
+                metadata_dict["title"] = title_match.group(1).strip()
+
+        return ContentMetadata(
+            name=metadata_dict.get("name", default_name),
+            title=metadata_dict.get("title"),
+            description=metadata_dict.get("description"),
+            category=metadata_dict.get("category"),
+            tags=metadata_dict.get("tags", []),
+            dependencies=metadata_dict.get("dependencies", []),
+            raw=metadata_dict,
+        ), remaining
+
+    def extract_from_file(self, path: Path) -> Tuple[ContentMetadata, str]:
+        """Extract metadata from a file."""
+        content = path.read_text(encoding="utf-8")
+        default_name = path.stem
+        return self.extract(content, default_name)
+```
+
+**Usage:**
+
+```python
+extractor = MetadataExtractor()
+
+# From string
+metadata, content = extractor.extract(raw_content, "my-agent")
+
+# From file
+metadata, content = extractor.extract_from_file(Path("agents/test-engineer.md"))
+
+# Access metadata
+print(metadata.title)       # "Test Engineer"
+print(metadata.category)    # "development"
+print(metadata.tags)        # ["testing", "tdd"]
 ```
 ````
