@@ -11,13 +11,13 @@ Schemas for IDE-specific adapters and agent configurations.
 
 ## Usage
 
-Adapter schemas define the interface between Edison and specific IDE integrations:
+Adapter schemas define the interface between Edison and specific platform adapters:
 
 - **claude-agent**: Full agent definition with name, description, model, and sections (role, tools, guidelines, workflows)
 - **claude-agent-config**: Configuration options for Claude agent behavior
 
 ## Related Code
 
-- `edison.core.composition.ide` - IDE adapter composition
+- `edison.core.adapters` - unified adapter stack (components + platforms, PlatformAdapter base)
 - `.edison/_generated/agents/` - Generated agent definitions
 - Client-specific implementations (Cursor, Claude Code, etc.)

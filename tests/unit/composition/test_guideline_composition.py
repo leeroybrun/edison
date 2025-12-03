@@ -64,7 +64,7 @@ class TestGuidelineCompositionUnit:
         assert "my-custom-guide" in names
 
     def test_project_override_discovery(self, isolated_project_env: Path) -> None:
-        """Project overrides from .edison/guidelines/ should be discovered."""
+        """Project overlays from .edison/guidelines/overlays should be discovered."""
         from edison.core.composition import GuidelineRegistry
 
         root = isolated_project_env
@@ -81,7 +81,7 @@ class TestGuidelineCompositionUnit:
         assert "project-specific" in names
 
     def test_project_override_application(self, isolated_project_env: Path) -> None:
-        """Project overrides from .edison/guidelines/ are applied with highest priority."""
+        """Project guidelines at .edison/guidelines/ are concatenated with highest priority."""
         from edison.core.composition import compose_guideline
 
         root = isolated_project_env
@@ -107,7 +107,6 @@ class TestGuidelineCompositionUnit:
         project_dir = root / ".edison" / "guidelines"
         project_dir.mkdir(parents=True, exist_ok=True)
 
-        # Use a real bundled guideline name and create project override
         (project_dir / "TDD.md").write_text(
             "# Project TDD\n\nProject TDD override.\n",
             encoding="utf-8",
@@ -115,7 +114,7 @@ class TestGuidelineCompositionUnit:
 
         text_no_override = compose_guideline("TDD", packs=[], project_overrides=False)
 
-        # Project override should NOT be included
+        # Project layer should be excluded when project_overrides=False
         assert "Project TDD override." not in text_no_override
 
     def test_pack_guideline_discovery_supports_namespaced_files(self, isolated_project_env: Path) -> None:
@@ -143,7 +142,7 @@ class TestGuidelineCompositionUnit:
 
         root = isolated_project_env
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".edison" / "guidelines"
+        project_dir = root / ".edison" / "guidelines" / "overlays"
 
         # Create project pack guideline
         (packs_dir / "alpha" / "guidelines").mkdir(parents=True, exist_ok=True)
@@ -159,7 +158,7 @@ class TestGuidelineCompositionUnit:
             encoding="utf-8",
         )
 
-        registry = GuidelineRegistry(repo_root=root)
+        registry = GuidelineRegistry(project_root=root)
         result = registry.compose("alpha-guide", ["alpha"])
 
         # Both pack and project content should be present
@@ -184,7 +183,7 @@ class TestGuidelineCompositionUnit:
 
         root = isolated_project_env
         packs_dir = root / ".edison" / "packs"
-        project_dir = root / ".edison" / "guidelines"
+        project_dir = root / ".edison" / "guidelines" / "overlays"
 
         # Create duplicate content across pack and project
         repeated = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu paragraph."

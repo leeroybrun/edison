@@ -13,12 +13,28 @@ This follows the Composition over Inheritance principle.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 if TYPE_CHECKING:
     from edison.core.adapters.base import PlatformAdapter
     from edison.core.composition.output.writer import CompositionFileWriter
+
+
+@dataclass(frozen=True)
+class AdapterContext:
+    """Shared context passed to adapter components."""
+
+    project_root: Path
+    project_dir: Path
+    core_dir: Path
+    bundled_packs_dir: Path
+    project_packs_dir: Path
+    cfg_mgr: Any
+    config: Dict[str, Any]
+    writer: "CompositionFileWriter"
+    adapter: "PlatformAdapter"
 
 
 class AdapterComponent(ABC):
@@ -50,13 +66,10 @@ class AdapterComponent(ABC):
                 return [path]
     """
 
-    def __init__(self, adapter: "PlatformAdapter") -> None:
-        """Initialize component with parent adapter.
-
-        Args:
-            adapter: The platform adapter this component belongs to.
-        """
-        self.adapter = adapter
+    def __init__(self, context: AdapterContext) -> None:
+        """Initialize component with adapter context."""
+        self.context = context
+        self.adapter = getattr(context, "adapter", None)
 
     # =========================================================================
     # Adapter Property Access
@@ -69,7 +82,7 @@ class AdapterComponent(ABC):
         Returns:
             Configuration dictionary from the adapter.
         """
-        return self.adapter.config
+        return self.context.config
 
     @property
     def writer(self) -> "CompositionFileWriter":
@@ -78,7 +91,81 @@ class AdapterComponent(ABC):
         Returns:
             CompositionFileWriter instance from the adapter.
         """
-        return self.adapter.writer
+        return self.context.writer
+
+    # ---------------------------------------------------------------------
+    # Delegation helpers (CompositionBase passthrough)
+    # ---------------------------------------------------------------------
+
+    def get_active_packs(self) -> List[str]:
+        """Delegate to adapter's active packs helper."""
+        if self.adapter is None:
+            return []
+        return self.adapter.get_active_packs()
+
+    def merge_definitions(
+        self,
+        base: Dict[str, Dict[str, Any]],
+        new_defs: Dict[str, Dict[str, Any]] | List[Dict[str, Any]],
+        id_key: str = "id",
+    ) -> Dict[str, Dict[str, Any]]:
+        """Delegate to adapter merge helpers.
+
+        CompositionBase.merge_definitions accepts a key_getter; to keep a
+        simple API for components we use _merge_definitions_by_id under the
+        hood when an ``id_key`` is provided.
+        """
+        if self.adapter is None:
+            raise RuntimeError("Adapter not attached to component")
+        # Prefer the dedicated helper when id_key is provided
+        return self.adapter._merge_definitions_by_id(base, new_defs, id_key=id_key)
+
+    def _merge_definitions_by_id(
+        self,
+        base: Dict[str, Dict[str, Any]],
+        new_defs: List[Dict[str, Any]],
+        *,
+        id_key: str = "id",
+    ) -> Dict[str, Dict[str, Any]]:
+        """Delegates to adapter's protected merge helper."""
+        if self.adapter is None:
+            raise RuntimeError("Adapter not attached to component")
+        return self.adapter._merge_definitions_by_id(base, new_defs, id_key=id_key)
+
+    @property
+    def cfg_mgr(self) -> Any:
+        """Access ConfigManager."""
+        return self.context.cfg_mgr
+
+    @property
+    def core_dir(self) -> Path:
+        return self.context.core_dir
+
+    @property
+    def bundled_packs_dir(self) -> Path:
+        return self.context.bundled_packs_dir
+
+    @property
+    def project_packs_dir(self) -> Path:
+        return self.context.project_packs_dir
+
+    @property
+    def project_dir(self) -> Path:
+        return self.context.project_dir
+
+    @property
+    def project_root(self) -> Path:
+        return self.context.project_root
+
+    @property
+    def active_packs(self) -> List[str]:
+        """Active packs from the parent adapter."""
+        if self.adapter:
+            try:
+                return self.adapter.get_active_packs()
+            except Exception:
+                return []
+        return []
 
     # =========================================================================
     # Abstract Methods

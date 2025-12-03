@@ -17,4 +17,4 @@ class TestConvenienceFunctions:
         loader = get_output_config(repo_root=tmp_path)
 
         assert isinstance(loader, OutputConfigLoader)
-        assert loader.repo_root == tmp_path
+        assert loader.project_root == tmp_path

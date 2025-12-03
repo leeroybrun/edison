@@ -41,7 +41,7 @@ class ConcreteComponent(AdapterComponent):
 def test_adapter_component_requires_adapter():
     """Test that AdapterComponent requires an adapter instance."""
     adapter = MockPlatformAdapter(project_root=Path.cwd())
-    component = ConcreteComponent(adapter)
+    component = ConcreteComponent(adapter.context)
 
     assert component.adapter is adapter
 
@@ -49,7 +49,7 @@ def test_adapter_component_requires_adapter():
 def test_adapter_component_provides_config_access():
     """Test that AdapterComponent provides access to adapter config."""
     adapter = MockPlatformAdapter(project_root=Path.cwd())
-    component = ConcreteComponent(adapter)
+    component = ConcreteComponent(adapter.context)
 
     # Should have config from adapter
     assert component.config is not None
@@ -59,7 +59,7 @@ def test_adapter_component_provides_config_access():
 def test_adapter_component_provides_writer_access():
     """Test that AdapterComponent provides access to adapter writer."""
     adapter = MockPlatformAdapter(project_root=Path.cwd())
-    component = ConcreteComponent(adapter)
+    component = ConcreteComponent(adapter.context)
 
     # Should have writer from adapter
     assert component.writer is not None
@@ -69,7 +69,7 @@ def test_adapter_component_provides_writer_access():
 def test_adapter_component_compose_method():
     """Test that AdapterComponent has compose method."""
     adapter = MockPlatformAdapter(project_root=Path.cwd())
-    component = ConcreteComponent(adapter)
+    component = ConcreteComponent(adapter.context)
 
     result = component.compose()
     assert result == "composed content"
@@ -78,7 +78,7 @@ def test_adapter_component_compose_method():
 def test_adapter_component_sync_method(tmp_path: Path):
     """Test that AdapterComponent has sync method."""
     adapter = MockPlatformAdapter(project_root=tmp_path)
-    component = ConcreteComponent(adapter)
+    component = ConcreteComponent(adapter.context)
 
     output_dir = tmp_path / "output"
     output_dir.mkdir()

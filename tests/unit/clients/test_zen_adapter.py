@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ZenSync
+from edison.core.adapters import ZenAdapter
 from tests.helpers.io_utils import write_yaml
 
 

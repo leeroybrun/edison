@@ -25,17 +25,17 @@ class TestZenAdapterMerged:
         assert hasattr(ZenAdapter, '__init__')
 
     def test_can_import_zen_sync_from_adapters(self):
-        """Verify ZenSync (full adapter) is importable from canonical location."""
-        from edison.core.adapters import ZenSync
+        """Verify ZenAdapter (full adapter) is importable from canonical location."""
+        from edison.core.adapters import ZenAdapter
 
-        assert ZenSync is not None
-        assert hasattr(ZenSync, '__init__')
+        assert ZenAdapter is not None
+        assert hasattr(ZenAdapter, '__init__')
         # Verify key methods from implementation exist
-        assert hasattr(ZenSync, 'get_applicable_guidelines')
-        assert hasattr(ZenSync, 'get_applicable_rules')
-        assert hasattr(ZenSync, 'compose_zen_prompt')
-        assert hasattr(ZenSync, 'sync_role_prompts')
-        assert hasattr(ZenSync, 'verify_cli_prompts')
+        assert hasattr(ZenAdapter, 'get_applicable_guidelines')
+        assert hasattr(ZenAdapter, 'get_applicable_rules')
+        assert hasattr(ZenAdapter, 'compose_zen_prompt')
+        assert hasattr(ZenAdapter, 'sync_role_prompts')
+        assert hasattr(ZenAdapter, 'verify_cli_prompts')
 
     def test_can_import_workflow_heading_constant(self):
         """Verify WORKFLOW_HEADING constant is available."""
@@ -46,18 +46,18 @@ class TestZenAdapterMerged:
         assert "Edison Workflow Loop" in WORKFLOW_HEADING
 
     def test_zen_sync_instantiation(self, tmp_path: Path):
-        """Verify ZenSync can be instantiated."""
-        from edison.core.adapters import ZenSync
+        """Verify ZenAdapter can be instantiated."""
+        from edison.core.adapters import ZenAdapter
 
         # Create minimal directory structure
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        # ZenSync should instantiate without errors
+        # ZenAdapter should instantiate without errors
         adapter = ZenAdapter(project_root=repo_root, config={})
 
         assert adapter is not None
-        assert adapter.repo_root == repo_root
+        assert adapter.project_root == repo_root
 
     def test_root_zen_adapter_import_fails(self):
         """Verify root location no longer works (NO LEGACY)."""

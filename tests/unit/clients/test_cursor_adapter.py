@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import CursorSync
+from edison.core.adapters import CursorAdapter
 from tests.helpers.io_utils import write_yaml
 
 
@@ -58,7 +58,7 @@ class TestCursorAdapterCursorrules:
         }
         write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         out_path = adapter.sync_to_cursorrules()
 
         assert out_path.name == ".cursorrules"
@@ -97,7 +97,7 @@ class TestCursorAdapterCursorrules:
         }
         write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         path = adapter.sync_to_cursorrules()
 
         # Manual edit after initial sync
@@ -135,7 +135,7 @@ class TestCursorAdapterCursorrules:
         }
         write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         path = adapter.sync_to_cursorrules()
 
         # Add a manual header above the generated block
@@ -168,7 +168,7 @@ class TestCursorAdapterAgentSync:
         agent_file = generated_agents_dir / "api-builder.md"
         agent_file.write_text("# Agent: api-builder\nDetails.\n", encoding="utf-8")
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         copied = adapter.sync_agents_to_cursor()
 
         cursor_agents_dir = project_root / ".cursor" / "agents"
@@ -192,7 +192,7 @@ class TestCursorAdapterAgentSync:
             encoding="utf-8",
         )
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         copied = adapter.sync_agents_to_cursor(auto_compose=True)
 
         # Generated agents should now exist and be synced into .cursor/agents
@@ -242,7 +242,7 @@ class TestCursorAdapterStructuredRules:
         }
         write_yaml(project_root / ".edison" / "rules" / "registry.yml", registry_data)
 
-        adapter = CursorSync(project_root=project_root)
+        adapter = CursorAdapter(project_root=project_root)
         paths = adapter.sync_structured_rules()
 
         rules_root = project_root / ".cursor" / "rules"

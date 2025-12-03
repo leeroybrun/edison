@@ -16,13 +16,13 @@ def get_repo_root(args: argparse.Namespace) -> Path:
     """Get repository root from args or auto-detect.
 
     Args:
-        args: Parsed arguments with optional repo_root attribute
+        args: Parsed arguments with optional project_root attribute
 
     Returns:
         Path: Repository root path
     """
-    if hasattr(args, "repo_root") and args.repo_root:
-        return Path(args.repo_root).resolve()
+    if hasattr(args, "project_root") and args.project_root:
+        return Path(args.project_root).resolve()
     return resolve_project_root()
 
 

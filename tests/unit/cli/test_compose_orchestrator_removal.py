@@ -188,7 +188,7 @@ def _setup_minimal_edison_structure(repo_root: Path) -> None:
 def real_args():
     """Create real args namespace with all compose command flags."""
     args = Namespace()
-    args.repo_root = None
+    args.project_root = None
     args.validators = False
     args.constitutions = False
     args.guidelines = False
@@ -224,7 +224,7 @@ def test_orchestrator_flag_does_not_exist():
 def test_compose_all_without_orchestrator_flag(tmp_path, real_args):
     """Test that compose --all works without orchestrator flag and generates constitutions."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     # Run compose --all (which should NOT try to compose orchestrator)
     result = main(real_args)

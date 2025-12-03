@@ -32,8 +32,8 @@ class BloatDetector:
         if repo_root is None:
             repo_root = Path(__file__).resolve().parents[4]
 
-        self.repo_root = Path(repo_root)
-        self.agents_dir = self.repo_root / ".agents"
+        self.project_root = Path(repo_root)
+        self.agents_dir = self.project_root / ".agents"
         self.counter = TokenCounter()
 
     def detect_oversized_files(
@@ -71,7 +71,7 @@ class BloatDetector:
                 file_info["tokens"] > threshold_tokens
                 or file_info["lines"] > threshold_lines
             ):
-                rel_path = file_path.relative_to(self.repo_root)
+                rel_path = file_path.relative_to(self.project_root)
                 oversized.append(
                     {
                         "path": str(rel_path),
@@ -151,8 +151,8 @@ class BloatDetector:
                         duplicates.append(
                             {
                                 "category": category,
-                                "file1": str(file1.relative_to(self.repo_root)),
-                                "file2": str(file2.relative_to(self.repo_root)),
+                                "file1": str(file1.relative_to(self.project_root)),
+                                "file2": str(file2.relative_to(self.project_root)),
                                 "similarity": similarity,
                                 "recommendation": self._recommend_dedup(
                                     file1, file2, similarity
@@ -299,7 +299,7 @@ class BloatDetector:
 
         # Analyze each mandatory file
         for rel_path in mandatory:
-            abs_path = self.repo_root / rel_path
+            abs_path = self.project_root / rel_path
 
             if not abs_path.exists():
                 continue
@@ -334,7 +334,7 @@ class BloatDetector:
         """
         references = 0
         file_name = file_path.name
-        rel_path = str(file_path.relative_to(self.repo_root))
+        rel_path = str(file_path.relative_to(self.project_root))
 
         # Search in all .agents/ markdown and JSON files
         for search_file in self.agents_dir.rglob("*"):

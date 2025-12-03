@@ -1,8 +1,5 @@
 """Codex CLI platform adapter.
 
-This adapter is based on:
-- adapters/prompt/codex.py (CodexAdapter)
-
 Handles:
 - Codex-specific configurations
 - Note: Codex only supports user-level prompts, not project-level
@@ -52,16 +49,17 @@ class CodexAdapter(PlatformAdapter):
     # =========================================================================
 
     def sync_all(self) -> Dict[str, Any]:
-        """Execute complete synchronization workflow.
+        """Sync _generated/agents to ~/.codex/prompts (or configured path)."""
+        # Allow overrides via output_config; default to project-local to stay sandbox-safe
+        cfg = self.output_config.get_sync_config("codex")
+        if cfg and cfg.enabled and cfg.agents_path:
+            codex_dir = self.output_config._resolve_path(cfg.agents_path)
+        else:
+            codex_dir = self.project_root / ".codex" / "prompts"
+        codex_dir.mkdir(parents=True, exist_ok=True)
 
-        Codex has minimal sync requirements as it uses user-level prompts.
-
-        Returns:
-            Empty dictionary (Codex doesn't sync project-level files).
-        """
-        # Codex only supports user-level prompts, not project-level sync
-        # All composition happens via the main composition engine
-        return {}
+        written = self.sync_agents_from_generated(codex_dir)
+        return {"agents": written}
 
 
 __all__ = ["CodexAdapter", "CodexAdapterError"]

@@ -194,7 +194,7 @@ def test_parse_common_args_adds_flags(cli_module):
     args = parser.parse_args(["--json", "--yes", "--repo-root", "/tmp/demo"])
     assert args.json is True
     assert args.yes is True
-    assert Path(args.repo_root) == Path("/tmp/demo")
+    assert Path(args.project_root) == Path("/tmp/demo")
 
 
 def test_session_parent_adds_session_flag(cli_module):

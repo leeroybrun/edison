@@ -30,7 +30,6 @@ class TestNormalizeValidatorEntries:
             fallback_map={},
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -58,7 +57,6 @@ class TestNormalizeValidatorEntries:
             fallback_map=fallback_map,
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -94,7 +92,6 @@ class TestNormalizeValidatorEntries:
             fallback_map={},
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -122,7 +119,6 @@ class TestNormalizeValidatorEntries:
             fallback_map=fallback_map,
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 

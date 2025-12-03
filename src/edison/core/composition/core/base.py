@@ -1,23 +1,17 @@
 """Base class for composition infrastructure.
 
-Provides common initialization and path setup for:
-- BaseRegistry classes (agents, validators, guidelines)
-- IDE composers (hooks, commands, settings)
-- Any composition-related component
-
-Consolidates duplicate code from various registries and composers.
+Provides common initialization and path setup for all composition
+participants (registries, generators, adapters).
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from edison.core.config import ConfigManager
 from edison.core.config.domains import PacksConfig
-from edison.core.utils.paths.project import get_project_config_dir
-from edison.core.utils.paths import PathResolver
-from edison.data import get_data_path
+from edison.core.composition.core.paths import CompositionPathResolver
 
 
 class CompositionBase(ABC):
@@ -30,10 +24,7 @@ class CompositionBase(ABC):
     - YAML loading utilities (load_yaml_safe, merge_yaml)
     - Definition merging (merge_definitions)
 
-    Subclasses MUST implement _setup_composition_dirs() to set:
-    - self.core_dir
-    - self.bundled_packs_dir
-    - self.project_packs_dir
+    Paths are resolved centrally via CompositionPathResolver.
     """
 
     # Declare attributes for type checking
@@ -52,9 +43,13 @@ class CompositionBase(ABC):
             project_root: Repository root path. Resolved automatically if not provided.
             config: Optional config dict to merge with loaded config.
         """
-        # Path resolution - UNIFIED
-        self.project_root = project_root or PathResolver.resolve_project_root()
-        self.project_dir = get_project_config_dir(self.project_root, create=False)
+        # Path resolution - SINGLE SOURCE OF TRUTH
+        resolver = CompositionPathResolver(project_root)
+        self.project_root = resolver.repo_root
+        self.project_dir = resolver.project_dir
+        self.core_dir = resolver.core_dir
+        self.bundled_packs_dir = resolver.bundled_packs_dir
+        self.project_packs_dir = resolver.project_packs_dir
 
         # Config - UNIFIED
         self.cfg_mgr = ConfigManager(self.project_root)
@@ -66,9 +61,6 @@ class CompositionBase(ABC):
 
         # Lazy writer - UNIFIED
         self._writer: Optional["CompositionFileWriter"] = None  # type: ignore[name-defined]
-
-        # Subclass-specific paths
-        self._setup_composition_dirs()
 
     # =========================================================================
     # Writer Property
@@ -86,17 +78,6 @@ class CompositionBase(ABC):
 
             self._writer = CompositionFileWriter(base_dir=self.project_root)
         return self._writer
-
-    @abstractmethod
-    def _setup_composition_dirs(self) -> None:
-        """Setup core/packs directories. Override in subclasses.
-
-        Standard implementation:
-            self.core_dir = Path(get_data_path(""))
-            self.bundled_packs_dir = Path(get_data_path("packs"))
-            self.project_packs_dir = self.project_dir / "packs"
-        """
-        pass
 
     # =========================================================================
     # Active Packs

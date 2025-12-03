@@ -393,3 +393,6 @@ After successful setup:
 - [Zen MCP Server Repository](https://github.com/BeehiveInnovations/zen-mcp-server)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [uvx Documentation](https://docs.astral.sh/uv/)
+
+
+Note: Adapters are unified under `src/edison/core/adapters/` (components/ + platforms/zen/). See `docs/TEMPLATING.md` for the composition pipeline feeding adapter outputs.

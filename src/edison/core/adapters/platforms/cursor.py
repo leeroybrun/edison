@@ -1,9 +1,5 @@
 """Cursor IDE platform adapter.
 
-This adapter merges functionality from:
-- adapters/prompt/cursor.py (CursorAdapter) - rendering logic
-- adapters/sync/cursor.py (CursorSync) - sync logic
-
 Handles:
 - Syncing .cursorrules from Edison guidelines/rules
 - Syncing agents to .cursor/agents/
@@ -18,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.adapters.base import PlatformAdapter
+from edison.core.adapters.components.commands import CommandComposer
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.composition import GuidelineRegistry
 from edison.core.rules import RulesRegistry, RulesCompositionError
@@ -58,11 +55,14 @@ class CursorAdapter(PlatformAdapter):
         self.project_config_dir = get_project_config_dir(self.project_root)
 
         # Initialize registries
-        self.guideline_registry = GuidelineRegistry(repo_root=self.project_root)
+        self.guideline_registry = GuidelineRegistry(project_root=self.project_root)
         self.rules_registry = RulesRegistry(project_root=self.project_root)
 
         # Paths from config
         self.cursor_dir = self.adapters_config.get_client_path("cursor")
+
+        # Components (platform-agnostic)
+        self.commands = CommandComposer(self.context)
 
     # =========================================================================
     # Platform Properties
@@ -456,17 +456,20 @@ class CursorAdapter(PlatformAdapter):
         - .cursorrules (guidelines + rules)
         - .cursor/rules/*.mdc (structured rules)
         - .cursor/agents/*.md (agents)
+        - commands/ for cursor (if configured)
 
         Returns:
             Dictionary containing sync results with keys:
             - cursorrules: List with .cursorrules path
             - rules: List of structured rule files
             - agents: List of agent files
+            - commands: List of command files
         """
         result: Dict[str, List[Path]] = {
             "cursorrules": [],
             "rules": [],
             "agents": [],
+            "commands": [],
         }
 
         cursorrules_path = self.sync_to_cursorrules()
@@ -474,6 +477,8 @@ class CursorAdapter(PlatformAdapter):
 
         result["rules"] = self.sync_structured_rules()
         result["agents"] = self.sync_agents_to_cursor(auto_compose=True)
+        commands = self.commands.compose_all().get("cursor", {})
+        result["commands"] = list(commands.values())
 
         return result
 

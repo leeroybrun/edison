@@ -256,7 +256,8 @@ def resolve_single_include(
     path: str,
     source_dir: Optional[Path] = None,
     project_root: Optional[Path] = None,
-    packs_dir: Optional[Path] = None,
+    bundled_packs_dir: Optional[Path] = None,
+    project_packs_dir: Optional[Path] = None,
 ) -> Optional[Path]:
     """Resolve an include path using 3-layer search.
 
@@ -286,11 +287,15 @@ def resolve_single_include(
         if project_path.exists():
             return project_path
 
-    # Try packs_dir
-    if packs_dir:
-        packs_path = packs_dir / path
+    # Try bundled packs dir, then project packs dir
+    if bundled_packs_dir:
+        packs_path = bundled_packs_dir / path
         if packs_path.exists():
             return packs_path
+    if project_packs_dir:
+        proj_packs_path = project_packs_dir / path
+        if proj_packs_path.exists():
+            return proj_packs_path
 
     return None
 

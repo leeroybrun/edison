@@ -58,6 +58,11 @@ class OutputConfigLoader:
         self.project_config_dir = project_config_dir or get_project_config_dir(self.repo_root)
         self._config: Optional[Dict[str, Any]] = None
 
+    @property
+    def project_root(self) -> Path:
+        """Alias matching CompositionBase terminology."""
+        return self.repo_root
+
     def _load_config(self) -> Dict[str, Any]:
         """Load composition.yaml configuration."""
         if self._config is not None:

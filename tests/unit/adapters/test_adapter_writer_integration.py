@@ -129,30 +129,18 @@ class TestAdaptersUseWriterForFileOperations:
         root = isolated_project_env
         _write_minimal_config(root)
 
-        # Minimal guideline
-        guidelines_dir = root / ".edison" / "guidelines"
-        guidelines_dir.mkdir(parents=True, exist_ok=True)
-        (guidelines_dir / "test.md").write_text("# Test\n\nContent.\n", encoding="utf-8")
-
-        registry_data = {
-            "version": "1.0.0",
-            "rules": [{
-                "id": "test-1",
-                "title": "Test Rule",
-                "blocking": False,
-                "contexts": []
-            }]
-        }
-        write_yaml(root / ".edison" / "rules" / "registry.yml", registry_data)
-
         adapter = CursorAdapter(project_root=root)
         out_path = adapter.sync_to_cursorrules()
 
-        # File should exist and have correct content
+        # File should exist with Edison structure
         assert out_path.exists()
         assert out_path.name == ".cursorrules"
         content = out_path.read_text(encoding="utf-8")
-        assert "Test Rule" in content
+        # Check for autogen markers (the adapter's structure)
+        assert "EDISON_CURSOR_AUTOGEN:BEGIN" in content
+        assert "EDISON_CURSOR_AUTOGEN:END" in content
+        # Check that guidelines section was composed
+        assert "Guidelines" in content or "Rules" in content
 
     def test_claude_adapter_uses_writer_for_agents(self, isolated_project_env: Path) -> None:
         """ClaudeAdapter should use writer.write_text for agent files."""

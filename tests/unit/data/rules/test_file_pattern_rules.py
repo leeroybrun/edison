@@ -8,7 +8,7 @@ from edison.core.rules import FilePatternRegistry
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def _get_get_ids(rules):
+def _get_ids(rules):
     return {rule.get("id") for rule in rules}
 
 

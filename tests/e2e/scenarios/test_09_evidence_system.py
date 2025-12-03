@@ -133,7 +133,7 @@ def test_evidence_required_files(project_dir: TestProjectDir):
         (round_dir / name).write_text("Exit code: 0\n✓ OK\n")
 
     # Now guard should pass (after we provide implementation validator wrapper and followups wrapper)
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
     ready2 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_success(ready2)
 
@@ -173,7 +173,7 @@ def test_evidence_implementation_report(project_dir: TestProjectDir):
     impl_report = round_dir / "implementation-report.json"
     impl_report.write_text(__import__("json").dumps(_impl_report_json(task_id)))
 
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
     # Invoke validator exactly how tasks/ready expects to
     validate_result = project_dir.run_command([
         str(project_dir.tmp_path / "scripts" / "implementation" / "validate"),
@@ -217,7 +217,7 @@ def test_evidence_completeness_check(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
 
     # Create a session and claim the task before invoking tasks/ready
     run_script(
@@ -286,7 +286,7 @@ def test_evidence_partial_files(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
 
     # Create a session and claim the task before invoking tasks/ready
     run_script(
@@ -338,7 +338,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     assert_command_success(wip_result)
 
     # Try to move to done WITHOUT evidence → must fail (guard)
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
     fail_done = run_script(
         "tasks/status",
         [task_id, "--status", "done", "--session", session_id],
@@ -440,7 +440,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
         )
 
     # Setup guard wrappers for real CLI invocation
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
 
     # Create validators wrapper pointing to REAL CLI
     validators_dir = project_dir.tmp_path / "scripts" / "validators"
@@ -530,7 +530,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
         )
 
     # Setup guard wrappers
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.repo_root)
+    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
 
     # Create validators wrapper pointing to REAL CLI
     validators_dir = project_dir.tmp_path / "scripts" / "validators"

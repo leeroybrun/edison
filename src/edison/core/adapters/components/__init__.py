@@ -3,15 +3,57 @@
 Components are platform-AGNOSTIC pieces that can be reused across
 different platform adapters (hooks, commands, settings, etc.).
 
-Components provide specific functionality like:
-- Composing hooks from definitions
-- Composing commands from definitions
-- Composing settings from definitions
-
-All components extend AdapterComponent base class.
+Components provide specific functionality like hooks, commands, and settings
+while reusing a shared AdapterContext provided by the platform adapter.
 """
 from __future__ import annotations
 
-from .base import AdapterComponent
+from .base import AdapterComponent, AdapterContext
 
-__all__ = ["AdapterComponent"]
+# Commands
+from .commands import (
+    CommandArg,
+    CommandDefinition,
+    CommandComposer,
+    PlatformCommandAdapter,
+    ClaudeCommandAdapter,
+    CursorCommandAdapter,
+    CodexCommandAdapter,
+    compose_commands,
+)
+
+# Hooks
+from .hooks import (
+    HookComposer,
+    HookDefinition,
+    compose_hooks,
+    ALLOWED_TYPES,
+)
+
+# Settings
+from .settings import (
+    SettingsComposer,
+    merge_permissions,
+)
+
+__all__ = [
+    # Base
+    "AdapterComponent",
+    # Commands
+    "CommandArg",
+    "CommandDefinition",
+    "CommandComposer",
+    "PlatformCommandAdapter",
+    "ClaudeCommandAdapter",
+    "CursorCommandAdapter",
+    "CodexCommandAdapter",
+    "compose_commands",
+    # Hooks
+    "HookComposer",
+    "HookDefinition",
+    "compose_hooks",
+    "ALLOWED_TYPES",
+    # Settings
+    "SettingsComposer",
+    "merge_permissions",
+]

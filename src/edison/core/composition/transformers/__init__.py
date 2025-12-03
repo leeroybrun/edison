@@ -9,6 +9,7 @@ Each transformer handles a specific category of template processing:
 - loops: Collection iteration ({{#each}})
 - variables: Config, context, and path variable substitution
 - references: Section references without embedding
+- functions: Custom Python function calls ({{function:name()}})
 """
 from __future__ import annotations
 
@@ -23,6 +24,13 @@ from .variables import (
     VariableTransformer,
 )
 from .references import ReferenceRenderer
+from .functions import (
+    FunctionRegistry,
+    FunctionTransformer,
+    register_function,
+    global_registry,
+)
+from .functions_loader import load_functions
 
 __all__ = [
     # Base classes
@@ -46,4 +54,10 @@ __all__ = [
     "VariableTransformer",
     # References
     "ReferenceRenderer",
+    # Functions
+    "FunctionRegistry",
+    "FunctionTransformer",
+    "register_function",
+    "global_registry",
+    "load_functions",
 ]

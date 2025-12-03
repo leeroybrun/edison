@@ -58,7 +58,7 @@ def _setup_minimal_edison_structure(repo_root: Path) -> None:
 def compose_args():
     """Create args namespace for compose command."""
     args = Namespace()
-    args.repo_root = None
+    args.project_root = None
     args.agents = False
     args.validators = False
     args.constitutions = False
@@ -83,7 +83,7 @@ def test_compose_agents_uses_composition_file_writer(tmp_path, compose_args):
     """Test that agent composition uses CompositionFileWriter.write_text."""
     _setup_minimal_edison_structure(tmp_path)
     compose_args.agents = True
-    compose_args.repo_root = str(tmp_path)
+    compose_args.project_root = str(tmp_path)
 
     # Track all write_text calls
     original_write_text = CompositionFileWriter.write_text
@@ -112,7 +112,7 @@ def test_compose_guidelines_uses_composition_file_writer(tmp_path, compose_args)
     test_guideline.write_text("# Test Guideline\nThis is a test guideline.\n", encoding="utf-8")
 
     compose_args.guidelines = True
-    compose_args.repo_root = str(tmp_path)
+    compose_args.project_root = str(tmp_path)
 
     # Track all write_text calls
     original_write_text = CompositionFileWriter.write_text
@@ -134,7 +134,7 @@ def test_compose_validators_uses_composition_file_writer(tmp_path, compose_args)
     """Test that validator composition uses CompositionFileWriter.write_text."""
     _setup_minimal_edison_structure(tmp_path)
     compose_args.validators = True
-    compose_args.repo_root = str(tmp_path)
+    compose_args.project_root = str(tmp_path)
 
     # Track all write_text calls
     original_write_text = CompositionFileWriter.write_text
@@ -156,7 +156,7 @@ def test_compose_start_uses_composition_file_writer(tmp_path, compose_args):
     """Test that start prompt composition uses CompositionFileWriter.write_text."""
     _setup_minimal_edison_structure(tmp_path)
     compose_args.start = True
-    compose_args.repo_root = str(tmp_path)
+    compose_args.project_root = str(tmp_path)
 
     # Track all write_text calls
     original_write_text = CompositionFileWriter.write_text
@@ -178,7 +178,7 @@ def test_compose_clients_uses_composition_file_writer(tmp_path, compose_args):
     """Test that client file composition uses CompositionFileWriter.write_text."""
     _setup_minimal_edison_structure(tmp_path)
     # compose_all_types=True triggers client composition
-    compose_args.repo_root = str(tmp_path)
+    compose_args.project_root = str(tmp_path)
 
     # Track all write_text calls
     original_write_text = CompositionFileWriter.write_text

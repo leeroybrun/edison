@@ -6,7 +6,7 @@ Following STRICT TDD:
 3. Refactor
 
 ClaudeAdapter merges functionality from:
-- adapters/sync/claude.py (ClaudeSync)
+- adapters/sync/claude.py (ClaudeAdapter)
 - adapters/prompt/claude.py (ClaudeAdapter)
 """
 from __future__ import annotations

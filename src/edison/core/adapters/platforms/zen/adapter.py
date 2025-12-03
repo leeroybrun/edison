@@ -72,7 +72,7 @@ class ZenAdapter(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin, PlatformAdap
             )
 
         # Initialize registries
-        self.guideline_registry = GuidelineRegistry(repo_root=self.project_root)
+        self.guideline_registry = GuidelineRegistry(project_root=self.project_root)
         self.rules_registry = RulesRegistry(project_root=self.project_root)
 
         # Zen-specific state

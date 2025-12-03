@@ -1,22 +1,23 @@
 """Template Engine for Phase 2 of two-phase composition.
 
-The TemplateEngine processes composed content through a 9-step transformation
-pipeline. It works on output from LayeredComposer (Phase 1).
+The TemplateEngine processes composed content through a 10-step transformation
+pipeline. It works on output from the unified composition strategy (Phase 1).
 
 Two-Phase Architecture:
-- Phase 1 (LayeredComposer): Layer merging, EXTEND into SECTION
+- Phase 1 (MarkdownCompositionStrategy via registries): Layer merging, EXTEND into SECTION
 - Phase 2 (TemplateEngine): Template processing, variable substitution
 
-Transformation Pipeline (9 steps):
+Transformation Pipeline (10 steps):
 1. INCLUDES        - {{include:path}}, {{include-optional:path}}
 2. SECTION EXTRACT - {{include-section:path#name}}
 3. CONDITIONALS    - {{include-if:COND:path}}, {{if:COND}}...{{/if}}
 4. LOOPS           - {{#each collection}}...{{/each}}
-5. CONFIG VARS     - {{config.path.to.value}}
-6. CONTEXT VARS    - {{source_layers}}, {{timestamp}}
-7. PATH VARS       - {{PROJECT_EDISON_DIR}}
-8. REFERENCES      - {{reference-section:path#name|purpose}}
-9. VALIDATION      - Check for unresolved {{...}}, strip markers
+5. FUNCTIONS       - {{function:name(args)}}
+6. CONFIG VARS     - {{config.path.to.value}}
+7. CONTEXT VARS    - {{source_layers}}, {{timestamp}}
+8. PATH VARS       - {{PROJECT_EDISON_DIR}}
+9. REFERENCES      - {{reference-section:path#name|purpose}}
+10. VALIDATION     - Check for unresolved {{...}}, strip markers
 """
 from __future__ import annotations
 
@@ -33,6 +34,7 @@ from .transformers.includes import IncludeTransformer
 from .transformers.loops import LoopExpander
 from .transformers.references import ReferenceRenderer
 from .transformers.variables import VariableTransformer
+from .transformers.functions import FunctionTransformer
 
 
 class ConditionalTransformer(ContentTransformer):
@@ -158,6 +160,15 @@ class TemplateEngine:
         self.project_root = project_root
         self.source_dir = source_dir
 
+        # Load custom functions from layered functions/ folders
+        try:
+            from .transformers.functions_loader import load_functions
+
+            load_functions(project_root=self.project_root, active_packs=self.packs)
+        except Exception:
+            # Function loading should never break template processing; ignore errors
+            pass
+
         # Build the transformation pipeline
         self.pipeline = self._build_pipeline()
 
@@ -174,11 +185,13 @@ class TemplateEngine:
             ConditionalTransformer(),
             # Step 4: Loops
             LoopExpander(),
-            # Step 5-7: Variables (config, context, path)
+            # Step 5: Functions (custom Python)
+            FunctionTransformer(),
+            # Step 6-8: Variables (config, context, path)
             VariableTransformer(),
-            # Step 8: References
+            # Step 9: References
             ReferenceRenderer(),
-            # Step 9: Validation
+            # Step 10: Validation
             ValidationTransformer(),
         ])
 

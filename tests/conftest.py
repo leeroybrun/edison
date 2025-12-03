@@ -11,11 +11,14 @@ import yaml
 # Keep the repository free of Python bytecode and __pycache__ artifacts during tests.
 sys.dont_write_bytecode = True
 
-# Add tests directory to sys.path ONCE for all child tests
-# This allows all tests to import from helpers.* without duplication
 TESTS_ROOT = Path(__file__).resolve().parent
-if str(TESTS_ROOT) not in sys.path:
-    sys.path.insert(0, str(TESTS_ROOT))
+REPO_ROOT = TESTS_ROOT.parent
+SRC_ROOT = REPO_ROOT / "src"
+
+# Make src/ importable as 'edison'
+for p in (SRC_ROOT, TESTS_ROOT):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 
 # Ensure standard seek constants exist on the io module for tarfile compatibility
@@ -41,18 +44,9 @@ if not hasattr(io, "open_code"):
     io.open_code = _open_code  # type: ignore[attr-defined]
 
 
-# Make Edison core lib importable as `lib.*` from the tests tree
-
 from edison.core.utils.paths.resolver import PathResolver
 from edison.core.utils.subprocess import run_with_timeout
-
-# Import centralized config loader (SINGLE source of truth)
 from config import load_states as load_test_states
-
-# Repository root (resolved via PathResolver for relocatability)
-REPO_ROOT = PathResolver.resolve_project_root()
-
-# Import centralized cache reset function (DRY - single source of truth)
 from helpers.cache_utils import reset_edison_caches
 
 

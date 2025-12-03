@@ -34,7 +34,7 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     # Otherwise use composition path resolver
     from ..core import CompositionPathResolver
 
-    return CompositionPathResolver(root).packs_dir
+    return CompositionPathResolver(root).bundled_packs_dir
 
 
 def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
@@ -44,7 +44,7 @@ def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     # Use composition path resolver for consistent path resolution
     from ..core import CompositionPathResolver
 
-    base = CompositionPathResolver(root).packs_dir
+    base = CompositionPathResolver(root).bundled_packs_dir
 
     results: List[PackInfo] = []
     if not base.exists():

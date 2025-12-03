@@ -119,12 +119,12 @@ class TestRepoRootConsolidation:
         monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
         
         # Zen Sync
-        # zen = zen_adapter.ZenSync()
-        # assert zen.repo_root == temp_git_repo
+        # zen = zen_adapter.ZenAdapter()
+        # assert zen.project_root == temp_git_repo
         
         # Cursor Sync
-        cursor = cursor_adapter.CursorSync()
-        assert cursor.repo_root == temp_git_repo
+        cursor = cursor_adapter.CursorAdapter()
+        assert cursor.project_root == temp_git_repo
 
     def test_from_subdirectory(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test resolution from a subdirectory."""

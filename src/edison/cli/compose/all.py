@@ -15,19 +15,24 @@ from edison.core.composition import (
     generate_all_constitutions,
     generate_canonical_entry,
     GuidelineRegistry,
-    LayeredComposer,
 )
 from edison.core.composition.generators import (
     AgentRosterGenerator,
     ValidatorRosterGenerator,
     StateMachineGenerator,
 )
+from edison.core.composition.registries import AgentRegistry, ValidatorRegistry
 from edison.core.composition.output.writer import CompositionFileWriter
 from edison.core.composition.registries.rules import RulesRegistry
 from edison.core.composition.registries.schemas import JsonSchemaComposer
 from edison.core.config import ConfigManager
 from edison.core.utils.paths import get_project_config_dir
-from edison.core.adapters import ClaudeSync, CursorSync, ZenSync
+from edison.core.adapters.platforms.claude import ClaudeAdapter
+from edison.core.adapters.platforms.cursor import CursorAdapter
+from edison.core.adapters.platforms.zen.adapter import ZenAdapter
+from edison.core.adapters.platforms.codex import CodexAdapter
+from edison.core.adapters.components.base import AdapterContext
+from edison.core.composition.core.paths import CompositionPathResolver
 from edison.data import get_data_path
 
 SUMMARY = "Compose all artifacts (agents, validators, constitutions, guidelines, schemas, documents, start prompts, hooks, settings, commands)"
@@ -184,10 +189,10 @@ def main(args: argparse.Namespace) -> int:
             ]
             results["state_machine"] = str(output_path / "STATE_MACHINE.md")
 
-        # Compose agents using LayeredComposer
+        # Compose agents using unified registries
         if compose_all_types or args.agents:
-            agent_composer = LayeredComposer(repo_root=repo_root, content_type="agents")
-            agent_results = agent_composer.compose_all(active_packs)
+            agent_registry = AgentRegistry(project_root=repo_root)
+            agent_results = agent_registry.compose_all(active_packs)
 
             # Write agents to _generated/agents/
             generated_agents_dir = config_dir / "_generated" / "agents"
@@ -210,13 +215,7 @@ def main(args: argparse.Namespace) -> int:
             for name in guideline_names:
                 try:
                     result = guideline_registry.compose(name, active_packs)
-                    # Preserve subfolder structure from source
-                    subfolder = guideline_registry.get_subfolder(name, active_packs)
-                    if subfolder:
-                        output_dir = generated_guidelines_dir / subfolder
-                    else:
-                        output_dir = generated_guidelines_dir
-                    output_file = output_dir / f"{name}.md"
+                    output_file = generated_guidelines_dir / f"{name}.md"
                     writer.write_text(output_file, result.text)
                     guideline_files.append(output_file)
                 except Exception:
@@ -225,11 +224,9 @@ def main(args: argparse.Namespace) -> int:
             results["guidelines"] = [str(f) for f in guideline_files]
 
         if compose_all_types or args.validators:
-            # Use LayeredComposer for section-based validator composition
-            validator_composer = LayeredComposer(repo_root=repo_root, content_type="validators")
-            validator_results = validator_composer.compose_all(active_packs)
+            validator_registry = ValidatorRegistry(project_root=repo_root)
+            validator_results = validator_registry.compose_all(active_packs)
 
-            # Write validators to .agents/_generated/validators/
             generated_validators_dir = config_dir / "_generated" / "validators"
             writer = CompositionFileWriter(base_dir=repo_root)
 
@@ -266,62 +263,51 @@ def main(args: argparse.Namespace) -> int:
             written_docs = doc_registry.write_composed(active_packs)
             results["documents"] = [str(f) for f in written_docs]
 
-        # Compose start prompts
+        # Compose start prompts via DocumentTemplateRegistry (unified pipeline)
         if compose_all_types or args.start:
-            generated_start_dir = config_dir / "_generated" / "start"
-            writer = CompositionFileWriter(base_dir=repo_root)
+            from edison.core.composition.registries.documents import DocumentTemplateRegistry
 
-            # Get core start files from edison.data/start/
-            core_start_dir = get_data_path("start")
-            project_start_dir = config_dir / "start"
-            project_overlays_dir = project_start_dir / "overlays"
+            doc_registry = DocumentTemplateRegistry(project_root=repo_root)
+            written_docs = doc_registry.write_composed(active_packs)
+            results["start"] = [str(f) for f in written_docs if f.stem.startswith("START")]
 
-            start_files = []
-            if core_start_dir.exists():
-                for start_file in core_start_dir.glob("*.md"):
-                    name = start_file.stem
-                    content = start_file.read_text(encoding="utf-8")
+        # Shared adapter context for platform-agnostic components
+        resolver = CompositionPathResolver(repo_root)
+        writer = CompositionFileWriter(base_dir=repo_root)
 
-                    # Check for project overlay
-                    project_overlay = project_overlays_dir / f"{name}.md"
-                    if project_overlay.exists():
-                        overlay_content = project_overlay.read_text(encoding="utf-8")
-                        content = content + "\n\n" + overlay_content
+        class _AdapterStub:
+            def __init__(self, packs: list[str]) -> None:
+                self._packs = packs
 
-                    # Check for project-level new start file (completely replaces core)
-                    project_new = project_start_dir / f"{name}.md"
-                    if project_new.exists() and not project_overlay.exists():
-                        content = project_new.read_text(encoding="utf-8")
+            def get_active_packs(self) -> list[str]:
+                return self._packs
 
-                    output_file = generated_start_dir / f"{name}.md"
-                    writer.write_text(output_file, content)
-                    start_files.append(output_file)
-
-            # Also check for project-only start files (new start prompts defined at project level)
-            if project_start_dir.exists():
-                for start_file in project_start_dir.glob("*.md"):
-                    name = start_file.stem
-                    # Skip if already processed from core
-                    if (generated_start_dir / f"{name}.md").exists():
-                        continue
-                    content = start_file.read_text(encoding="utf-8")
-                    output_file = generated_start_dir / f"{name}.md"
-                    writer.write_text(output_file, content)
-                    start_files.append(output_file)
-
-            results["start"] = [str(f) for f in start_files]
+        adapter_stub = _AdapterStub(active_packs)
+        adapter_context = AdapterContext(
+            project_root=repo_root,
+            project_dir=config_dir,
+            core_dir=resolver.core_dir,
+            bundled_packs_dir=resolver.bundled_packs_dir,
+            project_packs_dir=resolver.project_packs_dir,
+            cfg_mgr=cfg_mgr,
+            config=config,
+            writer=writer,
+            adapter=adapter_stub,
+        )
 
         # Compose hooks
         if compose_all_types or getattr(args, "hooks", False):
             from edison.core.adapters.components.hooks import HookComposer
-            hook_composer = HookComposer(config=config, repo_root=repo_root)
+
+            hook_composer = HookComposer(adapter_context)
             hooks = hook_composer.compose_hooks()
             results["hooks"] = {name: str(path) for name, path in hooks.items()}
 
         # Compose commands
         if compose_all_types or getattr(args, "commands", False):
             from edison.core.adapters.components.commands import CommandComposer
-            cmd_composer = CommandComposer(config=config, repo_root=repo_root)
+
+            cmd_composer = CommandComposer(adapter_context)
             commands = cmd_composer.compose_all()
             results["commands"] = {
                 platform: {name: str(path) for name, path in cmds.items()}
@@ -331,79 +317,42 @@ def main(args: argparse.Namespace) -> int:
         # Compose settings (must come after hooks since it references hook paths)
         if compose_all_types or getattr(args, "settings", False):
             from edison.core.adapters.components.settings import SettingsComposer
-            settings_composer = SettingsComposer(config=config, repo_root=repo_root)
+
+            settings_composer = SettingsComposer(adapter_context)
             settings_path = settings_composer.write_settings_file()
             results["settings"] = str(settings_path)
 
-        # Compose client files (CLAUDE.md, etc.) - always runs with compose_all_types
+        # Compose client files via registry/strategy (unified)
         if compose_all_types:
-            from edison.core.composition.output import OutputConfigLoader
-            from datetime import datetime, timezone
+            from edison.core.composition.registries.documents import DocumentTemplateRegistry
 
-            output_config = OutputConfigLoader(repo_root=repo_root)
-            enabled_clients = output_config.get_enabled_clients()
-            client_results = {}
-            writer = CompositionFileWriter(base_dir=repo_root)
-
-            for client_name, client_cfg in enabled_clients.items():
-                # Load core template
-                template_path = get_data_path(client_cfg.template)
-                if not template_path.exists():
-                    continue
-
-                content = template_path.read_text(encoding="utf-8")
-
-                # Replace timestamp and source placeholders
-                timestamp = datetime.now(timezone.utc).isoformat()
-                content = content.replace("{{timestamp}}", timestamp)
-                content = content.replace("{{source_layers}}", f"Core + Packs ({', '.join(active_packs) if active_packs else 'none'})")
-
-                # Load project overlay (only from project config dir, not packs)
-                # Note: Pack-level client extensions are provided as guidelines via the "clients" pack,
-                # not as direct client overlays. This keeps the client composition simple.
-                # Project overlays should use: <!-- EXTEND: composed-additions -->content<!-- /EXTEND -->
-                project_overlay = config_dir / "clients" / "overlays" / f"{client_name}.md"
-                if project_overlay.exists():
-                    from edison.core.composition.core.sections import SectionParser
-                    parser = SectionParser()
-                    overlay_content = project_overlay.read_text(encoding="utf-8")
-                    # Parse overlay for EXTEND markers
-                    extensions = parser.parse_extensions(overlay_content)
-                    # Merge extensions into content
-                    content = parser.merge_extensions(content, extensions)
-
-                # Write to output path
-                output_path = output_config.get_client_path(client_name)
-                if output_path:
-                    writer.write_text(output_path, content)
-                    client_results[client_name] = str(output_path)
-
-            if client_results:
-                results["clients"] = client_results
+            doc_registry = DocumentTemplateRegistry(project_root=repo_root)
+            client_docs = doc_registry.write_composed(active_packs, category="clients")
+            if client_docs:
+                results["clients"] = {Path(p).stem: str(p) for p in client_docs}
 
         # Compose CodeRabbit configuration - always runs with compose_all_types
         if compose_all_types:
-            from edison.core.adapters.platforms.coderabbit import CodeRabbitAdapter as CodeRabbitComposer
-            coderabbit_composer = CodeRabbitComposer(config=config, repo_root=repo_root)
-            coderabbit_path = coderabbit_composer.write_coderabbit_config()
+            from edison.core.adapters import CoderabbitAdapter
+            coderabbit_adapter = CoderabbitAdapter(project_root=repo_root)
+            coderabbit_path = coderabbit_adapter.write_coderabbit_config()
             results["coderabbit"] = str(coderabbit_path)
 
         # Sync to clients
         if args.claude:
-            adapter = ClaudeSync(repo_root=repo_root)
-            adapter.validate_structure()
+            adapter = ClaudeAdapter(project_root=repo_root)
             changed = adapter.sync_all()
             results["claude_sync"] = {k: [str(f) for f in v] for k, v in changed.items()}
 
         if args.cursor:
-            adapter = CursorSync(repo_root=repo_root)
-            changed = adapter.sync()
-            results["cursor_sync"] = [str(f) for f in changed]
+            adapter = CursorAdapter(project_root=repo_root)
+            changed = adapter.sync_all()
+            results["cursor_sync"] = {k: [str(f) for f in v] for k, v in changed.items()}
 
         if args.zen:
-            adapter = ZenSync(repo_root=repo_root)
-            changed = adapter.sync_all_prompts()
-            results["zen_sync"] = [str(f) for f in changed]
+            adapter = ZenAdapter(project_root=repo_root)
+            changed = adapter.sync_all()
+            results["zen_sync"] = {k: [str(f) for f in v] for k, v in changed.items()}
 
         if args.json:
             formatter.json_output(results)

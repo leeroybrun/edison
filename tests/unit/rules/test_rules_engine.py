@@ -85,7 +85,7 @@ def _engine_with_context_rules(rules_config: Dict[str, Any] | None = None) -> Ru
     return RulesEngine(base_config)
 
 
-def _get_get_ids(rules: List[Rule]) -> List[str]:
+def _get_ids(rules: List[Rule]) -> List[str]:
     return [r.id for r in rules]
 
 

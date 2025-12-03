@@ -10,6 +10,8 @@ The framework enforces strict workflows through state machines, requires test-dr
 
 ## Key Features
 
+👉 See `docs/TEMPLATING.md` for the complete unified composition/templating guide (layers, syntax, functions, outputs).
+
 ### Multi-Agent Orchestration
 - **Orchestrator agents** coordinate work and delegate to specialized agents
 - **Implementer agents** execute tasks following strict TDD workflows
@@ -49,12 +51,13 @@ The framework enforces strict workflows through state machines, requires test-dr
 - JSON schema validation for all config files
 - Runtime composition of prompts, guidelines, and constitutions
 
-### Composition System
-- Prompts, guidelines, and constitutions composed from multiple layers
-- Section-based composition with placeholders and overlays
-- HTML comment syntax for extending core content
-- Automatic deduplication using 12-word shingles
-- Supports: agents, validators, guidelines, constitutions, start prompts, CodeRabbit config
+### Composition System (Unified)
+- Single MarkdownCompositionStrategy for all markdown content (agents, validators, guidelines, constitutions, rosters, docs)
+- Layering: **core → packs → project** with configurable merge_same_name for guidelines (concat + dedupe) and section-based merges elsewhere
+- Templating: sections/includes/conditionals/loops/variables/references/functions; everything is YAML-configurable, no hardcoded paths
+- DRY deduplication: shingle-based optional pass to remove repeated paragraphs
+- Functions extension: drop Python functions into `functions/` under core, packs, or project and call with `{{fn:name arg1 arg2}}`
+- Outputs: agents, validators, guidelines, constitutions, client prompts, rosters, state machine docs, command/hooks/settings payloads
 
 ### Technology Packs
 - Framework-specific rules and validations

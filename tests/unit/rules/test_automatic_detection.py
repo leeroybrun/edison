@@ -69,7 +69,7 @@ def _engine_with_detection_rules() -> RulesEngine:
     return RulesEngine(cfg)
 
 
-def _get_get_ids(rules: List[Rule]) -> List[str]:
+def _get_ids(rules: List[Rule]) -> List[str]:
     return [r.id for r in rules]
 
 

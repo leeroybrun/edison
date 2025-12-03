@@ -1,333 +1,126 @@
+"""Constitution registry (unified composition).
+
+Builds role constitutions (orchestrator, agents, validators) from layered
+markdown using MarkdownCompositionStrategy via ComposableRegistry.
+Role-specific data injection is performed in _post_compose.
+"""
 from __future__ import annotations
 
-"""Constitution composition engine for Edison.
-
-Builds the three role constitutions (orchestrator, agents, validators) from
-layered sources:
-  - Core templates:      <repo>/src/edison/data/constitutions/*-base.md
-  - Pack additions:      <repo>/.edison/packs/<pack>/constitutions/*-additions.md
-  - Project overrides:   <project_config_dir>/constitutions/*-overrides.md
-
-Templates use a small Handlebars-style syntax. Rendering covers:
-  - {{source_layers}}                → provenance of the composed layers
-  - {{generated_date}}               → ISO timestamp
-  - {{#each mandatoryReads.<role>}}  → bullet list from constitution.yaml (mandatory)
-  - {{#each optionalReads.<role>}}   → bullet list from constitution.yaml (optional)
-  - {{#each rules.<role>}}           → rules filtered by applies_to
-  - {{#each delegationRules}}        → delegation rules (when provided)
-
-Constitution.yaml schema (v1.0.0+):
-  constitutions:
-    <role>:
-      mandatoryReads: [...]
-      optionalReads: [...]
-"""
-
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.config import ConfigManager
-from edison.core.config.domains import PacksConfig
-from edison.core.utils.io import ensure_directory
+from edison.core.entity.composable_registry import ComposableRegistry
 from edison.core.utils.time import utc_timestamp
-from edison.core.utils.paths import get_project_config_dir
-from ..output.headers import resolve_version
-from ..output.writer import CompositionFileWriter
-from ..path_utils import resolve_project_dir_placeholders
-from .rules import get_rules_for_role as _get_rules_for_role_api
+from edison.core.composition.output.headers import resolve_version
+from edison.core.composition.path_utils import resolve_project_dir_placeholders
+from edison.core.composition.registries.rules import get_rules_for_role
 
 
 ROLE_MAP: Dict[str, Dict[str, str]] = {
     "orchestrator": {"slug": "orchestrator", "rules": "orchestrator", "mandatory": "orchestrator"},
     "agents": {"slug": "agents", "rules": "agent", "mandatory": "agents"},
-    "agent": {"slug": "agents", "rules": "agent", "mandatory": "agents"},
     "validators": {"slug": "validators", "rules": "validator", "mandatory": "validators"},
-    "validator": {"slug": "validators", "rules": "validator", "mandatory": "validators"},
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _normalize_role(role: str) -> str:
-    normalized = (role or "").strip().lower()
-    if normalized not in ROLE_MAP:
-        raise ValueError(
-            f"Invalid role: {role}. Must be orchestrator, agent(s), or validator(s)"
-        )
-    # Canonical keys: orchestrator, agents, validators
-    if normalized == "agent":
+    key = (role or "").strip().lower()
+    if key == "agent":
         return "agents"
-    if normalized == "validator":
+    if key == "validator":
         return "validators"
-    return normalized
+    if key not in ROLE_MAP:
+        raise ValueError(f"Invalid role: {role}")
+    return key
 
 
-def _core_base_path(repo_root: Path) -> Path:
-    """Resolve core layer root using composition path resolution."""
-    from ..core import CompositionPathResolver
-    return CompositionPathResolver(repo_root, "constitutions").core_dir
+@dataclass
+class ConstitutionResult:
+    role: str
+    content: str
+    source_layers: List[str]
 
 
-def _packs_root(repo_root: Path, config: Dict[str, Any]) -> Path:
-    """Resolve packs directory using composition path resolution.
-    
-    Respects config override for directory, otherwise uses composition resolver.
-    """
-    config_dir = get_project_config_dir(repo_root, create=False)
-    directory = (config.get("packs", {}) or {}).get("directory")
-    
-    if directory:
-        path = (repo_root / directory).resolve()
-        if path.exists():
-            return path
-    
-    # Use composition path resolver
-    from ..core import CompositionPathResolver
-    return CompositionPathResolver(repo_root).packs_dir
+class ConstitutionRegistry(ComposableRegistry[ConstitutionResult]):
+    content_type: ClassVar[str] = "constitutions"
+    file_pattern: ClassVar[str] = "*-base.md"
+    strategy_config: ClassVar[Dict[str, Any]] = {
+        "enable_sections": True,
+        "enable_dedupe": False,
+        "enable_template_processing": True,
+    }
 
+    def compose_constitution(self, role: str, packs: Optional[List[str]] = None) -> ConstitutionResult:
+        role = _normalize_role(role)
+        name = f"{ROLE_MAP[role]['slug']}-base"
+        result = self.compose(name, packs)
+        if result is None:
+            raise FileNotFoundError(f"Constitution template for role '{role}' not found")
+        return result
 
-def _project_constitutions_dir(repo_root: Path) -> Path:
-    project_root = get_project_config_dir(repo_root)
-    return project_root / "constitutions"
+    def _post_compose(self, name: str, content: str) -> ConstitutionResult:
+        role = _normalize_role(name.replace("-base", ""))
 
+        cfg = self.config
+        version = resolve_version(self.cfg_mgr, cfg)
+        generated_iso = utc_timestamp()
+        source_layers = ["core"] + [f"pack({p})" for p in self.get_active_packs()]
 
-def _active_packs(repo_root: Path) -> List[str]:
-    """Get active packs via PacksConfig."""
-    return PacksConfig(repo_root=repo_root).active_packs
+        role_cfg = cfg.get("constitutions", {}).get(ROLE_MAP[role]["mandatory"], {}) or {}
+        mandatory_reads = role_cfg.get("mandatoryReads", []) if isinstance(role_cfg, dict) else []
+        optional_reads = role_cfg.get("optionalReads", []) if isinstance(role_cfg, dict) else []
 
+        def _render_reads(reads: List[Dict[str, Any]]) -> str:
+            lines = []
+            for item in reads or []:
+                if isinstance(item, dict):
+                    lines.append(f"- {item.get('path')}: {item.get('purpose')}")
+            return "\n".join(lines)
 
-def _replace_each_block(template: str, token: str, rendered: str) -> str:
-    """Replace a {{#each token}}...{{/each}} block with rendered text."""
-    start_marker = f"{{{{#each {token}}}}}"
-    end_marker = "{{/each}}"
+        reads_section = _render_reads(mandatory_reads)
+        optional_section = _render_reads(optional_reads)
 
-    while True:
-        start = template.find(start_marker)
-        if start == -1:
-            break
-        end = template.find(end_marker, start)
-        if end == -1:
-            break
-        template = template[:start] + rendered + template[end + len(end_marker):]
-    return template
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-def get_rules_for_role(role: str) -> List[Dict[str, Any]]:
-    """Extract rules that apply to a specific role using bundled registry."""
-    normalized = _normalize_role(role)
-    rule_key = ROLE_MAP[normalized]["rules"]
-
-    rules = _get_rules_for_role_api(rule_key)
-    formatted: List[Dict[str, Any]] = []
-    for rule in rules:
-        entry = dict(rule)
-        entry["name"] = rule.get("title") or rule.get("name") or rule.get("id", "")
-        entry["content"] = rule.get("content") or rule.get("guidance") or ""
-        formatted.append(entry)
-    return formatted
-
-
-def load_constitution_layer(base_path: Path, role: str, layer_type: str) -> str:
-    """Load constitution content from a specific layer."""
-    normalized = _normalize_role(role)
-    slug = ROLE_MAP[normalized]["slug"]
-
-    if layer_type == "core":
-        filename = f"{slug}-base.md"
-    elif layer_type == "pack":
-        filename = f"{slug}-additions.md"
-    elif layer_type == "project":
-        # Project overrides are canonical; allow additions as a secondary option.
-        preferred = base_path / "constitutions" / f"{slug}-overrides.md"
-        additions = base_path / "constitutions" / f"{slug}-additions.md"
-        if preferred.exists():
-            return preferred.read_text(encoding="utf-8")
-        if additions.exists():
-            return additions.read_text(encoding="utf-8")
-        return ""
-    else:
-        raise ValueError(f"Unknown layer_type: {layer_type}")
-
-    file_path = base_path / "constitutions" / filename
-    if file_path.exists():
-        return file_path.read_text(encoding="utf-8")
-    return ""
-
-
-def compose_constitution(role: str, config: ConfigManager) -> str:
-    """Compose a constitution from core + packs + project layers."""
-    normalized = _normalize_role(role)
-    cfg_dict = config.load_config(validate=False)
-    repo_root = config.repo_root
-
-    layers: List[str] = []
-    source_layers: List[str] = []
-
-    # Core layer
-    core_path = _core_base_path(repo_root)
-    core_content = load_constitution_layer(core_path, normalized, "core")
-    if core_content:
-        layers.append(core_content)
-        source_layers.append("core")
-
-    # Packs (in configured order)
-    packs_root = _packs_root(repo_root, cfg_dict)
-    for pack in _active_packs(repo_root):
-        pack_content = load_constitution_layer(packs_root / pack, normalized, "pack")
-        if pack_content:
-            layers.append(pack_content)
-            source_layers.append(f"pack({pack})")
-
-    # Project overrides
-    project_dir = _project_constitutions_dir(repo_root)
-    project_content = load_constitution_layer(project_dir.parent, normalized, "project")
-    if project_content:
-        layers.append(project_content)
-        source_layers.append("project")
-
-    composed = "\n\n".join([layer.strip() for layer in layers if layer])
-
-    return render_constitution_template(
-        composed,
-        normalized,
-        config,
-        source_layers,
-    )
-
-
-def render_constitution_template(
-    template: str,
-    role: str,
-    config: ConfigManager,
-    source_layers: List[str],
-) -> str:
-    """Render Handlebars-style placeholders in constitution template."""
-    normalized = _normalize_role(role)
-    role_cfg_key = ROLE_MAP[normalized]["mandatory"]
-    rule_role = ROLE_MAP[normalized]["rules"]
-    template_name = f"constitutions/{ROLE_MAP[normalized]['slug']}-base.md"
-    full_config = config.load_config(validate=False)
-    version = resolve_version(config, full_config)
-    generated_iso = utc_timestamp()
-
-    # Load constitution config with project overlay precedence
-    core_cfg = config.load_yaml(config.core_config_dir / "constitution.yaml")
-    # Project config should be in .edison/config/constitution.yaml (or .yml)
-    project_cfg_path = config.project_config_dir / "constitution.yaml"
-    if not project_cfg_path.exists():
-        project_cfg_path = config.project_config_dir / "constitution.yml"
-    project_cfg = config.load_yaml(project_cfg_path) if project_cfg_path.exists() else {}
-
-    constitution_cfg = config.deep_merge(core_cfg, project_cfg) if project_cfg else core_cfg
-
-    # Support both old schema (mandatoryReads.<role>) and new schema (constitutions.<role>.mandatoryReads)
-    role_config = constitution_cfg.get("constitutions", {}).get(role_cfg_key, {})
-    if role_config:
-        # New schema: constitutions.<role>.mandatoryReads/optionalReads
-        mandatory_reads = role_config.get("mandatoryReads", [])
-        optional_reads = role_config.get("optionalReads", [])
-    else:
-        # Legacy schema fallback: mandatoryReads.<role>
-        mandatory_reads = constitution_cfg.get("mandatoryReads", {}).get(role_cfg_key, [])
-        optional_reads = []
-
-    # Render mandatory reads
-    reads_section = "\n".join(
-        f"- {item.get('path')}: {item.get('purpose')}"
-        for item in mandatory_reads
-        if isinstance(item, dict)
-    )
-
-    # Render optional reads
-    optional_reads_section = "\n".join(
-        f"- {item.get('path')}: {item.get('purpose')}"
-        for item in optional_reads
-        if isinstance(item, dict)
-    )
-
-    # Render rules
-    rules = get_rules_for_role(rule_role)
-    rules_section = "\n\n".join(
-        (
-            f"### {r.get('id')}: {r.get('name')}\n{(r.get('content') or '').rstrip()}"
-        ).strip()
-        for r in rules
-    )
-
-    # Delegation rules (optional)
-    delegation_rules = constitution_cfg.get("delegationRules", [])
-    delegation_section = "\n".join(
-        f"- {d.get('pattern')}: {d.get('agent')} ({d.get('model')})"
-        for d in delegation_rules
-        if isinstance(d, dict)
-    )
-
-    rendered = template
-    rendered = rendered.replace("{{source_layers}}", " + ".join(source_layers))
-    rendered = rendered.replace("{{generated_date}}", generated_iso)
-    rendered = rendered.replace("{{timestamp}}", generated_iso)
-    rendered = rendered.replace("{{version}}", str(version))
-    rendered = rendered.replace("{{template_name}}", template_name)
-    rendered = _replace_each_block(
-        rendered,
-        f"mandatoryReads.{role_cfg_key}",
-        reads_section,
-    )
-    rendered = _replace_each_block(
-        rendered,
-        f"optionalReads.{role_cfg_key}",
-        optional_reads_section,
-    )
-    rendered = _replace_each_block(
-        rendered,
-        f"rules.{rule_role}",
-        rules_section,
-    )
-    rendered = _replace_each_block(
-        rendered,
-        "delegationRules",
-        delegation_section,
-    )
-
-    # Strip any unmatched closing tags for cleanliness
-    rendered = rendered.replace("{{/each}}", "")
-    return rendered
-
-
-def generate_all_constitutions(config: ConfigManager, output_path: Path) -> None:
-    """Generate all three constitution files."""
-    out_dir = (Path(output_path) / "constitutions").resolve()
-    ensure_directory(out_dir)
-
-    # Use CompositionFileWriter for consistent file output
-    writer = CompositionFileWriter()
-
-    for role, filename in [
-        ("orchestrator", "ORCHESTRATORS.md"),
-        ("agents", "AGENTS.md"),
-        ("validators", "VALIDATORS.md"),
-    ]:
-        content = compose_constitution(role, config)
-        out_path = out_dir / filename
-        rendered = resolve_project_dir_placeholders(
-            content,
-            project_dir=config.project_config_dir.parent,
-            target_path=out_path,
-            repo_root=config.repo_root,
+        rules = get_rules_for_role(ROLE_MAP[role]["rules"])
+        rules_section = "\n\n".join(
+            (f"### {r.get('id')}: {r.get('name')}\n{(r.get('content') or '').rstrip()}").strip()
+            for r in rules
         )
-        writer.write_text(out_path, rendered)
+
+        rendered = content
+        rendered = rendered.replace("{{source_layers}}", " + ".join(source_layers))
+        rendered = rendered.replace("{{generated_date}}", generated_iso)
+        rendered = rendered.replace("{{timestamp}}", generated_iso)
+        rendered = rendered.replace("{{version}}", str(version))
+        rendered = rendered.replace("{{template_name}}", f"constitutions/{ROLE_MAP[role]['slug']}-base.md")
+
+        rendered = rendered.replace(f"{{{{#each mandatoryReads.{ROLE_MAP[role]['mandatory']}}}}}", reads_section)
+        rendered = rendered.replace(f"{{{{#each optionalReads.{ROLE_MAP[role]['mandatory']}}}}}", optional_section)
+        rendered = rendered.replace(f"{{{{#each rules.{ROLE_MAP[role]['rules']}}}}}", rules_section)
+        rendered = rendered.replace("{{/each}}", "")
+
+        target_path = self.project_dir / "_generated" / "constitutions" / f"{ROLE_MAP[role]['slug'].upper()}.md"
+        rendered = resolve_project_dir_placeholders(
+            rendered,
+            project_dir=self.project_dir,
+            target_path=target_path,
+            repo_root=self.project_root,
+        )
+
+        return ConstitutionResult(role=role, content=rendered, source_layers=source_layers)
 
 
-__all__ = [
-    "get_rules_for_role",
-    "load_constitution_layer",
-    "compose_constitution",
-    "render_constitution_template",
-    "generate_all_constitutions",
-]
+def generate_all_constitutions(config: Any, output_path: Path) -> None:
+    out_dir = (Path(output_path) / "constitutions").resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    registry = ConstitutionRegistry(project_root=config.repo_root)
+    writer = registry.writer
+
+    for role in ("orchestrator", "agents", "validators"):
+        result = registry.compose_constitution(role, packs=registry.get_active_packs())
+        outfile = out_dir / f"{ROLE_MAP[role]['slug'].upper()}.md"
+        writer.write_text(outfile, result.content)
+
+
+__all__ = ["ConstitutionRegistry", "ConstitutionResult", "generate_all_constitutions"]

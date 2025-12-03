@@ -23,16 +23,8 @@ from .base import PlatformAdapter  # noqa: F401
 from .platforms.claude import ClaudeAdapter  # noqa: F401
 from .platforms.zen import ZenAdapter, WORKFLOW_HEADING  # noqa: F401
 from .platforms.codex import CodexAdapter  # noqa: F401
-from .platforms.cursor import CursorAdapter  # noqa: F401
+from .platforms.cursor import CursorAdapter, AUTOGEN_BEGIN, AUTOGEN_END  # noqa: F401
 from .platforms.coderabbit import CoderabbitAdapter  # noqa: F401
-
-# Backward compatibility alias
-CodeRabbitAdapter = CoderabbitAdapter
-
-# Backward compatibility aliases
-ClaudeSync = ClaudeAdapter
-CursorSync = CursorAdapter
-ZenSync = ZenAdapter
 
 # ============================================================================
 # Shared schema validation utilities (re-exported from core.schemas)
@@ -52,12 +44,11 @@ __all__ = [
     "ZenAdapter",
     "CursorAdapter",
     "CodexAdapter",
-    "CodeRabbitAdapter",
-    # Backward compatibility
-    "ClaudeSync",
-    "CursorSync",
-    "ZenSync",
+    "CoderabbitAdapter",
+    # Constants
     "WORKFLOW_HEADING",
+    "AUTOGEN_BEGIN",
+    "AUTOGEN_END",
     # Schema utilities
     "load_schema",
     "validate_payload",

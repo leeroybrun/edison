@@ -29,8 +29,8 @@ class BaselineProfiler:
             # Auto-detect from this file's location
             repo_root = Path(__file__).resolve().parents[4]
 
-        self.repo_root = Path(repo_root)
-        self.agents_dir = self.repo_root / ".agents"
+        self.project_root = Path(repo_root)
+        self.agents_dir = self.project_root / ".agents"
         self.counter = TokenCounter()
 
         # Load manifest to get REAL mandatory files
@@ -58,7 +58,7 @@ class BaselineProfiler:
         files = []
 
         for rel_path in mandatory:
-            abs_path = self.repo_root / rel_path
+            abs_path = self.project_root / rel_path
             if abs_path.exists():
                 files.append(abs_path)
             else:
@@ -94,7 +94,7 @@ class BaselineProfiler:
             file_info = self.counter.count_file(file_path)
 
             # Categorize
-            rel_path = file_path.relative_to(self.repo_root)
+            rel_path = file_path.relative_to(self.project_root)
             category = self._categorize_file(rel_path)
 
             results["files"].append(

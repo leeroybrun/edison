@@ -11,8 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
-from edison.core.adapters.platforms.coderabbit import CodeRabbitAdapter as CodeRabbitComposer
-from edison.core.config import ConfigManager
+from edison.core.adapters import CoderabbitAdapter
 
 SUMMARY = "Compose CodeRabbit configuration from Edison config"
 
@@ -35,14 +34,11 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
-        config_mgr = ConfigManager(repo_root=repo_root)
-        config = config_mgr.load_config()
-
-        composer = CodeRabbitComposer(config=config, repo_root=repo_root)
+        adapter = CoderabbitAdapter(project_root=repo_root)
 
         if args.dry_run:
             # Compose config but don't write
-            coderabbit_config = composer.compose_coderabbit_config()
+            coderabbit_config = adapter.compose_coderabbit_config()
 
             if args.json:
                 formatter.json_output({
@@ -61,7 +57,7 @@ def main(args: argparse.Namespace) -> int:
         output_path = Path(args.output) if args.output else None
 
         # Write configuration
-        written_path = composer.write_coderabbit_config(output_path=output_path)
+        written_path = adapter.write_coderabbit_config(output_path=output_path)
 
         if args.json:
             formatter.json_output({

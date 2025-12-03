@@ -31,7 +31,7 @@ class TestProjectDir:
             repo_root: Path to actual repository root (for copying configs)
         """
         self.tmp_path = tmp_path
-        self.repo_root = repo_root
+        self.project_root = repo_root
         self.project_root = tmp_path / ".project"
         # We map the .agents directory to .edison for tests to verify migration
         self.agents_root = tmp_path / ".edison"
@@ -76,28 +76,28 @@ class TestProjectDir:
     def _setup_configs(self) -> None:
         """Copy/create necessary config files."""
         # Skip copying if repo_root is the same as tmp_path (already set up by fixture)
-        if self.repo_root.resolve() == self.tmp_path.resolve():
+        if self.project_root.resolve() == self.tmp_path.resolve():
             return
 
         # Copy manifest.json (required for worktree config and postTrainingPackages)
-        src_manifest = self.repo_root / ".agents" / "manifest.json"
+        src_manifest = self.project_root / ".agents" / "manifest.json"
         if src_manifest.exists():
             dst_manifest = self.agents_root / "manifest.json"
             copy_if_different(src_manifest, dst_manifest)
 
         # Copy project .agents/config.yml (legacy) and modular overlays so
         # ConfigManager in tests sees the same configuration as the real project.
-        src_config = self.repo_root / ".agents" / "config.yml"
+        src_config = self.project_root / ".agents" / "config.yml"
         if src_config.exists():
             dst_config = self.agents_root / "config.yml"
             copy_if_different(src_config, dst_config)
 
-        src_config_dir = self.repo_root / ".agents" / "config"
+        src_config_dir = self.project_root / ".agents" / "config"
         if src_config_dir.exists():
             copy_tree_if_different(src_config_dir, self.agents_root / "config")
 
         # Copy validators config (required for postTrainingPackages detection)
-        src_validators = self.repo_root / ".agents" / "validators" / "config.json"
+        src_validators = self.project_root / ".agents" / "validators" / "config.json"
         if src_validators.exists():
             validators_dir = self.agents_root / "validators"
             validators_dir.mkdir(parents=True, exist_ok=True)
@@ -109,7 +109,7 @@ class TestProjectDir:
         # legacy session-workflow.json files.
 
         # Copy task template if exists, otherwise create minimal fallback
-        src_template = self.repo_root / ".project" / "tasks" / "TEMPLATE.md"
+        src_template = self.project_root / ".project" / "tasks" / "TEMPLATE.md"
         dst_template = self.project_root / "tasks" / "TEMPLATE.md"
         if src_template.exists():
             if src_template.resolve() != dst_template.resolve():
@@ -125,7 +125,7 @@ class TestProjectDir:
             )
 
         # Copy QA template if exists, otherwise create minimal fallback
-        src_qa_template = self.repo_root / ".project" / "qa" / "TEMPLATE.md"
+        src_qa_template = self.project_root / ".project" / "qa" / "TEMPLATE.md"
         dst_qa_template = self.project_root / "qa" / "TEMPLATE.md"
         if src_qa_template.exists():
             if src_qa_template.resolve() != dst_qa_template.resolve():
@@ -148,13 +148,13 @@ class TestProjectDir:
             copy_if_different(src_session_template, dst_session_template)
 
         # Copy lib directory (required for CLI scripts to import sessionlib, task)
-        src_lib = self.repo_root / ".agents" / "scripts" / "lib"
+        src_lib = self.project_root / ".agents" / "scripts" / "lib"
         if src_lib.exists():
             dst_lib = self.agents_root / "scripts" / "lib"
             copy_tree_if_different(src_lib, dst_lib)
 
         # Copy task scripts directory (ensure-followups is called by tasks/ready)
-        src_tasks = self.repo_root / ".agents" / "scripts" / "tasks"
+        src_tasks = self.project_root / ".agents" / "scripts" / "tasks"
         if src_tasks.exists():
             dst_tasks = self.agents_root / "scripts" / "tasks"
             dst_tasks.mkdir(parents=True, exist_ok=True)

@@ -43,12 +43,7 @@ class ResolvedPaths:
     project_dir: Path
     project_packs_dir: Path
     repo_root: Path
-    
-    @property
-    def packs_dir(self) -> Path:
-        """Alias for bundled_packs_dir for backward compatibility."""
-        return self.bundled_packs_dir
-    
+
     @property
     def uses_bundled_data(self) -> bool:
         """Always True - core content is always from bundled data."""
@@ -113,12 +108,7 @@ class CompositionPathResolver:
     def core_dir(self) -> Path:
         """Core content directory - ALWAYS bundled edison.data."""
         return self._resolve().core_dir
-    
-    @property
-    def packs_dir(self) -> Path:
-        """Bundled packs directory (edison.data/packs)."""
-        return self._resolve().bundled_packs_dir
-    
+
     @property
     def bundled_packs_dir(self) -> Path:
         """Bundled packs directory (edison.data/packs)."""

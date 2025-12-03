@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 from edison.core.composition.core.base import CompositionBase
 from edison.core.utils.io import ensure_directory
 
+from .components.base import AdapterContext
 if TYPE_CHECKING:
     from edison.core.config.domains import AdaptersConfig
     from edison.core.composition.output.config import OutputConfigLoader
@@ -79,21 +80,24 @@ class PlatformAdapter(CompositionBase, ABC):
         # Initialize lazy config loaders
         self._adapters_config = None
         self._output_config = None
+        self._context: Optional[AdapterContext] = None
 
-    def _setup_composition_dirs(self) -> None:
-        """Setup composition directories for platform adapters.
-
-        Platform adapters use:
-        - core_dir: Bundled edison.data package
-        - bundled_packs_dir: Bundled packs (edison.data/packs)
-        - project_packs_dir: Project packs (.edison/packs)
-        """
-        from edison.data import get_data_path
-
-        # Core content is ALWAYS from bundled edison.data package
-        self.core_dir = Path(get_data_path(""))
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = self.project_dir / "packs"
+    @property
+    def context(self) -> AdapterContext:
+        """Shared adapter context for components."""
+        if self._context is None:
+            self._context = AdapterContext(
+                project_root=self.project_root,
+                project_dir=self.project_dir,
+                core_dir=self.core_dir,
+                bundled_packs_dir=self.bundled_packs_dir,
+                project_packs_dir=self.project_packs_dir,
+                cfg_mgr=self.cfg_mgr,
+                config=self.config,
+                writer=self.writer,
+                adapter=self,
+            )
+        return self._context
 
     # =========================================================================
     # Abstract Properties and Methods

@@ -6,10 +6,10 @@ Following STRICT TDD:
 3. Refactor
 
 ZenAdapter is based on:
-- adapters/sync/zen/client.py (ZenSync)
+- adapters/sync/zen/client.py (ZenAdapter)
 - adapters/sync/zen/composer.py (ZenComposerMixin)
 - adapters/sync/zen/discovery.py (ZenDiscoveryMixin)
-- adapters/sync/zen/sync.py (ZenSyncMixin)
+- adapters/sync/zen/sync.py (ZenAdapterMixin)
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def test_zen_adapter_has_mixin_methods():
     assert hasattr(adapter, "get_applicable_guidelines")
     assert hasattr(adapter, "get_applicable_rules")
 
-    # Should have methods from ZenSyncMixin
+    # Should have methods from ZenAdapterMixin
     assert hasattr(adapter, "sync_role_prompts")
 
 

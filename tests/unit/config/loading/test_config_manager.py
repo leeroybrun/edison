@@ -118,7 +118,7 @@ def test_config_manager_defaults_to_project_root_not_edison(
     mgr = ConfigManager()
 
     # Repo root must be the outer project root, not .edison.
-    assert mgr.repo_root == ROOT
+    assert mgr.project_root == ROOT
     # And project config overlays must resolve from the outer preferred config directory.
     # Defaults to .edison/config now
     assert mgr.project_config_dir == ROOT / ".edison" / "config"

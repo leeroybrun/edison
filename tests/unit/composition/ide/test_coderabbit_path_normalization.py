@@ -14,12 +14,12 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters.platforms.coderabbit import CodeRabbitComposer
+from edison.core.adapters import CoderabbitAdapter
 from tests.helpers.io_utils import write_yaml
 
 
 def test_coderabbit_composer_uses_config_not_configs_for_templates(tmp_path: Path) -> None:
-    """CodeRabbitComposer should look for templates in templates/config/ not templates/configs/."""
+    """CoderabbitAdapter should look for templates in templates/config/ not templates/configs/."""
     # Setup: Create bundled template in CORRECT location (config, singular)
     templates_dir = tmp_path / "templates" / "config"
     templates_dir.mkdir(parents=True, exist_ok=True)
@@ -37,7 +37,7 @@ def test_coderabbit_composer_uses_config_not_configs_for_templates(tmp_path: Pat
     write_yaml(config_dir / "edison.yaml", {"packs": {"active": []}})
 
     # Mock core_dir to point to tmp_path (simulating bundled data)
-    composer = CodeRabbitComposer(config={}, repo_root=tmp_path)
+    composer = CoderabbitAdapter(project_root=tmp_path)
     composer.core_dir = tmp_path
 
     # ACT: Load core config
@@ -49,7 +49,7 @@ def test_coderabbit_composer_uses_config_not_configs_for_templates(tmp_path: Pat
 
 
 def test_coderabbit_composer_uses_config_not_configs_for_packs(tmp_path: Path) -> None:
-    """CodeRabbitComposer should look for pack configs in packs/{pack}/config/ not packs/{pack}/configs/."""
+    """CoderabbitAdapter should look for pack configs in packs/{pack}/config/ not packs/{pack}/configs/."""
     # Setup: Create pack config in CORRECT location (config, singular)
     pack_config_dir = tmp_path / "packs" / "python" / "config"
     pack_config_dir.mkdir(parents=True, exist_ok=True)
@@ -67,9 +67,9 @@ def test_coderabbit_composer_uses_config_not_configs_for_packs(tmp_path: Path) -
     write_yaml(project_config_dir / "edison.yaml", {"packs": {"active": ["python"]}})
 
     # Mock bundled_packs_dir to point to tmp_path/packs
-    composer = CodeRabbitComposer(config={}, repo_root=tmp_path)
+    composer = CoderabbitAdapter(project_root=tmp_path)
     composer.bundled_packs_dir = tmp_path / "packs"
-    composer.packs_dir = tmp_path / "packs"
+    composer.project_packs_dir = tmp_path / "packs"
 
     # ACT: Load pack config
     loaded = composer._load_pack_coderabbit_config("python")
@@ -80,7 +80,7 @@ def test_coderabbit_composer_uses_config_not_configs_for_packs(tmp_path: Path) -
 
 
 def test_coderabbit_composer_uses_config_not_configs_for_project(tmp_path: Path) -> None:
-    """CodeRabbitComposer should look for project configs in .edison/config/ not .edison/configs/."""
+    """CoderabbitAdapter should look for project configs in .edison/config/ not .edison/configs/."""
     # Setup: Create project config in CORRECT location (config, singular)
     project_config_dir = tmp_path / ".edison" / "config"
     project_config_dir.mkdir(parents=True, exist_ok=True)
@@ -94,7 +94,7 @@ def test_coderabbit_composer_uses_config_not_configs_for_project(tmp_path: Path)
     write_yaml(project_config_dir / "edison.yaml", {"packs": {"active": []}})
 
     # ACT: Create composer and load project config
-    composer = CodeRabbitComposer(config={}, repo_root=tmp_path)
+    composer = CoderabbitAdapter(project_root=tmp_path)
     loaded = composer._load_project_coderabbit_config()
 
     # ASSERT: Should successfully load from .edison/config/ directory
@@ -103,7 +103,7 @@ def test_coderabbit_composer_uses_config_not_configs_for_project(tmp_path: Path)
 
 
 def test_no_legacy_configs_directory_support(tmp_path: Path) -> None:
-    """CodeRabbitComposer should NOT fallback to "configs" directory (no legacy support)."""
+    """CoderabbitAdapter should NOT fallback to "configs" directory (no legacy support)."""
     # Setup: Create config in WRONG location (configs, plural) - should be ignored
     wrong_dir = tmp_path / ".edison" / "configs"
     wrong_dir.mkdir(parents=True, exist_ok=True)
@@ -121,7 +121,7 @@ def test_no_legacy_configs_directory_support(tmp_path: Path) -> None:
     write_yaml(correct_dir / "edison.yaml", {"packs": {"active": []}})
 
     # ACT: Create composer and try to load project config
-    composer = CodeRabbitComposer(config={}, repo_root=tmp_path)
+    composer = CoderabbitAdapter(project_root=tmp_path)
     loaded = composer._load_project_coderabbit_config()
 
     # ASSERT: Should return empty dict, NOT the config from "configs" directory

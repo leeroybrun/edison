@@ -6,14 +6,14 @@ Following STRICT TDD:
 3. Refactor
 
 CoderabbitAdapter is based on:
-- composition/ide/coderabbit.py (CodeRabbitComposer)
+- composition/ide/coderabbit.py (CoderabbitAdapter)
 """
 from __future__ import annotations
 
 from pathlib import Path
 import pytest
 
-from edison.core.adapters.platforms.coderabbit import CoderabbitAdapter
+from edison.core.adapters import CoderabbitAdapter
 
 
 def test_coderabbit_adapter_has_platform_name():

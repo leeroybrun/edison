@@ -58,7 +58,7 @@ class TestBaseDomainConfig:
                 return "test"
         
         cfg = MyConfig(repo_root=tmp_path)
-        assert cfg.repo_root == tmp_path
+        assert cfg.project_root == tmp_path
 
     def test_full_config_accessible(self, tmp_path: Path) -> None:
         """Full config dict is accessible via _config."""

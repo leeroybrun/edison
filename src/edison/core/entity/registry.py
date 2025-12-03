@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, TypeVar
 
 from .base import EntityId
+from edison.core.composition.core.paths import CompositionPathResolver
 
 # Use TYPE_CHECKING to avoid circular import at runtime
 if TYPE_CHECKING:
@@ -90,43 +91,22 @@ class BaseRegistry(Generic[T]):
             project_root: Project root directory. If not provided,
                 uses PathResolver to detect automatically.
         """
-        # Initialize composition infrastructure (lazy import to avoid circular)
-        self._init_composition(project_root)
+        # Initialize composition infrastructure (central resolver, no legacy)
+        resolver = CompositionPathResolver(project_root)
+        self.project_root = resolver.repo_root
+        self.project_dir = resolver.project_dir
+        self.core_dir = resolver.core_dir
+        self.bundled_packs_dir = resolver.bundled_packs_dir
+        self.project_packs_dir = resolver.project_packs_dir
 
-    def _init_composition(self, project_root: Optional[Path] = None) -> None:
-        """Initialize composition infrastructure (CompositionBase-like behavior).
-        
-        Architecture:
-        - Core content: ALWAYS from bundled edison.data package
-        - Bundled packs: edison.data/packs/
-        - Project packs: .edison/packs/ (extends/overrides bundled packs)
-        - Project overrides: .edison/<type>/ (e.g., .edison/guidelines/)
-        - NO .edison/core/ - that is LEGACY and NOT SUPPORTED
-        """
         from edison.core.config import ConfigManager
-        from edison.core.config.domains import PacksConfig
-        from edison.core.utils.paths.project import get_project_config_dir
-        from edison.core.utils.paths import PathResolver
-        from edison.data import get_data_path
-
-        # Path resolution - UNIFIED
-        self.project_root = project_root or PathResolver.resolve_project_root()
-        self.project_dir = get_project_config_dir(self.project_root, create=False)
-
-        # Config - UNIFIED
         self.cfg_mgr = ConfigManager(self.project_root)
-        base_cfg = self.cfg_mgr.load_config(validate=False)
-        self.config = base_cfg
-
-        # Active packs - UNIFIED (lazy via property)
+        self.config = self.cfg_mgr.load_config(validate=False)
         self._packs_config_cache = None
 
-        # Setup composition directories for BaseRegistry
-        # Core content is ALWAYS from bundled edison.data package
-        # NO .edison/core/ - that is LEGACY
-        self.core_dir = Path(get_data_path(""))
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = self.project_dir / "packs"
+    def _init_composition(self, project_root: Optional[Path] = None) -> None:
+        # Deprecated placeholder for legacy callers; now handled in __init__
+        return
 
     # =========================================================================
     # Active Packs (from CompositionBase pattern)

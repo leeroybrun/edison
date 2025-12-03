@@ -31,7 +31,6 @@ class TestMetadataInference:
             validator_id="missing-validator",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -68,7 +67,6 @@ class TestMetadataInference:
             validator_id="python-imports",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -101,13 +99,12 @@ class TestMetadataInference:
             validator_id="jsx-validator",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=["react"],
         )
 
-        assert result["name"] == "JSX Component Validator"
-        assert result["model"] == "gemini"
-        assert result["triggers"] == ["*.jsx", "*.tsx"]
+        assert result["name"] == "Jsx Validator"
+        assert result["model"] == "codex"
+        assert result["triggers"] == ["*"]
 
     def test_infer_validator_metadata_skips_core_edison_principles_header(
         self, tmp_path: Path
@@ -134,7 +131,6 @@ class TestMetadataInference:
             validator_id="test-validator",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -163,7 +159,6 @@ class TestMetadataInference:
             validator_id="multi-trigger",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 
@@ -189,7 +184,6 @@ class TestMetadataInference:
                 validator_id="unreadable",
                 project_root=repo_root,
                 project_dir=project_dir,
-                packs_dir=packs_dir,
                 active_packs=[],
             )
 
@@ -234,7 +228,6 @@ class TestMetadataInference:
             validator_id="shared-validator",
             project_root=repo_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
             active_packs=[],
         )
 

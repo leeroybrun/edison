@@ -88,17 +88,29 @@ class DocumentTemplateRegistry(ComposableRegistry[str]):
             )
         return result
 
-    def write_composed(self, packs: Optional[List[str]] = None) -> List[Path]:
+    def write_composed(
+        self,
+        packs: Optional[List[str]] = None,
+        *,
+        category: Optional[str] = None,
+    ) -> List[Path]:
         """Compose and write all document templates to _generated/documents/.
 
         Args:
             packs: List of packs to include
+            category: Optional category filter; when provided, only templates
+                whose names start with the category (case-insensitive) or equal
+                the category are written.
 
         Returns:
             List of paths to written files
         """
         packs = packs or self.get_active_packs()
         all_names = self.list_names(packs)
+
+        if category:
+            prefix = category.lower()
+            all_names = [n for n in all_names if n.lower() == prefix or n.lower().startswith(prefix + "-") or n.lower().startswith(prefix + "_")]
         output_dir = self.project_dir / "_generated" / "documents"
         output_dir.mkdir(parents=True, exist_ok=True)
 

@@ -21,7 +21,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 class TestStdErrConventions(unittest.TestCase):
     def setUp(self) -> None:
-        self.repo_root = REPO_ROOT
+        self.project_root = REPO_ROOT
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-stderr-tests-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
         self.project_root = self.temp_root / ".project"
@@ -37,7 +37,7 @@ class TestStdErrConventions(unittest.TestCase):
         self.impl_report_script = SCRIPTS_DIR / "implement" / "report"
 
     def _run(self, cmd: list[str|Path], check: bool = True) -> subprocess.CompletedProcess[str]:
-        result = run_with_timeout([str(c) for c in cmd], cwd=self.repo_root, env=self.base_env, capture_output=True, text=True)
+        result = run_with_timeout([str(c) for c in cmd], cwd=self.project_root, env=self.base_env, capture_output=True, text=True)
         if check and result.returncode != 0:
             raise AssertionError(f"Command failed ({result.returncode})\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
         return result

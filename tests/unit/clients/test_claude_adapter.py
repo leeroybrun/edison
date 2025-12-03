@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ClaudeSync
+from edison.core.adapters import ClaudeAdapter
 from edison.core.adapters import load_schema
 from tests.helpers.io_utils import write_generated_agent, write_orchestrator_constitution, write_orchestrator_manifest
 

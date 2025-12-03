@@ -16,11 +16,11 @@ CLI_DIR = Path(__file__).parent.parent.parent / "src" / "edison" / "cli"
 
 
 class TestNoInlineRepoRootPattern:
-    """Ensure CLI commands use get_repo_root() instead of manual Path(args.repo_root)."""
+    """Ensure CLI commands use get_repo_root() instead of manual Path(args.project_root)."""
 
     def test_no_manual_repo_root_resolution(self):
-        """Commands should use get_repo_root(args), not Path(args.repo_root) if args.repo_root."""
-        pattern = re.compile(r'Path\(args\.repo_root\)\s*if\s*args\.repo_root')
+        """Commands should use get_repo_root(args), not Path(args.project_root) if args.project_root."""
+        pattern = re.compile(r'Path\(args\.project_root\)\s*if\s*args\.project_root')
         violations = []
 
         for py_file in CLI_DIR.rglob("*.py"):
@@ -32,7 +32,7 @@ class TestNoInlineRepoRootPattern:
                 violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (
-            f"Files using manual Path(args.repo_root) pattern instead of get_repo_root():\n"
+            f"Files using manual Path(args.project_root) pattern instead of get_repo_root():\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
 
@@ -107,7 +107,7 @@ class TestCLIUtilitiesAreImported:
             # If file assigns project_root but doesn't use get_repo_root
             if "project_root = " in content and "get_repo_root" not in content:
                 # Check if it's using manual pattern
-                if "Path(args.repo_root)" in content:
+                if "Path(args.project_root)" in content:
                     violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (

@@ -30,7 +30,7 @@ def _discover_validator_file(
     *,
     project_root: Path,
     project_dir: Path,
-    packs_dir: Path,
+    bundled_packs_dir: Path,
     active_packs: Iterable[str],
 ) -> Optional[Path]:
     """Discover validator file using unified path resolution.
@@ -66,12 +66,12 @@ def _discover_validator_file(
 
     # 4. Check pack validators
     for pack in active_packs:
-        if packs_dir and packs_dir.exists():
-            path = packs_dir / pack / "validators" / f"{validator_id}.md"
+        if bundled_packs_dir and bundled_packs_dir.exists():
+            path = bundled_packs_dir / pack / "validators" / f"{validator_id}.md"
             if path.exists():
                 return path
-        if resolver.packs_dir.exists():
-            path = resolver.packs_dir / pack / "validators" / f"{validator_id}.md"
+        if resolver.bundled_packs_dir.exists():
+            path = resolver.bundled_packs_dir / pack / "validators" / f"{validator_id}.md"
             if path.exists():
                 return path
 
@@ -83,8 +83,8 @@ def infer_validator_metadata(
     *,
     project_root: Path,
     project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
+    bundled_packs_dir: Path | None = None,
+    active_packs: Iterable[str] = (),
 ) -> Dict[str, Any]:
     """Best-effort metadata extraction for validators defined only by id.
 
@@ -103,7 +103,7 @@ def infer_validator_metadata(
         validator_id,
         project_root=project_root,
         project_dir=project_dir,
-        packs_dir=packs_dir,
+        bundled_packs_dir=bundled_packs_dir or (project_root / ".edison" / "packs"),
         active_packs=active_packs,
     )
 
@@ -144,10 +144,11 @@ def normalize_validator_entries(
     fallback_map: Dict[str, Dict[str, Any]],
     project_root: Path,
     project_dir: Path,
-    packs_dir: Path,
-    active_packs: Iterable[str],
+    bundled_packs_dir: Path | None = None,
+    active_packs: Iterable[str] = (),
 ) -> List[Dict[str, Any]]:
     """Normalize roster entries into dicts, enriching ids with inferred metadata."""
+    bundled_packs_dir = bundled_packs_dir or (project_root / ".edison" / "packs")
     normalized: List[Dict[str, Any]] = []
     for entry in raw_entries or []:
         if isinstance(entry, dict):
@@ -163,7 +164,7 @@ def normalize_validator_entries(
                         entry,
                         project_root=project_root,
                         project_dir=project_dir,
-                        packs_dir=packs_dir,
+                        bundled_packs_dir=bundled_packs_dir,
                         active_packs=active_packs,
                     )
                 )
@@ -190,7 +191,7 @@ def _merge_rosters(
     *,
     project_root: Path,
     project_dir: Path,
-    packs_dir: Path,
+    bundled_packs_dir: Path,
     active_packs: Iterable[str],
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Merge validation + validators rosters."""
@@ -203,7 +204,7 @@ def _merge_rosters(
             fallback_map=base_map,
             project_root=project_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
+            bundled_packs_dir=bundled_packs_dir,
             active_packs=active_packs,
         )
 
@@ -212,7 +213,7 @@ def _merge_rosters(
             fallback_map=base_map,
             project_root=project_root,
             project_dir=project_dir,
-            packs_dir=packs_dir,
+            bundled_packs_dir=bundled_packs_dir,
             active_packs=active_packs,
         )
 
@@ -234,7 +235,7 @@ def collect_validators(
     *,
     project_root: Path,
     project_dir: Path,
-    packs_dir: Path,
+    bundled_packs_dir: Path,
     active_packs: Iterable[str],
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Collect validator roster from merged configuration."""
@@ -249,7 +250,7 @@ def collect_validators(
         override_roster,
         project_root=project_root,
         project_dir=project_dir,
-        packs_dir=packs_dir,
+        bundled_packs_dir=bundled_packs_dir,
         active_packs=active_packs,
     )
 
@@ -321,7 +322,7 @@ class ValidatorRegistry(ComposableRegistry[str]):
             config,
             project_root=self.project_root,
             project_dir=self.project_dir,
-            packs_dir=self.packs_dir,
+            bundled_packs_dir=self.bundled_packs_dir,
             active_packs=packs,
         )
 
@@ -368,7 +369,7 @@ class ValidatorRegistry(ComposableRegistry[str]):
             config,
             project_root=self.project_root,
             project_dir=self.project_dir,
-            packs_dir=self.packs_dir,
+            bundled_packs_dir=self.bundled_packs_dir,
             active_packs=packs,
         )
 

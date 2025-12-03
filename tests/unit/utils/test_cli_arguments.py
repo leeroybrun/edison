@@ -61,12 +61,12 @@ def test_parse_common_args_adds_repo_root_flag() -> None:
 
     # With repo-root specified
     args = parser.parse_args(["--repo-root", "/tmp/test"])
-    assert isinstance(args.repo_root, Path)
-    assert args.repo_root == Path("/tmp/test")
+    assert isinstance(args.project_root, Path)
+    assert args.project_root == Path("/tmp/test")
 
     # Without repo-root
     args_no = parser.parse_args([])
-    assert args_no.repo_root is None
+    assert args_no.project_root is None
 
 
 def test_parse_common_args_returns_parser() -> None:
@@ -236,4 +236,4 @@ def test_multiple_parents_can_be_combined() -> None:
     assert args.dry_run is True
     assert args.json is True
     assert args.yes is True
-    assert args.repo_root == Path("/tmp/test")
+    assert args.project_root == Path("/tmp/test")

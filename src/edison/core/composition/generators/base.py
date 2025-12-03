@@ -45,21 +45,6 @@ class ComposableGenerator(CompositionBase):
 
     content_type: ClassVar[str] = "generators"
 
-    def _setup_composition_dirs(self) -> None:
-        """Setup composition directories for generators.
-
-        Generators use the same structure as registries:
-        - core_dir: Bundled edison.data package
-        - bundled_packs_dir: Bundled packs (edison.data/packs)
-        - project_packs_dir: Project packs (.edison/packs)
-        - project_dir: Project overrides (.edison/)
-        """
-        from edison.data import get_data_path
-
-        self.core_dir = Path(get_data_path(""))
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = self.project_dir / "packs"
-
     @property
     @abstractmethod
     def template_name(self) -> Optional[str]:

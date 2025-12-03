@@ -77,6 +77,8 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
     # Strategy configuration - subclasses MAY override
     strategy_config: ClassVar[Dict[str, Any]] = {}
+    # Whether to merge all same-name layers (concatenate) instead of single template + overlays
+    merge_same_name: ClassVar[bool] = False
 
     # Internal state
     _bundled_discovery: Optional[LayerDiscovery] = None
@@ -99,22 +101,6 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             raise NotImplementedError(
                 f"{self.__class__.__name__} must define 'content_type' class attribute"
             )
-
-    def _setup_composition_dirs(self) -> None:
-        """Setup composition directories for registry.
-
-        Registries use:
-        - core_dir: Bundled edison.data package
-        - bundled_packs_dir: Bundled packs (edison.data/packs)
-        - project_packs_dir: Project packs (.edison/packs)
-        - project_dir: Project overrides (.edison/)
-        """
-        from edison.data import get_data_path
-
-        # Core content is ALWAYS from bundled edison.data package
-        self.core_dir = Path(get_data_path(""))
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = self.project_dir / "packs"
 
     @property
     def bundled_discovery(self) -> LayerDiscovery:
@@ -246,7 +232,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         # Core layer
         result.update(self.discover_core())
 
-        # Pack layers
+        # Pack layers (new + overlays, bundled and project packs)
         existing = set(result.keys())
         for pack in packs:
             pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
@@ -254,10 +240,33 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 result[name] = source.path
             existing.update(pack_new.keys())
 
-        # Project layer
+            pack_over = self.bundled_discovery.discover_pack_overlays(pack, existing)
+            for name, source in pack_over.items():
+                result[name] = source.path
+            existing.update(pack_over.keys())
+
+            pack_new = self.project_packs_discovery.discover_pack_new(pack, existing)
+            for name, source in pack_new.items():
+                result[name] = source.path
+            existing.update(pack_new.keys())
+
+            pack_over = self.project_packs_discovery.discover_pack_overlays(
+                pack, existing
+            )
+            for name, source in pack_over.items():
+                result[name] = source.path
+            existing.update(pack_over.keys())
+
+        # Project layer (new + overlays)
         project_new = self.bundled_discovery.discover_project_new(existing)
         for name, source in project_new.items():
             result[name] = source.path
+        existing.update(project_new.keys())
+
+        project_over = self.bundled_discovery.discover_project_overlays(existing)
+        for name, source in project_over.items():
+            result[name] = source.path
+        existing.update(project_over.keys())
 
         return result
 
@@ -346,89 +355,77 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         core_entities = self.bundled_discovery.discover_core()
         existing = set(core_entities.keys())
 
-        # Check if entity is in core
+        # Always include core if present
         if name in core_entities:
             path = core_entities[name].path
             content = path.read_text(encoding="utf-8")
             layers.append(LayerContent(content=content, source="core", path=path))
 
-        # Check pack layers (both bundled and project packs)
+        # Helper to append if present
+        def _append(source_path: Path, source_label: str) -> None:
+            if source_path and source_path.exists():
+                content = source_path.read_text(encoding="utf-8")
+                layers.append(LayerContent(content=content, source=source_label, path=source_path))
+
+        # Packs (bundled + project)
         for pack in packs:
-            # Check bundled pack for new entity
+            # bundled new
             try:
                 pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
-                if name in pack_new and name not in core_entities:
-                    path = pack_new[name].path
-                    content = path.read_text(encoding="utf-8")
-                    layers.append(
-                        LayerContent(content=content, source=f"pack:{pack}", path=path)
-                    )
+                if name in pack_new and (self.merge_same_name or name not in core_entities):
+                    _append(pack_new[name].path, f"pack:{pack}")
                 existing.update(pack_new.keys())
             except Exception:
                 pass
 
-            # Check bundled pack for overlay
+            # bundled overlays
             try:
-                pack_overlays = self.bundled_discovery.discover_pack_overlays(
-                    pack, existing
-                )
-                if name in pack_overlays:
-                    path = pack_overlays[name].path
-                    content = path.read_text(encoding="utf-8")
-                    layers.append(
-                        LayerContent(content=content, source=f"pack:{pack}", path=path)
-                    )
+                pack_over = self.bundled_discovery.discover_pack_overlays(pack, existing)
+                if name in pack_over:
+                    _append(pack_over[name].path, f"pack:{pack}")
             except Exception:
                 pass
 
-            # Check project pack for new entity
+            # project pack new
             try:
                 pack_new = self.project_packs_discovery.discover_pack_new(pack, existing)
-                if name in pack_new and name not in core_entities and not any(
-                    l.source == f"pack:{pack}" for l in layers if not l.source.endswith(":overlay")
-                ):
-                    path = pack_new[name].path
-                    content = path.read_text(encoding="utf-8")
-                    layers.append(
-                        LayerContent(content=content, source=f"pack:{pack}", path=path)
-                    )
+                if name in pack_new and (self.merge_same_name or name not in core_entities):
+                    _append(pack_new[name].path, f"pack:{pack}")
                 existing.update(pack_new.keys())
             except Exception:
                 pass
 
-            # Check project pack for overlay
+            # project pack overlays
             try:
-                pack_overlays = self.project_packs_discovery.discover_pack_overlays(
-                    pack, existing
-                )
-                if name in pack_overlays:
-                    path = pack_overlays[name].path
-                    content = path.read_text(encoding="utf-8")
-                    layers.append(
-                        LayerContent(content=content, source=f"pack:{pack}", path=path)
-                    )
+                pack_over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
+                if name in pack_over:
+                    _append(pack_over[name].path, f"pack:{pack}")
             except Exception:
                 pass
 
-        # Check project layer for new entity
+        # Project layer (new + overlays)
         try:
             project_new = self.bundled_discovery.discover_project_new(existing)
-            if name in project_new:
-                path = project_new[name].path
-                content = path.read_text(encoding="utf-8")
-                layers.append(LayerContent(content=content, source="project", path=path))
+            if name in project_new and (self.merge_same_name or name not in core_entities):
+                _append(project_new[name].path, "project")
+            existing.update(project_new.keys())
         except Exception:
             pass
 
-        # Check project layer for overlay
         try:
-            project_overlays = self.bundled_discovery.discover_project_overlays(existing)
-            if name in project_overlays:
-                path = project_overlays[name].path
-                content = path.read_text(encoding="utf-8")
-                layers.append(LayerContent(content=content, source="project", path=path))
+            project_over = self.bundled_discovery.discover_project_overlays(existing)
+            if name in project_over and (self.merge_same_name or name not in core_entities):
+                _append(project_over[name].path, "project")
         except Exception:
             pass
+
+        # When merge_same_name is enabled, allow project same-name file even if discover_project_new skipped it
+        if self.merge_same_name:
+            project_root_dir = self.project_dir / self.content_type
+            if project_root_dir.exists():
+                for candidate in project_root_dir.rglob(f"{name}.md"):
+                    if candidate.is_file() and all(l.path != candidate for l in layers):
+                        _append(candidate, "project")
 
         return layers
 

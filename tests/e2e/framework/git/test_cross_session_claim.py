@@ -23,7 +23,7 @@ class TestCrossSessionClaim(E2ETestCase):
         super().setUp()
 
         # Get repo root and scripts directory
-        self.repo_root = get_repo_root()
+        self.project_root = get_repo_root()
         self.scripts_dir = get_data_path("scripts")
 
         # Override owner for this test

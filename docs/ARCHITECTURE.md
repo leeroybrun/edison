@@ -136,51 +136,52 @@ edison.core/
 │   └── workflow/          # QA workflow
 │       ├── repository.py  # QA record storage
 │       └── transaction.py # QA state transitions
-├── composition/            # Composition system
-│   ├── core/              # Core composition engine
-│   │   ├── composer.py    # LayeredComposer (main engine)
-│   │   ├── discovery.py   # Layer discovery (Core/Packs/Project)
-│   │   ├── sections.py    # Section parsing and composition
-│   │   ├── schema.py      # Composition schema validation
-│   │   └── modes.py       # Section modes (replace/append)
+├── composition/            # Unified composition system
+│   ├── core.py            # CompositionBase, CompositionPathResolver
+│   ├── composer.py        # LayeredComposer (main layered engine)
+│   ├── transformers/      # Template transformation pipeline
+│   │   ├── base.py        # ContentTransformer, TransformContext, TransformerPipeline
+│   │   ├── includes.py    # {{include:path}}, {{include-section:path#name}}
+│   │   ├── conditionals.py # {{if:COND}}...{{/if}}, {{include-if:COND:path}}
+│   │   ├── loops.py       # {{#each collection}}...{{/each}}
+│   │   ├── variables.py   # {{config.key}}, {{PROJECT_ROOT}}, {{timestamp}}
+│   │   ├── references.py  # {{reference-section:path#name|purpose}}
+│   │   └── functions.py   # {{function:name(args)}} - custom Python functions
+│   ├── generators/        # Content generators (ComposableGenerator base)
+│   │   ├── base.py        # ComposableGenerator abstract base class
+│   │   ├── roster.py      # AgentRosterGenerator, ValidatorRosterGenerator
+│   │   └── state_machine.py # StateMachineGenerator
+│   ├── registries/        # Content registries (ComposableRegistry pattern)
+│   │   ├── agents.py      # AgentRegistry (discover_core/packs/project)
+│   │   ├── validators.py  # ValidatorRegistry
+│   │   ├── guidelines.py  # GuidelineRegistry
+│   │   ├── constitutions.py # Constitution composition
+│   │   └── rules.py       # RulesRegistry
 │   ├── packs/             # Pack system
-│   │   ├── registry.py    # Pack registry and discovery
-│   │   ├── activation.py  # Pack activation logic
-│   │   ├── loader.py      # Pack loading
-│   │   └── composition.py # Pack composition
-│   ├── registries/        # Content registries
-│   │   ├── agents.py      # Agent registry
-│   │   ├── validators.py  # Validator registry
-│   │   ├── guidelines.py  # Guideline registry
-│   │   ├── constitutions.py # Constitution registry
-│   │   └── rules.py       # Rule registry
-│   ├── ide/               # IDE integration
-│   │   ├── settings.py    # Settings composition (.claude, .cursor, .zen)
-│   │   ├── commands.py    # Slash command composition
-│   │   ├── hooks.py       # Git hook composition
-│   │   └── coderabbit.py  # CodeRabbit config composition
-│   └── output/            # Output generation
-│       ├── config.py      # Configuration output
-│       ├── formatting.py  # Content formatting
+│   │   ├── registry.py    # Pack discovery and activation
+│   │   └── composition.py # Pack content merging
+│   └── output/            # Output utilities
+│       ├── config.py      # OutputConfigLoader
+│       ├── writer.py      # CompositionFileWriter
 │       └── headers.py     # Generated file headers
 ├── rules/                  # Rule system
 │   ├── engine.py          # RulesEngine (enforcement + guidance)
 │   ├── models.py          # Rule, RuleViolation
 │   ├── checkers.py        # Rule checker registry
 │   └── errors.py          # Rule-specific exceptions
-├── adapters/               # IDE adapters
-│   ├── base.py            # PromptAdapter base class
-│   ├── prompt/            # Prompt rendering adapters
-│   │   ├── claude.py      # Claude-specific formatting
-│   │   ├── cursor.py      # Cursor-specific formatting
-│   │   └── zen.py         # Zen-specific formatting
-│   └── sync/              # Settings sync adapters
-│       ├── claude.py      # Claude settings sync
-│       ├── cursor.py      # Cursor settings sync
-│       └── zen/           # Zen settings sync
-│           ├── sync.py    # Zen sync implementation
-│           ├── composer.py # Zen-specific composition
-│           └── discovery.py # Zen file discovery
+├── adapters/               # Unified platform adapters
+│   ├── base.py            # PlatformAdapter base class
+│   ├── platforms/         # Platform-specific adapters
+│   │   ├── claude.py      # ClaudeAdapter (.claude/, CLAUDE.md)
+│   │   ├── cursor.py      # CursorAdapter (.cursor/, .cursorrules)
+│   │   ├── zen.py/        # ZenAdapter package (.zen/)
+│   │   ├── codex.py       # CodexAdapter (.codex/)
+│   │   └── coderabbit.py  # CoderabbitAdapter (.coderabbit.yaml)
+│   └── components/        # Shared adapter components
+│       ├── base.py        # AdapterComponent base
+│       ├── commands.py    # CommandComposer (slash commands)
+│       ├── hooks.py       # HookComposer (git hooks)
+│       └── settings.py    # SettingsComposer (IDE settings)
 ├── config/                 # Configuration management
 │   ├── manager.py         # ConfigManager (loads/merges YAML)
 │   ├── base.py            # Base configuration types
@@ -1204,3 +1205,13 @@ EdisonError (base)
 **Last Updated**: 2025-12-01
 **Version**: 1.0.0
 **Authors**: Edison Framework Team
+
+👉 For full templating/composition details (layers, syntax, functions, outputs), see `docs/TEMPLATING.md`.
+
+## Unified Composition (current)
+
+- **Single strategy**: `MarkdownCompositionStrategy` for all markdown (agents, validators, guidelines, constitutions, rosters, docs). YAML uses the layered config loader—no mode matrix.
+- **Layer order**: core → packs → project. Guidelines can opt into `merge_same_name` (concatenate + dedupe) instead of overlays.
+- **Templating pipeline**: sections/extend markers → includes → variables (config/context) → conditionals → loops → references → functions. All behavior is YAML-configurable.
+- **Functions extension**: drop Python files into `functions/` under core/packs/project; call with `{{fn:name arg1 arg2}}`. Load order follows layering (project overrides packs overrides core).
+- **Output config**: every output path (clients, agents, validators, guidelines, rosters, state machine, canonical entry) is defined in `composition.yaml` and resolved by `OutputConfigLoader`—no hardcoded paths.

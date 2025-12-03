@@ -1,8 +1,5 @@
 """CodeRabbit platform adapter.
 
-This adapter is based on:
-- composition/ide/coderabbit.py (CodeRabbitComposer)
-
 Handles:
 - Composing .coderabbit.yaml configuration from Edison layers
 - Merging core, pack, and project configurations

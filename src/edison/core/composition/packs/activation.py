@@ -48,8 +48,9 @@ def auto_activate_packs(
     elif root is not None:
         # Use composition path resolver for consistent path resolution
         from ..core import CompositionPathResolver
+
         path_resolver = CompositionPathResolver(root)
-        base = path_resolver.packs_dir
+        base = path_resolver.bundled_packs_dir
     else:
         base = None
 

@@ -1602,6 +1602,25 @@ These are automatically resolved when configuration is loaded.
 | `paths.yaml` | Path configuration | Config directory location |
 | `packs.yaml` | Pack system | Load order, composition strategy |
 
+## Unified Templating & Functions (Composition)
+
+- **Pipeline order**: sections/extend → includes → variables (config/context) → conditionals → loops → references → functions.
+- **Syntax**:
+  - Sections: `<!-- SECTION: name -->...<!-- /SECTION: name -->`, `<!-- EXTEND: name -->...`
+  - Includes: `{{include:path/to/file.md}}`, `{{include-section:path#section}}`
+  - Conditionals: `{{if:cond}}...{{/if}}`, `{{include-if:cond:path}}`
+  - Loops: `{{#each items}}...{{/each}}`
+  - Variables: `{{config.key}}`, `{{PROJECT_ROOT}}`, `{{timestamp}}`, plus context vars
+  - References: `{{reference-section:path#name|purpose}}`
+  - Functions: `{{fn:name arg1 arg2}}`
+- **Functions extension**:
+  - Place `.py` files under `functions/` in core, packs, or project. Later layers override earlier.
+  - Functions must return strings; args are passed as strings.
+  - Loader: core → active packs → project.
+  - Example: `{{fn:task_states current_state}}` or `{{fn:task_states}}`.
+
 ---
 
 **Last Updated**: 2025-12-01
+
+👉 Comprehensive templating/composition guide: `docs/TEMPLATING.md`.

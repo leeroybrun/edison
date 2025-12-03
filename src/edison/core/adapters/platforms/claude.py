@@ -1,9 +1,5 @@
 """Claude Code platform adapter.
 
-This adapter merges functionality from:
-- adapters/sync/claude.py (ClaudeSync) - sync logic
-- adapters/prompt/claude.py (ClaudeAdapter) - rendering logic
-
 Handles:
 - Syncing Edison-composed outputs to Claude Code layout
 - Adding Claude-specific frontmatter to agents
@@ -17,6 +13,9 @@ from typing import Any, Dict, List, Optional
 from edison.core.adapters.base import PlatformAdapter
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.io import ensure_directory
+from edison.core.adapters.components.commands import CommandComposer
+from edison.core.adapters.components.hooks import HookComposer
+from edison.core.adapters.components.settings import SettingsComposer
 
 
 class ClaudeAdapterError(RuntimeError):
@@ -57,6 +56,11 @@ class ClaudeAdapter(PlatformAdapter):
         else:
             self.claude_agents_dir = self.claude_dir / "agents"
             self._agents_filename_pattern = "{name}.md"
+
+        # Components (platform-agnostic) using shared context
+        self.commands = CommandComposer(self.context)
+        self.hooks = HookComposer(self.context)
+        self.settings = SettingsComposer(self.context)
 
     # =========================================================================
     # Platform Properties
@@ -189,6 +193,9 @@ class ClaudeAdapter(PlatformAdapter):
         result: Dict[str, List[Path]] = {
             "claude_md": [],
             "agents": [],
+            "commands": [],
+            "hooks": [],
+            "settings": [],
         }
 
         claude_md = self.sync_claude_md()
@@ -196,6 +203,19 @@ class ClaudeAdapter(PlatformAdapter):
             result["claude_md"].append(claude_md)
 
         result["agents"] = self.sync_agents()
+
+        # Commands
+        commands = self.commands.compose_all().get("claude", {})
+        result["commands"] = list(commands.values())
+
+        # Hooks
+        hooks = self.hooks.compose_hooks()
+        result["hooks"] = list(hooks.values())
+
+        # Settings
+        settings_path = self.settings.write_settings_file()
+        if settings_path:
+            result["settings"].append(settings_path)
         return result
 
     # =========================================================================

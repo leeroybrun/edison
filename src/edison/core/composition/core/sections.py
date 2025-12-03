@@ -198,31 +198,3 @@ class SectionParser:
         result = re.sub(r"\n{3,}", "\n\n", result)
         return result.strip()
 
-
-class SectionComposer:
-    """Compose final output from template and section registry.
-
-    Note: This class is being deprecated in favor of TemplateEngine.
-    Kept for backward compatibility during migration.
-    """
-
-    def compose(self, template: str, registry: SectionRegistry) -> str:
-        """Render final output by composing sections."""
-        result = template
-
-        # Replace section content
-        for name, chunks in registry.sections.items():
-            # Include extensions
-            all_chunks = chunks + registry.extensions.get(name, [])
-            content = "\n\n".join(c for c in all_chunks if c)
-            # Replace section marker with composed content
-            pattern = re.compile(
-                rf"<!--\s*SECTION:\s*{re.escape(name)}\s*-->(.*?)<!--\s*/SECTION:\s*{re.escape(name)}\s*-->",
-                re.DOTALL,
-            )
-            result = pattern.sub(content, result)
-
-        # Clean up excessive blank lines
-        result = re.sub(r"\n{3,}", "\n\n", result)
-
-        return result.strip()

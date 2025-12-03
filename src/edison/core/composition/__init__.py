@@ -7,8 +7,6 @@ from __future__ import annotations
 
 # Core composition engine
 from .core import (
-    # Composer
-    LayeredComposer,
     # Discovery
     LayerDiscovery,
     LayerSource,
@@ -19,12 +17,6 @@ from .core import (
     CompositionNotFoundError,
     CompositionShadowingError,
     CompositionSectionError,
-    # Modes
-    CompositionMode,
-    ConcatenateComposer,
-    DEFAULT_MODE,
-    get_mode,
-    get_composer,
     # Paths
     CompositionPathResolver,
     ResolvedPaths,
@@ -33,7 +25,6 @@ from .core import (
     CompositionSchema,
     ContentTypeSchema,
     # Sections
-    SectionComposer,
     SectionParser,
     SectionRegistry,
     SectionMode,
@@ -104,10 +95,8 @@ def __getattr__(name: str):
         "GuidelineCompositionResult": ".registries.guidelines",
         "GuidelinePaths": ".registries.guidelines",
         "compose_guideline": ".registries.guidelines",
-        "get_rules_for_role": ".registries.constitutions",
-        "load_constitution_layer": ".registries.constitutions",
-        "compose_constitution": ".registries.constitutions",
-        "render_constitution_template": ".registries.constitutions",
+        "ConstitutionRegistry": ".registries.constitutions",
+        "ConstitutionResult": ".registries.constitutions",
         "generate_all_constitutions": ".registries.constitutions",
         "generate_canonical_entry": ".registries.rosters",
     }
@@ -118,7 +107,7 @@ def __getattr__(name: str):
         "CommandArg": ("edison.core.adapters.components.commands", True),
         "CommandDefinition": ("edison.core.adapters.components.commands", True),
         "CommandComposer": ("edison.core.adapters.components.commands", True),
-        "PlatformAdapter": ("edison.core.adapters.components.commands", True),
+        "PlatformAdapter": ("edison.core.adapters", False),
         "ClaudeCommandAdapter": ("edison.core.adapters.components.commands", True),
         "CursorCommandAdapter": ("edison.core.adapters.components.commands", True),
         "CodexCommandAdapter": ("edison.core.adapters.components.commands", True),
@@ -131,8 +120,6 @@ def __getattr__(name: str):
         "ALLOWED_TYPES": ("edison.core.adapters.components.settings", True),
         "SettingsComposer": ("edison.core.adapters.components.settings", True),
         "merge_permissions": ("edison.core.adapters.components.settings", True),
-        # CodeRabbit
-        "CodeRabbitComposer": ("edison.core.adapters.platforms.coderabbit", False),  # Needs alias
     }
 
     if name in registry_imports:
@@ -144,9 +131,6 @@ def __getattr__(name: str):
         import importlib
         module_path, direct = ide_imports[name]
         module = importlib.import_module(module_path)
-        if name == "CodeRabbitComposer":
-            # Special case: CodeRabbitComposer is an alias for CoderabbitAdapter
-            return getattr(module, "CoderabbitAdapter")
         return getattr(module, name)
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -154,7 +138,6 @@ def __getattr__(name: str):
 
 __all__ = [
     # Core
-    "LayeredComposer",
     "LayerDiscovery",
     "LayerSource",
     "ComposeResult",
@@ -163,11 +146,6 @@ __all__ = [
     "CompositionShadowingError",
     "CompositionSectionError",
     # Modes
-    "CompositionMode",
-    "ConcatenateComposer",
-    "DEFAULT_MODE",
-    "get_mode",
-    "get_composer",
     # Paths
     "CompositionPathResolver",
     "ResolvedPaths",
@@ -176,7 +154,6 @@ __all__ = [
     "CompositionSchema",
     "ContentTypeSchema",
     # Sections
-    "SectionComposer",
     "SectionParser",
     "SectionRegistry",
     "SectionMode",
@@ -197,10 +174,6 @@ __all__ = [
     "GuidelinePaths",
     "compose_guideline",
     # Registries - Constitutions (lazy)
-    "get_rules_for_role",
-    "load_constitution_layer",
-    "compose_constitution",
-    "render_constitution_template",
     "generate_all_constitutions",
     # Registries - Rosters (lazy)
     "generate_canonical_entry",
@@ -235,11 +208,13 @@ __all__ = [
     "project_terms",
     "DEFAULT_PROJECT_TERMS",
     "PACK_TECH_TERMS",
+    # Constitutions
+    "ConstitutionRegistry",
+    "ConstitutionResult",
     # IDE
     "CommandArg",
     "CommandDefinition",
     "CommandComposer",
-    "PlatformAdapter",
     "ClaudeCommandAdapter",
     "CursorCommandAdapter",
     "CodexCommandAdapter",
@@ -250,6 +225,5 @@ __all__ = [
     "ALLOWED_TYPES",
     "SettingsComposer",
     "merge_permissions",
-    # Config composition
-    "CodeRabbitComposer",
+    "PlatformAdapter",
 ]

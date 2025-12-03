@@ -24,10 +24,8 @@ from .guidelines import (
     compose_guideline,
 )
 from .constitutions import (
-    get_rules_for_role,
-    load_constitution_layer,
-    compose_constitution,
-    render_constitution_template,
+    ConstitutionRegistry,
+    ConstitutionResult,
     generate_all_constitutions,
 )
 # Note: Rosters (generate_available_agents, generate_available_validators)
@@ -77,10 +75,8 @@ __all__ = [
     "GuidelinePaths",
     "compose_guideline",
     # Constitutions
-    "get_rules_for_role",
-    "load_constitution_layer",
-    "compose_constitution",
-    "render_constitution_template",
+    "ConstitutionRegistry",
+    "ConstitutionResult",
     "generate_all_constitutions",
     # Rosters (generate_canonical_entry still available if rosters.py exists)
     "generate_canonical_entry",

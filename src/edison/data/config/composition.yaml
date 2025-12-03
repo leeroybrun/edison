@@ -208,14 +208,14 @@ directory_conventions:
   # Path patterns for each layer
   # Bundled defaults come from edison.data package
   # Project overrides come from {project_dir}/{type}/
-  pack_overlay: "{packs_dir}/{pack}/{type}/overlays/{name}.md"
-  pack_new: "{packs_dir}/{pack}/{type}/{name}.md"
+  pack_overlay: "{bundled_packs_dir}/{pack}/{type}/overlays/{name}.md"
+  pack_new: "{bundled_packs_dir}/{pack}/{type}/{name}.md"
   project_overlay: "{project_dir}/{type}/overlays/{name}.md"
   project_new: "{project_dir}/{type}/{name}.md"
   
   # Naming conventions for constitutions (special case)
   # Bundled constitutions: edison.data/constitutions/{role}-base.md
-  constitution_pack: "{packs_dir}/{pack}/constitutions/{role}-additions.md"
+  constitution_pack: "{bundled_packs_dir}/{pack}/constitutions/{role}-additions.md"
   constitution_project: "{project_dir}/constitutions/{role}-overrides.md"
 
 # Validation rules

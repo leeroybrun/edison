@@ -35,8 +35,8 @@ class ScenarioSimulator:
         if repo_root is None:
             repo_root = Path(__file__).resolve().parents[4]
 
-        self.repo_root = Path(repo_root)
-        self.agents_dir = self.repo_root / ".agents"
+        self.project_root = Path(repo_root)
+        self.agents_dir = self.project_root / ".agents"
         self.counter = TokenCounter()
         self.baseline_profiler = BaselineProfiler(repo_root)
 
@@ -131,7 +131,7 @@ class ScenarioSimulator:
                 # guide_ref is like "guides.tdd"
                 guide_key = guide_ref.split(".")[-1]
                 if guide_key in guide_map:
-                    guide_path = self.repo_root / guide_map[guide_key]
+                    guide_path = self.project_root / guide_map[guide_key]
                     if guide_path.exists():
                         guides.append(guide_path)
 
@@ -143,7 +143,7 @@ class ScenarioSimulator:
                     for guide_ref in guide_refs:
                         guide_key = guide_ref.split(".")[-1]
                         if guide_key in guide_map:
-                            guide_path = self.repo_root / guide_map[guide_key]
+                            guide_path = self.project_root / guide_map[guide_key]
                             if guide_path.exists() and guide_path not in guides:
                                 guides.append(guide_path)
 
@@ -209,7 +209,7 @@ class ScenarioSimulator:
             guides_tokens += file_info["tokens"]
             guides_info.append(
                 {
-                    "path": str(guide_path.relative_to(self.repo_root)),
+                    "path": str(guide_path.relative_to(self.project_root)),
                     "tokens": file_info["tokens"],
                     "lines": file_info["lines"],
                 }
@@ -227,7 +227,7 @@ class ScenarioSimulator:
             file_info = self.counter.count_file(agent_prompt)
             result["layers"]["sub_agent_prompt"] = {
                 "tokens": file_info["tokens"],
-                "file": str(agent_prompt.relative_to(self.repo_root)),
+                "file": str(agent_prompt.relative_to(self.project_root)),
                 "lines": file_info["lines"],
             }
             result["total_tokens"] += file_info["tokens"]
@@ -250,7 +250,7 @@ class ScenarioSimulator:
                         {
                             "id": validator.get("id"),
                             "name": validator.get("name"),
-                            "path": str(validator_path.relative_to(self.repo_root)),
+                            "path": str(validator_path.relative_to(self.project_root)),
                             "tokens": file_info["tokens"],
                             "lines": file_info["lines"],
                             "blocking": validator.get("blocksOnFail", False),

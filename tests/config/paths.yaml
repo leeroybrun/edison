@@ -28,10 +28,20 @@ subdirectories:
     validators: "validators"
     _generated: "_generated"
     packs: "packs"
+    scripts: "scripts"  # Legacy, use Edison CLI instead
     
   # Under qa/
   qa:
     validation_evidence: "validation-evidence"
+
+  # Legacy scripts directories (DEPRECATED - use Edison CLI instead)
+  # Still needed for tests that reference old script structure
+  scripts:
+    lib: "lib"
+    tasks: "tasks"
+    session: "session"
+    qa: "qa"
+    validators: "validators"
 
 file_patterns:
   task:

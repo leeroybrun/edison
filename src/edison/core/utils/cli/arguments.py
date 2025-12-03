@@ -31,6 +31,7 @@ def parse_common_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
     )
     parser.add_argument(
         "--repo-root",
+        dest="project_root",
         type=Path,
         default=None,
         help="Repository root override (bypasses auto-detection)",

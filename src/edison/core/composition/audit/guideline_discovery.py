@@ -60,7 +60,7 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
     # Use composition path resolver for consistent path resolution
     path_resolver = CompositionPathResolver(root, "guidelines")
     core_dir = path_resolver.core_dir / "guidelines"
-    packs_root = path_resolver.packs_dir
+    packs_root = path_resolver.bundled_packs_dir
     project_dir = path_resolver.project_dir / "guidelines"
     
     records: List[GuidelineRecord] = []

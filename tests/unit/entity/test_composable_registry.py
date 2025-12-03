@@ -294,7 +294,8 @@ class TestComposableRegistryInheritance:
         assert hasattr(registry, "project_root")
         assert hasattr(registry, "project_dir")
         assert hasattr(registry, "core_dir")
-        assert hasattr(registry, "packs_dir")
+        assert hasattr(registry, "bundled_packs_dir")
+        assert hasattr(registry, "project_packs_dir")
 
     def test_inherits_config_management(self, isolated_project_env: Path) -> None:
         """ComposableRegistry has config management from CompositionBase."""

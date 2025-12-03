@@ -22,7 +22,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 class TestStatusJsonPurity(unittest.TestCase):
     def setUp(self) -> None:
-        self.repo_root = REPO_ROOT
+        self.project_root = REPO_ROOT
         self.tmp = Path(tempfile.mkdtemp(prefix="project-status-json-"))
         self.addCleanup(lambda: shutil.rmtree(self.tmp, ignore_errors=True))
 
@@ -50,7 +50,7 @@ class TestStatusJsonPurity(unittest.TestCase):
             self.skipTest(f"Script not found: {self.status_script}. These are contract tests for Edison-enabled projects.")
 
     def _run(self, args: list[str|Path]) -> subprocess.CompletedProcess[str]:
-        return run_with_timeout([str(a) for a in ([self.status_script] + args)], cwd=self.repo_root, env=self.env, capture_output=True, text=True)
+        return run_with_timeout([str(a) for a in ([self.status_script] + args)], cwd=self.project_root, env=self.env, capture_output=True, text=True)
 
     def _write(self, path: Path, text: str) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)

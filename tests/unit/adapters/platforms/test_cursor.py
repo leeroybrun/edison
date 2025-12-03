@@ -7,7 +7,7 @@ Following STRICT TDD:
 
 CursorAdapter merges functionality from:
 - adapters/prompt/cursor.py (CursorAdapter)
-- adapters/sync/cursor.py (CursorSync)
+- adapters/sync/cursor.py (CursorAdapter)
 """
 from __future__ import annotations
 

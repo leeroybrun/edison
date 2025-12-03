@@ -71,7 +71,7 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
 def real_args():
     """Create real args namespace instead of mocking."""
     args = Namespace()
-    args.repo_root = None
+    args.project_root = None
     args.agents = False
     args.validators = False
     args.constitutions = False
@@ -98,7 +98,7 @@ def test_compose_all_uses_resolved_config_dir_for_validators(tmp_path, real_args
 
     # Enable only validators to focus test
     real_args.validators = True
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     # Execute with real implementation
     result = main(real_args)
@@ -125,7 +125,7 @@ def test_compose_all_generates_validators_constitution(tmp_path, real_args):
     _setup_minimal_edison_structure(tmp_path)
 
     # Run compose --all
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     # Execute with real implementation
     result = main(real_args)
@@ -145,7 +145,7 @@ def test_compose_all_generates_validators_constitution(tmp_path, real_args):
 def test_validators_constitution_has_role_header(tmp_path, real_args):
     """Test that VALIDATORS.md has Role: VALIDATOR in header."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
@@ -160,7 +160,7 @@ def test_validators_constitution_has_role_header(tmp_path, real_args):
 def test_validators_constitution_has_mandatory_reads(tmp_path, real_args):
     """Test that mandatory reads match constitution.yaml validators section."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
@@ -177,7 +177,7 @@ def test_validators_constitution_has_mandatory_reads(tmp_path, real_args):
 def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
     """Test that rules are filtered to validator-applicable only."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
@@ -198,7 +198,7 @@ def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
 def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
     """Test that edison compose --all generates constitutions/ORCHESTRATORS.md."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
 
@@ -215,7 +215,7 @@ def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
 def test_compose_generates_state_machine_doc(tmp_path, real_args):
     """Compose pipeline must emit STATE_MACHINE.md to _generated."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
 
@@ -231,7 +231,7 @@ def test_compose_generates_state_machine_doc(tmp_path, real_args):
 def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
     """Test that ORCHESTRATORS.md has Role: ORCHESTRATOR in header."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
@@ -246,7 +246,7 @@ def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
 def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
     """Test that mandatory reads match constitution.yaml orchestrator section."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
@@ -262,7 +262,7 @@ def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
 def test_orchestrators_constitution_has_rules_and_roster_references(tmp_path, real_args):
     """Test that rules render for orchestrator and roster files are generated."""
     _setup_minimal_edison_structure(tmp_path)
-    real_args.repo_root = str(tmp_path)
+    real_args.project_root = str(tmp_path)
 
     result = main(real_args)
     assert result == 0, "Compose should succeed"
