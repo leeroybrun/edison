@@ -1,5 +1,37 @@
-<!-- 6b7768cd-ebe5-47e5-b0b5-fb2f8ca2da00 9244164f-dbdd-4736-a347-11209ac36a55 -->
+<!-- 6b7768cd-ebe5-47e5-b0b5-fb2f8ca2da00 657ab468-4133-42a6-bb77-766c3b72ba5a -->
 # Unified Composition Architecture - Complete Plan
+
+## Critical Principles (Non-Negotiable)
+
+These principles MUST be followed for EVERY task in this plan:
+
+1. **STRICT TDD**: Write failing test FIRST (RED), then implement (GREEN), then refactor
+2. **NO MOCKS**: Test real behavior, real code, real libs - NO MOCKS EVER
+3. **NO LEGACY**: Delete old code completely - NO backward compatibility, NO fallbacks
+4. **NO HARDCODED VALUES**: All config from YAML - NO magic numbers/strings in code
+5. **100% CONFIGURABLE**: Every behavior must be configurable via YAML
+6. **DRY**: Zero code duplication - extract to shared utilities
+7. **SOLID**: Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
+8. **KISS**: Keep It Simple, Stupid - no over-engineering
+9. **YAGNI**: You Aren't Gonna Need It - remove speculative features
+10. **LONG-TERM MAINTAINABLE**
+11. **UN-DUPLICATED & REUSABLE**: Analyze existing code before implementing - reuse/extend existing features
+12. **STRICT COHERENCE AND UNITY**: Understand existing patterns BEFORE implementing - maintain unified codebase style
+13. **ROOT CAUSE FIXES**: NEVER apply dirty fixes or skip tests - ALWAYS find and fix ROOT CAUSES
+14. **REFACTORING ESSENTIALS**: Update ALL callers/tests/CLIs when refactoring - NO legacy fallbacks
+15. **SELF VALIDATION**: Re-analyze everything before marking done - fresh eyes review
+16. **GIT SAFETY**: NEVER use `git reset`/`git checkout` except if user explicitly asks
+
+---
+
+## Testing Requirements
+
+- Update ALL related tests when changing code (unit, integration, e2e)
+- When tests fail, analyze and fix ROOT CAUSE - never simplify/skip/remove tests to make them pass
+- For large test runs: use 30min timeout + redirect output to temp file, then delegate subagent to analyze
+- Fix multiple test failures in parallel via dedicated subagents for each root cause
+
+---
 
 ## Executive Summary
 
@@ -496,17 +528,11 @@ class SyncAdapter(CompositionBase):
 
 ### To-dos
 
-- [ ] Phase 1.1: Create composition/core/strategies.py with MarkdownCompositionStrategy (sections + optional dedupe + template processing)
-- [ ] Phase 1.2: Create entity/composable_registry.py base class that uses LayerDiscovery + MarkdownCompositionStrategy
-- [ ] Phase 1.3: Enhance CompositionBase with _extract_definitions(), _merge_definitions_by_id(), ensure writer property
-- [ ] Phase 1.4: Enhance SyncAdapter to inherit from CompositionBase, add adapters_config, output_config, common sync methods
-- [ ] Phase 2.1: Migrate AgentRegistry to extend ComposableRegistry
-- [ ] Phase 2.2: Migrate ValidatorRegistry - add compose_validator() for file composition (currently missing!)
-- [ ] Phase 2.3: Migrate GuidelineRegistry - remove custom composition, use strategy with enable_dedupe=True
-- [ ] Phase 2.4: Migrate ConstitutionRegistry - use ComposableRegistry with sections
-- [ ] Phase 2.5: Create template-based RosterRegistry, add data/rosters/*.md templates
-- [ ] Phase 3.1: Refactor IDE composers (commands, settings) to use _load_layered_config() consistently
-- [ ] Phase 3.2: Refactor ClaudeSync, CursorSync to use SyncAdapter base methods
-- [ ] Phase 3.3: Remove duplicate _deep_merge() from JsonSchemaComposer, use ConfigManager.deep_merge()
-- [ ] Phase 4: Remove all backward compatibility aliases and update callers
-- [ ] Phase 5: Update all tests (unit, integration, e2e) for new architecture
+- [ ] Add compose_validator() to ValidatorRegistry for file composition
+- [ ] Convert ConstitutionRegistry from functions to class extending ComposableRegistry
+- [ ] Create data/rosters/*.md templates and refactor rosters.py
+- [ ] Create ComposableGenerator base class and refactor roster generators
+- [ ] Move composition/ide/ to adapters/components/, create AdapterComponent base
+- [ ] Restructure adapters with component-based architecture
+- [ ] Ensure all composers use _load_layered_config() consistently
+- [ ] Run full test suite and fix all refactoring-related failures
