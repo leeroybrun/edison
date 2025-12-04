@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from edison.core.entity import BaseRegistry
+from .registry_base import BaseRegistry
 from edison.core.composition.core.yaml_layer import YamlLayerMixin
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_project_config_dir

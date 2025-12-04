@@ -9,6 +9,7 @@ fallback path for backward compatibility.
 import getpass
 import os
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -24,7 +25,7 @@ def get_project_owner(repo_root=None):
     return ProjectConfig(repo_root=repo_root).owner
 
 
-def auto_session_for_owner(owner: str | None, repo: SessionRepository | None = None) -> str:
+def auto_session_for_owner(owner: Optional[str], repo: Optional[SessionRepository] = None) -> str:
     """Generate session ID using PID inference, with legacy fallback.
 
     This is a helper function for these tests. The real implementation should be in

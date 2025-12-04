@@ -206,7 +206,7 @@ def main(args: argparse.Namespace) -> int:
 
         if compose_all_types or args.guidelines:
             # Use GuidelineRegistry for concatenate + dedupe composition
-            guideline_registry = GuidelineRegistry(repo_root=repo_root)
+            guideline_registry = GuidelineRegistry(project_root=repo_root)
             guideline_names = guideline_registry.all_names(active_packs)
             guideline_files = []
             generated_guidelines_dir = config_dir / "_generated" / "guidelines"

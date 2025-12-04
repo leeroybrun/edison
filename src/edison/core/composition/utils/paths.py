@@ -1,4 +1,7 @@
-"""Helpers for resolving project directory placeholders in composed content."""
+"""Path utilities for the composition system.
+
+Provides helpers for resolving project directory placeholders in composed content.
+"""
 from __future__ import annotations
 
 import os
@@ -53,6 +56,15 @@ def resolve_project_dir_placeholders(
 
     When a target_path inside the project directory is provided, the replacement
     uses a relative path from the target to keep generated artifacts portable.
+
+    Args:
+        text: Content containing {{PROJECT_EDISON_DIR}} placeholders
+        project_dir: The project's .edison directory path
+        target_path: Optional path where the content will be written
+        repo_root: Optional repository root for fallback resolution
+
+    Returns:
+        Text with placeholders replaced by appropriate paths
     """
     if not _PROJECT_DIR_PATTERN.search(text):
         return text

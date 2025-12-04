@@ -24,7 +24,7 @@ class TestComposableRegistryBase:
 
     def test_registry_is_abstract(self) -> None:
         """ComposableRegistry cannot be instantiated directly."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         # ComposableRegistry requires content_type to be defined
         with pytest.raises(NotImplementedError):
@@ -32,7 +32,7 @@ class TestComposableRegistryBase:
 
     def test_subclass_requires_content_type(self, isolated_project_env: Path) -> None:
         """Subclass must define content_type."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class IncompleteRegistry(ComposableRegistry[str]):
             # Missing content_type
@@ -45,7 +45,7 @@ class TestComposableRegistryBase:
         self, isolated_project_env: Path
     ) -> None:
         """Subclass with all required attributes can be instantiated."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class TestRegistry(ComposableRegistry[str]):
             content_type = "test-content"
@@ -66,7 +66,7 @@ class TestComposableRegistryDiscovery:
         self, isolated_project_env: Path
     ) -> None:
         """discover_core delegates to LayerDiscovery."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class TestRegistry(ComposableRegistry[str]):
             content_type = "agents"
@@ -85,7 +85,7 @@ class TestComposableRegistryDiscovery:
         self, isolated_project_env: Path
     ) -> None:
         """discover_project finds files in .edison/{content_type}/."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         root = isolated_project_env
 
@@ -108,7 +108,7 @@ class TestComposableRegistryDiscovery:
         self, isolated_project_env: Path
     ) -> None:
         """discover_packs finds files in .edison/packs/{pack}/{content_type}/."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         root = isolated_project_env
 
@@ -133,7 +133,7 @@ class TestComposableRegistryComposition:
 
     def test_compose_uses_strategy(self, isolated_project_env: Path) -> None:
         """compose() delegates to MarkdownCompositionStrategy."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         root = isolated_project_env
 
@@ -162,7 +162,7 @@ Introduction content.
 
     def test_compose_with_project_overlays(self, isolated_project_env: Path) -> None:
         """compose() applies project overlays via EXTEND markers."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         root = isolated_project_env
 
@@ -202,7 +202,7 @@ Project extension.
 
     def test_compose_with_dedupe_enabled(self, isolated_project_env: Path) -> None:
         """compose() deduplicates when strategy_config enables it."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         root = isolated_project_env
 
@@ -239,7 +239,7 @@ class TestComposableRegistryStrategyConfig:
 
     def test_default_strategy_config(self, isolated_project_env: Path) -> None:
         """Default strategy_config has sensible defaults."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class DefaultRegistry(ComposableRegistry[str]):
             content_type = "test"
@@ -257,7 +257,7 @@ class TestComposableRegistryStrategyConfig:
         self, isolated_project_env: Path
     ) -> None:
         """Custom strategy_config overrides defaults."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class CustomRegistry(ComposableRegistry[str]):
             content_type = "test"
@@ -281,7 +281,7 @@ class TestComposableRegistryInheritance:
 
     def test_inherits_path_resolution(self, isolated_project_env: Path) -> None:
         """ComposableRegistry has path resolution from CompositionBase."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class TestRegistry(ComposableRegistry[str]):
             content_type = "test"
@@ -299,7 +299,7 @@ class TestComposableRegistryInheritance:
 
     def test_inherits_config_management(self, isolated_project_env: Path) -> None:
         """ComposableRegistry has config management from CompositionBase."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class TestRegistry(ComposableRegistry[str]):
             content_type = "test"
@@ -315,7 +315,7 @@ class TestComposableRegistryInheritance:
 
     def test_inherits_active_packs(self, isolated_project_env: Path) -> None:
         """ComposableRegistry has get_active_packs from CompositionBase."""
-        from edison.core.entity.composable_registry import ComposableRegistry
+        from edison.core.composition.registries.base import ComposableRegistry
 
         class TestRegistry(ComposableRegistry[str]):
             content_type = "test"

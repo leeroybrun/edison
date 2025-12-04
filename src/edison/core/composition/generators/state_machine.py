@@ -185,7 +185,7 @@ class StateMachineGenerator(ComposableGenerator):
         """
         from datetime import datetime, timezone
         from edison.core.composition.output.headers import build_generated_header
-        from ..path_utils import resolve_project_dir_placeholders
+        from ..utils.paths import resolve_project_dir_placeholders
 
         # Load data
         data = self._gather_data()

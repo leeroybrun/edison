@@ -1,4 +1,4 @@
-# {{ validator_name }} Validation Report
+# {{validator_name}} Validation Report
 
 ## Executive Summary
 
@@ -34,6 +34,6 @@
 
 ---
 
-*Report generated on: {{ timestamp }}*
-*Session ID: {{ session_id }}*
-*Validator: {{ validator_name }}*
+*Report generated on: {{timestamp}}*
+*Session ID: {{session_id}}*
+*Validator: {{validator_name}}*

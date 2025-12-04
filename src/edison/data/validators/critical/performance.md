@@ -763,6 +763,10 @@ Machine-readable JSON report (required):
 
 ---
 
+<!-- SECTION: composed-additions -->
+
+<!-- /SECTION: composed-additions -->
+
 ## Remember
 
 - **Performance failures BLOCK** (resolve before completion)

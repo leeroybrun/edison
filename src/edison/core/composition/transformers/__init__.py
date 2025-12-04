@@ -14,7 +14,9 @@ Each transformer handles a specific category of template processing:
 from __future__ import annotations
 
 from .base import ContentTransformer, TransformContext, TransformerPipeline
-from .conditionals import ConditionEvaluator, ConditionalProcessor, CompositionContext
+from .conditionals import ConditionEvaluator, ConditionalProcessor
+# Import unified CompositionContext from central location
+from ..context import CompositionContext
 from .includes import IncludeResolver, SectionExtractor, IncludeTransformer
 from .loops import LoopExpander
 from .variables import (

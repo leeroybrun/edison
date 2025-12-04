@@ -109,8 +109,9 @@ class ComposableGenerator(CompositionBase):
             Composed template content
         """
         from edison.core.composition.core.discovery import LayerDiscovery
+        # Import unified CompositionContext from central location
+        from edison.core.composition.context import CompositionContext
         from edison.core.composition.strategies import (
-            CompositionContext,
             LayerContent,
             MarkdownCompositionStrategy,
         )

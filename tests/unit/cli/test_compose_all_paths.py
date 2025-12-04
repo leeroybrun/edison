@@ -8,31 +8,29 @@ from argparse import Namespace
 
 def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-val") -> None:
     """Create minimal Edison structure needed for composition tests."""
-    # Create core Edison structure
-    core_dir = repo_root / ".edison" / "core"
-    validators_dir = core_dir / "validators" / "global"
+    # Create project validators directory (not core - core is bundled in edison.data)
+    # Project validators go in .edison/validators/ as overlays
+    validators_dir = repo_root / ".edison" / "validators"
     validators_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create minimal validator spec for testing
-    # Extract role from validator_id (e.g., "test-val" -> "test")
-    role = validator_id.split("-", 1)[0]
-    validator_spec = validators_dir / f"{role}.md"
+    # Create validator file with exact id as filename
+    validator_spec = validators_dir / f"{validator_id}.md"
     validator_spec.write_text(
-        "# Core Edison Principles\n"
+        "# Test Validator\n"
         f"Test validator content for {validator_id}.\n"
         "Unique test guidance to avoid DRY violations.\n",
         encoding="utf-8",
     )
 
-    # Create mandatory guideline files for orchestrator
-    guidelines_dir = core_dir / "guidelines"
+    # Create project guidelines directory (overlays on bundled guidelines)
+    guidelines_dir = repo_root / ".edison" / "guidelines"
     guidelines_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create required guideline files
+    # Create project-specific guideline files (these overlay bundled ones)
     for guideline_name in ["SESSION_WORKFLOW", "DELEGATION", "TDD"]:
         guideline_file = guidelines_dir / f"{guideline_name}.md"
         guideline_file.write_text(
-            f"# {guideline_name}\n\nTest guideline content.\n",
+            f"# {guideline_name}\n\nTest guideline content from project overlay.\n",
             encoding="utf-8",
         )
 

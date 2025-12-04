@@ -29,10 +29,10 @@ metadata:
 - Prioritize Context7 lookups for the packages listed in this file’s `context7_ids` before coding.
 - Versions + topics live in `config/context7.yaml` (never hardcode).
 - Required refresh set: react, tailwindcss, prisma, zod, motion
-- Next.js 16
-- React 19
-- Tailwind CSS 4
-- Prisma 6
+- Next.js {{config.context7.packages.next.version}}
+- React {{config.context7.packages.react.version}}
+- Tailwind CSS {{config.context7.packages.tailwindcss.version}}
+- Prisma {{config.context7.packages.prisma.version}}
 
 ### Resolve Library ID
 ```js

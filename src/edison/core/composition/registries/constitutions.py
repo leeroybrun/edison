@@ -10,10 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.entity.composable_registry import ComposableRegistry
+from .base import ComposableRegistry
 from edison.core.utils.time import utc_timestamp
 from edison.core.composition.output.headers import resolve_version
-from edison.core.composition.path_utils import resolve_project_dir_placeholders
+from edison.core.composition.utils.paths import resolve_project_dir_placeholders
 from edison.core.composition.registries.rules import get_rules_for_role
 
 
@@ -92,7 +92,7 @@ class ConstitutionRegistry(ComposableRegistry[ConstitutionResult]):
         rendered = rendered.replace("{{generated_date}}", generated_iso)
         rendered = rendered.replace("{{timestamp}}", generated_iso)
         rendered = rendered.replace("{{version}}", str(version))
-        rendered = rendered.replace("{{template_name}}", f"constitutions/{ROLE_MAP[role]['slug']}-base.md")
+        rendered = rendered.replace("{{template}}", f"constitutions/{ROLE_MAP[role]['slug']}-base.md")
 
         rendered = rendered.replace(f"{{{{#each mandatoryReads.{ROLE_MAP[role]['mandatory']}}}}}", reads_section)
         rendered = rendered.replace(f"{{{{#each optionalReads.{ROLE_MAP[role]['mandatory']}}}}}", optional_section)

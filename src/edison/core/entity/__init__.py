@@ -47,9 +47,7 @@ from .exceptions import (
     PersistenceError,
     LockError,
 )
-from .composable_registry import ComposableRegistry
 from .manager import BaseEntityManager
-from .registry import BaseRegistry
 from .repository import BaseRepository
 from .file_repository import (
     FileRepositoryMixin,
@@ -83,9 +81,6 @@ __all__ = [
     "LockError",
     # Manager base
     "BaseEntityManager",
-    # Registry bases
-    "BaseRegistry",
-    "ComposableRegistry",
     # Repository
     "BaseRepository",
     "FileRepositoryMixin",

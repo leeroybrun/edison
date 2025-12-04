@@ -98,7 +98,8 @@ def __getattr__(name: str):
         "ConstitutionRegistry": ".registries.constitutions",
         "ConstitutionResult": ".registries.constitutions",
         "generate_all_constitutions": ".registries.constitutions",
-        "generate_canonical_entry": ".registries.rosters",
+        "generate_canonical_entry": ".generators.roots",
+        "get_rules_for_role": ".registries.rules",
     }
 
     # IDE composition classes (from adapters.components and adapters.platforms)
@@ -211,6 +212,8 @@ __all__ = [
     # Constitutions
     "ConstitutionRegistry",
     "ConstitutionResult",
+    # Rules
+    "get_rules_for_role",
     # IDE
     "CommandArg",
     "CommandDefinition",

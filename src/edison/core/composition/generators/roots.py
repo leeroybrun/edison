@@ -1,22 +1,31 @@
-"""Legacy roster functions - kept for backward compatibility.
+"""Root entry point generator (AGENTS.md).
 
-Note: Agent and Validator roster generation has been moved to composition/generators/
-This file only contains generate_canonical_entry which is still used by the CLI.
+Generates the root entry point file (AGENTS.md) that directs LLMs
+to their appropriate role constitutions.
 
-TODO (Subagent D): Migrate generate_canonical_entry to CanonicalEntryGenerator
+Uses the roots/AGENTS.md template with variable substitution:
+- {{source_layers}}: List of composition sources
+- {{timestamp}}: Current generation timestamp
+- {{PROJECT_EDISON_DIR}}: Project config directory path
 """
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
+
+from edison.data import get_data_path
+from edison.core.config import ConfigManager
+from edison.core.composition.core.paths import CompositionPathResolver
+from edison.core.composition.output.writer import CompositionFileWriter
+from edison.core.utils.io import ensure_directory
+from ..utils.paths import resolve_project_dir_placeholders
 
 
-def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None) -> None:
-    """Generate AGENTS.md canonical entry point from template.
+def generate_root_entry(output_path: Path, repo_root: Optional[Path] = None) -> None:
+    """Generate AGENTS.md root entry point from template.
 
-    This is a legacy wrapper - should eventually be migrated to CanonicalEntryGenerator.
-
-    Uses the canonical/AGENTS.md template and substitutes:
+    Uses the roots/AGENTS.md template and substitutes:
     - {{source_layers}}: List of composition sources
     - {{timestamp}}: Current generation timestamp
     - {{PROJECT_EDISON_DIR}}: Project config directory path
@@ -25,20 +34,12 @@ def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None
         output_path: Path where the generated file should be written
         repo_root: Optional repository root path for testing
     """
-    from datetime import datetime
-    from edison.data import get_data_path
-    from edison.core.config import ConfigManager
-    from edison.core.composition.core.paths import CompositionPathResolver
-    from edison.core.composition.output.writer import CompositionFileWriter
-    from edison.core.utils.io import ensure_directory
-    from ..path_utils import resolve_project_dir_placeholders
-
     ensure_directory(output_path.parent)
 
     # Load template
-    template_path = get_data_path("canonical", "AGENTS.md")
+    template_path = get_data_path("roots", "AGENTS.md")
     if not template_path.exists():
-        raise FileNotFoundError(f"Canonical entry template not found at {template_path}")
+        raise FileNotFoundError(f"Root entry template not found at {template_path}")
 
     template = template_path.read_text(encoding="utf-8")
 
@@ -72,6 +73,11 @@ def generate_canonical_entry(output_path: Path, repo_root: Optional[Path] = None
     writer.write_text(output_path, content)
 
 
+# Backward-compatible alias
+generate_canonical_entry = generate_root_entry
+
+
 __all__ = [
-    "generate_canonical_entry",
+    "generate_root_entry",
+    "generate_canonical_entry",  # Backward-compatible alias
 ]

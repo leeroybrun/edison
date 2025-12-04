@@ -16,9 +16,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.entity.composable_registry import ComposableRegistry
+from .base import ComposableRegistry
 from edison.core.utils.text import render_conditional_includes
-from ..path_utils import resolve_project_dir_placeholders
+from ..utils.paths import resolve_project_dir_placeholders
 
 
 class AgentError(RuntimeError):

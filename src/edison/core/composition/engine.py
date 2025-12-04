@@ -29,7 +29,9 @@ from typing import Any, Callable, Dict, List, Optional
 from .core.report import CompositionReport
 from .core.sections import SectionParser
 from .transformers.base import ContentTransformer, TransformContext, TransformerPipeline
-from .transformers.conditionals import CompositionContext, ConditionEvaluator, ConditionalProcessor
+# Import unified CompositionContext from central location
+from .context import CompositionContext
+from .transformers.conditionals import ConditionEvaluator, ConditionalProcessor
 from .transformers.includes import IncludeTransformer
 from .transformers.loops import LoopExpander
 from .transformers.references import ReferenceRenderer

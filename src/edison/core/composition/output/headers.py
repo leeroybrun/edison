@@ -9,7 +9,7 @@ from edison import __version__ as package_version
 from edison.core.config import ConfigManager
 from edison.core.utils.time import utc_timestamp
 from edison.data import get_data_path
-from ..path_utils import resolve_project_dir_placeholders
+from ..utils.paths import resolve_project_dir_placeholders
 
 
 def load_header_template(cfg_mgr: ConfigManager, config: Dict[str, Any]) -> str:

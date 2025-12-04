@@ -890,6 +890,10 @@ Validators MUST read from the composed registry output above (never hardcode rul
 <!-- SECTION: tech-stack -->
 <!-- /SECTION: tech-stack -->
 
+<!-- SECTION: composed-additions -->
+
+<!-- /SECTION: composed-additions -->
+
 **This section is populated by the composition engine with framework-specific security guidelines:**
 - Authentication patterns (e.g., Next.js auth, Django auth, Express middleware)
 - Input validation patterns (e.g., Zod, Joi, class-validator)

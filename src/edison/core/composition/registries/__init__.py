@@ -30,7 +30,7 @@ from .constitutions import (
 )
 # Note: Rosters (generate_available_agents, generate_available_validators)
 # have been moved to composition/generators/
-# generate_canonical_entry is still defined here for now
+# generate_canonical_entry is now in composition/generators/roots.py
 
 from .rules import (
     RulesRegistry,
@@ -53,6 +53,9 @@ from .documents import (
     DocumentTemplate,
     compose_document,
 )
+from .generic import GenericRegistry
+from .registry_base import BaseRegistry
+from .base import ComposableRegistry
 from ..core.errors import (
     AnchorNotFoundError,
     RulesCompositionError,
@@ -78,8 +81,6 @@ __all__ = [
     "ConstitutionRegistry",
     "ConstitutionResult",
     "generate_all_constitutions",
-    # Rosters (generate_canonical_entry still available if rosters.py exists)
-    "generate_canonical_entry",
     # Rules
     "RulesRegistry",
     "compose_rules",
@@ -95,6 +96,11 @@ __all__ = [
     "DocumentTemplateNotFoundError",
     "DocumentTemplate",
     "compose_document",
+    # Generic
+    "GenericRegistry",
+    # Base classes
+    "BaseRegistry",
+    "ComposableRegistry",
     # Errors
     "AnchorNotFoundError",
     "RulesCompositionError",

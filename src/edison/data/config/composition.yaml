@@ -144,10 +144,10 @@ content_types:
     
     known_sections: []  # Rules don't use markdown sections
 
-  canonical-entry:
-    description: "Project root entry point (AGENTS.md) with mandatory constitution read"
-    
-    # Canonical entry is mostly static - minimal extension points
+  roots:
+    description: "Project root entry point files (e.g., AGENTS.md)"
+
+    # Root entry points are mostly static - minimal extension points
     known_sections:
       - name: mandatory-read
         mode: replace
@@ -252,7 +252,7 @@ outputs:
     # Filename (can be customized, e.g., "AGENTS_COMPOSED.md")
     filename: "AGENTS.md"
     # Source template (relative to edison data dir)
-    template: "canonical/AGENTS.md"
+    template: "roots/AGENTS.md"
 
   # -------------------------------------------------------------------------
   # Client Files (CLAUDE.md, zen.md, etc.)

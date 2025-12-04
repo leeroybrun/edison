@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.entity.composable_registry import ComposableRegistry
+from .base import ComposableRegistry
 
 
 class DocumentTemplateError(RuntimeError):

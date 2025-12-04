@@ -22,12 +22,14 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, TypeVar
 
-from .base import EntityId
-from edison.core.composition.core.paths import CompositionPathResolver
+from ..core.paths import CompositionPathResolver
+
+# Type alias for entity identifiers (avoiding circular import from entity.base)
+EntityId = str
 
 # Use TYPE_CHECKING to avoid circular import at runtime
 if TYPE_CHECKING:
-    from edison.core.composition.core.base import CompositionBase as CompositionBaseType
+    from ..core.base import CompositionBase as CompositionBaseType
 
 # Type variable for registry content types
 T = TypeVar("T")
@@ -35,7 +37,7 @@ T = TypeVar("T")
 
 def _get_composition_base() -> type:
     """Lazy import CompositionBase to avoid circular import."""
-    from edison.core.composition.core.base import CompositionBase
+    from ..core.base import CompositionBase
     return CompositionBase
 
 

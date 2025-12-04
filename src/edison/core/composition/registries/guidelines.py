@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Set
 
-from edison.core.entity.composable_registry import ComposableRegistry
-from edison.core.composition.strategies import CompositionContext
+from .base import ComposableRegistry
+# Import unified CompositionContext from central location
+from edison.core.composition.context import CompositionContext
 from edison.core.utils.text import dry_duplicate_report, ENGINE_VERSION
 
 

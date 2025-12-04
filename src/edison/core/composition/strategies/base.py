@@ -2,7 +2,7 @@
 
 This module provides the foundation for all composition strategies:
 - LayerContent: Represents content from a composition layer
-- CompositionContext: Context information for composition operations
+- CompositionContext: Context information for composition operations (from context.py)
 - CompositionStrategy: Abstract base class for all composition strategies
 """
 from __future__ import annotations
@@ -11,6 +11,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Import unified CompositionContext from central location
+from ..context import CompositionContext
 
 
 @dataclass
@@ -48,23 +51,6 @@ class LayerContent:
         if self.is_pack:
             return self.source.split(":", 1)[1]
         return None
-
-
-@dataclass
-class CompositionContext:
-    """Context for composition operations.
-
-    Attributes:
-        active_packs: List of active pack names
-        config: Configuration dictionary
-        project_root: Optional project root path
-        source_dir: Optional source directory for resolving includes
-    """
-
-    active_packs: List[str]
-    config: Dict[str, Any]
-    project_root: Optional[Path] = None
-    source_dir: Optional[Path] = None
 
 
 class CompositionStrategy(ABC):

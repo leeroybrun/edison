@@ -23,47 +23,14 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, TYPE_CHECKING
+
+# Import unified CompositionContext from central location
+from ..context import CompositionContext
 
 if TYPE_CHECKING:
     from edison.core.config import ConfigManager
-
-
-@dataclass
-class CompositionContext:
-    """Context for condition evaluation during composition.
-
-    Provides access to:
-    - Active packs list
-    - Configuration values
-    - Project root for file existence checks
-    """
-
-    active_packs: List[str] = field(default_factory=list)
-    config: Dict[str, Any] = field(default_factory=dict)
-    project_root: Optional[Path] = None
-
-    def get_config(self, path: str) -> Any:
-        """Get config value by dot-separated path.
-
-        Args:
-            path: Dot-separated path like 'features.auth.enabled'
-
-        Returns:
-            The config value or None if not found
-        """
-        parts = path.split(".")
-        current: Any = self.config
-        for part in parts:
-            if isinstance(current, dict):
-                current = current.get(part)
-            else:
-                return None
-            if current is None:
-                return None
-        return current
 
 
 class ConditionEvaluator:

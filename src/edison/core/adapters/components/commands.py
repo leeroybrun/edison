@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from edison.core.composition.path_utils import resolve_project_dir_placeholders
+from edison.core.composition.utils.paths import resolve_project_dir_placeholders
 from edison.core.utils.io import ensure_directory
 from .base import AdapterComponent, AdapterContext
 

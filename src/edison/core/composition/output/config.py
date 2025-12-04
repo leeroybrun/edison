@@ -110,7 +110,7 @@ class OutputConfigLoader:
             enabled=cfg.get("enabled", True),
             output_path=cfg.get("output_path", "."),
             filename=cfg.get("filename", "AGENTS.md"),
-            template=cfg.get("template", "canonical/AGENTS.md"),
+            template=cfg.get("template", "roots/AGENTS.md"),
         )
 
     def get_canonical_entry_path(self) -> Optional[Path]:

@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Iterable, Optional
 
-from edison.core.entity.composable_registry import ComposableRegistry
+from .base import ComposableRegistry
 from edison.core.composition.core.paths import CompositionPathResolver
 
 

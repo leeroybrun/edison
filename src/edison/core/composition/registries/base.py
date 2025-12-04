@@ -19,13 +19,12 @@ Architecture:
 """
 from __future__ import annotations
 
-from abc import abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Generic, List, Optional, TypeVar
 
-from edison.core.composition.core.base import CompositionBase
-from edison.core.composition.core.discovery import LayerDiscovery, LayerSource
-from edison.core.composition.strategies import (
+from ..core.base import CompositionBase
+from ..core.discovery import LayerDiscovery
+from ..strategies import (
     CompositionContext,
     LayerContent,
     MarkdownCompositionStrategy,
@@ -35,13 +34,17 @@ from edison.core.composition.strategies import (
 T = TypeVar("T")
 
 
-# Default strategy configuration
-DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
+# Fallback defaults if YAML config not available
+# These are overridden by composition.yaml > defaults section
+_FALLBACK_STRATEGY_CONFIG: Dict[str, Any] = {
     "enable_sections": True,
     "enable_dedupe": False,
     "dedupe_shingle_size": 12,
     "enable_template_processing": True,
 }
+
+# Alias for backward compatibility (prefer reading from YAML)
+DEFAULT_STRATEGY_CONFIG = _FALLBACK_STRATEGY_CONFIG
 
 
 class ComposableRegistry(CompositionBase, Generic[T]):
@@ -145,14 +148,49 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     def get_strategy_config(self) -> Dict[str, Any]:
         """Get merged strategy configuration.
 
-        Merges class-level strategy_config with defaults.
+        Priority order (lowest to highest):
+        1. _FALLBACK_STRATEGY_CONFIG (code defaults)
+        2. composition.yaml > defaults section
+        3. composition.yaml > content_types.{type} section
+        4. Class-level strategy_config attribute
 
         Returns:
             Strategy configuration dict
         """
-        result = dict(DEFAULT_STRATEGY_CONFIG)
+        # Start with code fallback defaults
+        result = dict(_FALLBACK_STRATEGY_CONFIG)
+
+        # Layer 2: Read defaults from composition.yaml
+        comp_cfg = self.config.get("composition", {}) or {}
+        yaml_defaults = comp_cfg.get("defaults", {}) or {}
+        if yaml_defaults:
+            # Map YAML keys to strategy config keys
+            if "dedupe_min_shingles" in yaml_defaults:
+                result["dedupe_min_shingles"] = yaml_defaults["dedupe_min_shingles"]
+            # dryDetection.shingleSize maps to dedupe_shingle_size
+            dry_cfg = comp_cfg.get("dryDetection", {}) or {}
+            if "shingleSize" in dry_cfg:
+                result["dedupe_shingle_size"] = dry_cfg["shingleSize"]
+
+        # Layer 3: Read content-type specific config
+        type_cfg = comp_cfg.get("content_types", {}).get(self.content_type, {})
+        if type_cfg:
+            # Enable sections if known_sections is defined and non-empty
+            known_sections = type_cfg.get("known_sections", [])
+            if known_sections:
+                result["enable_sections"] = True
+            # Dedupe config
+            if "dedupe" in type_cfg:
+                result["enable_dedupe"] = bool(type_cfg["dedupe"])
+            if "composition_mode" in type_cfg and type_cfg["composition_mode"] == "concatenate":
+                result["enable_sections"] = False  # Concatenate doesn't use sections
+            if "shingle_size" in type_cfg:
+                result["dedupe_shingle_size"] = int(type_cfg["shingle_size"])
+
+        # Layer 4: Class-level strategy_config overrides
         if self.strategy_config:
             result.update(self.strategy_config)
+
         return result
 
     # =========================================================================
