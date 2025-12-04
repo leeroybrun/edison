@@ -137,29 +137,37 @@ edison.core/
 │       ├── repository.py  # QA record storage
 │       └── transaction.py # QA state transitions
 ├── composition/            # Unified composition system
-│   ├── core.py            # CompositionBase, CompositionPathResolver
-│   ├── composer.py        # LayeredComposer (main layered engine)
+│   ├── context.py         # CompositionContext (unified context with context_vars)
+│   ├── engine.py          # TemplateEngine (10-step transformation pipeline)
+│   ├── core/              # Core composition infrastructure
+│   │   ├── base.py        # CompositionBase, CompositionPathResolver
+│   │   ├── discovery.py   # LayerDiscovery for file discovery
+│   │   └── sections.py    # SectionParser, SectionRegistry
+│   ├── strategies/        # Composition strategies
+│   │   ├── base.py        # CompositionStrategy, LayerContent
+│   │   └── markdown.py    # MarkdownCompositionStrategy (sections + template processing)
 │   ├── transformers/      # Template transformation pipeline
 │   │   ├── base.py        # ContentTransformer, TransformContext, TransformerPipeline
 │   │   ├── includes.py    # {{include:path}}, {{include-section:path#name}}
 │   │   ├── conditionals.py # {{if:COND}}...{{/if}}, {{include-if:COND:path}}
-│   │   ├── loops.py       # {{#each collection}}...{{/each}}
-│   │   ├── variables.py   # {{config.key}}, {{PROJECT_ROOT}}, {{timestamp}}
+│   │   ├── loops.py       # {{#each collection}}...{{/each}} with context_vars
+│   │   ├── variables.py   # {{config.key}}, {{timestamp}}, custom context vars
 │   │   ├── references.py  # {{reference-section:path#name|purpose}}
-│   │   └── functions.py   # {{function:name(args)}} - custom Python functions
+│   │   └── functions.py   # {{fn:name(args)}} - custom Python functions
 │   ├── generators/        # Content generators (ComposableGenerator base)
 │   │   ├── base.py        # ComposableGenerator abstract base class
-│   │   ├── roster.py      # AgentRosterGenerator, ValidatorRosterGenerator
+│   │   ├── available_agents.py # AgentRosterGenerator
+│   │   ├── available_validators.py # ValidatorRosterGenerator
 │   │   └── state_machine.py # StateMachineGenerator
 │   ├── registries/        # Content registries (ComposableRegistry pattern)
-│   │   ├── agents.py      # AgentRegistry (discover_core/packs/project)
-│   │   ├── validators.py  # ValidatorRegistry
-│   │   ├── guidelines.py  # GuidelineRegistry
-│   │   ├── constitutions.py # Constitution composition
-│   │   └── rules.py       # RulesRegistry
+│   │   ├── _base.py       # ComposableRegistry with built-in context_vars
+│   │   ├── generic.py     # GenericRegistry (config-driven for most content types)
+│   │   ├── constitutions.py # ConstitutionRegistry (constitution-specific context)
+│   │   ├── schemas.py     # JsonSchemaRegistry (JSON composition)
+│   │   └── _types_manager.py # ComposableTypesManager (CLI orchestration)
 │   ├── packs/             # Pack system
 │   │   ├── registry.py    # Pack discovery and activation
-│   │   └── composition.py # Pack content merging
+│   │   └── activation.py  # Pack activation logic
 │   └── output/            # Output utilities
 │       ├── config.py      # OutputConfigLoader
 │       ├── writer.py      # CompositionFileWriter
@@ -186,12 +194,12 @@ edison.core/
 │   ├── manager.py         # ConfigManager (loads/merges YAML)
 │   ├── base.py            # Base configuration types
 │   ├── cache.py           # Configuration caching
-│   └── domains/           # Domain-specific configs
+│   └── domains/           # Domain-specific typed configs
 │       ├── task.py        # Task configuration
 │       ├── session.py     # Session configuration
 │       ├── qa.py          # QA configuration
 │       ├── workflow.py    # Workflow configuration
-│       ├── composition.py # Composition configuration
+│       ├── composition.py # CompositionConfig - typed accessor for composition.yaml
 │       ├── orchestrator.py # Orchestrator configuration
 │       └── ...
 ├── orchestrator/           # Orchestrator management
@@ -243,9 +251,9 @@ edison.data/
 │   ├── tasks.yaml         # Task configuration
 │   └── ...                # 40+ configuration files
 ├── constitutions/          # Role constitutions (foundational rules)
-│   ├── agents-base.md     # Base agent constitution
-│   ├── orchestrator-base.md # Base orchestrator constitution
-│   └── validators-base.md # Base validator constitution
+│   ├── agents.md          # Agent constitution (discovered from filename)
+│   ├── orchestrator.md    # Orchestrator constitution
+│   └── validators.md      # Validator constitution
 ├── guidelines/             # Guideline documents
 │   ├── shared/            # Shared guidelines
 │   │   └── TDD.md         # TDD workflow
@@ -1202,16 +1210,62 @@ EdisonError (base)
 
 ---
 
-**Last Updated**: 2025-12-01
-**Version**: 1.0.0
+**Last Updated**: 2025-12-04
+**Version**: 2.0.0
 **Authors**: Edison Framework Team
 
 👉 For full templating/composition details (layers, syntax, functions, outputs), see `docs/TEMPLATING.md`.
 
 ## Unified Composition (current)
 
-- **Single strategy**: `MarkdownCompositionStrategy` for all markdown (agents, validators, guidelines, constitutions, rosters, docs). YAML uses the layered config loader—no mode matrix.
-- **Layer order**: core → packs → project. Guidelines can opt into `merge_same_name` (concatenate + dedupe) instead of overlays.
-- **Templating pipeline**: sections/extend markers → includes → variables (config/context) → conditionals → loops → references → functions. All behavior is YAML-configurable.
-- **Functions extension**: drop Python files into `functions/` under core/packs/project; call with `{{fn:name arg1 arg2}}`. Load order follows layering (project overrides packs overrides core).
-- **Output config**: every output path (clients, agents, validators, guidelines, rosters, state machine, canonical entry) is defined in `composition.yaml` and resolved by `OutputConfigLoader`—no hardcoded paths.
+### Architecture Overview
+
+The composition system is fully configuration-driven with typed access via `CompositionConfig`:
+
+```
+composition.yaml (under composition: key)
+       ↓
+CompositionConfig (typed domain config)
+       ↓
+ComposableRegistry.comp_config (lazy property)
+       ↓
+get_strategy_config(), _resolve_output_paths(), get_context_vars()
+```
+
+### Key Components
+
+- **`CompositionConfig`**: Typed accessor for all composition settings (`composition.defaults`, `composition.content_types`, `composition.adapters`)
+- **`ComposableRegistry`**: Base class for all registries with built-in context variables and config-driven strategy loading
+- **`GenericRegistry`**: Config-driven registry used for most content types (agents, validators, guidelines, documents, roots, cursor_rules)
+- **`ConstitutionRegistry`**: Extends base with constitution-specific context (mandatoryReads, optionalReads, rules)
+- **`JsonSchemaRegistry`**: JSON schema composition with deep merge
+- **`ComposableTypesManager`**: CLI orchestration - iterates content_types from config
+
+### Built-in Context Variables
+
+All registries automatically provide via `get_context_vars()`:
+- `name`, `content_type` - Entity identification
+- `source_layers`, `timestamp`, `generated_date`, `version` - Composition metadata
+- `template`, `output_dir`, `output_path`, `PROJECT_EDISON_DIR` - Paths (all relative to project root)
+
+### Configuration Namespacing
+
+All composition config is under the `composition:` key to prevent conflicts when merged with other config files:
+
+```yaml
+composition:
+  defaults:
+    dedupe: { shingle_size: 12, ... }
+  content_types:
+    agents: { enabled: true, output_path: "...", ... }
+  adapters:
+    claude: { enabled: true, adapter_class: "...", ... }
+```
+
+### Composition Principles
+
+- **Single strategy**: `MarkdownCompositionStrategy` for all markdown. YAML uses layered config loader.
+- **Layer order**: core → packs → project. Overlays go in `overlays/` subdirectory.
+- **Templating pipeline**: sections/extend → includes → conditionals → loops → functions → variables → references → validation
+- **Zero hardcoding**: All content types, output paths, and adapters are defined in `composition.yaml`
+- **Functions extension**: Python files in `functions/` directories; call with `{{fn:name arg1}}`

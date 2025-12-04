@@ -49,10 +49,7 @@ Behavior:
 2. Includes
    - `{{include:path/to/file.md}}`
    - `{{include-section:path#section}}`
-3. Variables
-   - `{{config.key}}`, `{{PROJECT_ROOT}}`, `{{REPO_ROOT}}`, `{{timestamp}}`
-   - Context vars passed by composers/generators (e.g., `agents`, `validators`, `generated_header`)
-4. Conditionals
+3. Conditionals
    - `{{if:condition}}...{{/if}}`
    - `{{include-if:condition:path}}`
    - If/else blocks: `{{if:condition}}...{{else}}...{{/if}}`
@@ -63,12 +60,22 @@ Behavior:
      - `env(NAME)`
      - `file-exists(path)` (relative to project_root)
      - `not(expr)`, `and(a,b)`, `or(a,b)`
-5. Loops
+4. Loops
    - `{{#each collection}}...{{/each}}`
-6. References
-   - `{{reference-section:path#name|purpose}}`
-7. Functions
+   - Access item properties with `{{this.property}}`
+   - Loop index: `{{@index}}`
+   - Inline conditionals: `{{#if this.prop}}...{{else}}...{{/if}}`
+   - Last item check: `{{#unless @last}}...{{/unless}}`
+5. Functions
    - `{{fn:name arg1 arg2}}`
+6. Variables
+   - Config vars: `{{config.key}}`, `{{project.key}}`
+   - Context vars: `{{source_layers}}`, `{{timestamp}}`, `{{version}}`, and any custom context vars
+   - Path vars: `{{PROJECT_EDISON_DIR}}`, `{{PROJECT_ROOT}}`, `{{REPO_ROOT}}`
+7. References
+   - `{{reference-section:path#name|purpose}}`
+8. Validation
+   - Unresolved `{{...}}` markers are reported; section markers stripped
 
 All stages are YAML-configurable; no hardcoded paths.
 
@@ -158,16 +165,91 @@ Current: {{fn:task_states current_state}}
 - 100% YAML-configurable; zero hardcoded paths.
 - Layer order and template pipeline are deterministic and documented above.
 
-_Last updated: 2025-12-03_
+_Last updated: 2025-12-04 (unified composition config)_
 
 
-## 9) Additional Details
+## 9) Context Variables
+
+Context variables flow through the composition pipeline via `CompositionContext.context_vars`. They are merged with built-in defaults and made available to both simple variable substitution (`{{var}}`) and loop expansion (`{{#each collection}}`).
+
+### Built-in Context Variables (always available)
+
+All registries automatically provide these built-in context variables via `ComposableRegistry.get_context_vars()`:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{name}}` | Entity name being composed | `agents`, `test-engineer` |
+| `{{content_type}}` | Content type | `constitutions`, `agents` |
+| `{{source_layers}}` | Composition layers | `core + pack(react) + pack(nextjs)` |
+| `{{timestamp}}` | ISO timestamp (UTC) | `2025-12-04T13:24:50Z` |
+| `{{generated_date}}` | Alias for timestamp | `2025-12-04T13:24:50Z` |
+| `{{version}}` | Edison version from config | `1.0.0` |
+| `{{template}}` | Source template path | `constitutions/agents.md` |
+| `{{output_dir}}` | Output directory (relative) | `.edison/_generated/constitutions` |
+| `{{output_path}}` | Full output path (relative) | `.edison/_generated/constitutions/AGENTS.md` |
+| `{{PROJECT_EDISON_DIR}}` | Project .edison directory (relative) | `.edison` |
+
+All paths are **relative to project root** for portability.
+
+### Registry-Specific Context Variables
+
+Registries can extend the built-in variables with custom context:
+
+**Constitutions** (`ConstitutionRegistry`):
+- `mandatoryReads` - List of mandatory read items (for `{{#each mandatoryReads}}`)
+- `optionalReads` - List of optional read items (for `{{#each optionalReads}}`)
+- `rules` - List of rules for role (for `{{#each rules}}`)
+
+**Rosters** (`AgentRosterGenerator`, `ValidatorRosterGenerator`):
+- `agents` / `validators` - List of entities (for `{{#each agents}}`)
+- `generated_header` - Header content
+
+**State Machine** (`StateMachineGenerator`):
+- `domains` - State machine domains (for `{{#each domains}}`)
+- `mermaid_diagram` - Generated Mermaid diagram
+
+### Custom Context Variables
+
+Registries extend `get_context_vars()` to provide custom variables:
+
+```python
+class MyRegistry(ComposableRegistry[str]):
+    def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
+        # Get built-in context (name, timestamp, output_path, etc.)
+        context = super().get_context_vars(name, packs)
+        
+        # Add custom variables
+        context["items"] = [{"name": "a"}, {"name": "b"}]  # For {{#each items}}
+        context["custom_flag"] = "enabled"  # For {{custom_flag}}
+        
+        return context
+```
+
+These flow through `MarkdownCompositionStrategy` → `TemplateEngine` → transformers.
+
+### Architecture: Config-Driven Composition
+
+All registries use `CompositionConfig` (via `comp_config` property) for typed configuration access:
+
+```
+composition.yaml (under composition: key)
+       ↓
+CompositionConfig (typed domain config)
+       ↓
+ComposableRegistry.comp_config (lazy property)
+       ↓
+get_strategy_config(), _resolve_output_paths(), etc.
+```
+
+This ensures all composition configuration is properly namespaced under `composition:` in the merged config.
+
+## 10) Additional Details
 
 - Includes resolution order: project → active packs (project packs then bundled packs) → core. Missing include is an error.
 - Built-in variables: PROJECT_ROOT, REPO_ROOT, PROJECT_EDISON_DIR, PROJECT_CONFIG_DIR, timestamp; config access via {{config.path}}.
-- Context vars: rosters (agents, validators, generated_header, timestamp); state-machine (domains, mermaid_diagram, timestamp); other composers inject their specific context (clients, constitutions, etc.).
 - Preserve structure: when preserve_structure is true for a type (e.g., guidelines by default), subfolders under the content type are kept in outputs. Configurable per type in composition.yaml outputs.*.preserve_structure.
 - Errors are fail-fast: missing include/section, unknown condition function, or bad expression raises during composition.
 - Dedupe config: composition.dryDetection (enabled, shingleSize, minShingles) and strategy.enable_dedupe; guidelines use dedupe by default.
 - Overlays apply only when merge_same_name is false (non-guidelines).
 - Functions precedence: core → active packs → project; functions live in functions/ directories; later overrides earlier.
+- Context vars type: string values for `{{var}}` substitution; list/dict values for `{{#each}}` loops.

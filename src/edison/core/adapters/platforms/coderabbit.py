@@ -8,9 +8,12 @@ Handles:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.adapters.base import PlatformAdapter
+
+if TYPE_CHECKING:
+    from edison.core.config.domains.composition import AdapterConfig
 
 
 class CoderabbitAdapterError(RuntimeError):
@@ -23,16 +26,21 @@ class CoderabbitAdapter(PlatformAdapter):
     This adapter:
     - Composes CodeRabbit configuration from core, packs, and project layers
     - Writes to .coderabbit.yaml file
-    - Uses composition.yaml for output configuration
+    - Uses CompositionConfig for output configuration
     """
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> None:
         """Initialize CodeRabbit adapter.
 
         Args:
             project_root: Project root directory.
+            adapter_config: Adapter configuration from loader.
         """
-        super().__init__(project_root=project_root)
+        super().__init__(project_root=project_root, adapter_config=adapter_config)
         self.project_config_dir = self.project_dir
 
     # =========================================================================
@@ -43,6 +51,13 @@ class CoderabbitAdapter(PlatformAdapter):
     def platform_name(self) -> str:
         """Return platform identifier."""
         return "coderabbit"
+
+    @property
+    def output_filename(self) -> str:
+        """Get output filename from config."""
+        if self.adapter_config and self.adapter_config.filename:
+            return self.adapter_config.filename
+        return ".coderabbit.yaml"
 
     # =========================================================================
     # Config Loading
@@ -139,15 +154,6 @@ class CoderabbitAdapter(PlatformAdapter):
 
         return config
 
-    def _coderabbit_output_config(self) -> Dict[str, Any]:
-        """Get CodeRabbit output configuration from composition config."""
-        composition_config = self.config.get("composition", {})
-        if isinstance(composition_config, dict):
-            outputs = composition_config.get("outputs", {})
-            if isinstance(outputs, dict):
-                return outputs.get("coderabbit", {})
-        return {}
-
     def write_coderabbit_config(self, output_path: Optional[Path] = None) -> Path:
         """Write CodeRabbit configuration file.
 
@@ -161,17 +167,11 @@ class CoderabbitAdapter(PlatformAdapter):
 
         # Determine output location
         if output_path:
-            target = Path(output_path) / ".coderabbit.yaml"
+            target = Path(output_path) / self.output_filename
         else:
-            # Use composition.yaml output configuration
-            output_config = self._coderabbit_output_config()
-            if output_config.get("enabled", True):
-                output_dir = output_config.get("output_path", ".")
-                filename = output_config.get("filename", ".coderabbit.yaml")
-                target = self.project_root / output_dir / filename
-            else:
-                # Default to repo root
-                target = self.project_root / ".coderabbit.yaml"
+            # Use adapter config from CompositionConfig
+            output_dir = self.get_output_path()
+            target = output_dir / self.output_filename
 
         written_path = self.writer.write_yaml(target, config)
         return written_path

@@ -1,126 +1,116 @@
 """Constitution registry (unified composition).
 
-Builds role constitutions (orchestrator, agents, validators) from layered
-markdown using MarkdownCompositionStrategy via ComposableRegistry.
-Role-specific data injection is performed in _post_compose.
+Builds role constitutions from layered markdown using MarkdownCompositionStrategy
+via ComposableRegistry. Uses standard file discovery and composition - no hardcoding.
+
+Constitution-specific context_vars:
+- mandatoryReads, optionalReads: From config.constitutions.<name>
+- rules: From rules system (role-based, graceful fallback)
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 
-from .base import ComposableRegistry
-from edison.core.utils.time import utc_timestamp
-from edison.core.composition.output.headers import resolve_version
-from edison.core.composition.utils.paths import resolve_project_dir_placeholders
-from edison.core.composition.registries.rules import get_rules_for_role
+from ._base import ComposableRegistry
 
 
-ROLE_MAP: Dict[str, Dict[str, str]] = {
-    "orchestrator": {"slug": "orchestrator", "rules": "orchestrator", "mandatory": "orchestrator"},
-    "agents": {"slug": "agents", "rules": "agent", "mandatory": "agents"},
-    "validators": {"slug": "validators", "rules": "validator", "mandatory": "validators"},
-}
+class ConstitutionRegistry(ComposableRegistry[str]):
+    """Registry for composing role constitutions.
 
+    Extends ComposableRegistry with constitution-specific context_vars:
+    - mandatoryReads/optionalReads from config.constitutions.<name>
+    - rules from get_rules_for_role() (graceful fallback if not a valid role)
+    
+    Uses standard file discovery - no hardcoded roles.
+    """
 
-def _normalize_role(role: str) -> str:
-    key = (role or "").strip().lower()
-    if key == "agent":
-        return "agents"
-    if key == "validator":
-        return "validators"
-    if key not in ROLE_MAP:
-        raise ValueError(f"Invalid role: {role}")
-    return key
-
-
-@dataclass
-class ConstitutionResult:
-    role: str
-    content: str
-    source_layers: List[str]
-
-
-class ConstitutionRegistry(ComposableRegistry[ConstitutionResult]):
     content_type: ClassVar[str] = "constitutions"
-    file_pattern: ClassVar[str] = "*-base.md"
+    file_pattern: ClassVar[str] = "*.md"
     strategy_config: ClassVar[Dict[str, Any]] = {
         "enable_sections": True,
         "enable_dedupe": False,
         "enable_template_processing": True,
     }
 
-    def compose_constitution(self, role: str, packs: Optional[List[str]] = None) -> ConstitutionResult:
-        role = _normalize_role(role)
-        name = f"{ROLE_MAP[role]['slug']}-base"
-        result = self.compose(name, packs)
-        if result is None:
-            raise FileNotFoundError(f"Constitution template for role '{role}' not found")
-        return result
+    def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
+        """Build context_vars for template processing.
 
-    def _post_compose(self, name: str, content: str) -> ConstitutionResult:
-        role = _normalize_role(name.replace("-base", ""))
+        Extends base class with constitution-specific variables:
+        - mandatoryReads, optionalReads from config
+        - rules from rules system
 
-        cfg = self.config
-        version = resolve_version(self.cfg_mgr, cfg)
-        generated_iso = utc_timestamp()
-        source_layers = ["core"] + [f"pack({p})" for p in self.get_active_packs()]
+        Args:
+            name: Constitution name (from filename)
+            packs: Active pack names
 
-        role_cfg = cfg.get("constitutions", {}).get(ROLE_MAP[role]["mandatory"], {}) or {}
-        mandatory_reads = role_cfg.get("mandatoryReads", []) if isinstance(role_cfg, dict) else []
-        optional_reads = role_cfg.get("optionalReads", []) if isinstance(role_cfg, dict) else []
+        Returns:
+            Dict of context variables for TemplateEngine
+        """
+        # Get base context vars (source_layers, timestamp, version, etc.)
+        context = super().get_context_vars(name, packs)
 
-        def _render_reads(reads: List[Dict[str, Any]]) -> str:
-            lines = []
-            for item in reads or []:
-                if isinstance(item, dict):
-                    lines.append(f"- {item.get('path')}: {item.get('purpose')}")
-            return "\n".join(lines)
+        # Constitution-specific: mandatoryReads/optionalReads from config
+        role_cfg = self.config.get("constitutions", {}).get(name, {}) or {}
+        if isinstance(role_cfg, dict):
+            context["mandatoryReads"] = role_cfg.get("mandatoryReads", [])
+            context["optionalReads"] = role_cfg.get("optionalReads", [])
+        else:
+            context["mandatoryReads"] = []
+            context["optionalReads"] = []
 
-        reads_section = _render_reads(mandatory_reads)
-        optional_section = _render_reads(optional_reads)
+        # Constitution-specific: rules from rules system
+        # Graceful fallback - if name isn't a valid role, rules will be empty
+        rules: List[Dict[str, Any]] = []
+        try:
+            from edison.core.rules.registry import get_rules_for_role
+            # Normalize: agents -> agent, validators -> validator
+            rule_role = name.rstrip("s") if name.endswith("s") else name
+            rules = get_rules_for_role(rule_role)
+        except (ValueError, ImportError):
+            pass  # Not a valid role or rules system unavailable
 
-        rules = get_rules_for_role(ROLE_MAP[role]["rules"])
-        rules_section = "\n\n".join(
-            (f"### {r.get('id')}: {r.get('name')}\n{(r.get('content') or '').rstrip()}").strip()
-            for r in rules
-        )
+        context["rules"] = rules
+        return context
 
-        rendered = content
-        rendered = rendered.replace("{{source_layers}}", " + ".join(source_layers))
-        rendered = rendered.replace("{{generated_date}}", generated_iso)
-        rendered = rendered.replace("{{timestamp}}", generated_iso)
-        rendered = rendered.replace("{{version}}", str(version))
-        rendered = rendered.replace("{{template}}", f"constitutions/{ROLE_MAP[role]['slug']}-base.md")
-
-        rendered = rendered.replace(f"{{{{#each mandatoryReads.{ROLE_MAP[role]['mandatory']}}}}}", reads_section)
-        rendered = rendered.replace(f"{{{{#each optionalReads.{ROLE_MAP[role]['mandatory']}}}}}", optional_section)
-        rendered = rendered.replace(f"{{{{#each rules.{ROLE_MAP[role]['rules']}}}}}", rules_section)
-        rendered = rendered.replace("{{/each}}", "")
-
-        target_path = self.project_dir / "_generated" / "constitutions" / f"{ROLE_MAP[role]['slug'].upper()}.md"
-        rendered = resolve_project_dir_placeholders(
-            rendered,
-            project_dir=self.project_dir,
-            target_path=target_path,
-            repo_root=self.project_root,
-        )
-
-        return ConstitutionResult(role=role, content=rendered, source_layers=source_layers)
+    # Legacy compatibility method
+    def compose_constitution(self, role: str, packs: Optional[List[str]] = None) -> Optional[str]:
+        """Compose a constitution for a specific role.
+        
+        Legacy method for backwards compatibility.
+        Prefer using compose() directly.
+        """
+        # Normalize role name for file lookup
+        if role == "agent":
+            role = "agents"
+        elif role == "validator":
+            role = "validators"
+        return self.compose(role, packs)
 
 
-def generate_all_constitutions(config: Any, output_path: Path) -> None:
-    out_dir = (Path(output_path) / "constitutions").resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+def generate_all_constitutions(config: Any, output_path: Path) -> List[Path]:
+    """Generate all role constitutions to output directory.
 
+    Args:
+        config: Config object with repo_root attribute
+        output_path: Base output path (constitutions/ subdir will be created)
+        
+    Returns:
+        List of paths to written constitution files
+    """
     registry = ConstitutionRegistry(project_root=config.repo_root)
-    writer = registry.writer
+    return registry.write_all()
 
-    for role in ("orchestrator", "agents", "validators"):
-        result = registry.compose_constitution(role, packs=registry.get_active_packs())
-        outfile = out_dir / f"{ROLE_MAP[role]['slug'].upper()}.md"
-        writer.write_text(outfile, result.content)
+
+# Keep ConstitutionResult for backwards compatibility in imports
+from dataclasses import dataclass
+
+@dataclass
+class ConstitutionResult:
+    """Deprecated - kept for backwards compatibility."""
+    role: str
+    content: str
+    source_layers: List[str]
 
 
 __all__ = ["ConstitutionRegistry", "ConstitutionResult", "generate_all_constitutions"]

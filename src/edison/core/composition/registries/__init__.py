@@ -1,106 +1,61 @@
 """Content-type specific registries.
 
-Each registry provides discovery, composition, and metadata access
-for a specific content type (agents, validators, guidelines, constitutions, rules).
+Provides composition registries for different content types.
+Most content types use GenericRegistry via configuration.
+
+Special registries:
+- ConstitutionRegistry: Needs get_context_vars() for rules/reads injection
+- RulesRegistry: Domain service for rules (moved to core/rules/registry.py)
+- JsonSchemaComposer: JSON schema composition
+
+For entity metadata lookup, use core.registries instead:
+- AgentRegistry: Agent metadata from frontmatter
+- ValidatorRegistry: Validator roster from config
+
+For rules, import from core.rules directly:
+- from edison.core.rules import RulesRegistry
 """
 from __future__ import annotations
 
-from .agents import (
-    AgentRegistry,
-    AgentError,
-    AgentNotFoundError,
-    compose_agent,
-)
-from .validators import (
-    ValidatorRegistry,
-    collect_validators,
-    infer_validator_metadata,
-    normalize_validator_entries,
-)
-from .guidelines import (
-    GuidelineRegistry,
-    GuidelineCompositionResult,
-    GuidelinePaths,
-    compose_guideline,
-)
 from .constitutions import (
     ConstitutionRegistry,
     ConstitutionResult,
     generate_all_constitutions,
 )
-# Note: Rosters (generate_available_agents, generate_available_validators)
-# have been moved to composition/generators/
-# generate_canonical_entry is now in composition/generators/roots.py
 
-from .rules import (
-    RulesRegistry,
-    compose_rules,
-    extract_anchor_content,
-    load_bundled_rules,
-    get_rules_for_role as get_rules_for_role_api,
-    filter_rules,
-)
 from .file_patterns import (
     FilePatternRegistry,
 )
 from .schemas import (
-    JsonSchemaComposer,
-)
-from .documents import (
-    DocumentTemplateRegistry,
-    DocumentTemplateError,
-    DocumentTemplateNotFoundError,
-    DocumentTemplate,
-    compose_document,
+    JsonSchemaRegistry,
+    JsonSchemaComposer,  # Legacy alias
 )
 from .generic import GenericRegistry
-from .registry_base import BaseRegistry
-from .base import ComposableRegistry
+from ._registry_base import BaseRegistry
+from ._base import ComposableRegistry
+from ._types_manager import ComposableTypesManager
 from ..core.errors import (
     AnchorNotFoundError,
     RulesCompositionError,
 )
 
+# Note: RulesRegistry has been moved to core/rules/registry.py
+# Import directly from there: from edison.core.rules import RulesRegistry
+
 __all__ = [
-    # Agents
-    "AgentRegistry",
-    "AgentError",
-    "AgentNotFoundError",
-    "compose_agent",
-    # Validators
-    "ValidatorRegistry",
-    "collect_validators",
-    "infer_validator_metadata",
-    "normalize_validator_entries",
-    # Guidelines
-    "GuidelineRegistry",
-    "GuidelineCompositionResult",
-    "GuidelinePaths",
-    "compose_guideline",
     # Constitutions
     "ConstitutionRegistry",
     "ConstitutionResult",
     "generate_all_constitutions",
-    # Rules
-    "RulesRegistry",
-    "compose_rules",
-    "extract_anchor_content",
-    "load_bundled_rules",
-    "get_rules_for_role_api",
-    "filter_rules",
+    # File patterns and schemas
     "FilePatternRegistry",
     "JsonSchemaComposer",
-    # Documents
-    "DocumentTemplateRegistry",
-    "DocumentTemplateError",
-    "DocumentTemplateNotFoundError",
-    "DocumentTemplate",
-    "compose_document",
     # Generic
     "GenericRegistry",
-    # Base classes
+    # Base classes (internal - use underscore prefix files)
     "BaseRegistry",
     "ComposableRegistry",
+    "ComposableTypesManager",
     # Errors
     "AnchorNotFoundError",
     "RulesCompositionError",

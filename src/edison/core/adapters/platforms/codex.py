@@ -9,9 +9,12 @@ This is a minimal adapter as Codex has limited sync requirements.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.adapters.base import PlatformAdapter
+
+if TYPE_CHECKING:
+    from edison.core.config.domains.composition import AdapterConfig
 
 
 class CodexAdapterError(RuntimeError):
@@ -27,13 +30,18 @@ class CodexAdapter(PlatformAdapter):
     - Most work is done by composition system, adapter is minimal
     """
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> None:
         """Initialize Codex adapter.
 
         Args:
             project_root: Project root directory.
+            adapter_config: Adapter configuration from loader.
         """
-        super().__init__(project_root=project_root)
+        super().__init__(project_root=project_root, adapter_config=adapter_config)
 
     # =========================================================================
     # Platform Properties
@@ -49,17 +57,27 @@ class CodexAdapter(PlatformAdapter):
     # =========================================================================
 
     def sync_all(self) -> Dict[str, Any]:
-        """Sync _generated/agents to ~/.codex/prompts (or configured path)."""
-        # Allow overrides via output_config; default to project-local to stay sandbox-safe
-        cfg = self.output_config.get_sync_config("codex")
-        if cfg and cfg.enabled and cfg.agents_path:
-            codex_dir = self.output_config._resolve_path(cfg.agents_path)
+        """Sync _generated/agents to .codex/prompts (or configured path).
+        
+        Uses sync configuration from CompositionConfig if available.
+        """
+        result: Dict[str, List[Path]] = {
+            "agents": [],
+        }
+        
+        # Use sync configuration if enabled
+        if self.is_sync_enabled("agents"):
+            dest_dir = self.get_sync_destination("agents")
+            if dest_dir:
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                result["agents"] = self.sync_agents_from_generated(dest_dir)
         else:
+            # Default fallback
             codex_dir = self.project_root / ".codex" / "prompts"
-        codex_dir.mkdir(parents=True, exist_ok=True)
-
-        written = self.sync_agents_from_generated(codex_dir)
-        return {"agents": written}
+            codex_dir.mkdir(parents=True, exist_ok=True)
+            result["agents"] = self.sync_agents_from_generated(codex_dir)
+        
+        return result
 
 
 __all__ = ["CodexAdapter", "CodexAdapterError"]

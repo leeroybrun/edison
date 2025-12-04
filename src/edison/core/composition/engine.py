@@ -11,13 +11,18 @@ Transformation Pipeline (10 steps):
 1. INCLUDES        - {{include:path}}, {{include-optional:path}}
 2. SECTION EXTRACT - {{include-section:path#name}}
 3. CONDITIONALS    - {{include-if:COND:path}}, {{if:COND}}...{{/if}}
-4. LOOPS           - {{#each collection}}...{{/each}}
-5. FUNCTIONS       - {{function:name(args)}}
-6. CONFIG VARS     - {{config.path.to.value}}
-7. CONTEXT VARS    - {{source_layers}}, {{timestamp}}
+4. LOOPS           - {{#each collection}}...{{/each}} (uses context_vars)
+5. FUNCTIONS       - {{fn:name(args)}}
+6. CONFIG VARS     - {{config.path.to.value}}, {{project.path}}
+7. CONTEXT VARS    - {{source_layers}}, {{timestamp}}, and custom context_vars
 8. PATH VARS       - {{PROJECT_EDISON_DIR}}
 9. REFERENCES      - {{reference-section:path#name|purpose}}
 10. VALIDATION     - Check for unresolved {{...}}, strip markers
+
+Context Variables:
+- Built-in: source_layers, timestamp (always set)
+- Custom: Passed via context_vars parameter, merged with defaults
+- Type: strings for {{var}} substitution, lists/dicts for {{#each}} loops
 """
 from __future__ import annotations
 
@@ -203,6 +208,7 @@ class TemplateEngine:
         entity_name: str = "unknown",
         entity_type: str = "template",
         source_layers: Optional[List[str]] = None,
+        context_vars: Optional[Dict[str, Any]] = None,
     ) -> tuple[str, CompositionReport]:
         """Process content through the transformation pipeline.
 
@@ -211,20 +217,35 @@ class TemplateEngine:
             entity_name: Name of entity being processed
             entity_type: Type of entity (agent, guideline, etc.)
             source_layers: List of source layers that contributed
+            context_vars: Custom template variables to merge with defaults.
+                Values can be strings (for {{var}} substitution) or
+                lists/dicts (for {{#each}} loops).
 
         Returns:
             Tuple of (processed content, report)
         """
+        # Build default context vars
+        # Get the configured project directory name (relative to repo root)
+        from edison.core.utils.paths import get_project_config_dir
+        project_dir = get_project_config_dir(self.project_root, create=False)
+        project_dir_name = project_dir.name  # e.g., ".edison"
+        
+        default_vars: Dict[str, Any] = {
+            "source_layers": " + ".join(source_layers) if source_layers else "core",
+            "timestamp": datetime.now().isoformat(),
+            "PROJECT_EDISON_DIR": project_dir_name,
+        }
+
+        # Merge custom context_vars (custom vars override defaults)
+        merged_vars = {**default_vars, **(context_vars or {})}
+
         # Build context
         context = TransformContext(
             config=self.config,
             active_packs=self.packs,
             project_root=self.project_root,
             source_dir=self.source_dir,
-            context_vars={
-                "source_layers": " + ".join(source_layers) if source_layers else "core",
-                "timestamp": datetime.now().isoformat(),
-            },
+            context_vars=merged_vars,
         )
 
         # Execute pipeline

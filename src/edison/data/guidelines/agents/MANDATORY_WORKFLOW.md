@@ -9,6 +9,7 @@ This document defines the mandatory workflow that ALL implementing agents must f
 
 ## Requirements
 
+<!-- SECTION: workflow -->
 ### Workflow Overview
 
 **YOU MUST FOLLOW** the implementer runbook and orchestrator playbook before ANY implementation work.
@@ -148,6 +149,8 @@ edison qa validate <task-id>
 3. **NEVER implement without tests** - TDD is mandatory
 4. **ALWAYS provide evidence** - No evidence = incomplete work
 5. **ALWAYS check delegation** - Verify you're the right agent
+
+<!-- /SECTION: workflow -->
 
 ## References
 

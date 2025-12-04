@@ -11,15 +11,18 @@ from __future__ import annotations
 import difflib
 import hashlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.adapters.base import PlatformAdapter
 from edison.core.adapters.components.commands import CommandComposer
 from edison.core.utils.paths import get_project_config_dir
-from edison.core.composition import GuidelineRegistry
+from edison.core.composition.registries.generic import GenericRegistry
 from edison.core.rules import RulesRegistry, RulesCompositionError
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import write_json_atomic, ensure_directory
+
+if TYPE_CHECKING:
+    from edison.core.config.domains.composition import AdapterConfig
 
 # Autogen markers for .cursorrules
 AUTOGEN_BEGIN = "<!-- EDISON_CURSOR_AUTOGEN:BEGIN -->"
@@ -36,7 +39,7 @@ class CursorAdapter(PlatformAdapter):
     This adapter:
     - Reads from Edison composition system
     - Writes to .cursorrules and .cursor/ with Cursor-specific formatting
-    - Uses composition.yaml for all path configuration
+    - Uses CompositionConfig for all path configuration
     - Does composition of guidelines and rules
 
     Syncs:
@@ -45,21 +48,23 @@ class CursorAdapter(PlatformAdapter):
     - .cursor/rules/ (structured rules)
     """
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> None:
         """Initialize Cursor adapter.
 
         Args:
             project_root: Project root directory.
+            adapter_config: Adapter configuration from loader.
         """
-        super().__init__(project_root=project_root)
+        super().__init__(project_root=project_root, adapter_config=adapter_config)
         self.project_config_dir = get_project_config_dir(self.project_root)
 
         # Initialize registries
-        self.guideline_registry = GuidelineRegistry(project_root=self.project_root)
+        self.guideline_registry = GenericRegistry("guidelines", project_root=self.project_root)
         self.rules_registry = RulesRegistry(project_root=self.project_root)
-
-        # Paths from config
-        self.cursor_dir = self.adapters_config.get_client_path("cursor")
 
         # Components (platform-agnostic)
         self.commands = CommandComposer(self.context)
@@ -76,6 +81,11 @@ class CursorAdapter(PlatformAdapter):
     # =========================================================================
     # Path Properties
     # =========================================================================
+
+    @property
+    def cursor_dir(self) -> Path:
+        """Path to .cursor/ directory."""
+        return self.get_output_path()
 
     @property
     def cursorrules_path(self) -> Path:
@@ -110,20 +120,16 @@ class CursorAdapter(PlatformAdapter):
     @property
     def generated_agents_dir(self) -> Path:
         """Path to _generated/agents/."""
-        agents_dir = self.output_config.get_agents_dir()
-        if agents_dir:
-            return agents_dir
+        agents_cfg = self.composition_config.get_content_type("agents")
+        if agents_cfg:
+            return self.composition_config.resolve_output_path(agents_cfg.output_path)
         return self.project_config_dir / "_generated" / "agents"
 
     # =========================================================================
     # Validation
     # =========================================================================
 
-    def validate_structure(
-        self,
-        *,
-        create_missing: bool = True,
-    ) -> Path:
+    def ensure_structure(self, *, create_missing: bool = True) -> Path:
         """Ensure .cursor directory structure exists.
 
         Args:

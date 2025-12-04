@@ -269,7 +269,7 @@ class MarkdownCompositionStrategy(CompositionStrategy):
 
         Args:
             content: Content with template variables
-            context: Composition context with config
+            context: Composition context with config and context_vars
 
         Returns:
             Content with variables resolved
@@ -283,7 +283,11 @@ class MarkdownCompositionStrategy(CompositionStrategy):
             source_dir=context.source_dir,
         )
 
-        result, _report = engine.process(content)
+        # Pass context_vars from CompositionContext to TemplateEngine
+        result, _report = engine.process(
+            content,
+            context_vars=context.context_vars,
+        )
         return result
 
 

@@ -78,15 +78,15 @@ class SectionParser:
     - <!-- EXTEND: name --> content <!-- /EXTEND -->
     """
 
-    # Pattern for section definitions
+    # Pattern for section definitions (supports dots for rule IDs like RULE.SESSION.ISOLATION)
     SECTION_PATTERN = re.compile(
-        r"<!--\s*SECTION:\s*([\w-]+)\s*-->(.*?)<!--\s*/SECTION:\s*\1\s*-->",
+        r"<!--\s*SECTION:\s*([\w.-]+)\s*-->(.*?)<!--\s*/SECTION:\s*\1\s*-->",
         re.DOTALL | re.IGNORECASE,
     )
 
     # Pattern for section extensions
     EXTEND_PATTERN = re.compile(
-        r"<!--\s*EXTEND:\s*([\w-]+)\s*-->(.*?)<!--\s*/EXTEND\s*-->",
+        r"<!--\s*EXTEND:\s*([\w.-]+)\s*-->(.*?)<!--\s*/EXTEND\s*-->",
         re.DOTALL | re.IGNORECASE,
     )
 

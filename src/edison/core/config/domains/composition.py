@@ -1,128 +1,284 @@
-"""Domain-specific configuration for composition.
+"""Unified composition configuration domain.
 
-Provides cached access to composition-related configuration without
-requiring direct ConfigManager usage or YAML parsing throughout the codebase.
+CompositionConfig is the ONLY way to access composition.yaml settings.
+All other classes (ComposableTypesManager, AdapterLoader) use this.
+
+This module provides:
+- ContentTypeConfig: Configuration for a composable content type
+- AdapterSyncConfig: Sync configuration for an adapter
+- AdapterConfig: Configuration for a platform adapter
+- CompositionConfig: The main configuration accessor
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional
 
 from ..base import BaseDomainConfig
 from edison.data import get_data_path
 
-if TYPE_CHECKING:
-    from ..manager import ConfigManager
+
+@dataclass
+class ContentTypeConfig:
+    """Configuration for a content type."""
+    name: str
+    enabled: bool
+    description: str
+    composition_mode: str
+    dedupe: bool
+    registry: Optional[str]
+    content_path: str
+    file_pattern: str
+    output_path: str
+    filename_pattern: str
+    cli_flag: str
+    output_mapping: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class AdapterSyncConfig:
+    """Sync configuration for an adapter."""
+    name: str
+    enabled: bool
+    source: str
+    destination: str
+    filename_pattern: str
+
+
+@dataclass
+class AdapterConfig:
+    """Configuration for a platform adapter."""
+    name: str
+    enabled: bool
+    adapter_class: str
+    description: str
+    output_path: str
+    filename: Optional[str]
+    sync: Dict[str, AdapterSyncConfig] = field(default_factory=dict)
 
 
 class CompositionConfig(BaseDomainConfig):
-    """Domain-specific configuration accessor for composition settings.
-
-    Provides typed, cached access to composition configuration including:
-    - Deduplication settings (shingle size, min shingles, threshold)
-    - Output paths configuration
-    - Content type modes
-
-    Extends BaseDomainConfig for consistent caching and repo_root handling.
-
+    """Unified configuration accessor for composition settings.
+    
+    This is the SINGLE SOURCE OF TRUTH for composition.yaml access.
+    All composition-related code should use this class.
+    
     Usage:
         comp = CompositionConfig(repo_root=Path("/path/to/project"))
-        k = comp.shingle_size  # 12
-        outputs = comp.outputs  # {...}
+        
+        # Access defaults
+        shingle_size = comp.shingle_size
+        
+        # Access content types
+        for ct in comp.get_enabled_content_types():
+            print(ct.name, ct.output_path)
+        
+        # Access adapters
+        for adapter in comp.get_enabled_adapters():
+            print(adapter.name, adapter.adapter_class)
     """
-
+    
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         super().__init__(repo_root=repo_root)
-        self._cached_composition_yaml: Optional[dict] = None
-
+        self._cached_composition_yaml: Optional[Dict[str, Any]] = None
+    
     def _config_section(self) -> str:
-        return "composition"
-
-    def _get_composition_yaml(self) -> dict:
-        """Load composition.yaml with caching."""
-        if self._cached_composition_yaml is None:
-            composition_yaml_path = get_data_path("config") / "composition.yaml"
-            if composition_yaml_path.exists():
-                # Lazy import to avoid circular dependency
-                from ..manager import ConfigManager
-                mgr = ConfigManager(self._repo_root)
-                self._cached_composition_yaml = mgr.load_yaml(composition_yaml_path)
-            else:
-                self._cached_composition_yaml = {}
+        return "composition"  # For BaseDomainConfig compatibility
+    
+    @cached_property
+    def _composition_yaml(self) -> Dict[str, Any]:
+        """Load composition.yaml with caching.
+        
+        Loads core defaults from bundled data, then merges with project overrides.
+        All composition config is under the `composition:` key.
+        """
+        if self._cached_composition_yaml is not None:
+            return self._cached_composition_yaml
+        
+        # Load core defaults
+        core_path = get_data_path("config", "composition.yaml")
+        from ..manager import ConfigManager
+        mgr = ConfigManager(self._repo_root)
+        core_config = mgr.load_yaml(core_path) if core_path.exists() else {}
+        
+        # Load project overrides
+        from edison.core.utils.paths import get_project_config_dir
+        project_dir = get_project_config_dir(self._repo_root)
+        project_path = project_dir / "composition.yaml"
+        if project_path.exists():
+            project_config = mgr.load_yaml(project_path)
+            merged = mgr.deep_merge(core_config, project_config)
+        else:
+            merged = core_config
+        
+        # Extract composition section (all config is under `composition:` key)
+        self._cached_composition_yaml = merged.get("composition", {})
+        
         return self._cached_composition_yaml
-
+    
+    # =========================================================================
+    # DEFAULTS
+    # =========================================================================
+    
     @cached_property
-    def dry_detection(self) -> Dict[str, Any]:
-        """Get DRY detection configuration.
-
-        Returns:
-            Dict with shingleSize, minShingles, threshold.
-        """
-        return self.section.get("dryDetection", {}) or {}
-
-    @cached_property
+    def defaults(self) -> Dict[str, Any]:
+        """Get defaults section."""
+        return self._composition_yaml.get("defaults", {})
+    
+    @property
     def shingle_size(self) -> int:
-        """Get shingle size for deduplication.
-
-        Returns:
-            Number of words per shingle (default: 12).
-        """
-        return self.dry_detection.get("shingleSize", 12)
-
-    @cached_property
+        """Get shingle size for deduplication."""
+        return self.defaults.get("dedupe", {}).get("shingle_size", 12)
+    
+    @property
     def min_shingles(self) -> int:
-        """Get minimum shingles for duplicate detection.
-
-        Returns:
-            Minimum matching shingles threshold (default: 5).
-        """
-        return self.dry_detection.get("minShingles", 5)
-
-    @cached_property
+        """Get minimum shingles for duplicate detection."""
+        return self.defaults.get("dedupe", {}).get("min_shingles", 5)
+    
+    @property
     def threshold(self) -> float:
-        """Get similarity threshold for duplicate detection.
-
-        Returns:
-            Similarity threshold (0.0 - 1.0, default: 0.37).
-        """
-        return float(self.dry_detection.get("threshold", 0.37))
-
+        """Get similarity threshold for duplicate detection."""
+        return float(self.defaults.get("dedupe", {}).get("threshold", 0.37))
+    
+    @property
+    def generated_header(self) -> str:
+        """Get generated file header template."""
+        return self.defaults.get("generated_header", "")
+    
+    @property
+    def default_composition_mode(self) -> str:
+        """Get default composition mode."""
+        return self.defaults.get("composition_mode", "section_merge")
+    
+    # =========================================================================
+    # CONTENT TYPES
+    # =========================================================================
+    
     @cached_property
-    def outputs(self) -> Dict[str, Any]:
-        """Get output path configuration.
-
-        Returns:
-            Dict with output configuration for all content types.
-        """
-        yaml_config = self._get_composition_yaml()
-        return yaml_config.get("outputs", {}) or {}
-
+    def content_types(self) -> Dict[str, ContentTypeConfig]:
+        """Get all content type configurations."""
+        raw = self._composition_yaml.get("content_types", {})
+        result: Dict[str, ContentTypeConfig] = {}
+        for name, cfg in raw.items():
+            result[name] = ContentTypeConfig(
+                name=name,
+                enabled=cfg.get("enabled", True),
+                description=cfg.get("description", ""),
+                composition_mode=cfg.get("composition_mode", self.default_composition_mode),
+                dedupe=cfg.get("dedupe", False),
+                registry=cfg.get("registry"),
+                content_path=cfg.get("content_path", name),
+                file_pattern=cfg.get("file_pattern", "*.md"),
+                output_path=cfg.get("output_path", ""),
+                filename_pattern=cfg.get("filename_pattern", "{name}.md"),
+                cli_flag=cfg.get("cli_flag", name.replace("_", "-")),
+                output_mapping=cfg.get("output_mapping", {}),
+            )
+        return result
+    
+    def get_content_type(self, name: str) -> Optional[ContentTypeConfig]:
+        """Get a specific content type configuration."""
+        return self.content_types.get(name)
+    
+    def get_enabled_content_types(self) -> List[ContentTypeConfig]:
+        """Get all enabled content types."""
+        return [ct for ct in self.content_types.values() if ct.enabled]
+    
+    def get_content_type_by_cli_flag(self, flag: str) -> Optional[ContentTypeConfig]:
+        """Get content type by CLI flag name."""
+        for ct in self.content_types.values():
+            if ct.cli_flag == flag:
+                return ct
+        return None
+    
+    # =========================================================================
+    # ADAPTERS
+    # =========================================================================
+    
     @cached_property
-    def content_types(self) -> Dict[str, Any]:
-        """Get content type definitions.
-
-        Returns:
-            Dict mapping content type name to its configuration.
+    def adapters(self) -> Dict[str, AdapterConfig]:
+        """Get all adapter configurations."""
+        raw = self._composition_yaml.get("adapters", {})
+        result: Dict[str, AdapterConfig] = {}
+        for name, cfg in raw.items():
+            sync_configs: Dict[str, AdapterSyncConfig] = {}
+            for sync_name, sync_cfg in (cfg.get("sync") or {}).items():
+                sync_configs[sync_name] = AdapterSyncConfig(
+                    name=sync_name,
+                    enabled=sync_cfg.get("enabled", True),
+                    source=sync_cfg.get("source", ""),
+                    destination=sync_cfg.get("destination", ""),
+                    filename_pattern=sync_cfg.get("filename_pattern", "{name}.md"),
+                )
+            result[name] = AdapterConfig(
+                name=name,
+                enabled=cfg.get("enabled", True),
+                adapter_class=cfg.get("adapter_class", ""),
+                description=cfg.get("description", ""),
+                output_path=cfg.get("output_path", ""),
+                filename=cfg.get("filename"),
+                sync=sync_configs,
+            )
+        return result
+    
+    def get_adapter(self, name: str) -> Optional[AdapterConfig]:
+        """Get a specific adapter configuration."""
+        return self.adapters.get(name)
+    
+    def get_enabled_adapters(self) -> List[AdapterConfig]:
+        """Get all enabled adapters."""
+        return [a for a in self.adapters.values() if a.enabled]
+    
+    def is_adapter_enabled(self, name: str) -> bool:
+        """Check if an adapter is enabled."""
+        adapter = self.get_adapter(name)
+        return adapter is not None and adapter.enabled
+    
+    # =========================================================================
+    # PATH RESOLUTION
+    # =========================================================================
+    
+    def resolve_output_path(self, path_template: str) -> Path:
+        """Resolve output path with variable substitution.
+        
+        Supports {{PROJECT_EDISON_DIR}} placeholder.
         """
-        yaml_config = self._get_composition_yaml()
-        return yaml_config.get("content_types", {}) or {}
+        if not path_template:
+            return self.repo_root
+        
+        from edison.core.utils.paths import get_project_config_dir
+        project_dir = get_project_config_dir(self._repo_root)
+        
+        path_str = path_template.replace(
+            "{{PROJECT_EDISON_DIR}}", str(project_dir)
+        )
+        
+        path = Path(path_str)
+        if not path.is_absolute():
+            path = self.repo_root / path
+        
+        return path
+    
+    def get_content_type_output_dir(self, type_name: str) -> Optional[Path]:
+        """Get resolved output directory for a content type."""
+        ct = self.get_content_type(type_name)
+        if not ct or not ct.enabled:
+            return None
+        return self.resolve_output_path(ct.output_path)
+    
+    def get_adapter_output_dir(self, adapter_name: str) -> Optional[Path]:
+        """Get resolved output directory for an adapter."""
+        adapter = self.get_adapter(adapter_name)
+        if not adapter or not adapter.enabled:
+            return None
+        return self.resolve_output_path(adapter.output_path)
 
-    def get_mode_for_type(self, content_type: str) -> str:
-        """Get composition mode for a content type.
 
-        Args:
-            content_type: Type name (e.g., "agents", "guidelines")
-
-        Returns:
-            Mode string ("section", "concatenate", "yaml_merge").
-        """
-        type_config = self.content_types.get(content_type, {}) or {}
-        return type_config.get("composition_mode", "section")
-
-
-__all__ = ["CompositionConfig"]
-
-
-
-
+__all__ = [
+    "CompositionConfig",
+    "ContentTypeConfig",
+    "AdapterConfig",
+    "AdapterSyncConfig",
+]

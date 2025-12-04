@@ -2,9 +2,9 @@
 <!-- Source: {{source_layers}} -->
 <!-- Generated: {{timestamp}} -->
 
-# Zen MCP
+# Claude Code
 
-This file configures Zen MCP for this project.
+This file configures Claude Code for this project.
 
 ## Entry Point
 
@@ -15,8 +15,4 @@ This file will direct you to the appropriate constitution based on your role.
 <!-- SECTION: composed-additions -->
 
 <!-- /SECTION: composed-additions -->
-
-
-
-
 

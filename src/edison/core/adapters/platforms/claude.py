@@ -8,7 +8,7 @@ Handles:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.adapters.base import PlatformAdapter
 from edison.core.utils.paths import get_project_config_dir
@@ -16,6 +16,9 @@ from edison.core.utils.io import ensure_directory
 from edison.core.adapters.components.commands import CommandComposer
 from edison.core.adapters.components.hooks import HookComposer
 from edison.core.adapters.components.settings import SettingsComposer
+
+if TYPE_CHECKING:
+    from edison.core.config.domains.composition import AdapterConfig
 
 
 class ClaudeAdapterError(RuntimeError):
@@ -28,34 +31,27 @@ class ClaudeAdapter(PlatformAdapter):
     This adapter:
     - Reads from _generated/ (already composed by unified engine)
     - Writes to .claude/ with Claude-specific formatting
-    - Uses composition.yaml for all path configuration
+    - Uses CompositionConfig for all path configuration
     - Does NOT do composition itself
 
     Syncs:
-    - CLAUDE.md client configuration
+    - CLAUDE.md client configuration (via roots content_type)
     - Agent files with frontmatter
     """
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> None:
         """Initialize Claude adapter.
 
         Args:
             project_root: Project root directory.
+            adapter_config: Adapter configuration from loader.
         """
-        super().__init__(project_root=project_root)
+        super().__init__(project_root=project_root, adapter_config=adapter_config)
         self.project_config_dir = get_project_config_dir(self.project_root)
-
-        # Client config - NO fallback, config MUST exist
-        self.claude_dir = self.adapters_config.get_client_path("claude")
-
-        # Sync config for agents
-        sync_cfg = self.output_config.get_sync_config("claude")
-        if sync_cfg and sync_cfg.enabled and sync_cfg.agents_path:
-            self.claude_agents_dir = self.output_config._resolve_path(sync_cfg.agents_path)
-            self._agents_filename_pattern = sync_cfg.agents_filename_pattern or "{name}.md"
-        else:
-            self.claude_agents_dir = self.claude_dir / "agents"
-            self._agents_filename_pattern = "{name}.md"
 
         # Components (platform-agnostic) using shared context
         self.commands = CommandComposer(self.context)
@@ -71,6 +67,27 @@ class ClaudeAdapter(PlatformAdapter):
         """Return platform identifier."""
         return "claude"
 
+    @property
+    def claude_dir(self) -> Path:
+        """Path to .claude/ directory."""
+        return self.get_output_path()
+
+    @property
+    def claude_agents_dir(self) -> Path:
+        """Path to .claude/agents/ directory."""
+        dest = self.get_sync_destination("agents")
+        if dest:
+            return dest
+        return self.claude_dir / "agents"
+
+    @property
+    def agents_filename_pattern(self) -> str:
+        """Filename pattern for agent files."""
+        sync_cfg = self.get_sync_config("agents")
+        if sync_cfg:
+            return sync_cfg.filename_pattern
+        return "{name}.md"
+
     # =========================================================================
     # Generated Content Directories
     # =========================================================================
@@ -78,25 +95,17 @@ class ClaudeAdapter(PlatformAdapter):
     @property
     def generated_agents_dir(self) -> Path:
         """Path to _generated/agents/."""
-        agents_dir = self.output_config.get_agents_dir()
-        if agents_dir:
-            return agents_dir
+        # Get from content_types config
+        agents_cfg = self.composition_config.get_content_type("agents")
+        if agents_cfg:
+            return self.composition_config.resolve_output_path(agents_cfg.output_path)
         return self.project_config_dir / "_generated" / "agents"
-
-    @property
-    def generated_clients_dir(self) -> Path:
-        """Path to _generated/clients/."""
-        return self.project_config_dir / "_generated" / "clients"
 
     # =========================================================================
     # Validation
     # =========================================================================
 
-    def validate_structure(
-        self,
-        *,
-        create_missing: bool = True,
-    ) -> Path:
+    def ensure_structure(self, *, create_missing: bool = True) -> Path:
         """Ensure .claude directory structure exists.
 
         Args:
@@ -124,47 +133,18 @@ class ClaudeAdapter(PlatformAdapter):
     # Sync Methods
     # =========================================================================
 
-    def sync_claude_md(self) -> Optional[Path]:
-        """Sync client config to CLAUDE.md.
-
-        Uses paths from composition.yaml configuration.
-
-        Returns:
-            Path to written file, or None if disabled or source doesn't exist.
-        """
-        client_cfg = self.output_config.get_client_config("claude")
-        if client_cfg is None or not client_cfg.enabled:
-            return None
-
-        self.validate_structure()
-
-        # Try to find source from _generated/clients/
-        source = self.generated_clients_dir / "claude.md"
-        if not source.exists():
-            return None
-
-        content = source.read_text(encoding="utf-8")
-        target = self.output_config.get_client_path("claude")
-        if target is None:
-            return None
-
-        ensure_directory(target.parent)
-        self.writer.write_text(target, content)
-        return target
-
     def sync_agents(self) -> List[Path]:
         """Sync _generated/agents/*.md to Claude agents directory with frontmatter.
 
-        Uses paths from composition.yaml configuration.
+        Uses paths from CompositionConfig.
 
         Returns:
             List of written agent files.
         """
-        sync_cfg = self.output_config.get_sync_config("claude")
-        if sync_cfg is None or not sync_cfg.enabled:
+        if not self.is_sync_enabled("agents"):
             return []
 
-        self.validate_structure()
+        self.ensure_structure()
 
         if not self.generated_agents_dir.exists():
             return []
@@ -177,7 +157,7 @@ class ClaudeAdapter(PlatformAdapter):
             # Add Claude frontmatter
             rendered = self._add_frontmatter(agent_name, content)
 
-            filename = self._agents_filename_pattern.format(name=agent_name)
+            filename = self.agents_filename_pattern.format(name=agent_name)
             target = self.claude_agents_dir / filename
             self.writer.write_text(target, rendered)
             written.append(target)
@@ -188,19 +168,14 @@ class ClaudeAdapter(PlatformAdapter):
         """Sync all Edison outputs to Claude Code layout.
 
         Returns:
-            Dict with 'claude_md' and 'agents' keys containing synced paths.
+            Dict with synced file paths by category.
         """
         result: Dict[str, List[Path]] = {
-            "claude_md": [],
             "agents": [],
             "commands": [],
             "hooks": [],
             "settings": [],
         }
-
-        claude_md = self.sync_claude_md()
-        if claude_md:
-            result["claude_md"].append(claude_md)
 
         result["agents"] = self.sync_agents()
 
@@ -216,6 +191,7 @@ class ClaudeAdapter(PlatformAdapter):
         settings_path = self.settings.write_settings_file()
         if settings_path:
             result["settings"].append(settings_path)
+
         return result
 
     # =========================================================================

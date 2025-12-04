@@ -1,33 +1,10 @@
 # Python Testing Guide
 
-Comprehensive guide for pytest-based testing with NO MOCKS policy.
+Comprehensive guide for pytest-based testing. For NO MOCKS policy, see the agent constitution.
 
 ---
 
-## Core Principle: NO MOCKS
-
-Per CLAUDE.md: **NO MOCKS EVER** - Test real behavior with real code.
-
-```python
-# BAD: Mocking
-from unittest.mock import Mock, patch
-
-@patch("module.external_service")
-def test_with_mock(mock_service):
-    mock_service.return_value = {"status": "ok"}
-    result = process()
-    assert result == "ok"
-
-# GOOD: Real behavior
-def test_with_real_service(temp_config: Path):
-    """Test with actual config file."""
-    config = load_config(temp_config)
-    result = process(config)
-    assert result == "ok"
-```
-
----
-
+<!-- SECTION: pytest-config -->
 ## pytest Configuration
 
 ### pyproject.toml
@@ -49,9 +26,11 @@ markers = [
 ]
 asyncio_mode = "auto"
 ```
+<!-- /SECTION: pytest-config -->
 
 ---
 
+<!-- SECTION: test-organization -->
 ## Test Organization
 
 ### Directory Structure
@@ -91,9 +70,11 @@ def test_create_task_fails_with_empty_title():
 def test_get_task_returns_none_when_not_found():
     ...
 ```
+<!-- /SECTION: test-organization -->
 
 ---
 
+<!-- SECTION: fixtures -->
 ## Fixtures
 
 ### Basic Fixtures
@@ -160,10 +141,12 @@ def test_with_factory(make_task):
     task2 = make_task(id="2", status="completed")
     assert task1.id != task2.id
 ```
+<!-- /SECTION: fixtures -->
 
 ---
 
-## Real Behavior Testing (No Mocks)
+<!-- SECTION: pytest-patterns -->
+## Testing Patterns
 
 ### File System Tests
 
@@ -230,7 +213,6 @@ def test_create_user_in_database(db_session: Session):
 
 ```python
 import pytest
-import httpx
 from fastapi.testclient import TestClient
 
 @pytest.fixture
@@ -253,9 +235,11 @@ def test_create_item_via_api(client: TestClient):
     get_response = client.get(f"/items/{data['id']}")
     assert get_response.status_code == 200
 ```
+<!-- /SECTION: pytest-patterns -->
 
 ---
 
+<!-- SECTION: parametrize -->
 ## Parametrized Tests
 
 ### Basic Parametrization
@@ -271,19 +255,6 @@ def test_uppercase(input_val: str, expected: str):
     assert uppercase(input_val) == expected
 ```
 
-### Multiple Parameters
-
-```python
-@pytest.mark.parametrize("a,b,expected", [
-    (1, 2, 3),
-    (0, 0, 0),
-    (-1, 1, 0),
-    (100, 200, 300),
-])
-def test_add(a: int, b: int, expected: int):
-    assert add(a, b) == expected
-```
-
 ### Edge Cases
 
 ```python
@@ -297,40 +268,11 @@ def test_validate_rejects_invalid_input(invalid_input):
     with pytest.raises(ValidationError):
         validate(invalid_input)
 ```
+<!-- /SECTION: parametrize -->
 
 ---
 
-## Exception Testing
-
-### Basic Exception Testing
-
-```python
-def test_raises_validation_error():
-    with pytest.raises(ValidationError) as exc_info:
-        validate("")
-
-    assert exc_info.value.field == "input"
-    assert "required" in str(exc_info.value)
-
-def test_raises_not_found_error():
-    repo = TaskRepository()
-
-    with pytest.raises(NotFoundError) as exc_info:
-        repo.get("nonexistent")
-
-    assert exc_info.value.entity_id == "nonexistent"
-```
-
-### Exception Message Matching
-
-```python
-def test_error_message():
-    with pytest.raises(ValueError, match="must be positive"):
-        set_count(-1)
-```
-
----
-
+<!-- SECTION: async-testing -->
 ## Async Testing
 
 ### pytest-asyncio
@@ -364,29 +306,12 @@ async def test_with_async_db(async_db):
     result = await async_db.query("SELECT 1")
     assert result == 1
 ```
+<!-- /SECTION: async-testing -->
 
 ---
 
+<!-- SECTION: markers -->
 ## Test Markers
-
-### Built-in Markers
-
-```python
-@pytest.mark.skip(reason="Not implemented yet")
-def test_future_feature():
-    ...
-
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Unix-only test"
-)
-def test_unix_permissions():
-    ...
-
-@pytest.mark.xfail(reason="Known bug #123")
-def test_known_issue():
-    ...
-```
 
 ### Custom Markers
 
@@ -411,9 +336,11 @@ def test_database_connection():
 # Run only integration tests
 # pytest -m integration
 ```
+<!-- /SECTION: markers -->
 
 ---
 
+<!-- SECTION: coverage -->
 ## Coverage
 
 ### Configuration
@@ -447,136 +374,18 @@ pytest --cov=src --cov-report=html
 # Fail if coverage below threshold
 pytest --cov=src --cov-fail-under=80
 ```
-
----
-
-## TDD Workflow
-
-### Step 1: Write Failing Test (RED)
-
-```python
-def test_calculate_total():
-    """Test total calculation with discount."""
-    items = [
-        Item(price=100),
-        Item(price=50),
-    ]
-    discount = 0.1  # 10%
-
-    total = calculate_total(items, discount)
-
-    assert total == 135.0  # (100 + 50) * 0.9
-```
-
-```bash
-pytest tests/unit/test_calculator.py::test_calculate_total -v
-# FAILED - calculate_total not implemented
-```
-
-### Step 2: Implement (GREEN)
-
-```python
-def calculate_total(items: list[Item], discount: float) -> float:
-    subtotal = sum(item.price for item in items)
-    return subtotal * (1 - discount)
-```
-
-```bash
-pytest tests/unit/test_calculator.py::test_calculate_total -v
-# PASSED
-```
-
-### Step 3: Refactor
-
-```python
-def calculate_total(
-    items: Sequence[Item],
-    discount: float = 0.0,
-) -> float:
-    """Calculate total with optional discount.
-
-    Args:
-        items: Items to sum
-        discount: Discount percentage (0.0 to 1.0)
-
-    Returns:
-        Total after discount
-    """
-    if not 0 <= discount <= 1:
-        raise ValueError("Discount must be between 0 and 1")
-
-    subtotal = sum(item.price for item in items)
-    return subtotal * (1 - discount)
-```
-
-```bash
-pytest tests/unit/test_calculator.py -v
-# All tests PASSED
-mypy --strict src/calculator.py
-# Success
-```
-
----
-
-## Anti-Patterns
-
-### DO NOT:
-
-```python
-# DON'T use mocks
-from unittest.mock import Mock, patch
-@patch("module.function")  # BAD
-
-# DON'T skip tests without reason
-@pytest.mark.skip  # BAD - no reason
-
-# DON'T use sleep for timing
-import time
-time.sleep(1)  # BAD - flaky
-
-# DON'T test implementation details
-assert service._private_method()  # BAD
-
-# DON'T leave focused tests
-def test_only_this():  # Rename from test_... to skip
-    ...
-```
-
-### DO:
-
-```python
-# DO test real behavior
-def test_save_load_cycle(tmp_path):
-    repo.save(tmp_path, data)
-    loaded = repo.load(tmp_path)
-    assert loaded == data
-
-# DO use fixtures for setup
-@pytest.fixture
-def configured_service(tmp_path):
-    return Service(config_dir=tmp_path)
-
-# DO test edge cases
-@pytest.mark.parametrize("edge_case", [...])
-def test_handles_edge_cases(edge_case):
-    ...
-
-# DO use pytest.raises for exceptions
-with pytest.raises(ValueError):
-    invalid_operation()
-```
+<!-- /SECTION: coverage -->
 
 ---
 
 ## Summary
 
-1. **NO MOCKS** - Test real behavior always
-2. Use fixtures for setup and teardown
-3. Use tmp_path for file system tests
-4. Use real databases (SQLite) for DB tests
-5. Use TestClient for API tests
-6. Parametrize edge cases
-7. Follow TDD: RED -> GREEN -> REFACTOR
-8. Aim for high coverage (80%+)
-9. Mark slow tests appropriately
-10. Keep tests fast and isolated
+1. Use fixtures for setup and teardown
+2. Use tmp_path for file system tests
+3. Use real databases (SQLite) for DB tests
+4. Use TestClient for API tests
+5. Parametrize edge cases
+6. Follow TDD: RED -> GREEN -> REFACTOR
+7. Aim for high coverage (80%+)
+8. Mark slow tests appropriately
+9. Keep tests fast and isolated

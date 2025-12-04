@@ -16,6 +16,7 @@ the platforms/ subdirectory. This provides a unified architecture for:
 # Base and shared utilities
 # ============================================================================
 from .base import PlatformAdapter  # noqa: F401
+from .loader import AdapterLoader  # noqa: F401
 
 # ============================================================================
 # Platform adapters (unified architecture)
@@ -39,6 +40,8 @@ from ..schemas import (
 __all__ = [
     # Base
     "PlatformAdapter",
+    # Loader
+    "AdapterLoader",
     # Platform adapters
     "ClaudeAdapter",
     "ZenAdapter",

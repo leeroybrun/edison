@@ -1,76 +1,49 @@
-"""JSON Schema Composer - composes schemas from core → packs → project.
+"""JSON Schema Registry - composes schemas from core → packs → project.
 
-Uses CompositionFileWriter for unified file output.
-Uses ConfigManager.deep_merge() for schema merging (no duplicate code).
+Uses ConfigManager.deep_merge() for schema merging.
+Implements standard ComposableRegistry interface.
 """
 from __future__ import annotations
 
 import json
 import importlib.resources
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
-from edison.core.config import ConfigManager
-from ..output.writer import CompositionFileWriter
+from ._base import ComposableRegistry
 
 
-class JsonSchemaComposer:
-    """Composes JSON schemas from core → packs → project.
-
-    Uses CompositionFileWriter for consistent file output.
-    Uses ConfigManager.deep_merge() for consistent merging.
+class JsonSchemaRegistry(ComposableRegistry[str]):
+    """Registry for composing JSON schemas.
+    
+    Composes schemas from core → packs → project using deep merge.
+    Implements standard ComposableRegistry interface.
+    
+    Note: JSON schemas use json_merge composition mode, not markdown sections.
     """
 
-    def __init__(
-        self,
-        project_root: Path,
-        active_packs: Optional[List[str]] = None,
-    ) -> None:
-        """Initialize schema composer.
+    content_type: ClassVar[str] = "schemas"
+    file_pattern: ClassVar[str] = "*.json"
+    strategy_config: ClassVar[Dict[str, Any]] = {
+        "enable_sections": False,
+        "enable_dedupe": False,
+        "enable_template_processing": False,
+    }
 
-        Args:
-            project_root: Project root directory.
-            active_packs: List of active pack names.
-        """
-        self.project_root = project_root
-        self.active_packs = active_packs or []
-        self._writer = CompositionFileWriter()
-        self._cfg_mgr = ConfigManager(project_root)
-
-    def compose_all(self) -> Dict[str, Dict[str, Any]]:
-        """Compose all schemas from core, packs, and project.
-
-        Returns:
-            Dict mapping schema name to schema content.
-        """
-        schemas: Dict[str, Dict[str, Any]] = {}
-
-        # 1. Load core schemas
-        core_schemas = self._load_core_schemas()
-        schemas.update(core_schemas)
-
-        # 2. Merge pack schemas
-        for pack in self.active_packs:
-            pack_schemas = self._load_pack_schemas(pack)
-            for name, schema in pack_schemas.items():
-                if name in schemas:
-                    schemas[name] = self._cfg_mgr.deep_merge(schemas[name], schema)
-                else:
-                    schemas[name] = schema
-
-        # 3. Merge project schemas
-        project_schemas = self._load_project_schemas()
-        for name, schema in project_schemas.items():
-            if name in schemas:
-                schemas[name] = self._cfg_mgr.deep_merge(schemas[name], schema)
+    def _load_json(self, path: Any) -> Optional[Dict[str, Any]]:
+        """Load JSON from path or traversable."""
+        try:
+            if hasattr(path, "read_text"):
+                content = path.read_text()
             else:
-                schemas[name] = schema
+                content = Path(path).read_text()
+            return json.loads(content)
+        except Exception:
+            return None
 
-        return schemas
-
-    def _load_core_schemas(self) -> Dict[str, Dict[str, Any]]:
-        """Load schemas from Edison core."""
-        schemas: Dict[str, Dict[str, Any]] = {}
+    def _discover_core_schemas(self) -> Dict[str, Any]:
+        """Discover core schema files from bundled data."""
+        schemas: Dict[str, Any] = {}
         try:
             data_package = importlib.resources.files("edison.data")
             schemas_dir = data_package / "schemas"
@@ -81,62 +54,159 @@ class JsonSchemaComposer:
                     for schema_file in category_path.iterdir():
                         if str(schema_file).endswith(".json"):
                             name = f"{category}/{Path(str(schema_file)).stem}"
-                            content = schema_file.read_text()
-                            schemas[name] = json.loads(content)
+                            schema = self._load_json(schema_file)
+                            if schema:
+                                schemas[name] = schema
         except Exception:
-            pass  # Silently skip if core schemas not available
-
+            pass
         return schemas
 
-    def _load_pack_schemas(self, pack_name: str) -> Dict[str, Dict[str, Any]]:
-        """Load schemas from a pack."""
-        schemas: Dict[str, Dict[str, Any]] = {}
+    def _discover_pack_schemas(self, pack_name: str) -> Dict[str, Any]:
+        """Discover schemas from a pack."""
+        schemas: Dict[str, Any] = {}
+        
+        # Bundled pack schemas
         try:
-            packs_package = importlib.resources.files("edison.packs")
+            packs_package = importlib.resources.files("edison.data") / "packs"
             pack_schemas = packs_package / pack_name / "schemas"
-
             if hasattr(pack_schemas, "iterdir"):
                 for schema_file in pack_schemas.iterdir():
                     if str(schema_file).endswith(".json"):
                         name = Path(str(schema_file)).stem
-                        content = schema_file.read_text()
-                        schemas[name] = json.loads(content)
+                        schema = self._load_json(schema_file)
+                        if schema:
+                            schemas[name] = schema
         except Exception:
-            pass  # Pack may not have schemas
-
+            pass
+        
+        # Project pack schemas
+        project_pack_schemas = self.project_root / ".edison" / "packs" / pack_name / "schemas"
+        if project_pack_schemas.exists():
+            for schema_file in project_pack_schemas.rglob("*.json"):
+                rel = schema_file.relative_to(project_pack_schemas)
+                name = str(rel.with_suffix(""))
+                schema = self._load_json(schema_file)
+                if schema and name in schemas:
+                    schemas[name] = self.cfg_mgr.deep_merge(schemas[name], schema)
+                elif schema:
+                    schemas[name] = schema
+        
         return schemas
 
-    def _load_project_schemas(self) -> Dict[str, Dict[str, Any]]:
-        """Load schemas from project .edison/schemas/."""
-        schemas: Dict[str, Dict[str, Any]] = {}
+    def _discover_project_schemas(self) -> Dict[str, Any]:
+        """Discover schemas from project .edison/schemas/."""
+        schemas: Dict[str, Any] = {}
         project_schemas = self.project_root / ".edison" / "schemas"
 
         if project_schemas.exists():
             for schema_file in project_schemas.rglob("*.json"):
                 rel_path = schema_file.relative_to(project_schemas)
                 name = str(rel_path.with_suffix(""))
-                with open(schema_file) as f:
-                    schemas[name] = json.load(f)
+                schema = self._load_json(schema_file)
+                if schema:
+                    schemas[name] = schema
 
         return schemas
 
-    def write_schemas(self, output_dir: Path) -> int:
-        """Write composed schemas to output directory.
+    def list_names(self) -> List[str]:
+        """List all available schema names."""
+        names: set[str] = set()
+        
+        # Core schemas
+        names.update(self._discover_core_schemas().keys())
+        
+        # Pack schemas
+        for pack in self.get_active_packs():
+            names.update(self._discover_pack_schemas(pack).keys())
+        
+        # Project schemas
+        names.update(self._discover_project_schemas().keys())
+        
+        return sorted(names)
 
-        Uses CompositionFileWriter for consistent output.
-
+    def _compose_schema_dict(self, name: str, packs: List[str]) -> Optional[Dict[str, Any]]:
+        """Compose a single schema by name, returning dict.
+        
         Args:
-            output_dir: Directory to write schemas to.
-
+            name: Schema name (e.g., "config/session")
+            packs: Active pack names
+            
         Returns:
-            Number of schemas written.
+            Composed schema dict or None if not found
         """
-        schemas = self.compose_all()
-        count = 0
+        # Start with core
+        core_schemas = self._discover_core_schemas()
+        schema = core_schemas.get(name)
+        
+        if schema is None:
+            # Check if it exists in packs or project
+            for pack in packs:
+                pack_schemas = self._discover_pack_schemas(pack)
+                if name in pack_schemas:
+                    schema = pack_schemas[name]
+                    break
+            
+            if schema is None:
+                project_schemas = self._discover_project_schemas()
+                schema = project_schemas.get(name)
+        
+        if schema is None:
+            return None
+        
+        # Merge pack schemas
+        for pack in packs:
+            pack_schemas = self._discover_pack_schemas(pack)
+            if name in pack_schemas:
+                schema = self.cfg_mgr.deep_merge(schema, pack_schemas[name])
+        
+        # Merge project schemas
+        project_schemas = self._discover_project_schemas()
+        if name in project_schemas:
+            schema = self.cfg_mgr.deep_merge(schema, project_schemas[name])
+        
+        return schema
 
-        for name, schema in schemas.items():
-            output_path = output_dir / f"{name}.json"
-            self._writer.write_json(output_path, schema)
-            count += 1
+    def compose(self, name: str, packs: Optional[List[str]] = None) -> Optional[str]:
+        """Compose a schema and return as JSON string.
+        
+        Implements standard ComposableRegistry interface.
+        
+        Args:
+            name: Schema name
+            packs: Optional list of active pack names
+            
+        Returns:
+            JSON string of composed schema, or None if not found
+        """
+        packs = packs or self.get_active_packs()
+        schema = self._compose_schema_dict(name, packs)
+        if schema is None:
+            return None
+        return json.dumps(schema, indent=2)
 
-        return count
+    def compose_all(self, packs: Optional[List[str]] = None) -> Dict[str, str]:
+        """Compose all schemas.
+        
+        Standard interface - returns Dict[str, str] (JSON strings).
+        
+        Args:
+            packs: Optional list of active pack names
+            
+        Returns:
+            Dict mapping schema name to JSON string
+        """
+        packs = packs or self.get_active_packs()
+        results: Dict[str, str] = {}
+        
+        for name in self.list_names():
+            content = self.compose(name, packs)
+            if content:
+                results[name] = content
+        
+        return results
+
+
+# Legacy alias for backwards compatibility
+JsonSchemaComposer = JsonSchemaRegistry
+
+__all__ = ["JsonSchemaRegistry", "JsonSchemaComposer"]

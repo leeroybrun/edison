@@ -19,9 +19,9 @@ from edison.core.composition.core.base import CompositionBase
 from edison.core.utils.io import ensure_directory
 
 from .components.base import AdapterContext
+
 if TYPE_CHECKING:
-    from edison.core.config.domains import AdaptersConfig
-    from edison.core.composition.output.config import OutputConfigLoader
+    from edison.core.config.domains.composition import AdapterConfig, CompositionConfig
 
 
 class PlatformAdapter(CompositionBase, ABC):
@@ -36,8 +36,8 @@ class PlatformAdapter(CompositionBase, ABC):
 
     Adds platform-specific:
     - platform_name property (identify the platform)
-    - adapters_config property (adapter configurations)
-    - output_config property (output path configuration)
+    - adapter_config property (adapter-specific configuration from loader)
+    - composition_config property (unified CompositionConfig access)
     - sync_all() method (main sync entry point)
     - sync_agents_from_generated() helper (common agent sync pattern)
 
@@ -63,24 +63,57 @@ class PlatformAdapter(CompositionBase, ABC):
                 return {"synced": [...]}
     """
 
-    # Lazy-loaded config objects
-    _adapters_config: Optional["AdaptersConfig"] = None
-    _output_config: Optional["OutputConfigLoader"] = None
+    # Adapter configuration from loader
+    _adapter_config: Optional["AdapterConfig"] = None
+    _composition_config: Optional["CompositionConfig"] = None
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> None:
         """Initialize the platform adapter.
 
         Args:
             project_root: Project root directory. If not provided, will be resolved
                          automatically using PathResolver.
+            adapter_config: Adapter configuration from AdapterLoader. If not provided,
+                           will be loaded from CompositionConfig using platform_name.
         """
         # Initialize CompositionBase
         super().__init__(project_root=project_root)
 
-        # Initialize lazy config loaders
-        self._adapters_config = None
-        self._output_config = None
+        # Store adapter config from loader
+        self._adapter_config = adapter_config
+        self._composition_config = None
         self._context: Optional[AdapterContext] = None
+
+    @property
+    def composition_config(self) -> "CompositionConfig":
+        """Get CompositionConfig instance.
+        
+        Returns:
+            CompositionConfig for accessing unified configuration.
+        """
+        if self._composition_config is None:
+            from edison.core.config.domains.composition import CompositionConfig
+            self._composition_config = CompositionConfig(repo_root=self.project_root)
+        return self._composition_config
+
+    @property
+    def adapter_config(self) -> Optional["AdapterConfig"]:
+        """Get adapter-specific configuration.
+        
+        Returns configuration passed from AdapterLoader, or looks it up
+        from CompositionConfig using platform_name.
+        
+        Returns:
+            AdapterConfig or None if not found.
+        """
+        if self._adapter_config is None:
+            # Try to load from CompositionConfig using platform_name
+            self._adapter_config = self.composition_config.get_adapter(self.platform_name)
+        return self._adapter_config
 
     @property
     def context(self) -> AdapterContext:
@@ -133,34 +166,74 @@ class PlatformAdapter(CompositionBase, ABC):
         pass
 
     # =========================================================================
-    # Config Properties
+    # Config Access Helpers
     # =========================================================================
 
-    @property
-    def adapters_config(self) -> "AdaptersConfig":
-        """Lazy-load AdaptersConfig.
-
+    def get_output_path(self) -> Path:
+        """Get the output path for this adapter.
+        
         Returns:
-            AdaptersConfig instance for adapter-specific configurations.
+            Resolved output directory path.
         """
-        if self._adapters_config is None:
-            from edison.core.config.domains import AdaptersConfig
+        if self.adapter_config and self.adapter_config.output_path:
+            return self.composition_config.resolve_output_path(
+                self.adapter_config.output_path
+            )
+        # Fallback to platform-specific default
+        return self.project_root / f".{self.platform_name}"
 
-            self._adapters_config = AdaptersConfig(repo_root=self.project_root)
-        return self._adapters_config
-
-    @property
-    def output_config(self) -> "OutputConfigLoader":
-        """Lazy-load OutputConfigLoader.
-
+    def get_sync_config(self, sync_name: str) -> Optional[Any]:
+        """Get sync configuration by name.
+        
+        Args:
+            sync_name: Name of the sync config (e.g., "agents", "prompts")
+            
         Returns:
-            OutputConfigLoader instance for output path configuration.
+            AdapterSyncConfig or None if not found.
         """
-        if self._output_config is None:
-            from edison.core.composition.output.config import OutputConfigLoader
+        if self.adapter_config and self.adapter_config.sync:
+            return self.adapter_config.sync.get(sync_name)
+        return None
 
-            self._output_config = OutputConfigLoader(repo_root=self.project_root)
-        return self._output_config
+    def is_sync_enabled(self, sync_name: str) -> bool:
+        """Check if a sync is enabled.
+        
+        Args:
+            sync_name: Name of the sync config
+            
+        Returns:
+            True if sync is enabled, False otherwise.
+        """
+        sync_cfg = self.get_sync_config(sync_name)
+        return sync_cfg is not None and sync_cfg.enabled
+
+    def get_sync_destination(self, sync_name: str) -> Optional[Path]:
+        """Get resolved sync destination path.
+        
+        Args:
+            sync_name: Name of the sync config
+            
+        Returns:
+            Resolved destination path or None if not configured.
+        """
+        sync_cfg = self.get_sync_config(sync_name)
+        if sync_cfg and sync_cfg.destination:
+            return self.composition_config.resolve_output_path(sync_cfg.destination)
+        return None
+
+    def get_sync_source(self, sync_name: str) -> Optional[Path]:
+        """Get resolved sync source path.
+        
+        Args:
+            sync_name: Name of the sync config
+            
+        Returns:
+            Resolved source path or None if not configured.
+        """
+        sync_cfg = self.get_sync_config(sync_name)
+        if sync_cfg and sync_cfg.source:
+            return self.composition_config.resolve_output_path(sync_cfg.source)
+        return None
 
     # =========================================================================
     # Common Sync Utilities
@@ -196,6 +269,7 @@ class PlatformAdapter(CompositionBase, ABC):
         *,
         add_frontmatter: bool = False,
         frontmatter_fn: Optional[Callable[[str, str], str]] = None,
+        filename_pattern: str = "{name}.md",
     ) -> List[Path]:
         """Common pattern: sync _generated/agents/ to target directory.
 
@@ -203,6 +277,7 @@ class PlatformAdapter(CompositionBase, ABC):
             target_dir: Destination directory for agent files.
             add_frontmatter: If True, use frontmatter_fn to add frontmatter.
             frontmatter_fn: Function(agent_name, content) -> content_with_frontmatter.
+            filename_pattern: Pattern for output filenames.
 
         Returns:
             List of created/updated file paths.
@@ -218,7 +293,7 @@ class PlatformAdapter(CompositionBase, ABC):
 
         result: List[Path] = []
 
-        for source_file in generated_agents.glob("*.md"):
+        for source_file in sorted(generated_agents.glob("*.md")):
             agent_name = source_file.stem
             content = source_file.read_text(encoding="utf-8")
 
@@ -226,11 +301,47 @@ class PlatformAdapter(CompositionBase, ABC):
             if add_frontmatter and frontmatter_fn:
                 content = frontmatter_fn(agent_name, content)
 
-            # Write to target
-            target_file = target_dir / source_file.name
+            # Write to target with configured filename pattern
+            filename = filename_pattern.format(name=agent_name)
+            target_file = target_dir / filename
             self.writer.write_text(target_file, content)
             result.append(target_file)
 
+        return result
+
+    def sync_from_config(self, sync_name: str) -> List[Path]:
+        """Sync files based on configuration.
+        
+        Uses sync configuration to copy files from source to destination.
+        
+        Args:
+            sync_name: Name of the sync config (e.g., "agents", "prompts")
+            
+        Returns:
+            List of created/updated file paths.
+        """
+        sync_cfg = self.get_sync_config(sync_name)
+        if not sync_cfg or not sync_cfg.enabled:
+            return []
+        
+        source_dir = self.get_sync_source(sync_name)
+        dest_dir = self.get_sync_destination(sync_name)
+        
+        if not source_dir or not dest_dir or not source_dir.exists():
+            return []
+        
+        self.validate_structure(dest_dir)
+        
+        result: List[Path] = []
+        for source_file in sorted(source_dir.glob("*.md")):
+            name = source_file.stem
+            content = source_file.read_text(encoding="utf-8")
+            
+            filename = sync_cfg.filename_pattern.format(name=name)
+            target_file = dest_dir / filename
+            self.writer.write_text(target_file, content)
+            result.append(target_file)
+        
         return result
 
     # =========================================================================
@@ -238,16 +349,21 @@ class PlatformAdapter(CompositionBase, ABC):
     # =========================================================================
 
     @classmethod
-    def create(cls, project_root: Optional[Path] = None) -> "PlatformAdapter":
+    def create(
+        cls,
+        project_root: Optional[Path] = None,
+        adapter_config: Optional["AdapterConfig"] = None,
+    ) -> "PlatformAdapter":
         """Factory method for standard initialization.
 
         Args:
             project_root: Optional project root directory.
+            adapter_config: Optional adapter configuration.
 
         Returns:
             Initialized platform adapter instance.
         """
-        return cls(project_root=project_root)
+        return cls(project_root=project_root, adapter_config=adapter_config)
 
 
 __all__ = ["PlatformAdapter"]

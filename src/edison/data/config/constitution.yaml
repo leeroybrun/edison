@@ -1,75 +1,52 @@
 # edison/core/config/constitution.yaml
 # Defines mandatory and optional reads for each role type in the Edison framework
+#
+# ARCHITECTURE NOTE (v2.0):
+# All critical content is now EMBEDDED in the constitution/prompt files via
+# {{include:}} and {{include-section:}}. mandatoryReads is empty because:
+# 1. Constitution is embedded in each agent/validator prompt
+# 2. Re-reading the prompt file = re-reading everything
+# 3. No risk of forgetting to read separate files
+# 4. No double-loading of content
+#
+# optionalReads are available for deep-dive when needed, but NOT required.
 
-version: "1.0.0"
+version: "2.0.0"
 
 constitutions:
   orchestrator:
-    mandatoryReads:
-      - path: constitutions/ORCHESTRATORS.md
-        purpose: Main orchestrator constitution
-      - path: guidelines/orchestrators/SESSION_WORKFLOW.md
-        purpose: Session lifecycle management
-      - path: guidelines/shared/SHARED_DELEGATION.md
-        purpose: Delegation rules and patterns
-      - path: AVAILABLE_AGENTS.md
-        purpose: Dynamic agent roster
-      - path: AVAILABLE_VALIDATORS.md
-        purpose: Dynamic validator roster
-      - path: guidelines/shared/TDD.md
-        purpose: TDD enforcement requirements
-      - path: guidelines/shared/VALIDATION.md
-        purpose: Validation workflow
+    # All critical content embedded in orchestrator constitution
+    mandatoryReads: []
     optionalReads:
-      - path: guidelines/shared/CONTEXT7.md
-        purpose: Context7 usage for documentation lookup
-      - path: guidelines/shared/QUALITY.md
-        purpose: Quality standards reference
+      - path: AVAILABLE_AGENTS.md
+        purpose: Dynamic agent roster (on-demand lookup)
+      - path: AVAILABLE_VALIDATORS.md
+        purpose: Dynamic validator roster (on-demand lookup)
+      - path: guidelines/shared/GIT_WORKFLOW.md
+        purpose: Git conventions (on-demand)
+      - path: guidelines/shared/QUALITY_PATTERNS.md
+        purpose: Extended code smell examples (deep-dive)
 
   agents:
-    mandatoryReads:
-      - path: constitutions/AGENTS.md
-        purpose: Agent constitution
-      - path: guidelines/shared/SHARED_COMMON.md
-        purpose: Shared Context7, TDD, and configuration guardrails
-      - path: guidelines/agents/COMMON.md
-        purpose: Shared agent workflow roster and tooling baseline
-      - path: guidelines/agents/MANDATORY_WORKFLOW.md
-        purpose: Implementation workflow
-      - path: guidelines/agents/OUTPUT_FORMAT.md
-        purpose: Report format specification
-      - path: guidelines/shared/TDD.md
-        purpose: TDD requirements
-      - path: guidelines/shared/CONTEXT7.md
-        purpose: Context7 usage requirements
-      - path: guidelines/shared/QUALITY.md
-        purpose: Quality standards
-      - path: guidelines/shared/EPHEMERAL_SUMMARIES_POLICY.md
-        purpose: Summary file prohibition
+    # All critical content embedded in agent constitution
+    # Constitution is included via {{include:constitutions/agents-base.md}}
+    mandatoryReads: []
     optionalReads:
-      - path: AVAILABLE_AGENTS.md
-        purpose: Reference of available agents for scope awareness
-      - path: AVAILABLE_VALIDATORS.md
-        purpose: Reference of validators that will review work
+      - path: guidelines/shared/QUALITY_PATTERNS.md
+        purpose: Extended code smell examples (deep-dive)
+      - path: guidelines/shared/GIT_WORKFLOW.md
+        purpose: Git conventions (on-demand)
+      - path: guidelines/shared/REFACTORING.md
+        purpose: Refactoring patterns (on-demand)
+      - path: guidelines/agents/OUTPUT_FORMAT.md
+        purpose: Detailed report format reference
 
   validators:
-    mandatoryReads:
-      - path: constitutions/VALIDATORS.md
-        purpose: Validator constitution
-      - path: guidelines/shared/SHARED_COMMON.md
-        purpose: Shared Context7, TDD, and configuration guardrails
-      - path: guidelines/validators/VALIDATOR_COMMON.md
-        purpose: Validation guards and maintainability baseline
-      - path: guidelines/validators/VALIDATOR_WORKFLOW.md
-        purpose: Validation workflow
-      - path: guidelines/validators/OUTPUT_FORMAT.md
-        purpose: Report format specification
-      - path: guidelines/shared/CONTEXT7.md
-        purpose: Context7 knowledge refresh
+    # All critical content embedded in validator constitution
+    # Constitution is included via {{include:constitutions/validators-base.md}}
+    mandatoryReads: []
     optionalReads:
-      - path: guidelines/shared/TDD.md
-        purpose: TDD requirements for validation context
-      - path: guidelines/shared/QUALITY.md
-        purpose: Quality standards for validation criteria
-      - path: AVAILABLE_VALIDATORS.md
-        purpose: Reference of other validators
+      - path: guidelines/shared/QUALITY_PATTERNS.md
+        purpose: Extended code smell examples (deep-dive)
+      - path: guidelines/validators/OUTPUT_FORMAT.md
+        purpose: Detailed report format reference

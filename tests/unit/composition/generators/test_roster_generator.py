@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from edison.core.composition.generators.roster import AgentRosterGenerator
-from edison.core.composition.registries.agents import AgentRegistry
+from edison.core.composition.generators import AgentRosterGenerator
+from edison.core.registries.agents import AgentRegistry
 
 
 def test_agent_roster_generator_writes_from_registry(tmp_path: Path) -> None:

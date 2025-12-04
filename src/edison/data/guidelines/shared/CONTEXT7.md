@@ -36,11 +36,11 @@ await mcp__context7__get_library_docs({
 
 Read full: `.edison/_generated/guidelines/shared/CONTEXT7.md`.
 
-<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT START -->
+<!-- SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
 **Context7 evidence:** Create `context7-<package>.txt` markers when using postTrainingPackages; guards block `wip→done` if missing.
-<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT END -->
+<!-- /SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
 
-<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED START -->
+<!-- SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 ## Evidence markers (required when used)
 - When a task uses any package listed in `postTrainingPackages` (see ConfigManager overlays: `.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`), include a marker file per package in the current round evidence directory, e.g.:
   - `.project/qa/validation-evidence/<task-id>/round-<N>/context7-<package>.txt`
@@ -48,7 +48,7 @@ Read full: `.edison/_generated/guidelines/shared/CONTEXT7.md`.
 - Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.
 - Notes in task files (e.g., "Context7 (<library>)") are NOT accepted as evidence.
 - When HMAC stamping is enabled in config, include the stamped digest inside each marker.
-<!-- RULE: RULE.CONTEXT7.EVIDENCE_REQUIRED END -->
+<!-- /SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 
 ## Auto-detection & enforcement
 - `edison task ready` auto-detects post-training packages from the git diff and blocks readiness if matching markers are absent.

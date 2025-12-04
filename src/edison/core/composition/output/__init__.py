@@ -1,19 +1,15 @@
 """Output handling for composition.
 
-Includes output path configuration, formatting utilities, and header resolution.
+Includes formatting utilities and header resolution.
+
+Note: Output configuration is now handled by CompositionConfig in
+edison.core.config.domains.composition.
 
 Note: Document generation (state machine, rosters) has been moved to
 composition/generators/ module.
 """
 from __future__ import annotations
 
-from .config import (
-    OutputConfig,
-    ClientOutputConfig,
-    SyncConfig,
-    OutputConfigLoader,
-    get_output_config,
-)
 from .headers import (
     build_generated_header,
     load_header_template,
@@ -26,12 +22,6 @@ from .formatting import (
 )
 
 __all__ = [
-    # Config
-    "OutputConfig",
-    "ClientOutputConfig",
-    "SyncConfig",
-    "OutputConfigLoader",
-    "get_output_config",
     # Headers
     "build_generated_header",
     "load_header_template",

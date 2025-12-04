@@ -1,7 +1,10 @@
 """Composition package exposing include resolution and composition engines.
 
-Note: Registry classes are NOT re-exported here to avoid circular imports.
-Import them directly from edison.core.composition.registries instead.
+Note: AgentRegistry and ValidatorRegistry for metadata lookup are now in core.registries.
+Use: from edison.core.registries import AgentRegistry, ValidatorRegistry
+
+Note: Output configuration is now handled by CompositionConfig in
+edison.core.config.domains.composition.
 """
 from __future__ import annotations
 
@@ -31,14 +34,8 @@ from .core import (
     ParsedSection,
 )
 
-# Output handling
+# Output handling (headers and formatting only - config is in CompositionConfig)
 from .output import (
-    # Config
-    OutputConfig,
-    ClientOutputConfig,
-    SyncConfig,
-    OutputConfigLoader,
-    get_output_config,
     # Headers
     build_generated_header,
     load_header_template,
@@ -81,25 +78,22 @@ from .audit import (
 # Lazy imports for registries to avoid circular imports
 def __getattr__(name: str):
     """Lazy import registry classes to avoid circular imports."""
-    # Registry classes
+    # Registry classes that still exist
     registry_imports = {
-        "AgentRegistry": ".registries.agents",
-        "AgentError": ".registries.agents",
-        "AgentNotFoundError": ".registries.agents",
-        "compose_agent": ".registries.agents",
-        "ValidatorRegistry": ".registries.validators",
-        "collect_validators": ".registries.validators",
-        "infer_validator_metadata": ".registries.validators",
-        "normalize_validator_entries": ".registries.validators",
-        "GuidelineRegistry": ".registries.guidelines",
-        "GuidelineCompositionResult": ".registries.guidelines",
-        "GuidelinePaths": ".registries.guidelines",
-        "compose_guideline": ".registries.guidelines",
         "ConstitutionRegistry": ".registries.constitutions",
         "ConstitutionResult": ".registries.constitutions",
         "generate_all_constitutions": ".registries.constitutions",
-        "generate_canonical_entry": ".generators.roots",
-        "get_rules_for_role": ".registries.rules",
+    }
+    
+    # Redirects to new core.registries location
+    core_registry_redirects = {
+        "AgentRegistry": ("edison.core.registries.agents", "AgentRegistry"),
+        "ValidatorRegistry": ("edison.core.registries.validators", "ValidatorRegistry"),
+    }
+    
+    # Rules are now in core.rules
+    rules_imports = {
+        "get_rules_for_role": ("edison.core.rules.registry", "get_rules_for_role"),
     }
 
     # IDE composition classes (from adapters.components and adapters.platforms)
@@ -127,6 +121,18 @@ def __getattr__(name: str):
         import importlib
         module = importlib.import_module(registry_imports[name], package="edison.core.composition")
         return getattr(module, name)
+    
+    if name in core_registry_redirects:
+        import importlib
+        module_path, attr_name = core_registry_redirects[name]
+        module = importlib.import_module(module_path)
+        return getattr(module, attr_name)
+    
+    if name in rules_imports:
+        import importlib
+        module_path, attr_name = rules_imports[name]
+        module = importlib.import_module(module_path)
+        return getattr(module, attr_name)
 
     if name in ide_imports:
         import importlib
@@ -146,7 +152,6 @@ __all__ = [
     "CompositionNotFoundError",
     "CompositionShadowingError",
     "CompositionSectionError",
-    # Modes
     # Paths
     "CompositionPathResolver",
     "ResolvedPaths",
@@ -159,31 +164,14 @@ __all__ = [
     "SectionRegistry",
     "SectionMode",
     "ParsedSection",
-    # Registries - Agents (lazy)
+    # Registries - redirected to core.registries (lazy)
     "AgentRegistry",
-    "AgentError",
-    "AgentNotFoundError",
-    "compose_agent",
-    # Registries - Validators (lazy)
     "ValidatorRegistry",
-    "collect_validators",
-    "infer_validator_metadata",
-    "normalize_validator_entries",
-    # Registries - Guidelines (lazy)
-    "GuidelineRegistry",
-    "GuidelineCompositionResult",
-    "GuidelinePaths",
-    "compose_guideline",
     # Registries - Constitutions (lazy)
+    "ConstitutionRegistry",
+    "ConstitutionResult",
     "generate_all_constitutions",
-    # Registries - Rosters (lazy)
-    "generate_canonical_entry",
-    # Output
-    "OutputConfig",
-    "ClientOutputConfig",
-    "SyncConfig",
-    "OutputConfigLoader",
-    "get_output_config",
+    # Output (headers and formatting)
     "build_generated_header",
     "load_header_template",
     "resolve_version",
@@ -209,9 +197,6 @@ __all__ = [
     "project_terms",
     "DEFAULT_PROJECT_TERMS",
     "PACK_TECH_TERMS",
-    # Constitutions
-    "ConstitutionRegistry",
-    "ConstitutionResult",
     # Rules
     "get_rules_for_role",
     # IDE

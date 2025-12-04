@@ -41,11 +41,13 @@ class LayerDiscovery:
         core_dir: Path,
         packs_dir: Path,
         project_dir: Path,
+        file_pattern: str = "*.md",
     ) -> None:
         self.content_type = content_type
         self.core_dir = core_dir
         self.packs_dir = packs_dir
         self.project_dir = project_dir
+        self.file_pattern = file_pattern
     
     def discover_core(self) -> Dict[str, LayerSource]:
         """Discover all core entity definitions."""
@@ -56,7 +58,7 @@ class LayerDiscovery:
             return entities
         
         # Support both flat and nested structures
-        for path in type_dir.rglob("*.md"):
+        for path in type_dir.rglob(self.file_pattern):
             # Skip files in overlays/ (shouldn't exist in core, but be safe)
             if "overlays" in path.parts:
                 continue
@@ -84,7 +86,7 @@ class LayerDiscovery:
         if not overlays_dir.exists():
             return entities
         
-        for path in overlays_dir.glob("*.md"):
+        for path in overlays_dir.glob(self.file_pattern):
             name = path.stem
             if name.startswith("_"):
                 continue
@@ -119,7 +121,7 @@ class LayerDiscovery:
         if not type_dir.exists():
             return entities
         
-        for path in type_dir.glob("*.md"):
+        for path in type_dir.glob(self.file_pattern):
             # Skip files in overlays/
             if "overlays" in path.parts:
                 continue
@@ -154,7 +156,7 @@ class LayerDiscovery:
         if not overlays_dir.exists():
             return entities
         
-        for path in overlays_dir.glob("*.md"):
+        for path in overlays_dir.glob(self.file_pattern):
             name = path.stem
             if name.startswith("_"):
                 continue
@@ -185,7 +187,7 @@ class LayerDiscovery:
         if not type_dir.exists():
             return entities
         
-        for path in type_dir.glob("*.md"):
+        for path in type_dir.glob(self.file_pattern):
             # Skip files in overlays/
             if "overlays" in path.parts:
                 continue

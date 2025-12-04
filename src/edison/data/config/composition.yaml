@@ -1,416 +1,310 @@
-# Unified Composition Schema
-# Defines section handling for all composable content types
+# =============================================================================
+# EDISON UNIFIED COMPOSITION CONFIGURATION
+# =============================================================================
+# This is the single source of truth for ALL composition settings.
+# 
+# All composition config is under the `composition:` key to ensure proper
+# namespacing when merged with other config files.
 #
-# ============================================================================
-# SECTION SYNTAX (Unified 4-Concept System)
-# ============================================================================
+# Structure:
+#   composition:
+#     defaults: Global composition defaults (dedupe, headers)
+#     content_types: ALL composable content (agents, validators, roots, etc.)
+#     adapters: Platform adapter configurations (claude, cursor, zen, etc.)
 #
-# 1. DEFINE SECTION: <!-- SECTION: name -->content<!-- /SECTION: name -->
-#    Creates a named, extensible, extractable region in a template.
-#
-# 2. EXTEND SECTION: <!-- EXTEND: name -->content<!-- /EXTEND -->
-#    Adds content to an existing section from pack/project overlays.
-#
-# 3. INCLUDE SECTION: {{include-section:path#name}}
-#    Embeds extracted section content from another file.
-#
-# 4. REFERENCE SECTION: {{reference-section:path#name|purpose}}
-#    Creates a pointer to a section without embedding content.
-#
-# Convention: Use <!-- SECTION: composed-additions --> for pack/project content.
-# Packs extend via <!-- EXTEND: composed-additions -->content<!-- /EXTEND -->
-#
-# ============================================================================
+# Usage:
+#   edison compose agents        # Compose only agents
+#   edison compose roots         # Compose root entry points
+#   edison compose all           # Compose everything
+#   edison compose all --claude  # Compose + sync to Claude
+# =============================================================================
 
 version: "2.0"
 
-# Default composition settings
-defaults:
-  dedupe_strategy: shingles  # 12-word shingles for deduplication
-  dedupe_min_shingles: 3
+composition:
+  # ===========================================================================
+  # DEFAULTS
+  # ===========================================================================
+  # Global settings applied to all content types unless overridden.
 
-# Content type definitions
-content_types:
-  agents:
-    description: "Agent prompt templates with tools and guidelines"
-    
-    known_sections:
-      - name: role
-        mode: replace
-        description: "Core role definition (not extensible)"
-        
-      - name: tools
-        mode: append
-        description: "Available tools for the agent"
-        
-      - name: guidelines
-        mode: append
-        description: "Guidelines and best practices"
-        
-      - name: architecture
-        mode: append
-        description: "Architecture patterns and constraints"
-        
-      - name: examples
-        mode: append
-        description: "Code examples and patterns"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
-    
-  validators:
-    description: "Validator prompt templates with checks and criteria"
-    
-    known_sections:
-      - name: purpose
-        mode: replace
-        description: "Core purpose definition"
-        
-      - name: checks
-        mode: append
-        description: "Validation checks to perform"
-        
-      - name: examples
-        mode: append
-        description: "Code examples showing pass/fail cases"
-        
-      - name: tech-stack
-        mode: append
-        description: "Tech-stack specific validation rules"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
-    
-  guidelines:
-    description: "Guideline documents with best practices"
-    
-    # Guidelines use full-document composition (concatenate + dedupe)
-    composition_mode: concatenate
-    dedupe: true
-    
-    known_sections:
-      - name: overview
-        mode: replace
-        description: "Core overview"
-        
-      - name: principles
-        mode: append
-        description: "Guiding principles"
-        
-      - name: practices
-        mode: append
-        description: "Best practices"
-        
-      - name: examples
-        mode: append
-        description: "Examples and patterns"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
-    
-  constitutions:
-    description: "Role constitutions with mandatory rules"
-    
-    known_sections:
-      - name: identity
-        mode: replace
-        description: "Core role identity"
-        
-      - name: mandatory-reads
-        mode: append
-        description: "Required document reads"
-        
-      - name: rules
-        mode: append
-        description: "Applicable rules"
-        
-      - name: workflow
-        mode: append
-        description: "Workflow steps"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
-    
-  rules:
-    description: "Rule definitions from YAML registries"
-    
-    # Rules use YAML merge strategy
-    composition_mode: yaml_merge
-    merge_key: id
-    
-    known_sections: []  # Rules don't use markdown sections
+  defaults:
+    # Deduplication settings (used by guidelines, start prompts)
+    dedupe:
+      shingle_size: 12
+      min_shingles: 5
+      threshold: 0.37
 
-  roots:
-    description: "Project root entry point files (e.g., AGENTS.md)"
+    # Default composition mode
+    composition_mode: section_merge
 
-    # Root entry points are mostly static - minimal extension points
-    known_sections:
-      - name: mandatory-read
-        mode: replace
-        description: "Mandatory constitution read instructions (not extensible)"
-        
-      - name: role-determination
-        mode: replace
-        description: "How to determine role (not extensible)"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
+    # Generated file header template
+    generated_header: |
+      <!--
+        AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
+        Generated by: Edison Framework {{version}}
+        Template: {{template}}
+        Generated at: {{timestamp}}
+        Project config root: {{PROJECT_EDISON_DIR}}
+      
+        To modify, edit the source template or configuration.
+      -->
 
-  clients:
-    description: "Client-specific configuration files (Claude, Zen, Codex)"
-    
-    known_sections:
-      - name: entry-point
-        mode: replace
-        description: "Reference to AGENTS.md entry point"
-        
-      - name: client-specific
-        mode: append
-        description: "Client-specific instructions"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
+  # ===========================================================================
+  # CONTENT TYPES
+  # ===========================================================================
+  # Every piece of composed content is defined here.
+  # Each type can be composed via: edison compose <type>
+  #
+  # Common properties:
+  #   enabled         - Whether to compose this type (default: true)
+  #   description     - Human-readable description
+  #   composition_mode - section_merge | concatenate | yaml_merge | json_merge
+  #   dedupe          - Enable deduplication (default: false)
+  #   registry        - Registry class name (null = GenericRegistry)
+  #   content_path    - Source directory path, relative to data/ (default: type name)
+  #   file_pattern    - Glob pattern for source files (default: "*.md")
+  #   output_path     - Where composed files are written
+  #   filename_pattern - Pattern for output filenames (default: "{name}.md")
+  #   cli_flag        - CLI flag override (default: type name with _ -> -)
 
-  start:
-    description: "Session start prompts for orchestrators (new, resume, validate)"
-    
-    # Start prompts use full-document composition (concatenate + dedupe)
-    composition_mode: concatenate
-    dedupe: true
-    
-    known_sections:
-      - name: checklist
-        mode: append
-        description: "Pre-session checklist items"
-        
-      - name: protocol
-        mode: append
-        description: "Session protocol steps"
-        
-      - name: commands
-        mode: append
-        description: "CLI commands for the session type"
-        
-      - name: composed-additions
-        mode: append
-        description: "Pack/project additional content"
+  content_types:
+    # -------------------------------------------------------------------------
+    # AGENTS
+    # -------------------------------------------------------------------------
+    agents:
+      enabled: true
+      description: "Agent prompt templates"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null  # Use GenericRegistry
+      content_path: "agents"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+      filename_pattern: "{name}.md"
 
-# Directory conventions (unified across all types)
-directory_conventions:
-  overlays_subfolder: "overlays"
-  
-  # Path patterns for each layer
-  # Bundled defaults come from edison.data package
-  # Project overrides come from {project_dir}/{type}/
-  pack_overlay: "{bundled_packs_dir}/{pack}/{type}/overlays/{name}.md"
-  pack_new: "{bundled_packs_dir}/{pack}/{type}/{name}.md"
-  project_overlay: "{project_dir}/{type}/overlays/{name}.md"
-  project_new: "{project_dir}/{type}/{name}.md"
-  
-  # Naming conventions for constitutions (special case)
-  # Bundled constitutions: edison.data/constitutions/{role}-base.md
-  constitution_pack: "{bundled_packs_dir}/{pack}/constitutions/{role}-additions.md"
-  constitution_project: "{project_dir}/constitutions/{role}-overrides.md"
+    # -------------------------------------------------------------------------
+    # VALIDATORS  
+    # -------------------------------------------------------------------------
+    validators:
+      enabled: true
+      description: "Validator prompt templates"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null  # Use GenericRegistry
+      content_path: "validators"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/validators"
+      filename_pattern: "{name}.md"
 
-# Validation rules
-validation:
-  # Error if overlay references non-existent entity
-  overlay_must_exist: true
-  
-  # Error if new definition shadows existing entity
-  no_shadowing: true
-  
-  # Warn on sections that don't match any known section
-  warn_unknown_sections: true
+    # -------------------------------------------------------------------------
+    # GUIDELINES
+    # -------------------------------------------------------------------------
+    guidelines:
+      enabled: true
+      description: "Guideline documents"
+      composition_mode: concatenate
+      dedupe: true
+      registry: null  # Use GenericRegistry
+      content_path: "guidelines"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/guidelines"
+      filename_pattern: "{name}.md"
 
-# =============================================================================
-# OUTPUT CONFIGURATION
-# =============================================================================
-# Configure where composed files are written.
-# All paths are relative to repo root unless absolute.
-# Use {{PROJECT_EDISON_DIR}} placeholder for project config directory.
-#
-# Project-level overrides: Create a composition.yaml in your .edison/ directory
-# and override only the outputs you want to customize.
+    # -------------------------------------------------------------------------
+    # CONSTITUTIONS
+    # -------------------------------------------------------------------------
+    constitutions:
+      enabled: true
+      description: "Role constitutions (orchestrators, agents, validators)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: edison.core.composition.registries.constitutions.ConstitutionRegistry
+      content_path: "constitutions"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/constitutions"
+      filename_pattern: "{NAME}.md"
 
-outputs:
-  # -------------------------------------------------------------------------
-  # Canonical Entry Point (AGENTS.md)
-  # -------------------------------------------------------------------------
-  # The main entry point file that directs LLMs to their role constitution.
-  # Default: Written to repo root as AGENTS.md
-  canonical_entry:
-    enabled: true
-    # Where to write the file (relative to repo root)
-    output_path: "."
-    # Filename (can be customized, e.g., "AGENTS_COMPOSED.md")
-    filename: "AGENTS.md"
-    # Source template (relative to edison data dir)
-    template: "roots/AGENTS.md"
+    # -------------------------------------------------------------------------
+    # ROOTS (Entry Points: AGENTS.md, CLAUDE.md)
+    # -------------------------------------------------------------------------
+    roots:
+      enabled: true
+      description: "Root entry point files"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null
+      content_path: "roots"
+      file_pattern: "*.md"
+      output_path: "."
+      filename_pattern: "{NAME}.md"
+      output_mapping:
+        CLAUDE: ".claude/CLAUDE.md"
 
-  # -------------------------------------------------------------------------
-  # Client Files (CLAUDE.md, zen.md, etc.)
-  # -------------------------------------------------------------------------
-  # Client-specific configuration files.
-  # Each client can be individually enabled/disabled and configured.
-  clients:
-    # Claude Code client
+    # -------------------------------------------------------------------------
+    # START (Session Start Prompts)
+    # -------------------------------------------------------------------------
+    start:
+      enabled: true
+      description: "Session start prompts"
+      composition_mode: concatenate
+      dedupe: true
+      registry: null
+      content_path: "start"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/start"
+      filename_pattern: "{name}.md"
+
+    # -------------------------------------------------------------------------
+    # CURSOR RULES (.mdc files)
+    # -------------------------------------------------------------------------
+    cursor_rules:
+      enabled: true
+      description: "Cursor IDE rules"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null
+      content_path: "clients/cursor/rules"
+      file_pattern: "*.mdc"
+      output_path: ".cursor/rules"
+      filename_pattern: "{name}.mdc"
+      cli_flag: "cursor-rules"
+
+    # -------------------------------------------------------------------------
+    # SCHEMAS (JSON Schema composition)
+    # -------------------------------------------------------------------------
+    schemas:
+      enabled: true
+      description: "JSON schemas"
+      composition_mode: json_merge
+      dedupe: false
+      registry: edison.core.composition.registries.schemas.JsonSchemaComposer
+      content_path: "schemas"
+      file_pattern: "*.json"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/schemas"
+      filename_pattern: "{name}.json"
+
+    # -------------------------------------------------------------------------
+    # DOCUMENTS (Task/QA templates)
+    # -------------------------------------------------------------------------
+    documents:
+      enabled: true
+      description: "Document templates (TASK.md, QA.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null  # Use GenericRegistry
+      content_path: "templates/documents"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/documents"
+      filename_pattern: "{name}.md"
+
+    # -------------------------------------------------------------------------
+    # ROSTERS (Data-driven documents)
+    # -------------------------------------------------------------------------
+    agent_roster:
+      enabled: true
+      description: "Available agents roster (AVAILABLE_AGENTS.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: edison.core.composition.generators.available_agents.AgentRosterGenerator
+      content_path: "generators"
+      file_pattern: "AVAILABLE_AGENTS.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated"
+      filename_pattern: "AVAILABLE_AGENTS.md"
+
+    validator_roster:
+      enabled: true
+      description: "Available validators roster (AVAILABLE_VALIDATORS.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: edison.core.composition.generators.available_validators.ValidatorRosterGenerator
+      content_path: "generators"
+      file_pattern: "AVAILABLE_VALIDATORS.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated"
+      filename_pattern: "AVAILABLE_VALIDATORS.md"
+
+    state_machine:
+      enabled: true
+      description: "State machine documentation (STATE_MACHINE.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: edison.core.composition.generators.state_machine.StateMachineGenerator
+      content_path: "generators"
+      file_pattern: "STATE_MACHINE.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated"
+      filename_pattern: "STATE_MACHINE.md"
+
+  # ===========================================================================
+  # PLATFORM ADAPTERS
+  # ===========================================================================
+  # Platform adapters handle syncing composed content to IDE/tool directories.
+  # Each adapter is loaded dynamically via its adapter_class.
+  #
+  # Properties:
+  #   enabled      - Whether this adapter is active
+  #   adapter_class - Full Python module path to adapter class
+  #   description  - Human-readable description
+  #   sync         - Sync configuration (source -> destination mappings)
+
+  adapters:
+    # -------------------------------------------------------------------------
+    # CLAUDE (Claude Code / Claude Desktop)
+    # -------------------------------------------------------------------------
     claude:
       enabled: true
-      # Where to write (relative to repo root)
+      adapter_class: edison.core.adapters.platforms.claude.ClaudeAdapter
+      description: "Claude Code / Claude Desktop integration"
       output_path: ".claude"
-      filename: "CLAUDE.md"
-      template: "clients/claude.md"
-    
-    # Zen MCP client
+      sync:
+        agents:
+          enabled: true
+          source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+          destination: ".claude/agents"
+          filename_pattern: "{name}.md"
+
+    # -------------------------------------------------------------------------
+    # CURSOR (Cursor IDE)
+    # -------------------------------------------------------------------------
+    cursor:
+      enabled: true
+      adapter_class: edison.core.adapters.platforms.cursor.CursorAdapter
+      description: "Cursor IDE integration"
+      output_path: ".cursor"
+
+    # -------------------------------------------------------------------------
+    # ZEN (Zen MCP / Cline)
+    # -------------------------------------------------------------------------
     zen:
       enabled: true
+      adapter_class: edison.core.adapters.platforms.zen.adapter.ZenAdapter
+      description: "Zen MCP / Cline integration"
       output_path: ".zen/conf"
-      filename: "zen.md"
-      template: "clients/zen.md"
-    
-    # Codex client (example of disabled by default)
+      sync:
+        prompts:
+          enabled: true
+          source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+          destination: ".zen/conf/systemprompts/clink"
+          filename_pattern: "{name}.txt"
+
+    # -------------------------------------------------------------------------
+    # CODERABBIT (CodeRabbit CI)
+    # -------------------------------------------------------------------------
+    coderabbit:
+      enabled: true
+      adapter_class: edison.core.adapters.platforms.coderabbit.CoderabbitAdapter
+      description: "CodeRabbit CI integration"
+      output_path: "."
+      filename: ".coderabbit.yaml"
+
+    # -------------------------------------------------------------------------
+    # CODEX (OpenAI Codex)
+    # -------------------------------------------------------------------------
     codex:
       enabled: false
+      adapter_class: edison.core.adapters.platforms.codex.CodexAdapter
+      description: "OpenAI Codex integration"
       output_path: ".codex"
-      filename: "CODEX.md"
-      template: "clients/codex.md"
-    
-    # Cursor IDE client
-    cursor:
-      enabled: false
-      output_path: ".cursor"
-      filename: "CURSOR.md"
-      template: "clients/cursor.md"
-
-  # -------------------------------------------------------------------------
-  # Constitutions
-  # -------------------------------------------------------------------------
-  # Role-specific constitution files.
-  constitutions:
-    enabled: true
-    # Base output directory (relative to project config dir)
-    output_path: "{{PROJECT_EDISON_DIR}}/_generated/constitutions"
-    # Individual constitution files
-    files:
-      orchestrators:
-        enabled: true
-        filename: "ORCHESTRATORS.md"
-      agents:
-        enabled: true
-        filename: "AGENTS.md"
-      validators:
-        enabled: true
-        filename: "VALIDATORS.md"
-
-  # -------------------------------------------------------------------------
-  # Agents
-  # -------------------------------------------------------------------------
-  # Composed agent prompt files.
-  agents:
-    enabled: true
-    output_path: "{{PROJECT_EDISON_DIR}}/_generated/agents"
-    # File naming pattern: {agent_name}.md
-    filename_pattern: "{name}.md"
-
-  # -------------------------------------------------------------------------
-  # Validators
-  # -------------------------------------------------------------------------
-  # Composed validator prompt files.
-  validators:
-    enabled: true
-    output_path: "{{PROJECT_EDISON_DIR}}/_generated/validators"
-    # File naming pattern: {validator_name}.md
-    filename_pattern: "{name}.md"
-
-  # -------------------------------------------------------------------------
-  # Guidelines
-  # -------------------------------------------------------------------------
-  # Composed guideline files.
-  guidelines:
-    enabled: true
-    output_path: "{{PROJECT_EDISON_DIR}}/_generated/guidelines"
-    # Preserve source directory structure
-    preserve_structure: true
-    filename_pattern: "{name}.md"
-
-  # -------------------------------------------------------------------------
-  # Start Prompts
-  # -------------------------------------------------------------------------
-  # Session start prompts for orchestrators.
-  start:
-    enabled: true
-    output_path: "{{PROJECT_EDISON_DIR}}/_generated/start"
-    filename_pattern: "{name}.md"
-
-  # -------------------------------------------------------------------------
-  # CodeRabbit Configuration
-  # -------------------------------------------------------------------------
-  # CodeRabbit AI code review tool configuration.
-  coderabbit:
-    enabled: true
-    output_path: "."
-    filename: ".coderabbit.yaml"
-
-  # -------------------------------------------------------------------------
-  # Client Sync Outputs
-  # -------------------------------------------------------------------------
-  # Where synced files are written for each client.
-  # These are the final locations after adapter processing.
-  sync:
-    claude:
-      enabled: true
-      # Agents synced to .claude/agents/
-      agents_path: ".claude/agents"
-      # Agent filename pattern
-      agents_filename_pattern: "{name}.md"
-
-    zen:
-      enabled: true
-      # Zen prompts synced to .zen/conf/systemprompts/
-      prompts_path: ".zen/conf/systemprompts/clink"
-      prompts_filename_pattern: "{name}.txt"
-
-# =============================================================================
-# COMPOSITION WORKFLOW SETTINGS
-# =============================================================================
-# Used by orchestrators for workflow coordination.
-
-composition:
-  workflowLoop:
-    command: "edison session next"
-    frequency: "Every task cycle"
-    readOrder:
-      - "Task file in .project/tasks/"
-      - "Relevant guidelines from .edison/"
-      - "Existing code in scope"
-      - "Run tests and validation"
-  
-  # Generated file header template
-  generatedFileHeader: |
-    <!--
-      AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
-      Generated by: Edison Framework v2.0.0
-      Template: {{template}}
-      Generated at: {{timestamp}}
-      Project config root: {{PROJECT_EDISON_DIR}}
-
-      To modify, edit the source template or configuration.
-    -->
-  
-  # DRY detection settings
-  dryDetection:
-    minShingles: 5
-    shingleSize: 12
-    threshold: 0.37
-    minSimilarity: 0.3
-
-  # Include file settings
-  includes:
-    max_depth: 3
+      sync:
+        agents:
+          enabled: false
+          source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
+          destination: ".codex/prompts"

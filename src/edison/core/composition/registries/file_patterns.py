@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .registry_base import BaseRegistry
+from ._registry_base import BaseRegistry
 from edison.core.composition.core.yaml_layer import YamlLayerMixin
 from edison.data import get_data_path
 from edison.core.utils.paths import PathResolver, EdisonPathError

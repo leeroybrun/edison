@@ -7,8 +7,6 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from edison.core.utils.git import get_repo_root
-from edison.core.utils.io import read_json as io_read_json
-from edison.core.session.next.utils import project_cfg_dir
 
 
 RULE_IDS = {
@@ -41,35 +39,35 @@ def rules_for(domain: str, current: str, to: str, state_spec: Dict[str, Any]) ->
 
 
 def expand_rules(rule_ids: List[str]) -> List[Dict[str, Any]]:
-    """Expand rule IDs to full rule objects with content."""
+    """Expand rule IDs to full rule objects with content.
+    
+    Uses RulesRegistry directly instead of reading from registry.json.
+    """
     if not rule_ids:
         return []
-    reg_path = project_cfg_dir() / "rules" / "registry.json"
+    
+    # Lazy import to avoid circular dependency
+    from edison.core.rules.registry import RulesRegistry
+    
+    repo_root = _get_repo_root()
+    
     try:
-        registry = io_read_json(reg_path)
+        registry = RulesRegistry(project_root=repo_root)
+        composed = registry.compose(packs=[])  # Load core rules
+        rules_dict = composed.get("rules", {})
     except Exception:
         return []
     
-    repo_root = _get_repo_root()
     out: List[Dict[str, Any]] = []
     for rid in rule_ids:
-        entry = next((r for r in registry.get("rules", []) if r.get("id") == rid), None)
+        entry = rules_dict.get(rid)
         if not entry:
             continue
-        src = repo_root / entry["sourcePath"]
-        start = entry.get("start") or f"<!-- RULE: {rid} START -->"
-        end = entry.get("end") or f"<!-- RULE: {rid} END -->"
-        try:
-            lines = src.read_text().splitlines()
-            s = next(i for i,l in enumerate(lines) if start in l) + 1
-            e = next(i for i in range(s, len(lines)) if end in lines[i])
-            content = "\n".join(lines[s:e]).rstrip()
-        except Exception:
-            content = ""
+        
         out.append({
             "id": rid,
             "title": entry.get("title", rid),
-            "sourcePath": entry.get("sourcePath"),
-            "content": content,
+            "sourcePath": entry.get("source", {}).get("file", ""),
+            "content": entry.get("body", ""),
         })
     return out

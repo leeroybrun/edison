@@ -87,6 +87,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     _bundled_discovery: Optional[LayerDiscovery] = None
     _project_packs_discovery: Optional[LayerDiscovery] = None
     _strategy: Optional[MarkdownCompositionStrategy] = None
+    _comp_config_cache: Optional["CompositionConfig"] = None  # type: ignore[name-defined]
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
         """Initialize composable registry.
@@ -98,6 +99,14 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             NotImplementedError: If content_type is not defined by subclass.
         """
         super().__init__(project_root)
+    
+    @property
+    def comp_config(self) -> "CompositionConfig":  # type: ignore[name-defined]
+        """Lazy-initialized CompositionConfig for typed config access."""
+        if self._comp_config_cache is None:
+            from edison.core.config.domains.composition import CompositionConfig
+            self._comp_config_cache = CompositionConfig(repo_root=self.project_root)
+        return self._comp_config_cache
 
         # Validate required class attributes
         if not self.content_type:
@@ -114,6 +123,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 core_dir=self.core_dir,
                 packs_dir=self.bundled_packs_dir,
                 project_dir=self.project_dir,
+                file_pattern=self.file_pattern,
             )
         return self._bundled_discovery
 
@@ -126,6 +136,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 core_dir=self.core_dir,
                 packs_dir=self.project_packs_dir,
                 project_dir=self.project_dir,
+                file_pattern=self.file_pattern,
             )
         return self._project_packs_discovery
 
@@ -150,8 +161,8 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
         Priority order (lowest to highest):
         1. _FALLBACK_STRATEGY_CONFIG (code defaults)
-        2. composition.yaml > defaults section
-        3. composition.yaml > content_types.{type} section
+        2. composition.defaults section (via CompositionConfig)
+        3. composition.content_types.{type} section (via CompositionConfig)
         4. Class-level strategy_config attribute
 
         Returns:
@@ -160,32 +171,23 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         # Start with code fallback defaults
         result = dict(_FALLBACK_STRATEGY_CONFIG)
 
-        # Layer 2: Read defaults from composition.yaml
-        comp_cfg = self.config.get("composition", {}) or {}
-        yaml_defaults = comp_cfg.get("defaults", {}) or {}
-        if yaml_defaults:
-            # Map YAML keys to strategy config keys
-            if "dedupe_min_shingles" in yaml_defaults:
-                result["dedupe_min_shingles"] = yaml_defaults["dedupe_min_shingles"]
-            # dryDetection.shingleSize maps to dedupe_shingle_size
-            dry_cfg = comp_cfg.get("dryDetection", {}) or {}
-            if "shingleSize" in dry_cfg:
-                result["dedupe_shingle_size"] = dry_cfg["shingleSize"]
+        # Layer 2: Read defaults from CompositionConfig
+        defaults = self.comp_config.defaults
+        if defaults:
+            dedupe_cfg = defaults.get("dedupe", {}) or {}
+            if "shingle_size" in dedupe_cfg:
+                result["dedupe_shingle_size"] = dedupe_cfg["shingle_size"]
+            if "min_shingles" in dedupe_cfg:
+                result["dedupe_min_shingles"] = dedupe_cfg["min_shingles"]
 
-        # Layer 3: Read content-type specific config
-        type_cfg = comp_cfg.get("content_types", {}).get(self.content_type, {})
+        # Layer 3: Read content-type specific config from CompositionConfig
+        type_cfg = self.comp_config.get_content_type(self.content_type)
         if type_cfg:
-            # Enable sections if known_sections is defined and non-empty
-            known_sections = type_cfg.get("known_sections", [])
-            if known_sections:
-                result["enable_sections"] = True
             # Dedupe config
-            if "dedupe" in type_cfg:
-                result["enable_dedupe"] = bool(type_cfg["dedupe"])
-            if "composition_mode" in type_cfg and type_cfg["composition_mode"] == "concatenate":
+            if type_cfg.dedupe:
+                result["enable_dedupe"] = True
+            if type_cfg.composition_mode == "concatenate":
                 result["enable_sections"] = False  # Concatenate doesn't use sections
-            if "shingle_size" in type_cfg:
-                result["dedupe_shingle_size"] = int(type_cfg["shingle_size"])
 
         # Layer 4: Class-level strategy_config overrides
         if self.strategy_config:
@@ -337,11 +339,15 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         if not layers:
             return None
 
-        # Create composition context
+        # Get custom context vars from subclass (for data-driven templates)
+        context_vars = self.get_context_vars(name, packs)
+
+        # Create composition context with custom vars
         context = CompositionContext(
             active_packs=packs,
             config=self.config,
             project_root=self.project_root,
+            context_vars=context_vars,
         )
 
         # Compose using strategy
@@ -349,6 +355,96 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
         # Post-process
         return self._post_compose(name, composed)
+    
+    def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
+        """Get context variables for template substitution.
+        
+        Provides built-in variables and can be extended in subclasses
+        for data-driven templates (like {{#each}} loops).
+        
+        Built-in variables (always available):
+            - name: Entity name being composed
+            - content_type: Content type (e.g., "agents", "constitutions")
+            - source_layers: "core + pack(x) + pack(y)"
+            - timestamp: ISO8601 timestamp
+            - generated_date: Same as timestamp (alias)
+            - version: Project version from config
+            - template: Source template path "{content_type}/{name}.md"
+            - output_dir: Output directory from config (resolved)
+            - output_path: Full output file path (resolved)
+            - PROJECT_EDISON_DIR: Project .edison directory path
+        
+        Override in subclasses to add custom variables.
+        
+        Args:
+            name: Entity name being composed
+            packs: Active pack names
+            
+        Returns:
+            Dict of context variables for template substitution
+        """
+        from edison.core.utils.time import utc_timestamp
+        from edison.core.composition.output.headers import resolve_version
+        
+        timestamp = utc_timestamp()
+        source_layers = ["core"] + [f"pack({p})" for p in packs]
+        version = resolve_version(self.cfg_mgr, self.config)
+        
+        # Get output paths from config (relative to project root)
+        project_edison_dir = str(self.project_dir.relative_to(self.project_root))
+        output_dir, output_path = self._resolve_output_paths(name)
+        
+        return {
+            # Entity identification
+            "name": name,
+            "content_type": self.content_type,
+            # Source info
+            "source_layers": " + ".join(source_layers),
+            "template": f"{self.content_type}/{name}.md",
+            # Timestamps
+            "timestamp": timestamp,
+            "generated_date": timestamp,
+            # Version
+            "version": str(version),
+            # Output paths (resolved from config)
+            "output_dir": output_dir,
+            "output_path": output_path,
+            # Project paths
+            "PROJECT_EDISON_DIR": project_edison_dir,
+        }
+
+    def _resolve_output_paths(self, name: str) -> tuple[str, str]:
+        """Resolve output directory and file path from config.
+        
+        Returns paths relative to project root.
+        Uses CompositionConfig for typed config access.
+        
+        Args:
+            name: Entity name
+            
+        Returns:
+            Tuple of (output_dir, output_path) - both relative to project root
+        """
+        # Get content type config from CompositionConfig
+        type_cfg = self.comp_config.get_content_type(self.content_type)
+        
+        if type_cfg:
+            output_path_template = type_cfg.output_path or f"{{{{PROJECT_EDISON_DIR}}}}/_generated/{self.content_type}"
+            filename_pattern = type_cfg.filename_pattern or "{name}.md"
+        else:
+            # Fallback defaults
+            output_path_template = f"{{{{PROJECT_EDISON_DIR}}}}/_generated/{self.content_type}"
+            filename_pattern = "{name}.md"
+        
+        # Resolve PROJECT_EDISON_DIR to relative path
+        project_edison_rel = str(self.project_dir.relative_to(self.project_root))
+        output_dir = output_path_template.replace("{{PROJECT_EDISON_DIR}}", project_edison_rel)
+        
+        # Resolve filename pattern
+        filename = filename_pattern.replace("{name}", name).replace("{NAME}", name.upper())
+        output_path = f"{output_dir}/{filename}"
+        
+        return output_dir, output_path
 
     def compose_all(
         self,
@@ -452,7 +548,8 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
         try:
             project_over = self.bundled_discovery.discover_project_overlays(existing)
-            if name in project_over and (self.merge_same_name or name not in core_entities):
+            # Overlays should ALWAYS be applied - they extend existing entities
+            if name in project_over:
                 _append(project_over[name].path, "project")
         except Exception:
             pass

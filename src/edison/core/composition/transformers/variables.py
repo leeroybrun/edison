@@ -74,21 +74,32 @@ class ConfigVariableTransformer(ContentTransformer):
 
 
 class ContextVariableTransformer(ContentTransformer):
-    """Substitute context variables like {{source_layers}}, {{timestamp}}.
+    """Substitute context variables like {{source_layers}}, {{timestamp}}, and custom vars.
 
     Context variables are set at runtime and provide composition metadata.
+    Any variable in context.context_vars can be substituted using {{var_name}} syntax.
 
-    Common variables:
+    Built-in variables (always available):
     - {{source_layers}} - "core + pack1 + pack2 + project"
     - {{timestamp}} - ISO timestamp of composition
+    - {{PROJECT_EDISON_DIR}} - Path to Edison config directory (".edison")
+
+    Custom variables (set via CompositionContext.context_vars):
     - {{version}} - Edison version
+    - {{template}} - Template path
+    - {{generated_date}} - Generation timestamp
+    - Any other string value in context_vars
     """
 
-    # Pattern for context variables (simple names)
-    CONTEXT_PATTERN = re.compile(r"\{\{(source_layers|timestamp|version|template)\}\}")
+    # Pattern for context variables: any {{word}} that's not a special directive
+    # Excludes: config., project., include, #each, /each, @, etc.
+    CONTEXT_PATTERN = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}")
 
     def transform(self, content: str, context: TransformContext) -> str:
-        """Substitute all context variables.
+        """Substitute all context variables from context_vars.
+
+        Only substitutes variables that exist in context.context_vars and have
+        string values (not lists/dicts which are for {{#each}} loops).
 
         Args:
             content: Content with context variables
@@ -102,12 +113,17 @@ class ContextVariableTransformer(ContentTransformer):
             var_name = match.group(1)
             value = context.context_vars.get(var_name)
 
-            if value is not None:
+            # Only substitute if value is a string (not list/dict for loops)
+            if value is not None and isinstance(value, (str, int, float, bool)):
                 context.record_variable(var_name, resolved=True)
                 return str(value)
+            elif value is not None:
+                # Value exists but is a collection - leave for {{#each}} processing
+                return match.group(0)
             else:
-                context.record_variable(var_name, resolved=False)
-                return match.group(0)  # Keep original if not found
+                # Variable not found in context_vars - leave unchanged
+                # Don't record as missing since it might be an intentional placeholder
+                return match.group(0)
 
         return self.CONTEXT_PATTERN.sub(replacer, content)
 

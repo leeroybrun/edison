@@ -26,12 +26,17 @@ class CompositionContext:
         config: Configuration dictionary
         project_root: Optional project root path
         source_dir: Optional source directory for resolving includes
+        context_vars: Custom template variables for {{var}} substitution and {{#each}} loops.
+            These flow through to TemplateEngine and are merged with defaults
+            (source_layers, timestamp). Values can be strings for simple substitution
+            or lists/dicts for loop expansion.
     """
 
     active_packs: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
     project_root: Optional[Path] = None
     source_dir: Optional[Path] = None
+    context_vars: Dict[str, Any] = field(default_factory=dict)
 
     def get_config(self, path: str) -> Any:
         """Get config value by dot-separated path.

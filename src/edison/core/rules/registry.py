@@ -21,15 +21,15 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from .registry_base import BaseRegistry
+from edison.core.composition.registries._registry_base import BaseRegistry
 from edison.core.composition.core.yaml_layer import YamlLayerMixin
+from edison.core.composition.core.sections import SectionParser
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_project_config_dir
-from edison.core.utils.text import extract_anchor_content as _extract_anchor_content
 from edison.data import read_yaml as read_bundled_yaml
 
-from ..includes import resolve_includes, ComposeError
-from ..core.errors import AnchorNotFoundError, RulesCompositionError
+from edison.core.composition.includes import resolve_includes, ComposeError
+from edison.core.composition.core.errors import AnchorNotFoundError, RulesCompositionError
 from edison.data import get_data_path
 
 
@@ -76,28 +76,37 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
     # ------- Utility Methods -------
 
     @staticmethod
-    def extract_anchor_content(source_file: Path, anchor: str) -> str:
+    def extract_section_content(source_file: Path, section_name: str) -> str:
         """
-        Extract content between ANCHOR markers in a guideline file.
+        Extract content between SECTION markers in a guideline file.
 
-        This is a convenience wrapper around the canonical implementation
-        in edison.core.utils.text.anchors for backwards compatibility.
-
-        Supports both explicit END markers and implicit termination at the next
-        ANCHOR marker (or EOF when no END marker is present).
+        Uses SectionParser to extract content from <!-- SECTION: name --> markers.
 
         Args:
             source_file: Path to the guideline file
-            anchor: Name of the anchor to extract
+            section_name: Name of the section to extract
 
         Returns:
-            The content between the anchor markers
+            The content between the section markers
 
         Raises:
             FileNotFoundError: If the source file doesn't exist
-            AnchorNotFoundError: If the anchor isn't found in the file
+            AnchorNotFoundError: If the section isn't found in the file
         """
-        return _extract_anchor_content(source_file, anchor)
+        if not source_file.exists():
+            raise FileNotFoundError(f"Source file not found: {source_file}")
+        
+        content = source_file.read_text(encoding="utf-8")
+        parser = SectionParser()
+        section_content = parser.extract_section(content, section_name)
+        
+        if section_content is None:
+            raise AnchorNotFoundError(f"Section '{section_name}' not found in {source_file}")
+        
+        return section_content
+    
+    # Legacy alias for backwards compatibility
+    extract_anchor_content = extract_section_content
 
     # ------- BaseRegistry Interface Implementation -------
 
@@ -284,7 +293,7 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
 
         if source_file is not None:
             if anchor:
-                anchor_text = self.extract_anchor_content(source_file, anchor)
+                anchor_text = self.extract_section_content(source_file, anchor)
             else:
                 anchor_text = source_file.read_text(encoding="utf-8")
 
@@ -471,20 +480,6 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
 
         return rules_list
 
-    def write_output(self, output_path: Path, packs: Optional[List[str]] = None) -> None:
-        """
-        Write composed rules to JSON file.
-
-        Args:
-            output_path: Path where the composed rules JSON should be written
-            packs: Optional list of pack names to include in composition
-        """
-        import json
-        rules_data = self.compose(packs=packs)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(rules_data, f, indent=2, ensure_ascii=False)
-
 
 def compose_rules(packs: Optional[List[str]] = None, project_root: Optional[Path] = None) -> Dict[str, Any]:
     """
@@ -567,8 +562,13 @@ def filter_rules(context: Dict[str, Any]) -> List[Dict[str, Any]]:
     return rules
 
 
-# Module-level export - delegates to canonical implementation in utils.text.anchors
-extract_anchor_content = _extract_anchor_content
+# Module-level export - for backwards compatibility
+def extract_anchor_content(source_file: Path, anchor: str) -> str:
+    """Extract content using SECTION markers.
+    
+    Backwards compatible alias for RulesRegistry.extract_section_content.
+    """
+    return RulesRegistry.extract_section_content(source_file, anchor)
 
 
 __all__ = [

@@ -4,8 +4,8 @@
 This package provides text processing utilities for composition and validation:
 
 - core: DRY duplication detection (shingling), conditional includes
-- anchors: ANCHOR marker extraction from guideline files
 - markdown: HTML comment metadata parsing for entity serialization
+- frontmatter: YAML frontmatter parsing
 
 All exports are available directly from this package for backward compatibility.
 """
@@ -29,11 +29,18 @@ def __getattr__(name: str):
         return get_engine_version()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-# Re-export from anchors module
-from .anchors import (
-    AnchorNotFoundError,
-    extract_anchor_content,
-)
+# Re-export AnchorNotFoundError from composition errors for backwards compatibility
+from edison.core.composition.core.errors import AnchorNotFoundError
+
+
+# Lazy import for extract_anchor_content to avoid circular import
+def extract_anchor_content(source_file, anchor):
+    """Extract content using SECTION markers.
+    
+    Backwards compatible alias.
+    """
+    from edison.core.rules.registry import extract_anchor_content as _extract
+    return _extract(source_file, anchor)
 
 # Re-export from markdown module
 from .markdown import (
@@ -65,7 +72,7 @@ __all__ = [
     "_shingles",
     "_split_paragraphs",
     "_paragraph_shingles",
-    # Anchors
+    # Anchors (backwards compatibility)
     "AnchorNotFoundError",
     "extract_anchor_content",
     # Markdown

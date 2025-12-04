@@ -1,17 +1,20 @@
 """State machine document generator.
 
-Generates STATE_MACHINE.md from YAML configuration.
-
-Unlike roster generators, StateMachineGenerator:
-- Has NO template (renders directly from YAML)
-- Overrides generate() to render markdown from state machine config
+Generates STATE_MACHINE.md from state machine configuration.
+Uses ComposableRegistry with context_vars for {{#each}} expansion.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
-from .base import ComposableGenerator
+from ..registries._base import ComposableRegistry
+
+
+def _utc_timestamp() -> str:
+    """Generate UTC timestamp in ISO format."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _format_bool(value: bool) -> str:
@@ -56,190 +59,100 @@ def _format_actions(actions: Optional[List[Dict[str, Any]]]) -> str:
     return "; ".join(_render(a) for a in actions)
 
 
-def _state_rows(states: Dict[str, Any]) -> Iterable[str]:
-    """Generate Markdown table rows for states."""
-    for state_name, meta in states.items():
-        description = (meta or {}).get("description", "")
-        initial = _format_bool(bool((meta or {}).get("initial")))
-        final = _format_bool(bool((meta or {}).get("final")))
-        yield f"| {state_name} | {description} | {initial} | {final} |"
-
-
-def _transition_rows(states: Dict[str, Any]) -> Iterable[str]:
-    """Generate Markdown table rows for transitions."""
-    for from_state, meta in states.items():
-        transitions = (meta or {}).get("allowed_transitions") or []
-        for transition in transitions:
-            to_state = transition.get("to", "")
-            guard = transition.get("guard") or "-"
-            conditions = _format_conditions(transition.get("conditions"))
-            actions = _format_actions(transition.get("actions"))
-            yield f"| {from_state} | {to_state} | {guard} | {conditions} | {actions} |"
-
-
-def _mermaid_block(statemachine: Dict[str, Any]) -> str:
-    """Generate Mermaid stateDiagram-v2 block."""
-    lines: List[str] = ["```mermaid", "stateDiagram-v2"]
-    for domain, spec in statemachine.items():
-        lines.append(f"    state {domain.title()} {{")
-        states = (spec or {}).get("states") or {}
-        for from_state, meta in states.items():
-            for transition in (meta or {}).get("allowed_transitions") or []:
-                to_state = transition.get("to", "")
-                label = transition.get("guard") or ""
-                edge = f"        {from_state} --> {to_state}"
-                if label:
-                    edge = f"{edge} : {label}"
-                lines.append(edge)
-        lines.append("    }")
-    lines.append("```")
-    return "\n".join(lines)
-
-
-def _render_domain(domain: str, spec: Dict[str, Any]) -> str:
-    """Render a single domain's documentation section."""
-    states = (spec or {}).get("states") or {}
-
-    parts: List[str] = [
-        f"## {domain.title()} Domain",
-        "",
-        "### States",
-        "",
-        "| State | Description | Initial | Final |",
-        "| ----- | ----------- | ------- | ----- |",
-    ]
-    parts.extend(_state_rows(states))
-
-    parts.extend([
-        "",
-        "### Transitions",
-        "",
-        "| From | To | Guard | Conditions | Actions |",
-        "| ---- | -- | ----- | ---------- | ------- |",
-    ])
-    transition_rows = list(_transition_rows(states))
-    if transition_rows:
-        parts.extend(transition_rows)
-    else:
-        parts.append("| - | - | - | - | - |")
-
-    return "\n".join(parts)
-
-
-class StateMachineGenerator(ComposableGenerator):
-    """Generate STATE_MACHINE.md from YAML configuration.
-
-    Unlike other generators, this has NO template - it renders directly
-    from the state machine YAML configuration.
+class StateMachineGenerator(ComposableRegistry[str]):
+    """Generator for STATE_MACHINE.md.
+    
+    Uses ComposableRegistry composition with state machine data
+    via context_vars for {{#each}} expansion.
+    
+    Loads state machine config from SessionConfig domain.
+    
+    Template: data/generators/STATE_MACHINE.md
+    Output: _generated/STATE_MACHINE.md
     """
-
-    @property
-    def template_name(self) -> Optional[str]:
-        return None  # No template - renders from config
-
-    @property
-    def output_filename(self) -> str:
-        return "STATE_MACHINE.md"
-
-    def _gather_data(self) -> Dict[str, Any]:
-        """Load state machine configuration from YAML.
-
-        Returns:
-            Dictionary with:
-            - statemachine: State machine configuration
-            - bundled_path: Path to bundled config
-            - project_path: Path to project config (if exists)
-        """
-        # Load state machine configuration
-        bundled_path = self.core_dir / "config" / "state-machine.yaml"
+    
+    content_type: ClassVar[str] = "generators"
+    file_pattern: ClassVar[str] = "STATE_MACHINE.md"
+    
+    def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
+        """Provide state machine data for template expansion."""
+        from edison.core.config.domains import SessionConfig
+        
+        session_cfg = SessionConfig(repo_root=self.project_root)
+        statemachine = session_cfg._state_config
+        
+        # Build sources list
+        sources = ["state-machine.yaml (bundled defaults)"]
         project_path = self.project_dir / "config" / "state-machine.yaml"
-
-        if not bundled_path.exists():
-            raise FileNotFoundError(f"Missing bundled state machine config at {bundled_path}")
-
-        # Load bundled config
-        bundled_cfg = self.cfg_mgr.load_yaml(bundled_path)
-        merged_cfg = dict(bundled_cfg)
-
-        # Merge with project config if exists
         if project_path.exists():
-            project_cfg = self.cfg_mgr.load_yaml(project_path)
-            merged_cfg = self.cfg_mgr.deep_merge(merged_cfg, project_cfg)
-
-        # Validate statemachine section exists
-        statemachine = merged_cfg.get("statemachine") or {}
-        if not statemachine:
-            raise ValueError("statemachine section required in state-machine.yaml")
-
+            sources.append("state-machine.yaml (project config)")
+        
+        # Build domains data for template
+        domains = []
+        for domain_name, spec in statemachine.items():
+            states_config = (spec or {}).get("states") or {}
+            
+            # Build states list
+            states = []
+            for state_name, meta in states_config.items():
+                meta = meta or {}
+                states.append({
+                    "name": state_name,
+                    "description": meta.get("description", ""),
+                    "initial": _format_bool(bool(meta.get("initial"))),
+                    "final": _format_bool(bool(meta.get("final"))),
+                })
+            
+            # Build transitions list
+            transitions = []
+            for from_state, meta in states_config.items():
+                for transition in (meta or {}).get("allowed_transitions") or []:
+                    to_state = transition.get("to", "")
+                    guard = transition.get("guard") or "-"
+                    conditions = _format_conditions(transition.get("conditions"))
+                    actions = _format_actions(transition.get("actions"))
+                    transitions.append({
+                        "from": from_state,
+                        "to": to_state,
+                        "guard": guard if guard != "-" else "",
+                        "conditions": conditions,
+                        "actions": actions,
+                    })
+            
+            domains.append({
+                "name": domain_name,
+                "title": domain_name.title(),
+                "states": states,
+                "transitions": transitions,
+            })
+        
         return {
-            "statemachine": statemachine,
-            "bundled_path": bundled_path,
-            "project_path": project_path if project_path.exists() else None,
+            "sources": sources,
+            "domains": domains,
+            "generated_at": _utc_timestamp(),
         }
-
-    def generate(self) -> str:
-        """Override generate to render directly from YAML config.
-
+    
+    def write(self, output_dir: Path) -> Path:
+        """Compose and write STATE_MACHINE.md.
+        
+        Args:
+            output_dir: Directory for output file
+            
         Returns:
-            Rendered STATE_MACHINE.md content
+            Path to written file
         """
-        from datetime import datetime, timezone
-        from edison.core.composition.output.headers import build_generated_header
-        from ..utils.paths import resolve_project_dir_placeholders
-
-        # Load data
-        data = self._gather_data()
-        statemachine = data["statemachine"]
-        project_path = data["project_path"]
-
-        # Build header
-        output_path = Path("STATE_MACHINE.md")  # Placeholder for header generation
-        header = build_generated_header("state_machine", config=self.cfg_mgr, target_path=output_path)
-
-        # Build source lines
-        source_lines = ["- Source: state-machine.yaml (bundled defaults)"]
-        if project_path:
-            source_lines.append("- Overlay: state-machine.yaml (project config)")
-
-        # Build content
-        content_parts: List[str] = [
-            header.strip(),
-            "",
-            "# State Machine",
-            "",
-            "This document is generated from the YAML state machine configuration.",
-            "Do not edit manually; update the YAML config and re-run `edison compose`.",
-            "",
-            "## Sources",
-            "",
-            *source_lines,
-            "",
-            "## Diagram",
-            "",
-            _mermaid_block(statemachine),
-            "",
-            "## Domains",
-            "",
-        ]
-
-        # Render each domain
-        for domain, spec in statemachine.items():
-            content_parts.append(_render_domain(domain, spec))
-            content_parts.append("")
-
-        full_text = "\n".join(content_parts).strip() + "\n"
-
-        # Resolve placeholders
-        full_text = resolve_project_dir_placeholders(
-            full_text,
-            project_dir=self.project_dir,
-            target_path=output_path,
-            repo_root=self.project_root,
-        )
-
-        return full_text
+        packs = self.get_active_packs()
+        content = self.compose("STATE_MACHINE", packs)
+        
+        if not content:
+            raise FileNotFoundError(
+                f"Template 'STATE_MACHINE.md' not found in {self.content_type}/"
+            )
+        
+        output_path = output_dir / "STATE_MACHINE.md"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        self.writer.write_text(output_path, content)
+        return output_path
 
 
-__all__ = [
-    "StateMachineGenerator",
-]
+__all__ = ["StateMachineGenerator"]

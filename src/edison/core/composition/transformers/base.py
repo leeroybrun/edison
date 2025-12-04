@@ -45,8 +45,8 @@ class TransformContext:
     project_root: Optional[Path] = None
     source_dir: Optional[Path] = None  # Directory to resolve includes from
 
-    # Runtime context variables
-    context_vars: Dict[str, str] = field(default_factory=dict)
+    # Runtime context variables (str for simple substitution, list/dict for loops)
+    context_vars: Dict[str, Any] = field(default_factory=dict)
 
     # Tracking for reports
     includes_resolved: Set[str] = field(default_factory=set)
