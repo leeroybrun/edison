@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.qa.evidence import EvidenceService
 from edison.core.utils.io import write_json_atomic
 from edison.core.utils.time import utc_timestamp
@@ -68,7 +69,8 @@ def main(args: argparse.Namespace) -> int:
             # Find QA file
             qa_root = repo_root / ".project" / "qa"
             qa_file = None
-            for state_dir in ["waiting", "todo", "wip", "done", "validated"]:
+            qa_states = WorkflowConfig().get_states("qa")
+            for state_dir in qa_states:
                 potential = qa_root / state_dir / f"{args.task_id}-qa.md"
                 if potential.exists():
                     qa_file = potential

@@ -1,19 +1,42 @@
+"""Condition registry for state machine transitions.
+
+Conditions are boolean predicates that check prerequisites for transitions.
+Conditions are loaded dynamically from data/conditions/ via the handler loader.
+
+Conditions support OR logic for alternative conditions in workflow.yaml:
+```yaml
+conditions:
+  - name: validation_failed
+    or:
+      - name: dependencies_missing
+```
+"""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional
 
-from .registry import ConditionRegistryBase, DomainRegistry
+from .handlers import ConditionRegistryBase, DomainRegistry
 
 
 class ConditionRegistry(ConditionRegistryBase):
     """Registry of condition predicates.
     
-    Extends ConditionRegistryBase to maintain backward compatibility while
-    supporting domain-prefixed lookups for multi-entity state machines.
+    Conditions are loaded from data/conditions/ with layered composition:
+    - Core: data/conditions/
+    - Bundled packs: data/packs/<pack>/conditions/
+    - Project packs: .edison/packs/<pack>/conditions/
+    - Project: .edison/conditions/
+    
+    Later layers override earlier ones.
     """
 
     def __init__(self, *, preload_defaults: bool = False) -> None:
-        super().__init__(preload_defaults=preload_defaults)
+        """Initialize registry.
+        
+        Args:
+            preload_defaults: Ignored (conditions are loaded via handler loader)
+        """
+        super().__init__(preload_defaults=False)
 
     def register(
         self, 
@@ -30,11 +53,24 @@ class ConditionRegistry(ConditionRegistryBase):
         """
         super().register(name, condition_fn, domain)
 
+    def add(
+        self, 
+        name: str, 
+        condition_fn: Callable[[Mapping[str, Any]], bool],
+        domain: str = DomainRegistry.SHARED_DOMAIN
+    ) -> None:
+        """Add a condition function (alias for register).
+        
+        Args:
+            name: Condition name
+            condition_fn: Condition function that returns bool
+            domain: Domain identifier (default: shared)
+        """
+        self.register(name, condition_fn, domain)
+
     def register_defaults(self) -> None:
-        """Register default condition functions."""
-        for name, fn in _DEFAULT_CONDITIONS.items():
-            if not self.has(name):
-                self.register(name, fn)
+        """No-op: conditions are loaded dynamically via handler loader."""
+        pass
 
     def check(
         self, 
@@ -55,66 +91,7 @@ class ConditionRegistry(ConditionRegistryBase):
         return super().check(name, context, domain)
 
 
-# Built-in conditions aligned with the rich state machine config.
-
-def _cond_has_task(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    task_count = session.get("task_count")
-    if task_count is None:
-        tasks = session.get("tasks") or []
-        task_count = len(tasks)
-    # Allow empty sessions to activate; when tasks are present ensure at least one linked.
-    return True if task_count == 0 else bool(task_count)
-
-
-def _cond_task_claimed(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("claimed", True))
-
-
-def _cond_all_work_complete(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("work_complete", True))
-
-
-def _cond_no_pending_commits(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("pending_commits", 0) == 0)
-
-
-def _cond_validation_failed(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("validation_failed", False))
-
-
-def _cond_dependencies_missing(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("deps_missing", False))
-
-
-def _cond_ready_to_close(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    # Default to True for flexibility in testing and lightweight CLI flows
-    return bool(session.get("ready", True))
-
-
-def _cond_has_blocker_reason(context: Mapping[str, Any]) -> bool:
-    session = context.get("session", {}) if isinstance(context, Mapping) else {}
-    return bool(session.get("reason"))
-
-
-_DEFAULT_CONDITIONS: Dict[str, Callable[[Mapping[str, Any]], bool]] = {
-    "has_task": _cond_has_task,
-    "task_claimed": _cond_task_claimed,
-    "all_work_complete": _cond_all_work_complete,
-    "no_pending_commits": _cond_no_pending_commits,
-    "validation_failed": _cond_validation_failed,
-    "dependencies_missing": _cond_dependencies_missing,
-    "ready_to_close": _cond_ready_to_close,
-    "has_blocker_reason": _cond_has_blocker_reason,
-}
-
-
-registry = ConditionRegistry(preload_defaults=True)
+# Global registry instance
+registry = ConditionRegistry()
 
 __all__ = ["ConditionRegistry", "registry"]

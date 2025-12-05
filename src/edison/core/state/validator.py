@@ -10,7 +10,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from edison.core.config.cache import get_cached_config
 from edison.core.state import RichStateMachine, StateTransitionError
 from edison.core.state import guard_registry, condition_registry, action_registry
 
@@ -25,8 +24,10 @@ class StateValidator:
 
     @lru_cache(maxsize=16)
     def _machine(self, entity: str) -> RichStateMachine:
-        cfg = get_cached_config(repo_root=self.repo_root)
-        sm_spec = cfg.get("statemachine", {}) or {}
+        # Use WorkflowConfig as the canonical source for state machine config
+        from edison.core.config.domains.workflow import WorkflowConfig
+        workflow_cfg = WorkflowConfig()
+        sm_spec = workflow_cfg._statemachine
         entity_spec = sm_spec.get(entity)
         if not isinstance(entity_spec, Mapping):
             raise MissingStateMachine(f"State machine not configured for entity '{entity}'")

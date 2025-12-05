@@ -1,4 +1,4 @@
-"""Core composition building blocks (discovery, sections, schema, paths)."""
+"""Core composition building blocks (discovery, sections, paths)."""
 from __future__ import annotations
 
 from .discovery import LayerDiscovery, LayerSource
@@ -15,7 +15,6 @@ from .paths import (
     ResolvedPaths,
     get_resolved_paths,
 )
-from .schema import CompositionSchema, ContentTypeSchema
 from .sections import (
     SectionParser,
     SectionRegistry,
@@ -46,9 +45,6 @@ __all__ = [
     "CompositionPathResolver",
     "ResolvedPaths",
     "get_resolved_paths",
-    # Schema
-    "CompositionSchema",
-    "ContentTypeSchema",
     # Sections
     "SectionParser",
     "SectionRegistry",

@@ -15,3 +15,317 @@ workflow:
     staleTaskThreshold: 4h
     sessionTimeout: 2h
     validatorTimeout: 5m
+
+  # State machine configuration (merged from state-machine.yaml)
+  statemachine:
+    task:
+      states:
+        todo:
+          description: "Task awaiting claim"
+          initial: true
+          allowed_transitions:
+            - to: wip
+              guard: can_start_task
+              conditions:
+                - name: task_claimed
+              rules: [RULE.GUARDS.FAIL_CLOSED]
+              recommendations:
+                - id: task.claim
+                  entity: task
+                  rationale: "Task ready to claim"
+                  blocking: true
+                  cmd_template: ["edison", "task", "claim", "{task_id}", "--session", "{session_id}"]
+            - to: done
+              guard: can_finish_task
+              conditions:
+                - name: all_work_complete
+                - name: no_pending_commits
+              actions:
+                - name: record_completion_time
+            - to: blocked
+              guard: has_blockers
+              actions:
+                - name: record_blocker_reason
+        wip:
+          description: "Task in progress"
+          allowed_transitions:
+            - to: blocked
+              guard: has_blockers
+              actions:
+                - name: record_blocker_reason
+            - to: done
+              guard: can_finish_task
+              conditions:
+                - name: all_work_complete
+                - name: no_pending_commits
+              rules: [RULE.GUARDS.FAIL_CLOSED, RULE.IMPLEMENTATION.REPORT_REQUIRED]
+              actions:
+                - name: record_completion_time
+                  when: after
+              recommendations:
+                - id: task.complete
+                  entity: task
+                  rationale: "Mark task complete after implementation"
+                  blocking: true
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "done"]
+            - to: todo
+              guard: always_allow
+            - to: validated
+              guard: always_allow
+        blocked:
+          description: "Waiting on external blockers"
+          allowed_transitions:
+            - to: wip
+              guard: can_start_task
+              recommendations:
+                - id: task.unblock.wip
+                  entity: task
+                  rationale: "Unblock and resume work"
+                  blocking: false
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "wip"]
+            - to: todo
+              guard: always_allow
+        done:
+          description: "Implementation complete, awaiting validation"
+          allowed_transitions:
+            - to: validated
+              guard: can_finish_task
+              rules: [RULE.VALIDATION.FIRST]
+              recommendations:
+                - id: task.validate
+                  entity: task
+                  rationale: "Task implementation complete, ready for validation"
+                  blocking: true
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "validated"]
+            - to: wip
+              guard: requires_rollback_reason
+              rules: [RULE.QA.ROUND_HISTORY]
+              actions:
+                - name: record_blocker_reason
+                  when: after
+              recommendations:
+                - id: task.rollback
+                  entity: task
+                  rationale: "Validation rejected, return to implementation"
+                  blocking: false
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "wip", "--reason", "{rollback_reason}"]
+        validated:
+          description: "Validated and complete"
+          final: true
+          allowed_transitions: []
+
+    qa:
+      states:
+        waiting:
+          initial: true
+          description: "Pending hand-off from implementation"
+          allowed_transitions:
+            - to: todo
+              guard: can_start_qa
+              rules: [RULE.QA.WAITING_TO_TODO_TASK_DONE]
+              recommendations:
+                - id: qa.start
+                  entity: qa
+                  rationale: "Task done, ready for QA"
+                  blocking: false
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "todo"]
+            - to: wip
+              guard: can_start_qa
+              rules: [RULE.QA.WAITING_TO_TODO_TASK_DONE]
+        todo:
+          description: "QA backlog"
+          allowed_transitions:
+            - to: wip
+              guard: always_allow
+              rules: [RULE.VALIDATION.FIRST, RULE.VALIDATION.BUNDLE_FIRST]
+              recommendations:
+                - id: qa.promote.wip
+                  entity: qa
+                  rationale: "Validation-first: launch validator wave"
+                  blocking: true
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "wip"]
+        wip:
+          description: "QA in progress - validators executing"
+          allowed_transitions:
+            - to: done
+              guard: has_validator_reports
+              conditions:
+                - name: has_required_evidence
+                  error: "Required evidence files missing (type-check, lint, test, build)"
+              rules: [RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED, RULE.VALIDATION.WAVES_SEQUENCE]
+              recommendations:
+                - id: qa.promote.done
+                  entity: qa
+                  rationale: "All validators executed with reports, review complete"
+                  blocking: true
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "done"]
+            - to: todo
+              guard: always_allow
+              recommendations:
+                - id: qa.restart
+                  entity: qa
+                  rationale: "Restart QA process"
+                  blocking: false
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "todo"]
+        done:
+          description: "QA review complete - awaiting final validation"
+          allowed_transitions:
+            - to: validated
+              guard: can_validate_qa
+              conditions:
+                - name: has_bundle_approval
+                  error: "Bundle approval required (bundle-approved.json)"
+                - name: has_all_waves_passed
+                  error: "All validator waves must pass in order"
+              rules: [RULE.VALIDATION.BUNDLE_APPROVED_MARKER]
+              recommendations:
+                - id: qa.validate
+                  entity: qa
+                  rationale: "All blocking validators passed, QA validated"
+                  blocking: true
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "validated"]
+            - to: wip
+              guard: always_allow
+              recommendations:
+                - id: qa.revalidate
+                  entity: qa
+                  rationale: "Issues found, re-run validation"
+                  blocking: false
+                  cmd_template: ["edison", "qa", "promote", "{task_id}", "--status", "wip"]
+        validated:
+          description: "QA validated - all checks passed"
+          final: true
+          allowed_transitions: []
+
+    session:
+      states:
+        draft:
+          description: "Session in draft state, not yet active"
+          allowed_transitions:
+            - to: active
+              guard: can_activate_session
+              conditions:
+                - name: has_task
+                  error: "Session must have a linked task"
+                - name: task_claimed
+                  error: "Task must be claimed before activating session"
+              actions:
+                # Pre-transition: validate prerequisites before guards run
+                - name: validate_prerequisites
+                  when: before
+                # Post-transition: conditional worktree creation
+                - name: create_worktree
+                  when: config.worktrees_enabled
+                # Post-transition: record timestamps and notify
+                - name: record_activation_time
+                  when: after
+                - name: notify_session_start
+                  when: after
+        active:
+          description: "Session is active, work in progress"
+          initial: true
+          allowed_transitions:
+            - to: done
+              guard: can_complete_session
+              conditions:
+                - name: all_work_complete
+                - name: no_pending_commits
+              actions:
+                - name: finalize_session
+                  when: after
+                - name: record_completion_time
+                  when: after
+            - to: blocked
+              guard: has_blockers
+              conditions:
+                - name: validation_failed
+                  or:
+                    - name: dependencies_missing
+              actions:
+                - name: record_blocker_reason
+            - to: closing
+              guard: can_complete_session
+              conditions:
+                - name: ready_to_close
+              actions:
+                - name: finalize_session
+              recommendations:
+                - id: session.close
+                  entity: session
+                  rationale: "All work complete, ready to close session"
+                  blocking: true
+                  cmd_template: ["edison", "session", "close", "{session_id}"]
+            - to: recovery
+              guard: always_allow
+        blocked:
+          description: "Session blocked due to validation or dependencies"
+          allowed_transitions:
+            - to: active
+              guard: can_activate_session
+              conditions:
+                - name: blockers_resolved
+              recommendations:
+                - id: session.unblock
+                  entity: session
+                  rationale: "Blockers resolved, resume session"
+                  blocking: true
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "active"]
+        done:
+          description: "Session work complete"
+          allowed_transitions:
+            - to: validated
+              guard: can_complete_session
+              actions:
+                - name: record_completion_time
+        closing:
+          description: "Session closing and awaiting validation"
+          allowed_transitions:
+            - to: validated
+              guard: can_complete_session
+              conditions:
+                - name: ready_to_close
+                - name: all_tasks_validated
+              rules: [RULE.SESSION.CLOSE_NO_BLOCKERS]
+              actions:
+                - name: cleanup_worktree
+                  when: config.worktrees_enabled
+                - name: record_closed
+                  when: after
+            - to: recovery
+              guard: always_allow
+              recommendations:
+                - id: session.recover.from_closing
+                  entity: session
+                  rationale: "Issues detected during close, move to recovery"
+                  blocking: false
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "recovery"]
+        validated:
+          description: "Session validated"
+          allowed_transitions:
+            - to: archived
+              guard: always_allow
+
+        recovery:
+          description: "Session in recovery after timeout or failure"
+          allowed_transitions:
+            - to: active
+              guard: always_allow
+              recommendations:
+                - id: session.resume
+                  entity: session
+                  rationale: "Recovery complete, resume active work"
+                  blocking: false
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "active"]
+            - to: closing
+              guard: can_complete_session
+              recommendations:
+                - id: session.close.from_recovery
+                  entity: session
+                  rationale: "Recovery complete, proceed to close"
+                  blocking: true
+                  cmd_template: ["edison", "session", "close", "{session_id}"]
+
+        archived:
+          description: "Session archived"
+          final: true
+          allowed_transitions: []

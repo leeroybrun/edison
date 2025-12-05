@@ -32,7 +32,10 @@ def _session_dir_map() -> Dict[str, Path]:
 def _list_active_sessions() -> List[str]:
     """List all active session IDs."""
     repo = SessionRepository()
-    sessions = repo.list_by_state("active")
+    # Use initial session state from config (typically "active" or first in lookup order)
+    session_cfg = get_config()
+    active_state = session_cfg.get_initial_session_state()
+    sessions = repo.list_by_state(active_state)
     return [s.id for s in sessions]
 
 def _session_json_path(sess_dir: Path) -> Path:
@@ -174,7 +177,13 @@ def restore_records_to_global_transactional(session_id: str) -> int:
 
     records.sort(key=lambda r: (r["type"], r["record_id"]))
 
-    tx_id = begin_tx(sid, domain="rollback-restore", record_id="", from_status="active", to_status="closing")
+    # Get states from config
+    session_cfg = get_config()
+    active_state = session_cfg.get_initial_session_state()
+    session_states = session_cfg.get_session_states()
+    closing_state = session_states.get("closing", "closing")
+    
+    tx_id = begin_tx(sid, domain="rollback-restore", record_id="", from_status=active_state, to_status=closing_state)
     if not records:
         # Nothing to restore; treat as successful no-op so session completion can proceed.
         abort_tx(sid, tx_id, reason="rollback-restore-no-records")
@@ -229,7 +238,10 @@ def cleanup_expired_sessions() -> List[str]:
             if not session_entity:
                 continue
             sess = session_entity.to_dict()
-            sess["state"] = "closing"
+            # Use closing state from config
+            session_states = get_config().get_session_states()
+            closing_state = session_states.get("closing", "closing")
+            sess["state"] = closing_state
             sess_meta = sess.get("meta", {})
             sess_meta["expiredAt"] = io_utc_timestamp()
             sess_meta.setdefault("lastActive", io_utc_timestamp())

@@ -1,9 +1,13 @@
 from .engine import RichStateMachine, StateTransitionError, _flatten_transitions
-from .registry import (
+from .handlers import (
     DomainRegistry,
     GuardRegistryBase,
     ConditionRegistryBase,
     ActionRegistryBase,
+    # Registration decorators
+    register_guard,
+    register_action,
+    register_condition,
 )
 from .guards import GuardRegistry, registry as guard_registry
 from .conditions import ConditionRegistry, registry as condition_registry
@@ -13,6 +17,28 @@ from .transitions import (
     validate_transition,
     transition_entity,
 )
+from .loader import load_handlers, load_guards, load_actions, load_conditions
+
+
+def _init_handlers() -> None:
+    """Initialize handlers from layered data folders.
+    
+    Called automatically on module import to load handlers from:
+    1. Core: data/guards/, data/actions/, data/conditions/
+    2. Bundled packs: data/packs/<pack>/...
+    3. Project packs: .edison/packs/<pack>/...
+    4. Project: .edison/guards|actions|conditions/
+    """
+    try:
+        load_handlers()
+    except Exception:
+        # Handler loading should not break module import
+        pass
+
+
+# Auto-load handlers on module import
+_init_handlers()
+
 
 __all__ = [
     # Core state machine
@@ -36,4 +62,13 @@ __all__ = [
     "EntityTransitionError",
     "validate_transition",
     "transition_entity",
+    # Registration decorators
+    "register_guard",
+    "register_action",
+    "register_condition",
+    # Loader functions
+    "load_handlers",
+    "load_guards",
+    "load_actions",
+    "load_conditions",
 ]

@@ -112,12 +112,18 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})
 
     # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle-approved.json approved=true
+    # Get state names from config
+    task_done = WorkflowConfig().get_semantic_state("task", "done")
+    qa_done = WorkflowConfig().get_semantic_state("qa", "done")
+    qa_validated = WorkflowConfig().get_semantic_state("qa", "validated")
+    qa_ready_states = {qa_done, qa_validated}
+    
     for task_id, task_entry in session.get("tasks", {}).items():
         try:
             tpath = task_repo.get_path(task_id)
         except FileNotFoundError:
             continue
-        if tpath.parent.name == "done":
+        if tpath.parent.name == task_done:
             # QA must be done/validated
             try:
                 qpath = qa_repo.get_path(task_id)
@@ -125,7 +131,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             except FileNotFoundError:
                 qpath = None
                 qstate = "missing"
-            if qstate not in {"done", "validated"}:
+            if qstate not in qa_ready_states:
                 msg = f"Task {task_id} is in tasks/done but QA is not done/validated (found {qstate})"
                 failures.append(msg)
                 health["categories"]["missingQA"].append({"taskId": task_id, "qaState": qstate})
@@ -158,7 +164,9 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         return health
 
     # On success, mark session moving into the closing phase and persist
-    session["state"] = "closing"
+    # Get closing state from config using semantic lookup
+    closing_state = WorkflowConfig().get_semantic_state("session", "closing")
+    session["state"] = closing_state
     # Keep filesystem layout (sessions/wip) but update metadata timestamps
     session.setdefault("meta", {})["lastActive"] = io_utc_timestamp()
     graph.save_session(session_id, session)

@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.cli._choices import get_state_choices
 from edison.core.session import validate_session_id
 from edison.core.session.lifecycle.verify import verify_session_health
 
@@ -25,8 +26,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--phase",
         required=True,
-        choices=["closing"],
-        help="Lifecycle phase to verify (currently only 'closing' supported)",
+        choices=get_state_choices("session"),
+        help="Lifecycle phase to verify",
     )
     add_json_flag(parser)
 

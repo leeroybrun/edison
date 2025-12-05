@@ -91,12 +91,31 @@ These are set by Edison and should not be manually configured:
 
 All core configuration files are located in `src/edison/data/config/` and can be overridden in your project's `.edison/config/` directory.
 
-### state-machine.yaml
+### workflow.yaml
 
-Defines state machines for tasks, QA, and sessions.
+Defines workflow configuration including state machines for tasks, QA, and sessions. The state machine is now merged into workflow.yaml under the `workflow.statemachine` key.
 
 ```yaml
-statemachine:
+workflow:
+  # Workflow settings
+  version: "1.0.0"
+  validationLifecycle:
+    onApprove:
+      qaState: done → validated
+      taskState: done → validated
+    onReject:
+      qaState: wip → waiting
+      taskState: done → wip
+    onRevalidate:
+      qaState: waiting → todo
+  
+  timeouts:
+    staleTaskThreshold: 4h
+    sessionTimeout: 2h
+    validatorTimeout: 5m
+
+  # State machine configuration
+  statemachine:
   task:
     states:
       todo:
@@ -218,21 +237,87 @@ statemachine:
         final: true
 ```
 
-**Override Example** (`.edison/config/state-machine.yaml`):
+**Override Example** (`.edison/config/workflow.yaml`):
 
 ```yaml
 # Add custom task state
-statemachine:
-  task:
-    states:
-      review:
-        description: "Code review in progress"
-        allowed_transitions:
-          - to: wip
-            guard: always_allow
-          - to: done
-            guard: can_finish_task
+workflow:
+  statemachine:
+    task:
+      states:
+        review:
+          description: "Code review in progress"
+          allowed_transitions:
+            - to: wip
+              guard: always_allow
+            - to: done
+              guard: can_finish_task
 ```
+
+#### Action Timing (`when:` property)
+
+Actions can be configured to run at different points during a transition:
+
+```yaml
+allowed_transitions:
+  - to: active
+    guard: can_activate_session
+    actions:
+      # Pre-transition: runs BEFORE guards/conditions
+      - name: validate_prerequisites
+        when: before
+      
+      # Conditional: runs only if config value is truthy
+      - name: create_worktree
+        when: config.worktrees_enabled
+      
+      # Post-transition: runs AFTER guards/conditions (default)
+      - name: record_activation_time
+        when: after
+      
+      # No 'when' = defaults to 'after'
+      - name: notify_session_start
+```
+
+Valid `when` values:
+- `before` - Execute before guard/condition checks
+- `after` - Execute after successful transition (default)
+- `config.path` - Conditional execution based on configuration value
+
+#### Extensible Handlers (Guards, Actions, Conditions)
+
+Handlers are loaded dynamically from layered folders with the following priority:
+
+1. **Core**: `edison/data/guards|actions|conditions/`
+2. **Bundled packs**: `edison/data/packs/<pack>/guards|actions|conditions/`
+3. **Project packs**: `.edison/packs/<pack>/guards|actions|conditions/`
+4. **Project**: `.edison/guards|actions|conditions/`
+
+Later layers override earlier ones, allowing project-specific customization.
+
+**Adding a custom guard:**
+
+```python
+# .edison/guards/custom.py
+from typing import Any, Mapping
+
+def my_custom_guard(ctx: Mapping[str, Any]) -> bool:
+    """Custom guard following fail-closed principle."""
+    task = ctx.get("task")
+    if not isinstance(task, Mapping):
+        return False  # FAIL-CLOSED
+    return bool(task.get("my_custom_check"))
+```
+
+Then reference in `workflow.yaml`:
+
+```yaml
+allowed_transitions:
+  - to: wip
+    guard: my_custom_guard
+```
+
+**Guard Fail-Closed Principle**: Guards should return `False` when required context is missing, ensuring secure-by-default behavior.
 
 ---
 
@@ -1637,7 +1722,7 @@ These are automatically resolved when configuration is loaded.
 
 | File | Purpose | Key Settings |
 |------|---------|-------------|
-| `state-machine.yaml` | State machines | Task/QA/Session states and transitions |
+| `workflow.yaml` | Workflow & State machines | Task/QA/Session states, transitions, lifecycle |
 | `session.yaml` | Session management | Paths, recovery, worktrees, timeouts |
 | `validators.yaml` | Validation framework | Validator roster, execution, dimensions |
 | `delegation.yaml` | Agent delegation | File patterns, task types, model preferences |

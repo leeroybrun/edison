@@ -2,10 +2,8 @@
 Rules Engine for the Edison Rules system.
 
 This module provides the RulesEngine class for enforcing per-project rules
-based on task state and type. Rules are defined in project config overlays.
-
-Note: Role-based query APIs (get_all, get_rules_for_role, filter_rules) have been
-moved to edison.core.composition.registries.rules for architectural coherence.
+based on task state and type. Rules are loaded from the composition system
+(core → packs → project) via RulesRegistry.
 """
 from __future__ import annotations
 
@@ -26,44 +24,212 @@ class RulesEngine:
     """
     Enforces per-project rules based on task state and type.
 
-    Rules are defined in project config overlays under the 'rules:' section.
+    Rules are loaded from the full composition system (core → packs → project)
+    via RulesRegistry. The config only controls enforcement settings, not rule
+    definitions.
 
-    Note: Role-based query APIs (get_all, get_rules_for_role, filter_rules) have been
-    moved to edison.core.composition.registries.rules for architectural coherence.
-    Use those functions directly for registry queries.
+    Features:
+    - Composed rules from registry (core + packs + project overlays)
+    - Dynamic rules lookup API for transitions and commands
+    - CLI display configuration for contextual guidance
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], packs: Optional[List[str]] = None):
         """
         Initialize rules engine from config.
 
         Args:
             config: Full Edison config (from ConfigManager().load_config())
+            packs: Optional list of active packs (defaults to config-based detection)
         """
         self.rules_config = config.get("rules", {}) if isinstance(config, dict) else {}
         self.enforcement_enabled = self.rules_config.get("enforcement", True)
 
-        # Parse rules by category
-        self.rules_by_state = self._parse_rules(self.rules_config.get("byState", {}))
-        self.rules_by_type = self._parse_rules(self.rules_config.get("byTaskType", {}))
-        self.project_rules = self._parse_rule_list(self.rules_config.get("project", []))
+        # Load composed rules from registry (core → packs → project)
+        from .registry import RulesRegistry
+        self._registry = RulesRegistry()
+        self._packs = packs or self._get_active_packs(config)
+        composed = self._registry.compose(packs=self._packs)
+        self._rules_map: Dict[str, Dict[str, Any]] = composed.get("rules", {})
+
+        # Build state/type mappings from config (for backwards compatibility)
+        # These map states/types to rule IDs that are then looked up from _rules_map
+        self.rules_by_state = self._build_state_mappings()
+        self.rules_by_type = self._build_type_mappings()
+        self.project_rules = self._build_project_rules()
 
         # Lazy cache for context-aware rule lookup
         self._all_rules_cache: Optional[List[Rule]] = None
 
-    def _parse_rules(self, rules_dict: Dict[str, List[Dict]]) -> Dict[str, List[Rule]]:
-        """Parse rules dictionary into Rule objects."""
+    def _get_active_packs(self, config: Dict[str, Any]) -> List[str]:
+        """Get active packs from config."""
+        packs_cfg = config.get("packs", {})
+        if isinstance(packs_cfg, dict):
+            return packs_cfg.get("active", []) or []
+        return []
+
+    def _build_state_mappings(self) -> Dict[str, List[Rule]]:
+        """Build state-based rule mappings from config + composed rules."""
+        raw = self.rules_config.get("byState", {})
+        return self._build_rule_mapping(raw)
+
+    def _build_type_mappings(self) -> Dict[str, List[Rule]]:
+        """Build type-based rule mappings from config + composed rules."""
+        raw = self.rules_config.get("byTaskType", {})
+        return self._build_rule_mapping(raw)
+
+    def _build_project_rules(self) -> List[Rule]:
+        """Build project-wide rules from config + composed rules."""
+        raw_list = self.rules_config.get("project", [])
+        return self._parse_rule_list(raw_list)
+
+    def _build_rule_mapping(self, raw: Dict[str, List[Dict]]) -> Dict[str, List[Rule]]:
+        """Build rule mapping from raw config, enriching from composed rules."""
         parsed: Dict[str, List[Rule]] = {}
-        for key, rule_list in (rules_dict or {}).items():
+        for key, rule_list in (raw or {}).items():
             parsed[key] = self._parse_rule_list(rule_list or [])
         return parsed
 
     def _parse_rule_list(self, rule_list: List[Dict]) -> List[Rule]:
-        """Parse list of rule dicts into Rule objects."""
-        # Accept unknown keys conservatively by passing through to dataclass; this
-        # allows optional fields like `config` to flow in without breaking older
-        # rules that may not define them.
-        return [Rule(**rule_dict) for rule_dict in (rule_list or [])]
+        """Parse list of rule dicts into Rule objects, enriching from composed rules."""
+        rules = []
+        for rule_dict in (rule_list or []):
+            rule_id = rule_dict.get("id", "")
+            # Enrich with composed rule content if available
+            composed = self._rules_map.get(rule_id, {})
+            enriched = {
+                "id": rule_id,
+                "description": rule_dict.get("description", composed.get("title", "")),
+                "enforced": rule_dict.get("enforced", True),
+                "blocking": rule_dict.get("blocking", composed.get("blocking", False)),
+                "reference": rule_dict.get("reference"),
+                "config": rule_dict.get("config"),
+                "title": composed.get("title"),
+                "content": composed.get("body"),
+                "category": composed.get("category"),
+                "contexts": composed.get("contexts", []),
+                "cli": composed.get("cli"),
+            }
+            rules.append(Rule(**enriched))
+        return rules
+
+    # =========================================================================
+    # Dynamic Rules API (for session/next and CLI)
+    # =========================================================================
+
+    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single composed rule by ID.
+        
+        Args:
+            rule_id: Rule identifier
+            
+        Returns:
+            Composed rule dict or None if not found
+        """
+        return self._rules_map.get(rule_id)
+
+    def get_all_rules(self) -> Dict[str, Dict[str, Any]]:
+        """Get all composed rules.
+        
+        Returns:
+            Dict mapping rule ID to composed rule dict
+        """
+        return dict(self._rules_map)
+
+    def get_rules_for_transition(
+        self,
+        domain: str,
+        from_state: str,
+        to_state: str,
+    ) -> List[Dict[str, Any]]:
+        """Get rules for a state transition.
+        
+        Args:
+            domain: State machine domain (task, qa, etc.)
+            from_state: Source state
+            to_state: Target state
+            
+        Returns:
+            List of composed rule dicts applicable to this transition
+        """
+        rule_ids = self._get_transition_rule_ids(domain, from_state, to_state)
+        return [self._rules_map[rid] for rid in rule_ids if rid in self._rules_map]
+
+    def _get_transition_rule_ids(self, domain: str, from_state: str, to_state: str) -> List[str]:
+        """Get rule IDs for a transition from state machine config.
+        
+        This reads from config's rules.transitions section if defined.
+        """
+        transitions_cfg = self.rules_config.get("transitions", {})
+        domain_cfg = transitions_cfg.get(domain, {})
+        transition_key = f"{from_state}->{to_state}"
+        return domain_cfg.get(transition_key, []) or []
+
+    def get_rules_for_command(
+        self,
+        command: str,
+        timing: str = "before",
+    ) -> List[Dict[str, Any]]:
+        """Get rules to display for a CLI command.
+        
+        Args:
+            command: CLI command name (e.g., "task claim", "qa promote")
+            timing: When to display - "before", "after", or "both"
+            
+        Returns:
+            List of composed rule dicts that should be displayed
+        """
+        return [
+            rule for rule in self._rules_map.values()
+            if self._rule_matches_command(rule, command, timing)
+        ]
+
+    def _rule_matches_command(self, rule: Dict[str, Any], command: str, timing: str) -> bool:
+        """Check if rule should be shown for command at given timing."""
+        cli_config = rule.get("cli", {}) or {}
+        commands = cli_config.get("commands", []) or []
+        rule_timing = cli_config.get("timing", "before")
+        
+        if not commands:
+            return False
+        if command not in commands and "*" not in commands:
+            return False
+        if timing != "both" and rule_timing != "both" and rule_timing != timing:
+            return False
+        return True
+
+    def get_rules_by_context(self, context_type: str) -> List[Dict[str, Any]]:
+        """Get rules matching a context type.
+        
+        Args:
+            context_type: Context type (guidance, delegation, validation, etc.)
+            
+        Returns:
+            List of composed rule dicts matching the context
+        """
+        return [
+            rule for rule in self._rules_map.values()
+            if context_type in (rule.get("contexts") or [])
+        ]
+
+    def expand_rule_ids(self, rule_ids: List[str]) -> List[Dict[str, Any]]:
+        """Expand rule IDs to full rule objects.
+        
+        Args:
+            rule_ids: List of rule IDs to expand
+            
+        Returns:
+            List of rule info dicts
+        """
+        return [
+            {
+                "id": rid,
+                "title": self._rules_map[rid].get("title", rid),
+                "content": self._rules_map[rid].get("body", ""),
+                "blocking": self._rules_map[rid].get("blocking", False),
+            }
+            for rid in rule_ids if rid in self._rules_map
+        ]
 
     # ------------------------------------------------------------------
     # Context-aware rule selection (Phase 1B)
@@ -248,7 +414,7 @@ class RulesEngine:
         return [r for _, _, r in candidates]
 
     # ------------------------------------------------------------------
-    # State machine guard helpers (Phase 1B)
+    # State machine guard helpers (unified with state module)
     # ------------------------------------------------------------------
     def check_transition_guards(
         self,
@@ -257,76 +423,46 @@ class RulesEngine:
         task: Dict[str, Any],
         session: Optional[Dict[str, Any]] = None,
         validation_results: Optional[Dict[str, Any]] = None,
+        entity_type: str = "task",
     ) -> Tuple[bool, Optional[str]]:
         """
-        Check high-level guard conditions for a task state transition.
+        Check guard conditions for a state transition.
 
-        This helper is intentionally lightweight and focuses on core
-        invariants that are independent of any particular CLI:
+        Delegates to the unified state machine guard system. Guards are
+        loaded from data/guards/ with layered composition (core → packs → project).
 
-        Guard set (Phase 1B):
+        Args:
+            from_state: Current state
+            to_state: Target state
+            task: Task dict with metadata
+            session: Session dict (optional)
+            validation_results: Validation results dict (optional)
+            entity_type: Entity type for transition (default: 'task')
 
-        - todo → wip:
-            Task must be claimed by the session (`task.session_id == session.id`).
-        - wip → done:
-            Implementation report JSON must exist in the evidence tree.
-        - done → validated:
-            All blocking validators in ``validation_results.blocking_validators``
-            must have ``passed=True``.
-        - done → wip:
-            Requires an explicit rollback reason on the task.
+        Returns:
+            Tuple of (allowed: bool, error_message: Optional[str])
         """
-        from_norm = str(from_state or "").strip().lower()
-        to_norm = str(to_state or "").strip().lower()
-
-        if from_norm == "todo" and to_norm == "wip":
-            sid_task = str(task.get("session_id") or task.get("sessionId") or "").strip()
-            sid_session = str((session or {}).get("id") or "").strip()
-            if not sid_task or not sid_session or sid_task != sid_session:
-                return False, "Task not claimed by this session"
-            return True, None
-
-        if from_norm == "wip" and to_norm == "done":
-            task_id = str(task.get("id") or "").strip()
-            if not task_id:
-                return False, "Task id is required to verify implementation report"
-            try:
-                root = PathResolver.resolve_project_root()
-            except EdisonPathError:
-                return False, "Cannot resolve project root to verify implementation report"
-            mgmt_paths = get_management_paths(root)
-            ev_root = mgmt_paths.get_qa_root() / "validation-evidence" / task_id
-            if not ev_root.exists():
-                return False, "Implementation report required before transitioning wip → done (no evidence directory)"
-            rounds = sorted([p for p in ev_root.glob("round-*") if p.is_dir()])
-            for rd in reversed(rounds):
-                if (rd / "implementation-report.json").exists():
-                    return True, None
-            return False, "Implementation report required before transitioning wip → done"
-
-        if from_norm == "done" and to_norm == "validated":
-            vr = validation_results or {}
-            blocking = vr.get("blocking_validators") or []
-            failed = [v for v in blocking if not v.get("passed")]
-            if failed:
-                names = [
-                    str(v.get("name") or v.get("id") or "") for v in failed if v
-                ]
-                return False, f"Blocking validators failed: {names}"
-            return True, None
-
-        if from_norm == "done" and to_norm == "wip":
-            reason = str(
-                task.get("rollbackReason")
-                or task.get("rollback_reason")
-                or ""
-            ).strip()
-            if not reason:
-                return False, "Rollback reason is required when moving task from done → wip"
-            return True, None
-
-        # Default: no additional guards defined → allow.
-        return True, None
+        from edison.core.state import validate_transition
+        
+        # Build context for guards
+        context = {
+            "task": task,
+            "session": session or {},
+            "validation_results": validation_results or {},
+            "entity_type": entity_type,
+            "from_state": from_state,
+            "to_state": to_state,
+        }
+        
+        # Delegate to unified state machine
+        valid, error = validate_transition(
+            entity_type=entity_type,
+            from_state=from_state,
+            to_state=to_state,
+            context=context,
+        )
+        
+        return valid, error if not valid else None
 
     def check_state_transition(
         self, task: Dict[str, Any], from_state: str, to_state: str

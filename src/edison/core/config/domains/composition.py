@@ -4,6 +4,7 @@ CompositionConfig is the ONLY way to access composition.yaml settings.
 All other classes (ComposableTypesManager, AdapterLoader) use this.
 
 This module provides:
+- SectionSchema: Schema for a known section
 - ContentTypeConfig: Configuration for a composable content type
 - AdapterSyncConfig: Sync configuration for an adapter
 - AdapterConfig: Configuration for a platform adapter
@@ -14,10 +15,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from ..base import BaseDomainConfig
 from edison.data import get_data_path
+
+
+@dataclass
+class SectionSchema:
+    """Schema for a known section in content types."""
+    name: str
+    mode: str  # "replace" or "append"
+    description: str = ""
 
 
 @dataclass
@@ -35,6 +44,18 @@ class ContentTypeConfig:
     filename_pattern: str
     cli_flag: str
     output_mapping: Dict[str, str] = field(default_factory=dict)
+    known_sections: List[SectionSchema] = field(default_factory=list)
+    
+    def get_known_section_names(self) -> Set[str]:
+        """Return set of known section names."""
+        return {s.name for s in self.known_sections}
+    
+    def is_section_extensible(self, section_name: str) -> bool:
+        """Check if a section can be extended (mode == 'append')."""
+        for s in self.known_sections:
+            if s.name == section_name:
+                return s.mode == "append"
+        return False
 
 
 @dataclass
@@ -162,6 +183,15 @@ class CompositionConfig(BaseDomainConfig):
         raw = self._composition_yaml.get("content_types", {})
         result: Dict[str, ContentTypeConfig] = {}
         for name, cfg in raw.items():
+            # Parse known_sections if present
+            known_sections: List[SectionSchema] = []
+            for section_data in cfg.get("known_sections", []):
+                known_sections.append(SectionSchema(
+                    name=section_data.get("name", ""),
+                    mode=section_data.get("mode", "append"),
+                    description=section_data.get("description", ""),
+                ))
+            
             result[name] = ContentTypeConfig(
                 name=name,
                 enabled=cfg.get("enabled", True),
@@ -175,6 +205,7 @@ class CompositionConfig(BaseDomainConfig):
                 filename_pattern=cfg.get("filename_pattern", "{name}.md"),
                 cli_flag=cfg.get("cli_flag", name.replace("_", "-")),
                 output_mapping=cfg.get("output_mapping", {}),
+                known_sections=known_sections,
             )
         return result
     
@@ -279,6 +310,7 @@ class CompositionConfig(BaseDomainConfig):
 __all__ = [
     "CompositionConfig",
     "ContentTypeConfig",
+    "SectionSchema",
     "AdapterConfig",
     "AdapterSyncConfig",
 ]

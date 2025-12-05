@@ -90,8 +90,8 @@ class TestRulesRegistryAndComposition:
             ),
         )
 
-        text_first = RulesRegistry.extract_anchor_content(guideline, "first")
-        text_second = RulesRegistry.extract_anchor_content(guideline, "second")
+        text_first = RulesRegistry.extract_section_content(guideline, "first")
+        text_second = RulesRegistry.extract_section_content(guideline, "second")
 
         assert "First line A." in text_first
         assert "First line B." in text_first
@@ -112,9 +112,9 @@ class TestRulesRegistryAndComposition:
         guideline = root / ".edison" / "guidelines" / "BROKEN.md"
         write_guideline(guideline, "# Broken\nNo anchors here.\n")
 
-        # Use static method to test anchor extraction directly
+        # Use static method to test section extraction directly
         with pytest.raises(Exception) as exc:
-            RulesRegistry.extract_anchor_content(guideline, "does-not-exist")
+            RulesRegistry.extract_section_content(guideline, "does-not-exist")
 
         # Should mention the missing anchor
         assert "does-not-exist" in str(exc.value)

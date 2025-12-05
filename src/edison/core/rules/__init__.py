@@ -24,8 +24,6 @@ from .checker import get_rules_for_context_formatted, format_rules_output
 from .registry import (
     RulesRegistry,
     compose_rules,
-    extract_anchor_content,
-    load_bundled_rules,
     get_rules_for_role,
     filter_rules,
 )
@@ -49,8 +47,6 @@ __all__ = [
     # Registry (composition)
     "RulesRegistry",
     "compose_rules",
-    "extract_anchor_content",
-    "load_bundled_rules",
     "get_rules_for_role",
     "filter_rules",
     "FilePatternRegistry",

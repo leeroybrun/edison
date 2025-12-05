@@ -1,7 +1,7 @@
 """
 Edison qa promote command.
 
-SUMMARY: Promote QA brief between states
+SUMMARY: Promote QA brief between states with state-machine guard enforcement
 """
 
 from __future__ import annotations
@@ -10,9 +10,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
+from edison.cli._choices import get_state_choices, get_semantic_state
 from edison.core.qa import promoter, bundler
-from edison.core.qa.evidence import EvidenceService
+from edison.core.qa.evidence import EvidenceService, read_validator_jsons
+from edison.core.state.transitions import validate_transition
 
 SUMMARY = "Promote QA brief between states"
 
@@ -26,7 +28,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--status",
         type=str,
-        choices=["waiting", "todo", "wip", "done", "validated"],
+        choices=get_state_choices("qa"),
         help="Target status to promote to",
     )
     parser.add_argument(
@@ -37,14 +39,19 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Skip validation checks",
+        help="Skip guard checks (use with caution)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview transition without making changes",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """Promote QA brief - delegates to QA library."""
+    """Promote QA brief with state-machine guard enforcement."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
@@ -55,33 +62,127 @@ def main(args: argparse.Namespace) -> int:
             formatter.error("--status is required", error_code="missing_status")
             return 1
 
+        # Get QA entity to determine current state
+        qa_repo = get_repository("qa", project_root=repo_root)
+        qa_entity = qa_repo.get(args.task_id)
+        
+        if not qa_entity:
+            formatter.error(f"QA brief not found: {args.task_id}", error_code="qa_not_found")
+            return 1
+        
+        current_status = qa_entity.state
+        
         # Get latest round using EvidenceService
         svc = EvidenceService(args.task_id, project_root=repo_root)
         round_num = svc.get_current_round()
-        if round_num is None:
-            formatter.error("No rounds found for task", error_code="no_rounds")
-            return 1
-
-        # Check if revalidation is needed (unless forced)
-        if not args.force and args.status == "validated":
+        
+        # Build context for guard evaluation
+        context = {
+            "task_id": args.task_id,
+            "qa": {
+                "task_id": args.task_id,
+                "state": current_status,
+            },
+            "entity_type": "qa",
+            "entity_id": args.task_id,
+        }
+        
+        # Add task context if available
+        try:
+            task_repo = get_repository("task", project_root=repo_root)
+            task_entity = task_repo.get(args.task_id)
+            if task_entity:
+                context["task"] = {
+                    "id": task_entity.id,
+                    "status": task_entity.state,
+                    "state": task_entity.state,
+                    "session_id": task_entity.session_id,
+                }
+        except Exception:
+            pass
+        
+        # Add validation results if available
+        if round_num is not None:
+            try:
+                validator_data = read_validator_jsons(args.task_id)
+                context["validation_results"] = {
+                    "round": round_num,
+                    "reports": validator_data.get("reports", []),
+                }
+            except Exception:
+                pass
+        
+        # Validate transition with guards (unless forced)
+        if not args.force:
+            is_valid, msg = validate_transition(
+                "qa",
+                current_status,
+                args.status,
+                context=context,
+            )
+            
+            if not is_valid:
+                if args.dry_run:
+                    formatter.json_output({
+                        "dry_run": True,
+                        "task_id": args.task_id,
+                        "current_status": current_status,
+                        "target_status": args.status,
+                        "valid": False,
+                        "message": msg,
+                    }) if formatter.json_mode else formatter.text(
+                        f"Transition {current_status} -> {args.status}: BLOCKED - {msg}"
+                    )
+                    return 1
+                
+                formatter.error(f"Transition blocked: {msg}", error_code="guard_failed")
+                return 1
+        
+        # Dry run - just report what would happen
+        if args.dry_run:
+            formatter.json_output({
+                "dry_run": True,
+                "task_id": args.task_id,
+                "current_status": current_status,
+                "target_status": args.status,
+                "valid": True,
+                "message": "Transition allowed",
+            }) if formatter.json_mode else formatter.text(
+                f"Transition {current_status} -> {args.status}: ALLOWED"
+            )
+            return 0
+        
+        # Additional check for validated state - bundle must be fresh
+        validated_state = get_semantic_state("qa", "validated")
+        if args.status == validated_state and round_num is not None:
             bundle_path = bundler.bundle_summary_path(args.task_id, round_num)
             reports = promoter.collect_validator_reports([args.task_id])
             task_files = promoter.collect_task_files([args.task_id], args.session)
 
             if promoter.should_revalidate_bundle(bundle_path, reports, task_files):
-                formatter.error("Bundle is stale, run validation first", error_code="revalidation_required")
+                formatter.error(
+                    "Bundle is stale. Run validation again before promoting to validated.",
+                    error_code="revalidation_required"
+                )
                 return 1
 
-        # Perform promotion (simplified - actual implementation would be more complex)
+        # Execute the promotion
+        old_state = qa_entity.state
+        qa_entity.state = args.status
+        qa_entity.record_transition(old_state, args.status, reason="cli-qa-promote")
+        qa_repo.save(qa_entity)
+        
         result = {
             "task_id": args.task_id,
             "round": round_num,
-            "old_status": "unknown",
+            "old_status": old_state,
             "new_status": args.status,
             "promoted": True,
         }
 
-        formatter.json_output(result) if formatter.json_mode else formatter.text(f"Promoted {args.task_id} to status: {args.status}")
+        formatter.json_output(result) if formatter.json_mode else formatter.text(
+            f"Promoted {args.task_id}: {old_state} -> {args.status}"
+        )
 
         return 0
 

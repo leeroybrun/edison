@@ -147,12 +147,21 @@ def _auto_session_for_owner() -> Optional[str]:
     try:
         from .persistence.repository import SessionRepository
         from edison.core.utils.process import get_current_owner
+        from edison.core.config.domains.session import SessionConfig
+        
         repo = SessionRepository()
         owner = get_current_owner()
         sessions = repo.find_by_owner(owner)
-        # Return first session in 'wip' state
+        
+        # Get active session state from config (lookup order indicates priority)
+        session_cfg = SessionConfig()
+        lookup_order = session_cfg.get_session_lookup_order()
+        # First state in lookup order is typically the active "wip" state
+        active_state = lookup_order[0] if lookup_order else "wip"
+        
+        # Return first session in active state
         for sess in sessions:
-            if sess.state == "wip":
+            if sess.state == active_state:
                 return sess.id
         return None
     except (FileNotFoundError, OSError) as e:

@@ -3,6 +3,10 @@ Auto-discovery CLI dispatcher for Edison.
 
 Scans subfolders for commands and automatically registers them.
 Adding new commands = just add a .py file to the appropriate subfolder.
+
+Rules Integration:
+- Rules with CLI configuration are displayed before/after command execution
+- Configure rules in data/rules/registry.yml with cli.commands and cli.timing
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ import importlib
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 
 @lru_cache(maxsize=1)
@@ -188,6 +192,54 @@ def _get_version() -> str:
         return "unknown"
 
 
+def _get_rules_engine() -> Optional[Any]:
+    """Get RulesEngine instance for rules display.
+    
+    Returns None if rules engine cannot be initialized (e.g., not in project).
+    """
+    try:
+        from edison.core.rules import RulesEngine
+        from edison.core.config import ConfigManager
+        cfg = ConfigManager().load_config(validate=False)
+        return RulesEngine(cfg)
+    except Exception:
+        return None
+
+
+def _format_rules_for_display(rules: List[Dict[str, Any]], timing: str) -> str:
+    """Format rules for CLI display.
+    
+    Args:
+        rules: List of composed rule dicts
+        timing: "before" or "after"
+        
+    Returns:
+        Formatted string for display
+    """
+    if not rules:
+        return ""
+    
+    header = "RULES TO FOLLOW:" if timing == "before" else "VALIDATION REMINDERS:"
+    lines = [f"\n{'='*60}", f"📋 {header}", ""]
+    
+    for rule in rules:
+        blocking_marker = "[BLOCKING] " if rule.get("blocking") else ""
+        lines.append(f"  {blocking_marker}{rule.get('title', rule.get('id', 'Unknown'))}")
+        content = rule.get("body") or rule.get("content")
+        if content:
+            # Show first 200 chars of content
+            snippet = content[:200]
+            if len(content) > 200:
+                snippet += "..."
+            for line in snippet.split("\n")[:3]:
+                if line.strip():
+                    lines.append(f"    {line.strip()}")
+        lines.append("")
+    
+    lines.append("=" * 60 + "\n")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Main entry point for Edison CLI.
@@ -217,20 +269,49 @@ def main(argv: list[str] | None = None) -> int:
             domain_parser.print_help()
         return 0
 
+    # Get command name for rules lookup
+    command_name = args.domain
+    if getattr(args, "command", None):
+        command_name = f"{args.domain} {args.command}"
+    
+    # Get rules engine (may fail silently if not in project)
+    engine = _get_rules_engine()
+    
+    # Show BEFORE rules (guidance)
+    if engine:
+        try:
+            before_rules = engine.get_rules_for_command(command_name, timing="before")
+            if before_rules:
+                print(_format_rules_for_display(before_rules, "before"), file=sys.stderr)
+        except Exception:
+            pass  # Fail silently - rules display is optional
+    
     # Execute the command
     func: Callable[[argparse.Namespace], int] | None = getattr(args, "_func", None)
+    result = 1
     if func:
         try:
-            return func(args)
+            result = func(args)
         except KeyboardInterrupt:
             print("\nInterrupted.", file=sys.stderr)
             return 130
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
-
-    parser.print_help()
-    return 1
+    else:
+        parser.print_help()
+        return 1
+    
+    # Show AFTER rules (validation reminders) - only on success
+    if engine and result == 0:
+        try:
+            after_rules = engine.get_rules_for_command(command_name, timing="after")
+            if after_rules:
+                print(_format_rules_for_display(after_rules, "after"), file=sys.stderr)
+        except Exception:
+            pass  # Fail silently - rules display is optional
+    
+    return result
 
 
 if __name__ == "__main__":

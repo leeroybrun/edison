@@ -9,11 +9,6 @@ Architecture:
     - Bundled rules: edison.data/rules/registry.yml (ALWAYS used for core)
     - Pack rules: .edison/packs/<pack>/rules/registry.yml
     - Project rules: .edison/rules/registry.yml (overrides)
-    - NO .edison/core/ - that is legacy
-
-    BaseEntityManager
-    └── BaseRegistry
-        └── RulesRegistry (this module) + YamlLayerMixin
 """
 from __future__ import annotations
 
@@ -21,24 +16,22 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from edison.core.composition.registries._registry_base import BaseRegistry
-from edison.core.composition.core.yaml_layer import YamlLayerMixin
+import yaml
+
 from edison.core.composition.core.sections import SectionParser
 from edison.core.utils.paths import EdisonPathError, PathResolver
-from edison.core.utils.paths import get_project_config_dir
-from edison.data import read_yaml as read_bundled_yaml
 
 from edison.core.composition.includes import resolve_includes, ComposeError
 from edison.core.composition.core.errors import AnchorNotFoundError, RulesCompositionError
 from edison.data import get_data_path
 
 
-class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
+class RulesRegistry:
     """
     Load and compose rules from bundled + pack YAML registries.
 
-    Extends BaseRegistry with rule-specific functionality:
-    - YAML-based rule loading (via YamlLayerMixin)
+    Features:
+    - YAML-based rule loading
     - Anchor extraction from guidelines
     - Include resolution
 
@@ -46,7 +39,6 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
       - Packs: .edison/packs/<pack>/rules/registry.yml (bundled + project)
       - Project: .edison/rules/registry.yml (overrides)
-      - NO .edison/core/ - that is legacy
 
     This class is read-only; it does not mutate project state.
     """
@@ -54,16 +46,19 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
     entity_type: str = "rule"
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
-        # Note: We handle project_root ourselves due to custom error handling
         try:
-            resolved_root = project_root or PathResolver.resolve_project_root()
-        except (EdisonPathError, ValueError) as exc:  # pragma: no cover - defensive
+            self.project_root = project_root or PathResolver.resolve_project_root()
+        except (EdisonPathError, ValueError) as exc:
             raise RulesCompositionError(str(exc)) from exc
 
-        super().__init__(resolved_root)
-
-        # Note: project_dir, packs_dir are inherited from BaseRegistry
-        # But we still need bundled-specific paths for rules
+        # Project .edison directory
+        self.project_dir = self.project_root / ".edison"
+        
+        # Bundled packs directory
+        self.bundled_packs_dir = get_data_path("packs")
+        
+        # Project packs directory
+        self.project_packs_dir = self.project_dir / "packs"
 
         # Core registry is ALWAYS from bundled data
         self.core_registry_path = get_data_path("rules", "registry.yml")
@@ -71,8 +66,27 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
         # Bundled data directory for resolving guideline paths
         self.bundled_data_dir = Path(get_data_path(""))
 
-        # Pack directories: use inherited bundled_packs_dir from BaseRegistry
-    
+    def _load_yaml_file(self, path: Path, required: bool = True) -> Any:
+        """Load a single YAML file.
+        
+        Args:
+            path: Path to YAML file
+            required: If True, raise FileNotFoundError when file doesn't exist
+            
+        Returns:
+            Parsed YAML content
+        """
+        if not path.exists():
+            if required:
+                raise FileNotFoundError(f"YAML file not found: {path}")
+            return {}
+        
+        try:
+            content = path.read_text(encoding="utf-8")
+            return yaml.safe_load(content) or {}
+        except Exception:
+            return {}
+
     # ------- Utility Methods -------
 
     @staticmethod
@@ -104,11 +118,8 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
             raise AnchorNotFoundError(f"Section '{section_name}' not found in {source_file}")
         
         return section_content
-    
-    # Legacy alias for backwards compatibility
-    extract_anchor_content = extract_section_content
 
-    # ------- BaseRegistry Interface Implementation -------
+    # ------- Registry Interface Implementation -------
 
     def discover_core(self) -> Dict[str, Dict[str, Any]]:
         """Discover core rules from bundled registry."""
@@ -130,7 +141,6 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
         """Discover project-level rule overrides at .edison/rules/."""
-        # Use inherited project_dir from BaseRegistry
         path = self.project_dir / "rules" / "registry.yml"
         registry = self._load_yaml(path, required=False)
         rules = registry.get("rules", [])
@@ -149,13 +159,10 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
         return list(self.discover_core().values())
 
     # ------------------------------------------------------------------
-    # Registry loading (uses YamlLayerMixin)
+    # Registry loading
     # ------------------------------------------------------------------
     def _load_yaml(self, path: Path, *, required: bool) -> Dict[str, Any]:
-        """Load and validate rules YAML file.
-
-        Uses YamlLayerMixin._load_yaml_file() for consistent YAML loading.
-        """
+        """Load and validate rules YAML file."""
         try:
             data = self._load_yaml_file(path, required=required)
         except FileNotFoundError:
@@ -231,7 +238,7 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
         else:
             file_part = file_ref
 
-        # Resolve file path
+        # Resolve file path - prefer _generated (final composed) over bundled (source)
         source_path: Optional[Path] = None
         
         # Project-relative paths starting with .edison/
@@ -257,14 +264,21 @@ class RulesRegistry(YamlLayerMixin, BaseRegistry[Dict[str, Any]]):
         elif file_part.startswith("/"):
             source_path = (self.project_root / file_part.lstrip("/")).resolve()
         else:
-            # Relative paths resolve to bundled data (e.g., "guidelines/VALIDATION.md")
-            bundled_path = (self.bundled_data_dir / file_part).resolve()
-            if bundled_path.exists():
-                source_path = bundled_path
+            # Relative paths: resolve to _generated first (final composed content),
+            # then fall back to bundled data (source templates)
+            # This ensures agents read the final composed guidelines, not source templates
+            generated_path = (self.project_root / ".edison" / "_generated" / file_part).resolve()
+            if generated_path.exists():
+                source_path = generated_path
             else:
-                # Fall back to project directory for project-level content (use inherited project_dir)
-                project_path = (self.project_dir / file_part).resolve()
-                source_path = project_path
+                # Fall back to bundled data for development/testing scenarios
+                bundled_path = (self.bundled_data_dir / file_part).resolve()
+                if bundled_path.exists():
+                    source_path = bundled_path
+                else:
+                    # Last resort: project directory
+                    project_path = (self.project_dir / file_part).resolve()
+                    source_path = project_path
 
         return source_path, str(anchor) if anchor else None
 
@@ -496,29 +510,23 @@ def compose_rules(packs: Optional[List[str]] = None, project_root: Optional[Path
 
 
 # ------------------------------------------------------------------
-# Role-based rule query API (moved from RulesEngine)
+# Role-based rule query API (uses composition system)
 # ------------------------------------------------------------------
-def load_bundled_rules() -> List[Dict[str, Any]]:
+def get_rules_for_role(role: str, packs: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
-    Load all rules from the bundled registry.
+    Get composed rules that apply to a specific role.
 
-    Returns:
-        List of rule dictionaries from the registry
-    """
-    registry_data = read_bundled_yaml("rules", "registry.yml")
-    rules = registry_data.get("rules", [])
-    return rules if isinstance(rules, list) else []
-
-
-def get_rules_for_role(role: str) -> List[Dict[str, Any]]:
-    """
-    Extract rules that apply to a specific role.
+    Uses RulesRegistry.compose() to get fully composed rules with:
+    - Pack overlays
+    - Project overlays
+    - Include resolution
 
     Args:
         role: One of 'orchestrator', 'agent', 'validator'
+        packs: Optional list of active packs (defaults to empty)
 
     Returns:
-        List of rule dictionaries where applies_to includes the role
+        List of composed rule dictionaries where applies_to includes the role
 
     Raises:
         ValueError: If role is not one of the valid options
@@ -526,34 +534,41 @@ def get_rules_for_role(role: str) -> List[Dict[str, Any]]:
     if role not in ('orchestrator', 'agent', 'validator'):
         raise ValueError(f"Invalid role: {role}. Must be orchestrator, agent, or validator")
 
-    all_rules = load_bundled_rules()
+    # Use composition system for full rule resolution
+    registry = RulesRegistry()
+    composed = registry.compose(packs=packs or [])
+    rules_map = composed.get("rules", {})
+    
+    # Filter by role from composed rules
     return [
-        rule for rule in all_rules
-        if role in rule.get('applies_to', [])
+        rule for rule in rules_map.values()
+        if role in (rule.get('applies_to') or [])
     ]
 
 
-def filter_rules(context: Dict[str, Any]) -> List[Dict[str, Any]]:
+def filter_rules(context: Dict[str, Any], packs: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
-    Filter rules by context metadata (role, category, etc.).
+    Filter composed rules by context metadata (role, category, etc.).
 
-    This function provides simplified filtering of rules from the
-    bundled registry, complementing the instance method get_rules_for_context
-    which works with Rule objects for runtime enforcement.
+    Uses RulesRegistry.compose() for full rule resolution.
 
     Args:
         context: Dictionary with optional keys:
             - role: One of 'orchestrator', 'agent', 'validator'
             - category: Rule category (e.g., 'validation', 'delegation')
+        packs: Optional list of active packs (defaults to empty)
 
     Returns:
-        List of rule dictionaries matching the context filters
+        List of composed rule dictionaries matching the context filters
     """
-    rules = load_bundled_rules()
+    # Use composition system for full rule resolution
+    registry = RulesRegistry()
+    composed = registry.compose(packs=packs or [])
+    rules = list(composed.get("rules", {}).values())
 
     # Filter by role if specified
     if 'role' in context:
-        rules = [r for r in rules if context['role'] in r.get('applies_to', [])]
+        rules = [r for r in rules if context['role'] in (r.get('applies_to') or [])]
 
     # Filter by category if specified
     if 'category' in context:
@@ -562,20 +577,9 @@ def filter_rules(context: Dict[str, Any]) -> List[Dict[str, Any]]:
     return rules
 
 
-# Module-level export - for backwards compatibility
-def extract_anchor_content(source_file: Path, anchor: str) -> str:
-    """Extract content using SECTION markers.
-    
-    Backwards compatible alias for RulesRegistry.extract_section_content.
-    """
-    return RulesRegistry.extract_section_content(source_file, anchor)
-
-
 __all__ = [
     "RulesRegistry",
     "compose_rules",
-    "extract_anchor_content",
-    "load_bundled_rules",
     "get_rules_for_role",
     "filter_rules",
 ]

@@ -179,7 +179,7 @@ class TestRulesCompositionE2E:
             if not source_file or not anchor:
                 continue
             try:
-                RulesRegistry.extract_anchor_content(source_file, anchor)
+                RulesRegistry.extract_section_content(source_file, anchor)
             except Exception as exc:  # pragma: no cover - defensive
                 errors.append(f"{raw_rule.get('id')}: {exc}")
 

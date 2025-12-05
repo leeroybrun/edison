@@ -107,9 +107,35 @@ class RichStateMachine:
         for cond in transition.get("conditions", []) or []:
             self._check_condition(cond or {}, ctx)
 
-    def _should_execute(self, action_spec: Mapping[str, Any], ctx: Mapping[str, Any]) -> bool:
+    def _get_action_timing(self, action_spec: Mapping[str, Any]) -> str:
+        """Get the timing for an action (before or after transition).
+        
+        Returns:
+            'before' - Execute before guards/conditions
+            'after' - Execute after successful transition (default)
+        """
+        when = action_spec.get("when")
+        if when in ("before", "after"):
+            return when
+        # Default to 'after' for all other cases (including conditional when)
+        return "after"
+
+    def _should_execute_conditional(self, action_spec: Mapping[str, Any], ctx: Mapping[str, Any]) -> bool:
+        """Check if a conditional action should execute.
+        
+        Handles:
+        - Boolean `when:` values
+        - Config path resolution like `when: config.worktrees_enabled`
+        - No `when:` specified (always execute)
+        
+        Note: 'before'/'after' timing is handled by _get_action_timing,
+        so those values skip conditional checks.
+        """
         flag = action_spec.get("when")
         if flag is None:
+            return True
+        # Timing values - always execute (timing handled separately)
+        if flag in ("before", "after"):
             return True
         if isinstance(flag, bool):
             return flag
@@ -118,31 +144,91 @@ class RichStateMachine:
             return bool(val)
         return bool(flag)
 
-    def _run_actions(self, transition: Mapping[str, Any], ctx: Mapping[str, Any]) -> None:
+    def _run_actions(
+        self, 
+        transition: Mapping[str, Any], 
+        ctx: Mapping[str, Any],
+        timing: str = "after"
+    ) -> None:
+        """Run actions for a transition filtered by timing.
+        
+        Args:
+            transition: Transition spec from state machine config
+            ctx: Context dict for action execution
+            timing: 'before' or 'after' - only actions with matching timing are executed
+        """
         for action in transition.get("actions", []) or []:
             if not isinstance(action, Mapping):
                 continue
-            if not self._should_execute(action, ctx):
+            
+            # Check timing first
+            action_timing = self._get_action_timing(action)
+            if action_timing != timing:
                 continue
+            
+            # Check conditional execution
+            if not self._should_execute_conditional(action, ctx):
+                continue
+            
             name = action.get("name")
             if not name:
                 continue
+            
             self.actions.execute(str(name), ctx)
 
-    def validate(self, current: str, target: str, *, context: Optional[Mapping[str, Any]] = None, execute_actions: bool = True) -> bool:
+    def validate(
+        self, 
+        current: str, 
+        target: str, 
+        *, 
+        context: Optional[Mapping[str, Any]] = None, 
+        execute_actions: bool = True
+    ) -> bool:
+        """Validate and optionally execute a state transition.
+        
+        Execution order:
+        1. Pre-transition actions (when: before)
+        2. Guard check
+        3. Condition checks
+        4. Post-transition actions (when: after, default)
+        
+        Args:
+            current: Current state
+            target: Target state
+            context: Context dict for guards/conditions/actions
+            execute_actions: Whether to execute actions (default: True)
+            
+        Returns:
+            True if transition is valid
+            
+        Raises:
+            StateTransitionError: If transition is not allowed or guards/conditions fail
+        """
         ctx = context or {}
         if current == target:
             return True
+        
         transition = self._find_transition(str(current), str(target))
         if transition is None:
             raise StateTransitionError(
                 f"Invalid transition {current!r} -> {target!r}: not allowed",
                 context={"domain": self.name, "from": current, "to": target},
             )
-        self._check_guard(transition, ctx)
-        self._run_conditions(transition, ctx)
+        
+        # 1. Pre-transition actions (when: before)
         if execute_actions:
-            self._run_actions(transition, ctx)
+            self._run_actions(transition, ctx, timing="before")
+        
+        # 2. Guard check
+        self._check_guard(transition, ctx)
+        
+        # 3. Condition checks
+        self._run_conditions(transition, ctx)
+        
+        # 4. Post-transition actions (when: after, default)
+        if execute_actions:
+            self._run_actions(transition, ctx, timing="after")
+        
         return True
 
     def transitions_map(self) -> Dict[str, List[str]]:

@@ -63,6 +63,62 @@ class QAManager:
         svc = EvidenceService(task_id, project_root=self.project_root)
         return svc.create_next_round()
 
+    def initialize_round(
+        self, 
+        task_id: str, 
+        session_id: Optional[str] = None, 
+        owner: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Initialize a new round with QA brief and metadata.
+        
+        This is a higher-level operation than create_round, as it sets up
+        the initial evidence structures (qa-brief.json, metadata.json).
+        
+        Args:
+            task_id: Task identifier
+            session_id: Session ID context
+            owner: Validator owner
+            
+        Returns:
+            Dict with round info and path
+        """
+        svc = EvidenceService(task_id, project_root=self.project_root)
+        
+        # Create round directory
+        round_path = svc.create_next_round()
+        round_num = svc.get_current_round() or 1
+        
+        # Create QA brief
+        qa_brief = {
+            "task_id": task_id,
+            "session_id": session_id,
+            "round": round_num,
+            "created_at": None,  # Will be set by atomic write if needed, or added here
+            "status": "pending",
+            "validators": [],
+            "evidence": [],
+        }
+        
+        brief_path = round_path / "qa-brief.json"
+        from edison.core.utils.io import write_json_atomic
+        write_json_atomic(brief_path, qa_brief)
+        
+        # Update metadata
+        evidence_dir = svc.get_evidence_root()
+        metadata_path = evidence_dir / "metadata.json"
+        metadata = {
+            "task_id": task_id,
+            "currentRound": round_num,
+            "round": round_num,
+        }
+        write_json_atomic(metadata_path, metadata)
+        
+        return {
+            "round": round_num,
+            "path": str(brief_path),
+            "brief": qa_brief
+        }
+
     def get_latest_round(self, task_id: str) -> Optional[int]:
         """Get the latest round number for a task.
 

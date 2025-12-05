@@ -33,21 +33,34 @@ class ValidatorRosterGenerator(ComposableRegistry[str]):
     def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
         """Provide validator data for template expansion."""
         from edison.core.registries.validators import ValidatorRegistry
+        from edison.core.config.domains.qa import QAConfig
         from dataclasses import asdict
         
         registry = ValidatorRegistry(project_root=self.project_root)
         validators_by_tier = registry.get_all_grouped()
+        qa_config = QAConfig()
+        tiers = qa_config.validator_tiers
         
         # Convert ValidatorMetadata dataclasses to dicts
         def convert_tier(validators):
             return [asdict(v) for v in validators]
         
-        return {
-            "global_validators": convert_tier(validators_by_tier.get("global", [])),
-            "critical_validators": convert_tier(validators_by_tier.get("critical", [])),
-            "specialized_validators": convert_tier(validators_by_tier.get("specialized", [])),
+        # Build context dynamically from configured tiers
+        context: Dict[str, Any] = {
+            "tiers": tiers,  # List of tier names for iteration
+            "validators_by_tier": {
+                tier: convert_tier(validators_by_tier.get(tier, []))
+                for tier in tiers
+            },
             "generated_at": _utc_timestamp(),
         }
+        
+        # Also provide named accessors for backward compatibility with templates
+        # using {{#each global_validators}}, {{#each critical_validators}}, etc.
+        for tier in tiers:
+            context[f"{tier}_validators"] = convert_tier(validators_by_tier.get(tier, []))
+        
+        return context
     
     def write(self, output_dir: Path) -> Path:
         """Compose and write AVAILABLE_VALIDATORS.md.

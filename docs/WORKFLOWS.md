@@ -35,7 +35,7 @@ edison session create --session-id <id>
 
 **Configuration:**
 - Session config: `src/edison/data/config/session.yaml`
-- State machine: `src/edison/data/config/state-machine.yaml`
+- State machine: `src/edison/data/config/workflow.yaml` (under `workflow.statemachine`)
 
 ---
 
@@ -1214,24 +1214,26 @@ For each task validation round:
 
 ### Configuration Files Reference
 
-- **State machine:** `src/edison/data/config/state-machine.yaml`
-- **Workflow:** `src/edison/data/config/workflow.yaml`
+- **Workflow & State Machine:** `src/edison/data/config/workflow.yaml`
 - **Session:** `src/edison/data/config/session.yaml`
 - **QA:** `src/edison/data/config/qa.yaml`
 - **TDD:** `src/edison/data/config/tdd.yaml`
 - **Delegation:** `src/edison/data/config/delegation.yaml`
+- **Guards:** `src/edison/data/guards/`
+- **Actions:** `src/edison/data/actions/`
+- **Conditions:** `src/edison/data/conditions/`
 - **MCP:** `.mcp.json` (project-specific)
 
 ---
 
 ## See Also
 
+- [STATE_MACHINE.md](STATE_MACHINE.md) - Complete state machine, guards, actions, and conditions reference
+- [CONFIGURATION.md](CONFIGURATION.md) - Full configuration guide
 - [ZEN_SETUP.md](ZEN_SETUP.md) - Zen MCP Server setup
 - [README.md](../README.md) - Edison overview
-- State machine config: `src/edison/data/config/state-machine.yaml`
-- Workflow config: `src/edison/data/config/workflow.yaml`
 
 ---
 
-**Last Updated:** 2025-12-01
-**Version:** 1.0.0
+**Last Updated:** 2025-12-04
+**Version:** 2.0.0

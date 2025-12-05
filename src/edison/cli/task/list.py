@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
+from edison.cli._choices import get_combined_state_choices
 from edison.core.session import validate_session_id
 
 SUMMARY = "List tasks across queues"
@@ -19,7 +20,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
         "--status",
-        choices=["todo", "wip", "done", "validated", "waiting"],
+        choices=get_combined_state_choices(),
         help="Filter by status",
     )
     parser.add_argument(

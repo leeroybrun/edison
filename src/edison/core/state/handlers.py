@@ -78,6 +78,16 @@ class DomainRegistry(Generic[T], ABC):
         key = self._make_key(name, domain)
         self._handlers[key] = handler
     
+    def add(self, name: str, handler: T, domain: str = SHARED_DOMAIN) -> None:
+        """Add a handler function (alias for register).
+        
+        Args:
+            name: Handler name (unique within domain)
+            handler: Callable handler function
+            domain: Domain identifier (default: shared)
+        """
+        self.register(name, handler, domain)
+    
     def get(self, name: str, domain: str = SHARED_DOMAIN) -> Optional[T]:
         """Get a handler by name, with domain fallback.
         
@@ -283,11 +293,96 @@ class ActionRegistryBase(DomainRegistry[Callable[[Mapping[str, Any]], Any]]):
         return handler(ctx)
 
 
+def _get_guard_registry() -> "GuardRegistryBase":
+    """Lazy import to avoid circular dependencies."""
+    from .guards import registry
+    return registry
+
+
+def _get_action_registry() -> "ActionRegistryBase":
+    """Lazy import to avoid circular dependencies."""
+    from .actions import registry
+    return registry
+
+
+def _get_condition_registry() -> "ConditionRegistryBase":
+    """Lazy import to avoid circular dependencies."""
+    from .conditions import registry
+    return registry
+
+
+def register_guard(name: str, domain: str = DomainRegistry.SHARED_DOMAIN):
+    """Decorator to register a guard function.
+    
+    Usage:
+        @register_guard("can_start_task")
+        def can_start_task(ctx: Mapping[str, Any]) -> bool:
+            return ctx.get("task", {}).get("claimed", False)
+    
+    Args:
+        name: Guard name to register
+        domain: Optional domain for domain-specific guards
+        
+    Returns:
+        Decorator that registers the function
+    """
+    def decorator(fn):
+        _get_guard_registry().register(name, fn, domain)
+        return fn
+    return decorator
+
+
+def register_action(name: str, domain: str = DomainRegistry.SHARED_DOMAIN):
+    """Decorator to register an action function.
+    
+    Usage:
+        @register_action("record_completion_time")
+        def record_completion_time(ctx: MutableMapping[str, Any]) -> None:
+            ctx["completed_at"] = time.time()
+    
+    Args:
+        name: Action name to register
+        domain: Optional domain for domain-specific actions
+        
+    Returns:
+        Decorator that registers the function
+    """
+    def decorator(fn):
+        _get_action_registry().register(name, fn, domain)
+        return fn
+    return decorator
+
+
+def register_condition(name: str, domain: str = DomainRegistry.SHARED_DOMAIN):
+    """Decorator to register a condition function.
+    
+    Usage:
+        @register_condition("all_work_complete")
+        def all_work_complete(ctx: Mapping[str, Any]) -> bool:
+            return ctx.get("session", {}).get("work_complete", False)
+    
+    Args:
+        name: Condition name to register
+        domain: Optional domain for domain-specific conditions
+        
+    Returns:
+        Decorator that registers the function
+    """
+    def decorator(fn):
+        _get_condition_registry().register(name, fn, domain)
+        return fn
+    return decorator
+
+
 __all__ = [
     "DomainRegistry",
     "GuardRegistryBase",
     "ConditionRegistryBase",
     "ActionRegistryBase",
+    # Registration decorators
+    "register_guard",
+    "register_action",
+    "register_condition",
 ]
 
 

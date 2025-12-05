@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
+from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
 from edison.core.session.lifecycle.verify import verify_session_health
@@ -59,13 +60,14 @@ def main(args: argparse.Namespace) -> int:
                 return 1
 
         # Transition to closing
-        session_manager.transition_session(session_id, "closing")
+        closing_state = WorkflowConfig().get_semantic_state("session", "closing")
+        session_manager.transition_session(session_id, closing_state)
 
         if formatter.json_mode:
             session = session_manager.get_session(session_id)
-            formatter.json_output({"sessionId": session_id, "status": "closing", "session": session})
+            formatter.json_output({"sessionId": session_id, "status": closing_state, "session": session})
         else:
-            formatter.text(f"Session {session_id} transitioned to closing.")
+            formatter.text(f"Session {session_id} transitioned to {closing_state}.")
 
         return 0
 

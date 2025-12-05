@@ -110,21 +110,34 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
     Returns:
         List of missing report entries
     """
+    from edison.core.config.domains.workflow import WorkflowConfig
+    workflow_cfg = WorkflowConfig()
+    
+    # Get QA states from config
+    qa_wip = workflow_cfg.get_semantic_state("qa", "wip")
+    qa_todo = workflow_cfg.get_semantic_state("qa", "todo")
+    qa_active_states = {qa_wip, qa_todo}
+    
     reports_missing: List[Dict[str, Any]] = []
 
     for task_id, task_entry in session.get("tasks", {}).items():
         # Validators JSON expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
-        if qstat in {"wip", "todo"}:
+        if qstat in qa_active_states:
             v = read_validator_jsons(task_id)
             have = {r.get("validatorId") for r in v.get("reports", [])}
-            # Derive expected blocking IDs from validators config
+            # Derive expected blocking IDs from validators config using QAConfig
             try:
-                cfg = io_read_json(project_cfg_dir()/"validators"/"config.json")
+                from edison.core.config.domains.qa import QAConfig
+                qa_cfg = QAConfig()
+                tiers = qa_cfg.validator_tiers
                 need = []
-                for vcat in ("global","critical","specialized"):
-                    for vv in cfg.get("validators",{}).get(vcat,[]):
-                        if vv.get("alwaysRun") or vv.get("blocksOnFail") or vcat in ("global","critical"):
+                for tier in tiers:
+                    tier_validators = qa_cfg.get_validators_for_tier(tier)
+                    for vv in tier_validators:
+                        # First two tiers are considered critical (blocking by default)
+                        is_critical_tier = tiers.index(tier) < 2 if tier in tiers else False
+                        if vv.get("alwaysRun") or vv.get("blocksOnFail") or is_critical_tier:
                             need.append(vv.get("id"))
                 for vid in need:
                     if vid not in have:
@@ -160,7 +173,9 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         # Context7 markers expected for post-training packages used by this task
         try:
-            # local helpers (mirrors tasks/ready heuristics)
+            # Load triggers from context7 config domain (not hardcoded)
+            from edison.core.config.domains.context7 import Context7Config
+            
             def _load_cfg():
                 try:
                     return io_read_json(project_cfg_dir()/"validators"/"config.json")
@@ -190,24 +205,21 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                             files.append(line.split("-", 1)[1].strip())
                 return files
 
-            def _matches(file_path: str, pkg: str) -> bool:
-                patterns = {
-                    "next": ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx"],
-                    "react": ["*.tsx", "*.jsx", "**/components/**/*"],
-                    "uistylescss": ["*.css", "uistyles.config.*"],
-                    "zod": ["**/*.schema.ts", "**/*.validation.ts", "**/route.ts"],
-                    "framer-motion": ["*.tsx", "*.jsx"],
-                    "typescript": ["*.ts", "*.tsx"],
-                }
-                for pat in patterns.get(pkg, []):
+            def _matches(file_path: str, pkg: str, triggers: Dict[str, List[str]]) -> bool:
+                """Match file path against package triggers from config."""
+                for pat in triggers.get(pkg, []):
                     if fnmatch.fnmatch(file_path, pat):
                         return True
                 return False
 
+            # Load triggers from config instead of hardcoding
+            ctx7_config = Context7Config()
+            triggers = ctx7_config.triggers  # From context7.yaml
+            
             cfg = _load_cfg()
             pkgs = list((cfg.get("postTrainingPackages") or {}).keys())
             files = _files_for_task(task_id)
-            used = {pkg for pkg in pkgs for f in files if _matches(f, pkg)}
+            used = {pkg for pkg in pkgs for f in files if _matches(f, pkg, triggers)}
             if used:
                 ev_svc_ctx7 = EvidenceService(task_id)
                 ev_root = ev_svc_ctx7.get_evidence_root()

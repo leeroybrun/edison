@@ -24,7 +24,7 @@
       "type": "string",
       "enum": ["todo", "wip", "blocked", "done", "validated"],
       "default": "todo",
-      "description": "Task lifecycle status; must align with statemachine.task.states in state-machine.yaml"
+      "description": "Task lifecycle status; must align with workflow.statemachine.task.states in workflow.yaml"
     },
     "priority": {
       "type": "string",

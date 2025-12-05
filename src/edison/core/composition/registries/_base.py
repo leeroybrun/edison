@@ -43,9 +43,6 @@ _FALLBACK_STRATEGY_CONFIG: Dict[str, Any] = {
     "enable_template_processing": True,
 }
 
-# Alias for backward compatibility (prefer reading from YAML)
-DEFAULT_STRATEGY_CONFIG = _FALLBACK_STRATEGY_CONFIG
-
 
 class ComposableRegistry(CompositionBase, Generic[T]):
     """Abstract base class for composable content registries.
@@ -630,5 +627,4 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
 __all__ = [
     "ComposableRegistry",
-    "DEFAULT_STRATEGY_CONFIG",
 ]

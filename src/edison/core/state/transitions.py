@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional, Protocol, TYPE_CHECKING
 
-from .engine import StateTransitionError
+from .engine import RichStateMachine, StateTransitionError
 
 if TYPE_CHECKING:
     from edison.core.entity.protocols import StatefulEntity
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 class StateMachineProvider(Protocol):
     """Protocol for objects that provide state machine configuration."""
     
-    def get_state_machine(self, entity_type: str) -> RichStateMachine:
+    def get_state_machine(self, entity_type: str) -> "RichStateMachine":
         """Get the state machine for an entity type."""
         ...
 
@@ -131,7 +131,7 @@ def transition_entity(
         entity_type: Entity type ("task", "session", "qa")
         entity_id: Entity identifier
         to_state: Target state
-        current_state: Current state (if not provided, defaults to "todo")
+        current_state: Current state (if not provided, defaults to initial state from config)
         context: Context dict for guards/conditions/actions
         record_history: Whether to record state history
         
@@ -141,7 +141,10 @@ def transition_entity(
     Raises:
         EntityTransitionError: If transition is not allowed
     """
-    from_state = current_state or "todo"
+    from edison.core.config.domains.workflow import WorkflowConfig
+    workflow_cfg = WorkflowConfig()
+    default_state = workflow_cfg.get_initial_state(entity_type)
+    from_state = current_state or default_state
     ctx = dict(context or {})
     ctx["entity_type"] = entity_type
     ctx["entity_id"] = entity_id

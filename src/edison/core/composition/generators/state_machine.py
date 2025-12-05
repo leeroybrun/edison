@@ -76,16 +76,16 @@ class StateMachineGenerator(ComposableRegistry[str]):
     
     def get_context_vars(self, name: str, packs: List[str]) -> Dict[str, Any]:
         """Provide state machine data for template expansion."""
-        from edison.core.config.domains import SessionConfig
+        from edison.core.config.domains.workflow import WorkflowConfig
         
-        session_cfg = SessionConfig(repo_root=self.project_root)
-        statemachine = session_cfg._state_config
+        workflow_cfg = WorkflowConfig(repo_root=self.project_root)
+        statemachine = workflow_cfg._statemachine
         
         # Build sources list
-        sources = ["state-machine.yaml (bundled defaults)"]
-        project_path = self.project_dir / "config" / "state-machine.yaml"
+        sources = ["workflow.yaml (bundled defaults)"]
+        project_path = self.project_dir / "config" / "workflow.yaml"
         if project_path.exists():
-            sources.append("state-machine.yaml (project config)")
+            sources.append("workflow.yaml (project config)")
         
         # Build domains data for template
         domains = []

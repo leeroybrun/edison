@@ -6,39 +6,55 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/DELEGATION.md
+  contexts: [guidance, delegation]
+  sourcePath: guidelines/orchestrators/DELEGATION.md
   guidance: ''
+  cli:
+    commands: ["task claim", "task new"]
+    timing: before
 - id: RULE.VALIDATION.FIRST
   title: Validation-First Within Session Scope
   category: validation
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  contexts: [validation, transition]
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
+  cli:
+    commands: ["qa promote", "task status"]
+    timing: before
 - id: RULE.VALIDATION.BUNDLE_FIRST
   title: Bundle-First Validation Policy
   category: validation
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  contexts: [validation]
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
+  cli:
+    commands: ["qa promote"]
+    timing: before
 - id: RULE.VALIDATION.BUNDLE_APPROVED_MARKER
   title: Bundle Approved Marker Required
   category: validation
-  blocking: false
+  blocking: true
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  contexts: [validation, transition]
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
+  cli:
+    commands: ["qa promote"]
+    timing: after
 - id: RULE.QA.NO_DUPLICATE
   title: No Duplicate QA Briefs
   category: validation
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.CONTEXT7.POSTTRAINING_REQUIRED
   title: Context7 Required For Post-Training Packages
@@ -46,7 +62,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [agent, orchestrator]
-  sourcePath: .edison/_generated/guidelines/shared/CONTEXT7.md
+  sourcePath: guidelines/shared/CONTEXT7.md
   guidance: ''
 - id: RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED
   title: Round Evidence Requires 4 Command Outputs
@@ -54,7 +70,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.QA.ROUND_HISTORY
   title: QA Round History On Rejection
@@ -62,7 +78,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.LINK.SESSION_SCOPE_ONLY
   title: Link Only Tasks In Current Session (Force to override)
@@ -70,7 +86,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.SESSION.ISOLATION
   title: Session-scoped file isolation is mandatory
@@ -78,7 +94,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN
   title: Parent cannot move to done until children are done|validated
@@ -86,7 +102,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.PARENT.VALIDATE_BUNDLE_ONLY
   title: Validate bundle on the parent QA only
@@ -94,7 +110,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.SESSION.COMPLETE_PARENT_VALIDATED_CHILDREN_DONE
   title: 'Session completion: parent validated; children done|validated'
@@ -102,7 +118,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT
   title: Orchestrator should parallelize via tasks/split for non-trivial tasks
@@ -110,7 +126,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/DELEGATION.md
+  sourcePath: guidelines/orchestrators/DELEGATION.md
   guidance: ''
 - id: RULE.GUARDS.FAIL_CLOSED
   title: 'Fail-Closed: All Moves Through Guarded Python CLIs'
@@ -118,7 +134,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.SESSION.NEXT_LOOP_DRIVER
   title: Drive execution via session next (loop driver)
@@ -126,7 +142,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/start/START_NEW_SESSION.md
+  sourcePath: start/START_NEW_SESSION.md
   guidance: ''
 - id: RULE.IMPLEMENTATION.REPORT_REQUIRED
   title: Implementation Report JSON is required per round
@@ -134,15 +150,19 @@ rules:
   blocking: false
   severity: warning
   applies_to: [agent]
-  sourcePath: .edison/_generated/guidelines/agents/OUTPUT_FORMAT.md
+  contexts: [guidance, implementation]
+  sourcePath: guidelines/agents/OUTPUT_FORMAT.md
   guidance: ''
+  cli:
+    commands: ["task ready", "task status"]
+    timing: before
 - id: RULE.CONTEXT7.EVIDENCE_REQUIRED
   title: Context7 evidence markers required when post-training packages are used
   category: validation
   blocking: false
   severity: warning
   applies_to: [agent, orchestrator]
-  sourcePath: .edison/_generated/guidelines/shared/CONTEXT7.md
+  sourcePath: guidelines/shared/CONTEXT7.md
   guidance: ''
 - id: RULE.VALIDATION.MODEL_BINDING_STRICT
   title: Validator model binding must match config
@@ -150,7 +170,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.VALIDATION.CONCURRENCY_CAP
   title: Respect validator concurrency cap and batch overflow
@@ -158,7 +178,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.VALIDATION.WAVES_SEQUENCE
   title: Validator waves must run in order
@@ -166,7 +186,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.EVIDENCE.ROUND_IMMUTABLE_APPEND
   title: Evidence rounds are append-only
@@ -174,7 +194,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.EVIDENCE.COMMANDS_VIA_TASKS_READY
   title: Automation evidence must be captured via tasks/ready
@@ -182,7 +202,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.QA.WAITING_TO_TODO_TASK_DONE
   title: QA waiting→todo allowed only when task is done
@@ -190,7 +210,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.GUARDS.NO_MANUAL_MOVES
   title: No manual file moves; use guarded CLIs
@@ -198,7 +218,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.QA.PAIR_ON_WIP
   title: Create QA brief when task enters wip
@@ -206,7 +226,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.STATE.NO_SKIP
   title: Disallow skipping states in task/QA transitions
@@ -214,7 +234,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.SESSION.CLOSE_NO_BLOCKERS
   title: Close session only when no blockers remain and all scope is validated
@@ -222,7 +242,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.DELEGATION.NO_REDELEGATION
   title: Sub-agents must not re-delegate
@@ -230,7 +250,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/DELEGATION.md
+  sourcePath: guidelines/orchestrators/DELEGATION.md
   guidance: ''
 - id: RULE.VALIDATION.INDEPENDENCE
   title: Orchestrator Cannot Self-Validate
@@ -238,7 +258,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING
   title: Link only blocking follow-ups; link implies same-session claim
@@ -246,7 +266,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.FOLLOWUPS.DEDUPE_FIRST
   title: Deduplicate follow-ups before creating tasks
@@ -254,7 +274,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.FOLLOWUPS.CREATE_NO_LINK_FOR_SOFT
   title: Create non-blocking validator follow-ups without linking
@@ -262,7 +282,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/shared/VALIDATION.md
+  sourcePath: guidelines/shared/VALIDATION.md
   guidance: ''
 - id: RULE.CONTEXT.BUDGET_MINIMIZE
   title: Preserve context budget – load only what's needed
@@ -270,7 +290,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.CONTEXT.NO_BIG_FILES
   title: Do not load big files unless necessary
@@ -278,7 +298,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''
 - id: RULE.DELEGATION.MOST_WORK
   title: Delegate the majority of work
@@ -286,7 +306,7 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/DELEGATION.md
+  sourcePath: guidelines/orchestrators/DELEGATION.md
   guidance: ''
 - id: RULE.CONTEXT.SNIPPET_ONLY
   title: Share snippets not whole files in prompts
@@ -294,5 +314,5 @@ rules:
   blocking: false
   severity: warning
   applies_to: [orchestrator, agent, validator]
-  sourcePath: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+  sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
   guidance: ''

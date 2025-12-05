@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type
+from edison.cli._choices import get_state_choices, get_semantic_state
 from edison.core.task import TaskQAWorkflow, normalize_record_id
 from edison.core.session import lifecycle as session_manager
 from edison.core.session import validate_session_id
@@ -40,8 +41,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--status",
-        default="wip",
-        choices=["wip"],
+        default=get_semantic_state("task", "wip"),
+        choices=get_state_choices("task"),
         help="Target status after claim (default: wip)",
     )
     parser.add_argument(

@@ -34,6 +34,23 @@ class ValidatorMetadata:
         return asdict(self)
 
 
+def _get_configured_tiers(config: Dict[str, Any]) -> List[str]:
+    """Get tier names from configuration.
+    
+    Args:
+        config: Full configuration dict
+        
+    Returns:
+        List of tier names in execution order
+    """
+    validation_cfg = config.get("validation", {}) or {}
+    tier_order = validation_cfg.get("tierOrder")
+    if isinstance(tier_order, list) and tier_order:
+        return tier_order
+    # Default tiers for backward compatibility
+    return ["global", "critical", "specialized"]
+
+
 def _collect_validators_from_config(
     config: Dict[str, Any],
 ) -> Dict[str, List[Dict[str, Any]]]:
@@ -51,10 +68,13 @@ def _collect_validators_from_config(
     base_roster = validation_cfg.get("roster", {}) or {}
     override_roster = validators_cfg.get("roster", {}) or {}
     
+    # Get tiers from config instead of hardcoding
+    tiers = _get_configured_tiers(config)
+    
     # Merge rosters - override takes precedence
     result: Dict[str, List[Dict[str, Any]]] = {}
     
-    for tier in ("global", "critical", "specialized"):
+    for tier in tiers:
         base_entries = base_roster.get(tier, []) or []
         override_entries = override_roster.get(tier, []) or []
         

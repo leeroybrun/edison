@@ -16,6 +16,28 @@ validation:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators when mode=parallel
     timeout: 300          # per-validator timeout in seconds
+
+  # Tier order defines the logical groupings of validators
+  # Tiers are referenced in waves to define execution order and behavior
+  tierOrder:
+    - global
+    - critical
+    - specialized
+
+  # Validation waves define execution groups with ordering and failure behavior
+  # Waves allow configurable validator execution strategies
+  waves:
+    - name: critical
+      tiers: [global, critical]
+      execution: parallel         # parallel | sequential
+      continue_on_fail: false     # Stop all validation if any validator in this wave fails
+      requires_previous_pass: false
+    - name: comprehensive
+      tiers: [specialized]
+      execution: parallel
+      continue_on_fail: true      # Continue even if previous wave failed
+      requires_previous_pass: true # Only run if critical wave passed
+
   roster:
     global:
       # Three validators using the SAME prompt but different models for multiple perspectives

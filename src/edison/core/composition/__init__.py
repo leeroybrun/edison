@@ -24,9 +24,6 @@ from .core import (
     CompositionPathResolver,
     ResolvedPaths,
     get_resolved_paths,
-    # Schema
-    CompositionSchema,
-    ContentTypeSchema,
     # Sections
     SectionParser,
     SectionRegistry,
@@ -81,7 +78,6 @@ def __getattr__(name: str):
     # Registry classes that still exist
     registry_imports = {
         "ConstitutionRegistry": ".registries.constitutions",
-        "ConstitutionResult": ".registries.constitutions",
         "generate_all_constitutions": ".registries.constitutions",
     }
     
@@ -156,9 +152,6 @@ __all__ = [
     "CompositionPathResolver",
     "ResolvedPaths",
     "get_resolved_paths",
-    # Schema
-    "CompositionSchema",
-    "ContentTypeSchema",
     # Sections
     "SectionParser",
     "SectionRegistry",
@@ -169,7 +162,6 @@ __all__ = [
     "ValidatorRegistry",
     # Registries - Constitutions (lazy)
     "ConstitutionRegistry",
-    "ConstitutionResult",
     "generate_all_constitutions",
     # Output (headers and formatting)
     "build_generated_header",

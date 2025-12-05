@@ -4,11 +4,11 @@
 This module contains the core compute_next function and CLI facade.
 
 Rule Types:
-  1. ENFORCEMENT rules: Linked to state machine transitions in state-machine.yaml,
+  1. ENFORCEMENT rules: Linked to state machine transitions in workflow.yaml,
      enforced by guard CLIs (edison tasks ready, edison qa promote, etc.).
      Example: RULE.GUARDS.FAIL_CLOSED, RULE.VALIDATION.FIRST
 
-  2. GUIDANCE rules: Registered in rules/registry.json but not linked to transitions.
+  2. GUIDANCE rules: Registered in rules/registry.yml but not linked to transitions.
      Shown by session next for orchestration hints to help make proactive decisions.
      Example: RULE.DELEGATION.PRIORITY_CHAIN, RULE.SESSION.NEXT_LOOP_DRIVER
 
@@ -40,7 +40,7 @@ from edison.core.session.next.utils import (
     extract_wave_and_base_id,
     allocate_child_id,
 )
-from edison.core.session.next.rules import RULE_IDS, rules_for
+from edison.core.session.next.rules import rules_for
 from edison.core.session.next.actions import (
     infer_task_status,
     infer_qa_status,
@@ -52,10 +52,71 @@ from edison.core.session.next.actions import (
     build_reports_missing,
 )
 from edison.core.session.next.output import format_human_readable
+from edison.core.config.domains.workflow import WorkflowConfig
 
 
 load_session = session_manager.get_session
 validate_session_id = session_store_validate_session_id
+
+
+def _format_cmd_template(template: List[str], **kwargs) -> List[str]:
+    """Format a command template with runtime values.
+    
+    Args:
+        template: Command template list with placeholders like {task_id}, {session_id}
+        **kwargs: Values to substitute into placeholders
+        
+    Returns:
+        Formatted command list with placeholders replaced
+    """
+    return [part.format(**kwargs) if "{" in part else part for part in template]
+
+
+def _build_action_from_recommendation(
+    rec: Dict[str, Any],
+    from_state: str,
+    to_state: str,
+    workflow_cfg: WorkflowConfig,
+    state_spec: Dict[str, Any],
+    **format_kwargs,
+) -> Dict[str, Any]:
+    """Build an action dict from a recommendation config.
+    
+    Args:
+        rec: Recommendation dict from workflow.yaml
+        from_state: Source state
+        to_state: Target state
+        workflow_cfg: WorkflowConfig instance
+        state_spec: State spec for rules_for lookup
+        **format_kwargs: Values for cmd_template (task_id, session_id, etc.)
+        
+    Returns:
+        Action dict ready for the actions list
+    """
+    domain = rec.get("entity", "task")
+    rule_ids = workflow_cfg.get_transition_rules(domain, from_state, to_state) or []
+    
+    # Build record ID based on entity type
+    task_id = format_kwargs.get("task_id", "")
+    if domain == "qa":
+        record_id = f"{task_id}-qa"
+    else:
+        record_id = task_id
+    
+    action = {
+        "id": rec.get("id", "unknown"),
+        "entity": domain,
+        "recordId": record_id,
+        "cmd": _format_cmd_template(rec.get("cmd_template", []), **format_kwargs),
+        "rationale": rec.get("rationale", ""),
+        "blocking": rec.get("blocking", False),
+        "ruleIds": rule_ids,
+    }
+    
+    if rule_ids:
+        action["ruleRef"] = {"id": rule_ids[0]}
+    
+    return action
 
 # Import build_validation_bundle from graph module (will be migrated)
 from edison.core.session.persistence.graph import build_validation_bundle
@@ -75,6 +136,26 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     """
     session = load_session(session_id)
     cfg = get_config()
+    workflow_cfg = WorkflowConfig()
+    
+    # Get semantic state names from config
+    STATES = {
+        "task": {
+            "todo": workflow_cfg.get_semantic_state("task", "todo"),
+            "wip": workflow_cfg.get_semantic_state("task", "wip"),
+            "done": workflow_cfg.get_semantic_state("task", "done"),
+            "validated": workflow_cfg.get_semantic_state("task", "validated"),
+            "blocked": workflow_cfg.get_semantic_state("task", "blocked"),
+        },
+        "qa": {
+            "waiting": workflow_cfg.get_semantic_state("qa", "waiting"),
+            "todo": workflow_cfg.get_semantic_state("qa", "todo"),
+            "wip": workflow_cfg.get_semantic_state("qa", "wip"),
+            "done": workflow_cfg.get_semantic_state("qa", "done"),
+            "validated": workflow_cfg.get_semantic_state("qa", "validated"),
+        },
+    }
+    
     # state_spec structure expected by rules_for: {"domain": {"transitions": ...}}
     state_spec = cfg._state_config # Accessing internal for now to minimize refactor of rules_for
     actions: List[Dict[str, Any]] = []
@@ -86,27 +167,43 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     for task_id, task_entry in tasks_map.items():
         t_status = infer_task_status(task_id)
         q_status = infer_qa_status(task_id)
-        if q_status == "todo" and t_status == "done" and scope in (None, "qa"):
-            rule_ids = rules_for("qa", "todo", "wip", state_spec) or [RULE_IDS["validation_first"]]
-            rule_ids = list(rule_ids)
+        if q_status == STATES["qa"]["todo"] and t_status == STATES["task"]["done"] and scope in (None, "qa"):
+            # Get recommendations from config for this transition
+            qa_todo = STATES["qa"]["todo"]
+            qa_wip = STATES["qa"]["wip"]
+            recommendations = workflow_cfg.get_recommendations("qa", qa_todo, qa_wip)
+            
             # Build validator roster for this action (with session ID for git-based detection)
             roster = qa_validator.build_validator_roster(task_id, session_id=session_id)
-            actions.append({
-                "id": "qa.promote.wip",
-                "entity": "qa",
-                "recordId": f"{task_id}-qa",
-                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "wip"],
-                "rationale": "Validation-first: launch validator wave",
-                "ruleRef": {"id": rule_ids[0]},
-                "ruleIds": rule_ids,
-                "blocking": True,
-                "validatorRoster": roster,  # NEW: Complete validator info (git-diff based!)
-            })
+            
+            if recommendations:
+                # Use config-driven recommendations
+                for rec in recommendations:
+                    action = _build_action_from_recommendation(
+                        rec, qa_todo, qa_wip, workflow_cfg, state_spec,
+                        task_id=task_id, session_id=session_id
+                    )
+                    action["validatorRoster"] = roster
+                    actions.append(action)
+            else:
+                # Fallback: generate default action if no recommendations in config
+                rule_ids = workflow_cfg.get_transition_rules("qa", qa_todo, qa_wip) or ["RULE.VALIDATION.FIRST"]
+                actions.append({
+                    "id": "qa.promote.wip",
+                    "entity": "qa",
+                    "recordId": f"{task_id}-qa",
+                    "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", qa_wip],
+                    "rationale": "Validation-first: launch validator wave",
+                    "ruleRef": {"id": rule_ids[0]} if rule_ids else None,
+                    "ruleIds": rule_ids,
+                    "blocking": True,
+                    "validatorRoster": roster,
+                })
 
     # Auto-unblock parents when all children are ready (done or validated)
     for task_id, task_entry in tasks_map.items():
         # Consider only tasks explicitly marked blocked
-        if task_entry.get("status") != "blocked":
+        if task_entry.get("status") != STATES["task"]["blocked"]:
             continue
         children = task_entry.get("childIds", []) or []
         if not children:
@@ -114,12 +211,13 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         # A parent is ready to unblock when every child is done or validated.
         # Check session graph first (for tasks claimed in this session),
         # then fall back to filesystem (for global tasks not yet claimed).
+        ready_states = {STATES["task"]["done"], STATES["task"]["validated"]}
         def _child_ready(cid: str) -> bool:
             entry = tasks_map.get(cid, {}) or {}
             status = str(entry.get("status") or "").lower()
-            if status in {"done", "validated"}:
+            if status in ready_states:
                 return True
-            return infer_task_status(cid) in {"done", "validated"}
+            return infer_task_status(cid) in ready_states
 
         all_children_ready = all(_child_ready(cid) for cid in children)
         if all_children_ready and scope in (None, "tasks", "session"):
@@ -127,29 +225,30 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "id": "task.unblock.wip",
                 "entity": "task",
                 "recordId": task_id,
-                "cmd": ["edison", "tasks", "status", task_id, "--status", "wip"],
+                "cmd": ["edison", "tasks", "status", task_id, "--status", STATES["task"]["wip"]],
                 "rationale": "All child tasks are done/validated; move parent from blocked → wip",
-                "ruleRef": {"id": RULE_IDS["fail_closed"]},
-                "ruleIds": [RULE_IDS["fail_closed"]],
+                "ruleRef": {"id": "RULE.GUARDS.FAIL_CLOSED"},
+                "ruleIds": ["RULE.GUARDS.FAIL_CLOSED"],
                 "blocking": True,
             })
 
     # Suggest parent promotion to done when children are ready and evidence is present
+    ready_states_set = {STATES["task"]["done"], STATES["task"]["validated"]}
     for task_id, task_entry in session.get("tasks", {}).items():
-        if task_entry.get("status") != "wip":
+        if task_entry.get("status") != STATES["task"]["wip"]:
             continue
         children = task_entry.get("childIds", []) or []
-        if children and not all((tasks_map.get(cid, {}) or {}).get("status") in {"done", "validated"} for cid in children):
+        if children and not all((tasks_map.get(cid, {}) or {}).get("status") in ready_states_set for cid in children):
             continue
         missing = missing_evidence_blockers(task_id)
         # Only propose if automation evidence exists (i.e., missing list empty)
         if not missing and scope in (None, "tasks", "session"):
-            rule_ids = rules_for("task", "wip", "done", state_spec) or [RULE_IDS["fail_closed"]]
+            rule_ids = rules_for("task", STATES["task"]["wip"], STATES["task"]["done"], state_spec) or ["RULE.GUARDS.FAIL_CLOSED"]
             actions.append({
                 "id": "task.promote.done",
                 "entity": "task",
                 "recordId": task_id,
-                "cmd": ["edison", "tasks", "status", task_id, "--status", "done"],
+                "cmd": ["edison", "tasks", "status", task_id, "--status", STATES["task"]["done"]],
                 "rationale": "Children ready and automation evidence present; promote parent wip → done",
                 "ruleRef": {"id": rule_ids[0]},
                 "ruleIds": rule_ids,
@@ -158,33 +257,33 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
 
     # Fix invariants: create missing QA for owned wip tasks (suggestion)
     for task_id, task_entry in tasks_map.items():
-        if task_entry.get("status") == "wip" and infer_qa_status(task_id) == "missing" and scope in (None, "qa"):
+        if task_entry.get("status") == STATES["task"]["wip"] and infer_qa_status(task_id) == "missing" and scope in (None, "qa"):
             actions.append({
                 "id": "qa.create",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "new", task_id],
                 "rationale": "Pair QA with active task",
-                "ruleRef": {"id": RULE_IDS["fail_closed"]},
-                "ruleIds": [RULE_IDS["fail_closed"]],
+                "ruleRef": {"id": "RULE.GUARDS.FAIL_CLOSED"},
+                "ruleIds": ["RULE.GUARDS.FAIL_CLOSED"],
                 "blocking": True,
             })
 
     # Automation/Context7 blockers (evidence files)
     for task_id, task_entry in tasks_map.items():
-        if task_entry.get("status") == "wip":
+        if task_entry.get("status") == STATES["task"]["wip"]:
             blockers.extend(missing_evidence_blockers(task_id))
 
     # waiting->todo when task done
     for task_id, task_entry in tasks_map.items():
-        if infer_task_status(task_id) == "done" and infer_qa_status(task_id) == "waiting" and scope in (None, "qa"):
-            rule_ids = rules_for("qa", "waiting", "todo", state_spec) or [RULE_IDS["validation_first"]]
+        if infer_task_status(task_id) == STATES["task"]["done"] and infer_qa_status(task_id) == STATES["qa"]["waiting"] and scope in (None, "qa"):
+            rule_ids = rules_for("qa", STATES["qa"]["waiting"], STATES["qa"]["todo"], state_spec) or ["RULE.VALIDATION.FIRST"]
             rule_ids = list(rule_ids)
             actions.append({
                 "id": "qa.promote.todo",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "todo"],
+                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", STATES["qa"]["todo"]],
                 "rationale": "Task done; get QA ready",
                 "ruleRef": {"id": rule_ids[0]},
                 "ruleIds": rule_ids,
@@ -193,9 +292,9 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
 
     # Delegation hints for wip tasks (non-mutating suggestions)
     for task_id, task_entry in session.get("tasks", {}).items():
-        if task_entry.get("status") == "wip" and scope in (None, "tasks"):
+        if task_entry.get("status") == STATES["task"]["wip"] and scope in (None, "tasks"):
             basic_hint = qa_validator.simple_delegation_hint(
-                task_id, rule_id=RULE_IDS["delegation"]
+                task_id, rule_id="RULE.DELEGATION.PRIORITY_CHAIN"
             )
             if basic_hint:
                 # Enhance hint with detailed reasoning
@@ -210,9 +309,10 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 })
 
     # Follow-ups suggestions (claim vs create-only)
+    wip_done_states = {STATES["task"]["wip"], STATES["task"]["done"]}
     for task_id, task_entry in session.get("tasks", {}).items():
         t_status = infer_task_status(task_id)
-        if t_status not in {"wip", "done"}:
+        if t_status not in wip_done_states:
             continue
         impl_fus = load_impl_followups(task_id)
         val_fus = load_bundle_followups(task_id)
@@ -260,11 +360,12 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             })
 
     # Build bundles for roots if children ready
+    bundle_ready_states = {STATES["task"]["done"], STATES["task"]["validated"]}
     for task_id, task_entry in session.get("tasks", {}).items():
         if not task_entry.get("parentId"):
             children = task_entry.get("childIds", [])
-            if children and all(infer_task_status(cid) in {"done", "validated"} for cid in children) and scope in (None, "qa"):
-                rule_id = ( rules_for("qa", "todo", "wip", state_spec) or [RULE_IDS["bundle_first"]] )[0]
+            if children and all(infer_task_status(cid) in bundle_ready_states for cid in children) and scope in (None, "qa"):
+                rule_id = ( rules_for("qa", STATES["qa"]["todo"], STATES["qa"]["wip"], state_spec) or ["RULE.VALIDATION.BUNDLE_FIRST"] )[0]
                 actions.append({
                     "id": "bundle.build",
                     "entity": "qa",
@@ -277,9 +378,10 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 })
 
     # Analyze validator JSON to propose QA next steps
+    qa_active_states = {STATES["qa"]["wip"], STATES["qa"]["todo"]}
     for task_id, task_entry in session.get("tasks", {}).items():
         q_status = infer_qa_status(task_id)
-        if q_status not in {"wip", "todo"}:
+        if q_status not in qa_active_states:
             continue
         v = read_validator_jsons(task_id)
         reports = v.get("reports", [])
@@ -304,8 +406,8 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "recordId": new_id,
                 "cmd": cmd,
                 "rationale": f"Follow-up from {r.get('validatorId','validator')}: {s.get('title')}",
-                "ruleRef": {"id": RULE_IDS["validation_first"]},
-                "ruleIds": [RULE_IDS["validation_first"]],
+                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
+                "ruleIds": ["RULE.VALIDATION.FIRST"],
                 "blocking": bool(s.get("blocking")),
             })
             if s.get("claimNow"):
@@ -315,8 +417,8 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "recordId": new_id,
                     "cmd": ["edison", "tasks", "claim", new_id, "--session", session_id],
                     "rationale": "Suggestion marked claimNow by validator",
-                    "ruleRef": {"id": RULE_IDS["validation_first"]},
-                    "ruleIds": [RULE_IDS["validation_first"]],
+                    "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
+                    "ruleIds": ["RULE.VALIDATION.FIRST"],
                     "blocking": False,
                 })
             if s.get("blocking"):
@@ -324,10 +426,10 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                     "id": "task.block",
                     "entity": "task",
                     "recordId": parent_id,
-                    "cmd": ["edison", "tasks", "status", parent_id, "--status", "blocked"],
+                    "cmd": ["edison", "tasks", "status", parent_id, "--status", STATES["task"]["blocked"]],
                     "rationale": "Follow-up marked blocking; set parent to blocked",
-                    "ruleRef": {"id": RULE_IDS["validation_first"]},
-                    "ruleIds": [RULE_IDS["validation_first"]],
+                    "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
+                    "ruleIds": ["RULE.VALIDATION.FIRST"],
                     "blocking": True,
                 })
         blocking_failed = [r for r in reports if not r.get("approved")]
@@ -338,19 +440,19 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "round", "--task", task_id, "--status", "rejected", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
                 "rationale": "Blocking validators failed; record Round and return QA to waiting",
-                "ruleRef": {"id": RULE_IDS["validation_first"]},
-                "ruleIds": [RULE_IDS["validation_first"], RULE_IDS["bundle_first"]],
+                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
+                "ruleIds": ["RULE.VALIDATION.FIRST", "RULE.VALIDATION.BUNDLE_FIRST"],
                 "blocking": True,
             })
-        elif not blocking_failed and q_status == "wip" and scope in (None, "qa"):
+        elif not blocking_failed and q_status == STATES["qa"]["wip"] and scope in (None, "qa"):
             actions.append({
                 "id": "qa.promote.done",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", "done"],
+                "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", STATES["qa"]["done"]],
                 "rationale": "All blocking validators approved; close QA",
-                "ruleRef": {"id": RULE_IDS["validation_first"]},
-                "ruleIds": [RULE_IDS["validation_first"]],
+                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
+                "ruleIds": ["RULE.VALIDATION.FIRST"],
                 "blocking": True,
             })
 
@@ -405,9 +507,9 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             to_state: Optional[str] = None
 
             if entity == "task" and aid == "task.promote.done":
-                from_state, to_state = "wip", "done"
+                from_state, to_state = STATES["task"]["wip"], STATES["task"]["done"]
             elif entity == "task" and aid == "task.claim":
-                from_state, to_state = "todo", "wip"
+                from_state, to_state = STATES["task"]["todo"], STATES["task"]["wip"]
 
             if not from_state or not to_state or not record_id:
                 continue

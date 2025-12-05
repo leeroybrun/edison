@@ -59,33 +59,20 @@ class ConstitutionRegistry(ComposableRegistry[str]):
             context["mandatoryReads"] = []
             context["optionalReads"] = []
 
-        # Constitution-specific: rules from rules system
+        # Constitution-specific: rules from rules system (uses composition)
         # Graceful fallback - if name isn't a valid role, rules will be empty
         rules: List[Dict[str, Any]] = []
         try:
             from edison.core.rules.registry import get_rules_for_role
             # Normalize: agents -> agent, validators -> validator
             rule_role = name.rstrip("s") if name.endswith("s") else name
-            rules = get_rules_for_role(rule_role)
+            # Pass packs to get fully composed rules with pack overlays
+            rules = get_rules_for_role(rule_role, packs=packs)
         except (ValueError, ImportError):
             pass  # Not a valid role or rules system unavailable
 
         context["rules"] = rules
         return context
-
-    # Legacy compatibility method
-    def compose_constitution(self, role: str, packs: Optional[List[str]] = None) -> Optional[str]:
-        """Compose a constitution for a specific role.
-        
-        Legacy method for backwards compatibility.
-        Prefer using compose() directly.
-        """
-        # Normalize role name for file lookup
-        if role == "agent":
-            role = "agents"
-        elif role == "validator":
-            role = "validators"
-        return self.compose(role, packs)
 
 
 def generate_all_constitutions(config: Any, output_path: Path) -> List[Path]:
@@ -102,15 +89,4 @@ def generate_all_constitutions(config: Any, output_path: Path) -> List[Path]:
     return registry.write_all()
 
 
-# Keep ConstitutionResult for backwards compatibility in imports
-from dataclasses import dataclass
-
-@dataclass
-class ConstitutionResult:
-    """Deprecated - kept for backwards compatibility."""
-    role: str
-    content: str
-    source_layers: List[str]
-
-
-__all__ = ["ConstitutionRegistry", "ConstitutionResult", "generate_all_constitutions"]
+__all__ = ["ConstitutionRegistry", "generate_all_constitutions"]

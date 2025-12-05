@@ -206,7 +206,4 @@ class JsonSchemaRegistry(ComposableRegistry[str]):
         return results
 
 
-# Legacy alias for backwards compatibility
-JsonSchemaComposer = JsonSchemaRegistry
-
-__all__ = ["JsonSchemaRegistry", "JsonSchemaComposer"]
+__all__ = ["JsonSchemaRegistry"]

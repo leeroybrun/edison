@@ -21,15 +21,18 @@ from .repository import SessionRepository
 
 def _load_or_create_session(session_id: str) -> Dict[str, Any]:
     """Load session or create minimal session dict if not found."""
+    from edison.core.config.domains.workflow import WorkflowConfig
     sid = validate_session_id(session_id)
     repo = SessionRepository()
     sess = repo.get(sid)
     if sess:
         return sess.to_dict()
     # Return minimal session structure for creation
+    # Use initial state from config
+    initial_state = WorkflowConfig().get_initial_state("session")
     return {
         "id": sid,
-        "state": "wip",
+        "state": initial_state,
         "tasks": {},  # Kept for legacy compatibility
         "qa": {},     # Kept for legacy compatibility
         "meta": {},

@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type, get_repository
+from edison.cli._choices import get_combined_state_choices
 from edison.core.task import normalize_record_id
 from edison.core.state.transitions import validate_transition
 
@@ -24,7 +25,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--status",
-        choices=["todo", "wip", "done", "validated", "waiting"],
+        choices=get_combined_state_choices(),
         help="Transition to this status (if omitted, shows current status)",
     )
     parser.add_argument(
@@ -94,8 +95,35 @@ def main(args: argparse.Namespace) -> int:
                 }) if formatter.json_mode else formatter.text(dry_run_text)
                 return 0 if is_valid else 1
 
-            # Execute transition by updating entity and saving
+            # Execute transition with guard enforcement
             old_state = entity.state
+            
+            # Build context for guards
+            context = {
+                "task": {
+                    "id": entity.id,
+                    "status": old_state,
+                    "state": old_state,
+                    "session_id": entity.session_id,
+                },
+                "task_id": entity.id,
+                "entity_type": record_type or "task",
+                "entity_id": entity.id,
+            }
+            
+            # Validate transition with guards (unless forced)
+            if not args.force:
+                is_valid, msg = validate_transition(
+                    record_type or "task",
+                    old_state,
+                    args.status,
+                    context=context,
+                )
+                if not is_valid:
+                    formatter.error(f"Transition blocked: {msg}", error_code="guard_failed")
+                    return 1
+            
+            # Execute the transition
             entity.state = args.status
             entity.record_transition(old_state, args.status, reason="cli-status-command")
             repo.save(entity)

@@ -18,11 +18,14 @@ import yaml
 
 
 def _load_state_machine_config() -> dict[str, Any]:
-    """Load state machine configuration from YAML."""
-    config_path = Path(__file__).parent.parent / "config" / "state-machine.yaml"
-    if config_path.exists():
-        with open(config_path) as f:
-            return yaml.safe_load(f)
+    """Load state machine configuration from workflow.yaml."""
+    # State machine is now merged into workflow.yaml
+    workflow_path = Path(__file__).parent.parent / "config" / "workflow.yaml"
+    if workflow_path.exists():
+        with open(workflow_path) as f:
+            workflow = yaml.safe_load(f) or {}
+            # State machine is under workflow.statemachine
+            return {"statemachine": workflow.get("workflow", {}).get("statemachine", {})}
     return {}
 
 
