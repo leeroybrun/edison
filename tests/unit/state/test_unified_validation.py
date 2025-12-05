@@ -226,9 +226,9 @@ def test_state_validator_qa_blocks_invalid_transition(unified_state_config: Path
     """StateValidator blocks invalid QA state transitions."""
     validator = StateValidator(repo_root=unified_state_config)
 
-    # Cannot go from todo directly to validated (skips done)
+    # Cannot go from waiting directly to wip
     with pytest.raises(StateTransitionError):
-        validator.ensure_transition("qa", "todo", "validated")
+        validator.ensure_transition("qa", "waiting", "wip")
 
 
 def test_state_validator_rejects_unknown_entity(unified_state_config: Path) -> None:

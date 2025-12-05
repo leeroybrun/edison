@@ -1242,9 +1242,13 @@ edison qa validate <task_id> [options]
 | `--round` | Validation round number (default: create new round) |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
+| `--add-validators` | Extra validators to add to auto-detected roster (orchestrator feature) |
+| `--add-to-wave` | Wave for added validators (default: `comprehensive`) |
 | `--blocking-only` | Only run blocking validators |
 | `--execute` | Execute validators directly (default: show roster only) |
+| `--sequential` | Run validators sequentially instead of in parallel |
 | `--dry-run` | Show what would be executed without running |
+| `--max-workers` | Maximum parallel workers (default: 4) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1275,7 +1279,29 @@ edison qa validate 150-auth-feature --execute --wave critical
 
 # Run specific validators
 edison qa validate 150-auth-feature --execute --validators global-codex security
+
+# Add extra validators (orchestrator feature)
+edison qa validate 150-auth-feature --add-validators react api --execute
+
+# Add validators to specific wave
+edison qa validate 150-auth-feature --add-validators react --add-to-wave critical --execute
 ```
+
+**Validator Auto-Detection:**
+
+Validators are automatically selected based on:
+1. **Always-run validators**: `always_run: true` in config
+2. **File pattern triggers**: Match modified files against trigger patterns
+
+**Adding Extra Validators (Orchestrator Feature):**
+
+Orchestrators can ADD validators that weren't auto-triggered:
+- Use `--add-validators react api` to add specific validators
+- Use `--add-to-wave critical` to specify which wave
+- Cannot remove auto-detected validators (only add)
+
+The CLI shows "ORCHESTRATOR DECISION POINTS" when validators might be relevant
+but weren't auto-triggered (e.g., React logic in `.js` files).
 
 **Execution Modes:**
 
@@ -1285,14 +1311,16 @@ edison qa validate 150-auth-feature --execute --validators global-codex security
 
 **Validator Categories:**
 
-- **Always Required**: Core validators that always run
-- **Triggered Blocking**: Conditional blocking validators
-- **Triggered Optional**: Non-blocking validators
+- **Always Required**: Core validators that always run (`always_run: true`)
+- **Triggered Blocking**: Pattern-triggered blocking validators
+- **Triggered Optional**: Pattern-triggered non-blocking validators
+- **Orchestrator Added**: Extra validators specified via `--add-validators`
 
 **Direct vs Delegation:**
 
 - ✓ = CLI tool available, will execute directly
 - → = CLI unavailable, will generate delegation instructions
+- + = Added by orchestrator (not auto-detected)
 
 **Exit Codes:**
 

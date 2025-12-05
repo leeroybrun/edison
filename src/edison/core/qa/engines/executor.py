@@ -186,6 +186,7 @@ class ValidationExecutor:
         parallel: bool = True,
         round_num: int | None = None,
         evidence_service: EvidenceService | None = None,
+        extra_validators: list[dict[str, str]] | None = None,
     ) -> ExecutionResult:
         """Execute validators for a task.
 
@@ -199,6 +200,8 @@ class ValidationExecutor:
             parallel: Run validators in parallel within waves
             round_num: Validation round number
             evidence_service: Evidence service for saving results
+            extra_validators: Extra validators to add (from orchestrator)
+                Each item: {"id": "validator-id", "wave": "wave-name"}
 
         Returns:
             ExecutionResult with all wave and validator results
@@ -545,3 +548,4 @@ class ValidationExecutor:
 
 
 __all__ = ["ValidationExecutor", "ExecutionResult", "WaveResult"]
+

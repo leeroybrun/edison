@@ -234,11 +234,97 @@ edison qa promote --task TASK-123 --to validated
 
 ---
 
+### Validation Roster and Execution
+
+```bash
+# Show validation roster (auto-detected from file patterns)
+edison qa validate <task-id>
+
+# Execute validators directly via CLI engines
+edison qa validate <task-id> --execute
+```
+
+**Purpose**: View and execute validators for a task
+**When to use**: After task is in `done` state, to run validation
+
+**How validators are selected:**
+1. **Always-run validators**: `always_run: true` in config (critical wave)
+2. **Triggered validators**: File pattern matching against modified files
+3. **Orchestrator-added validators**: Extra validators you specify
+
+---
+
+### Adding Extra Validators (IMPORTANT)
+
+**Orchestrators can ADD validators but cannot remove auto-detected ones.**
+
+Sometimes auto-detection misses validators because:
+- React components in `.js` files (not `.tsx`)
+- API logic in non-standard locations
+- Framework-specific patterns not covered by triggers
+
+**To add extra validators:**
+```bash
+# Add react validator even if no .tsx files
+edison qa validate TASK-123 --add-validators react --execute
+
+# Add multiple validators
+edison qa validate TASK-123 --add-validators react api --execute
+
+# Specify wave for added validators
+edison qa validate TASK-123 --add-validators react --add-to-wave critical --execute
+```
+
+**When the CLI shows "ORCHESTRATOR DECISION POINTS":**
+The CLI will suggest validators that might be relevant but weren't auto-triggered.
+Review these suggestions and add validators as needed.
+
+**Example CLI output:**
+```
+═══ ORCHESTRATOR DECISION POINTS ═══
+The following validators were NOT auto-triggered but may be relevant:
+  ► Consider adding 'react' validator
+    Reason: Found .js files that may contain React: src/utils/helpers.js
+    To add: edison qa validate TASK-123 --add-validators react
+```
+
+---
+
+### Direct CLI Execution vs Delegation
+
+**Validators can execute in two ways:**
+
+1. **Direct CLI** (✓ in roster): CLI tool installed, executes immediately
+2. **Delegation** (→ in roster): CLI unavailable, generates instructions for orchestrator
+
+**For delegated validators:**
+1. Read delegation instructions from evidence folder
+2. Execute validation using the specified zenRole
+3. Save results to `validator-<id>-report.json`
+
+**Example with mixed execution:**
+```bash
+edison qa validate TASK-123 --execute
+
+# Output shows:
+# ✓ global-codex: approve (2.3s)    ← Direct CLI execution
+# → global-gemini: pending          ← Needs delegation
+
+# For pending validators, follow the delegation instructions
+```
+
+---
+
 ### Trigger Validation (Orchestrator Initiates)
 
-Orchestrators trigger validation but don't run validators directly.
+Orchestrators can trigger validation directly OR delegate to validator agents.
 
-**Delegate to validator agent:**
+**Option 1: Direct execution (preferred when CLI available):**
+```bash
+edison qa validate TASK-123 --execute
+```
+
+**Option 2: Delegate to validator agent:**
 ```
 Use Task/Delegation tool to invoke validator agent:
 - Agent: code-reviewer (or specialized validator)
@@ -248,7 +334,7 @@ Use Task/Delegation tool to invoke validator agent:
 
 **Orchestrator checks results:**
 ```bash
-# After validator completes, check bundle
+# After validation completes, check bundle
 edison qa bundle <task-id>
 ```
 

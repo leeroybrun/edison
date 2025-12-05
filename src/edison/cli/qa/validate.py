@@ -43,6 +43,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Specific validator IDs to run (default: run all applicable)",
     )
     parser.add_argument(
+        "--add-validators",
+        nargs="+",
+        metavar="ID",
+        help="Add extra validators to the auto-detected roster (orchestrator can add but not remove)",
+    )
+    parser.add_argument(
+        "--add-to-wave",
+        type=str,
+        default="comprehensive",
+        help="Wave for added validators (default: comprehensive)",
+    )
+    parser.add_argument(
         "--blocking-only",
         action="store_true",
         help="Only run blocking validators",
@@ -86,11 +98,21 @@ def main(args: argparse.Namespace) -> int:
         )
         registry = executor.get_registry()
 
+        # Build extra validators list from --add-validators
+        extra_validators = None
+        if getattr(args, "add_validators", None):
+            target_wave = getattr(args, "add_to_wave", "comprehensive")
+            extra_validators = [
+                {"id": vid, "wave": target_wave}
+                for vid in args.add_validators
+            ]
+
         # Build validator roster for display
         roster = registry.build_execution_roster(
             task_id=args.task_id,
             session_id=args.session,
             wave=args.wave,
+            extra_validators=extra_validators,
         )
 
         if args.blocking_only:
@@ -100,6 +122,7 @@ def main(args: argparse.Namespace) -> int:
         if args.validators:
             roster = {
                 "taskId": roster.get("taskId"),
+                "modifiedFiles": roster.get("modifiedFiles", []),
                 "alwaysRequired": [
                     v for v in roster.get("alwaysRequired", []) if v["id"] in args.validators
                 ],
@@ -109,8 +132,10 @@ def main(args: argparse.Namespace) -> int:
                 "triggeredOptional": [
                     v for v in roster.get("triggeredOptional", []) if v["id"] in args.validators
                 ],
+                "extraAdded": roster.get("extraAdded", []),
+                "skipped": roster.get("skipped", []),
                 "totalBlocking": 0,
-                "decisionPoints": [],
+                "decisionPoints": roster.get("decisionPoints", []),
             }
             roster["totalBlocking"] = len(roster["alwaysRequired"]) + len(roster["triggeredBlocking"])
 
@@ -128,6 +153,7 @@ def main(args: argparse.Namespace) -> int:
                 repo_root=repo_root,
                 executor=executor,
                 formatter=formatter,
+                extra_validators=extra_validators,
             )
 
         # Dry-run or roster-only mode
@@ -188,39 +214,93 @@ def _display_roster(
     formatter.text(f"Validation roster for {args.task_id}:")
     if args.wave:
         formatter.text(f"  Wave: {args.wave}")
+
+    # Show modified files
+    modified_files = roster.get("modifiedFiles", [])
+    if modified_files:
+        formatter.text(f"  Modified files: {len(modified_files)}")
+        for f in modified_files[:5]:
+            formatter.text(f"    - {f}")
+        if len(modified_files) > 5:
+            formatter.text(f"    ... and {len(modified_files) - 5} more")
+    else:
+        formatter.text("  Modified files: (none detected)")
+
+    formatter.text("")
     formatter.text(f"  Always required: {len(roster.get('alwaysRequired', []))} validators")
     formatter.text(f"  Triggered blocking: {len(roster.get('triggeredBlocking', []))} validators")
     formatter.text(f"  Triggered optional: {len(roster.get('triggeredOptional', []))} validators")
+
+    # Show extra validators if any
+    extra_added = roster.get("extraAdded", [])
+    if extra_added:
+        formatter.text(f"  Added by orchestrator: {len(extra_added)} validators")
     formatter.text("")
 
     # Group by wave for display
     waves: dict[str, list] = {}
     for v in validators_to_run:
-        config = registry.get_validator(v["id"])
-        wave_name = config.wave if config else "unknown"
+        wave_name = v.get("wave", "unknown")
         if wave_name not in waves:
             waves[wave_name] = []
-        waves[wave_name].append((v, config))
+        waves[wave_name].append(v)
 
     for wave_name, wave_validators in waves.items():
         formatter.text(f"  Wave: {wave_name}")
-        for v, config in wave_validators:
+        for v in wave_validators:
             can_exec = executor.can_execute_validator(v["id"])
             exec_marker = "✓" if can_exec else "→"
             blocking_marker = "⚠" if v.get("blocking") else "○"
-            formatter.text(f"    {exec_marker} {blocking_marker} {v['id']}")
-            if args.dry_run and config:
-                engine_info = f"engine={config.engine}"
-                if not can_exec and config.fallback_engine:
-                    engine_info += f" → fallback={config.fallback_engine}"
-                formatter.text(f"        ({engine_info})")
+            added_marker = "+" if v.get("addedByOrchestrator") else " "
+            formatter.text(f"    {exec_marker}{added_marker}{blocking_marker} {v['id']}")
+            # Show reason (trigger match or orchestrator-added)
+            reason = v.get("reason", "")
+            if reason:
+                formatter.text(f"        {reason}")
+            if args.dry_run:
+                config = registry.get_validator(v["id"])
+                if config:
+                    engine_info = f"engine={config.engine}"
+                    if not can_exec and config.fallback_engine:
+                        engine_info += f" → fallback={config.fallback_engine}"
+                    formatter.text(f"        ({engine_info})")
         formatter.text("")
 
-    formatter.text("  Legend: ✓=CLI available, →=delegation, ⚠=blocking, ○=optional")
+    formatter.text("  Legend: ✓=CLI, →=delegation, ⚠=blocking, ○=optional, +=added")
+
+    # Show skipped validators
+    skipped = roster.get("skipped", [])
+    if skipped:
+        formatter.text("")
+        formatter.text(f"  Skipped validators: {len(skipped)} (no matching files)")
+        for s in skipped[:5]:
+            triggers = s.get("triggers", [])
+            triggers_str = ", ".join(triggers[:2])
+            if len(triggers) > 2:
+                triggers_str += f" +{len(triggers)-2} more"
+            formatter.text(f"    - {s['id']} (triggers: {triggers_str})")
+
+    # Show decision points (suggestions for orchestrator)
+    decision_points = roster.get("decisionPoints", [])
+    if decision_points:
+        formatter.text("")
+        formatter.text("  ═══ ORCHESTRATOR DECISION POINTS ═══")
+        formatter.text("  The following validators were NOT auto-triggered but may be relevant:")
+        for dp in decision_points:
+            formatter.text(f"    ► {dp.get('suggestion', 'Unknown')}")
+            formatter.text(f"      Reason: {dp.get('reason', 'Unknown')}")
+            cmd = dp.get("command", "")
+            if cmd:
+                formatter.text(f"      To add: edison qa validate {args.task_id} {cmd}")
+        formatter.text("")
 
     if not args.execute:
         formatter.text("")
         formatter.text("  To execute validators, add --execute flag")
+        formatter.text("")
+        formatter.text("  Orchestrator: To add extra validators:")
+        formatter.text("    edison qa validate <task> --add-validators react api --execute")
+        formatter.text("    edison qa validate <task> --add-validators react --add-to-wave critical --execute")
 
 
 def _execute_with_executor(
@@ -228,12 +308,15 @@ def _execute_with_executor(
     repo_root: Path,
     executor: ValidationExecutor,
     formatter: OutputFormatter,
+    extra_validators: list[dict[str, str]] | None = None,
 ) -> int:
     """Execute validators using the centralized executor."""
     formatter.text(f"Executing validators for {args.task_id}...")
     formatter.text(f"  Mode: {'sequential' if args.sequential else f'parallel (max {args.max_workers} workers)'}")
     if args.wave:
         formatter.text(f"  Wave: {args.wave}")
+    if extra_validators:
+        formatter.text(f"  Extra validators: {', '.join(e['id'] for e in extra_validators)}")
     formatter.text("")
 
     # Execute using centralized executor

@@ -20,3 +20,4 @@ def normalize_servers(raw: Sequence[str] | None) -> list[str] | None:
 
 
 __all__ = ["normalize_servers"]
+

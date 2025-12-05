@@ -207,3 +207,4 @@ def enhance_delegation_hint(
         "filesAnalyzed": files,
         "taskType": task_type,
     }
+

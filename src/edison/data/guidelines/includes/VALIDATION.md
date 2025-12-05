@@ -39,49 +39,95 @@ Paste manifest into QA brief. Validators must load only what the bundle lists.
 ### Wave Execution Model
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Wave 1: Global Validators (Parallel)                        │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ global-codex    │  │ global-claude   │  → Consensus      │
-│ └─────────────────┘  └─────────────────┘    Required       │
+│ Wave 1: Critical Validators (Parallel)                       │
+│ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐   │
+│ │ global-codex   │ │ global-claude  │ │ global-gemini  │   │
+│ │ (blocking)     │ │ (blocking)     │ │ (consensus)    │   │
+│ └────────────────┘ └────────────────┘ └────────────────┘   │
+│ ┌────────────────┐ ┌────────────────┐                      │
+│ │ security       │ │ performance    │  → Any blocking      │
+│ │ (blocking)     │ │ (blocking)     │    failure stops     │
+│ └────────────────┘ └────────────────┘                      │
 └─────────────────────────────────────────────────────────────┘
                           ↓ (if pass)
 ┌─────────────────────────────────────────────────────────────┐
-│ Wave 2: Critical Validators (Parallel, Blocking)            │
-│ ┌─────────────────┐  ┌─────────────────┐                   │
-│ │ security        │  │ performance     │  → Any Fail       │
-│ └─────────────────┘  └─────────────────┘    Blocks         │
-└─────────────────────────────────────────────────────────────┘
-                          ↓ (if pass)
-┌─────────────────────────────────────────────────────────────┐
-│ Wave 3: Specialized Validators (Parallel, Pattern-Triggered)│
+│ Wave 2: Comprehensive Validators (Parallel, Triggered)       │
 │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐    │
-│ │ react  │ │ nextjs │ │  api   │ │database│ │testing │    │
+│ │ react  │ │ nextjs │ │  api   │ │ prisma │ │testing │    │
 │ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘    │
+│ (triggered by file patterns - e.g., *.tsx triggers react)   │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### Validator Auto-Detection (File Pattern Triggers)
+
+**How validators are selected:**
+1. **Always-run validators** (`always_run: true`): Always execute
+2. **Pattern-triggered validators**: Match file patterns against modified files
+
+**Pattern examples:**
+- `react`: Triggers on `**/*.tsx`, `**/*.jsx`, `**/components/**/*`
+- `nextjs`: Triggers on `app/**/*.tsx`, `**/route.ts`, `**/layout.tsx`
+- `api`: Triggers on `**/api/**/*.ts`, `**/route.ts`
+- `prisma`: Triggers on `schema.prisma`, `prisma/**/*`, `**/*.sql`
+
+**View detected roster:**
+```bash
+edison qa validate <task-id>  # Shows auto-detected validators
+```
+
+### Adding Extra Validators (CRITICAL)
+
+**Orchestrators CAN add validators but CANNOT remove auto-detected ones.**
+
+**When to add validators:**
+- React logic in `.js` files (not caught by `.tsx` trigger)
+- API patterns in non-standard locations
+- Framework code in unexpected directories
+- Task context suggests specific validation needed
+
+**How to add:**
+```bash
+# Add single validator
+edison qa validate <task-id> --add-validators react --execute
+
+# Add multiple validators
+edison qa validate <task-id> --add-validators react api --execute
+
+# Specify wave for added validators
+edison qa validate <task-id> --add-validators react --add-to-wave critical --execute
+```
+
+**CLI shows decision points:**
+When validators might be relevant but weren't triggered, the CLI displays:
+```
+═══ ORCHESTRATOR DECISION POINTS ═══
+► Consider adding 'react' validator
+  Reason: Found .js files that may contain React: src/helpers.js
+  To add: --add-validators react
 ```
 
 ### Consensus Rules
 
 **Global Validators:**
-- All global validators must agree
-- Disagreement → escalate to human review
-- Tie-breaker: More specific feedback wins
+- All blocking global validators must approve
+- Non-blocking (gemini, auggie) provide consensus reinforcement
+- Disagreement → review specific feedback for root cause
 
 **Critical Validators:**
-- ANY failure blocks the task
-- Must fix ALL critical issues before re-validation
-- No partial approvals
+- ANY blocking failure stops the wave
+- Must fix ALL issues before re-validation
 
 **Specialized Validators:**
-- Only triggered if relevant files changed
-- Failures are advisory unless `blocksOnFail=true`
+- Only triggered if file patterns match
+- Blocking determined by `blocking: true/false` in config
 
 ### Validation Sequence (Strict Order)
 1. Automation evidence captured (`command-type-check.txt`, etc.)
-2. Context7 refreshes for all `postTrainingPackages`
-3. Detect changed files → map to validator roster
-4. Update QA with validator list, commands, expected results
-5. Run validators in waves (respect models and concurrency cap)
+2. Context7 refreshes for all `context7_packages`
+3. **Auto-detect validators from modified files**
+4. **Add orchestrator-specified extra validators**
+5. Run validators in waves (parallel within wave)
 6. Store artefacts under `.project/qa/validation-evidence/<task-id>/round-<N>/`
 7. Move QA/task only after ALL blocking validators approve
 

@@ -255,6 +255,86 @@ class QARepository(
     def find_by_session(self, session_id: str) -> List[QARecord]:
         """Find QA records belonging to a session."""
         return self._do_find(session_id=session_id)
+
+    # ---------- Round Management Methods ----------
+
+    def append_round(
+        self,
+        qa_id: str,
+        status: str,
+        notes: Optional[str] = None,
+    ) -> QARecord:
+        """Append a new round to a QA record.
+
+        This method:
+        1. Increments the round number
+        2. Adds the round to round_history with status, notes, and date
+        3. Saves the updated QA record
+
+        Args:
+            qa_id: QA record identifier
+            status: Status for this round (e.g., "approved", "rejected", "pending")
+            notes: Optional notes for this round (e.g., validator names)
+
+        Returns:
+            Updated QA record with new round
+
+        Raises:
+            PersistenceError: If QA record not found
+        """
+        from datetime import datetime, timezone
+
+        qa = self.get(qa_id)
+        if not qa:
+            raise PersistenceError(f"QA record not found: {qa_id}")
+
+        # Increment round number
+        qa.round += 1
+
+        # Add round entry to history
+        round_entry: Dict[str, Any] = {
+            "round": qa.round,
+            "status": status,
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        }
+        if notes:
+            round_entry["notes"] = notes
+
+        qa.round_history.append(round_entry)
+        qa.metadata.touch()
+
+        # Save the updated record
+        self.save(qa)
+
+        return qa
+
+    def get_current_round(self, qa_id: str) -> int:
+        """Get the current round number for a QA record.
+
+        Args:
+            qa_id: QA record identifier
+
+        Returns:
+            Current round number (1 if no QA found or initial round)
+        """
+        qa = self.get(qa_id)
+        if not qa:
+            return 1
+        return qa.round
+
+    def list_rounds(self, qa_id: str) -> List[Dict[str, Any]]:
+        """List all rounds for a QA record.
+
+        Args:
+            qa_id: QA record identifier
+
+        Returns:
+            List of round entries (each with round, status, date, notes)
+        """
+        qa = self.get(qa_id)
+        if not qa:
+            return []
+        return qa.round_history
     
     # ---------- File Format Helpers ----------
 
@@ -284,6 +364,7 @@ class QARepository(
             "created_at": qa.metadata.created_at,
             "updated_at": qa.metadata.updated_at,
             "state_history": state_history_data,
+            "round_history": qa.round_history if qa.round_history else None,
         }
 
         # Format as YAML frontmatter
@@ -378,6 +459,7 @@ class QARepository(
             validators=fm.get("validators", []) or [],
             evidence=fm.get("evidence", []) or [],
             round=fm.get("round", 1),
+            round_history=fm.get("round_history", []) or [],
         )
 
 

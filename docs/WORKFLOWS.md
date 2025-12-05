@@ -658,7 +658,44 @@ edison qa validate <task-id> --execute --wave critical
 
 # Run single validator
 edison qa run <validator-id> <task-id>
+
+# Add extra validators (orchestrator feature)
+edison qa validate <task-id> --add-validators react api --execute
+
+# Add validators to specific wave
+edison qa validate <task-id> --add-validators react --add-to-wave critical --execute
 ```
+
+**Validator Auto-Detection:**
+
+Validators are selected based on file pattern triggers:
+1. Modified files are detected from git diff or implementation report
+2. Each validator's `triggers` patterns are matched against modified files
+3. Matching validators are included in the roster
+4. Orchestrator can ADD extra validators that weren't auto-detected
+
+**Trigger patterns example:**
+```yaml
+react:
+  triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+
+nextjs:
+  triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx"]
+
+api:
+  triggers: ["**/api/**/*.ts", "**/route.ts"]
+```
+
+**Adding Extra Validators:**
+
+When file patterns don't capture all needed validation (e.g., React in `.js` files),
+orchestrators can add validators:
+```bash
+edison qa validate T-001 --add-validators react --execute
+```
+
+The CLI shows "ORCHESTRATOR DECISION POINTS" when validators might be relevant
+but weren't triggered automatically.
 
 **Execution Flow:**
 1. `ValidationExecutor` loads wave configuration

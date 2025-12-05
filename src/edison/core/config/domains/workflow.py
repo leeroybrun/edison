@@ -421,34 +421,9 @@ class WorkflowConfig(BaseDomainConfig):
                 all_recs.append(rec_with_target)
         return all_recs
 
-    def get_guidance_rule(self, context: str) -> Optional[str]:
-        """Get the primary guidance rule ID for a context type.
-
-        Guidance rules are non-enforcing rules for orchestrator hints.
-        Unlike transition rules, they provide suggestions rather than guards.
-
-        Args:
-            context: Context type ("delegation", "session", "context")
-
-        Returns:
-            Primary rule ID string (e.g., "RULE.DELEGATION.PRIORITY_CHAIN") or None
-        """
-        guidance = self.section.get("guidance", {})
-        context_guidance = guidance.get(context, {})
-        return context_guidance.get("primary_rule")
-
-    def get_guidance_rules(self, context: str) -> List[str]:
-        """Get all guidance rule IDs for a context type.
-
-        Args:
-            context: Context type ("delegation", "session", "context")
-
-        Returns:
-            List of rule ID strings for this guidance context
-        """
-        guidance = self.section.get("guidance", {})
-        context_guidance = guidance.get(context, {})
-        return context_guidance.get("rules", [])
+    # NOTE: Guidance rules are NOT configured in workflow.yaml.
+    # They are defined in rules/registry.yml with `contexts: [guidance, ...]`
+    # Use edison.core.session.next.rules.get_rules_for_context() to look them up.
 
 
 __all__ = [

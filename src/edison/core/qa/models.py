@@ -34,6 +34,7 @@ class QARecord:
         validators: List of validators that have run
         evidence: List of evidence file paths
         round: Current validation round number
+        round_history: List of round entries (status, notes, date for each round)
     """
     id: str
     task_id: str
@@ -46,6 +47,7 @@ class QARecord:
     validators: List[str] = field(default_factory=list)
     evidence: List[str] = field(default_factory=list)
     round: int = 1
+    round_history: List[Dict[str, Any]] = field(default_factory=list)
     
     def record_transition(
         self,
@@ -93,6 +95,9 @@ class QARecord:
         
         data["round"] = self.round
         
+        if self.round_history:
+            data["round_history"] = self.round_history
+        
         return data
     
     @classmethod
@@ -120,6 +125,7 @@ class QARecord:
             validators=data.get("validators", []),
             evidence=data.get("evidence", []),
             round=data.get("round", 1),
+            round_history=data.get("round_history") or data.get("roundHistory", []),
         )
     
     @classmethod

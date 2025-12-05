@@ -2,6 +2,9 @@
 Edison qa round command.
 
 SUMMARY: Manage QA rounds
+
+NOTE: This CLI delegates to QARepository for all round management operations.
+Direct file manipulation is avoided - the repository handles persistence.
 """
 
 from __future__ import annotations
@@ -9,14 +12,12 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
-from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.qa.evidence import EvidenceService
+from edison.core.qa.workflow.repository import QARepository
 from edison.core.utils.io import write_json_atomic
-from edison.core.utils.time import utc_timestamp
-from datetime import datetime
-import re
 
 SUMMARY = "Manage QA rounds"
 
@@ -35,9 +36,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Status for the round (e.g., approved, rejected)",
     )
     parser.add_argument(
+        "--note",
+        type=str,
+        help="Notes for the round (e.g., validator names)",
+    )
+    parser.add_argument(
         "--new",
         action="store_true",
-        help="Create new round",
+        help="Create new evidence round directory",
     )
     parser.add_argument(
         "--list",
@@ -54,54 +60,38 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Manage QA rounds - delegates to QA library."""
+    """Manage QA rounds - delegates to QARepository."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         repo_root = get_repo_root(args)
+        qa_repo = QARepository(project_root=repo_root)
         ev_svc = EvidenceService(args.task_id, project_root=repo_root)
+
+        # Construct QA ID from task ID (convention: task_id + "-qa")
+        qa_id = f"{args.task_id}-qa"
 
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
-            # Append round entry to QA file
-
-            # Find QA file
-            qa_root = repo_root / ".project" / "qa"
-            qa_file = None
-            qa_states = WorkflowConfig().get_states("qa")
-            for state_dir in qa_states:
-                potential = qa_root / state_dir / f"{args.task_id}-qa.md"
-                if potential.exists():
-                    qa_file = potential
-                    break
-
-            if not qa_file:
-                raise FileNotFoundError(f"QA file for {args.task_id} not found")
-
-            # Determine next round number from file content
-            content = qa_file.read_text()
-            round_matches = re.findall(r"## Round (\d+)", content)
-            next_round = max([int(m) for m in round_matches], default=0) + 1
-
-            # Append new round
-            round_entry = f"\n## Round {next_round}\n"
-            round_entry += f"**Date:** {datetime.utcnow().strftime('%Y-%m-%d')}\n"
-            round_entry += f"**Status:** {args.status or 'pending'}\n"
-            round_entry += f"**Notes:** _None_\n"
-
-            with open(qa_file, 'a') as f:
-                f.write(round_entry)
+            # Use QARepository to append round (no direct file manipulation)
+            updated_qa = qa_repo.append_round(
+                qa_id,
+                status=args.status or "pending",
+                notes=args.note,
+            )
 
             result = {
                 "taskId": args.task_id,
-                "round": next_round,
-                "status": args.status or 'pending',
+                "round": updated_qa.round,
+                "status": args.status or "pending",
             }
-            formatter.json_output(result) if formatter.json_mode else formatter.text(f"Appended round {next_round} for {args.task_id}")
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Appended round {updated_qa.round} for {args.task_id}"
+            )
 
         elif args.new:
-            # Create new round
+            # Create new evidence round directory (evidence service handles this)
             round_path = ev_svc.create_next_round()
             round_num = ev_svc.get_current_round()
 
@@ -124,41 +114,34 @@ def main(args: argparse.Namespace) -> int:
             )
 
         elif args.list:
-            # List all rounds
-            evidence_dir = ev_svc.get_evidence_root()
-            if not evidence_dir.exists():
-                formatter.json_output({"rounds": []}) if formatter.json_mode else formatter.text(f"No rounds found for {args.task_id}")
-                return 0
-
-            round_dirs = sorted([
-                int(p.name.split("-")[1])
-                for p in evidence_dir.glob("round-*")
-                if p.is_dir() and p.name.split("-")[1].isdigit()
-            ])
+            # List all rounds from QA record history
+            rounds = qa_repo.list_rounds(qa_id)
 
             if formatter.json_mode:
-                formatter.json_output({"rounds": round_dirs})
+                formatter.json_output({"rounds": rounds})
             else:
-                if round_dirs:
+                if rounds:
                     formatter.text(f"Rounds for {args.task_id}:")
-                    for r in round_dirs:
-                        formatter.text(f"  - round-{r}")
+                    for r in rounds:
+                        status = r.get("status", "unknown")
+                        date = r.get("date", "")
+                        notes = r.get("notes", "")
+                        formatter.text(f"  - Round {r.get('round')}: {status} ({date})")
+                        if notes:
+                            formatter.text(f"      Notes: {notes}")
                 else:
-                    formatter.text(f"No rounds found for {args.task_id}")
+                    formatter.text(f"No round history found for {args.task_id}")
 
         else:
-            # Default: show current round
-            current = ev_svc.get_current_round()
+            # Default: show current round from QA record
+            current = qa_repo.get_current_round(qa_id)
             if formatter.json_mode:
                 formatter.json_output({
                     "task_id": args.task_id,
                     "current_round": current,
                 })
             else:
-                if current is not None:
-                    formatter.text(f"Current round for {args.task_id}: {current}")
-                else:
-                    formatter.text(f"No rounds found for {args.task_id}")
+                formatter.text(f"Current round for {args.task_id}: {current}")
 
         return 0
 

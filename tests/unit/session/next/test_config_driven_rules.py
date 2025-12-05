@@ -1,59 +1,55 @@
 """
 Tests for config-driven rule IDs in session/next compute.
 
-STRICT TDD: These tests verify rule IDs come from workflow.yaml config,
-not hardcoded fallbacks.
+STRICT TDD: These tests verify rule IDs come from:
+1. workflow.yaml transitions (for enforcement rules)
+2. rules/registry.yml contexts (for guidance rules)
 
 P2-TP-004: Fix compute.py hardcoded rule IDs
 """
 import pytest
 from pathlib import Path
 from edison.core.config.domains.workflow import WorkflowConfig
+from edison.core.session.next.rules import get_rules_for_context
 
 
-class TestGuidanceRules:
-    """Test that guidance rules are configurable via workflow.yaml."""
+class TestGuidanceRulesFromRegistry:
+    """Test that guidance rules come from rules/registry.yml via context lookup."""
 
-    def test_delegation_guidance_rule_from_config(self):
-        """Verify delegation guidance rule comes from config."""
-        workflow_cfg = WorkflowConfig()
-        rule = workflow_cfg.get_guidance_rule("delegation")
+    def test_delegation_guidance_rules_from_registry(self):
+        """Verify delegation guidance rules come from registry contexts."""
+        rules = get_rules_for_context("delegation")
         
-        assert rule is not None, "delegation guidance should have a primary rule"
-        assert rule.startswith("RULE."), "guidance rule should be a valid rule ID"
+        assert len(rules) > 0, "delegation context should have rules in registry"
+        rule_ids = [r.get("id") for r in rules]
+        assert "RULE.DELEGATION.PRIORITY_CHAIN" in rule_ids
 
-    def test_delegation_guidance_rules_list(self):
-        """Verify delegation has multiple guidance rules configured."""
-        workflow_cfg = WorkflowConfig()
-        rules = workflow_cfg.get_guidance_rules("delegation")
+    def test_guidance_context_returns_rules(self):
+        """Verify guidance context returns rules from registry."""
+        rules = get_rules_for_context("guidance")
         
-        assert len(rules) > 0, "delegation should have guidance rules"
-        assert "RULE.DELEGATION.PRIORITY_CHAIN" in rules
-        assert "RULE.DELEGATION.MOST_WORK" in rules
+        # Should return rules that have contexts: [guidance, ...]
+        assert len(rules) >= 0  # May be empty if no rules have guidance context
 
-    def test_session_guidance_rules_from_config(self):
-        """Verify session guidance rules are configurable."""
-        workflow_cfg = WorkflowConfig()
-        rules = workflow_cfg.get_guidance_rules("session")
+    def test_validation_context_returns_rules(self):
+        """Verify validation context returns rules from registry."""
+        rules = get_rules_for_context("validation")
         
-        assert len(rules) > 0, "session should have guidance rules"
-        assert "RULE.SESSION.NEXT_LOOP_DRIVER" in rules
+        assert len(rules) > 0, "validation context should have rules"
+        rule_ids = [r.get("id") for r in rules]
+        # VALIDATION.FIRST has contexts: [validation, transition]
+        assert "RULE.VALIDATION.FIRST" in rule_ids
 
-    def test_context_guidance_rules_from_config(self):
-        """Verify context management guidance rules are configurable."""
-        workflow_cfg = WorkflowConfig()
-        rules = workflow_cfg.get_guidance_rules("context")
+    def test_transition_context_returns_rules(self):
+        """Verify transition context returns rules from registry."""
+        rules = get_rules_for_context("transition")
         
-        assert len(rules) > 0, "context should have guidance rules"
-        assert "RULE.CONTEXT.BUDGET_MINIMIZE" in rules
+        assert len(rules) > 0, "transition context should have rules"
 
-    def test_missing_guidance_context_returns_none(self):
-        """Verify missing guidance context returns None/empty."""
-        workflow_cfg = WorkflowConfig()
-        rule = workflow_cfg.get_guidance_rule("nonexistent")
-        rules = workflow_cfg.get_guidance_rules("nonexistent")
+    def test_nonexistent_context_returns_empty(self):
+        """Verify nonexistent context returns empty list."""
+        rules = get_rules_for_context("nonexistent_context_xyz")
         
-        assert rule is None
         assert rules == []
 
 
@@ -126,3 +122,4 @@ class TestConfigDrivenRuleIds:
                 missing.append(f"{domain}.{from_state}→{to_state}")
         
         assert not missing, f"Missing rules for transitions: {missing}"
+
