@@ -397,7 +397,7 @@ export EDISON_SESSION__WORKTREE__TIMEOUTS__INSTALL=600
 
 ### validators.yaml
 
-Validation framework configuration with validator roster and execution settings.
+Validation framework configuration with engines, validators, and execution waves.
 
 ```yaml
 validation:
@@ -426,112 +426,116 @@ validation:
     concurrency: 4        # max parallel validators
     timeout: 300          # per-validator timeout in seconds
 
-  # Validator roster
-  roster:
-    global:
-      - id: global-codex
-        name: Global Validator (Codex)
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-global-codex
-        specFile: _generated/validators/global.md
-        triggers: ["*"]
-        alwaysRun: true
-        priority: 1
-        context7Required: true
-        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
-        scope: comprehensive
-        outputFormat: GlobalValidationReport
-        reportSection: "Validator Findings & Verdicts > Global (Codex)"
+  # Engine definitions (execution backends)
+  engines:
+    codex-cli:
+      type: cli
+      command: "codex"
+      subcommand: "exec"
+      response_parser: codex
 
-      - id: global-claude
-        name: Global Validator (Claude)
-        model: claude
-        interface: Task
-        role: code-reviewer
-        zenRole: validator-global-claude
-        specFile: _generated/validators/global.md
-        triggers: ["*"]
-        alwaysRun: true
-        priority: 1
-        context7Required: true
-        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
-        scope: comprehensive
-        outputFormat: GlobalValidationReport
-        reportSection: "Validator Findings & Verdicts > Global (Claude)"
+    claude-cli:
+      type: cli
+      command: "claude"
+      subcommand: "-p"
+      output_flags: ["--output-format", "json"]
+      read_only_flags: ["--permission-mode", "plan"]
+      response_parser: claude
 
-    critical:
-      - id: security
-        name: Security Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-security
-        specFile: critical/security.md
-        triggers: ["*"]
-        alwaysRun: false
-        priority: 2
-        context7Required: true
-        context7Packages: [next, zod]
-        focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
-        blocksOnFail: true
-        outputFormat: SecurityReport
+    gemini-cli:
+      type: cli
+      command: "gemini"
+      subcommand: "-p"
+      output_flags: ["--output-format", "json"]
+      response_parser: gemini
 
-      - id: performance
-        name: Performance Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-performance
-        specFile: critical/performance.md
-        triggers: ["*"]
-        alwaysRun: false
-        priority: 2
-        context7Required: true
-        context7Packages: [next, react]
-        focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
-        blocksOnFail: true
-        outputFormat: PerformanceReport
+    auggie-cli:
+      type: cli
+      command: "auggie"
+      output_flags: ["--output-format", "json"]
+      read_only_flags: ["--print", "--quiet"]
+      response_parser: auggie
 
-    specialized:
-      - id: react
-        name: React Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-react
-        specFile: specialized/react.md
-        triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [react, uistylescss]
-        blocksOnFail: false
+    coderabbit-cli:
+      type: cli
+      command: "coderabbit"
+      subcommand: "review"
+      read_only_flags: ["--prompt-only"]
+      response_parser: coderabbit
 
-      - id: prisma
-        name: Prisma Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-database
-        specFile: specialized/database.md
-        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "schema.prisma"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [prisma]
-        blocksOnFail: true
+    zen-mcp:
+      type: delegated
+      description: "Generate delegation instructions for orchestrator"
 
-  # Blocking validators (task cannot complete if these fail)
-  blocking_validators:
-    - global-codex
-    - global-claude
-    - security
-    - performance
-    - database
-    - testing
+  # Flat validator definitions
+  validators:
+    global-codex:
+      name: "Global Validator (Codex)"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react, typescript]
+
+    global-claude:
+      name: "Global Validator (Claude)"
+      engine: claude-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: true
+      context7_required: true
+      context7_packages: [next, react, typescript]
+
+    security:
+      name: "Security Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "critical/security.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      context7_required: true
+      context7_packages: [next, zod]
+      focus: [authentication, authorization, input-validation]
+
+    react:
+      name: "React Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/react.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+      context7_packages: [react]
+
+  # Wave definitions (execution groups)
+  waves:
+    - name: critical
+      validators: [global-codex, global-claude, global-gemini, security, performance]
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: false
+
+    - name: comprehensive
+      validators: [react, nextjs, api, prisma, testing]
+      execution: parallel
+      continue_on_fail: true
+      requires_previous_pass: true
 ```
+
+**Key Concepts**:
+
+- **Engines**: Define execution backends (CLI tools or delegation)
+- **Validators**: Reference engines with fallback support
+- **Waves**: Group validators for ordered execution
+- **zenRole**: Automatically inferred as `validator-{id}` (no explicit config needed)
 
 **Common Overrides**:
 
@@ -541,9 +545,6 @@ export EDISON_VALIDATION__EXECUTION__MODE=sequential
 
 # Increase validator timeout
 export EDISON_VALIDATION__EXECUTION__TIMEOUT=600
-
-# Disable a specific validator
-# (Create .edison/config/validators.yaml)
 ```
 
 ---

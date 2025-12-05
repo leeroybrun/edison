@@ -1240,8 +1240,11 @@ edison qa validate <task_id> [options]
 |--------|-------------|
 | `--session` | Session ID context |
 | `--round` | Validation round number (default: create new round) |
+| `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
 | `--blocking-only` | Only run blocking validators |
+| `--execute` | Execute validators directly (default: show roster only) |
+| `--dry-run` | Show what would be executed without running |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1250,33 +1253,51 @@ edison qa validate <task_id> [options]
 - Validating task completion
 - Running specific validators
 - Quality gate checks
+- Direct CLI validation when tools are installed
 
 **Examples:**
 
 ```bash
-# Validate task with all validators
+# Show validation roster (without executing)
 edison qa validate 150-auth-feature
 
+# Execute validators directly via CLI engines
+edison qa validate 150-auth-feature --execute
+
+# Show what would be executed
+edison qa validate 150-auth-feature --dry-run
+
 # Run only blocking validators
-edison qa validate 150-auth-feature --blocking-only
+edison qa validate 150-auth-feature --execute --blocking-only
+
+# Run specific wave
+edison qa validate 150-auth-feature --execute --wave critical
 
 # Run specific validators
-edison qa validate 150-auth-feature --validators qa-001 qa-002
-
-# Validate in specific session and round
-edison qa validate 150-auth-feature --session sess-001 --round 2
+edison qa validate 150-auth-feature --execute --validators global-codex security
 ```
 
-**Validator Types:**
+**Execution Modes:**
+
+- **Roster Only** (default): Shows validator roster without executing
+- **Execute** (`--execute`): Runs validators directly via CLIEngine when available
+- **Dry Run** (`--dry-run`): Shows execution plan without running
+
+**Validator Categories:**
 
 - **Always Required**: Core validators that always run
-- **Triggered Blocking**: Conditional blocking validators based on task characteristics
-- **Triggered Optional**: Non-blocking validators for additional checks
+- **Triggered Blocking**: Conditional blocking validators
+- **Triggered Optional**: Non-blocking validators
+
+**Direct vs Delegation:**
+
+- ✓ = CLI tool available, will execute directly
+- → = CLI unavailable, will generate delegation instructions
 
 **Exit Codes:**
 
-- `0` - Validation successful
-- `1` - Validation failed or error occurred
+- `0` - Validation successful (all blocking validators passed)
+- `1` - Validation failed (blocking validator failed or error)
 
 ---
 
@@ -1410,31 +1431,63 @@ edison qa round --task 150-auth-feature --status blocked
 
 ### qa run - Run Specific Validator
 
-Run a specific validator by ID.
+Run a specific validator by ID using the unified engine system.
 
 ```bash
-edison qa run [options]
+edison qa run <validator_id> --task <task_id> [options]
 ```
+
+**Arguments:**
+
+- `validator_id` - Validator identifier (e.g., `global-codex`, `security`)
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
+| `--task` | Task identifier to validate (required) |
+| `--session` | Session ID context |
+| `--round` | Validation round number |
+| `--wave` | Execute all validators in a wave |
+| `--worktree` | Path to git worktree |
+| `--dry-run` | Show what would be executed without running |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
+
+**Execution Flow:**
+
+1. **Engine Selection**: Uses CLIEngine if CLI tool is available, otherwise falls back to ZenMCPEngine
+2. **Direct Execution**: CLIEngine executes the CLI tool directly (codex, claude, gemini, auggie, coderabbit)
+3. **Delegation**: ZenMCPEngine generates delegation instructions if CLI unavailable
+4. **Evidence**: Results saved to validation evidence directory
 
 **When to Use:**
 
 - Testing individual validators
 - Debugging validation failures
 - Running custom validators
+- Verifying engine availability
 
 **Examples:**
 
 ```bash
 # Run specific validator
-edison qa run
+edison qa run global-codex --task 150-auth-feature
+
+# Run with specific session and round
+edison qa run security --task 150-auth-feature --session sess-001 --round 2
+
+# Run all validators in a wave
+edison qa run --wave critical --task 150-auth-feature
+
+# Dry run to see what would execute
+edison qa run global-claude --task 150-auth-feature --dry-run
 ```
+
+**Exit Codes:**
+
+- `0` - Validator executed successfully (regardless of pass/fail verdict)
+- `1` - Error (validator not found, engine unavailable, etc.)
 
 ---
 

@@ -5,227 +5,288 @@ validation:
     security: 20
     maintainability: 15
     performance: 10
+
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
+
   requiredEvidenceFiles:
     - command-type-check.txt
     - command-lint.txt
     - command-test.txt
     - command-build.txt
+
   execution:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators when mode=parallel
     timeout: 300          # per-validator timeout in seconds
 
-  # Tier order defines the logical groupings of validators
-  # Tiers are referenced in waves to define execution order and behavior
-  tierOrder:
-    - global
-    - critical
-    - specialized
+  # Engine definitions (execution backends)
+  # Each engine defines how to execute validators using that backend
+  engines:
+    codex-cli:
+      type: cli
+      command: "codex"
+      subcommand: "exec"
+      output_flags: []
+      read_only_flags: []
+      response_parser: codex
 
-  # Validation waves define execution groups with ordering and failure behavior
-  # Waves allow configurable validator execution strategies
+    claude-cli:
+      type: cli
+      command: "claude"
+      subcommand: "-p"
+      output_flags: ["--output-format", "json"]
+      read_only_flags: ["--permission-mode", "plan"]
+      response_parser: claude
+
+    gemini-cli:
+      type: cli
+      command: "gemini"
+      subcommand: "-p"
+      output_flags: ["--output-format", "json"]
+      read_only_flags: []
+      response_parser: gemini
+
+    auggie-cli:
+      type: cli
+      command: "auggie"
+      subcommand: ""
+      output_flags: ["--output-format", "json"]
+      read_only_flags: ["--print", "--quiet"]
+      response_parser: auggie
+
+    coderabbit-cli:
+      type: cli
+      command: "coderabbit"
+      subcommand: "review"
+      output_flags: []
+      read_only_flags: ["--prompt-only"]
+      response_parser: coderabbit
+
+    zen-mcp:
+      type: delegated
+      description: "Generate delegation instructions for orchestrator"
+
+  # Flat validator definitions
+  # Each validator references an engine and optionally a fallback
+  validators:
+    # Global validators - always run, use same prompt with different models
+    global-codex:
+      name: "Global Validator (Codex)"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      triggers: ["*"]
+      focus: []
+
+    global-claude:
+      name: "Global Validator (Claude)"
+      engine: claude-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      triggers: ["*"]
+      focus: []
+
+    global-gemini:
+      name: "Global Validator (Gemini)"
+      engine: gemini-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: false  # Non-blocking, consensus reinforcement
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      triggers: ["*"]
+      focus: []
+
+    global-auggie:
+      name: "Global Validator (Auggie)"
+      engine: auggie-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/global.md"
+      wave: critical
+      always_run: true
+      blocking: false  # Non-blocking, additional AI perspective
+      timeout: 600
+      context7_required: false  # Auggie uses its own codebase context engine
+      context7_packages: []
+      triggers: ["*"]
+      focus: []
+
+    # Critical validators - important but triggered by patterns
+    security:
+      name: "Security Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "critical/security.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, zod]
+      triggers: ["*"]
+      focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
+
+    performance:
+      name: "Performance Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "critical/performance.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react]
+      triggers: ["*"]
+      focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
+
+    coderabbit:
+      name: "CodeRabbit AI Review"
+      engine: coderabbit-cli
+      fallback_engine: zen-mcp
+      prompt: "critical/coderabbit.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      timeout: 600
+      context7_required: false
+      context7_packages: []
+      triggers: ["*"]
+      focus: []
+
+    # Specialized validators - file-pattern triggered
+    react:
+      name: "React Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/react.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: [react, uistylescss]
+      triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+      focus: []
+
+    nextjs:
+      name: "Next.js Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/nextjs.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, react]
+      triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
+      focus: []
+
+    api:
+      name: "API Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/api.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: [next, zod, typescript]
+      triggers: ["**/api/**/*.ts", "**/route.ts"]
+      focus: []
+
+    prisma:
+      name: "Prisma Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/database.md"
+      wave: comprehensive
+      always_run: false
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: [prisma]
+      triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*", "schema.prisma"]
+      focus: []
+
+    testing:
+      name: "Testing Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "specialized/testing.md"
+      wave: comprehensive
+      always_run: false
+      blocking: true
+      timeout: 300
+      context7_required: false
+      context7_packages: [typescript, vitest]
+      triggers: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+      focus: []
+
+  # Wave definitions (execution groups)
+  # Waves define the order and behavior of validator execution
   waves:
     - name: critical
-      tiers: [global, critical]
-      execution: parallel         # parallel | sequential
-      continue_on_fail: false     # Stop all validation if any validator in this wave fails
-      requires_previous_pass: false
-    - name: comprehensive
-      tiers: [specialized]
+      validators:
+        - global-codex
+        - global-claude
+        - global-gemini
+        - global-auggie
+        - security
+        - performance
+        - coderabbit
       execution: parallel
-      continue_on_fail: true      # Continue even if previous wave failed
-      requires_previous_pass: true # Only run if critical wave passed
+      continue_on_fail: false
+      requires_previous_pass: false
 
-  roster:
-    global:
-      # Three validators using the SAME prompt but different models for multiple perspectives
-      - id: global-codex
-        name: Global Validator (Codex)
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-global-codex
-        specFile: _generated/validators/global.md  # Same prompt
-        triggers: ["*"]
-        alwaysRun: true
-        priority: 1
-        context7Required: true
-        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
-        scope: comprehensive
-        outputFormat: GlobalValidationReport
-        reportSection: "Validator Findings & Verdicts > Global (Codex)"
-      - id: global-claude
-        name: Global Validator (Claude)
-        model: claude
-        interface: Task
-        role: code-reviewer
-        zenRole: validator-global-claude
-        specFile: _generated/validators/global.md  # Same prompt
-        triggers: ["*"]
-        alwaysRun: true
-        priority: 1
-        context7Required: true
-        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
-        scope: comprehensive
-        outputFormat: GlobalValidationReport
-        reportSection: "Validator Findings & Verdicts > Global (Claude)"
-      - id: global-gemini
-        name: Global Validator (Gemini)
-        model: gemini
-        interface: clink
-        role: codereviewer
-        zenRole: validator-global-gemini
-        specFile: _generated/validators/global.md  # Same prompt
-        triggers: ["*"]
-        alwaysRun: true
-        priority: 1
-        context7Required: true
-        context7Packages: [next, react, uistylescss, zod, typescript, framer-motion]
-        scope: comprehensive
-        outputFormat: GlobalValidationReport
-        reportSection: "Validator Findings & Verdicts > Global (Gemini)"
-    critical:
-      - id: security
-        name: Security Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-security
-        specFile: critical/security.md
-        triggers: ["*"]
-        alwaysRun: false
-        priority: 2
-        context7Required: true
-        context7Packages: [next, zod]
-        focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
-        blocksOnFail: true
-        outputFormat: SecurityReport
-        reportSection: "Validator Findings & Verdicts > Security"
-      - id: performance
-        name: Performance Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-performance
-        specFile: critical/performance.md
-        triggers: ["*"]
-        alwaysRun: false
-        priority: 2
-        context7Required: true
-        context7Packages: [next, react]
-        focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
-        blocksOnFail: true
-        outputFormat: PerformanceReport
-        reportSection: "Validator Findings & Verdicts > Performance"
-      - id: coderabbit
-        name: CodeRabbit AI Review
-        type: external  # NEW: external tool validator
-        model: codex    # LLM that processes the output
-        interface: clink
-        role: codereviewer
-        zenRole: validator-coderabbit
-        specFile: critical/coderabbit.md
-        command: "coderabbit review --prompt-only --type uncommitted"
-        triggers: ["*"]
-        alwaysRun: false  # Run on demand or when explicitly requested
-        priority: 2
-        timeout: 600
-        blocksOnFail: true
-        context7Required: false
-        outputFormat: CodeRabbitReport
-        reportSection: "Validator Findings & Verdicts > CodeRabbit"
-        evidenceFile: "command-coderabbit.txt"
-    specialized:
-      - id: react
-        name: React Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-react
-        specFile: specialized/react.md
-        triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [react, uistylescss]
-        blocksOnFail: false
-        outputFormat: ReactReport
-      - id: nextjs
-        name: nextjs Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-nextjs
-        specFile: specialized/nextjs.md
-        triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [next, react]
-        blocksOnFail: false
-        outputFormat: nextjsReport
-      - id: api
-        name: API Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-api
-        specFile: specialized/api.md
-        triggers: ["**/api/**/*.ts", "**/route.ts"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [next, zod, typescript]
-        blocksOnFail: false
-        outputFormat: ApiReport
-      - id: prisma
-        name: Prisma Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-database
-        specFile: specialized/database.md
-        triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*", "schema.prisma"]
-        alwaysRun: false
-        priority: 3
-        context7Required: true
-        context7Packages: [prisma]
-        blocksOnFail: true
-        outputFormat: DatabaseReport
-      - id: testing
-        name: Testing Validator
-        model: codex
-        interface: clink
-        role: codereviewer
-        zenRole: validator-testing
-        specFile: specialized/testing.md
-        triggers: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
-        alwaysRun: false
-        priority: 3
-        context7Required: false
-        context7Packages: [typescript, vitest]
-        blocksOnFail: true
-        outputFormat: TestingReport
-  blocking_validators:
-    - global-codex
-    - global-claude
-    - security
-    - performance
-    - database
-    - testing
+    - name: comprehensive
+      validators:
+        - react
+        - nextjs
+        - api
+        - prisma
+        - testing
+      execution: parallel
+      continue_on_fail: true
+      requires_previous_pass: true
+
+  # Artifact paths for evidence storage
   artifactPaths:
     bundleSummaryFile: "bundle-approved.json"
     implementationReportFile: "implementation-report.json"
+
+  # Approval criteria (documentation only, logic uses blocking field)
   approvalCriteria:
     globalValidators:
-      global-codex: "MUST approve (blocks task on fail)"
-      global-claude: "MUST approve (blocks task on fail)"
+      global-codex: "MUST approve (blocking)"
+      global-claude: "MUST approve (blocking)"
       global-gemini: "SHOULD approve (non-blocking, consensus reinforcement)"
+      global-auggie: "SHOULD approve (non-blocking, additional AI perspective)"
     criticalValidators:
-      security: "MUST approve (blocks task on fail)"
-      performance: "SHOULD approve (warning only, doesn't block)"
+      security: "MUST approve (blocking)"
+      performance: "MUST approve (blocking)"
+      coderabbit: "MUST approve (blocking)"
     specializedValidators:
-      prisma: "MUST approve (blocks task on fail)"
-      testing: "MUST approve (blocks task on fail)"
+      prisma: "MUST approve (blocking)"
+      testing: "MUST approve (blocking)"
+      react: "SHOULD approve (non-blocking)"
+      nextjs: "SHOULD approve (non-blocking)"
+      api: "SHOULD approve (non-blocking)"

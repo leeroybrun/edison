@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
-from edison.core.qa import validator
+from edison.core.qa.engines import EngineRegistry
+from edison.core.qa.evidence import EvidenceService
 
 SUMMARY = "Run a specific validator"
 
@@ -20,7 +21,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
         "validator_id",
-        help="Validator identifier to run (e.g., codex-global, security)",
+        help="Validator identifier to run (e.g., global-codex, security)",
     )
     parser.add_argument(
         "task_id",
@@ -37,9 +38,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Validation round number",
     )
     parser.add_argument(
-        "--model",
+        "--worktree",
         type=str,
-        help="Override the validator model (codex, claude, gemini)",
+        help="Path to git worktree (default: current directory)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be run without executing",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -53,33 +59,85 @@ def main(args: argparse.Namespace) -> int:
     try:
         repo_root = get_repo_root(args)
 
+        # Create engine registry
+        registry = EngineRegistry(project_root=repo_root)
+
         # Get validator configuration
-        config = validator.get_validator_config(args.validator_id, repo_root=repo_root)
+        config = registry.get_validator(args.validator_id)
 
         if not config:
             raise ValueError(f"Unknown validator: {args.validator_id}")
 
-        result = {
-            "validator_id": args.validator_id,
-            "task_id": args.task_id,
-            "session_id": args.session,
-            "round": args.round,
-            "config": config,
-            "status": "ready",
-            "message": f"Validator {args.validator_id} is configured and ready to run",
-        }
+        # Determine worktree path
+        worktree_path = Path(args.worktree) if args.worktree else repo_root
 
-        if args.model:
-            result["model_override"] = args.model
+        if args.dry_run:
+            # Dry run - just show configuration
+            result = {
+                "validator_id": args.validator_id,
+                "task_id": args.task_id,
+                "session_id": args.session,
+                "round": args.round,
+                "worktree": str(worktree_path),
+                "config": {
+                    "name": config.name,
+                    "engine": config.engine,
+                    "fallback_engine": config.fallback_engine,
+                    "wave": config.wave,
+                    "blocking": config.blocking,
+                    "always_run": config.always_run,
+                    "timeout": config.timeout,
+                    "prompt": config.prompt,
+                    "zen_role": config.zen_role,
+                },
+                "status": "dry_run",
+                "message": f"Validator {args.validator_id} would run with engine {config.engine}",
+            }
+        else:
+            # Create evidence service if session provided
+            evidence_service = None
+            if args.session:
+                evidence_service = EvidenceService(args.task_id, repo_root)
+
+            # Run the validator
+            validation_result = registry.run_validator(
+                validator_id=args.validator_id,
+                task_id=args.task_id,
+                session_id=args.session or "cli",
+                worktree_path=worktree_path,
+                round_num=args.round,
+                evidence_service=evidence_service,
+            )
+
+            result = {
+                "validator_id": args.validator_id,
+                "task_id": args.task_id,
+                "session_id": args.session,
+                "round": args.round,
+                "verdict": validation_result.verdict,
+                "summary": validation_result.summary,
+                "duration": validation_result.duration,
+                "exit_code": validation_result.exit_code,
+                "error": validation_result.error,
+                "status": "completed",
+            }
 
         if formatter.json_mode:
             formatter.json_output(result)
         else:
             formatter.text(f"Validator: {args.validator_id}")
             formatter.text(f"  Task: {args.task_id}")
-            formatter.text(f"  Model: {config.get('model', 'default')}")
-            formatter.text(f"  Interface: {config.get('interface', 'clink')}")
-            formatter.text(f"  Blocking: {config.get('blocksOnFail', False)}")
+            formatter.text(f"  Engine: {config.engine}")
+            if config.fallback_engine:
+                formatter.text(f"  Fallback: {config.fallback_engine}")
+            formatter.text(f"  Wave: {config.wave}")
+            formatter.text(f"  Blocking: {config.blocking}")
+
+            if not args.dry_run:
+                formatter.text(f"  Verdict: {result.get('verdict', 'N/A')}")
+                formatter.text(f"  Duration: {result.get('duration', 0):.2f}s")
+                if result.get('error'):
+                    formatter.text(f"  Error: {result['error']}")
 
         return 0
 

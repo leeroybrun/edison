@@ -19,47 +19,60 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from edison.core.utils.cli.arguments import parse_common_args
-from edison.core.utils.cli.output import output_json
-from edison.core.session._config import get_config
+from edison.core.config.domains.workflow import WorkflowConfig
+from edison.core.qa.engines import EngineRegistry
 from edison.core.session import lifecycle as session_manager
-from edison.core.session.core.id import validate_session_id as session_store_validate_session_id
+from edison.core.session._config import get_config
 from edison.core.session.core.context import SessionContext
-from edison.core import task
-from edison.core.qa import validator as qa_validator
-from edison.core.qa import evidence as qa_evidence
-from edison.core.utils.io import read_json as io_read_json
-
-from edison.core.session.next.utils import (
-    project_cfg_dir,
-    slugify,
-    similar_tasks,
-    extract_wave_and_base_id,
-    allocate_child_id,
-)
-from edison.core.session.next.rules import rules_for
+from edison.core.session.core.id import validate_session_id as session_store_validate_session_id
+from edison.core.session.delegation import enhance_delegation_hint, simple_delegation_hint
 from edison.core.session.next.actions import (
-    infer_task_status,
+    build_reports_missing,
+    find_related_in_session,
     infer_qa_status,
+    infer_task_status,
+    load_bundle_followups,
+    load_impl_followups,
     missing_evidence_blockers,
     read_validator_jsons,
-    load_impl_followups,
-    load_bundle_followups,
-    find_related_in_session,
-    build_reports_missing,
 )
 from edison.core.session.next.output import format_human_readable
-from edison.core.config.domains.workflow import WorkflowConfig
-
+from edison.core.session.next.rules import rules_for
+from edison.core.session.next.utils import (
+    allocate_child_id,
+    extract_wave_and_base_id,
+    project_cfg_dir,
+    similar_tasks,
+    slugify,
+)
+from edison.core.utils.cli.arguments import parse_common_args
+from edison.core.utils.cli.output import output_json
+from edison.core.utils.io import read_json as io_read_json
 
 load_session = session_manager.get_session
 validate_session_id = session_store_validate_session_id
 
 
-def _format_cmd_template(template: List[str], **kwargs) -> List[str]:
+def _can_execute_validator(registry: EngineRegistry, validator_id: str) -> bool:
+    """Check if a validator can be executed directly via CLI.
+
+    Args:
+        registry: EngineRegistry instance
+        validator_id: Validator identifier
+
+    Returns:
+        True if the validator's engine CLI is available
+    """
+    config = registry.get_validator(validator_id)
+    if not config:
+        return False
+    engine = registry._get_or_create_engine(config.engine)
+    return engine is not None and engine.can_execute()
+
+
+def _format_cmd_template(template: list[str], **kwargs) -> list[str]:
     """Format a command template with runtime values.
     
     Args:
@@ -73,13 +86,13 @@ def _format_cmd_template(template: List[str], **kwargs) -> List[str]:
 
 
 def _build_action_from_recommendation(
-    rec: Dict[str, Any],
+    rec: dict[str, Any],
     from_state: str,
     to_state: str,
     workflow_cfg: WorkflowConfig,
-    state_spec: Dict[str, Any],
+    state_spec: dict[str, Any],
     **format_kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build an action dict from a recommendation config.
     
     Args:
@@ -95,14 +108,14 @@ def _build_action_from_recommendation(
     """
     domain = rec.get("entity", "task")
     rule_ids = workflow_cfg.get_transition_rules(domain, from_state, to_state) or []
-    
+
     # Build record ID based on entity type
     task_id = format_kwargs.get("task_id", "")
     if domain == "qa":
         record_id = f"{task_id}-qa"
     else:
         record_id = task_id
-    
+
     action = {
         "id": rec.get("id", "unknown"),
         "entity": domain,
@@ -112,18 +125,17 @@ def _build_action_from_recommendation(
         "blocking": rec.get("blocking", False),
         "ruleIds": rule_ids,
     }
-    
+
     if rule_ids:
         action["ruleRef"] = {"id": rule_ids[0]}
-    
+
     return action
 
 # Import build_validation_bundle from graph module (will be migrated)
-from edison.core.session.persistence.graph import build_validation_bundle
 import argparse
 
 
-def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str, Any]:
+def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, Any]:
     """Compute next recommended actions for a session.
 
     Args:
@@ -137,7 +149,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     session = load_session(session_id)
     cfg = get_config()
     workflow_cfg = WorkflowConfig()
-    
+
     # Get semantic state names from config
     STATES = {
         "task": {
@@ -155,16 +167,16 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             "validated": workflow_cfg.get_semantic_state("qa", "validated"),
         },
     }
-    
+
     # state_spec structure expected by rules_for: {"domain": {"transitions": ...}}
     state_spec = cfg._state_config # Accessing internal for now to minimize refactor of rules_for
-    actions: List[Dict[str, Any]] = []
-    blockers: List[Dict[str, Any]] = []
-    followups_plan: List[Dict[str, Any]] = []
-    tasks_map: Dict[str, Any] = session.get("tasks", {}) or {}
+    actions: list[dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
+    followups_plan: list[dict[str, Any]] = []
+    tasks_map: dict[str, Any] = session.get("tasks", {}) or {}
 
     # Validation-first: QA in todo with task done → start validators (promote to wip)
-    for task_id, task_entry in tasks_map.items():
+    for task_id, _task_entry in tasks_map.items():
         t_status = infer_task_status(task_id)
         q_status = infer_qa_status(task_id)
         if q_status == STATES["qa"]["todo"] and t_status == STATES["task"]["done"] and scope in (None, "qa"):
@@ -172,10 +184,22 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             qa_todo = STATES["qa"]["todo"]
             qa_wip = STATES["qa"]["wip"]
             recommendations = workflow_cfg.get_recommendations("qa", qa_todo, qa_wip)
-            
+
             # Build validator roster for this action (with session ID for git-based detection)
-            roster = qa_validator.build_validator_roster(task_id, session_id=session_id)
-            
+            engine_registry = EngineRegistry()
+            roster = engine_registry.build_execution_roster(task_id, session_id=session_id)
+
+            # Check if any validators can be executed directly
+            validators_in_roster = (
+                roster.get("alwaysRequired", [])
+                + roster.get("triggeredBlocking", [])
+                + roster.get("triggeredOptional", [])
+            )
+            can_execute_directly = any(
+                _can_execute_validator(engine_registry, v["id"])
+                for v in validators_in_roster
+            )
+
             if recommendations:
                 # Use config-driven recommendations
                 for rec in recommendations:
@@ -188,16 +212,26 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             else:
                 # Fallback: generate default action if no recommendations in config
                 rule_ids = workflow_cfg.get_transition_rules("qa", qa_todo, qa_wip) or ["RULE.VALIDATION.FIRST"]
+
+                # Recommend direct execution if CLI tools available
+                if can_execute_directly:
+                    cmd = ["edison", "qa", "validate", task_id, "--execute"]
+                    rationale = "Direct CLI validation: execute validators and collect results"
+                else:
+                    cmd = ["edison", "qa", "validate", task_id]
+                    rationale = "Build validator roster for orchestrator delegation"
+
                 actions.append({
-                    "id": "qa.promote.wip",
+                    "id": "qa.validate",
                     "entity": "qa",
                     "recordId": f"{task_id}-qa",
-                    "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", qa_wip],
-                    "rationale": "Validation-first: launch validator wave",
+                    "cmd": cmd,
+                    "rationale": rationale,
                     "ruleRef": {"id": rule_ids[0]} if rule_ids else None,
                     "ruleIds": rule_ids,
                     "blocking": True,
                     "validatorRoster": roster,
+                    "canExecuteDirectly": can_execute_directly,
                 })
 
     # Auto-unblock parents when all children are ready (done or validated)
@@ -293,12 +327,12 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     # Delegation hints for wip tasks (non-mutating suggestions)
     for task_id, task_entry in session.get("tasks", {}).items():
         if task_entry.get("status") == STATES["task"]["wip"] and scope in (None, "tasks"):
-            basic_hint = qa_validator.simple_delegation_hint(
+            basic_hint = simple_delegation_hint(
                 task_id, rule_id="RULE.DELEGATION.PRIORITY_CHAIN"
             )
             if basic_hint:
                 # Enhance hint with detailed reasoning
-                enhanced_hint = qa_validator.enhance_delegation_hint(task_id, basic_hint)
+                enhanced_hint = enhance_delegation_hint(task_id, basic_hint)
                 # Find related tasks for context
                 related = find_related_in_session(session_id, task_id)
 
@@ -319,7 +353,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
         if not impl_fus and not val_fus:
             continue
         # Build suggestions with commands
-        fus_cmds: List[Dict[str, Any]] = []
+        fus_cmds: list[dict[str, Any]] = []
         wave, base = extract_wave_and_base_id(task_id)
         for fu in impl_fus:
             slug = slugify(fu.get("title") or "follow-up")
@@ -463,7 +497,7 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
     reports_missing = build_reports_missing(session)
 
     # Phase 1B: context-aware rules + guard previews via RulesEngine.
-    rules_engine_summary: Dict[str, Any] = {}
+    rules_engine_summary: dict[str, Any] = {}
     engine = None
     try:
         from edison.core.config import ConfigManager
@@ -503,8 +537,8 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
             entity = a.get("entity")
             aid = a.get("id")
             record_id = str(a.get("recordId") or "")
-            from_state: Optional[str] = None
-            to_state: Optional[str] = None
+            from_state: str | None = None
+            to_state: str | None = None
 
             if entity == "task" and aid == "task.promote.done":
                 from_state, to_state = STATES["task"]["wip"], STATES["task"]["done"]
@@ -515,12 +549,12 @@ def compute_next(session_id: str, scope: Optional[str], limit: int) -> Dict[str,
                 continue
 
             task_ctx = {"id": record_id}
-            sess_ctx: Dict[str, Any] = {"id": session.get("id") or session_id}
+            sess_ctx: dict[str, Any] = {"id": session.get("id") or session_id}
             allowed, msg = engine.check_transition_guards(
                 from_state, to_state, task_ctx, sess_ctx, validation_results=None
             )
             guard_status = "allowed" if allowed else "blocked"
-            guard_obj: Dict[str, Any] = {
+            guard_obj: dict[str, Any] = {
                 "from": from_state,
                 "to": to_state,
                 "status": guard_status,

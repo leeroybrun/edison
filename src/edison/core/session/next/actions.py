@@ -5,22 +5,22 @@ Functions for building action recommendations and related task discovery.
 from __future__ import annotations
 
 import fnmatch
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from edison.core.session import lifecycle as session_manager
 from edison.core.qa.evidence import (
-    missing_evidence_blockers,
-    read_validator_jsons,
-    load_impl_followups,
-    load_bundle_followups,
     EvidenceService,
+    load_bundle_followups,  # noqa: F401 - re-exported for compute.py
+    load_impl_followups,  # noqa: F401 - re-exported for compute.py
+    missing_evidence_blockers,  # noqa: F401 - re-exported for compute.py
+    read_validator_jsons,  # noqa: F401 - re-exported for compute.py
 )
+from edison.core.session import lifecycle as session_manager
 from edison.core.session.next.utils import project_cfg_dir
-from edison.core.utils.io import read_json as io_read_json
 from edison.core.task import TaskRepository, safe_relative
+from edison.core.utils.io import read_json as io_read_json
 
 if TYPE_CHECKING:
-    from edison.core.qa.workflow.repository import QARepository
+    pass
 
 
 def infer_task_status(task_id: str) -> str:
@@ -45,7 +45,7 @@ def infer_qa_status(task_id: str) -> str:
         return "missing"
 
 
-def find_related_in_session(session_id: str, task_id: str) -> List[Dict[str, Any]]:
+def find_related_in_session(session_id: str, task_id: str) -> list[dict[str, Any]]:
     """Find related tasks/QAs in session: parent, children, linked tasks.
 
     Helps orchestrator understand dependencies and context.
@@ -101,7 +101,7 @@ def find_related_in_session(session_id: str, task_id: str) -> List[Dict[str, Any
     return related
 
 
-def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
+def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
     """Build reportsMissing list for visibility.
 
     Args:
@@ -112,15 +112,15 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     from edison.core.config.domains.workflow import WorkflowConfig
     workflow_cfg = WorkflowConfig()
-    
+
     # Get QA states from config
     qa_wip = workflow_cfg.get_semantic_state("qa", "wip")
     qa_todo = workflow_cfg.get_semantic_state("qa", "todo")
     qa_active_states = {qa_wip, qa_todo}
-    
-    reports_missing: List[Dict[str, Any]] = []
 
-    for task_id, task_entry in session.get("tasks", {}).items():
+    reports_missing: list[dict[str, Any]] = []
+
+    for task_id, _task_entry in session.get("tasks", {}).items():
         # Validators JSON expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
         if qstat in qa_active_states:
@@ -130,15 +130,11 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             try:
                 from edison.core.config.domains.qa import QAConfig
                 qa_cfg = QAConfig()
-                tiers = qa_cfg.validator_tiers
-                need = []
-                for tier in tiers:
-                    tier_validators = qa_cfg.get_validators_for_tier(tier)
-                    for vv in tier_validators:
-                        # First two tiers are considered critical (blocking by default)
-                        is_critical_tier = tiers.index(tier) < 2 if tier in tiers else False
-                        if vv.get("alwaysRun") or vv.get("blocksOnFail") or is_critical_tier:
-                            need.append(vv.get("id"))
+                validators = qa_cfg.get_validators()
+                need = [
+                    vid for vid, cfg in validators.items()
+                    if cfg.get("always_run") or cfg.get("blocking", True)
+                ]
                 for vid in need:
                     if vid not in have:
                         reports_missing.append({
@@ -175,21 +171,21 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
         try:
             # Load triggers from context7 config domain (not hardcoded)
             from edison.core.config.domains.context7 import Context7Config
-            
+
             def _load_cfg():
                 try:
                     return io_read_json(project_cfg_dir()/"validators"/"config.json")
                 except Exception:
                     return {}
 
-            def _files_for_task(tid: str) -> List[str]:
+            def _files_for_task(tid: str) -> list[str]:
                 try:
                     task_repo = TaskRepository()
                     p = task_repo.get_path(tid)
                     txt = p.read_text(errors="ignore")
                 except FileNotFoundError:
                     return []
-                files: List[str] = []
+                files: list[str] = []
                 capture = False
                 for line in txt.splitlines():
                     if "Primary Files / Areas" in line:
@@ -205,7 +201,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                             files.append(line.split("-", 1)[1].strip())
                 return files
 
-            def _matches(file_path: str, pkg: str, triggers: Dict[str, List[str]]) -> bool:
+            def _matches(file_path: str, pkg: str, triggers: dict[str, list[str]]) -> bool:
                 """Match file path against package triggers from config."""
                 for pat in triggers.get(pkg, []):
                     if fnmatch.fnmatch(file_path, pat):
@@ -215,7 +211,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
             # Load triggers from config instead of hardcoding
             ctx7_config = Context7Config()
             triggers = ctx7_config.triggers  # From context7.yaml
-            
+
             cfg = _load_cfg()
             pkgs = list((cfg.get("postTrainingPackages") or {}).keys())
             files = _files_for_task(task_id)
@@ -225,7 +221,7 @@ def build_reports_missing(session: Dict[str, Any]) -> List[Dict[str, Any]]:
                 ev_root = ev_svc_ctx7.get_evidence_root()
                 latest_round_ctx7 = ev_svc_ctx7.get_current_round()
                 latest = ev_root / f"round-{latest_round_ctx7}" if latest_round_ctx7 is not None else None
-                missing_pkgs: List[str] = []
+                missing_pkgs: list[str] = []
                 for pkg in used:
                     if not latest or (
                         not (latest / f"context7-{pkg}.txt").exists()

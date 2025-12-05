@@ -4,10 +4,10 @@ Human-readable output formatting for compute_next results.
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
-def format_human_readable(payload: Dict[str, Any]) -> str:
+def format_human_readable(payload: dict[str, Any]) -> str:
     """Format compute_next payload as human-readable output.
 
     Args:
@@ -68,23 +68,23 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
             if roster.get("alwaysRequired"):
                 lines.append(f"\n      ✅ Always Required ({len(roster['alwaysRequired'])} validators):")
                 for v in roster["alwaysRequired"]:
-                    lines.append(f"         - {v['id']} (model: {v['model']}, role: {v['zenRole']})")
+                    lines.append(f"         - {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})")
 
             if roster.get("triggeredBlocking"):
                 lines.append(f"\n      ⚠️  Triggered Blocking ({len(roster['triggeredBlocking'])} validators):")
                 for v in roster["triggeredBlocking"]:
                     method_icon = "🎯" if v.get("detectionMethod") == "git-diff" else "📄"
-                    lines.append(f"         {method_icon} {v['id']} (model: {v['model']}, role: {v['zenRole']})")
-                    lines.append(f"           Reason: {v['reason']}")
+                    lines.append(f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})")
+                    lines.append(f"           Reason: {v.get('reason', 'N/A')}")
 
             if roster.get("triggeredOptional"):
                 lines.append(f"\n      💡 Triggered Optional ({len(roster['triggeredOptional'])} validators):")
                 for v in roster["triggeredOptional"]:
                     method_icon = "🎯" if v.get("detectionMethod") == "git-diff" else "📄"
-                    lines.append(f"         {method_icon} {v['id']} (model: {v['model']}, role: {v['zenRole']})")
+                    lines.append(f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})")
 
             if roster.get("decisionPoints"):
-                lines.append(f"\n      🤔 Decision Points:")
+                lines.append("\n      🤔 Decision Points:")
                 for dp in roster["decisionPoints"]:
                     lines.append(f"         - {dp}")
 
@@ -92,11 +92,11 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
         if a.get("delegationDetails"):
             details = a["delegationDetails"]
             if details.get("suggested"):
-                lines.append(f"\n   🔧 DELEGATION SUGGESTION:")
+                lines.append("\n   🔧 DELEGATION SUGGESTION:")
                 lines.append(f"      Model: {details.get('model')} | Role: {details.get('zenRole')}")
                 lines.append(f"      Interface: {details.get('interface')}")
                 if details.get("reasoning"):
-                    lines.append(f"      Reasoning:")
+                    lines.append("      Reasoning:")
                     for r in details["reasoning"]:
                         lines.append(f"         - {r}")
 
@@ -104,7 +104,7 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
         if a.get("relatedTasks"):
             related = a["relatedTasks"]
             if related:
-                lines.append(f"\n   🔗 RELATED TASKS IN SESSION:")
+                lines.append("\n   🔗 RELATED TASKS IN SESSION:")
                 for rel in related[:3]:  # Show max 3
                     lines.append(f"      - {rel['relationship'].upper()}: {rel['taskId']} (task: {rel['taskStatus']}, qa: {rel['qaStatus']})")
                     lines.append(f"        {rel['note']}")
@@ -130,7 +130,7 @@ def format_human_readable(payload: Dict[str, Any]) -> str:
             if r.get("packages"):
                 lines.append(f"     Packages: {', '.join(r['packages'])}")
             if r.get("suggested"):
-                lines.append(f"     Suggested fix:")
+                lines.append("     Suggested fix:")
                 for s in r["suggested"]:
                     lines.append(f"       - {s}")
         lines.append("")

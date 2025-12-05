@@ -582,68 +582,124 @@ npm run build 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-b
 
 ---
 
-### 2. Validator Roster Selection
+### 2. Unified Validator Engine System
 
-Validators are selected based on:
-- Task type
-- Technology stack (packs)
-- File patterns
-- Global validators (always run)
+The validation system uses a centralized `ValidationExecutor` with pluggable engines:
 
-**Example validator roster:**
+**Architecture:**
+```
+ValidationExecutor (core/qa/engines/executor.py)
+       │
+       ├── Wave-based Execution (in configured order)
+       │       │
+       │       ├── Parallel execution within waves
+       │       └── Stop on blocking failure
+       │
+       ├── CLIEngine (direct CLI execution)
+       │       └── codex, claude, gemini, auggie, coderabbit
+       │
+       └── ZenMCPEngine (delegation fallback)
+               └── Generates orchestrator instructions
+```
+
+**Engine configuration:**
 ```yaml
-# From pack configuration
+# From validators.yaml
+engines:
+  codex-cli:
+    type: cli
+    command: codex
+    subcommand: exec
+    response_parser: codex
+
+  zen-mcp:
+    type: delegated
+    description: "Generate delegation instructions for orchestrator"
+
 validators:
-  - name: tdd-compliance
-    type: global
+  global-codex:
+    name: "Global Validator (Codex)"
+    engine: codex-cli
+    fallback_engine: zen-mcp
+    prompt: "_generated/validators/global.md"
+    wave: critical
+    always_run: true
+    blocking: true
 
-  - name: typescript-quality
-    type: tech-specific
-    filePatterns: ["**/*.ts", "**/*.tsx"]
+waves:
+  - name: critical
+    validators: [global-codex, global-claude, security]
+    execution: parallel
+    continue_on_fail: false
 
-  - name: test-coverage
-    type: global
-    minCoverage: 90
-
-  - name: nextjs-best-practices
-    type: tech-specific
-    packs: [nextjs]
+  - name: comprehensive
+    validators: [react, nextjs, api]
+    execution: parallel
+    requires_previous_pass: true
 ```
 
 ---
 
-### 3. Multi-Model Validation
+### 3. Validator Execution
 
-**Parallel execution:**
+**CLI Commands:**
 ```bash
-# Edison runs validators concurrently
+# Show validation roster (without executing)
 edison qa validate <task-id>
+
+# Execute validators directly via CLI engines
+edison qa validate <task-id> --execute
+
+# Execute with parallel workers
+edison qa validate <task-id> --execute --max-workers 8
+
+# Execute specific wave
+edison qa validate <task-id> --execute --wave critical
+
+# Run single validator
+edison qa run <validator-id> <task-id>
 ```
 
-**Configuration:**
-```yaml
-orchestration:
-  maxConcurrentAgents: 4
-  validatorTimeout: 300
-  executionMode: parallel
-```
+**Execution Flow:**
+1. `ValidationExecutor` loads wave configuration
+2. For each wave (in order):
+   - Separates validators: executable (CLI available) vs delegated
+   - Runs executable validators in parallel via `CLIEngine`
+   - Generates delegation instructions for unavailable CLIs via `ZenMCPEngine`
+   - Collects results and checks blocking status
+   - Stops if blocking validators fail
 
-**Validator output:**
+**ValidationResult output:**
 ```json
 {
-  "validator": "tdd-compliance",
-  "taskId": "T-001",
-  "round": 1,
-  "status": "approved",
-  "score": 95,
-  "findings": [],
-  "evidence": {
-    "redPhase": "present",
-    "greenPhase": "present",
-    "refactorPhase": "present"
-  }
+  "validator_id": "global-codex",
+  "verdict": "approve",
+  "summary": "All TDD requirements met",
+  "duration": 45.2,
+  "exit_code": 0,
+  "error": null,
+  "context7_used": true,
+  "context7_packages": ["react", "next"]
 }
 ```
+
+**Mixed Execution (CLI + Delegation):**
+When some CLI tools are available and others aren't:
+```
+Wave: critical
+  ✓ global-codex: approve (2.3s)     ← CLIEngine executed directly
+  ✓ global-claude: approve (1.8s)    ← CLIEngine executed directly
+  → global-gemini: pending           ← ZenMCPEngine generated delegation
+  → global-auggie: pending           ← ZenMCPEngine generated delegation
+
+═══ ORCHESTRATOR ACTION REQUIRED ═══
+Delegation instructions saved to evidence folder.
+```
+
+For delegated validators, the orchestrator must:
+1. Read delegation instructions from evidence folder
+2. Execute validation manually using the specified zenRole
+3. Save results to `validator-<id>-report.json`
 
 ---
 

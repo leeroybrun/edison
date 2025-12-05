@@ -1,13 +1,13 @@
 """Domain-specific configuration for QA.
 
 Provides cached access to QA-related configuration including
-delegation settings, validation config, and concurrency limits.
+delegation settings, validation config, engines, validators, and waves.
 """
 from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..base import BaseDomainConfig
 
@@ -20,21 +20,20 @@ class QAConfig(BaseDomainConfig):
 
     Configuration is loaded from:
     1. Project config: .edison/config/qa.yaml (if exists)
-    2. Bundled defaults: edison.data/config/qa.yaml
-    3. Legacy location: validators.yaml (validation section)
+    2. Bundled defaults: edison.data/config/validators.yaml
     """
 
     def _config_section(self) -> str:
         return "qa"
 
     @cached_property
-    def delegation_config(self) -> Dict[str, Any]:
+    def delegation_config(self) -> dict[str, Any]:
         """Return the ``delegation`` section from configuration."""
         section = self._config.get("delegation", {}) or {}
         return section if isinstance(section, dict) else {}
 
     @cached_property
-    def validation_config(self) -> Dict[str, Any]:
+    def validation_config(self) -> dict[str, Any]:
         """Return the ``validation`` section from configuration.
 
         Returns the top-level validation section from ConfigManager,
@@ -44,7 +43,7 @@ class QAConfig(BaseDomainConfig):
         return section if isinstance(section, dict) else {}
 
     @cached_property
-    def orchestration_config(self) -> Dict[str, Any]:
+    def orchestration_config(self) -> dict[str, Any]:
         """Return the ``orchestration`` section from configuration.
 
         Returns the top-level orchestration section from ConfigManager,
@@ -53,11 +52,11 @@ class QAConfig(BaseDomainConfig):
         section = self._config.get("orchestration", {}) or {}
         return section if isinstance(section, dict) else {}
 
-    def get_delegation_config(self) -> Dict[str, Any]:
+    def get_delegation_config(self) -> dict[str, Any]:
         """Return the ``delegation`` section from configuration."""
         return self.delegation_config
 
-    def get_validation_config(self) -> Dict[str, Any]:
+    def get_validation_config(self) -> dict[str, Any]:
         """Return the ``validation`` section from configuration."""
         return self.validation_config
 
@@ -78,7 +77,7 @@ class QAConfig(BaseDomainConfig):
             )
         return str(session_id)
 
-    def get_required_evidence_files(self) -> List[str]:
+    def get_required_evidence_files(self) -> list[str]:
         """Return the list of required evidence files from configuration.
 
         Returns:
@@ -116,43 +115,72 @@ class QAConfig(BaseDomainConfig):
             )
         return int(value)
 
-    # Alias for consistency with module-level function
     def max_concurrent_validators(self) -> int:
         """Alias for get_max_concurrent_validators."""
         return self.get_max_concurrent_validators()
 
-    @cached_property
-    def validator_tiers(self) -> List[str]:
-        """Return the list of validator tier names from configuration.
+    # Engine-based API methods
 
-        Tiers define logical groupings of validators (e.g., global, critical, specialized).
-        Order matters - earlier tiers run first.
+    @cached_property
+    def engines_config(self) -> dict[str, Any]:
+        """Return the engines configuration.
+
+        Engines define execution backends (CLI tools, delegation, etc.).
 
         Returns:
-            List of tier names in execution order.
+            Dictionary of engine_id -> engine configuration
         """
-        roster = self.validation_config.get("roster", {})
-        if isinstance(roster, dict):
-            # Default tiers if not explicitly configured
-            default_tiers = ["global", "critical", "specialized"]
-            # Use configured tier order or default
-            tier_order = self.validation_config.get("tierOrder", default_tiers)
-            if isinstance(tier_order, list):
-                return tier_order
-            # Fall back to keys from roster that exist
-            return [t for t in default_tiers if t in roster]
-        return ["global", "critical", "specialized"]
+        engines = self.validation_config.get("engines", {})
+        return engines if isinstance(engines, dict) else {}
 
-    @cached_property
-    def validation_waves(self) -> List[Dict[str, Any]]:
-        """Return the validation waves configuration.
+    def get_engines(self) -> dict[str, dict[str, Any]]:
+        """Get all engine configurations.
+
+        Returns:
+            Dictionary of engine_id -> engine configuration
+        """
+        return self.engines_config
+
+    def get_engine(self, engine_id: str) -> dict[str, Any] | None:
+        """Get a specific engine configuration.
+
+        Args:
+            engine_id: Engine identifier
+
+        Returns:
+            Engine configuration dict or None if not found
+        """
+        return self.engines_config.get(engine_id)
+
+    def get_validators(self) -> dict[str, dict[str, Any]]:
+        """Get all validator configurations (flat format).
+
+        Returns:
+            Dictionary of validator_id -> validator configuration
+        """
+        validators = self.validation_config.get("validators", {})
+        return validators if isinstance(validators, dict) else {}
+
+    def get_validator(self, validator_id: str) -> dict[str, Any] | None:
+        """Get a specific validator configuration.
+
+        Args:
+            validator_id: Validator identifier
+
+        Returns:
+            Validator configuration dict or None if not found
+        """
+        return self.get_validators().get(validator_id)
+
+    def get_waves(self) -> list[dict[str, Any]]:
+        """Get wave configurations.
 
         Waves define execution groups with ordering and failure behavior.
 
         Returns:
             List of wave configurations with:
             - name: Wave identifier
-            - tiers: List of validator tiers in this wave
+            - validators: List of validator IDs in this wave
             - execution: "parallel" or "sequential"
             - continue_on_fail: Whether to run next wave if this fails
             - requires_previous_pass: Whether previous wave must pass
@@ -160,43 +188,10 @@ class QAConfig(BaseDomainConfig):
         waves = self.validation_config.get("waves")
         if isinstance(waves, list) and waves:
             return waves
-        
-        # Default waves based on tier structure
-        tiers = self.validator_tiers
-        return [
-            {
-                "name": "blocking",
-                "tiers": [t for t in tiers if t in ("global", "critical")],
-                "execution": "parallel",
-                "continue_on_fail": False,
-                "requires_previous_pass": False,
-            },
-            {
-                "name": "specialized",
-                "tiers": [t for t in tiers if t not in ("global", "critical")],
-                "execution": "parallel",
-                "continue_on_fail": True,
-                "requires_previous_pass": True,
-            },
-        ]
-
-    def get_validators_for_tier(self, tier: str) -> List[Dict[str, Any]]:
-        """Get validators for a specific tier.
-
-        Args:
-            tier: Tier name (e.g., "global", "critical", "specialized")
-
-        Returns:
-            List of validator configurations for that tier
-        """
-        roster = self.validation_config.get("roster", {})
-        if isinstance(roster, dict):
-            validators = roster.get(tier, [])
-            return validators if isinstance(validators, list) else []
         return []
 
-    def get_validators_for_wave(self, wave_name: str) -> List[Dict[str, Any]]:
-        """Get all validators for a wave (across all its tiers).
+    def get_validators_for_wave(self, wave_name: str) -> list[dict[str, Any]]:
+        """Get all validators for a wave.
 
         Args:
             wave_name: Name of the wave
@@ -204,18 +199,21 @@ class QAConfig(BaseDomainConfig):
         Returns:
             List of validator configurations for that wave
         """
-        waves = self.validation_waves
+        waves = self.get_waves()
         wave = next((w for w in waves if w.get("name") == wave_name), None)
         if not wave:
             return []
-        
-        validators: List[Dict[str, Any]] = []
-        for tier in wave.get("tiers", []):
-            validators.extend(self.get_validators_for_tier(tier))
-        return validators
+
+        wave_validator_ids = wave.get("validators", [])
+        all_validators = self.get_validators()
+        return [
+            all_validators[vid]
+            for vid in wave_validator_ids
+            if vid in all_validators
+        ]
 
 
-def load_config(repo_root: Optional[Path] = None) -> QAConfig:
+def load_config(repo_root: Path | None = None) -> QAConfig:
     """Load and return a QAConfig instance.
 
     Args:
@@ -227,7 +225,7 @@ def load_config(repo_root: Optional[Path] = None) -> QAConfig:
     return QAConfig(repo_root=repo_root)
 
 
-def load_delegation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
+def load_delegation_config(repo_root: Path | None = None) -> dict[str, Any]:
     """Load delegation configuration from QA config.
 
     Args:
@@ -239,7 +237,7 @@ def load_delegation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
     return QAConfig(repo_root=repo_root).get_delegation_config()
 
 
-def load_validation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
+def load_validation_config(repo_root: Path | None = None) -> dict[str, Any]:
     """Load validation configuration from QA config.
 
     Args:
@@ -251,7 +249,7 @@ def load_validation_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
     return QAConfig(repo_root=repo_root).get_validation_config()
 
 
-def max_concurrent_validators(repo_root: Optional[Path] = None) -> int:
+def max_concurrent_validators(repo_root: Path | None = None) -> int:
     """Get the maximum number of concurrent validators.
 
     Args:
@@ -270,7 +268,3 @@ __all__ = [
     "load_validation_config",
     "max_concurrent_validators",
 ]
-
-
-
-

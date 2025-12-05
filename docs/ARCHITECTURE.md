@@ -122,10 +122,20 @@ edison.core/
 ├── qa/                     # QA and validation domain
 │   ├── models.py          # QARecord entity
 │   ├── manager.py         # QA lifecycle operations
-│   ├── validator/         # Validator management
-│   │   ├── roster.py      # Validator roster building
-│   │   ├── delegation.py  # Validator delegation
-│   │   └── external.py    # External CLI validator runner (CodeRabbit)
+│   ├── validator/         # Validator utilities
+│   │   └── base.py        # Template processing, dimension validation
+│   ├── engines/           # Unified validator engine system
+│   │   ├── base.py        # ValidationResult, ValidatorConfig, EngineProtocol
+│   │   ├── executor.py    # ValidationExecutor - centralized execution
+│   │   ├── cli.py         # CLIEngine - executes CLI validators
+│   │   ├── delegated.py   # ZenMCPEngine - orchestrator delegation
+│   │   ├── registry.py    # EngineRegistry - engine/validator management
+│   │   └── parsers/       # CLI output parsers
+│   │       ├── codex.py   # Codex JSONL parser
+│   │       ├── claude.py  # Claude JSON parser
+│   │       ├── gemini.py  # Gemini JSON parser
+│   │       ├── auggie.py  # Auggie JSON parser
+│   │       └── coderabbit.py # CodeRabbit text parser
 │   ├── evidence/          # Validation evidence
 │   │   ├── io.py          # Evidence file I/O
 │   │   ├── analysis.py    # Evidence analysis
@@ -790,27 +800,26 @@ Agents are defined in `edison.data/agents/`:
 - `feature-implementer.md`: Feature implementation
 - `test-engineer.md`: Test development
 
-### Validator Roster
+### Validator Configuration
 
-Validators are defined in `edison.data/validators/`:
-- **Critical validators**: Must pass for QA to succeed (includes CodeRabbit)
-- **Global validators**: Run on all tasks
-- **Pack validators**: Technology-specific checks
-- **External validators**: CLI tools (e.g., CodeRabbit) executed separately with LLM report transformation
+Validators are configured in `validators.yaml` with:
+- **Engines**: CLI execution backends (codex-cli, claude-cli, gemini-cli, auggie-cli, coderabbit-cli, zen-mcp)
+- **Validators**: Flat list with engine references, prompts, and execution parameters
+- **Waves**: Execution groups (critical, comprehensive) with ordering and failure behavior
 
-### Delegation Flow
+### Validator Execution Flow
 
-1. **Orchestrator** identifies task requiring delegation
-2. **Rule engine** suggests appropriate agent/validator
-3. **Orchestrator** delegates via `edison qa run` or manual delegation
-4. **External validators** (e.g., CodeRabbit) execute first, capturing output as evidence
-5. **Agent/Validator** executes in isolated context (Zen MCP)
-6. **Evidence** collected in `.edison/qa/validation-evidence/{task-id}/`
-7. **Orchestrator** reviews evidence and decides next action
+1. **Orchestrator** triggers validation via `edison qa validate <task-id>`
+2. **EngineRegistry** loads validator configurations and builds execution roster
+3. **CLIEngine** executes validators directly via CLI tools when available
+4. **Fallback**: If CLI unavailable, `ZenMCPEngine` generates delegation instructions
+5. **Parsers** normalize CLI output to structured `ValidationResult`
+6. **Evidence** saved to `.edison/qa/validation-evidence/{task-id}/round-N/`
+7. **Results** feed into QA state machine for promotion decisions
 
-### External Validator Flow (CodeRabbit)
+### Unified Validator Execution
 
-External validators follow a hybrid execution model:
+The validation system uses a centralized `ValidationExecutor` for all execution:
 
 ```
 ┌─────────────────────┐
@@ -818,37 +827,50 @@ External validators follow a hybrid execution model:
 │  (qa validate)      │
 └──────────┬──────────┘
            │
-           │ 1. Execute CodeRabbit CLI
-           │    coderabbit review --prompt-only
+           │ 1. ValidationExecutor.execute()
            ↓
 ┌─────────────────────┐
-│  CodeRabbit CLI     │
-│  (7-30 min)         │
+│  ValidationExecutor │
+│  (executor.py)      │
 └──────────┬──────────┘
            │
-           │ 2. Capture plain text output
+           │ 2. For each wave (in order):
+           │    ├── Separate: executable vs delegated
+           │    ├── Run executable in parallel (CLIEngine)
+           │    └── Generate delegation for others (ZenMCPEngine)
            ↓
+    ┌──────┴──────┐
+    ↓             ↓
+┌─────────┐  ┌─────────────┐
+│CLIEngine│  │ZenMCPEngine │
+└────┬────┘  └──────┬──────┘
+     │              │
+     │ Execute      │ Generate
+     │ subprocess   │ instructions
+     ↓              ↓
+┌─────────┐  ┌─────────────┐
+│ Parser  │  │ Delegation  │
+│(*.py)   │  │ Instructions│
+└────┬────┘  └──────┬──────┘
+     │              │
+     └──────┬───────┘
+            ↓
 ┌─────────────────────┐
-│  Evidence File      │
-│  command-coderabbit.txt
-└──────────┬──────────┘
-           │
-           │ 3. LLM Validator reads evidence
-           ↓
-┌─────────────────────┐
-│  LLM Validator      │
-│  (coderabbit.md)    │
-└──────────┬──────────┘
-           │
-           │ 4. Transform to structured report
-           ↓
-┌─────────────────────┐
-│  Edison Report      │
-│  (JSON)             │
+│  Evidence Files     │
+│  (round-N/)         │
+├─────────────────────┤
+│ command-*.txt       │ ← CLI output
+│ delegation-*.md     │ ← Orchestrator instructions
+│ validator-*-report  │ ← Structured results
 └─────────────────────┘
 ```
 
-This approach avoids LLM timeout issues while still leveraging LLM intelligence for report transformation.
+**Key Features:**
+- **Wave-based execution**: Validators grouped into ordered waves
+- **Parallel execution**: Within each wave, validators run concurrently
+- **Automatic fallback**: CLI → delegation when tools not installed
+- **Mixed execution**: CLI and delegated validators in same wave
+- **Evidence collection**: All output saved to validation evidence
 
 ---
 
