@@ -10,7 +10,6 @@ from .archive import archive_session
 from .graph import (
     register_task,
     register_qa,
-    update_record_status,
     link_tasks,
     gather_cluster,
     build_validation_bundle,
@@ -28,7 +27,6 @@ __all__ = [
     # Graph
     "register_task",
     "register_qa",
-    "update_record_status",
     "link_tasks",
     "gather_cluster",
     "build_validation_bundle",

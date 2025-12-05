@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from edison.data.utils import get_task_id_from_context
+
 
 def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
     """QA can be validated if all blocking validators passed.
@@ -263,31 +265,8 @@ def _is_passed(report: Mapping[str, Any]) -> bool:
     return verdict in ("pass", "approved", "passed")
 
 
-def _get_task_id(ctx: Mapping[str, Any]) -> str | None:
-    """Extract task_id from context in various forms."""
-    # Direct task_id
-    if ctx.get("task_id"):
-        return str(ctx["task_id"])
-
-    # From QA dict
-    qa = ctx.get("qa")
-    if isinstance(qa, Mapping):
-        tid = qa.get("task_id") or qa.get("taskId")
-        if tid:
-            return str(tid)
-
-    # From task dict
-    task = ctx.get("task")
-    if isinstance(task, Mapping):
-        tid = task.get("id")
-        if tid:
-            return str(tid)
-
-    # From entity_id if entity_type is qa
-    if ctx.get("entity_type") == "qa" and ctx.get("entity_id"):
-        return str(ctx["entity_id"])
-
-    return None
+# Use shared utility for task_id extraction
+_get_task_id = get_task_id_from_context
 
 
 def _fetch_task(task_id: str) -> Mapping[str, Any] | None:

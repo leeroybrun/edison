@@ -204,12 +204,16 @@ class BaseEntity:
         """Create from dictionary representation.
         
         Note: Subclasses should override this method to handle
-        their additional fields.
+        their additional fields and state defaults.
         """
         history_data = data.get("stateHistory", [])
+        # State should be provided; subclasses define their own config-driven defaults
+        state = data.get("state", "")
+        if not state:
+            raise ValueError("Entity state must be provided in data dict")
         return cls(
             id=data.get("id", ""),
-            state=data.get("state", "todo"),
+            state=state,
             metadata=EntityMetadata.from_dict(data.get("metadata", {})),
             state_history=[StateHistoryEntry.from_dict(h) for h in history_data],
         )

@@ -12,6 +12,30 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
+def get_config_value(config: Dict[str, Any], path: str) -> Any:
+    """Get config value by dot-separated path.
+
+    Utility function for navigating nested config dictionaries.
+
+    Args:
+        config: Configuration dictionary
+        path: Dot-separated path like 'features.auth.enabled'
+
+    Returns:
+        The config value or None if not found
+    """
+    parts = path.split(".")
+    current: Any = config
+    for part in parts:
+        if isinstance(current, dict):
+            current = current.get(part)
+        else:
+            return None
+        if current is None:
+            return None
+    return current
+
+
 @dataclass
 class CompositionContext:
     """Context for all composition operations.
@@ -47,16 +71,7 @@ class CompositionContext:
         Returns:
             The config value or None if not found
         """
-        parts = path.split(".")
-        current: Any = self.config
-        for part in parts:
-            if isinstance(current, dict):
-                current = current.get(part)
-            else:
-                return None
-            if current is None:
-                return None
-        return current
+        return get_config_value(self.config, path)
 
     def has_pack(self, pack_name: str) -> bool:
         """Check if a pack is active.

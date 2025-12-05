@@ -64,8 +64,12 @@ class TaskConfig(BaseDomainConfig):
     # ------------------------------------------------------------------
     @cached_property
     def _state_machine(self) -> Dict[str, Dict]:
-        """Get the statemachine configuration section."""
-        return dict(self._config.get("statemachine", {}) or {})
+        """Get the statemachine configuration section.
+        
+        State machine config is under workflow.statemachine in the merged config.
+        """
+        workflow_section = self._config.get("workflow", {}) or {}
+        return dict(workflow_section.get("statemachine", {}) or {})
 
     def task_states(self) -> List[str]:
         """Get list of valid task states from configuration."""

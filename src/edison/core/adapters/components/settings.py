@@ -177,10 +177,4 @@ class SettingsComposer(AdapterComponent):
         return target
 
 
-__all__ = ["SettingsComposer", "merge_permissions", "ALLOWED_TYPES"]
-
-# Re-export ALLOWED_TYPES from hooks for backward compatibility
-try:
-    from .hooks import ALLOWED_TYPES
-except ImportError:
-    pass
+__all__ = ["SettingsComposer", "merge_permissions"]

@@ -31,44 +31,57 @@ def task_env(tmp_path, monkeypatch):
     repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "config"
 
-    # 1. defaults.yaml (State Machine + Semantics)
+    # 1. workflow.yaml (State Machine + Semantics + Lifecycle)
+    # Note: statemachine must be under workflow key per WorkflowConfig
     write_yaml(
-        config_dir / "defaults.yaml",
+        config_dir / "workflow.yaml",
         {
-            "statemachine": {
-                "task": {
-                    "states": {
-                        "todo": {"allowed_transitions": [{"to": "wip"}]},
-                        "wip": {"allowed_transitions": [{"to": "done"}]},
-                        "done": {"allowed_transitions": [{"to": "validated"}]},
-                        "validated": {"allowed_transitions": []},
+            "workflow": {
+                "validationLifecycle": {},
+                "timeouts": {},
+                "statemachine": {
+                    "task": {
+                        "states": {
+                            "todo": {"allowed_transitions": [{"to": "wip", "guard": "always_allow"}]},
+                            "wip": {"allowed_transitions": [{"to": "done", "guard": "always_allow"}]},
+                            "done": {"allowed_transitions": [{"to": "validated", "guard": "always_allow"}]},
+                            "validated": {"allowed_transitions": []},
+                        },
+                    },
+                    "qa": {
+                        "states": {
+                            "waiting": {"allowed_transitions": [{"to": "todo", "guard": "always_allow"}]},
+                            "todo": {"allowed_transitions": [{"to": "wip", "guard": "always_allow"}]},
+                            "wip": {"allowed_transitions": [{"to": "done", "guard": "always_allow"}]},
+                            "done": {"allowed_transitions": [{"to": "validated", "guard": "always_allow"}]},
+                            "validated": {"allowed_transitions": []},
+                        }
+                    },
+                    "session": {
+                        "states": {
+                            "active": {"initial": True, "allowed_transitions": [{"to": "wip", "guard": "always_allow"}]},
+                            "wip": {"allowed_transitions": [{"to": "closing", "guard": "always_allow"}]},
+                            "closing": {"allowed_transitions": [{"to": "done", "guard": "always_allow"}]},
+                            "done": {"final": True, "allowed_transitions": []},
+                        }
+                    }
+                },
+                "semantics": {
+                    "task": {
+                        "todo": "todo",
+                        "wip": "wip",
+                        "done": "done",
+                        "validated": "validated",
+                    },
+                    "qa": {
+                        "waiting": "waiting",
+                        "todo": "todo",
+                        "wip": "wip",
+                        "done": "done",
+                        "validated": "validated",
                     },
                 },
-                "qa": {
-                    "states": {
-                        "waiting": {"allowed_transitions": [{"to": "todo"}]},
-                        "todo": {"allowed_transitions": [{"to": "wip"}]},
-                        "wip": {"allowed_transitions": [{"to": "done"}]},
-                        "done": {"allowed_transitions": [{"to": "validated"}]},
-                        "validated": {"allowed_transitions": []},
-                    }
-                }
-            },
-            "semantics": {
-                "task": {
-                    "todo": "todo",
-                    "wip": "wip",
-                    "done": "done",
-                    "validated": "validated",
-                },
-                "qa": {
-                    "waiting": "waiting",
-                    "todo": "todo",
-                    "wip": "wip",
-                    "done": "done",
-                    "validated": "validated",
-                },
-            },
+            }
         },
     )
 

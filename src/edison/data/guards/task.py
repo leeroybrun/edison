@@ -47,27 +47,37 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
     FAIL-CLOSED: Returns False if evidence is missing.
     
     Prerequisites:
-    - Task must exist in context with valid ID
+    - Task ID must be in context (via 'task.id' or 'entity_id')
     - Implementation report JSON must exist in evidence directory
     
     Args:
-        ctx: Context with 'task' dict containing 'id'
+        ctx: Context with task ID (via 'task' dict or 'entity_id') and optionally 'project_root'
         
     Returns:
         True if implementation report exists for latest round
     """
-    task = ctx.get("task")
-    if not isinstance(task, Mapping):
-        return False  # FAIL-CLOSED
+    # Try to get task_id from various context patterns
+    task_id = None
     
-    task_id = task.get("id")
+    # Pattern 1: task dict with id
+    task = ctx.get("task")
+    if isinstance(task, Mapping):
+        task_id = task.get("id")
+    
+    # Pattern 2: entity_id (from transition_entity)
     if not task_id:
-        return False  # FAIL-CLOSED
+        task_id = ctx.get("entity_id")
+    
+    if not task_id:
+        return False  # FAIL-CLOSED: no task ID found
+    
+    # Get project_root from context if available (for isolated test environments)
+    project_root = ctx.get("project_root")
     
     # Check implementation report exists
     try:
         from edison.core.qa.evidence import EvidenceService
-        ev_svc = EvidenceService(str(task_id))
+        ev_svc = EvidenceService(str(task_id), project_root=project_root)
         latest = ev_svc.get_current_round()
         if latest is not None:
             report = ev_svc.read_implementation_report(latest)

@@ -14,16 +14,21 @@ def _use_root(tmp_path: Path) -> None:
     clear_all_caches()
 
 def test_state_validator_allows_declared_transition(tmp_path: Path) -> None:
+    """Test state validator allows declared transitions.
+    
+    Uses wip->todo transition which has always_allow guard in production.
+    """
     write_config(
         tmp_path,
         """
         statemachine:
           task:
             states:
-              todo:
+              wip:
                 allowed_transitions:
-                  - to: done
-              done:
+                  - to: todo
+                    guard: always_allow
+              todo:
                 allowed_transitions: []
         """,
     )
@@ -31,7 +36,8 @@ def test_state_validator_allows_declared_transition(tmp_path: Path) -> None:
 
     validator = StateValidator(repo_root=tmp_path)
 
-    validator.ensure_transition("task", "todo", "done")
+    # Uses production workflow.yaml which has always_allow for wip->todo
+    validator.ensure_transition("task", "wip", "todo")
 
 def test_state_validator_blocks_undeclared_transition(tmp_path: Path) -> None:
     write_config(

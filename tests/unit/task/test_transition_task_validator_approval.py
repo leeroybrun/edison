@@ -111,10 +111,21 @@ def test_transition_task_allows_when_bundle_approved(
     )
     task_repo.save(task)
 
-    # Seed bundle-approved.json for evidence round
+    # Seed evidence for round (required by can_finish_task guard)
     evidence_root = root / ".project" / "qa" / "validation-evidence"
     round_dir = evidence_root / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create implementation report (required by can_finish_task guard)
+    impl_report = round_dir / "implementation-report.json"
+    impl_report.write_text(json.dumps({
+        "taskId": task_id,
+        "round": 1,
+        "status": "complete",
+        "summary": "Test implementation",
+    }), encoding="utf-8")
+    
+    # Create bundle-approved.json (required by validator-approval rule)
     bundle_path = round_dir / "bundle-approved.json"
     bundle_data = {"taskId": task_id, "round": 1, "approved": True}
     bundle_path.write_text(json.dumps(bundle_data), encoding="utf-8")

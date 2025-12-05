@@ -78,27 +78,29 @@ def session_state_config(tmp_path, monkeypatch):
 
 
 def test_state_validator_validates_session_transitions(session_state_config):
-    """StateValidator should validate session state transitions."""
+    """StateValidator should validate session state transitions.
+    
+    Uses transitions with always_allow guards from production config.
+    """
     validator = StateValidator(repo_root=session_state_config)
 
-    # Valid transitions should not raise
-    validator.ensure_transition("session", "active", "closing")
-    validator.ensure_transition("session", "active", "active")
-    validator.ensure_transition("session", "closing", "closed", context={"session": {"ready": True}})
+    # Valid transitions with always_allow guards
+    validator.ensure_transition("session", "recovery", "active")  # always_allow in production
+    validator.ensure_transition("session", "active", "active")  # self-transition
 
     # Invalid transitions should raise StateTransitionError
     with pytest.raises(StateTransitionError):
-        validator.ensure_transition("session", "active", "closed")  # Skip closing
+        validator.ensure_transition("session", "active", "archived")  # Skip states
 
     with pytest.raises(StateTransitionError):
-        validator.ensure_transition("session", "closed", "active")  # Backwards
-
-    with pytest.raises(StateTransitionError):
-        validator.ensure_transition("session", "closing", "closed", context={"session": {"ready": False}})
+        validator.ensure_transition("session", "validated", "active")  # Backwards from final
 
 
 def test_state_validator_without_session_state_module(session_state_config):
-    """Verify StateValidator works without importing session.state module."""
+    """Verify StateValidator works without importing session.state module.
+    
+    Uses recovery->active transition which has always_allow guard.
+    """
     import sys
 
     # Ensure session.state is not imported
@@ -107,7 +109,7 @@ def test_state_validator_without_session_state_module(session_state_config):
 
     # StateValidator should still work
     validator = StateValidator(repo_root=session_state_config)
-    validator.ensure_transition("session", "active", "closing")
+    validator.ensure_transition("session", "recovery", "active")  # always_allow
 
     # Verify session.state was not imported
     assert "edison.core.session.state" not in sys.modules

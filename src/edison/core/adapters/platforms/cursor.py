@@ -17,7 +17,8 @@ from edison.core.adapters.base import PlatformAdapter
 from edison.core.adapters.components.commands import CommandComposer
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.composition.registries.generic import GenericRegistry
-from edison.core.rules import RulesRegistry, RulesCompositionError
+from edison.core.rules import RulesRegistry
+from edison.core.composition.core.errors import RulesCompositionError
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import write_json_atomic, ensure_directory
 

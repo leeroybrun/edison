@@ -10,10 +10,10 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import Sequence
 
 from edison.core.mcp.config import build_mcp_servers, configure_mcp_json
 from edison.cli import OutputFormatter, add_dry_run_flag
+from edison.cli.mcp._utils import normalize_servers
 
 SUMMARY = "Setup MCP servers defined in mcp.yaml (no mocks, YAML-driven)"
 
@@ -46,13 +46,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _normalize_servers(raw: Sequence[str] | None) -> list[str] | None:
-    if raw is None:
-        return None
-    servers = [s.strip() for s in raw if s and s.strip()]
-    return servers or None
-
-
 def _find_missing_commands(requirements: Sequence[str]) -> list[str]:
     missing: list[str] = []
     for cmd in requirements:
@@ -67,7 +60,7 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     project_root = Path(args.project_path).expanduser().resolve()
-    server_ids = _normalize_servers(args.servers)
+    server_ids = normalize_servers(args.servers)
 
     try:
         target_path, servers, setup = build_mcp_servers(project_root)

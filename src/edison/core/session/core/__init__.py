@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from .models import (
     SessionPaths,
-    TaskEntry,
-    QAEntry,
     GitInfo,
     Session,
 )
@@ -27,8 +25,6 @@ from .context import SessionContext
 __all__ = [
     # Models
     "SessionPaths",
-    "TaskEntry",
-    "QAEntry",
     "GitInfo",
     "Session",
     # ID validation

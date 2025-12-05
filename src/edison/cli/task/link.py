@@ -2,6 +2,9 @@
 Edison task link command.
 
 SUMMARY: Link parent-child tasks
+
+Links are stored in task entities (parent_id, child_ids fields),
+NOT in session JSON. This is the single source of truth.
 """
 
 from __future__ import annotations
@@ -11,9 +14,6 @@ import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.task import TaskRepository, normalize_record_id
-from edison.core.session import validate_session_id
-from edison.core.utils.io import write_json_atomic
-from edison.core.session.core.models import Session
 
 SUMMARY = "Link parent-child tasks"
 
@@ -31,7 +31,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session",
         type=str,
-        help="Session ID to associate the link with",
+        help="Session ID context (optional - links are stored in task files)",
     )
     parser.add_argument(
         "--unlink",
@@ -43,9 +43,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Link tasks - delegates to core library using entity-based API."""
+    """Link tasks - stores relationships in task entities (single source of truth)."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
-
 
     try:
         # Resolve project root
@@ -57,73 +56,46 @@ def main(args: argparse.Namespace) -> int:
 
         # Get both tasks using repository
         task_repo = TaskRepository(project_root=project_root)
-        parent_entity = task_repo.get(parent_id)
-        child_entity = task_repo.get(child_id)
+        parent_task = task_repo.get(parent_id)
+        child_task = task_repo.get(child_id)
 
-        if not parent_entity:
+        if not parent_task:
             raise ValueError(f"Parent task not found: {parent_id}")
-        if not child_entity:
+        if not child_task:
             raise ValueError(f"Child task not found: {child_id}")
 
         if args.unlink:
-            # Remove link - update metadata files
-            # This requires updating the task markdown frontmatter
-            # For now, print instruction
-            formatter.json_output({
+            # Remove link from both tasks
+            if child_id in parent_task.child_ids:
+                parent_task.child_ids.remove(child_id)
+            child_task.parent_id = None
+            
+            # Save updated tasks
+            task_repo.save(parent_task)
+            task_repo.save(child_task)
+            
+            result = {
                 "action": "unlink",
-                "parent_id": parent_id,
-                "child_id": child_id,
-                "status": "not_implemented",
-                "message": "Unlinking requires metadata update - use task metadata editing",
-            }) if formatter.json_mode else formatter.text(
-                f"Unlink not yet implemented\n"
-                f"To unlink {child_id} from {parent_id}:\n"
-                f"  Edit the child task file and remove parent reference"
+                "parentId": parent_id,
+                "childId": child_id,
+                "status": "success",
+            }
+            
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Unlinked {child_id} from parent {parent_id}"
             )
-            return 1
         else:
-            # Create link - update session if provided
-            if args.session:
-                from edison.core.session.persistence.repository import SessionRepository
-
-                session_id = validate_session_id(args.session)
-
-                # Find or create session
-                session_repo = SessionRepository(project_root=project_root)
-                session_entity = session_repo.get(session_id)
-
-                if session_entity:
-                    session = session_entity.to_dict()
-                else:
-                    # Create new session in draft state
-                    session = {
-                        "id": session_id,
-                        "state": "draft",
-                        "meta": {
-                            "sessionId": session_id,
-                            "createdAt": "2000-01-01T00:00:00Z",
-                        },
-                        "tasks": {},
-                        "qa": {},
-                        "activityLog": [],
-                    }
-
-                # Update task graph
-                session.setdefault("tasks", {})
-                session["tasks"][parent_id] = session["tasks"].get(parent_id, {})
-                session["tasks"][child_id] = {
-                    "parentId": parent_id,
-                }
-
-                # Save session
-                try:
-                    session_entity = Session.from_dict(session)
-                    session_repo.save(session_entity)
-                except:
-                    # Create session directory structure
-                    session_dir = project_root / ".project" / "sessions" / "draft" / session_id
-                    session_dir.mkdir(parents=True, exist_ok=True)
-                    write_json_atomic(session_dir / "session.json", session)
+            # Create link - update both task entities
+            # Update parent's child_ids
+            if child_id not in parent_task.child_ids:
+                parent_task.child_ids.append(child_id)
+            
+            # Update child's parent_id
+            child_task.parent_id = parent_id
+            
+            # Save updated tasks
+            task_repo.save(parent_task)
+            task_repo.save(child_task)
 
             # Output result
             result = {
@@ -137,8 +109,7 @@ def main(args: argparse.Namespace) -> int:
 
             link_text = f"Linked {child_id} to parent {parent_id}"
             if args.session:
-                link_text += f"\nSession: {args.session}"
-            link_text += f"\n\nTo persist this link, add to the child task file:\n  parent: {parent_id}"
+                link_text += f"\nSession context: {args.session}"
 
             formatter.json_output(result) if formatter.json_mode else formatter.text(link_text)
 

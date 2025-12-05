@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.config.domains.context7 import Context7Config, load_triggers, load_aliases
+from edison.core.config.domains.context7 import Context7Config
 from edison.data import read_yaml
 
 
@@ -91,17 +91,19 @@ def test_context7_config_loads_aliases(context7_config: Context7Config) -> None:
     assert aliases["react-dom"] == "react"
 
 
-def test_load_triggers_helper() -> None:
-    """Verify load_triggers() module function works."""
-    triggers = load_triggers()
+def test_get_triggers_method() -> None:
+    """Verify Context7Config.get_triggers() works."""
+    config = Context7Config()
+    triggers = config.get_triggers()
     assert isinstance(triggers, dict)
     assert "react" in triggers
     assert "next" in triggers
 
 
-def test_load_aliases_helper() -> None:
-    """Verify load_aliases() module function works."""
-    aliases = load_aliases()
+def test_get_aliases_method() -> None:
+    """Verify Context7Config.get_aliases() works."""
+    config = Context7Config()
+    aliases = config.get_aliases()
     assert isinstance(aliases, dict)
     assert "react-dom" in aliases
     assert aliases["react-dom"] == "react"
@@ -109,7 +111,8 @@ def test_load_aliases_helper() -> None:
 
 def test_triggers_match_hardcoded_defaults() -> None:
     """Verify config triggers match the original hardcoded DEFAULT_TRIGGERS."""
-    triggers = load_triggers()
+    config = Context7Config()
+    triggers = config.get_triggers()
 
     # Original hardcoded values
     expected_react = ["*.tsx", "*.jsx", "**/components/**/*"]
@@ -130,7 +133,8 @@ def test_triggers_match_hardcoded_defaults() -> None:
 
 def test_aliases_match_hardcoded_defaults() -> None:
     """Verify config aliases match the original hardcoded ALIASES."""
-    aliases = load_aliases()
+    config = Context7Config()
+    aliases = config.get_aliases()
 
     # Original hardcoded values
     expected = {

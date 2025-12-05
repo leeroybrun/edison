@@ -118,6 +118,7 @@ def transition_entity(
     current_state: Optional[str] = None,
     context: Optional[Dict[str, Any]] = None,
     record_history: bool = True,
+    repo_root: Optional["Path"] = None,
 ) -> Dict[str, Any]:
     """Execute a state transition for any entity type.
     
@@ -134,6 +135,7 @@ def transition_entity(
         current_state: Current state (if not provided, defaults to initial state from config)
         context: Context dict for guards/conditions/actions
         record_history: Whether to record state history
+        repo_root: Optional repository root for config resolution (used in tests)
         
     Returns:
         Dict with updated state and optional history
@@ -141,25 +143,36 @@ def transition_entity(
     Raises:
         EntityTransitionError: If transition is not allowed
     """
+    from pathlib import Path
     from edison.core.config.domains.workflow import WorkflowConfig
-    workflow_cfg = WorkflowConfig()
+    workflow_cfg = WorkflowConfig(repo_root=repo_root)
     default_state = workflow_cfg.get_initial_state(entity_type)
     from_state = current_state or default_state
     ctx = dict(context or {})
     ctx["entity_type"] = entity_type
     ctx["entity_id"] = entity_id
+    # Include repo_root in context for guards that need to resolve paths
+    if repo_root:
+        ctx["project_root"] = repo_root
     
-    # Validate transition
-    valid, error = validate_transition(entity_type, from_state, to_state, context=ctx)
-    if not valid:
+    # Validate transition using state validator with repo_root
+    from edison.core.state.validator import StateValidator, MissingStateMachine
+    
+    try:
+        validator = StateValidator(repo_root=repo_root)
+        validator.ensure_transition(entity_type, from_state, to_state, context=ctx)
+    except MissingStateMachine:
+        # No state machine configured - allow transition
+        pass
+    except StateTransitionError as e:
         raise EntityTransitionError(
-            error,
+            str(e),
             entity_type=entity_type,
             entity_id=entity_id,
             from_state=from_state,
             to_state=to_state,
-            reason=error,
-        )
+            reason=str(e),
+        ) from e
     
     # Build result
     result: Dict[str, Any] = {
@@ -178,13 +191,10 @@ def transition_entity(
         result["history_entry"] = history_entry
     
     # Execute actions for the target state (if machine exists)
-    # Use StateValidator's machine for action execution
-    from edison.core.state.validator import StateValidator, MissingStateMachine
-
     try:
-        validator = StateValidator()
+        validator = StateValidator(repo_root=repo_root)
         machine = validator._machine(entity_type)
-        # Validate and execute actions
+        # Execute actions (validation already done above)
         machine.validate(from_state, to_state, context=ctx, execute_actions=True)
     except MissingStateMachine:
         # No state machine configured - skip action execution

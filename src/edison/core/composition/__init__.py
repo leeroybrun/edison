@@ -49,7 +49,6 @@ from .includes import (
     resolve_includes,
     get_cache_dir,
     validate_composition,
-    MAX_DEPTH,
     _repo_root,
 )
 
@@ -175,7 +174,6 @@ __all__ = [
     "resolve_includes",
     "get_cache_dir",
     "validate_composition",
-    "MAX_DEPTH",
     "_repo_root",
     # Packs
     "auto_activate_packs",

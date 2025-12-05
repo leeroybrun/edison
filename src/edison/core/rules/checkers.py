@@ -74,6 +74,7 @@ def _load_json_safe(path: Path) -> Dict[str, Any]:
         return {}
 
 
+@register_checker("validator-approval")
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
     """Check if task has a valid, recent validator bundle approval.
 
@@ -246,10 +247,6 @@ def check_coverage_threshold(task: Dict[str, Any], rule: Rule) -> bool:
     """Check if code coverage meets the threshold."""
     coverage = task.get("coverage", {})
     return bool(coverage.get("meetsThreshold", False))
-
-
-# Alias for backward compatibility - validator-approval uses the existing function
-_RULE_CHECKERS["validator-approval"] = check_validator_approval
 
 
 __all__ = [

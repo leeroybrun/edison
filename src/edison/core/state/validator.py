@@ -22,11 +22,11 @@ class StateValidator:
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = Path(repo_root).resolve() if repo_root else None
 
-    @lru_cache(maxsize=16)
     def _machine(self, entity: str) -> RichStateMachine:
         # Use WorkflowConfig as the canonical source for state machine config
+        # Note: Cannot use lru_cache since repo_root affects the result
         from edison.core.config.domains.workflow import WorkflowConfig
-        workflow_cfg = WorkflowConfig()
+        workflow_cfg = WorkflowConfig(repo_root=self.repo_root)
         sm_spec = workflow_cfg._statemachine
         entity_spec = sm_spec.get(entity)
         if not isinstance(entity_spec, Mapping):

@@ -58,7 +58,7 @@ def test_allocate_id_uses_json_output(tmp_path: Path):
     existing.write_text("placeholder")
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    proc = run("task", "allocate_id", ["--base", "201", "--json"], env)
+    proc = run("task", "allocate_id", ["--parent", "201", "--json"], env)
     payload = json.loads(proc.stdout.strip())
     assert payload["nextId"] == "201.2"
 

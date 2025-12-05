@@ -65,11 +65,14 @@ def _sid_dir(session_id: str) -> Path:
         json_path = repo.get_session_json_path(session_id)
         return json_path.parent
     except (FileNotFoundError, OSError, EntityNotFoundError) as e:
-        # Fallback: If session doesn't exist yet, use default "wip" state location
+        # Fallback: If session doesn't exist yet, use default active session state location
         # This allows validation transactions to work even before session is fully initialized
         logger.debug("Session directory not found for %s, using default: %s", session_id, e)
+        from edison.core.config.domains.session import SessionConfig
         mgmt_paths = get_management_paths(PathResolver.resolve_project_root())
-        default_dir = mgmt_paths.get_session_state_dir("wip") / validate_session_id(session_id)
+        states_map = SessionConfig().get_session_states()
+        active_dir = states_map.get("active", "wip")
+        default_dir = mgmt_paths.get_session_state_dir(active_dir) / validate_session_id(session_id)
         ensure_directory(default_dir)
         return default_dir
 

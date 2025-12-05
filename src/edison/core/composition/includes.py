@@ -15,7 +15,7 @@ from edison.core.config.manager import ConfigManager
 from edison.core.composition.output.writer import CompositionFileWriter
 
 from edison.core.utils.paths import get_project_config_dir
-from ..utils.text import ENGINE_VERSION
+from edison.core.utils.text.core import get_engine_version
 
 
 def _get_max_depth() -> int:
@@ -26,10 +26,6 @@ def _get_max_depth() -> int:
     except Exception:
         # Fallback to safe default if config cannot be loaded
         return 3
-
-
-# Engine constants - kept for backward compatibility but reads from config
-MAX_DEPTH = _get_max_depth()
 
 
 class ComposeError(RuntimeError):
@@ -194,7 +190,7 @@ def _hash_bytes(data: bytes) -> str:
 
 def _hash_files(paths: List[Path], extra: Optional[str] = None) -> str:
     h = hashlib.sha256()
-    h.update(ENGINE_VERSION.encode("utf-8"))
+    h.update(get_engine_version().encode("utf-8"))
     if extra:
         h.update(extra.encode("utf-8"))
     root = _repo_root()
@@ -231,7 +227,7 @@ def _write_cache(validator_id: str, text: str, deps: List[Path], content_hash: s
         existing[validator_id] = {
             "path": str(_rel(out_path)),
             "hash": content_hash,
-            "engineVersion": ENGINE_VERSION,
+            "engineVersion": get_engine_version(),
             "dependencies": [str(_rel(p)) for p in deps],
         }
         write_json_atomic(manifest_path, existing, indent=2)
@@ -267,5 +263,4 @@ __all__ = [
     "_repo_root",
     "get_cache_dir",
     "validate_composition",
-    "MAX_DEPTH",
 ]

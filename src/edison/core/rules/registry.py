@@ -16,10 +16,9 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import yaml
-
 from edison.core.composition.core.sections import SectionParser
 from edison.core.utils.paths import EdisonPathError, PathResolver
+from edison.core.utils.io import read_yaml
 
 from edison.core.composition.includes import resolve_includes, ComposeError
 from edison.core.composition.core.errors import AnchorNotFoundError, RulesCompositionError
@@ -67,7 +66,7 @@ class RulesRegistry:
         self.bundled_data_dir = Path(get_data_path(""))
 
     def _load_yaml_file(self, path: Path, required: bool = True) -> Any:
-        """Load a single YAML file.
+        """Load a single YAML file using shared utility.
         
         Args:
             path: Path to YAML file
@@ -81,11 +80,7 @@ class RulesRegistry:
                 raise FileNotFoundError(f"YAML file not found: {path}")
             return {}
         
-        try:
-            content = path.read_text(encoding="utf-8")
-            return yaml.safe_load(content) or {}
-        except Exception:
-            return {}
+        return read_yaml(path, default={})
 
     # ------- Utility Methods -------
 

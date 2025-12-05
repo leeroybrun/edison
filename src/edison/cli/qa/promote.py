@@ -14,7 +14,7 @@ from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_r
 from edison.cli._choices import get_state_choices, get_semantic_state
 from edison.core.qa import promoter, bundler
 from edison.core.qa.evidence import EvidenceService, read_validator_jsons
-from edison.core.state.transitions import validate_transition
+from edison.core.state.transitions import validate_transition, transition_entity, EntityTransitionError
 
 SUMMARY = "Promote QA brief between states"
 
@@ -112,45 +112,25 @@ def main(args: argparse.Namespace) -> int:
             except Exception:
                 pass
         
-        # Validate transition with guards (unless forced)
-        if not args.force:
+        # Dry run - validate without execution
+        if args.dry_run:
             is_valid, msg = validate_transition(
                 "qa",
                 current_status,
                 args.status,
                 context=context,
             )
-            
-            if not is_valid:
-                if args.dry_run:
-                    formatter.json_output({
-                        "dry_run": True,
-                        "task_id": args.task_id,
-                        "current_status": current_status,
-                        "target_status": args.status,
-                        "valid": False,
-                        "message": msg,
-                    }) if formatter.json_mode else formatter.text(
-                        f"Transition {current_status} -> {args.status}: BLOCKED - {msg}"
-                    )
-                    return 1
-                
-                formatter.error(f"Transition blocked: {msg}", error_code="guard_failed")
-                return 1
-        
-        # Dry run - just report what would happen
-        if args.dry_run:
             formatter.json_output({
                 "dry_run": True,
                 "task_id": args.task_id,
                 "current_status": current_status,
                 "target_status": args.status,
-                "valid": True,
-                "message": "Transition allowed",
+                "valid": is_valid,
+                "message": msg if not is_valid else "Transition allowed",
             }) if formatter.json_mode else formatter.text(
-                f"Transition {current_status} -> {args.status}: ALLOWED"
+                f"Transition {current_status} -> {args.status}: {'ALLOWED' if is_valid else 'BLOCKED - ' + msg}"
             )
-            return 0
+            return 0 if is_valid else 1
         
         # Additional check for validated state - bundle must be fresh
         validated_state = get_semantic_state("qa", "validated")
@@ -166,8 +146,23 @@ def main(args: argparse.Namespace) -> int:
                 )
                 return 1
 
-        # Execute the promotion
+        # Execute the promotion with guard validation and action execution
         old_state = qa_entity.state
+        if not args.force:
+            try:
+                # transition_entity validates guards and executes actions
+                transition_entity(
+                    entity_type="qa",
+                    entity_id=args.task_id,
+                    to_state=args.status,
+                    current_state=current_status,
+                    context=context,
+                )
+            except EntityTransitionError as e:
+                formatter.error(f"Transition blocked: {e}", error_code="guard_failed")
+                return 1
+        
+        # Update and persist the entity
         qa_entity.state = args.status
         qa_entity.record_transition(old_state, args.status, reason="cli-qa-promote")
         qa_repo.save(qa_entity)

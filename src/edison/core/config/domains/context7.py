@@ -101,56 +101,6 @@ class Context7Config(BaseDomainConfig):
         return self.content_detection
 
 
-# Module-level convenience functions for backward compatibility
-_cached_config: Optional[Context7Config] = None
-
-
-def _get_config() -> Context7Config:
-    """Get or create the singleton Context7Config instance."""
-    global _cached_config
-    if _cached_config is None:
-        _cached_config = Context7Config()
-    return _cached_config
-
-
-def load_triggers() -> Dict[str, List[str]]:
-    """Load triggers from config.
-
-    Returns:
-        Dict mapping package names to lists of file patterns.
-
-    Raises:
-        RuntimeError: If triggers configuration is not available.
-    """
-    triggers = _get_config().get_triggers()
-    if not triggers:
-        raise RuntimeError(
-            "Context7 triggers configuration missing; "
-            "define triggers in context7.yaml or .edison/config/context7.yaml"
-        )
-    return triggers
-
-
-def load_aliases() -> Dict[str, str]:
-    """Load aliases from config.
-
-    Returns:
-        Dict mapping alias names to canonical package names.
-
-    Raises:
-        RuntimeError: If aliases configuration is not available.
-    """
-    aliases = _get_config().get_aliases()
-    if not aliases:
-        raise RuntimeError(
-            "Context7 aliases configuration missing; "
-            "define aliases in context7.yaml or .edison/config/context7.yaml"
-        )
-    return aliases
-
-
 __all__ = [
     "Context7Config",
-    "load_triggers",
-    "load_aliases",
 ]

@@ -123,4 +123,4 @@ def test_handle_timeout(project_root):
     assert (rec_dir / "recovery.json").exists()
     
     data = json.loads((rec_dir / "session.json").read_text())
-    assert data["state"] == "Recovery"
+    assert data["state"] == "recovery"

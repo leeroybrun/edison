@@ -157,7 +157,7 @@ def test_allocate_id_considers_session_scoped_siblings(project: TestProjectDir):
     # Act: allocate next child id for base 201
     res_alloc = run_script(
         "tasks/allocate-id",
-        ["--base", "201"],
+        ["--parent", "201"],
         cwd=project.tmp_path,
         env=_create_env(),
     )

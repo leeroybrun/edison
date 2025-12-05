@@ -9,10 +9,10 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Sequence
 
 from edison.core.mcp.config import configure_mcp_json
 from edison.cli import OutputFormatter, add_dry_run_flag
+from edison.cli.mcp._utils import normalize_servers
 
 SUMMARY = "Configure .mcp.json for all MCP servers"
 
@@ -40,20 +40,13 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _normalize_servers(raw: Sequence[str] | None) -> list[str] | None:
-    if raw is None:
-        return None
-    servers = [s.strip() for s in raw if s and s.strip()]
-    return servers or None
-
-
 def main(args: argparse.Namespace) -> int:
     """Configure .mcp.json with Edison-managed MCP server entries."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     project_root = Path(args.project_path).expanduser().resolve()
-    server_ids = _normalize_servers(args.servers)
+    server_ids = normalize_servers(args.servers)
 
     try:
         result = configure_mcp_json(

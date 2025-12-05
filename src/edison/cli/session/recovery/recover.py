@@ -59,8 +59,33 @@ def main(args: argparse.Namespace) -> int:
             "message": f"Session recovered, restored {recovered_records} records"
         })
 
-        # Update session with recovery state
-        session["state"] = "recovery" # Mark as recovered
+        # Use transition_entity for proper guard and action execution
+        from edison.core.state.transitions import transition_entity, EntityTransitionError
+        from edison.core.config.domains.workflow import WorkflowConfig
+        
+        current_state = session.get("state", "active")
+        recovery_state = WorkflowConfig().get_semantic_state("session", "recovery")
+        
+        try:
+            result = transition_entity(
+                entity_type="session",
+                entity_id=session_id,
+                to_state=recovery_state,
+                current_state=current_state,
+                context={
+                    "session": session,
+                    "session_id": session_id,
+                    "reason": "manual_recovery",
+                },
+            )
+            session["state"] = result["state"]
+            if "history_entry" in result:
+                session.setdefault("stateHistory", []).append(result["history_entry"])
+        except EntityTransitionError as e:
+            # For recovery, allow fallback to direct assignment since recovery
+            # is meant to fix broken states
+            session["state"] = recovery_state
+        
         updated_entity = Session.from_dict(session)
         repo.save(updated_entity)
 

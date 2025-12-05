@@ -15,6 +15,7 @@ from edison.core.entity import (
     EntityMetadata,
     StateHistoryEntry,
 )
+from edison.core.config.domains.session import SessionConfig
 
 
 @dataclass
@@ -24,60 +25,6 @@ class SessionPaths:
     session_id: str
     path: Path
     status_dir: Path
-
-
-@dataclass
-class TaskEntry:
-    """In-memory representation of a task registered against a session."""
-
-    record_id: str
-    status: str
-    owner: str
-    qa_id: Optional[str] = None
-    parent_id: Optional[str] = None
-    child_ids: List[str] = field(default_factory=list)
-    claimed_at: Optional[str] = None
-    last_active: Optional[str] = None
-    automation: Dict[str, Any] = field(default_factory=dict)
-    notes: List[str] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert entry into the JSON-compatible schema."""
-        return {
-            "recordId": self.record_id,
-            "status": self.status,
-            "owner": self.owner,
-            "qaId": self.qa_id,
-            "parentId": self.parent_id,
-            "childIds": list(self.child_ids),
-            "claimedAt": self.claimed_at,
-            "lastActive": self.last_active,
-            "automation": dict(self.automation),
-            "notes": list(self.notes),
-        }
-
-
-@dataclass
-class QAEntry:
-    """In-memory representation of a QA record within a session."""
-
-    record_id: str
-    task_id: str
-    status: str
-    round: int = 1
-    evidence: List[str] = field(default_factory=list)
-    validators: List[str] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert entry into the JSON-compatible schema."""
-        return {
-            "recordId": self.record_id,
-            "taskId": self.task_id,
-            "status": self.status,
-            "round": self.round,
-            "evidence": list(self.evidence),
-            "validators": list(self.validators),
-        }
 
 
 @dataclass
@@ -110,7 +57,7 @@ class GitInfo:
 class Session:
     """A session entity representing a work session.
     
-    Sessions track session-level data only. Task and QA data is now stored
+    Sessions track session-level data only. Task and QA data is stored
     in the task/QA files themselves (single source of truth).
     
     Use TaskIndex to query tasks/QA for this session:
@@ -129,10 +76,6 @@ class Session:
         git: Git-related information
         activity_log: List of activity log entries
         ready: Whether session is ready for work
-        
-    Deprecated (for migration compatibility):
-        tasks: Dict of task entries - DEPRECATED, use TaskIndex
-        qa_records: Dict of QA entries - DEPRECATED, use TaskIndex
     """
     id: str
     state: str
@@ -141,9 +84,6 @@ class Session:
     metadata: EntityMetadata = field(default_factory=lambda: EntityMetadata.create())
     meta_extra: Dict[str, Any] = field(default_factory=dict)  # For arbitrary metadata
     state_history: List[StateHistoryEntry] = field(default_factory=list)
-    # DEPRECATED: Task/QA data now lives in task/QA files. Keep for migration.
-    tasks: Dict[str, TaskEntry] = field(default_factory=dict)
-    qa_records: Dict[str, QAEntry] = field(default_factory=dict)
     git: GitInfo = field(default_factory=GitInfo)
     activity_log: List[Dict[str, Any]] = field(default_factory=list)
     ready: bool = True
@@ -175,7 +115,10 @@ class Session:
         })
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary representation."""
+        """Convert to dictionary representation.
+        
+        Note: Task/QA data is NOT included - use TaskIndex to query tasks/QA.
+        """
         # Build meta dict with core fields
         meta: Dict[str, Any] = {
             "sessionId": self.id,
@@ -195,16 +138,6 @@ class Session:
             "ready": self.ready,
         }
         
-        if self.tasks:
-            data["tasks"] = {k: v.to_dict() for k, v in self.tasks.items()}
-        else:
-            data["tasks"] = {}
-        
-        if self.qa_records:
-            data["qa"] = {k: v.to_dict() for k, v in self.qa_records.items()}
-        else:
-            data["qa"] = {}
-        
         data["git"] = self.git.to_dict()
         
         if self.activity_log:
@@ -217,7 +150,10 @@ class Session:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Session":
-        """Create Session from dictionary representation."""
+        """Create Session from dictionary representation.
+        
+        Note: `tasks` and `qa` fields in data are ignored - use TaskIndex for queries.
+        """
         # Handle metadata
         meta = data.get("meta", {})
         metadata = EntityMetadata(
@@ -235,52 +171,21 @@ class Session:
         history_data = data.get("stateHistory", [])
         state_history = [StateHistoryEntry.from_dict(h) for h in history_data]
         
-        # Handle tasks
-        tasks_data = data.get("tasks", {})
-        tasks = {}
-        for tid, tdata in tasks_data.items():
-            if isinstance(tdata, dict):
-                tasks[tid] = TaskEntry(
-                    record_id=tdata.get("recordId", tid),
-                    status=tdata.get("status", ""),
-                    owner=tdata.get("owner", ""),
-                    qa_id=tdata.get("qaId"),
-                    parent_id=tdata.get("parentId"),
-                    child_ids=tdata.get("childIds", []),
-                    claimed_at=tdata.get("claimedAt"),
-                    last_active=tdata.get("lastActive"),
-                    automation=tdata.get("automation", {}),
-                    notes=tdata.get("notes", []),
-                )
-        
-        # Handle QA records
-        qa_data = data.get("qa", {})
-        qa_records = {}
-        for qid, qdata in qa_data.items():
-            if isinstance(qdata, dict):
-                qa_records[qid] = QAEntry(
-                    record_id=qdata.get("recordId", qid),
-                    task_id=qdata.get("taskId", ""),
-                    status=qdata.get("status", ""),
-                    round=qdata.get("round", 1),
-                    evidence=qdata.get("evidence", []),
-                    validators=qdata.get("validators", []),
-                )
-        
         # Handle git info
         git_data = data.get("git", {})
         git = GitInfo.from_dict(git_data) if git_data else GitInfo()
         
+        # Get state from data, fallback to config-driven initial state
+        state = data.get("state") or SessionConfig().get_initial_session_state()
+        
         return cls(
             id=data.get("id", ""),
-            state=data.get("state", "active"),
+            state=state,
             phase=data.get("phase", "implementation"),
             owner=meta.get("owner"),
             metadata=metadata,
             meta_extra=meta_extra,
             state_history=state_history,
-            tasks=tasks,
-            qa_records=qa_records,
             git=git,
             activity_log=data.get("activityLog", []),
             ready=data.get("ready", True),
@@ -292,13 +197,16 @@ class Session:
         session_id: str,
         *,
         owner: Optional[str] = None,
-        state: str = "active",
+        state: Optional[str] = None,
         phase: str = "implementation",
     ) -> "Session":
         """Factory method to create a new session."""
+        # Resolve state from config if not provided
+        resolved_state = state if state is not None else SessionConfig().get_initial_session_state()
+        
         session = cls(
             id=session_id,
-            state=state,
+            state=resolved_state,
             phase=phase,
             owner=owner,
             metadata=EntityMetadata.create(
@@ -312,8 +220,6 @@ class Session:
 
 __all__ = [
     "SessionPaths",
-    "TaskEntry",
-    "QAEntry",
     "GitInfo",
     "Session",
 ]

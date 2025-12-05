@@ -421,243 +421,38 @@ class WorkflowConfig(BaseDomainConfig):
                 all_recs.append(rec_with_target)
         return all_recs
 
-
-# Module-level convenience functions for backward compatibility
-_cached_config: Optional[WorkflowConfig] = None
-
-
-def _get_config(force_reload: bool = False) -> WorkflowConfig:
-    """Get or create the singleton WorkflowConfig instance.
-
-    Args:
-        force_reload: If True, create a new config instance
-
-    Returns:
-        WorkflowConfig instance
-    """
-    global _cached_config
-    if _cached_config is None or force_reload:
-        _cached_config = WorkflowConfig()
-    return _cached_config
-
-
-def load_workflow_config(force_reload: bool = False) -> Dict[str, Any]:
-    """Load workflow configuration.
-
-    Args:
-        force_reload: If True, reload the configuration
-
-    Returns:
-        Complete workflow configuration dict including:
-        - validationLifecycle: Lifecycle transitions
-        - timeouts: Timeout configuration
-        - taskStates: List of task states (from state machine)
-        - qaStates: List of QA states (from state machine)
-    """
-    config = _get_config(force_reload=force_reload)
-    return {
-        "validationLifecycle": config.validation_lifecycle,
-        "timeouts": config.timeouts,
-        "taskStates": config.task_states,
-        "qaStates": config.qa_states,
-    }
-
-
-def get_task_states(force_reload: bool = False) -> List[str]:
-    """Get allowed task states from state machine configuration.
-
-    Args:
-        force_reload: If True, reload the configuration
-
-    Returns:
-        List of task state names
-    """
-    return _get_config(force_reload=force_reload).task_states
-
-
-def get_qa_states(force_reload: bool = False) -> List[str]:
-    """Get allowed QA states from state machine configuration.
-
-    Args:
-        force_reload: If True, reload the configuration
-
-    Returns:
-        List of QA state names
-    """
-    return _get_config(force_reload=force_reload).qa_states
-
-
-def get_semantic_state(domain: str, semantic_key: str) -> str:
-    """Resolve a semantic state to the configured state name.
-
-    Args:
-        domain: Either "task" or "qa"
-        semantic_key: Semantic state name (e.g., "validated", "wip", "waiting")
-
-    Returns:
-        The configured state name for the semantic key
-    """
-    return _get_config().get_semantic_state(domain, semantic_key)
-
-
-def get_initial_state(domain: str, force_reload: bool = False) -> str:
-    """Get the initial state for a domain.
-
-    Args:
-        domain: Either "task" or "qa"
-        force_reload: If True, reload the configuration
-
-    Returns:
-        The initial state name from config
-
-    Raises:
-        ValueError: If domain is unknown or no initial state found
-    """
-    return _get_config(force_reload=force_reload).get_initial_state(domain)
-
-
-def get_final_state(domain: str, force_reload: bool = False) -> str:
-    """Get the final/validated state for a domain.
-
-    Args:
-        domain: Either "task" or "qa"
-        force_reload: If True, reload the configuration
-
-    Returns:
-        The final state name from config
-
-    Raises:
-        ValueError: If domain is unknown or no final state found
-    """
-    return _get_config(force_reload=force_reload).get_final_state(domain)
-
-
-def get_states(domain: str, force_reload: bool = False) -> List[str]:
-    """Get all states for a domain.
-
-    Args:
-        domain: "task", "qa", or "session"
-        force_reload: If True, reload the configuration
-
-    Returns:
-        List of state names
-
-    Raises:
-        ValueError: If domain is unknown
-    """
-    return _get_config(force_reload=force_reload).get_states(domain)
-
-
-def get_session_states(force_reload: bool = False) -> List[str]:
-    """Get allowed session states from state machine configuration.
-
-    Args:
-        force_reload: If True, reload the configuration
-
-    Returns:
-        List of session state names
-    """
-    return _get_config(force_reload=force_reload).session_states
-
-
-def get_transition(domain: str, from_state: str, to_state: str) -> Optional[Dict[str, Any]]:
-    """Get transition config between two states.
-
-    Args:
-        domain: "task", "qa", or "session"
-        from_state: The source state name
-        to_state: The target state name
-
-    Returns:
-        Transition config dict or None if no such transition exists
-    """
-    return _get_config().get_transition(domain, from_state, to_state)
-
-
-def get_transitions_from(domain: str, state: str) -> List[Dict[str, Any]]:
-    """Get all allowed transitions from a state.
-
-    Args:
-        domain: "task", "qa", or "session"
-        state: The source state name
-
-    Returns:
-        List of transition config dicts
-    """
-    return _get_config().get_transitions_from(domain, state)
-
-
-def get_recommendations(domain: str, from_state: str, to_state: str) -> List[Dict[str, Any]]:
-    """Get recommendation actions for a transition.
-
-    Args:
-        domain: "task", "qa", or "session"
-        from_state: The source state name
-        to_state: The target state name
-
-    Returns:
-        List of recommendation dicts
-    """
-    return _get_config().get_recommendations(domain, from_state, to_state)
-
-
-def get_transition_rules(domain: str, from_state: str, to_state: str) -> List[str]:
-    """Get rule IDs for a transition.
-
-    Args:
-        domain: "task", "qa", or "session"
-        from_state: The source state name
-        to_state: The target state name
-
-    Returns:
-        List of rule ID strings
-    """
-    return _get_config().get_transition_rules(domain, from_state, to_state)
-
-
-def get_transition_guard(domain: str, from_state: str, to_state: str) -> Optional[str]:
-    """Get guard name for a transition.
-
-    Args:
-        domain: "task", "qa", or "session"
-        from_state: The source state name
-        to_state: The target state name
-
-    Returns:
-        Guard name string or None
-    """
-    return _get_config().get_transition_guard(domain, from_state, to_state)
-
-
-def is_terminal_state(domain: str, state: str) -> bool:
-    """Check if a state is terminal (final).
-
-    Args:
-        domain: "task", "qa", or "session"
-        state: The state name to check
-
-    Returns:
-        True if the state is a final state
-    """
-    return _get_config().is_terminal_state(domain, state)
+    def get_guidance_rule(self, context: str) -> Optional[str]:
+        """Get the primary guidance rule ID for a context type.
+
+        Guidance rules are non-enforcing rules for orchestrator hints.
+        Unlike transition rules, they provide suggestions rather than guards.
+
+        Args:
+            context: Context type ("delegation", "session", "context")
+
+        Returns:
+            Primary rule ID string (e.g., "RULE.DELEGATION.PRIORITY_CHAIN") or None
+        """
+        guidance = self.section.get("guidance", {})
+        context_guidance = guidance.get(context, {})
+        return context_guidance.get("primary_rule")
+
+    def get_guidance_rules(self, context: str) -> List[str]:
+        """Get all guidance rule IDs for a context type.
+
+        Args:
+            context: Context type ("delegation", "session", "context")
+
+        Returns:
+            List of rule ID strings for this guidance context
+        """
+        guidance = self.section.get("guidance", {})
+        context_guidance = guidance.get(context, {})
+        return context_guidance.get("rules", [])
 
 
 __all__ = [
     "WorkflowConfig",
-    "load_workflow_config",
-    "get_task_states",
-    "get_qa_states",
-    "get_session_states",
-    "get_semantic_state",
-    "get_initial_state",
-    "get_final_state",
-    "get_states",
-    "get_transition",
-    "get_transitions_from",
-    "get_recommendations",
-    "get_transition_rules",
-    "get_transition_guard",
-    "is_terminal_state",
 ]
 
 

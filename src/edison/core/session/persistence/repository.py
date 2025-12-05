@@ -240,14 +240,14 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         """Find sessions belonging to an owner."""
         return self._do_find(owner=owner)
     
-    def ensure_session(self, session_id: str, state: str = "active") -> Path:
+    def ensure_session(self, session_id: str, state: Optional[str] = None) -> Path:
         """Ensure a session file exists.
 
         Creates the session if it doesn't exist.
 
         Args:
             session_id: Session identifier
-            state: Initial state for new sessions
+            state: Initial state for new sessions (default: from config)
 
         Returns:
             Path to session state directory
@@ -256,8 +256,9 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         if path:
             return path.parent
 
-        # Create new session
-        session = Session.create(session_id, state=state.lower())
+        # Create new session with config-driven default state
+        resolved_state = state.lower() if state else get_config().get_initial_session_state()
+        session = Session.create(session_id, state=resolved_state)
         self.create(session)
         return self._resolve_entity_path(session_id, session.state).parent
     

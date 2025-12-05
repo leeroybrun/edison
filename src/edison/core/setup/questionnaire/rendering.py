@@ -117,10 +117,6 @@ def render_readme_template(
     return _render_readme(questionnaire, context)
 
 
-# Re-export template utilities for backward compatibility
-from .templates import render_template_value
-
-
 # ========== Internal helpers ==========
 
 def _render_pack_configs(

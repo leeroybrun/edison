@@ -2,13 +2,7 @@ import pytest
 import yaml
 from pathlib import Path
 from edison.core.config.domains import workflow
-from edison.core.config.domains.workflow import (
-    WorkflowConfig,
-    load_workflow_config,
-    get_task_states,
-    get_qa_states,
-    get_semantic_state
-)
+from edison.core.config.domains.workflow import WorkflowConfig
 
 # --- Tests ---
 
@@ -16,29 +10,30 @@ def test_workflow_module_exists():
     """Test that the workflow module exists."""
     assert workflow is not None, "edison.core.config.workflow module should exist"
 
-def test_load_workflow_config_exists():
-    """Test that load_workflow_config function exists."""
-    assert callable(load_workflow_config), "load_workflow_config function should exist"
+def test_workflow_config_class_exists():
+    """Test that WorkflowConfig class exists."""
+    assert WorkflowConfig is not None, "WorkflowConfig class should exist"
 
 def test_workflow_config_structure():
     """Test that the loaded configuration has the correct structure."""
     # Using real implementation here as integration test
-    config = load_workflow_config()
-    assert "qaStates" in config
-    assert "taskStates" in config
-    assert "validationLifecycle" in config
-    assert "timeouts" in config
+    config = WorkflowConfig()
+    qa_states = config.qa_states
+    task_states = config.task_states
+    validation_lifecycle = config.validation_lifecycle
+    timeouts = config.timeouts
     
-    assert isinstance(config["qaStates"], list)
-    assert "todo" in config["qaStates"]
+    assert isinstance(qa_states, list)
+    assert "todo" in qa_states
     
-    assert isinstance(config["taskStates"], list)
-    assert "todo" in config["taskStates"]
+    assert isinstance(task_states, list)
+    assert "todo" in task_states
 
-def test_get_states_helpers():
-    """Test helper functions for states."""
-    task_states = get_task_states()
-    qa_states = get_qa_states()
+def test_get_states_methods():
+    """Test WorkflowConfig state methods."""
+    config = WorkflowConfig()
+    task_states = config.task_states
+    qa_states = config.qa_states
     
     assert isinstance(task_states, list)
     assert "todo" in task_states
@@ -50,28 +45,33 @@ def test_get_states_helpers():
 
 def test_get_semantic_state():
     """Test retrieving semantic states from lifecycle."""
+    config = WorkflowConfig()
+    
     # task done -> wip (onReject)
-    assert get_semantic_state("task", "wip") == "wip"
+    assert config.get_semantic_state("task", "wip") == "wip"
     
     # task done -> validated (onApprove)
-    assert get_semantic_state("task", "validated") == "validated"
+    assert config.get_semantic_state("task", "validated") == "validated"
     
     # qa wip -> waiting (onReject)
-    assert get_semantic_state("qa", "wip") == "wip"
-    assert get_semantic_state("qa", "waiting") == "waiting"
+    assert config.get_semantic_state("qa", "wip") == "wip"
+    assert config.get_semantic_state("qa", "waiting") == "waiting"
     
     # qa waiting -> todo (onRevalidate)
-    assert get_semantic_state("qa", "todo") == "todo"
+    assert config.get_semantic_state("qa", "todo") == "todo"
 
 def test_default_workflow_yaml_exists():
     """Test that the actual workflow.yaml file exists in the codebase."""
-    real_yaml_path = Path("src/edison/data/config/workflow.yaml")
-    assert real_yaml_path.exists(), "src/edison/data/config/workflow.yaml should exist"
+    from edison.data import get_data_path
+    real_yaml_path = get_data_path("config", "workflow.yaml")
+    assert real_yaml_path.exists(), "workflow.yaml should exist in edison.data.config"
 
 
 def test_workflow_yaml_structure():
     """Workflow.yaml must be nested under 'workflow:' key and not duplicate states."""
-    workflow_yaml = yaml.safe_load(Path("src/edison/data/config/workflow.yaml").read_text()) or {}
+    from edison.data import get_data_path
+    workflow_path = get_data_path("config", "workflow.yaml")
+    workflow_yaml = yaml.safe_load(workflow_path.read_text()) or {}
 
     # Content should be under 'workflow' key (consistent with other domain configs)
     assert "workflow" in workflow_yaml, "workflow.yaml should have content under 'workflow:' key"
@@ -82,16 +82,20 @@ def test_workflow_yaml_structure():
     assert "qaStates" not in wf_section, "workflow.yaml should not duplicate qaStates"
 
 
-def test_workflow_states_source_state_machine():
-    """States should be sourced from state-machine.yaml, not workflow.yaml."""
-    state_machine_yaml = yaml.safe_load(Path("src/edison/data/config/state-machine.yaml").read_text()) or {}
-    sm_root = state_machine_yaml.get("statemachine") or {}
-    task_states = list((sm_root.get("task") or {}).get("states", {}).keys())
-    qa_states = list((sm_root.get("qa") or {}).get("states", {}).keys())
-
-    assert task_states, "state-machine.yaml must declare task states"
-    assert qa_states, "state-machine.yaml must declare QA states"
-
-    # get_task_states/get_qa_states should be driven by the canonical state-machine file
-    assert get_task_states(force_reload=True) == task_states
-    assert get_qa_states(force_reload=True) == qa_states
+def test_workflow_states_from_config():
+    """States should be loaded from configuration by WorkflowConfig."""
+    config = WorkflowConfig()
+    
+    # Verify task states are loaded
+    task_states = config.task_states
+    assert task_states, "WorkflowConfig must provide task states"
+    assert "todo" in task_states, "Task states must include 'todo'"
+    assert "wip" in task_states, "Task states must include 'wip'"
+    assert "done" in task_states, "Task states must include 'done'"
+    
+    # Verify QA states are loaded
+    qa_states = config.qa_states
+    assert qa_states, "WorkflowConfig must provide QA states"
+    assert "waiting" in qa_states, "QA states must include 'waiting'"
+    assert "todo" in qa_states, "QA states must include 'todo'"
+    assert "validated" in qa_states, "QA states must include 'validated'"

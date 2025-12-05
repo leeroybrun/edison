@@ -15,10 +15,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
-
 from edison.data import get_data_path
 from edison.core.utils.paths import PathResolver, EdisonPathError
+from edison.core.utils.io import read_yaml
 
 
 class FilePatternRegistry:
@@ -54,7 +53,7 @@ class FilePatternRegistry:
         self.project_rules_dir = self.project_dir / "rules" / "file_patterns"
 
     def _load_yaml_file(self, path: Path, required: bool = True) -> Any:
-        """Load a single YAML file.
+        """Load a single YAML file using shared utility.
         
         Args:
             path: Path to YAML file
@@ -68,11 +67,7 @@ class FilePatternRegistry:
                 raise FileNotFoundError(f"YAML file not found: {path}")
             return {}
         
-        try:
-            content = path.read_text(encoding="utf-8")
-            return yaml.safe_load(content) or {}
-        except Exception:
-            return {}
+        return read_yaml(path, default={})
 
     def _load_yaml_dir(self, dir_path: Path, label: str = "") -> List[Dict[str, Any]]:
         """Load all YAML files from a directory.

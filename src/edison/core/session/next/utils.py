@@ -47,10 +47,12 @@ def stem_to_slug(stem: str) -> str:
 
 def all_task_files() -> List[Path]:
     """Get all task files across all states."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+    
     mgmt_paths = get_management_paths(get_root())
     root = mgmt_paths.get_tasks_root()
     files: List[Path] = []
-    for st in ["todo", "wip", "blocked", "done", "validated"]:
+    for st in WorkflowConfig().get_states("task"):
         d = root / st
         if d.exists():
             files.extend(sorted(d.glob("*.md")))
@@ -89,9 +91,11 @@ def extract_wave_and_base_id(task_id: str) -> tuple[str, str]:
 
 def allocate_child_id(base_id: str) -> str:
     """Find the next available base_id.N by scanning .project/tasks across states."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+    
     mgmt_paths = get_management_paths(get_root())
     root = mgmt_paths.get_tasks_root()
-    states = ["todo","wip","blocked","done","validated"]
+    states = WorkflowConfig().get_states("task")
     existing = set()
     for st in states:
         d = root / st

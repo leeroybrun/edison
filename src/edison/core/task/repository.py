@@ -235,12 +235,11 @@ class TaskRepository(
         """Find tasks belonging to a session."""
         return self._do_find(session_id=session_id)
 
-    # ---------- Finder-compatible Methods ----------
+    # ---------- Extended Query Methods ----------
 
     def find_by_state(self, state: str) -> List[Task]:
-        """Find all tasks in a given state (alias for list_by_state).
+        """Find all tasks in a given state across all directories.
 
-        This method provides compatibility with the legacy finder.py module.
         Searches both global and session directories.
 
         Args:
@@ -264,16 +263,75 @@ class TaskRepository(
         return tasks
 
     def find_all(self) -> List[Task]:
-        """Find all tasks across all states (alias for list_all).
+        """Find all tasks across all states.
 
-        This method provides compatibility with the legacy finder.py module.
         Searches both global and session directories.
 
         Returns:
             List of all tasks
         """
         return self._do_list_all()
-    
+
+    def get_next_child_id(self, parent_id: str) -> str:
+        """Get the next available child ID for a parent task.
+
+        Scans task directories to find existing children of the parent
+        and returns the next sequential child ID.
+
+        Args:
+            parent_id: Parent task ID (e.g., "201" or "201-wave1-something")
+
+        Returns:
+            Next child ID (e.g., "201.1" or "201.2")
+        """
+        existing_children: List[int] = []
+
+        # Get all tasks and find children of this parent
+        all_tasks = self._do_list_all()
+        for task in all_tasks:
+            # Check if task ID starts with parent_id followed by a dot (child pattern)
+            if task.id.startswith(f"{parent_id}."):
+                # Extract child number from "201.1-something" or "201.1"
+                suffix = task.id[len(parent_id) + 1:]  # After "parent_id."
+                parts = suffix.split("-", 1)
+                if parts[0].isdigit():
+                    existing_children.append(int(parts[0]))
+
+        # Also scan raw file names for any not yet loaded as Task objects
+        for state in self._get_states_to_search():
+            state_dir = self.tasks_root / state
+            if state_dir.exists():
+                for path in state_dir.glob(f"{parent_id}.*{self.file_extension}"):
+                    # Extract child number from filename
+                    name_part = path.stem.split("-")[0]  # Get "201.1" part
+                    if "." in name_part:
+                        try:
+                            child_num = int(name_part.split(".")[-1])
+                            if child_num not in existing_children:
+                                existing_children.append(child_num)
+                        except ValueError:
+                            pass
+
+        # Determine next child number
+        next_child_num = max(existing_children) + 1 if existing_children else 1
+        return f"{parent_id}.{next_child_num}"
+
+    def get_next_top_level_id(self) -> int:
+        """Get the next available top-level task ID number.
+
+        Scans all tasks to find the highest numeric prefix and returns next.
+
+        Returns:
+            Next top-level ID number (e.g., 151 if highest is 150)
+        """
+        max_id = 0
+        for task in self._do_list_all():
+            # Extract numeric prefix from IDs like "150-something"
+            parts = task.id.split("-")
+            if parts[0].isdigit():
+                max_id = max(max_id, int(parts[0]))
+        return max_id + 1
+
     # ---------- File Format Helpers ----------
 
     def _task_to_markdown(self, task: Task) -> str:

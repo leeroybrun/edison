@@ -14,7 +14,6 @@ from edison.core.qa.evidence import (
     missing_evidence_blockers,  # noqa: F401 - re-exported for compute.py
     read_validator_jsons,  # noqa: F401 - re-exported for compute.py
 )
-from edison.core.session import lifecycle as session_manager
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.task import TaskRepository, safe_relative
 from edison.core.utils.io import read_json as io_read_json
@@ -48,31 +47,32 @@ def infer_qa_status(task_id: str) -> str:
 def find_related_in_session(session_id: str, task_id: str) -> list[dict[str, Any]]:
     """Find related tasks/QAs in session: parent, children, linked tasks.
 
-    Helps orchestrator understand dependencies and context.
+    Uses TaskRepository (task files) as the single source of truth for relationships.
+    Session ID is used to filter tasks to the session context.
     """
-    try:
-        session = session_manager.get_session(session_id)
-    except Exception:
+    task_repo = TaskRepository()
+    
+    # Get the task to find its relationships
+    task = task_repo.get(task_id)
+    if not task:
         return []
 
     related = []
-    task_data = session.get("tasks", {}).get(task_id, {})
 
-    # Parent task
-    parent_id = task_data.get("parentId")
-    if parent_id:
-        parent_status = infer_task_status(parent_id)
-        parent_qa = infer_qa_status(parent_id)
+    # Parent task (from task.parent_id field in task file)
+    if task.parent_id:
+        parent_status = infer_task_status(task.parent_id)
+        parent_qa = infer_qa_status(task.parent_id)
         related.append({
             "relationship": "parent",
-            "taskId": parent_id,
+            "taskId": task.parent_id,
             "taskStatus": parent_status,
             "qaStatus": parent_qa,
-            "note": f"This task is a follow-up to {parent_id}",
+            "note": f"This task is a follow-up to {task.parent_id}",
         })
 
-    # Child tasks
-    for child_id in task_data.get("childIds", []):
+    # Child tasks (from task.child_ids field in task file)
+    for child_id in task.child_ids:
         child_status = infer_task_status(child_id)
         child_qa = infer_qa_status(child_id)
         related.append({
@@ -83,20 +83,21 @@ def find_related_in_session(session_id: str, task_id: str) -> list[dict[str, Any
             "note": f"Follow-up task spawned from {task_id}",
         })
 
-    # Linked tasks (same root family)
-    if parent_id:
-        # Find siblings (other children of same parent)
-        for tid, tdata in session.get("tasks", {}).items():
-            if tid != task_id and tdata.get("parentId") == parent_id:
-                sib_status = infer_task_status(tid)
-                sib_qa = infer_qa_status(tid)
-                related.append({
-                    "relationship": "sibling",
-                    "taskId": tid,
-                    "taskStatus": sib_status,
-                    "qaStatus": sib_qa,
-                    "note": f"Sibling task (same parent {parent_id})",
-                })
+    # Sibling tasks (other children of same parent)
+    if task.parent_id:
+        parent_task = task_repo.get(task.parent_id)
+        if parent_task:
+            for sibling_id in parent_task.child_ids:
+                if sibling_id != task_id:
+                    sib_status = infer_task_status(sibling_id)
+                    sib_qa = infer_qa_status(sibling_id)
+                    related.append({
+                        "relationship": "sibling",
+                        "taskId": sibling_id,
+                        "taskStatus": sib_status,
+                        "qaStatus": sib_qa,
+                        "note": f"Sibling task (same parent {task.parent_id})",
+                    })
 
     return related
 
@@ -104,8 +105,11 @@ def find_related_in_session(session_id: str, task_id: str) -> list[dict[str, Any
 def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
     """Build reportsMissing list for visibility.
 
+    Uses TaskRepository to find tasks in the session (by session_id).
+    Task files are the single source of truth for task data.
+
     Args:
-        session: Session dictionary with tasks
+        session: Session dictionary (used to get session_id)
 
     Returns:
         List of missing report entries
@@ -120,7 +124,19 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
 
     reports_missing: list[dict[str, Any]] = []
 
-    for task_id, _task_entry in session.get("tasks", {}).items():
+    # Get tasks from TaskRepository instead of session JSON
+    task_repo = TaskRepository()
+    session_id = session.get("id") or session.get("meta", {}).get("sessionId")
+    
+    # Find tasks belonging to this session
+    if session_id:
+        session_tasks = task_repo.find_by_session(session_id)
+    else:
+        # Fallback: get all tasks (shouldn't happen in normal usage)
+        session_tasks = task_repo.get_all()
+    
+    for task in session_tasks:
+        task_id = task.id
         # Validators JSON expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
         if qstat in qa_active_states:

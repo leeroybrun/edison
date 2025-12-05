@@ -21,6 +21,7 @@ from edison.core.utils.paths import PathResolver
 from edison.core.config.domains.session import SessionConfig
 from edison.core.state.validator import StateValidator
 from edison.core.state import StateTransitionError
+from edison.core.state.transitions import transition_entity, EntityTransitionError
 from ...exceptions import SessionError, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -122,10 +123,12 @@ def list_sessions(state: Optional[str] = None) -> List[str]:
     return [s.id for s in repo.get_all()]
 
 def transition_session(session_id: str, target_state: str) -> None:
-    """Transition a session to a new state."""
+    """Transition a session to a new state.
+    
+    Uses transition_entity() to ensure guards are validated and actions are executed.
+    """
     project_root = PathResolver.resolve_project_root()
     repo = SessionRepository(project_root=project_root)
-    validator = StateValidator(repo_root=project_root)
 
     sid = validate_session_id(session_id)
     entity = repo.get(sid)
@@ -135,9 +138,30 @@ def transition_session(session_id: str, target_state: str) -> None:
     current = str(entity.state).lower()
     target = str(target_state).lower()
 
-    # Validate via unified state validator
-    validator.ensure_transition("session", current, target)
+    # Build context for guards and actions
+    context = {
+        "session_id": sid,
+        "session": {
+            "id": sid,
+            "state": current,
+        },
+        "entity_type": "session",
+        "entity_id": sid,
+    }
 
+    # Execute transition with guard validation and action execution
+    try:
+        transition_entity(
+            entity_type="session",
+            entity_id=sid,
+            to_state=target,
+            current_state=current,
+            context=context,
+        )
+    except EntityTransitionError as e:
+        raise StateTransitionError(str(e)) from e
+
+    # Update and persist the entity
     entity.record_transition(current, target)
     entity.state = target
     repo.save(entity)
@@ -155,7 +179,13 @@ def touch_session(session_id: str) -> None:
         pass
 
 def render_markdown(session: Dict[str, Any], state_spec: Optional[Dict[str, Any]] = None) -> str:
-    """Render session as markdown summary."""
+    """Render session as markdown summary.
+    
+    Uses TaskRepository (task files) as the single source of truth for task/QA info.
+    """
+    from edison.core.task import TaskRepository
+    from edison.core.qa.workflow.repository import QARepository
+    
     meta = session.get("meta", {})
     sid = meta.get("sessionId", session.get("id", "unknown"))
     owner = meta.get("owner", "unknown")
@@ -172,23 +202,35 @@ def render_markdown(session: Dict[str, Any], state_spec: Optional[Dict[str, Any]
         "## Tasks",
     ]
 
-    tasks = session.get("tasks", {})
-    if not tasks:
+    # Get tasks from TaskRepository (task files are source of truth)
+    task_repo = TaskRepository()
+    session_tasks = task_repo.find_by_session(str(sid)) if sid != "unknown" else []
+    
+    if not session_tasks:
         lines.append("_No tasks registered._")
     else:
-        for tid, t in tasks.items():
-            t_status = t.get("status", "unknown") if isinstance(t, dict) else "unknown"
-            lines.append(f"- **{tid}**: {t_status}")
+        for task in session_tasks:
+            lines.append(f"- **{task.id}**: {task.state}")
 
     lines.append("")
     lines.append("## QA")
-    qa = session.get("qa", {})
-    if not qa:
+    
+    # Get QA records for each task (QA files are source of truth)
+    qa_repo = QARepository()
+    qa_records = []
+    for task in session_tasks:
+        try:
+            qa = qa_repo.get(task.id)
+            if qa:
+                qa_records.append(qa)
+        except Exception:
+            pass
+    
+    if not qa_records:
         lines.append("_No QA registered._")
     else:
-        for qid, q in qa.items():
-            q_status = q.get("status", "unknown") if isinstance(q, dict) else "unknown"
-            lines.append(f"- **{qid}**: {q_status}")
+        for qa in qa_records:
+            lines.append(f"- **{qa.id}**: {qa.state}")
 
     return "\n".join(lines)
 

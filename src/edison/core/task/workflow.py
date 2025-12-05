@@ -16,6 +16,7 @@ from typing import Optional
 
 from edison.core.entity import EntityMetadata, PersistenceError
 from edison.core.utils.paths import PathResolver
+from edison.core.state.transitions import transition_entity, EntityTransitionError
 
 from .models import Task
 from .repository import TaskRepository
@@ -137,7 +138,7 @@ class TaskQAWorkflow:
         """Claim a task for a session (todo -> wip transition).
 
         This workflow operation:
-        1. Validates transition using unified StateValidator (enforcing guards)
+        1. Validates transition and executes actions using transition_entity()
         2. Updates state to wip
         3. Updates session_id
         4. Moves file to session wip directory
@@ -155,7 +156,6 @@ class TaskQAWorkflow:
             PersistenceError: If task not found or transition blocked
         """
         from edison.core.config.domains.workflow import WorkflowConfig
-        from edison.core.state.transitions import validate_transition
 
         # 1. Load task
         task = self.task_repo.get(task_id)
@@ -165,37 +165,30 @@ class TaskQAWorkflow:
         workflow_config = WorkflowConfig()
         wip_state = workflow_config.get_semantic_state("task", "wip")
 
-        # Build context for guards
+        # Build context for guards - include proposed session_id for guard evaluation
+        task.session_id = session_id  # Update in memory for guard check
         context = {
             "task": task.to_dict(),
+            "task_id": task_id,
             "session": {"id": session_id},
-            # Simulate session assignment for the guard check 'task_claimed'
-            # The guard might check if task.session_id matches session.id
-            # We haven't assigned it yet, so we pass it in context
-            "proposed_session_id": session_id,
+            "session_id": session_id,
+            "entity_type": "task",
+            "entity_id": task_id,
         }
-        # Update task context to appear claimed for the check if needed, 
-        # OR rely on 'can_start_task' guard which checks if task is claimed.
-        # Actually, 'can_start_task' guard checks if task is claimed by current session.
-        # Since we are *performing* the claim, we are transitioning TO wip.
-        # The guard `can_start_task` usually runs on todo->wip. 
-        # Let's check `data/guards/task.py`: `can_start_task` checks `task_session == session_id`.
-        # Since we haven't saved the session_id to the task yet, the guard might fail if we strictly use the current task state.
-        # However, `claim_task` IS the action of claiming. 
-        # We should probably update the task object in memory first, then validate.
-        
-        task.session_id = session_id
-        context["task"]["session_id"] = session_id # Update context to reflect proposed state
+        context["task"]["session_id"] = session_id  # Update context to reflect proposed state
 
-        # Validate transition
-        valid, reason = validate_transition(
-            "task", 
-            task.state, 
-            wip_state, 
-            context=context
-        )
-        if not valid:
-            raise PersistenceError(f"Cannot claim task {task_id}: {reason}")
+        # Validate and execute transition actions
+        try:
+            transition_entity(
+                entity_type="task",
+                entity_id=task_id,
+                to_state=wip_state,
+                current_state=task.state,
+                context=context,
+                repo_root=self.project_root,
+            )
+        except EntityTransitionError as e:
+            raise PersistenceError(f"Cannot claim task {task_id}: {e}") from e
 
         # 2. Update task entity
         from edison.core.utils.time import utc_timestamp
@@ -229,7 +222,7 @@ class TaskQAWorkflow:
         """Complete a task (wip -> done transition).
 
         This workflow operation:
-        1. Validates transition using unified StateValidator (enforcing guards like can_finish_task)
+        1. Validates transition and executes actions using transition_entity()
         2. Updates state to done
         3. Moves file to session done directory
         4. Updates task status in session
@@ -246,7 +239,6 @@ class TaskQAWorkflow:
             PersistenceError: If task not found or transition blocked
         """
         from edison.core.config.domains.workflow import WorkflowConfig
-        from edison.core.state.transitions import validate_transition
 
         # 1. Load task
         task = self.task_repo.get(task_id)
@@ -262,21 +254,28 @@ class TaskQAWorkflow:
         workflow_config = WorkflowConfig()
         done_state = workflow_config.get_semantic_state("task", "done")
 
-        # Validate transition
-        # Context needs task data for guards like 'can_finish_task' (checks implementation report)
+        # Build context for guards like 'can_finish_task' (checks implementation report)
         context = {
             "task": task.to_dict(),
+            "task_id": task_id,
             "session": {"id": session_id},
+            "session_id": session_id,
+            "entity_type": "task",
+            "entity_id": task_id,
         }
         
-        valid, reason = validate_transition(
-            "task", 
-            task.state, 
-            done_state, 
-            context=context
-        )
-        if not valid:
-            raise PersistenceError(f"Cannot complete task {task_id}: {reason}")
+        # Validate and execute transition actions
+        try:
+            transition_entity(
+                entity_type="task",
+                entity_id=task_id,
+                to_state=done_state,
+                current_state=task.state,
+                context=context,
+                repo_root=self.project_root,
+            )
+        except EntityTransitionError as e:
+            raise PersistenceError(f"Cannot complete task {task_id}: {e}") from e
 
         # 2. Update task entity
         from edison.core.utils.time import utc_timestamp
@@ -290,11 +289,7 @@ class TaskQAWorkflow:
         # 3. Save (handles move)
         self.task_repo.save(task)
 
-        # 4. Update task status in session
-        from edison.core.session.persistence.graph import update_record_status
-        update_record_status(session_id, task_id, "task", done_state)
-
-        # 5. Advance QA
+        # 4. Advance QA
         self._advance_qa_for_completion(task_id, session_id)
 
         return task
@@ -373,10 +368,6 @@ class TaskQAWorkflow:
             # waiting -> todo
             todo_state = WorkflowConfig().get_semantic_state("qa", "todo")
             self.qa_repo.advance_state(qa_id, todo_state, session_id)
-
-            # Update QA status in session
-            from edison.core.session.persistence.graph import update_record_status
-            update_record_status(session_id, qa_id, "qa", todo_state)
 
 
 __all__ = ["TaskQAWorkflow"]

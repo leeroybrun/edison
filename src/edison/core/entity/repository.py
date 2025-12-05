@@ -268,6 +268,7 @@ class BaseRepository(BaseEntityManager[T]):
                 current_state=from_state,
                 context=context,
                 record_history=True,
+                repo_root=self.project_root,  # Pass project_root for guard context
             )
         except EntityTransitionError as e:
             raise EntityStateError(

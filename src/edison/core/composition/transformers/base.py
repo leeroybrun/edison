@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+
+from edison.core.composition.context import get_config_value
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
@@ -64,16 +66,7 @@ class TransformContext:
         Returns:
             The config value or None if not found
         """
-        parts = path.split(".")
-        current: Any = self.config
-        for part in parts:
-            if isinstance(current, dict):
-                current = current.get(part)
-            else:
-                return None
-            if current is None:
-                return None
-        return current
+        return get_config_value(self.config, path)
 
     def record_include(self, path: str) -> None:
         """Record that an include was resolved."""

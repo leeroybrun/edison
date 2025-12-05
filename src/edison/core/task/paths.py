@@ -254,8 +254,11 @@ def _session_tasks_dir(session_id: str, state: str) -> Path:
         session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent
     except Exception:
-        # Fallback: assume session is in wip (active) state
-        session_base = _session_state_dir("wip") / session_id
+        # Fallback: use config-driven active session state directory
+        from edison.core.config.domains.session import SessionConfig
+        states_map = SessionConfig().get_session_states()
+        active_dir = states_map.get("active", "wip")
+        session_base = _session_state_dir(active_dir) / session_id
 
     return (session_base / "tasks" / state.lower()).resolve()
 
@@ -277,8 +280,11 @@ def _session_qa_dir(session_id: str, state: str) -> Path:
         session_json_path = repo.get_session_json_path(session_id)
         session_base = session_json_path.parent
     except Exception:
-        # Fallback: assume session is in wip (active) state
-        session_base = _session_state_dir("wip") / session_id
+        # Fallback: use config-driven active session state directory
+        from edison.core.config.domains.session import SessionConfig
+        states_map = SessionConfig().get_session_states()
+        active_dir = states_map.get("active", "wip")
+        session_base = _session_state_dir(active_dir) / session_id
 
     return (session_base / "qa" / state.lower()).resolve()
 

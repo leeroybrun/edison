@@ -132,7 +132,7 @@ def test_config_functions_work_without_fallbacks(tmp_path):
     This test ensures that the config system always provides states,
     so no fallbacks are needed in the code.
     """
-    from edison.core.config.domains.workflow import get_task_states, get_qa_states
+    from edison.core.config.domains.workflow import WorkflowConfig
     from edison.core.config.cache import clear_all_caches
     import os
 
@@ -185,18 +185,19 @@ statemachine:
         from edison.core.utils.paths import resolver
         resolver._PROJECT_ROOT_CACHE = None
 
-        # Get states from config
-        task_states = get_task_states(force_reload=True)
-        qa_states = get_qa_states(force_reload=True)
+        # Get states from config using WorkflowConfig class
+        config = WorkflowConfig()
+        task_states = config.task_states
+        qa_states = config.qa_states
 
         # Verify they are never empty or None
-        assert task_states is not None, "get_task_states() returned None"
-        assert len(task_states) > 0, "get_task_states() returned empty list"
-        assert "todo" in task_states, "get_task_states() missing 'todo' state"
+        assert task_states is not None, "WorkflowConfig().task_states returned None"
+        assert len(task_states) > 0, "WorkflowConfig().task_states returned empty list"
+        assert "todo" in task_states, "WorkflowConfig().task_states missing 'todo' state"
 
-        assert qa_states is not None, "get_qa_states() returned None"
-        assert len(qa_states) > 0, "get_qa_states() returned empty list"
-        assert "waiting" in qa_states, "get_qa_states() missing 'waiting' state"
+        assert qa_states is not None, "WorkflowConfig().qa_states returned None"
+        assert len(qa_states) > 0, "WorkflowConfig().qa_states returned empty list"
+        assert "waiting" in qa_states, "WorkflowConfig().qa_states missing 'waiting' state"
 
     finally:
         if old_root:

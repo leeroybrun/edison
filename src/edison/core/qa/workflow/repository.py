@@ -170,9 +170,10 @@ class QARepository(
     # ---------- Workflow Methods ----------
 
     def advance_state(self, qa_id: str, new_state: str, session_id: Optional[str] = None) -> QARecord:
-        """Advance QA record to a new state.
+        """Advance QA record to a new state using proper state machine validation.
         
         This is a HIGH-LEVEL workflow method that moves QA between states.
+        Uses transition_entity() to ensure guards and actions are executed.
         
         Args:
             qa_id: QA record identifier
@@ -183,19 +184,41 @@ class QARepository(
             Updated QA record
             
         Raises:
-            PersistenceError: If QA not found
+            PersistenceError: If QA not found or transition not allowed
         """
+        from edison.core.state.transitions import transition_entity, EntityTransitionError
+        from edison.core.entity import StateHistoryEntry
+        
         qa = self.get(qa_id)
         if not qa:
             raise PersistenceError(f"QA record not found: {qa_id}")
             
         old_state = qa.state
-        qa.state = new_state
         
-        if session_id:
-            qa.session_id = session_id
+        # Use transition_entity to validate guards and execute actions
+        try:
+            result = transition_entity(
+                entity_type="qa",
+                entity_id=qa_id,
+                to_state=new_state,
+                current_state=old_state,
+                context={
+                    "qa": {"id": qa_id, "task_id": qa.task_id, "state": old_state},
+                    "session": {"id": session_id} if session_id else {},
+                    "session_id": session_id,
+                },
+            )
             
-        qa.record_transition(old_state, new_state, reason="workflow_advance")
+            # Update QA with transition result
+            qa.state = result["state"]
+            if session_id:
+                qa.session_id = session_id
+            if "history_entry" in result:
+                entry = StateHistoryEntry.from_dict(result["history_entry"])
+                qa.state_history.append(entry)
+                
+        except EntityTransitionError as e:
+            raise PersistenceError(f"Transition not allowed: {e}") from e
         
         self.save(qa)
         

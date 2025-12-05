@@ -73,9 +73,12 @@ def main(args: argparse.Namespace) -> int:
                     formatter.text(f"Task: {session.get('task')}")
                 if session.get("owner"):
                     formatter.text(f"Owner: {session.get('owner')}")
-                tasks = session.get("tasks", {})
-                if tasks:
-                    formatter.text(f"Tasks: {len(tasks)}")
+                # Get task count from TaskRepository (task files are source of truth)
+                from edison.core.task import TaskRepository
+                task_repo = TaskRepository()
+                session_tasks = task_repo.find_by_session(current)
+                if session_tasks:
+                    formatter.text(f"Tasks: {len(session_tasks)}")
         else:
             if formatter.json_mode:
                 formatter.json_output({"current_session": None})

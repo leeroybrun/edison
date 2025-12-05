@@ -409,8 +409,11 @@ class SessionAutoStart:
 
     def _session_log_path(self, session_id: str) -> Path:
         """Return path for per-session orchestrator log."""
+        from edison.core.config.domains.session import SessionConfig
         mgmt_paths = get_management_paths(self.session_manager.project_root)
-        base = mgmt_paths.get_session_state_dir("wip") / session_id
+        states_map = SessionConfig().get_session_states()
+        active_dir = states_map.get("active", "wip")
+        base = mgmt_paths.get_session_state_dir(active_dir) / session_id
         ensure_directory(base)
         return base / "orchestrator.log"
 

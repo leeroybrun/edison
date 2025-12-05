@@ -28,18 +28,9 @@ from .registry import (
     filter_rules,
 )
 
-# Re-exports from other modules for backwards compatibility
-from edison.core.composition.registries.file_patterns import FilePatternRegistry
-from edison.core.composition.core.errors import (
-    AnchorNotFoundError,
-    RulesCompositionError,
-)
-
 # Re-export all public symbols
 __all__ = [
     # Exceptions
-    "AnchorNotFoundError",
-    "RulesCompositionError",
     "RuleViolationError",
     # Models
     "Rule",
@@ -49,7 +40,6 @@ __all__ = [
     "compose_rules",
     "get_rules_for_role",
     "filter_rules",
-    "FilePatternRegistry",
     # Engine (runtime)
     "RulesEngine",
     # Checker (runtime)

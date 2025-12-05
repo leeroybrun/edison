@@ -179,12 +179,15 @@ def resolve_session_record_path(
                 session_base = candidate
                 break
 
-    # 3. Default to wip using config-driven path resolution
+    # 3. Default to active session state using config-driven path resolution
     if not session_base:
         # Use config-driven path resolution
         from edison.core.utils.paths import get_management_paths
+        from edison.core.config.domains.session import SessionConfig
         mgmt = get_management_paths(project_root)
-        session_base = mgmt.get_session_state_dir("wip") / session_id
+        states_map = SessionConfig().get_session_states()
+        active_dir = states_map.get("active", "wip")
+        session_base = mgmt.get_session_state_dir(active_dir) / session_id
 
     # Ensure we target the specific session directory
     if session_base.name != session_id:

@@ -109,21 +109,43 @@ def main(args: argparse.Namespace) -> int:
                 f"Status: {task_entity.state}"
             )
         else:
-            # QA claim - use QA repository directly
+            # QA claim - use QA repository with proper transition validation
             from edison.core.qa.workflow.repository import QARepository
+            from edison.core.state.transitions import transition_entity, EntityTransitionError
+            from edison.core.entity import StateHistoryEntry
 
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)
             if not qa:
                 raise ValueError(f"QA record not found: {record_id}")
 
-            # Update state and session
+            # Use transition_entity to validate guards and execute actions
             wip_state = WorkflowConfig().get_semantic_state("qa", "wip")
             old_state = qa.state
-            qa.state = wip_state
-            qa.session_id = session_id
-            qa.record_transition(old_state, wip_state, reason="claimed")
-            qa_repo.save(qa)
+            
+            try:
+                result = transition_entity(
+                    entity_type="qa",
+                    entity_id=record_id,
+                    to_state=wip_state,
+                    current_state=old_state,
+                    context={
+                        "qa": qa.to_dict() if hasattr(qa, 'to_dict') else {"id": qa.id},
+                        "session": {"id": session_id},
+                        "session_id": session_id,
+                    },
+                )
+                
+                # Update QA with transition result
+                qa.state = result["state"]
+                qa.session_id = session_id
+                if "history_entry" in result:
+                    entry = StateHistoryEntry.from_dict(result["history_entry"])
+                    qa.state_history.append(entry)
+                qa_repo.save(qa)
+                
+            except EntityTransitionError as e:
+                raise ValueError(f"Cannot claim QA: {e}")
 
             formatter.json_output({
                 "status": "claimed",

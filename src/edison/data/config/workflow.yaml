@@ -1,6 +1,29 @@
 workflow:
   version: "1.0.0"
 
+  # Guidance rules - non-enforcing rules for orchestrator hints
+  # These are suggestions, not state machine guards
+  guidance:
+    delegation:
+      # Primary rule for delegation hints (when suggesting delegate actions)
+      primary_rule: RULE.DELEGATION.PRIORITY_CHAIN
+      # Additional rules to include with delegation hints
+      rules:
+        - RULE.DELEGATION.PRIORITY_CHAIN
+        - RULE.DELEGATION.MOST_WORK
+        - RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT
+    session:
+      # Rules for session-level guidance
+      rules:
+        - RULE.SESSION.NEXT_LOOP_DRIVER
+        - RULE.SESSION.ISOLATION
+    context:
+      # Rules for context management guidance
+      rules:
+        - RULE.CONTEXT.BUDGET_MINIMIZE
+        - RULE.CONTEXT.NO_BIG_FILES
+        - RULE.CONTEXT.SNIPPET_ONLY
+
   validationLifecycle:
     onApprove:
       qaState: done → validated
@@ -77,6 +100,7 @@ workflow:
           allowed_transitions:
             - to: wip
               guard: can_start_task
+              rules: [RULE.GUARDS.FAIL_CLOSED]
               recommendations:
                 - id: task.unblock.wip
                   entity: task

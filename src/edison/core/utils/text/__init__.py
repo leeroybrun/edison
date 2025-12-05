@@ -23,25 +23,6 @@ from .core import (
     _paragraph_shingles,
 )
 
-# Lazy ENGINE_VERSION for backward compatibility
-def __getattr__(name: str):
-    if name == "ENGINE_VERSION":
-        return get_engine_version()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-# Re-export AnchorNotFoundError from composition errors for backwards compatibility
-from edison.core.composition.core.errors import AnchorNotFoundError
-
-
-# Lazy import for extract_anchor_content to avoid circular import
-def extract_anchor_content(source_file, anchor):
-    """Extract content using SECTION markers.
-    
-    Backwards compatible alias.
-    """
-    from edison.core.rules.registry import extract_anchor_content as _extract
-    return _extract(source_file, anchor)
-
 # Re-export from markdown module
 from .markdown import (
     parse_html_comment,

@@ -12,7 +12,6 @@ from edison.core.session.core.id import validate_session_id
 from edison.core.session.core.context import SessionContext
 from edison.core.session import persistence as graph
 from edison.core.task import TaskRepository
-from edison.core import task  # for read_metadata
 from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.utils.io import read_json as io_read_json
 from edison.core.utils.time import utc_timestamp as io_utc_timestamp
@@ -56,37 +55,45 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         },
         "details": [],
     }
-    # Detect manual moves: metadata status must match directory status
+    # Detect manual moves: entity state must match directory status
+    # Use TaskRepository to get tasks belonging to this session (task files are source of truth)
     task_repo = TaskRepository()
     qa_repo = QARepository()
-    for task_id in session.get("tasks", {}):
+    
+    # Get tasks from TaskRepository instead of session JSON
+    session_tasks = task_repo.find_by_session(session_id)
+    session_task_ids = {t.id for t in session_tasks}
+    
+    for task in session_tasks:
+        task_id = task.id
         try:
             p = task_repo.get_path(task_id)
-            meta = task.read_metadata(p, "task")
             dir_status = p.parent.name
-            if meta.status and meta.status != dir_status:
-                msg = f"Task {task_id} metadata status '{meta.status}' != directory '{dir_status}' (no manual moves)"
+            entity_state = task.state
+            if entity_state and entity_state != dir_status:
+                msg = f"Task {task_id} entity state '{entity_state}' != directory '{dir_status}' (no manual moves)"
                 failures.append(msg)
-                health["categories"]["stateMismatches"].append({"type": "task", "taskId": task_id, "meta": meta.status, "dir": dir_status})
+                health["categories"]["stateMismatches"].append({"type": "task", "taskId": task_id, "meta": entity_state, "dir": dir_status})
         except FileNotFoundError:
             msg = f"Task {task_id} missing on disk"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "task", "taskId": task_id, "state": "missing"})
-    for qa_id, qa in session.get("qa", {}).items():
-        task_id = qa.get("taskId") if isinstance(qa, dict) else qa_id.rstrip("-qa")
+    # Verify QA records for tasks in this session (QA tied to task via task_id)
+    for task_id in session_task_ids:
+        qa_id = f"{task_id}-qa"
         try:
             p = qa_repo.get_path(task_id)
-            meta = task.read_metadata(p, "qa")
+            entity = qa_repo.get(task_id)
             dir_status = p.parent.name
-            if meta.status and meta.status != dir_status:
-                msg = f"QA {qa_id} metadata status '{meta.status}' != directory '{dir_status}' (no manual moves)"
+            entity_state = entity.state if entity else None
+            if entity_state and entity_state != dir_status:
+                msg = f"QA {qa_id} entity state '{entity_state}' != directory '{dir_status}' (no manual moves)"
                 failures.append(msg)
-                health["categories"]["stateMismatches"].append({"type": "qa", "qaId": qa_id, "meta": meta.status, "dir": dir_status})
+                health["categories"]["stateMismatches"].append({"type": "qa", "qaId": qa_id, "meta": entity_state, "dir": dir_status})
         except FileNotFoundError:
-            msg = f"QA {qa_id} missing on disk"
-            failures.append(msg)
-            health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": "missing"})
-    for task_id in session.get("tasks", {}):
+            # QA might not exist for all tasks (optional)
+            pass
+    for task_id in session_task_ids:
         try:
             p = task_repo.get_path(task_id)
             status = p.parent.name
@@ -99,14 +106,15 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "task", "taskId": task_id, "state": status})
 
-    for qa_id, qa in session.get("qa", {}).items():
-        task_id = qa.get("taskId") if isinstance(qa, dict) else qa_id.rstrip("-qa")
+    # Check QA state for each task in the session (QA is tied to tasks)
+    for task_id in session_task_ids:
+        qa_id = f"{task_id}-qa"
         try:
             p = qa_repo.get_path(task_id)
             status = p.parent.name
         except FileNotFoundError:
             status = "missing"
-        if status not in WorkflowConfig().qa_states:
+        if status not in WorkflowConfig().qa_states and status != "missing":
             msg = f"QA {qa_id} unexpected state: {status}"
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})
@@ -118,7 +126,8 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     qa_validated = WorkflowConfig().get_semantic_state("qa", "validated")
     qa_ready_states = {qa_done, qa_validated}
     
-    for task_id, task_entry in session.get("tasks", {}).items():
+    for task in session_tasks:
+        task_id = task.id
         try:
             tpath = task_repo.get_path(task_id)
         except FileNotFoundError:
@@ -163,13 +172,44 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         health["ok"] = False
         return health
 
-    # On success, mark session moving into the closing phase and persist
-    # Get closing state from config using semantic lookup
+    # On success, transition session to closing phase using proper state machine
+    # This ensures guards and actions are executed per workflow.yaml
+    from edison.core.state.transitions import transition_entity, EntityTransitionError
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.session.core.models import Session
+    
     closing_state = WorkflowConfig().get_semantic_state("session", "closing")
-    session["state"] = closing_state
-    # Keep filesystem layout (sessions/wip) but update metadata timestamps
-    session.setdefault("meta", {})["lastActive"] = io_utc_timestamp()
-    graph.save_session(session_id, session)
+    current_state = session.get("state", "active")
+    
+    try:
+        # Use transition_entity to validate guards and execute actions
+        result = transition_entity(
+            entity_type="session",
+            entity_id=session_id,
+            to_state=closing_state,
+            current_state=current_state,
+            context={
+                "session": session,
+                "session_id": session_id,
+            },
+        )
+        
+        # Update session with transition result
+        session["state"] = result["state"]
+        if "history_entry" in result:
+            session.setdefault("stateHistory", []).append(result["history_entry"])
+        session.setdefault("meta", {})["lastActive"] = io_utc_timestamp()
+        
+        # Save via repository for proper state directory handling
+        session_repo = SessionRepository()
+        session_entity = Session.from_dict(session)
+        session_repo.save(session_entity)
+        
+    except EntityTransitionError as e:
+        # Guard or condition blocked the transition
+        health["ok"] = False
+        health["details"].append(f"Transition to closing blocked: {e}")
+        return health
 
     return health
 

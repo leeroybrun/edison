@@ -238,10 +238,46 @@ def cleanup_expired_sessions() -> List[str]:
             if not session_entity:
                 continue
             sess = session_entity.to_dict()
-            # Use closing state from config
+            current_state = sess.get("state", "active")
+            
+            # Use transition_entity for proper guard and action execution
+            from edison.core.state.transitions import transition_entity, EntityTransitionError
+            
             session_states = get_config().get_session_states()
             closing_state = session_states.get("closing", "closing")
-            sess["state"] = closing_state
+            
+            try:
+                result = transition_entity(
+                    entity_type="session",
+                    entity_id=sid,
+                    to_state=closing_state,
+                    current_state=current_state,
+                    context={
+                        "session": sess,
+                        "session_id": sid,
+                        "reason": "expired",
+                    },
+                )
+                sess["state"] = result["state"]
+                if "history_entry" in result:
+                    sess.setdefault("stateHistory", []).append(result["history_entry"])
+            except EntityTransitionError:
+                # If transition fails, try recovery state instead
+                try:
+                    result = transition_entity(
+                        entity_type="session",
+                        entity_id=sid,
+                        to_state="recovery",
+                        current_state=current_state,
+                        context={"session": sess, "session_id": sid},
+                    )
+                    sess["state"] = result["state"]
+                    if "history_entry" in result:
+                        sess.setdefault("stateHistory", []).append(result["history_entry"])
+                except EntityTransitionError:
+                    logger.warning("Cannot transition session %s to closing or recovery", sid)
+                    continue
+            
             sess_meta = sess.get("meta", {})
             sess_meta["expiredAt"] = io_utc_timestamp()
             sess_meta.setdefault("lastActive", io_utc_timestamp())
@@ -286,7 +322,14 @@ def check_timeout(sess_dir: Path, threshold_minutes: Optional[int] = None) -> bo
     return delta > timedelta(minutes=threshold_minutes)
 
 def handle_timeout(sess_dir: Path) -> Path:
-    # Move to recovery and annotate metadata
+    """Handle session timeout by transitioning to recovery state.
+    
+    Uses proper state transition API to ensure guards and actions run.
+    """
+    from edison.core.state.transitions import transition_entity, EntityTransitionError
+    from edison.core.config.domains.workflow import WorkflowConfig
+    
+    # Read original session data
     orig = {}
     try:
         orig = read_json(_session_json_path(sess_dir))
@@ -297,16 +340,42 @@ def handle_timeout(sess_dir: Path) -> Path:
         logger.error("Invalid session.json for %s: %s", sess_dir, e)
         orig = {}
 
-    rec_dir = get_sessions_root() / 'recovery' / sess_dir.name
+    session_id = sess_dir.name
+    current_state = orig.get("state", "active")
+    
+    # Get recovery state from config using semantic lookup
+    recovery_state = WorkflowConfig().get_semantic_state("session", "recovery")
+    
+    # Use transition_entity to properly transition with guards and actions
+    try:
+        result = transition_entity(
+            entity_type="session",
+            entity_id=session_id,
+            to_state=recovery_state,
+            current_state=current_state,
+            context={
+                "session": orig,
+                "session_id": session_id,
+                "reason": "timeout exceeded",
+            },
+        )
+        orig["state"] = result["state"]
+        if "history_entry" in result:
+            orig.setdefault("stateHistory", []).append(result["history_entry"])
+    except EntityTransitionError as e:
+        logger.warning("Transition to recovery failed for %s: %s, forcing state change", session_id, e)
+        # Fall back to direct state assignment for recovery scenarios
+        orig["state"] = recovery_state
+
+    # Move session directory to recovery location
+    rec_dir = get_sessions_root() / 'recovery' / session_id
     ensure_directory(rec_dir.parent)
     if rec_dir.exists():
         shutil.rmtree(rec_dir)
     shutil.move(str(sess_dir), str(rec_dir))
 
-    # Update session state
-    meta = read_json(_session_json_path(rec_dir))
-    meta['state'] = 'Recovery'
-    write_json_atomic(_session_json_path(rec_dir), meta)
+    # Write updated session state
+    write_json_atomic(_session_json_path(rec_dir), orig)
 
     # Write recovery reason
     write_json_atomic(rec_dir / 'recovery.json', {
@@ -445,12 +514,9 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
         # It's incomplete.
         # Check if we should roll it back or just mark it aborted.
         # ValidationTransaction.commit() sets _committed=True then writes finalizedAt.
-        # If finalizedAt is missing, it wasn't fully committed.
-        # So we should abort/rollback.
-
-        # We can instantiate a ValidationTransaction and call abort?
-        # Or just manually clean up.
-        # Manual cleanup is safer to avoid side effects of __init__.
+        # If finalizedAt is missing, it wasn't fully committed, so we should abort.
+        # Manual cleanup is safer than calling ValidationTransaction.abort() to avoid
+        # side effects of __init__.
 
         logger.info("Recovering incomplete validation transaction %s for session %s", tx_id, sid)
 
@@ -513,15 +579,17 @@ def clear_session_locks(session_id: str) -> List[str]:
     return cleared
 
 
-def clear_all_locks(force: bool = False) -> List[str]:
+def clear_all_locks(force: bool = False, stale_threshold_hours: float = 1.0) -> List[str]:
     """Clear all stale locks.
 
     Args:
         force: If True, force clear all locks regardless of staleness
+        stale_threshold_hours: Hours after which a lock is considered stale (default: 1.0)
 
     Returns:
         List of cleared lock file names
     """
+    import time
     from edison.core.utils.paths import PathResolver
 
     try:
@@ -535,15 +603,23 @@ def clear_all_locks(force: bool = False) -> List[str]:
         return []
 
     cleared = []
+    stale_threshold_seconds = stale_threshold_hours * 3600
+    current_time = time.time()
+    
     for lock_file in lock_dir.glob("*.lock"):
         try:
             if force:
                 lock_file.unlink()
                 cleared.append(lock_file.name)
             else:
-                # TODO: Implement staleness check based on lock age
-                # For now, only clear if force=True
-                pass
+                # Check staleness based on lock file modification time
+                mtime = lock_file.stat().st_mtime
+                age_seconds = current_time - mtime
+                if age_seconds > stale_threshold_seconds:
+                    logger.info("Clearing stale lock %s (age: %.1f hours)", 
+                               lock_file.name, age_seconds / 3600)
+                    lock_file.unlink()
+                    cleared.append(lock_file.name)
         except Exception as e:
             logger.warning("Failed to clear lock %s: %s", lock_file.name, e)
 

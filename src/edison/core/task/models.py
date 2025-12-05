@@ -13,6 +13,7 @@ from edison.core.entity import (
     EntityMetadata,
     StateHistoryEntry,
 )
+from edison.core.config.domains.workflow import WorkflowConfig
 
 
 @dataclass
@@ -160,9 +161,12 @@ class Task:
         history_data = data.get("state_history") or data.get("stateHistory", [])
         state_history = [StateHistoryEntry.from_dict(h) for h in history_data]
         
+        # Get state from data, fallback to config-driven initial state
+        state = data.get("state") or data.get("status") or WorkflowConfig().get_initial_state("task")
+        
         return cls(
             id=data.get("id", ""),
-            state=data.get("state") or data.get("status") or "todo",
+            state=state,
             title=data.get("title", ""),
             description=data.get("description", ""),
             session_id=data.get("session_id") or data.get("sessionId"),
@@ -188,7 +192,7 @@ class Task:
         description: str = "",
         session_id: Optional[str] = None,
         owner: Optional[str] = None,
-        state: str = "todo",
+        state: Optional[str] = None,
         parent_id: Optional[str] = None,
         depends_on: Optional[List[str]] = None,
         blocks_tasks: Optional[List[str]] = None,
@@ -202,7 +206,7 @@ class Task:
             description: Task description
             session_id: Associated session
             owner: Task owner/creator
-            state: Initial state (default: todo)
+            state: Initial state (default: from config)
             parent_id: Parent task ID for subtasks
             depends_on: List of task IDs this task depends on
             blocks_tasks: List of task IDs blocked by this task
@@ -211,9 +215,12 @@ class Task:
         Returns:
             New Task instance
         """
+        # Resolve state from config if not provided
+        resolved_state = state if state is not None else WorkflowConfig().get_initial_state("task")
+        
         return cls(
             id=task_id,
-            state=state,
+            state=resolved_state,
             title=title,
             description=description,
             session_id=session_id,

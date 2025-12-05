@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.rules import FilePatternRegistry
+from edison.core.composition.registries.file_patterns import FilePatternRegistry
 
 
 ROOT = Path(__file__).resolve().parents[4]

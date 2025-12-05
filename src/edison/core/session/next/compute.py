@@ -211,7 +211,8 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     actions.append(action)
             else:
                 # Fallback: generate default action if no recommendations in config
-                rule_ids = workflow_cfg.get_transition_rules("qa", qa_todo, qa_wip) or ["RULE.VALIDATION.FIRST"]
+                # Rule IDs come from config (workflow.yaml), not hardcoded
+                rule_ids = workflow_cfg.get_transition_rules("qa", qa_todo, qa_wip) or []
 
                 # Recommend direct execution if CLI tools available
                 if can_execute_directly:
@@ -255,14 +256,16 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
 
         all_children_ready = all(_child_ready(cid) for cid in children)
         if all_children_ready and scope in (None, "tasks", "session"):
+            # Rule IDs come from config (workflow.yaml), not hardcoded
+            unblock_rules = workflow_cfg.get_transition_rules("task", STATES["task"]["blocked"], STATES["task"]["wip"]) or []
             actions.append({
                 "id": "task.unblock.wip",
                 "entity": "task",
                 "recordId": task_id,
                 "cmd": ["edison", "tasks", "status", task_id, "--status", STATES["task"]["wip"]],
                 "rationale": "All child tasks are done/validated; move parent from blocked → wip",
-                "ruleRef": {"id": "RULE.GUARDS.FAIL_CLOSED"},
-                "ruleIds": ["RULE.GUARDS.FAIL_CLOSED"],
+                "ruleRef": {"id": unblock_rules[0]} if unblock_rules else None,
+                "ruleIds": unblock_rules,
                 "blocking": True,
             })
 
@@ -277,19 +280,21 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         missing = missing_evidence_blockers(task_id)
         # Only propose if automation evidence exists (i.e., missing list empty)
         if not missing and scope in (None, "tasks", "session"):
-            rule_ids = rules_for("task", STATES["task"]["wip"], STATES["task"]["done"], state_spec) or ["RULE.GUARDS.FAIL_CLOSED"]
+            # Rule IDs come from config (workflow.yaml), not hardcoded
+            rule_ids = rules_for("task", STATES["task"]["wip"], STATES["task"]["done"], state_spec) or []
             actions.append({
                 "id": "task.promote.done",
                 "entity": "task",
                 "recordId": task_id,
                 "cmd": ["edison", "tasks", "status", task_id, "--status", STATES["task"]["done"]],
                 "rationale": "Children ready and automation evidence present; promote parent wip → done",
-                "ruleRef": {"id": rule_ids[0]},
+                "ruleRef": {"id": rule_ids[0]} if rule_ids else None,
                 "ruleIds": rule_ids,
                 "blocking": True,
             })
 
     # Fix invariants: create missing QA for owned wip tasks (suggestion)
+    # Note: QA creation is not a state transition, so no transition rules apply
     for task_id, task_entry in tasks_map.items():
         if task_entry.get("status") == STATES["task"]["wip"] and infer_qa_status(task_id) == "missing" and scope in (None, "qa"):
             actions.append({
@@ -298,8 +303,8 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "new", task_id],
                 "rationale": "Pair QA with active task",
-                "ruleRef": {"id": "RULE.GUARDS.FAIL_CLOSED"},
-                "ruleIds": ["RULE.GUARDS.FAIL_CLOSED"],
+                "ruleRef": None,  # Not a transition - no transition rules
+                "ruleIds": [],
                 "blocking": True,
             })
 
@@ -311,7 +316,8 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
     # waiting->todo when task done
     for task_id, task_entry in tasks_map.items():
         if infer_task_status(task_id) == STATES["task"]["done"] and infer_qa_status(task_id) == STATES["qa"]["waiting"] and scope in (None, "qa"):
-            rule_ids = rules_for("qa", STATES["qa"]["waiting"], STATES["qa"]["todo"], state_spec) or ["RULE.VALIDATION.FIRST"]
+            # Rule IDs come from config (workflow.yaml), not hardcoded
+            rule_ids = rules_for("qa", STATES["qa"]["waiting"], STATES["qa"]["todo"], state_spec) or []
             rule_ids = list(rule_ids)
             actions.append({
                 "id": "qa.promote.todo",
@@ -319,16 +325,18 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", STATES["qa"]["todo"]],
                 "rationale": "Task done; get QA ready",
-                "ruleRef": {"id": rule_ids[0]},
+                "ruleRef": {"id": rule_ids[0]} if rule_ids else None,
                 "ruleIds": rule_ids,
                 "blocking": True,
             })
 
     # Delegation hints for wip tasks (non-mutating suggestions)
+    # Guidance rule comes from config (workflow.yaml guidance section)
+    delegation_guidance_rule = workflow_cfg.get_guidance_rule("delegation")
     for task_id, task_entry in session.get("tasks", {}).items():
         if task_entry.get("status") == STATES["task"]["wip"] and scope in (None, "tasks"):
             basic_hint = simple_delegation_hint(
-                task_id, rule_id="RULE.DELEGATION.PRIORITY_CHAIN"
+                task_id, rule_id=delegation_guidance_rule
             )
             if basic_hint:
                 # Enhance hint with detailed reasoning
@@ -399,15 +407,16 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         if not task_entry.get("parentId"):
             children = task_entry.get("childIds", [])
             if children and all(infer_task_status(cid) in bundle_ready_states for cid in children) and scope in (None, "qa"):
-                rule_id = ( rules_for("qa", STATES["qa"]["todo"], STATES["qa"]["wip"], state_spec) or ["RULE.VALIDATION.BUNDLE_FIRST"] )[0]
+                # Rule IDs come from config (workflow.yaml), not hardcoded
+                bundle_rules = rules_for("qa", STATES["qa"]["todo"], STATES["qa"]["wip"], state_spec) or []
                 actions.append({
                     "id": "bundle.build",
                     "entity": "qa",
                     "recordId": f"{task_id}-qa",
                     "cmd": ["edison", "qa", "bundle", task_id],
                     "rationale": "Bundle related tasks for validation",
-                    "ruleRef": {"id": rule_id},
-                    "ruleIds": [rule_id],
+                    "ruleRef": {"id": bundle_rules[0]} if bundle_rules else None,
+                    "ruleIds": bundle_rules,
                     "blocking": True,
                 })
 
@@ -427,6 +436,9 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             for s in r.get("suggestedFollowups", []) or []:
                 suggestions.append(s)
         # Propose creation commands for suggestions
+        # Note: Task creation is not a state transition, so no transition rules apply
+        # Task claim IS a transition (todo→wip), so we look up rules from config
+        claim_rules = workflow_cfg.get_transition_rules("task", STATES["task"]["todo"], STATES["task"]["wip"]) or []
         for s in suggestions:
             parent_id = s.get("parentId") or task_id
             wave, base = extract_wave_and_base_id(parent_id)
@@ -440,8 +452,8 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 "recordId": new_id,
                 "cmd": cmd,
                 "rationale": f"Follow-up from {r.get('validatorId','validator')}: {s.get('title')}",
-                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
-                "ruleIds": ["RULE.VALIDATION.FIRST"],
+                "ruleRef": None,  # Not a transition - no transition rules
+                "ruleIds": [],
                 "blocking": bool(s.get("blocking")),
             })
             if s.get("claimNow"):
@@ -451,42 +463,48 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "recordId": new_id,
                     "cmd": ["edison", "tasks", "claim", new_id, "--session", session_id],
                     "rationale": "Suggestion marked claimNow by validator",
-                    "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
-                    "ruleIds": ["RULE.VALIDATION.FIRST"],
+                    "ruleRef": {"id": claim_rules[0]} if claim_rules else None,
+                    "ruleIds": claim_rules,
                     "blocking": False,
                 })
             if s.get("blocking"):
+                # Task blocked transition - look up rules from config
+                block_rules = workflow_cfg.get_transition_rules("task", STATES["task"]["wip"], STATES["task"]["blocked"]) or []
                 actions.append({
                     "id": "task.block",
                     "entity": "task",
                     "recordId": parent_id,
                     "cmd": ["edison", "tasks", "status", parent_id, "--status", STATES["task"]["blocked"]],
                     "rationale": "Follow-up marked blocking; set parent to blocked",
-                    "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
-                    "ruleIds": ["RULE.VALIDATION.FIRST"],
+                    "ruleRef": {"id": block_rules[0]} if block_rules else None,
+                    "ruleIds": block_rules,
                     "blocking": True,
                 })
         blocking_failed = [r for r in reports if not r.get("approved")]
         if blocking_failed and scope in (None, "qa"):
+            # QA rejection returns to waiting - look up rules from config for wip→todo (restart)
+            reject_rules = workflow_cfg.get_transition_rules("qa", STATES["qa"]["wip"], STATES["qa"]["todo"]) or []
             actions.append({
                 "id": "qa.round.rejected",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "round", "--task", task_id, "--status", "rejected", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
                 "rationale": "Blocking validators failed; record Round and return QA to waiting",
-                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
-                "ruleIds": ["RULE.VALIDATION.FIRST", "RULE.VALIDATION.BUNDLE_FIRST"],
+                "ruleRef": {"id": reject_rules[0]} if reject_rules else None,
+                "ruleIds": reject_rules,
                 "blocking": True,
             })
         elif not blocking_failed and q_status == STATES["qa"]["wip"] and scope in (None, "qa"):
+            # QA promotion to done - look up rules from config
+            done_rules = workflow_cfg.get_transition_rules("qa", STATES["qa"]["wip"], STATES["qa"]["done"]) or []
             actions.append({
                 "id": "qa.promote.done",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
                 "cmd": ["edison", "qa", "promote", "--task", task_id, "--to", STATES["qa"]["done"]],
                 "rationale": "All blocking validators approved; close QA",
-                "ruleRef": {"id": "RULE.VALIDATION.FIRST"},
-                "ruleIds": ["RULE.VALIDATION.FIRST"],
+                "ruleRef": {"id": done_rules[0]} if done_rules else None,
+                "ruleIds": done_rules,
                 "blocking": True,
             })
 

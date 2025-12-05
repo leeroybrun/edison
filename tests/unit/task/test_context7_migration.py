@@ -24,10 +24,10 @@ def test_load_validator_config_yaml(isolated_project_env):
     """Test loading validator config from YAML (regression check)."""
     root = isolated_project_env
 
-    # Setup .edison/config/validators.yml
+    # Setup .edison/config/validators.yaml (note: must be .yaml not .yml)
     config_dir = root / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_path = config_dir / "validators.yml"
+    config_path = config_dir / "validators.yaml"  # Fixed extension
 
     data = {"postTrainingPackages": {"react": {"triggers": ["*.tsx"]}}}
     config_path.write_text(yaml.dump(data))

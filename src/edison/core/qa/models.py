@@ -12,6 +12,7 @@ from edison.core.entity import (
     EntityMetadata,
     StateHistoryEntry,
 )
+from edison.core.config.domains.workflow import WorkflowConfig
 
 
 @dataclass  
@@ -104,10 +105,13 @@ class QARecord:
         history_data = data.get("state_history") or data.get("stateHistory", [])
         state_history = [StateHistoryEntry.from_dict(h) for h in history_data]
         
+        # Get state from data, fallback to config-driven initial state
+        state = data.get("state") or data.get("status") or WorkflowConfig().get_initial_state("qa")
+        
         return cls(
             id=data.get("id", ""),
             task_id=data.get("task_id") or data.get("taskId", ""),
-            state=data.get("state") or data.get("status") or "todo",
+            state=state,
             title=data.get("title", ""),
             session_id=data.get("session_id") or data.get("sessionId"),
             validator_owner=data.get("validator_owner") or data.get("validatorOwner"),
@@ -127,13 +131,16 @@ class QARecord:
         *,
         session_id: Optional[str] = None,
         validator_owner: Optional[str] = None,
-        state: str = "todo",
+        state: Optional[str] = None,
     ) -> "QARecord":
         """Factory method to create a new QA record."""
+        # Resolve state from config if not provided
+        resolved_state = state if state is not None else WorkflowConfig().get_initial_state("qa")
+        
         return cls(
             id=qa_id,
             task_id=task_id,
-            state=state,
+            state=resolved_state,
             title=title,
             session_id=session_id,
             validator_owner=validator_owner,

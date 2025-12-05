@@ -33,8 +33,6 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
     return {
         "id": sid,
         "state": initial_state,
-        "tasks": {},  # Kept for legacy compatibility
-        "qa": {},     # Kept for legacy compatibility
         "meta": {},
     }
 
@@ -102,24 +100,6 @@ def register_qa(
         "message": f"QA {qa_id} registered for task {task_id} with status {status}",
     })
     save_session(sid, sess)
-
-
-def update_record_status(
-    session_id: str,
-    record_id: str,
-    record_type: str,
-    status: str,
-) -> None:
-    """Log a status update event in session activity log.
-    
-    NOTE: This function no longer updates task/QA files directly.
-    Task/QA files are updated by their respective workflows.
-    State is derived from the directory the file is in.
-    
-    This function is kept for backward compatibility but only logs activity.
-    """
-    # Activity logging is handled by the calling workflow
-    pass
 
 
 def link_tasks(session_id: str, parent_id: str, child_id: str) -> None:
