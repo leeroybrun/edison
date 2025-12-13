@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Optional
 
-from .handlers import GuardRegistryBase, DomainRegistry
+from .handlers.registries import GuardRegistryBase, DomainRegistry
 
 
 class GuardRegistry(GuardRegistryBase):

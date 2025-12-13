@@ -19,11 +19,12 @@ from typing import TYPE_CHECKING, Any
 
 from edison.core.utils.subprocess import run_ci_command_from_string
 
-from .base import EngineConfig, ValidationResult, ValidatorConfig
+from .base import EngineConfig, ValidationResult
 from .parsers import ensure_parsers_loaded, get_parser
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.registries.validators import ValidatorMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class CLIEngine:
 
     def run(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         task_id: str,
         session_id: str,
         worktree_path: Path,
@@ -101,7 +102,7 @@ class CLIEngine:
         """Execute the validator CLI and return results.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata from ValidatorRegistry
             task_id: Task identifier
             session_id: Session identifier
             worktree_path: Path to git worktree to analyze
@@ -114,10 +115,10 @@ class CLIEngine:
         start_time = time.time()
 
         # Build the command
-        cmd_parts = self._build_command(config, worktree_path)
+        cmd_parts = self._build_command(validator, worktree_path)
 
         logger.info(
-            f"Running CLI validator '{config.id}' with command: {self.command}"
+            f"Running CLI validator '{validator.id}' with command: {self.command}"
         )
         logger.debug(f"Full command: {' '.join(cmd_parts[:5])}...")
 
@@ -127,7 +128,7 @@ class CLIEngine:
                 cmd_parts[0],
                 extra_args=cmd_parts[1:],
                 cwd=worktree_path,
-                timeout=config.timeout,
+                timeout=validator.timeout,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -139,16 +140,16 @@ class CLIEngine:
             exit_code = result.returncode
 
             logger.info(
-                f"CLI validator '{config.id}' completed: "
+                f"CLI validator '{validator.id}' completed: "
                 f"exit_code={exit_code}, duration={duration:.2f}s"
             )
 
         except Exception as e:
             duration = time.time() - start_time
-            logger.error(f"CLI validator '{config.id}' failed: {e}", exc_info=True)
+            logger.error(f"CLI validator '{validator.id}' failed: {e}", exc_info=True)
 
             return ValidationResult(
-                validator_id=config.id,
+                validator_id=validator.id,
                 verdict="error",
                 summary=f"CLI execution failed: {e}",
                 raw_output="",
@@ -164,7 +165,7 @@ class CLIEngine:
         if evidence_service:
             self._save_evidence(
                 evidence_service=evidence_service,
-                validator_id=config.id,
+                validator_id=validator.id,
                 stdout=stdout,
                 stderr=stderr,
                 exit_code=exit_code,
@@ -173,7 +174,7 @@ class CLIEngine:
 
         # Build result
         return self._to_validation_result(
-            config=config,
+            validator=validator,
             parsed=parsed,
             stdout=stdout,
             stderr=stderr,
@@ -183,13 +184,13 @@ class CLIEngine:
 
     def _build_command(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         worktree_path: Path,
     ) -> list[str]:
         """Build the command line from configuration.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata
             worktree_path: Working directory path
 
         Returns:
@@ -207,13 +208,10 @@ class CLIEngine:
         # Add read-only flags
         cmd.extend(self.config.read_only_flags)
 
-        # Add validator-specific command args
-        cmd.extend(config.command_args)
-
         # Add prompt file if specified
-        if config.prompt:
+        if validator.prompt:
             # Resolve prompt path relative to project
-            prompt_path = self._resolve_prompt_path(config.prompt)
+            prompt_path = self._resolve_prompt_path(validator.prompt)
             if prompt_path:
                 cmd.append(str(prompt_path))
 
@@ -325,7 +323,7 @@ class CLIEngine:
 
     def _to_validation_result(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         parsed: dict[str, Any],
         stdout: str,
         stderr: str,
@@ -335,7 +333,7 @@ class CLIEngine:
         """Convert parsed output to ValidationResult.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata
             parsed: Parsed output from parser
             stdout: Raw stdout
             stderr: Raw stderr
@@ -359,15 +357,15 @@ class CLIEngine:
             verdict = "pending"  # Need manual review
 
         return ValidationResult(
-            validator_id=config.id,
+            validator_id=validator.id,
             verdict=verdict,
             summary=response[:500] if response else f"Exit code: {exit_code}",
             raw_output=stdout,
             duration=duration,
             exit_code=exit_code,
             error=error or (stderr if exit_code != 0 else None),
-            context7_used=config.context7_required,
-            context7_packages=config.context7_packages,
+            context7_used=validator.context7_required,
+            context7_packages=validator.context7_packages,
         )
 
     def _extract_verdict_from_response(self, response: str) -> str | None:

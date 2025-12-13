@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.qa.engines import EngineRegistry, ValidationExecutor
+from edison.core.qa.engines import ValidationExecutor
+from edison.core.registries.validators import ValidatorRegistry
 
 SUMMARY = "Run validators against a task bundle"
 
@@ -45,14 +46,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--add-validators",
         nargs="+",
-        metavar="ID",
-        help="Add extra validators to the auto-detected roster (orchestrator can add but not remove)",
-    )
-    parser.add_argument(
-        "--add-to-wave",
-        type=str,
-        default="comprehensive",
-        help="Wave for added validators (default: comprehensive)",
+        metavar="[WAVE:]VALIDATOR",
+        help="Add extra validators: 'react' (default wave) or 'critical:react' (specific wave)",
     )
     parser.add_argument(
         "--blocking-only",
@@ -96,19 +91,16 @@ def main(args: argparse.Namespace) -> int:
             project_root=repo_root,
             max_workers=args.max_workers,
         )
-        registry = executor.get_registry()
+        # Use ValidatorRegistry (single source of truth) for roster building
+        validator_registry = executor.get_validator_registry()
 
-        # Build extra validators list from --add-validators
+        # Build extra validators list from --add-validators using unified syntax
         extra_validators = None
         if getattr(args, "add_validators", None):
-            target_wave = getattr(args, "add_to_wave", "comprehensive")
-            extra_validators = [
-                {"id": vid, "wave": target_wave}
-                for vid in args.add_validators
-            ]
+            extra_validators = validator_registry.parse_extra_validators(args.add_validators)
 
         # Build validator roster for display
-        roster = registry.build_execution_roster(
+        roster = validator_registry.build_execution_roster(
             task_id=args.task_id,
             session_id=args.session,
             wave=args.wave,
@@ -172,7 +164,7 @@ def main(args: argparse.Namespace) -> int:
         if args.dry_run:
             results["execution_plan"] = []
             for v in validators_to_run:
-                config = registry.get_validator(v["id"])
+                config = validator_registry.get(v["id"])
                 can_exec = executor.can_execute_validator(v["id"])
                 results["execution_plan"].append({
                     "validator_id": v["id"],
@@ -192,7 +184,7 @@ def main(args: argparse.Namespace) -> int:
                 roster=roster,
                 validators_to_run=validators_to_run,
                 executor=executor,
-                registry=registry,
+                validator_registry=validator_registry,
             )
 
         return 0
@@ -208,7 +200,7 @@ def _display_roster(
     roster: dict,
     validators_to_run: list,
     executor: ValidationExecutor,
-    registry: EngineRegistry,
+    validator_registry: ValidatorRegistry,
 ) -> None:
     """Display validation roster in human-readable format."""
     formatter.text(f"Validation roster for {args.task_id}:")
@@ -258,7 +250,7 @@ def _display_roster(
             if reason:
                 formatter.text(f"        {reason}")
             if args.dry_run:
-                config = registry.get_validator(v["id"])
+                config = validator_registry.get(v["id"])
                 if config:
                     engine_info = f"engine={config.engine}"
                     if not can_exec and config.fallback_engine:
@@ -300,7 +292,7 @@ def _display_roster(
         formatter.text("")
         formatter.text("  Orchestrator: To add extra validators:")
         formatter.text("    edison qa validate <task> --add-validators react api --execute")
-        formatter.text("    edison qa validate <task> --add-validators react --add-to-wave critical --execute")
+        formatter.text("    edison qa validate <task> --add-validators critical:react comprehensive:api --execute")
 
 
 def _execute_with_executor(

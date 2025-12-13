@@ -1,33 +1,24 @@
 """
 State machine functions for dynamic content generation.
 
-These functions read from workflow.yaml config (merged state machine).
-Available via {{fn:...}} in templates.
+These functions read from WorkflowConfig (unified source of truth).
+Available via {{function:name(args)}} in templates.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-import yaml
 
-
-def _load_state_machine_config() -> dict[str, Any]:
-    """Load state machine configuration from workflow.yaml."""
-    # First try workflow.yaml (merged location)
-    workflow_path = Path(__file__).parent.parent / "config" / "workflow.yaml"
-    if workflow_path.exists():
-        with open(workflow_path) as f:
-            workflow = yaml.safe_load(f) or {}
-            # State machine is under workflow.statemachine
-            return {"statemachine": workflow.get("workflow", {}).get("statemachine", {})}
-    return {}
+def _get_workflow_config() -> Any:
+    """Get WorkflowConfig instance for state machine access."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+    return WorkflowConfig()
 
 
 def _get_domain_config(domain: str) -> dict[str, Any]:
     """Get configuration for a specific domain (task, qa, session)."""
-    config = _load_state_machine_config()
-    statemachine = config.get("statemachine", {})
+    wf_cfg = _get_workflow_config()
+    statemachine = wf_cfg._statemachine
     return statemachine.get(domain, {})
 
 
@@ -42,9 +33,9 @@ def task_states() -> str:
 
     result = []
     for state, info in states_config.items():
-        description = info.get("description", "")
-        initial = " (initial)" if info.get("initial") else ""
-        final = " (final)" if info.get("final") else ""
+        description = info.get("description", "") if isinstance(info, dict) else ""
+        initial = " (initial)" if isinstance(info, dict) and info.get("initial") else ""
+        final = " (final)" if isinstance(info, dict) and info.get("final") else ""
         result.append(f"- **{state}**{initial}{final}: {description}")
 
     return "\n".join(result)
@@ -61,9 +52,9 @@ def qa_states() -> str:
 
     result = []
     for state, info in states_config.items():
-        description = info.get("description", "")
-        initial = " (initial)" if info.get("initial") else ""
-        final = " (final)" if info.get("final") else ""
+        description = info.get("description", "") if isinstance(info, dict) else ""
+        initial = " (initial)" if isinstance(info, dict) and info.get("initial") else ""
+        final = " (final)" if isinstance(info, dict) and info.get("final") else ""
         result.append(f"- **{state}**{initial}{final}: {description}")
 
     return "\n".join(result)
@@ -80,9 +71,9 @@ def session_states() -> str:
 
     result = []
     for state, info in states_config.items():
-        description = info.get("description", "")
-        initial = " (initial)" if info.get("initial") else ""
-        final = " (final)" if info.get("final") else ""
+        description = info.get("description", "") if isinstance(info, dict) else ""
+        initial = " (initial)" if isinstance(info, dict) and info.get("initial") else ""
+        final = " (final)" if isinstance(info, dict) and info.get("final") else ""
         result.append(f"- **{state}**{initial}{final}: {description}")
 
     return "\n".join(result)
@@ -97,8 +88,8 @@ def state_transitions(domain: str = "task") -> str:
     Returns:
         Markdown table showing valid transitions.
     """
-    domain_config = _get_domain_config(domain)
-    states_config = domain_config.get("states", {})
+    wf_cfg = _get_workflow_config()
+    transitions = wf_cfg.get_transitions(domain)
 
     # Build header
     header = "| From State | To State | Guard | Conditions |"
@@ -106,13 +97,12 @@ def state_transitions(domain: str = "task") -> str:
     rows = [header, separator]
 
     # Build rows
-    for from_state, info in states_config.items():
-        transitions = info.get("allowed_transitions", [])
-        for trans in transitions:
-            to_state = trans.get("to", "")
-            guard = trans.get("guard", "")
-            conditions = trans.get("conditions", [])
-            cond_names = ", ".join(c.get("name", "") for c in conditions)
+    for from_state, to_states in transitions.items():
+        for to_state in to_states:
+            trans = wf_cfg.get_transition(domain, from_state, to_state)
+            guard = trans.get("guard", "") if trans else ""
+            conditions = trans.get("conditions", []) if trans else []
+            cond_names = ", ".join(c.get("name", "") for c in conditions if isinstance(c, dict))
             rows.append(f"| {from_state} | {to_state} | {guard} | {cond_names} |")
 
     return "\n".join(rows)
@@ -127,33 +117,25 @@ def state_diagram(domain: str = "task") -> str:
     Returns:
         Mermaid state diagram code.
     """
-    domain_config = _get_domain_config(domain)
-    states_config = domain_config.get("states", {})
+    wf_cfg = _get_workflow_config()
 
     lines = ["```mermaid", "stateDiagram-v2"]
 
-    # Find initial and final states
-    initial_state = None
-    final_states = []
-
-    for state, info in states_config.items():
-        if info.get("initial"):
-            initial_state = state
-        if info.get("final"):
-            final_states.append(state)
-
-    # Add initial transition
-    if initial_state:
+    # Get initial and final states
+    try:
+        initial_state = wf_cfg.get_initial_state(domain)
         lines.append(f"    [*] --> {initial_state}")
+    except ValueError:
+        pass
 
     # Add transitions
-    for from_state, info in states_config.items():
-        transitions = info.get("allowed_transitions", [])
-        for trans in transitions:
-            to_state = trans.get("to", "")
+    transitions = wf_cfg.get_transitions(domain)
+    for from_state, to_states in transitions.items():
+        for to_state in to_states:
             lines.append(f"    {from_state} --> {to_state}")
 
     # Add final transitions
+    final_states = wf_cfg.get_final_states(domain)
     for final in final_states:
         lines.append(f"    {final} --> [*]")
 
@@ -182,3 +164,5 @@ def all_states_overview() -> str:
     result.append(session_states())
 
     return "\n".join(result)
+
+

@@ -1,8 +1,8 @@
 """MCP configuration helpers shared by CLI commands.
 
 This module centralizes creation and persistence of `.mcp.json` entries for
-all Edison-managed MCP servers. Configuration is fully YAML-driven
-(`edison.data.config.mcp.yaml` + pack overlays + project overrides) with no
+all Edison-managed MCP servers. Configuration is fully YAML-driven using
+ConfigManager's pack-aware loading (core > packs > project) with no
 hardcoded values, and JSON output formatting comes from the JSONIOConfig
 domain configuration.
 """
@@ -11,12 +11,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Sequence
+from typing import Any, Dict, Sequence
 
-from edison.data import read_yaml
 from edison.core.utils import io as file_utils
-from edison.core.utils.paths import get_project_config_dir
-from edison.core.utils.merge import deep_merge
 
 
 # ---------------------------------------------------------------------------
@@ -112,11 +109,6 @@ class McpConfig:
 # ---------------------------------------------------------------------------
 
 
-def _load_yaml_file(path: Path) -> Dict[str, Any]:
-    data = file_utils.read_yaml(path, default={})
-    return data if isinstance(data, dict) else {}
-
-
 def _load_json_format(project_root: Path) -> Dict[str, Any]:
     """Load JSON formatting preferences from JSONIOConfig domain config."""
     from edison.core.config.domains.json_io import JSONIOConfig
@@ -129,41 +121,26 @@ def _load_json_format(project_root: Path) -> Dict[str, Any]:
     }
 
 
-def _iter_pack_overlays(project_root: Path, packs: Sequence[str] | None) -> Iterable[Path]:
-    """Yield pack-level mcp.yaml files for the requested packs (if any)."""
-
-    pack_root = get_project_config_dir(project_root, create=False) / "packs"
-    if not pack_root.exists():
-        return []
-
-    allowed = set(packs) if packs else None
-    overlays: list[Path] = []
-
-    for pack_dir in sorted(p for p in pack_root.iterdir() if p.is_dir()):
-        if allowed and pack_dir.name not in allowed:
-            continue
-        candidate = pack_dir / "config" / "mcp.yaml"
-        if candidate.exists():
-            overlays.append(candidate)
-    return overlays
-
-
 def _load_mcp_config(project_root: Path, packs: Sequence[str] | None = None) -> Dict[str, Any]:
-    """Load MCP configuration from base + pack overlays + project overrides."""
+    """Load MCP configuration using ConfigManager's pack-aware loading.
 
-    merged = (read_yaml("config", "mcp.yaml") or {}).get("mcp") or {}
+    ConfigManager handles the full layering:
+    1. Core config (bundled mcp.yaml)
+    2. Pack configs (bundled + project packs)
+    3. Project config (.edison/config/mcp.yaml)
 
-    for overlay_path in _iter_pack_overlays(project_root, packs):
-        overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
-        merged = deep_merge(merged, overlay)
+    Args:
+        project_root: Project root path
+        packs: Optional list of packs (ignored - ConfigManager uses packs.active)
 
-    project_config_dir = get_project_config_dir(project_root)
-    overlay_path = project_config_dir / "config" / "mcp.yaml"
-    if overlay_path.exists():
-        overlay = (_load_yaml_file(overlay_path).get("mcp") or {})
-        merged = deep_merge(merged, overlay)
+    Returns:
+        Merged MCP configuration dict
+    """
+    from edison.core.config import ConfigManager
 
-    return merged
+    cfg_mgr = ConfigManager(repo_root=project_root)
+    full_config = cfg_mgr.load_config(validate=False, include_packs=True)
+    return full_config.get("mcp", {}) or {}
 
 
 # ---------------------------------------------------------------------------

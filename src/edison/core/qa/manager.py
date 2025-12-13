@@ -21,7 +21,6 @@ from typing import Any, Dict, List, Optional
 
 from edison.core.utils.paths import PathResolver
 from .evidence import EvidenceService
-from .evidence.rounds import resolve_round_dir
 from edison.core.config.domains import QAConfig
 
 
@@ -71,47 +70,24 @@ class QAManager:
     ) -> Dict[str, Any]:
         """Initialize a new round with QA brief and metadata.
         
-        This is a higher-level operation than create_round, as it sets up
-        the initial evidence structures (qa-brief.json, metadata.json).
+        Uses EvidenceService.create_qa_brief() as the canonical method.
         
         Args:
             task_id: Task identifier
             session_id: Session ID context
-            owner: Validator owner
+            owner: Validator owner (not used, kept for API compatibility)
             
         Returns:
             Dict with round info and path
         """
         svc = EvidenceService(task_id, project_root=self.project_root)
         
-        # Create round directory
-        round_path = svc.create_next_round()
+        # Use EvidenceService.create_qa_brief() as the single source
+        qa_brief = svc.create_qa_brief(session_id=session_id)
+        
         round_num = svc.get_current_round() or 1
-        
-        # Create QA brief
-        qa_brief = {
-            "task_id": task_id,
-            "session_id": session_id,
-            "round": round_num,
-            "created_at": None,  # Will be set by atomic write if needed, or added here
-            "status": "pending",
-            "validators": [],
-            "evidence": [],
-        }
-        
-        brief_path = round_path / "qa-brief.json"
-        from edison.core.utils.io import write_json_atomic
-        write_json_atomic(brief_path, qa_brief)
-        
-        # Update metadata
-        evidence_dir = svc.get_evidence_root()
-        metadata_path = evidence_dir / "metadata.json"
-        metadata = {
-            "task_id": task_id,
-            "currentRound": round_num,
-            "round": round_num,
-        }
-        write_json_atomic(metadata_path, metadata)
+        round_dir = svc.ensure_round(round_num)
+        brief_path = round_dir / "qa-brief.json"
         
         return {
             "round": round_num,
@@ -153,8 +129,11 @@ class QAManager:
             >>> latest = mgr.get_round_dir("task-100")  # Get latest
         """
         svc = EvidenceService(task_id, project_root=self.project_root)
-        base_dir = svc.get_evidence_root()
-        return resolve_round_dir(base_dir, round_num)
+        if round_num is None:
+            return svc.get_current_round_dir()
+        # Check if specific round exists
+        round_dir = svc.get_round_dir(round_num)
+        return round_dir if round_dir.exists() else None
 
     def list_rounds(self, task_id: str) -> List[Path]:
         """List all evidence round directories for a task.

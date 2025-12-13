@@ -163,8 +163,8 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         for name in registry.sections:
             content = registry.get_section_content(name)
             pattern = re.compile(
-                rf"<!--\s*SECTION:\s*{re.escape(name)}\s*-->(.*?)<!--\s*/SECTION:\s*{re.escape(name)}\s*-->",
-                re.DOTALL,
+                rf"<!--\s*section:\s*{re.escape(name)}\s*-->(.*?)<!--\s*/section:\s*{re.escape(name)}\s*-->",
+                re.DOTALL | re.IGNORECASE,
             )
             result = pattern.sub(content, result)
 

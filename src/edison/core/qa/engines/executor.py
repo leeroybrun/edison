@@ -317,8 +317,8 @@ class ValidationExecutor:
         """
         logger.info(f"Executing wave '{wave}'")
 
-        # Get validators for this wave
-        validators = self._registry.get_validators_for_wave(wave)
+        # Get validators for this wave using ValidatorRegistry (single source of truth)
+        validators = self._registry._validator_registry.get_by_wave(wave)
 
         # Apply filters
         if validators_filter:
@@ -545,6 +545,14 @@ class ValidationExecutor:
     def get_registry(self) -> EngineRegistry:
         """Get the underlying engine registry."""
         return self._registry
+
+    def get_validator_registry(self) -> "ValidatorRegistry":
+        """Get the validator registry (single source of truth for validator data).
+
+        Use this for build_execution_roster() and other validator metadata operations.
+        """
+        from edison.core.registries.validators import ValidatorRegistry
+        return self._registry._validator_registry
 
 
 __all__ = ["ValidationExecutor", "ExecutionResult", "WaveResult"]

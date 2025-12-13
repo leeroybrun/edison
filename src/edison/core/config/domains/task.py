@@ -48,6 +48,14 @@ class TaskConfig(BaseDomainConfig):
         path = self._paths.get("template")
         return self._resolve_required(path, "tasks.paths.template")
 
+    def evidence_subdir(self) -> str:
+        """Get evidence subdirectory name from config.
+        
+        Returns the subdirectory name under qa_root where validation evidence
+        is stored (default: "validation-evidence").
+        """
+        return self._paths.get("evidenceSubdir", "validation-evidence")
+
     @cached_property
     def _paths(self) -> Dict[str, str]:
         """Get paths configuration section."""
@@ -60,30 +68,31 @@ class TaskConfig(BaseDomainConfig):
         return (self.repo_root / str(rel)).resolve()
 
     # ------------------------------------------------------------------
-    # State machine access
+    # State machine access (delegates to WorkflowConfig for single source of truth)
     # ------------------------------------------------------------------
     @cached_property
-    def _state_machine(self) -> Dict[str, Dict]:
-        """Get the statemachine configuration section.
+    def _workflow_config(self) -> "WorkflowConfig":
+        """Lazily load WorkflowConfig to avoid circular imports.
         
-        State machine config is under workflow.statemachine in the merged config.
+        WorkflowConfig is the single source of truth for state machine config.
+        TaskConfig delegates to WorkflowConfig for all state-related queries.
         """
-        workflow_section = self._config.get("workflow", {}) or {}
-        return dict(workflow_section.get("statemachine", {}) or {})
+        from .workflow import WorkflowConfig
+        return WorkflowConfig(repo_root=self.repo_root)
 
     def task_states(self) -> List[str]:
-        """Get list of valid task states from configuration."""
-        states = self._state_machine.get("task", {}).get("states", {}) or {}
-        if isinstance(states, dict):
-            return list(states.keys())
-        return list(states)
+        """Get list of valid task states from configuration.
+        
+        Delegates to WorkflowConfig (single source of truth).
+        """
+        return self._workflow_config.task_states
 
     def qa_states(self) -> List[str]:
-        """Get list of valid QA states from configuration."""
-        states = self._state_machine.get("qa", {}).get("states", {}) or {}
-        if isinstance(states, dict):
-            return list(states.keys())
-        return list(states)
+        """Get list of valid QA states from configuration.
+        
+        Delegates to WorkflowConfig (single source of truth).
+        """
+        return self._workflow_config.qa_states
 
     def transitions(self, entity: str) -> Dict[str, List[str]]:
         """Get transition map for an entity type (task or qa).
@@ -93,15 +102,10 @@ class TaskConfig(BaseDomainConfig):
 
         Returns:
             Dict mapping from_state to list of allowed to_states
+            
+        Delegates to WorkflowConfig (single source of truth).
         """
-        from edison.core.state import _flatten_transitions
-
-        ent = self._state_machine.get(entity, {})
-        states = ent.get("states", {}) or {}
-        if isinstance(states, dict):
-            return _flatten_transitions(states)
-        transitions = ent.get("transitions", {}) or {}
-        return {k: list(v or []) for k, v in transitions.items()}
+        return self._workflow_config.get_transitions(entity)
 
     # ------------------------------------------------------------------
     # Defaults / prefixes

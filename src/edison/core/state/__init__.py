@@ -1,5 +1,5 @@
 from .engine import RichStateMachine, StateTransitionError, _flatten_transitions
-from .handlers import (
+from .handlers.registries import (
     DomainRegistry,
     GuardRegistryBase,
     ConditionRegistryBase,

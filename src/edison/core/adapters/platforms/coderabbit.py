@@ -3,7 +3,11 @@
 Handles:
 - Composing .coderabbit.yaml configuration from Edison layers
 - Merging core, pack, and project configurations
-- Special handling for path_instructions (list appending)
+- Special handling for path_instructions (list appending via ["+", ...] syntax)
+
+Note: CodeRabbit config is platform-specific (templates/config/coderabbit.yaml),
+separate from Edison's main config system. Uses ConfigManager for path resolution
+but has specialized loading for platform-specific config files.
 """
 from __future__ import annotations
 
@@ -11,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from edison.core.adapters.base import PlatformAdapter
+from edison.core.utils.merge import deep_merge
 
 if TYPE_CHECKING:
     from edison.core.config.domains.composition import AdapterConfig
@@ -26,7 +31,7 @@ class CoderabbitAdapter(PlatformAdapter):
     This adapter:
     - Composes CodeRabbit configuration from core, packs, and project layers
     - Writes to .coderabbit.yaml file
-    - Uses CompositionConfig for output configuration
+    - Uses ConfigManager for path resolution
     """
 
     def __init__(
@@ -60,97 +65,47 @@ class CoderabbitAdapter(PlatformAdapter):
         return ".coderabbit.yaml"
 
     # =========================================================================
-    # Config Loading
+    # Config Loading (platform-specific coderabbit.yaml files)
     # =========================================================================
 
-    def load_core_coderabbit_config(self) -> Dict[str, Any]:
-        """Load bundled CodeRabbit configuration from templates."""
-        # Core template is in templates/config/
-        path = self.core_dir / "templates" / "config" / "coderabbit.yaml"
+    def _load_coderabbit_yaml(self, path: Path) -> Dict[str, Any]:
+        """Load CodeRabbit YAML with extension fallback."""
         if not path.exists():
-            path = self.core_dir / "templates" / "config" / "coderabbit.yml"
-        if path.exists():
-            return self.cfg_mgr.load_yaml(path) or {}
-        return {}
-
-    def _load_pack_coderabbit_config(self, pack: str) -> Dict[str, Any]:
-        """Load pack-level CodeRabbit configuration."""
-        # Try bundled packs first
-        path = self.bundled_packs_dir / pack / "config" / "coderabbit.yaml"
-        if not path.exists():
-            path = self.bundled_packs_dir / pack / "config" / "coderabbit.yml"
-        if path.exists():
-            return self.cfg_mgr.load_yaml(path) or {}
-
-        # Try project packs
-        path = self.project_packs_dir / pack / "config" / "coderabbit.yaml"
-        if not path.exists():
-            path = self.project_packs_dir / pack / "config" / "coderabbit.yml"
-        if path.exists():
-            return self.cfg_mgr.load_yaml(path) or {}
-        return {}
-
-    def _load_project_coderabbit_config(self) -> Dict[str, Any]:
-        """Load project-level CodeRabbit configuration."""
-        # Project configs are in .edison/config/
-        path = self.project_dir / "config" / "coderabbit.yaml"
-        if not path.exists():
-            path = self.project_dir / "config" / "coderabbit.yml"
-        if path.exists():
-            return self.cfg_mgr.load_yaml(path) or {}
-        return {}
-
-    # =========================================================================
-    # Composition
-    # =========================================================================
-
-    def _merge_with_list_append(self, base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge with special handling for path_instructions (append lists).
-
-        Args:
-            base: Base configuration dict
-            overlay: Overlay configuration dict
-
-        Returns:
-            Merged configuration with path_instructions appended
-        """
-        result = dict(base)
-
-        for key, overlay_val in overlay.items():
-            base_val = result.get(key)
-
-            # Special handling for path_instructions - append lists
-            if key == "path_instructions":
-                if isinstance(base_val, list) and isinstance(overlay_val, list):
-                    result[key] = base_val + overlay_val
-                elif isinstance(overlay_val, list):
-                    result[key] = overlay_val
-            # Deep merge nested dicts
-            elif isinstance(base_val, dict) and isinstance(overlay_val, dict):
-                result[key] = self._merge_with_list_append(base_val, overlay_val)
-            # Overlay takes precedence for other values
+            # Try alternate extension
+            alt = path.with_suffix(".yml" if path.suffix == ".yaml" else ".yaml")
+            if alt.exists():
+                path = alt
             else:
-                result[key] = overlay_val
-
-        return result
+                return {}
+        return self.cfg_mgr.load_yaml(path) or {}
 
     def compose_coderabbit_config(self) -> Dict[str, Any]:
         """Compose CodeRabbit configuration from core, packs, and project layers.
 
+        Uses ConfigManager's deep_merge with ["+", ...] syntax for array appending.
+        For path_instructions, use ["+", instruction1, instruction2] in YAML.
+
         Returns:
             Dictionary ready to write to .coderabbit.yaml
         """
-        # Start with core bundled config
-        config = self.load_core_coderabbit_config()
+        config: Dict[str, Any] = {}
 
-        # Merge pack overlays with list appending for path_instructions
+        # Layer 1: Core bundled config (templates/config/)
+        core_path = self.core_dir / "templates" / "config" / "coderabbit.yaml"
+        config = deep_merge(config, self._load_coderabbit_yaml(core_path))
+
+        # Layer 2: Pack configs (bundled + project packs)
         for pack in self.get_active_packs():
-            pack_config = self._load_pack_coderabbit_config(pack)
-            config = self._merge_with_list_append(config, pack_config)
+            # Bundled pack
+            bundled_path = self.bundled_packs_dir / pack / "config" / "coderabbit.yaml"
+            config = deep_merge(config, self._load_coderabbit_yaml(bundled_path))
+            # Project pack override
+            project_pack_path = self.project_packs_dir / pack / "config" / "coderabbit.yaml"
+            config = deep_merge(config, self._load_coderabbit_yaml(project_pack_path))
 
-        # Merge project overrides
-        project_config = self._load_project_coderabbit_config()
-        config = self._merge_with_list_append(config, project_config)
+        # Layer 3: Project config
+        project_path = self.project_dir / "config" / "coderabbit.yaml"
+        config = deep_merge(config, self._load_coderabbit_yaml(project_path))
 
         return config
 

@@ -227,8 +227,15 @@ class TemplateEngine:
         # Build default context vars
         # Get the configured project directory name (relative to repo root)
         from edison.core.utils.paths import get_project_config_dir
-        project_dir = get_project_config_dir(self.project_root, create=False)
-        project_dir_name = project_dir.name  # e.g., ".edison"
+        if self.project_root is None:
+            # Allow TemplateEngine usage in unit tests or library contexts where
+            # a repo root is not provided. Fall back to the bootstrapped default.
+            from edison.core.utils.paths.project import DEFAULT_PROJECT_CONFIG_PRIMARY
+
+            project_dir_name = DEFAULT_PROJECT_CONFIG_PRIMARY
+        else:
+            project_dir = get_project_config_dir(self.project_root, create=False)
+            project_dir_name = project_dir.name  # e.g., ".edison"
         
         default_vars: Dict[str, Any] = {
             "source_layers": " + ".join(source_layers) if source_layers else "core",

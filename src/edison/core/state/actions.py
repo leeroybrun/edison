@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, MutableMapping, Optional
 
-from .handlers import ActionRegistryBase, DomainRegistry
+from .handlers.registries import ActionRegistryBase, DomainRegistry
 
 
 class ActionRegistry(ActionRegistryBase):

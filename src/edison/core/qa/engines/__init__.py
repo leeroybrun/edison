@@ -9,8 +9,10 @@ Architecture:
     - CLIEngine: Executes CLI-based validators (Codex, Claude, Gemini, etc.)
     - ZenMCPEngine: Generates delegation instructions for orchestrators
     - ValidationResult: Standard result format from all engines
-    - ValidatorConfig: Configuration for individual validators
     - EngineConfig: Configuration for execution engines
+
+NOTE: Validator metadata is now in core/registries/validators.py as ValidatorMetadata.
+That is THE single source of truth for validator data.
 
 Usage:
     from edison.core.qa.engines import ValidationExecutor
@@ -72,7 +74,7 @@ Configuration:
 """
 from __future__ import annotations
 
-from .base import EngineConfig, EngineProtocol, ValidationResult, ValidatorConfig
+from .base import EngineConfig, EngineProtocol, ValidationResult
 from .cli import CLIEngine
 from .delegated import ZenMCPEngine
 from .executor import ExecutionResult, ValidationExecutor, WaveResult
@@ -86,7 +88,6 @@ __all__ = [
     # Main API - Registry (for single validator execution)
     "EngineRegistry",
     "ValidationResult",
-    "ValidatorConfig",
     # Engine classes
     "CLIEngine",
     "ZenMCPEngine",

@@ -8,7 +8,10 @@ This module provides the foundational data structures for entities:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    pass  # For future type hints if needed
 
 from edison.core.utils.time import utc_timestamp
 
@@ -143,6 +146,38 @@ class StateHistoryEntry:
         )
 
 
+def record_transition_impl(
+    entity: Any,
+    from_state: str,
+    to_state: str,
+    *,
+    reason: Optional[str] = None,
+    violations: Optional[List[str]] = None,
+) -> None:
+    """Shared implementation for recording state transitions.
+    
+    This is the single source of truth for transition recording logic.
+    All entity types (Task, QARecord, Session) delegate to this function
+    to ensure consistent behavior and eliminate code duplication (DRY).
+    
+    Args:
+        entity: Any object with `state_history` (List[StateHistoryEntry])
+                and `metadata` (EntityMetadata) attributes
+        from_state: Previous state
+        to_state: New state
+        reason: Optional reason for transition
+        violations: Optional list of rule violations
+    """
+    entry = StateHistoryEntry.create(
+        from_state=from_state,
+        to_state=to_state,
+        reason=reason,
+        violations=violations,
+    )
+    entity.state_history.append(entry)
+    entity.metadata.touch()
+
+
 @dataclass
 class BaseEntity:
     """Base class providing common entity structure.
@@ -177,14 +212,9 @@ class BaseEntity:
             reason: Optional reason for transition
             violations: Optional list of rule violations
         """
-        entry = StateHistoryEntry.create(
-            from_state=from_state,
-            to_state=to_state,
-            reason=reason,
-            violations=violations,
+        record_transition_impl(
+            self, from_state, to_state, reason=reason, violations=violations
         )
-        self.state_history.append(entry)
-        self.metadata.touch()
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.
@@ -224,6 +254,7 @@ __all__ = [
     "EntityMetadata",
     "StateHistoryEntry",
     "BaseEntity",
+    "record_transition_impl",
 ]
 
 

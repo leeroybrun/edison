@@ -112,31 +112,20 @@ class CompositionConfig(BaseDomainConfig):
     def _composition_yaml(self) -> Dict[str, Any]:
         """Load composition.yaml with caching.
         
-        Loads core defaults from bundled data, then merges with project overrides.
+        Uses ConfigManager's pack-aware loading (core > packs > project).
         All composition config is under the `composition:` key.
         """
         if self._cached_composition_yaml is not None:
             return self._cached_composition_yaml
-        
-        # Load core defaults
-        core_path = get_data_path("config", "composition.yaml")
+
+        # Use ConfigManager's unified pack-aware loading
         from ..manager import ConfigManager
         mgr = ConfigManager(self._repo_root)
-        core_config = mgr.load_yaml(core_path) if core_path.exists() else {}
-        
-        # Load project overrides
-        from edison.core.utils.paths import get_project_config_dir
-        project_dir = get_project_config_dir(self._repo_root)
-        project_path = project_dir / "composition.yaml"
-        if project_path.exists():
-            project_config = mgr.load_yaml(project_path)
-            merged = mgr.deep_merge(core_config, project_config)
-        else:
-            merged = core_config
-        
+        full_config = mgr.load_config(validate=False, include_packs=True)
+
         # Extract composition section (all config is under `composition:` key)
-        self._cached_composition_yaml = merged.get("composition", {})
-        
+        self._cached_composition_yaml = full_config.get("composition", {})
+
         return self._cached_composition_yaml
     
     # =========================================================================

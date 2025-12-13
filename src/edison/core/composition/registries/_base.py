@@ -344,6 +344,10 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             active_packs=packs,
             config=self.config,
             project_root=self.project_root,
+            # Includes and include-section paths are authored relative to the
+            # bundled core data root (edison.data). Without this, {{include:...}}
+            # would incorrectly resolve relative to the repository root.
+            source_dir=self.core_dir,
             context_vars=context_vars,
         )
 

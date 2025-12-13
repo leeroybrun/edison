@@ -68,18 +68,22 @@ class ValidationTransaction:
         self._tx = self._cm.__enter__()  # type: ignore[assignment]
 
         # Task/round-scoped staging directory inside the transaction staging root.
+        # Use config-driven paths (no hardcoded directory names)
+        from edison.core.config.domains.task import TaskConfig
+        from edison.core.qa._utils import get_evidence_base_path
         staging_root: Path = self._tx.staging_root  # type: ignore[assignment]
         project_root = PathResolver.resolve_project_root()
-        mgmt_paths = get_management_paths(project_root)
+        task_cfg = TaskConfig(repo_root=project_root)
+        # Get the relative path from project root to evidence base
+        evidence_base = get_evidence_base_path(project_root)
         try:
-            mgmt_rel = mgmt_paths.get_management_root().relative_to(project_root)
+            evidence_rel = evidence_base.relative_to(project_root)
         except Exception:
-            mgmt_rel = Path(mgmt_paths.get_management_root().name)
+            # Fallback: use the evidence_base path name components
+            evidence_rel = Path(evidence_base.relative_to(evidence_base.anchor))
         task_round_dir = (
             staging_root
-            / mgmt_rel
-            / "qa"
-            / "validation-evidence"
+            / evidence_rel
             / self.task_id
             / f"round-{self.round_num}"
         )

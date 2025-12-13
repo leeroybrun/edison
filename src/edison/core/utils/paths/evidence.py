@@ -1,7 +1,7 @@
 """Evidence path resolution logic.
 
 This module provides high-level evidence path resolution using task IDs.
-Core round directory logic is delegated to qa.evidence.rounds module.
+All round logic is delegated to EvidenceService as the single source.
 """
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ from .management import get_management_paths
 from .resolver import EdisonPathError, resolve_project_root
 
 
-def _get_round_functions():
+def _get_evidence_service(task_id: str):
     """Lazy import to avoid circular dependency."""
-    from edison.core.qa.evidence.rounds import list_round_dirs, resolve_round_dir
-    return list_round_dirs, resolve_round_dir
+    from edison.core.qa.evidence import EvidenceService
+    return EvidenceService(task_id)
 
 
 def find_evidence_round(
@@ -38,27 +38,30 @@ def find_evidence_round(
     Raises:
         EdisonPathError: If evidence directory not found
     """
+    from edison.core.qa._utils import get_evidence_base_path
     root = resolve_project_root()
-    mgmt_paths = get_management_paths(root)
-    evidence_base = mgmt_paths.get_qa_root() / "validation-evidence" / task_id
+    evidence_base = get_evidence_base_path(root) / task_id
 
     if not evidence_base.exists():
         raise EdisonPathError(f"Evidence directory does not exist: {evidence_base}")
 
-    # Delegate to canonical round resolution (lazy import to avoid circular dependency)
-    _, resolve_round_dir = _get_round_functions()
-    round_dir = resolve_round_dir(evidence_base, round_num=round)
-
-    if round_dir is None:
-        if round is not None:
+    # Use EvidenceService for round resolution
+    ev_svc = _get_evidence_service(task_id)
+    
+    if round is not None:
+        round_dir = ev_svc.get_round_dir(round)
+        if not round_dir.exists():
             raise EdisonPathError(
                 f"Evidence round-{round} not found for task {task_id}"
             )
-        raise EdisonPathError(
-            f"No evidence rounds found for task {task_id} in {evidence_base}"
-        )
-
-    return round_dir
+        return round_dir
+    else:
+        round_dir = ev_svc.get_current_round_dir()
+        if round_dir is None:
+            raise EdisonPathError(
+                f"No evidence rounds found for task {task_id} in {evidence_base}"
+            )
+        return round_dir
 
 
 def list_evidence_rounds(task_id: str) -> List[Path]:
@@ -70,13 +73,9 @@ def list_evidence_rounds(task_id: str) -> List[Path]:
     Returns:
         List[Path]: Sorted list of round directories (oldest to newest)
     """
-    root = resolve_project_root()
-    mgmt_paths = get_management_paths(root)
-    evidence_base = mgmt_paths.get_qa_root() / "validation-evidence" / task_id
-
-    # Delegate to canonical round listing (lazy import to avoid circular dependency)
-    list_round_dirs, _ = _get_round_functions()
-    return list_round_dirs(evidence_base)
+    # Use EvidenceService for round listing
+    ev_svc = _get_evidence_service(task_id)
+    return ev_svc.list_rounds()
 
 
 __all__ = [

@@ -300,9 +300,9 @@ class ValidationTransaction:
         return {"AGENTS_PROJECT_ROOT": str(self.staging_root)}
 
     def _snapshot_manifest(self) -> None:
+        from edison.core.qa._utils import get_evidence_base_path
         manifest: list[dict] = []
-        mgmt_paths = get_management_paths(self.final_root)
-        base = mgmt_paths.get_qa_root() / "validation-evidence"
+        base = get_evidence_base_path(self.final_root)
         if base.exists():
             for p in base.rglob("*"):
                 if p.is_file():

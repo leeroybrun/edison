@@ -133,8 +133,10 @@ class TaskIndex:
         return self._config.qa_root()
     
     def _get_sessions_root(self) -> Path:
-        """Get the sessions root directory."""
-        return self.project_root / ".project" / "sessions"
+        """Get the sessions root directory from config."""
+        from edison.core.config.domains.session import SessionConfig
+        cfg = SessionConfig(repo_root=self.project_root)
+        return (self.project_root / cfg.get_session_root_path()).resolve()
     
     # ---------- Task Discovery ----------
     

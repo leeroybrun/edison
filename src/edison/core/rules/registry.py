@@ -9,6 +9,9 @@ Architecture:
     - Bundled rules: edison.data/rules/registry.yml (ALWAYS used for core)
     - Pack rules: .edison/packs/<pack>/rules/registry.yml
     - Project rules: .edison/rules/registry.yml (overrides)
+
+Uses ConfigManager for pack directory resolution to maintain consistency
+with the unified configuration system.
 """
 from __future__ import annotations
 
@@ -33,6 +36,7 @@ class RulesRegistry:
     - YAML-based rule loading
     - Anchor extraction from guidelines
     - Include resolution
+    - Uses ConfigManager for pack directory resolution
 
     Registry locations:
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
@@ -41,7 +45,7 @@ class RulesRegistry:
 
     This class is read-only; it does not mutate project state.
     """
-    
+
     entity_type: str = "rule"
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
@@ -50,20 +54,37 @@ class RulesRegistry:
         except (EdisonPathError, ValueError) as exc:
             raise RulesCompositionError(str(exc)) from exc
 
+        # Use ConfigManager for consistent pack directory resolution
+        from edison.core.config import ConfigManager
+
+        cfg_mgr = ConfigManager(repo_root=self.project_root)
+
         # Project .edison directory
         self.project_dir = self.project_root / ".edison"
-        
-        # Bundled packs directory
-        self.bundled_packs_dir = get_data_path("packs")
-        
-        # Project packs directory
-        self.project_packs_dir = self.project_dir / "packs"
+
+        # Pack directories from ConfigManager (unified source of truth)
+        self.bundled_packs_dir = cfg_mgr.bundled_packs_dir
+        self.project_packs_dir = cfg_mgr.project_packs_dir
 
         # Core registry is ALWAYS from bundled data
         self.core_registry_path = get_data_path("rules", "registry.yml")
 
         # Bundled data directory for resolving guideline paths
         self.bundled_data_dir = Path(get_data_path(""))
+
+        # Store reference to config manager for active packs lookup
+        self._cfg_mgr = cfg_mgr
+
+    def get_active_packs(self) -> List[str]:
+        """Get active packs from ConfigManager.
+
+        Returns:
+            List of active pack names from packs.active config.
+        """
+        cfg = self._cfg_mgr.load_config(validate=False, include_packs=False)
+        packs_section = cfg.get("packs", {}) or {}
+        active = packs_section.get("active", []) or []
+        return [str(p) for p in active if p] if isinstance(active, list) else []
 
     def _load_yaml_file(self, path: Path, required: bool = True) -> Any:
         """Load a single YAML file using shared utility.
@@ -362,6 +383,7 @@ class RulesRegistry:
                 "category": raw_rule.get("category") or "",
                 "blocking": bool(raw_rule.get("blocking", False)),
                 "contexts": raw_rule.get("contexts") or [],
+                "applies_to": raw_rule.get("applies_to") or [],
                 "source": raw_rule.get("source") or {},
                 "body": body,
                 "origins": ["core"],
@@ -391,6 +413,7 @@ class RulesRegistry:
                         "category": raw_rule.get("category") or "",
                         "blocking": bool(raw_rule.get("blocking", False)),
                         "contexts": raw_rule.get("contexts") or [],
+                        "applies_to": raw_rule.get("applies_to") or [],
                         "source": raw_rule.get("source") or {},
                         "body": body,
                         "origins": [f"pack:{pack_name}"],
@@ -411,6 +434,13 @@ class RulesRegistry:
                 # Contexts: append pack contexts
                 if raw_rule.get("contexts"):
                     entry["contexts"] = (entry.get("contexts") or []) + raw_rule["contexts"]  # type: ignore[index]
+                # Applies-to: union (pack may broaden applicability)
+                if raw_rule.get("applies_to"):
+                    existing_roles = set(entry.get("applies_to") or [])
+                    for role in raw_rule["applies_to"]:
+                        if role:
+                            existing_roles.add(role)
+                    entry["applies_to"] = sorted(existing_roles)
                 # Body: append pack guidance after core text
                 entry["body"] = (entry.get("body") or "") + (body or "")
                 # Origins: record pack contribution

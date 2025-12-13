@@ -425,6 +425,29 @@ class WorkflowConfig(BaseDomainConfig):
     # They are defined in rules/registry.yml with `contexts: [guidance, ...]`
     # Use edison.core.session.next.rules.get_rules_for_context() to look them up.
 
+    def get_transitions(self, domain: str) -> Dict[str, List[str]]:
+        """Get transition map for a domain type.
+
+        Returns a dict mapping each state to its list of allowed target states.
+        This is used for simple state machine validation.
+
+        Args:
+            domain: "task", "qa", or "session"
+
+        Returns:
+            Dict mapping from_state to list of allowed to_states
+        """
+        result: Dict[str, List[str]] = {}
+        states = self._statemachine.get(domain, {}).get("states", {})
+        if isinstance(states, dict):
+            for state_name, state_config in states.items():
+                if isinstance(state_config, dict):
+                    transitions = state_config.get("allowed_transitions", [])
+                    result[state_name] = [t.get("to") for t in transitions if t.get("to")]
+                else:
+                    result[state_name] = []
+        return result
+
 
 __all__ = [
     "WorkflowConfig",

@@ -56,7 +56,7 @@ class RecordPaths:
 
     # ---------------- Evidence paths -----------------
     def evidence_root(self, task_id: str) -> Path:
-        return (self.qa_root() / "validation-evidence" / task_id).resolve()
+        return (self.qa_root() / self.task_cfg.evidence_subdir() / task_id).resolve()
 
 
 __all__ = ["RecordPaths"]

@@ -107,9 +107,8 @@ def __getattr__(name: str):
         "HookDefinition": ("edison.core.adapters.components.hooks", True),
         "compose_hooks": ("edison.core.adapters.components.hooks", True),
         # Settings
-        "ALLOWED_TYPES": ("edison.core.adapters.components.settings", True),
+        "ALLOWED_TYPES": ("edison.core.adapters.components.hooks", True),
         "SettingsComposer": ("edison.core.adapters.components.settings", True),
-        "merge_permissions": ("edison.core.adapters.components.settings", True),
     }
 
     if name in registry_imports:
@@ -202,6 +201,5 @@ __all__ = [
     "compose_hooks",
     "ALLOWED_TYPES",
     "SettingsComposer",
-    "merge_permissions",
     "PlatformAdapter",
 ]

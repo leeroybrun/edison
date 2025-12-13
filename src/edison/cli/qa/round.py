@@ -3,8 +3,8 @@ Edison qa round command.
 
 SUMMARY: Manage QA rounds
 
-NOTE: This CLI delegates to QARepository for all round management operations.
-Direct file manipulation is avoided - the repository handles persistence.
+NOTE: This CLI delegates to QARepository for round record management
+and EvidenceService for evidence directory management.
 """
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import Optional
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.qa.evidence import EvidenceService
 from edison.core.qa.workflow.repository import QARepository
-from edison.core.utils.io import write_json_atomic
 
 SUMMARY = "Manage QA rounds"
 
@@ -60,7 +59,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Manage QA rounds - delegates to QARepository."""
+    """Manage QA rounds - uses EvidenceService for evidence and QARepository for records."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
@@ -91,19 +90,12 @@ def main(args: argparse.Namespace) -> int:
             )
 
         elif args.new:
-            # Create new evidence round directory (evidence service handles this)
+            # Create new evidence round directory using EvidenceService
             round_path = ev_svc.create_next_round()
             round_num = ev_svc.get_current_round()
 
-            # Update metadata
-            evidence_dir = ev_svc.get_evidence_root()
-            metadata_path = evidence_dir / "metadata.json"
-            metadata = {
-                "task_id": args.task_id,
-                "currentRound": round_num,
-                "round": round_num,
-            }
-            write_json_atomic(metadata_path, metadata)
+            # Update metadata using EvidenceService method
+            ev_svc.update_metadata(round_num)
 
             result = {
                 "created": str(round_path),

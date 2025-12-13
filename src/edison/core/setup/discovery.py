@@ -4,6 +4,8 @@ Auto-discovery utilities for Edison setup wizard.
 Discovers available packs, validators, agents, and orchestrators from
 the bundled edison.data package and project-level directories.
 
+Uses ConfigManager for pack-aware config loading (core > packs > project).
+
 Architecture:
 - Core content: ALWAYS from bundled edison.data
 - Project overrides: .edison/config/*.yaml merged on top of bundled
@@ -21,24 +23,29 @@ from edison.core.utils.paths import get_project_config_dir
 
 class SetupDiscovery:
     """Auto-discover available options for setup wizard.
-    
-    Discovers from:
-    - Bundled edison.data package (always available)
-    - Project .edison/config/ directory (optional overrides, merged on top)
+
+    Uses ConfigManager for pack-aware configuration loading.
     """
 
     def __init__(self, edison_core: Path, repo_root: Path):
         """Initialize discovery.
-        
+
         Args:
             edison_core: Bundled data directory (edison.data package root)
             repo_root: Project repository root
         """
+        from edison.core.config import ConfigManager
+
         self.edison_core = edison_core
         self.repo_root = repo_root
-        self.bundled_packs_dir = Path(get_data_path("packs"))
-        self.project_packs_dir = repo_root / ".edison" / "packs"
-        self.project_config_dir = get_project_config_dir(repo_root, create=False) / "config"
+
+        # Use ConfigManager for consistent path resolution
+        cfg_mgr = ConfigManager(repo_root=repo_root)
+        self.bundled_packs_dir = cfg_mgr.bundled_packs_dir
+        self.project_packs_dir = cfg_mgr.project_packs_dir
+        self.project_config_dir = cfg_mgr.project_config_dir
+        self._cfg_mgr = cfg_mgr
+
         self.setup_config = self._load_setup_config()
 
     # ---------- Public API ----------
@@ -66,105 +73,44 @@ class SetupDiscovery:
         return sorted(names)
 
     def discover_orchestrators(self) -> List[str]:
-        """Discover available orchestrators from bundled + project config.
-        
-        Loads bundled orchestrator.yaml first, then merges project config on top.
-        """
-        # Load bundled orchestrator config
-        bundled_config = get_data_path("config", "orchestrator.yaml")
-        bundled_data = self._load_yaml(bundled_config)
-        
-        # Load project orchestrator config and merge on top
-        project_config = self.project_config_dir / "orchestrator.yaml"
-        if not project_config.exists():
-            project_config = self.project_config_dir / "orchestrator.yml"
-        
-        if project_config.exists():
-            project_data = self._load_yaml(project_config)
-            data = self._deep_merge(bundled_data, project_data)
-        else:
-            data = bundled_data
-        
-        profiles = ((data.get("orchestrators") or {}).get("profiles") or {})
+        """Discover available orchestrators using ConfigManager's pack-aware loading."""
+        config = self._cfg_mgr.load_config(validate=False, include_packs=True)
+        profiles = ((config.get("orchestrators") or {}).get("profiles") or {})
         if profiles:
             return list(profiles.keys())
-        
+
         # Fallback from setup config
         cfg = (self.setup_config.get("discovery") or {}).get("orchestrators", {})
         return list(cfg.get("fallback") or ["claude", "cursor", "codex"])
 
     def discover_validators(self, packs: List[str]) -> List[str]:
-        """Discover validators from bundled + project config + selected packs.
-        
-        Layering order:
-        1. Bundled validators.yaml
-        2. Project .edison/config/validators.yaml (merged on top)
-        3. Pack validators (bundled + project packs)
+        """Discover validators using ConfigManager's pack-aware loading.
+
+        ConfigManager handles the full layering:
+        1. Core config (bundled validators.yaml)
+        2. Pack configs (bundled + project packs)
+        3. Project config (.edison/config/validators.yaml)
         """
+        config = self._cfg_mgr.load_config(validate=False, include_packs=True)
+
+        # Extract IDs from merged validation config
         ids: List[str] = []
-        
-        # Load bundled validators config
-        bundled_validators_config = get_data_path("config", "validators.yaml")
-        bundled_data = self._load_yaml(bundled_validators_config)
-        
-        # Load project validators config and merge on top
-        project_config = self.project_config_dir / "validators.yaml"
-        if not project_config.exists():
-            project_config = self.project_config_dir / "validators.yml"
-        
-        if project_config.exists():
-            project_data = self._load_yaml(project_config)
-            merged_data = self._deep_merge(bundled_data, project_data)
-        else:
-            merged_data = bundled_data
-        
-        # Extract IDs from merged config
-        ids.extend(self._extract_ids_from_data(merged_data))
-        
-        # Pack validators (bundled + project)
-        for pack in packs or []:
-            # Bundled pack validators
-            bundled_pack_config = self.bundled_packs_dir / pack / "config" / "validators.yml"
-            ids.extend(self._extract_ids(bundled_pack_config))
-            
-            # Project pack validators
-            project_pack_config = self.project_packs_dir / pack / "config" / "validators.yml"
-            ids.extend(self._extract_ids(project_pack_config))
+        ids.extend(self._extract_ids_from_data(config.get("validation", {})))
 
         return self._dedupe(ids)
 
     def discover_agents(self, packs: List[str]) -> List[str]:
-        """Discover agents from bundled + project config + selected packs.
-        
-        Layering order:
-        1. Bundled agents.yaml
-        2. Project .edison/config/agents.yaml (merged on top)
-        3. Bundled agents directory (*.md files)
-        4. Project agents directory (.edison/agents/*.md)
-        5. Pack agents (bundled + project packs)
+        """Discover agents using ConfigManager + directory scanning.
+
+        ConfigManager handles config merging (core > packs > project).
+        Directory scanning finds .md agent files.
         """
         ids: List[str] = []
-        
-        # Load bundled agents config
-        bundled_agents_config = get_data_path("config", "agents.yaml")
-        bundled_data = {}
-        if bundled_agents_config.exists():
-            bundled_data = self._load_yaml(bundled_agents_config)
-        
-        # Load project agents config and merge on top
-        project_config = self.project_config_dir / "agents.yaml"
-        if not project_config.exists():
-            project_config = self.project_config_dir / "agents.yml"
-        
-        if project_config.exists():
-            project_data = self._load_yaml(project_config)
-            merged_data = self._deep_merge(bundled_data, project_data)
-        else:
-            merged_data = bundled_data
-        
+
         # Extract IDs from merged config
-        ids.extend(self._extract_ids_from_data(merged_data))
-        
+        config = self._cfg_mgr.load_config(validate=False, include_packs=True)
+        ids.extend(self._extract_ids_from_data(config.get("agents", {})))
+
         # Discover from bundled agents directory
         bundled_agents_dir = Path(get_data_path("agents"))
         if bundled_agents_dir.exists():
@@ -172,7 +118,7 @@ class SetupDiscovery:
                 agent_id = agent_file.stem
                 if agent_id not in ids:
                     ids.append(agent_id)
-        
+
         # Discover from project agents directory
         project_agents_dir = get_project_config_dir(self.repo_root, create=False) / "agents"
         if project_agents_dir.exists():
@@ -180,16 +126,6 @@ class SetupDiscovery:
                 agent_id = agent_file.stem
                 if agent_id not in ids:
                     ids.append(agent_id)
-        
-        # Pack agents (bundled + project)
-        for pack in packs or []:
-            # Bundled pack agents
-            bundled_pack_config = self.bundled_packs_dir / pack / "config" / "agents.yml"
-            ids.extend(self._extract_ids(bundled_pack_config))
-            
-            # Project pack agents
-            project_pack_config = self.project_packs_dir / pack / "config" / "agents.yml"
-            ids.extend(self._extract_ids(project_pack_config))
 
         return self._dedupe(ids)
 
@@ -251,11 +187,6 @@ class SetupDiscovery:
     def _load_json(self, path: Path) -> Dict[str, Any]:
         from edison.core.utils.io import read_json
         return read_json(path, default={})
-
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """Recursively merge override dict on top of base dict."""
-        from edison.core.utils.merge import deep_merge
-        return deep_merge(base, override)
 
     def _extract_ids(self, path: Path) -> List[str]:
         """Extract IDs from a YAML file."""

@@ -28,6 +28,42 @@ def get_qa_root_path(project_root: Optional[Path] = None) -> Path:
     return paths.get_qa_root()
 
 
+def get_evidence_base_path(project_root: Optional[Path] = None) -> Path:
+    """Get base evidence directory path - single source of truth.
+
+    Returns the base path where validation evidence is stored.
+    The evidence subdirectory name comes from config (tasks.paths.evidenceSubdir).
+
+    Path resolution:
+    1. Uses ProjectManagementPaths.get_qa_root() as the QA base
+    2. Appends the configured evidence subdirectory name
+
+    This ensures consistency with other management-root relative paths
+    while still allowing the evidence subdirectory name to be configured.
+
+    Args:
+        project_root: Optional project root path. If None, resolves automatically.
+
+    Returns:
+        Path to evidence base directory (e.g., .project/qa/validation-evidence)
+
+    Example:
+        >>> base = get_evidence_base_path()
+        >>> task_evidence = base / task_id
+    """
+    from edison.core.config.domains.task import TaskConfig
+    from edison.core.utils.paths import PathResolver, get_management_paths
+
+    root = project_root or PathResolver.resolve_project_root()
+    cfg = TaskConfig(repo_root=root)
+    evidence_subdir = cfg.evidence_subdir()
+
+    # Use ProjectManagementPaths for consistent management-root relative paths
+    # This ensures that when management_dir is customized, evidence paths follow
+    mgmt_paths = get_management_paths(root)
+    return mgmt_paths.get_qa_root() / evidence_subdir
+
+
 def sort_round_dirs(dirs: Iterable[Path]) -> List[Path]:
     """Sort round directories by numeric suffix.
 
@@ -150,6 +186,7 @@ def parse_primary_files(content: str) -> List[str]:
 
 __all__ = [
     "get_qa_root_path",
+    "get_evidence_base_path",
     "sort_round_dirs",
     "read_json_safe",
     "parse_primary_files",

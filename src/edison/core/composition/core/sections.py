@@ -1,8 +1,8 @@
 """Section parsing and registry for layered composition.
 
 Unified section system with two core patterns:
-- <!-- SECTION: name --> content <!-- /SECTION: name -->  (Define section)
-- <!-- EXTEND: name --> content <!-- /EXTEND -->  (Extend existing section)
+- <!-- section: name --> content <!-- /section: name -->  (Define section)
+- <!-- extend: name --> content <!-- /extend -->  (Extend existing section)
 
 Convention: `composed-additions` section for pack/project new content.
 """
@@ -74,8 +74,8 @@ class SectionParser:
     """Parse HTML comment markers in content files.
 
     Supported markers:
-    - <!-- SECTION: name --> content <!-- /SECTION: name -->
-    - <!-- EXTEND: name --> content <!-- /EXTEND -->
+    - <!-- section: name --> content <!-- /section: name -->
+    - <!-- extend: name --> content <!-- /extend -->
     """
 
     # Pattern for section definitions (supports dots for rule IDs like RULE.SESSION.ISOLATION)
@@ -179,7 +179,7 @@ class SectionParser:
                 for ext in extensions[section_name]:
                     if ext:  # Skip empty extensions
                         extended += "\n" + ext
-                return f"<!-- SECTION: {section_name} -->{extended}\n<!-- /SECTION: {section_name} -->"
+                return f"<!-- section: {section_name} -->{extended}\n<!-- /section: {section_name} -->"
 
             return match.group(0)
 

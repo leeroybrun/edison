@@ -145,9 +145,15 @@ def transition_entity(
     """
     from pathlib import Path
     from edison.core.config.domains.workflow import WorkflowConfig
-    workflow_cfg = WorkflowConfig(repo_root=repo_root)
-    default_state = workflow_cfg.get_initial_state(entity_type)
-    from_state = current_state or default_state
+    # Only consult workflow config when caller does not provide a current state.
+    # This allows unit tests and non-workflow entity types to use transition_entity
+    # with an explicit current_state.
+    if current_state is None or str(current_state).strip() == "":
+        workflow_cfg = WorkflowConfig(repo_root=repo_root)
+        default_state = workflow_cfg.get_initial_state(entity_type)
+        from_state = default_state
+    else:
+        from_state = current_state
     ctx = dict(context or {})
     ctx["entity_type"] = entity_type
     ctx["entity_id"] = entity_id

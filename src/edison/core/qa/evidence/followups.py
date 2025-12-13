@@ -1,26 +1,28 @@
-"""Follow-up loading logic."""
+"""Follow-up loading logic.
+
+Uses EvidenceService as the single source for evidence I/O.
+"""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from edison.core.utils.io import read_json
 from .service import EvidenceService
 
 
 def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
-    """Load follow-up tasks from implementation-report.json for latest round."""
+    """Load follow-up tasks from implementation-report.json for latest round.
+
+    Uses EvidenceService.read_implementation_report() for I/O.
+    """
     ev_svc = EvidenceService(task_id)
-    rd = ev_svc.get_current_round_dir()
-    if not rd:
+    if ev_svc.get_current_round_dir() is None:
         return []
-    rp = rd / "implementation-report.json"
-    if not rp.exists():
+
+    # Use EvidenceService for reading (handles config-based filename)
+    data = ev_svc.read_implementation_report()
+    if not data:
         return []
-    try:
-        data = read_json(rp)
-    except Exception:
-        return []
+
     out: List[Dict[str, Any]] = []
     for it in data.get("followUpTasks", []) or []:
         out.append(
@@ -36,18 +38,19 @@ def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
 
 
 def load_bundle_followups(task_id: str) -> List[Dict[str, Any]]:
-    """Load non-blocking follow-ups from bundle-approved.json for latest round."""
+    """Load non-blocking follow-ups from bundle-approved.json for latest round.
+
+    Uses EvidenceService.read_bundle() for I/O.
+    """
     ev_svc = EvidenceService(task_id)
-    rd = ev_svc.get_current_round_dir()
-    if not rd:
+    if ev_svc.get_current_round_dir() is None:
         return []
-    bp = rd / "bundle-approved.json"
-    if not bp.exists():
+
+    # Use EvidenceService for reading (handles config-based filename)
+    data = ev_svc.read_bundle()
+    if not data:
         return []
-    try:
-        data = read_json(bp)
-    except Exception:
-        return []
+
     out: List[Dict[str, Any]] = []
     for it in data.get("nonBlockingFollowUps", []) or []:
         out.append(

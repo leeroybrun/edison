@@ -263,18 +263,21 @@ class QARepository(
         qa_id: str,
         status: str,
         notes: Optional[str] = None,
+        create_evidence_dir: bool = True,
     ) -> QARecord:
         """Append a new round to a QA record.
 
         This method:
         1. Increments the round number
-        2. Adds the round to round_history with status, notes, and date
-        3. Saves the updated QA record
+        2. Creates corresponding evidence directory via EvidenceService
+        3. Adds the round to round_history with status, notes, and date
+        4. Saves the updated QA record
 
         Args:
             qa_id: QA record identifier
             status: Status for this round (e.g., "approved", "rejected", "pending")
             notes: Optional notes for this round (e.g., validator names)
+            create_evidence_dir: Whether to create evidence directory (default True)
 
         Returns:
             Updated QA record with new round
@@ -283,6 +286,7 @@ class QARepository(
             PersistenceError: If QA record not found
         """
         from datetime import datetime, timezone
+        from ..evidence import EvidenceService
 
         qa = self.get(qa_id)
         if not qa:
@@ -290,6 +294,11 @@ class QARepository(
 
         # Increment round number
         qa.round += 1
+
+        # Create corresponding evidence directory via EvidenceService
+        if create_evidence_dir:
+            ev_svc = EvidenceService(qa.task_id, project_root=self.project_root)
+            ev_svc.create_next_round()
 
         # Add round entry to history
         round_entry: Dict[str, Any] = {

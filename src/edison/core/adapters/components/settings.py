@@ -1,16 +1,19 @@
 """Compose Claude Code settings.json payload.
 
-This module generates settings.json for Claude Code by merging configuration
-from core, packs, and project layers.
+This module generates settings.json for Claude Code using ConfigManager's
+pack-aware configuration loading (core > packs > project).
+
+All merging is handled by ConfigManager's unified deep_merge. For array
+concatenation (e.g., permissions), use the ["+", item1, item2] syntax in YAML.
 """
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
+from edison.core.utils.merge import deep_merge
 from .base import AdapterComponent, AdapterContext
-from edison.core.config import ConfigManager
 
 
 # Keys that are Edison's internal control flags and should NOT be written to Claude Code settings.json
@@ -24,90 +27,55 @@ EDISON_INTERNAL_KEYS: Set[str] = {
 }
 
 
-def merge_permissions(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, List[str]]:
-    """Merge permissions by concatenating arrays and de-duplicating."""
-    result: Dict[str, List[str]] = {"allow": [], "deny": [], "ask": []}
-    for key in ("allow", "deny", "ask"):
-        seen: Set[str] = set()
-        merged: List[str] = []
-        for src in (base.get(key, []), overlay.get(key, [])):
-            if not isinstance(src, list):
-                continue
-            for item in src:
-                if item in seen:
-                    continue
-                seen.add(item)
-                merged.append(str(item))
-        result[key] = merged
-    return result
-
-
 class SettingsComposer(AdapterComponent):
-    """Build settings payload (platform-agnostic)."""
+    """Build settings payload (platform-agnostic).
+
+    Uses ConfigManager's pack-aware loading for unified configuration.
+    No specialized merge logic - all merging is handled by ConfigManager.
+    """
 
     def __init__(self, context: AdapterContext) -> None:
         super().__init__(context)
         self.project_config_dir = self.project_dir / "config"
 
     # ----- Loaders -----
+    def load_merged_settings(self) -> Dict[str, Any]:
+        """Load settings using ConfigManager's pack-aware loading.
+
+        ConfigManager handles the full layering:
+        1. Core config (bundled settings.yaml)
+        2. Pack configs (bundled + project packs)
+        3. Project config (.edison/config/settings.yaml)
+
+        Returns:
+            Merged settings.claude configuration dict
+        """
+        from edison.core.config import ConfigManager
+
+        # Use ConfigManager's unified pack-aware loading
+        cfg_mgr = ConfigManager(repo_root=self.project_root)
+        full_config = cfg_mgr.load_config(validate=False, include_packs=True)
+        settings_section = full_config.get("settings", {}) or {}
+        return settings_section.get("claude", {}) if isinstance(settings_section, dict) else {}
+
     def load_core_settings(self) -> Dict[str, Any]:
-        path = self.core_dir / "config" / "settings.yaml"
-        if not path.exists():
-            path = self.core_dir / "config" / "settings.yml"
-        data = self.context.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
+        """Load core settings only (without packs/project)."""
+        from edison.core.config import ConfigManager
 
-    def _load_pack_settings(self, pack: str) -> Dict[str, Any]:
-        path = self.bundled_packs_dir / pack / "config" / "settings.yml"
-        if not path.exists():
-            path = self.bundled_packs_dir / pack / "config" / "settings.yaml"
-        data = self.context.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
-
-    def _load_project_settings(self) -> Dict[str, Any]:
-        path = self.project_config_dir / "settings.yml"
-        if not path.exists():
-            path = self.project_config_dir / "settings.yaml"
-        data = self.context.cfg_mgr.load_yaml(path) if path.exists() else {}
-        return (data.get("settings") or {}).get("claude", {}) if isinstance(data, dict) else {}
-
-    def extract_pack_permissions(self, pack: str) -> Dict[str, Any]:
-        settings = self._load_pack_settings(pack)
-        return settings.get("permissions", {}) if isinstance(settings, dict) else {}
-
-    # ----- Merging helpers -----
-    def deep_merge_settings(self, base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge settings dicts with special handling for permissions/env."""
-        result: Dict[str, Any] = dict(base)
-        for key, value in (overlay or {}).items():
-            if key == "permissions":
-                base_perms = result.get("permissions", {}) if isinstance(result.get("permissions"), dict) else {}
-                result["permissions"] = merge_permissions(base_perms, value if isinstance(value, dict) else {})
-            elif key == "env":
-                base_env = result.get("env", {}) if isinstance(result.get("env"), dict) else {}
-                overlay_env = value if isinstance(value, dict) else {}
-                merged_env = dict(base_env)
-                merged_env.update(overlay_env)
-                result["env"] = merged_env
-            elif isinstance(result.get(key), dict) and isinstance(value, dict):
-                result[key] = self.deep_merge_settings(result[key], value)
-            else:
-                result[key] = value
-        return result
+        cfg_mgr = ConfigManager(repo_root=self.project_root)
+        full_config = cfg_mgr.load_config(validate=False, include_packs=False)
+        settings_section = full_config.get("settings", {}) or {}
+        return settings_section.get("claude", {}) if isinstance(settings_section, dict) else {}
 
     # ----- Composition -----
     def compose_settings(self) -> Dict[str, Any]:
-        """Return settings dictionary ready to write to settings.json."""
-        settings = self.load_core_settings()
+        """Return settings dictionary ready to write to settings.json.
 
-        # Merge pack overlays
-        for pack in self.active_packs:
-            pack_settings = self._load_pack_settings(pack)
-            settings = self.deep_merge_settings(settings, pack_settings)
-
-        # Merge project overrides
-        project_settings = self._load_project_settings()
-        settings = self.deep_merge_settings(settings, project_settings)
+        Uses ConfigManager's pack-aware loading for core > packs > project layering.
+        All merging is handled by ConfigManager's unified deep_merge.
+        """
+        # Get settings from ConfigManager (already merged core > packs > project)
+        settings = self.load_merged_settings()
 
         # Include hooks section (HookComposer loads defaults from bundled config)
         try:
@@ -129,7 +97,7 @@ class SettingsComposer(AdapterComponent):
         # Flatten explicit data payload if provided
         if isinstance(settings.get("data"), dict):
             data_block = settings.pop("data")
-            settings = self.deep_merge_settings(settings, data_block)
+            settings = deep_merge(settings, data_block)
 
         return settings
 
@@ -171,10 +139,10 @@ class SettingsComposer(AdapterComponent):
                 # Merge composed settings INTO existing (existing takes precedence)
                 # This preserves user customizations
                 if claude_cfg.get("preserve_custom", True):
-                    settings = self.deep_merge_settings(settings, existing)
+                    settings = deep_merge(settings, existing)
 
         write_json_atomic(target, settings, indent=2)
         return target
 
 
-__all__ = ["SettingsComposer", "merge_permissions"]
+__all__ = ["SettingsComposer"]

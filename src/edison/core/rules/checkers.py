@@ -141,10 +141,13 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
             if current_round is None:
                 raise FileNotFoundError(f"No evidence rounds found for {task_id}")
             latest_round = svc.ensure_round(current_round)
+            # Use configured bundle filename from EvidenceService
+            bundle_filename = svc.bundle_filename
         except FileNotFoundError:
             # No evidence directory or no round-* dirs present.
+            from edison.core.qa._utils import get_evidence_base_path
             root = PathResolver.resolve_project_root()
-            evidence_dir = get_management_paths(root).get_qa_root() / "validation-evidence" / str(task_id)
+            evidence_dir = get_evidence_base_path(root) / str(task_id)
             try:
                 rel = evidence_dir.relative_to(root)
             except Exception:
@@ -153,7 +156,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
                 f"No evidence rounds found for task {task_id} under {rel}"
             )
         else:
-            bundle_path = latest_round / "bundle-approved.json"
+            bundle_path = latest_round / bundle_filename
 
     # If we still do not have a path, treat as pass when not required.
     if bundle_path is None:

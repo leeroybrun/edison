@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from edison.data.utils import get_task_id_from_context
+from edison.core.state.handlers.utils import get_task_id_from_context
 
 
 def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
@@ -240,18 +240,16 @@ def has_bundle_approval(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.qa.evidence import EvidenceService
-        from edison.core.utils.io import read_json
 
         svc = EvidenceService(str(task_id))
-        round_num = svc.get_current_round()
-        if round_num is None:
+        if svc.get_current_round() is None:
             return False
 
-        bundle_path = svc.get_evidence_root() / f"round-{round_num}" / "bundle-approved.json"
-        if not bundle_path.exists():
+        # Use EvidenceService.read_bundle() as single source for bundle I/O
+        bundle = svc.read_bundle()
+        if not bundle:
             return False
 
-        bundle = read_json(bundle_path)
         return bundle.get("approved", False) is True
     except Exception:
         pass
@@ -285,3 +283,5 @@ def _fetch_task(task_id: str) -> Mapping[str, Any] | None:
     except Exception:
         pass
     return None
+
+

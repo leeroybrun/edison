@@ -77,21 +77,22 @@ class HookComposer(AdapterComponent):
         return list(written.values())
 
     def load_definitions(self) -> Dict[str, HookDefinition]:
-        """Load and merge hook definitions from core, packs, and project overrides."""
-        merged: Dict[str, Dict[str, Any]] = {}
+        """Load and merge hook definitions using ConfigManager's pack-aware loading.
 
-        # Load from bundled Edison core config first
-        core_file = self._bundled_config_dir / "hooks.yaml"
-        merged = self._merge_hooks_from_file(merged, core_file)
+        ConfigManager handles the full layering:
+        1. Core config (bundled hooks.yaml)
+        2. Pack configs (bundled + project packs)
+        3. Project config (.edison/config/hooks.yaml)
+        """
+        from edison.core.config import ConfigManager
 
-        for pack in self.active_packs:
-            pack_file = self.bundled_packs_dir / pack / "config" / "hooks.yml"
-            merged = self._merge_hooks_from_file(merged, pack_file)
+        cfg_mgr = ConfigManager(repo_root=self.project_root)
+        full_config = cfg_mgr.load_config(validate=False, include_packs=True)
 
-        project_file = self.project_dir / "config" / "hooks.yml"
-        merged = self._merge_hooks_from_file(merged, project_file)
+        hooks_section = full_config.get("hooks", {}) or {}
+        definitions = hooks_section.get("definitions", {}) or {}
 
-        return self._dicts_to_defs(merged)
+        return self._dicts_to_defs(definitions)
 
     def render_hook(self, hook_def: HookDefinition) -> str:
         """Render a single hook using its template (Jinja2 when available)."""
@@ -172,28 +173,6 @@ class HookComposer(AdapterComponent):
     def _hooks_cfg(self) -> Dict[str, Any]:
         return (self.config or {}).get("hooks", {}) or {}
 
-    def _merge_hooks_from_file(
-        self, merged: Dict[str, Dict[str, Any]], path: Path
-    ) -> Dict[str, Dict[str, Any]]:
-        """Load hook definitions from ``path`` and merge into ``merged`` by id."""
-        data = self._load_yaml_hooks(path)
-        # Deep merge definitions by id
-        return self._merge_definitions(merged, data)
-
-    def _load_yaml_hooks(self, path: Path) -> Dict[str, Dict[str, Any]]:
-        """Load hook ``definitions`` mapping from YAML path (empty when missing)."""
-        if not path.exists():
-            return {}
-        data = self.context.cfg_mgr.load_yaml(path)
-        if not isinstance(data, dict):
-            return {}
-
-        hooks = data.get("hooks")
-        if isinstance(hooks, dict):
-            defs = hooks.get("definitions")
-            if isinstance(defs, dict):
-                return defs
-        return {}
 
     def _dicts_to_defs(self, merged: Dict[str, Dict[str, Any]]) -> Dict[str, HookDefinition]:
         """Convert merged dicts into HookDefinition objects with validation."""
@@ -329,21 +308,6 @@ class HookComposer(AdapterComponent):
                 suffix = "".join(suffixes) or ".hook"
             return f"{hook_def.id}{suffix}"
         return f"{hook_def.id}.hook"
-
-    # ----- Internal merge helper -----
-    def _merge_definitions(
-        self,
-        base: Dict[str, Dict[str, Any]],
-        overlay: Dict[str, Dict[str, Any]],
-    ) -> Dict[str, Dict[str, Any]]:
-        """Deep merge hook definitions by id."""
-        result = dict(base)
-        for key, val in (overlay or {}).items():
-            if not isinstance(val, dict):
-                continue
-            existing = result.get(key, {})
-            result[key] = self.context.cfg_mgr.deep_merge(existing, val)
-        return result
 
 
 def compose_hooks(

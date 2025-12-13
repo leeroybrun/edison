@@ -1,5 +1,5 @@
 """
-Utility functions available to the template engine via {{fn:...}}.
+Utility functions available to the template engine via {{function:...}}.
 
 Functions here are loaded by the layered functions loader:
 - core functions (this file)
@@ -8,43 +8,34 @@ Functions here are loaded by the layered functions loader:
 - project functions (.edison/functions)
 
 All functions should be pure and return strings.
+
+Uses WorkflowConfig as the single source of truth for state machine config.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-import yaml
 
-
-def _load_state_machine_config() -> dict[str, Any]:
-    """Load state machine configuration from workflow.yaml."""
-    # State machine is now merged into workflow.yaml
-    workflow_path = Path(__file__).parent.parent / "config" / "workflow.yaml"
-    if workflow_path.exists():
-        with open(workflow_path) as f:
-            workflow = yaml.safe_load(f) or {}
-            # State machine is under workflow.statemachine
-            return {"statemachine": workflow.get("workflow", {}).get("statemachine", {})}
-    return {}
+def _get_workflow_config() -> Any:
+    """Get WorkflowConfig instance for state machine access."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+    return WorkflowConfig()
 
 
 def _get_states(domain: str = "task") -> list[str]:
     """Get state names for a domain from config."""
-    config = _load_state_machine_config()
-    statemachine = config.get("statemachine", {})
-    domain_config = statemachine.get(domain, {})
-    states_config = domain_config.get("states", {})
-    return list(states_config.keys())
+    wf_cfg = _get_workflow_config()
+    return wf_cfg.get_states(domain)
 
 
 def _get_state_info(domain: str, state: str) -> dict[str, Any] | None:
     """Get detailed info for a specific state."""
-    config = _load_state_machine_config()
-    statemachine = config.get("statemachine", {})
+    wf_cfg = _get_workflow_config()
+    statemachine = wf_cfg._statemachine
     domain_config = statemachine.get(domain, {})
     states_config = domain_config.get("states", {})
-    return states_config.get(state)
+    info = states_config.get(state)
+    return info if isinstance(info, dict) else None
 
 
 def tasks_states(state: str | None = None) -> str:
@@ -79,3 +70,5 @@ def tasks_states(state: str | None = None) -> str:
         else:
             result.append(f"- {s}")
     return "\n".join(result)
+
+

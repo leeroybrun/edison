@@ -202,9 +202,9 @@ def build_validation_bundle(session_id: str, root_task: str) -> Dict[str, Any]:
             svc = EvidenceService(task_id)
             evidence_dir = str(svc.get_evidence_root())
         except Exception:
+            from edison.core.qa._utils import get_evidence_base_path
             root = PathResolver.resolve_project_root()
-            mgmt_paths = get_management_paths(root)
-            evidence_dir = str(mgmt_paths.get_qa_root() / "validation-evidence" / task_id)
+            evidence_dir = str(get_evidence_base_path(root) / task_id)
         
         tasks_payload.append({
             "taskId": task_id,

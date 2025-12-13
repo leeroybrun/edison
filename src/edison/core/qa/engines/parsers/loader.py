@@ -10,12 +10,14 @@ Later layers override earlier ones, allowing customization at any level.
 """
 from __future__ import annotations
 
-import importlib.util
 import logging
 from pathlib import Path
-from types import ModuleType
-from typing import Callable, Iterable
+from typing import Callable, List
 
+from edison.core.utils.loader import (
+    iter_python_files,
+    load_module_from_path,
+)
 from .base import ParseResult
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,12 @@ logger = logging.getLogger(__name__)
 
 # Global parser registry
 _PARSERS: dict[str, Callable[[str], ParseResult]] = {}
+
+# Core parsers directory (this directory)
+_CORE_PARSERS_DIR = Path(__file__).parent
+
+# Files to exclude when loading parsers (infrastructure files)
+_EXCLUDED_FILES = {"__init__.py", "base.py", "loader.py"}
 
 
 def get_parser(name: str) -> Callable[[str], ParseResult] | None:
@@ -57,52 +65,6 @@ def list_parsers() -> list[str]:
     return list(_PARSERS.keys())
 
 
-def _iter_parser_files(dirs: Iterable[Path]) -> Iterable[Path]:
-    """Yield all .py files from existing directories.
-
-    Excludes __init__.py, base.py, and loader.py (infrastructure files).
-
-    Args:
-        dirs: Directories to search
-
-    Yields:
-        Paths to parser files
-    """
-    excluded = {"__init__.py", "base.py", "loader.py"}
-
-    for dir_path in dirs:
-        if not dir_path.exists() or not dir_path.is_dir():
-            continue
-
-        for path in sorted(dir_path.glob("*.py")):
-            if path.name not in excluded:
-                yield path
-
-
-def _load_module(path: Path) -> ModuleType | None:
-    """Dynamically load a Python module from path.
-
-    Args:
-        path: Path to .py file
-
-    Returns:
-        Loaded module or None on failure
-    """
-    try:
-        spec = importlib.util.spec_from_file_location(path.stem, path)
-        if spec is None or spec.loader is None:
-            logger.warning(f"Failed to load spec for {path}")
-            return None
-
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    except Exception as e:
-        logger.warning(f"Failed to load parser module {path}: {e}")
-        return None
-
-
 def load_parsers(project_root: Path | None = None, active_packs: list[str] | None = None) -> None:
     """Load and register parsers from all layers.
 
@@ -119,11 +81,10 @@ def load_parsers(project_root: Path | None = None, active_packs: list[str] | Non
         active_packs = []
 
     # Build list of parser directories in order (later overrides earlier)
-    dirs: list[Path] = []
+    dirs: List[Path] = []
 
     # 1. Core parsers (this directory)
-    core_parsers = Path(__file__).parent
-    dirs.append(core_parsers)
+    dirs.append(_CORE_PARSERS_DIR)
 
     # 2-4. Pack and project parsers (if project_root provided)
     if project_root:
@@ -145,9 +106,9 @@ def load_parsers(project_root: Path | None = None, active_packs: list[str] | Non
         project_parsers = resolver.project_dir / "parsers"
         dirs.append(project_parsers)
 
-    # Load parsers from all directories
-    for path in _iter_parser_files(dirs):
-        module = _load_module(path)
+    # Load parsers from all directories using common utility
+    for path in iter_python_files(dirs, exclude=_EXCLUDED_FILES):
+        module = load_module_from_path(path, "edison.parsers")
         if module and hasattr(module, "parse"):
             # Parser ID = file stem (codex.py → "codex")
             parser_id = path.stem
@@ -174,4 +135,3 @@ __all__ = [
     "load_parsers",
     "register_parser",
 ]
-

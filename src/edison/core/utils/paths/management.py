@@ -1,7 +1,18 @@
 """Centralized project management paths resolution.
 
-All paths under project management directory (default .project) should
-be resolved through this module with ZERO hardcoded values.
+This module provides a low-level utility for computing paths relative to the
+project management root directory (default: .project).
+
+IMPORTANT DESIGN DECISION:
+This class uses simple path computation ({management_root}/{subdirectory}).
+It does NOT use domain configs (TaskConfig, SessionConfig) because:
+
+1. Those configs read from bundled defaults, which always exist
+2. This class needs to respect a custom management_dir without bundled defaults
+3. The subdirectory names ("tasks", "qa", "sessions") are standard conventions
+
+For explicit config-driven paths that may differ from management_root subdirs,
+use the domain configs directly (TaskConfig.tasks_root(), QAConfig, etc.).
 """
 from __future__ import annotations
 
@@ -10,7 +21,19 @@ from typing import Any, Dict, Optional
 
 
 class ProjectManagementPaths:
-    """Resolve all project management directory paths from config."""
+    """Resolve all project management directory paths from management root.
+    
+    This class computes paths as: {management_root}/{subdirectory_name}
+    
+    Use cases:
+    - Tests that set custom management_dir and expect all subdirs to follow
+    - Code that needs consistent path structure under management root
+    
+    For config-driven paths that may point elsewhere, use domain configs:
+    - TaskConfig.tasks_root() - reads from tasks.paths.root
+    - TaskConfig.qa_root() - reads from tasks.paths.qaRoot
+    - SessionConfig.get_session_root_path() - reads from session.paths.root
+    """
 
     def __init__(self, repo_root: Path, config: Optional[dict] = None):
         self.repo_root = repo_root
@@ -68,31 +91,31 @@ class ProjectManagementPaths:
         return (self.repo_root / str(base)).resolve()
 
     def get_tasks_root(self) -> Path:
-        """Get tasks directory (.project/tasks)."""
+        """Get tasks directory ({management_root}/tasks)."""
         return self.get_management_root() / "tasks"
 
     def get_task_state_dir(self, state: str) -> Path:
-        """Get task state directory (.project/tasks/{state})."""
+        """Get task state directory ({tasks_root}/{state})."""
         return self.get_tasks_root() / str(state)
 
     def get_sessions_root(self) -> Path:
-        """Get sessions directory (.project/sessions)."""
+        """Get sessions directory ({management_root}/sessions)."""
         return self.get_management_root() / "sessions"
 
     def get_session_state_dir(self, state: str) -> Path:
-        """Get session state directory (.project/sessions/{state})."""
+        """Get session state directory ({sessions_root}/{state})."""
         return self.get_sessions_root() / str(state)
 
     def get_qa_root(self) -> Path:
-        """Get QA directory (.project/qa)."""
+        """Get QA directory ({management_root}/qa)."""
         return self.get_management_root() / "qa"
 
     def get_logs_root(self) -> Path:
-        """Get logs directory (.project/logs)."""
+        """Get logs directory ({management_root}/logs)."""
         return self.get_management_root() / "logs"
 
     def get_archive_root(self) -> Path:
-        """Get archive directory (.project/archive)."""
+        """Get archive directory ({management_root}/archive)."""
         return self.get_management_root() / "archive"
 
 

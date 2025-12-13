@@ -8,12 +8,12 @@ delegation. For validator delegation, see core/qa/engines/delegated.py.
 """
 from __future__ import annotations
 
-import fnmatch
 from typing import Any
 
 from edison.core.task import TaskRepository
 from edison.core.config.domains.qa import QAConfig
 from edison.core.qa._utils import parse_primary_files
+from edison.core.utils.patterns import matches_any_pattern
 
 __all__ = ["simple_delegation_hint", "enhance_delegation_hint", "task_type_from_doc"]
 
@@ -71,7 +71,7 @@ def simple_delegation_hint(
     primary_files = parse_primary_files(text)
     for pattern, rule in fp_rules.items():
         for f in primary_files:
-            if fnmatch.fnmatch(f, pattern):
+            if matches_any_pattern(f, [pattern]):
                 model = rule.get("preferredModel")
                 role = rule.get("preferredZenRole") or rule.get("zenRole")
                 if model and role:
@@ -165,7 +165,7 @@ def enhance_delegation_hint(
     fp_rules = cfg.get("filePatternRules", {})
     for pattern, rule in fp_rules.items():
         for f in files:
-            if fnmatch.fnmatch(f, pattern):
+            if matches_any_pattern(f, [pattern]):
                 matched_patterns.append(
                     {
                         "pattern": pattern,

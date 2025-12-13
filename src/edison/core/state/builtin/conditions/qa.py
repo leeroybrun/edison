@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from edison.data.utils import get_task_id_from_context
+from edison.core.state.builtin.utils import get_task_id_from_context
 
 
 def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
@@ -50,7 +50,7 @@ def has_bundle_approval(ctx: Mapping[str, Any]) -> bool:
         True if bundle is approved
     """
     # Delegate to guard implementation
-    from edison.data.guards.qa import has_bundle_approval as guard_check
+    from edison.core.state.builtin.guards.qa import has_bundle_approval as guard_check
     return guard_check(ctx)
 
 
@@ -64,7 +64,7 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
         True if all waves passed
     """
     # Delegate to guard implementation
-    from edison.data.guards.qa import has_all_waves_passed as guard_check
+    from edison.core.state.builtin.guards.qa import has_all_waves_passed as guard_check
     return guard_check(ctx)
 
 

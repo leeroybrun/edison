@@ -1,8 +1,8 @@
 """Dynamic handler loader for state machine guards, actions, and conditions.
 
 Loads Python callables from layered folders:
-- Core:            <data>/guards|actions|conditions/
-- Bundled packs:   <data>/packs/<pack>/guards|actions|conditions/
+- Core:            core/state/handlers/guards|actions|conditions/
+- Bundled packs:   data/packs/<pack>/guards|actions|conditions/
 - Project packs:   .edison/packs/<pack>/guards|actions|conditions/
 - Project:         .edison/guards|actions|conditions/
 
@@ -11,79 +11,47 @@ available to the state machine for transition validation and execution.
 """
 from __future__ import annotations
 
-import importlib.util
 import logging
 from pathlib import Path
-from types import ModuleType
-from typing import Iterable, List, Optional, Callable, Any
+from typing import List, Optional
+
+from edison.core.utils.loader import (
+    build_layer_dirs,
+    iter_python_files,
+    load_module_from_path,
+    register_callables_from_module,
+)
 
 logger = logging.getLogger(__name__)
 
 # Handler type identifiers
 HANDLER_TYPES = ("guards", "actions", "conditions")
 
-
-def _iter_handler_files(dirs: Iterable[Path]) -> Iterable[Path]:
-    """Yield all ``*.py`` files from existing directories in order."""
-    for d in dirs:
-        if not d or not d.exists():
-            continue
-        for path in sorted(d.glob("*.py")):
-            if path.is_file() and path.stem != "__init__":
-                yield path
-
-
-def _load_module(path: Path, handler_type: str) -> Optional[ModuleType]:
-    """Dynamically load a module from file without adding to sys.modules."""
-    module_name = f"edison.{handler_type}.{path.stem}"
-    try:
-        spec = importlib.util.spec_from_file_location(module_name, path)
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)  # type: ignore[attr-defined]
-            return module
-    except Exception as e:
-        logger.warning("Failed to load %s module %s: %s", handler_type, path, e)
-    return None
+# Core handlers directory (relative to this file)
+# Named "builtin" to avoid conflict with handlers.py (registry base classes)
+_CORE_HANDLERS_DIR = Path(__file__).parent / "builtin"
 
 
 def _get_layer_dirs(
-    resolver: "CompositionPathResolver",
     handler_type: str,
+    bundled_packs_dir: Path,
+    project_packs_dir: Path,
+    project_dir: Path,
     active_packs: List[str],
 ) -> List[Path]:
-    """Get directories for a handler type in layer order."""
-    return [
-        resolver.core_dir / handler_type,
-        *(resolver.bundled_packs_dir / p / handler_type for p in active_packs),
-        *(resolver.project_packs_dir / p / handler_type for p in active_packs),
-        resolver.project_dir / handler_type,
-    ]
-
-
-def _register_from_module(
-    module: ModuleType,
-    register_fn: Callable[[str, Callable[..., Any]], None],
-) -> int:
-    """Register all public callables from a module.
+    """Get directories for a handler type in layer order.
     
-    Args:
-        module: Loaded Python module
-        register_fn: Function to register handlers (e.g., registry.add)
-        
-    Returns:
-        Number of handlers registered
+    Uses the core handlers directory (core/state/handlers/) as the first layer,
+    then pack and project directories.
     """
-    count = 0
-    for name in dir(module):
-        if name.startswith("_"):
-            continue
-        obj = getattr(module, name)
-        if callable(obj) and not isinstance(obj, type):
-            # Later layers overwrite earlier ones by simply re-adding
-            register_fn(name, obj)
-            count += 1
-    return count
+    return build_layer_dirs(
+        core_dir=_CORE_HANDLERS_DIR,
+        content_type=handler_type,
+        bundled_packs_dir=bundled_packs_dir,
+        project_packs_dir=project_packs_dir,
+        project_dir=project_dir,
+        active_packs=active_packs,
+    )
 
 
 def load_guards(project_root: Optional[Path], active_packs: List[str]) -> int:
@@ -98,13 +66,19 @@ def load_guards(project_root: Optional[Path], active_packs: List[str]) -> int:
     from .guards import registry as guard_registry
     
     resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(resolver, "guards", active_packs)
+    dirs = _get_layer_dirs(
+        "guards",
+        resolver.bundled_packs_dir,
+        resolver.project_packs_dir,
+        resolver.project_dir,
+        active_packs,
+    )
     
     count = 0
-    for path in _iter_handler_files(dirs):
-        module = _load_module(path, "guards")
+    for path in iter_python_files(dirs):
+        module = load_module_from_path(path, "edison.guards")
         if module:
-            count += _register_from_module(module, guard_registry.add)
+            count += register_callables_from_module(module, guard_registry.add)
     
     return count
 
@@ -121,13 +95,19 @@ def load_actions(project_root: Optional[Path], active_packs: List[str]) -> int:
     from .actions import registry as action_registry
     
     resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(resolver, "actions", active_packs)
+    dirs = _get_layer_dirs(
+        "actions",
+        resolver.bundled_packs_dir,
+        resolver.project_packs_dir,
+        resolver.project_dir,
+        active_packs,
+    )
     
     count = 0
-    for path in _iter_handler_files(dirs):
-        module = _load_module(path, "actions")
+    for path in iter_python_files(dirs):
+        module = load_module_from_path(path, "edison.actions")
         if module:
-            count += _register_from_module(module, action_registry.add)
+            count += register_callables_from_module(module, action_registry.add)
     
     return count
 
@@ -144,13 +124,19 @@ def load_conditions(project_root: Optional[Path], active_packs: List[str]) -> in
     from .conditions import registry as condition_registry
     
     resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(resolver, "conditions", active_packs)
+    dirs = _get_layer_dirs(
+        "conditions",
+        resolver.bundled_packs_dir,
+        resolver.project_packs_dir,
+        resolver.project_dir,
+        active_packs,
+    )
     
     count = 0
-    for path in _iter_handler_files(dirs):
-        module = _load_module(path, "conditions")
+    for path in iter_python_files(dirs):
+        module = load_module_from_path(path, "edison.conditions")
         if module:
-            count += _register_from_module(module, condition_registry.add)
+            count += register_callables_from_module(module, condition_registry.add)
     
     return count
 

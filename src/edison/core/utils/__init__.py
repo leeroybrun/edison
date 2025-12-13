@@ -4,6 +4,7 @@ This package provides consolidated utilities:
 - io/: File I/O operations (atomic writes, JSON, YAML, locking)
 - git/: Git repository operations
 - paths/: Path resolution
+- patterns: File pattern matching (fnmatch)
 - process/: Process inspection
 - cli/: CLI helpers
 - time: Time utilities
@@ -67,6 +68,14 @@ from .io import (
     write_yaml,
 )
 from .merge import deep_merge, merge_arrays
+
+# Patterns utilities
+from .patterns import (
+    filter_files_by_patterns,
+    find_matching_pattern,
+    match_patterns,
+    matches_any_pattern,
+)
 
 # Paths utilities
 from .paths import (
@@ -238,6 +247,11 @@ __all__ = [
     # Merge
     "deep_merge",
     "merge_arrays",
+    # Patterns
+    "match_patterns",
+    "matches_any_pattern",
+    "find_matching_pattern",
+    "filter_files_by_patterns",
     # Config - import from edison.core.utils.config directly when needed
     # Functions available: load_config_section, get_states_for_domain,
     # get_initial_state, get_active_state, get_completed_state,

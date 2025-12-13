@@ -2,10 +2,13 @@
 
 This module provides ZenDiscoveryMixin which handles discovering
 applicable guidelines and rules for different Zen roles.
+
+Uses unified patterns module for fnmatch operations.
 """
 from __future__ import annotations
 from typing import List, Dict, Any, Set, TYPE_CHECKING
-import fnmatch
+
+from edison.core.utils.patterns import matches_any_pattern
 
 if TYPE_CHECKING:
     from .adapter import ZenAdapter
@@ -81,10 +84,9 @@ class ZenDiscoveryMixin:
                 selected: List[str] = []
                 for name in all_names:
                     lower = name.lower()
-                    for pat in patterns:
-                        if fnmatch.fnmatch(lower, pat) or pat in lower:
-                            selected.append(name)
-                            break
+                    # Check for glob pattern match OR substring match
+                    if matches_any_pattern(lower, patterns) or any(pat in lower for pat in patterns):
+                        selected.append(name)
                 return selected
 
         canonical = _canonical_role(role)

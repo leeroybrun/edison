@@ -163,22 +163,34 @@ class CommandComposer(AdapterComponent):
         return written
 
     def load_definitions(self) -> List[CommandDefinition]:
-        """Load and merge command definitions from core, packs, and project overrides."""
+        """Load command definitions using ConfigManager's pack-aware loading.
+
+        ConfigManager handles the full layering:
+        1. Core config (bundled commands.yaml)
+        2. Pack configs (bundled + project packs)
+        3. Project config (.edison/config/commands.yaml)
+
+        Note: Command definitions are merged by ID - if multiple sources define
+        the same command ID, later sources override earlier ones.
+        """
+        from edison.core.config import ConfigManager
+
+        cfg_mgr = ConfigManager(repo_root=self.project_root)
+        full_config = cfg_mgr.load_config(validate=False, include_packs=True)
+
+        commands_section = full_config.get("commands", {}) or {}
+        definitions_list = commands_section.get("definitions", []) or []
+
+        # Merge by ID - later definitions override earlier ones
         merged: Dict[str, Dict[str, Any]] = {}
-
-        def merge_from_file(base: Dict[str, Dict[str, Any]], path: Path) -> Dict[str, Dict[str, Any]]:
-            data = self._load_yaml_commands(path)
-            return self._merge_definitions_by_id(base, data, id_key="id")
-
-        core_file = self.core_dir / "config" / "commands.yaml"
-        merged = merge_from_file(merged, core_file)
-
-        for pack in self.active_packs:
-            pack_file = self.bundled_packs_dir / pack / "config" / "commands.yml"
-            merged = merge_from_file(merged, pack_file)
-
-        project_file = self.project_dir / "config" / "commands.yml"
-        merged = merge_from_file(merged, project_file)
+        for defn in definitions_list:
+            if isinstance(defn, dict) and defn.get("id"):
+                cmd_id = str(defn["id"])
+                if cmd_id in merged:
+                    # Merge properties, later wins
+                    merged[cmd_id] = {**merged[cmd_id], **defn}
+                else:
+                    merged[cmd_id] = dict(defn)
 
         return self._dicts_to_defs(merged)
 
@@ -231,25 +243,6 @@ class CommandComposer(AdapterComponent):
         return results
 
     # ----- Helpers -----
-    def _load_yaml_commands(self, path: Path) -> List[Dict[str, Any]]:
-        """Load command ``definitions`` list from YAML path (empty when missing)."""
-        if not path.exists():
-            return []
-
-        data = self.context.cfg_mgr.load_yaml(path)
-        if not isinstance(data, dict):
-            return []
-
-        commands = data.get("commands")
-
-        # Schema: commands: { definitions: [...] }
-        if isinstance(commands, dict):
-            definitions = commands.get("definitions") or []
-            if isinstance(definitions, list):
-                return [c for c in definitions if isinstance(c, dict)]
-
-        return []
-
     def _dicts_to_defs(self, merged: Dict[str, Dict[str, Any]]) -> List[CommandDefinition]:
         """Convert merged dicts to dataclass instances."""
         defs: List[CommandDefinition] = []
@@ -281,26 +274,6 @@ class CommandComposer(AdapterComponent):
                 )
             )
         return sorted(defs, key=lambda d: d.id)
-
-    # ----- Internal merge helper -----
-    def _merge_definitions_by_id(
-        self,
-        base: Dict[str, Dict[str, Any]],
-        new_defs: List[Dict[str, Any]],
-        id_key: str = "id",
-    ) -> Dict[str, Dict[str, Any]]:
-        """Merge list of definition dicts into base dict keyed by id."""
-        result = dict(base)
-        for def_dict in new_defs:
-            if not isinstance(def_dict, dict):
-                continue
-            def_id = def_dict.get(id_key)
-            if not def_id:
-                continue
-            existing = result.get(def_id, {})
-            merged = self.context.cfg_mgr.deep_merge(existing, def_dict)
-            result[def_id] = merged
-        return result
 
     def _output_dir_for(self, platform: str) -> Path:
         commands_cfg = (self.config.get("commands") or {}) if self.config else {}

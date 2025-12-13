@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import fnmatch
 from pathlib import Path
 from typing import Iterable, List, Optional, Set
 
 from edison.core.utils.io import read_yaml
+from edison.core.utils.patterns import matches_any_pattern
 from ..includes import _repo_root
 
 try:  # PyYAML is required for pack-trigger discovery
@@ -96,11 +96,8 @@ def auto_activate_packs(
             continue
 
         for rel in rel_paths:
-            for pat in patterns:
-                if fnmatch.fnmatch(rel, pat):
-                    activated.add(pack_dir.name)
-                    break
-            if pack_dir.name in activated:
+            if matches_any_pattern(rel, patterns):
+                activated.add(pack_dir.name)
                 break
 
     return activated

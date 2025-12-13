@@ -10,7 +10,6 @@ Design principles:
 """
 from __future__ import annotations
 
-import fnmatch
 import logging
 import os
 import re
@@ -23,6 +22,7 @@ import yaml
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.paths import get_management_paths
+from edison.core.utils.patterns import matches_any_pattern
 from edison.core.qa.evidence import EvidenceService
 from edison.core.utils.git import get_changed_files
 from edison.core.qa._utils import parse_primary_files
@@ -204,7 +204,7 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
         print(f"[CTX7] candidates={candidates}", file=sys.stderr)
     for rel in candidates:
         for pkg, pats in triggers.items():
-            if any(fnmatch.fnmatch(rel, pat) for pat in pats):
+            if matches_any_pattern(rel, pats):
                 packages.add(_normalize(pkg))
 
     # Content-based detection using configured patterns

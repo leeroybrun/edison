@@ -59,11 +59,14 @@ from ..engines import (
     # Registry for single validator execution
     EngineRegistry,
     ValidationResult,
-    ValidatorConfig,
     EngineConfig,
     CLIEngine,
     ZenMCPEngine,
 )
+
+# ValidatorMetadata is now in registries module
+# Import for backward compatibility if needed:
+# from edison.core.registries.validators import ValidatorMetadata
 
 __all__ = [
     # Utility functions
@@ -77,7 +80,6 @@ __all__ = [
     # Engine-based API - Registry (single validator)
     "EngineRegistry",
     "ValidationResult",
-    "ValidatorConfig",
     "EngineConfig",
     "CLIEngine",
     "ZenMCPEngine",

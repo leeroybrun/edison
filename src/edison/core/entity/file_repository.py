@@ -252,11 +252,21 @@ class FileRepositoryMixin(Generic[T]):
         if hasattr(self, "_get_state_dir"):
             state_dir = self._get_state_dir(state)  # type: ignore
         else:
-            # Fallback - try to construct from project_root
+            # Fallback - use ProjectManagementPaths (no hardcoded paths)
             project_root = getattr(self, "project_root", None)
             entity_type = getattr(self, "entity_type", "entity")
             if project_root:
-                state_dir = Path(project_root) / ".project" / f"{entity_type}s" / state
+                from edison.core.utils.paths.management import ProjectManagementPaths
+                mgmt = ProjectManagementPaths(Path(project_root))
+                # Map entity type to path getter
+                if entity_type == "task":
+                    state_dir = mgmt.get_tasks_root() / state
+                elif entity_type == "qa":
+                    state_dir = mgmt.get_qa_root() / state
+                elif entity_type == "session":
+                    state_dir = mgmt.get_sessions_root() / state
+                else:
+                    state_dir = mgmt.get_management_root() / f"{entity_type}s" / state
             else:
                 return []
         

@@ -6,7 +6,6 @@ from typing import Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
 from .evidence import EvidenceService
-from .evidence.rounds import list_round_dirs
 
 
 enforce_no_legacy_project_root("lib.qa.promoter")
@@ -36,13 +35,14 @@ def should_revalidate_bundle(bundle_path: Path, validator_reports: Iterable[Path
 
 
 def collect_validator_reports(task_ids: Iterable[str]) -> List[Path]:
+    """Collect all validator reports across tasks using EvidenceService."""
     reports: List[Path] = []
     for tid in task_ids:
         ev_svc = EvidenceService(tid)
-        base = ev_svc.get_evidence_root()
-        if not base.exists():
+        if not ev_svc.get_evidence_root().exists():
             continue
-        for rd in list_round_dirs(base):
+        # Use EvidenceService.list_rounds() instead of importing from rounds.py
+        for rd in ev_svc.list_rounds():
             reports.extend(sorted(rd.glob("validator-*-report.json")))
     return reports
 

@@ -4,7 +4,6 @@ Functions for building action recommendations and related task discovery.
 """
 from __future__ import annotations
 
-import fnmatch
 from typing import TYPE_CHECKING, Any
 
 from edison.core.qa.evidence import (
@@ -17,6 +16,7 @@ from edison.core.qa.evidence import (
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.task import TaskRepository, safe_relative
 from edison.core.utils.io import read_json as io_read_json
+from edison.core.utils.patterns import matches_any_pattern
 
 if TYPE_CHECKING:
     pass
@@ -169,7 +169,9 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
             if latest_round is not None:
                 impl_data = ev_svc.read_implementation_report(latest_round)
                 if not impl_data:  # Empty dict means report doesn't exist
-                    impl_path = ev_svc.get_evidence_root() / f"round-{latest_round}" / "implementation-report.json"
+                    # Use configured filename from EvidenceService
+                    impl_filename = ev_svc.implementation_filename
+                    impl_path = ev_svc.get_evidence_root() / f"round-{latest_round}" / impl_filename
                     rel_path = safe_relative(impl_path)
                     reports_missing.append({
                         "taskId": task_id,
@@ -219,10 +221,7 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
 
             def _matches(file_path: str, pkg: str, triggers: dict[str, list[str]]) -> bool:
                 """Match file path against package triggers from config."""
-                for pat in triggers.get(pkg, []):
-                    if fnmatch.fnmatch(file_path, pat):
-                        return True
-                return False
+                return matches_any_pattern(file_path, triggers.get(pkg, []))
 
             # Load triggers from config instead of hardcoding
             ctx7_config = Context7Config()

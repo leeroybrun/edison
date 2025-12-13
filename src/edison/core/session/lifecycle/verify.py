@@ -24,12 +24,12 @@ if TYPE_CHECKING:
 
 
 def _latest_round_dir(task_id: str) -> Optional[Path]:
-    """Return the latest evidence round directory for ``task_id``."""
+    """Return the latest evidence round directory for ``task_id``.
+    
+    Uses EvidenceService.get_current_round_dir() as single source.
+    """
     ev_svc = qa_evidence.EvidenceService(task_id)
-    latest_round = ev_svc.get_current_round()
-    if latest_round is None:
-        return None
-    return ev_svc.get_evidence_root() / f"round-{latest_round}"
+    return ev_svc.get_current_round_dir()
 
 
 def verify_session_health(session_id: str) -> Dict[str, Any]:
@@ -144,24 +144,19 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
                 msg = f"Task {task_id} is in tasks/done but QA is not done/validated (found {qstate})"
                 failures.append(msg)
                 health["categories"]["missingQA"].append({"taskId": task_id, "qaState": qstate})
-            # bundle-approved.json must exist and approved=true
-            latest = _latest_round_dir(task_id)
-            if not latest or not (latest / "bundle-approved.json").exists():
-                msg = f"Task {task_id} missing bundle-approved.json in latest round"
+            # Bundle must exist and be approved - use EvidenceService (single source)
+            ev_svc = qa_evidence.EvidenceService(task_id)
+            bundle_filename = ev_svc.bundle_filename
+            bundle_data = ev_svc.read_bundle()
+            
+            if not bundle_data:
+                msg = f"Task {task_id} missing {bundle_filename} in latest round"
                 failures.append(msg)
-                health["categories"]["missingEvidence"].append({"taskId": task_id, "file": "bundle-approved.json"})
-            else:
-                try:
-                    data = io_read_json(latest / "bundle-approved.json")
-                except Exception as err:
-                    msg = f"Task {task_id} invalid bundle-approved.json: {err}"
-                    failures.append(msg)
-                    health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "invalid_json"})
-                else:
-                    if not data.get("approved"):
-                        msg = f"Task {task_id} bundle-approved.json indicates not approved"
-                        failures.append(msg)
-                        health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "not_approved"})
+                health["categories"]["missingEvidence"].append({"taskId": task_id, "file": bundle_filename})
+            elif not bundle_data.get("approved"):
+                msg = f"Task {task_id} {bundle_filename} indicates not approved"
+                failures.append(msg)
+                health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "not_approved"})
 
     plan = compute_next(session_id, scope="session", limit=0)
     if plan.get("blockers") or plan.get("reportsMissing"):

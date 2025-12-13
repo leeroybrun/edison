@@ -2,9 +2,11 @@
 
 This module defines the core abstractions for the unified validator engine system:
 - ValidationResult: Standard result from any validator engine
-- ValidatorConfig: Configuration for a single validator
 - EngineConfig: Configuration for an execution engine
 - EngineProtocol: Protocol defining the engine interface
+
+NOTE: Validator metadata is now defined in core/registries/validators.py
+as ValidatorMetadata. That is THE single source of truth for validator data.
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from typing import Any, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.registries.validators import ValidatorMetadata
 
 
 @dataclass
@@ -46,59 +49,6 @@ class EngineConfig:
             response_parser=data.get("response_parser", "plain_text"),
             description=data.get("description", ""),
         )
-
-
-@dataclass
-class ValidatorConfig:
-    """Configuration for a single validator.
-
-    Validators use engines to perform validation. This config defines
-    which engine to use, the prompt, and execution parameters.
-    """
-
-    id: str
-    name: str
-    engine: str  # Engine ID to use
-    prompt: str = ""  # Path to prompt file
-    wave: str = ""  # Wave this validator belongs to
-    fallback_engine: str | None = None  # Fallback if primary unavailable
-    always_run: bool = False
-    blocking: bool = True
-    timeout: int = 300
-    context7_required: bool = False
-    context7_packages: list[str] = field(default_factory=list)
-    command_args: list[str] = field(default_factory=list)
-    zen_role_override: str | None = None  # Optional override for inferred zenRole
-    triggers: list[str] = field(default_factory=list)
-    focus: list[str] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, validator_id: str, data: dict[str, Any]) -> ValidatorConfig:
-        """Create ValidatorConfig from configuration dictionary."""
-        return cls(
-            id=validator_id,
-            name=data.get("name", validator_id),
-            engine=data.get("engine", ""),
-            prompt=data.get("prompt", data.get("specFile", "")),
-            wave=data.get("wave", ""),
-            fallback_engine=data.get("fallback_engine"),
-            always_run=data.get("always_run", data.get("alwaysRun", False)),
-            blocking=data.get("blocking", data.get("blocksOnFail", True)),
-            timeout=data.get("timeout", 300),
-            context7_required=data.get("context7_required", data.get("context7Required", False)),
-            context7_packages=data.get("context7_packages", data.get("context7Packages", [])),
-            command_args=data.get("command_args", data.get("commandArgs", [])),
-            zen_role_override=data.get("zen_role_override"),
-            triggers=data.get("triggers", []),
-            focus=data.get("focus", []),
-        )
-
-    @property
-    def zen_role(self) -> str:
-        """Get the zenRole for this validator (inferred or overridden)."""
-        if self.zen_role_override:
-            return self.zen_role_override
-        return f"validator-{self.id}"
 
 
 @dataclass
@@ -181,7 +131,7 @@ class EngineProtocol(Protocol):
 
     def run(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         task_id: str,
         session_id: str,
         worktree_path: Path,
@@ -191,7 +141,7 @@ class EngineProtocol(Protocol):
         """Execute a validator and return results.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata from ValidatorRegistry
             task_id: Task identifier
             session_id: Session identifier
             worktree_path: Path to git worktree
@@ -208,6 +158,5 @@ __all__ = [
     "EngineConfig",
     "EngineProtocol",
     "ValidationResult",
-    "ValidatorConfig",
 ]
 

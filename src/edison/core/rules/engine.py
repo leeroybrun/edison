@@ -7,13 +7,12 @@ based on task state and type. Rules are loaded from the composition system
 """
 from __future__ import annotations
 
-import fnmatch
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from edison.core.utils.paths import EdisonPathError, PathResolver
 from edison.core.utils.paths import get_management_paths
-from edison.core.utils.subprocess import run_with_timeout
+from edison.core.utils.patterns import matches_any_pattern
 
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
@@ -260,41 +259,18 @@ class RulesEngine:
         self._all_rules_cache = ordered
         return ordered
 
-    def _detect_changed_files(self) -> List[Path]:
-        """Best-effort detection of changed files via git status.
+    def _get_changed_files(self) -> List[str]:
+        """Get changed files using FileContextService.
 
-        This helper is intentionally conservative:
-        - Returns an empty list on any error (no git, not a repo, etc.).
-        - Considers both staged and unstaged changes, plus untracked files.
+        Returns relative paths as strings for pattern matching.
         """
         try:
-            root = PathResolver.resolve_project_root()
-        except EdisonPathError:
-            return []
-
-        try:
-            result = run_with_timeout(
-                ["git", "status", "--porcelain"],
-                cwd=str(root),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
+            from edison.core.context.files import FileContextService
+            svc = FileContextService()
+            ctx = svc.get_current()
+            return ctx.all_files
         except Exception:
             return []
-
-        paths: List[Path] = []
-        for line in (result.stdout or "").splitlines():
-            if not line.strip():
-                continue
-            # Format: XY <path>
-            if len(line) < 4:
-                continue
-            path_str = line[3:].strip()
-            if not path_str:
-                continue
-            paths.append((root / path_str).resolve())
-        return paths
 
     def get_rules_for_context(
         self,
@@ -323,16 +299,13 @@ class RulesEngine:
 
         # Normalise changed_files to repo-relative strings when possible.
         rel_paths: List[str] = []
-        files_to_use: List[Path] = list(changed_files or [])
-        if not files_to_use:
-            files_to_use = self._detect_changed_files()
-
-        if files_to_use:
+        if changed_files:
+            # Use provided files
             try:
                 root = PathResolver.resolve_project_root()
             except EdisonPathError:
                 root = None
-            for p in files_to_use:
+            for p in changed_files:
                 path = Path(p)
                 try:
                     if root is not None:
@@ -342,6 +315,9 @@ class RulesEngine:
                 except Exception:
                     pass
                 rel_paths.append(str(path).replace("\\", "/"))
+        else:
+            # Use FileContextService for automatic detection
+            rel_paths = self._get_changed_files()
 
         task_state_norm = (task_state or "").strip().lower() or None
         op_norm = (operation or "").strip() or None
@@ -377,7 +353,7 @@ class RulesEngine:
                     if op_norm not in ops_norm:
                         continue
 
-                # Optional file pattern filter
+                # Optional file pattern filter - use unified patterns
                 patterns = entry.get("filePatterns") or []
                 if patterns:
                     if not rel_paths:
@@ -386,9 +362,8 @@ class RulesEngine:
                         continue
                     pat_list = [str(pat) for pat in patterns]
                     if not any(
-                        fnmatch.fnmatch(path, pat)
+                        matches_any_pattern(path, pat_list)
                         for path in rel_paths
-                        for pat in pat_list
                     ):
                         continue
 

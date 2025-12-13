@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Optional
 
-from .handlers import ConditionRegistryBase, DomainRegistry
+from .handlers.registries import ConditionRegistryBase, DomainRegistry
 
 
 class ConditionRegistry(ConditionRegistryBase):

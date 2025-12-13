@@ -31,10 +31,7 @@ from .hooks import (
 )
 
 # Settings
-from .settings import (
-    SettingsComposer,
-    merge_permissions,
-)
+from .settings import SettingsComposer
 
 __all__ = [
     # Base
@@ -55,5 +52,4 @@ __all__ = [
     "ALLOWED_TYPES",
     # Settings
     "SettingsComposer",
-    "merge_permissions",
 ]

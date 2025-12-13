@@ -13,6 +13,7 @@ from edison.core.entity import (
     EntityMetadata,
     StateHistoryEntry,
 )
+from edison.core.entity.base import record_transition_impl
 from edison.core.config.domains.workflow import WorkflowConfig
 
 
@@ -68,20 +69,17 @@ class Task:
     ) -> None:
         """Record a state transition in history.
         
+        Delegates to shared record_transition_impl for DRY compliance.
+        
         Args:
             from_state: Previous state
             to_state: New state
             reason: Optional reason for transition
             violations: Optional list of rule violations
         """
-        entry = StateHistoryEntry.create(
-            from_state=from_state,
-            to_state=to_state,
-            reason=reason,
-            violations=violations,
+        record_transition_impl(
+            self, from_state, to_state, reason=reason, violations=violations
         )
-        self.state_history.append(entry)
-        self.metadata.touch()
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.

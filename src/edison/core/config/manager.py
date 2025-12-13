@@ -34,7 +34,12 @@ class ConfigManager:
     Configuration sources (highest to lowest priority):
     1. Environment variables: EDISON_*
     2. Project config: .edison/config/*.yaml (alphabetical order)
-    3. Bundled defaults: edison.data/config/*.yaml (alphabetical order)
+    3. Pack configs: bundled_packs/*/config/*.yaml + project_packs/*/config/*.yaml
+    4. Bundled defaults: edison.data/config/*.yaml (alphabetical order)
+
+    Pack-aware loading uses two phases:
+    - Phase 1 (Bootstrap): core > project to determine packs.active
+    - Phase 2 (Full): core > bundled_packs > project_packs > project
 
     All YAML files are loaded and merged - no special handling for defaults.yaml.
     """
@@ -52,8 +57,17 @@ class ConfigManager:
         # Project-specific config overrides
         self.project_config_dir = project_root_dir / "config"
 
+        # Pack directories
+        self.bundled_packs_dir = get_data_path("packs")
+        self.project_packs_dir = project_root_dir / "packs"
+
         # Schemas from bundled data
         self.schemas_dir = get_data_path("schemas")
+
+    @property
+    def project_root(self) -> Path:
+        """Alias for repo_root for backward compatibility."""
+        return self.repo_root
 
     def _find_repo_root(self) -> Path:
         # Lazy import to avoid circular dependencies
@@ -212,6 +226,76 @@ class ConfigManager:
         for path, typed_value, raw in self._iter_env_overrides(strict=strict):
             self._set_nested(cfg, path, typed_value)
 
+    # ========== Pack-Aware Config Loading ==========
+
+    def _load_directory(self, directory: Path, cfg: Dict[str, Any]) -> Dict[str, Any]:
+        """Load all YAML files from a directory and merge into config.
+
+        Args:
+            directory: Directory containing YAML files
+            cfg: Base configuration to merge into
+
+        Returns:
+            Merged configuration dictionary
+        """
+        if not directory.exists():
+            return cfg
+
+        yml_files = list(directory.glob("*.yml"))
+        yaml_files = list(directory.glob("*.yaml"))
+        for path in sorted(yml_files + yaml_files):
+            module_cfg = self.load_yaml(path)
+            cfg = self.deep_merge(cfg, module_cfg)
+
+        return cfg
+
+    def _get_bootstrap_packs(self, cfg: Dict[str, Any]) -> List[str]:
+        """Extract active packs from bootstrap config (Phase 1).
+
+        This is used during two-phase loading to determine which packs
+        to load config from before the full merge is complete.
+
+        Args:
+            cfg: Partially loaded config (core + project, no packs yet)
+
+        Returns:
+            List of active pack names
+        """
+        packs_section = cfg.get("packs", {}) or {}
+        active = packs_section.get("active", []) or []
+
+        if not isinstance(active, list):
+            return []
+
+        return [str(p) for p in active if p]
+
+    def _load_pack_configs(
+        self, cfg: Dict[str, Any], active_packs: List[str]
+    ) -> Dict[str, Any]:
+        """Load config from active packs (bundled + project).
+
+        Pack configs are loaded in order:
+        1. Bundled packs (edison.data/packs/{pack}/config/*.yaml)
+        2. Project packs (.edison/packs/{pack}/config/*.yaml)
+
+        Args:
+            cfg: Base configuration to merge into
+            active_packs: List of active pack names
+
+        Returns:
+            Configuration with pack overlays merged
+        """
+        for pack_name in active_packs:
+            # Load bundled pack config
+            bundled_pack_config = self.bundled_packs_dir / pack_name / "config"
+            cfg = self._load_directory(bundled_pack_config, cfg)
+
+            # Load project pack config (overrides bundled)
+            project_pack_config = self.project_packs_dir / pack_name / "config"
+            cfg = self._load_directory(project_pack_config, cfg)
+
+        return cfg
+
     def _apply_project_env_aliases(self, cfg: Dict[str, Any]) -> None:
         """Route legacy project env vars through the config system."""
         has_edison_project_env = any(k.startswith("EDISON_project__") for k in os.environ.keys())
@@ -250,39 +334,48 @@ class ConfigManager:
 
         self._set_nested(cfg, ["database", "url"], url)
 
-    def load_config(self, validate: bool = True) -> Dict[str, Any]:
+    def load_config(
+        self, validate: bool = True, include_packs: bool = True
+    ) -> Dict[str, Any]:
         """Load and merge configuration from multiple sources.
 
-        Configuration is loaded and merged in the following order:
-        1. All *.yml and *.yaml files from core config directory (alphabetical order)
-        2. All *.yml and *.yaml files from project config directory (alphabetical order)
-        3. Environment variable overrides (EDISON_*)
+        Configuration uses two-phase loading:
+
+        Phase 1 (Bootstrap): Determine active packs
+            - core/*.yaml + project/*.yaml → packs.active
+
+        Phase 2 (Full merge):
+            1. Core config: edison.data/config/*.yaml (alphabetical order)
+            2. Pack configs: bundled_packs/*/config/*.yaml + project_packs/*/config/*.yaml
+            3. Project config: .edison/config/*.yaml (alphabetical order)
+            4. Environment variable overrides (EDISON_*)
 
         Args:
             validate: If True, validate against JSON schema
+            include_packs: If True, include pack config overlays (default: True)
 
         Returns:
             Merged configuration dictionary
         """
         cfg: Dict[str, Any] = {}
 
-        # Load all yaml files from core config directory (no special defaults.yaml)
-        if self.core_config_dir.exists():
-            yml_files = list(self.core_config_dir.glob("*.yml"))
-            yaml_files = list(self.core_config_dir.glob("*.yaml"))
-            for path in sorted(yml_files + yaml_files):
-                module_cfg = self.load_yaml(path)
-                cfg = self.deep_merge(cfg, module_cfg)
+        # Layer 1: Core config (bundled defaults)
+        cfg = self._load_directory(self.core_config_dir, cfg)
 
-        # Merge project overrides
-        if self.project_config_dir.exists():
-            yml_files = list(self.project_config_dir.glob("*.yml"))
-            yaml_files = list(self.project_config_dir.glob("*.yaml"))
-            for path in sorted(yml_files + yaml_files):
-                mod_cfg = self.load_yaml(path)
-                cfg = self.deep_merge(cfg, mod_cfg)
+        # Phase 1 bootstrap: Get active packs from core + project (without pack configs)
+        if include_packs:
+            # Temporarily merge project config to determine active packs
+            bootstrap_cfg = self._load_directory(self.project_config_dir, dict(cfg))
+            active_packs = self._get_bootstrap_packs(bootstrap_cfg)
 
-        # Apply env overrides
+            # Layer 2: Pack configs (bundled + project packs)
+            if active_packs:
+                cfg = self._load_pack_configs(cfg, active_packs)
+
+        # Layer 3: Project config (always wins over packs)
+        cfg = self._load_directory(self.project_config_dir, cfg)
+
+        # Layer 4: Environment overrides
         self._apply_project_env_aliases(cfg)
         self._apply_database_env_aliases(cfg)
         self.apply_env_overrides(cfg, strict=validate)
@@ -294,33 +387,39 @@ class ConfigManager:
 
     # ========== Accessor Methods ==========
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self, include_packs: bool = True) -> Dict[str, Any]:
         """Get full merged configuration.
-        
+
+        Args:
+            include_packs: If True, include pack config overlays (default: True)
+
         Returns:
             Complete merged config dict
         """
-        return self.load_config(validate=False)
+        return self.load_config(validate=False, include_packs=include_packs)
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(
+        self, key: str, default: Any = None, include_packs: bool = True
+    ) -> Any:
         """Get a config value by dot-notation key.
-        
+
         Args:
             key: Dot-notation key (e.g., 'project.name', 'paths.config_dir')
             default: Value to return if key not found
-            
+            include_packs: If True, include pack config overlays (default: True)
+
         Returns:
             Config value or default
-            
+
         Example:
             >>> manager.get('project.name')
             'my-project'
             >>> manager.get('nonexistent.key', 'fallback')
             'fallback'
         """
-        config = self.load_config(validate=False)
+        config = self.load_config(validate=False, include_packs=include_packs)
         parts = key.split(".")
-        
+
         current = config
         for part in parts:
             if isinstance(current, dict) and part in current:

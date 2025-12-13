@@ -4,123 +4,37 @@ This module provides the EngineRegistry class which:
 - Loads engine configurations from validators.yaml
 - Instantiates appropriate engine classes (CLIEngine, ZenMCPEngine)
 - Handles fallback logic when primary engines are unavailable
-- Builds execution rosters for validation waves
-- Matches validator triggers against modified files
+- Delegates to ValidatorRegistry for roster building
+
+NOTE: ValidatorRegistry is THE single source of truth for validator metadata.
+This module only handles engine instantiation and execution.
 """
 from __future__ import annotations
 
-import fnmatch
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .base import EngineConfig, ValidationResult, ValidatorConfig
+from .base import EngineConfig, ValidationResult
 from .cli import CLIEngine
 from .delegated import ZenMCPEngine
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.registries.validators import ValidatorMetadata
 
 logger = logging.getLogger(__name__)
-
-
-def match_triggers(files: list[str], triggers: list[str]) -> list[str]:
-    """Match file paths against trigger patterns.
-
-    Args:
-        files: List of file paths (relative to repo root)
-        triggers: List of glob patterns (e.g., ["**/*.tsx", "**/components/**/*"])
-
-    Returns:
-        List of files that match at least one trigger pattern
-    """
-    if not files or not triggers:
-        return []
-
-    # "*" means always run - all files match
-    if "*" in triggers:
-        return files
-
-    matched = []
-    for file_path in files:
-        for pattern in triggers:
-            # Normalize pattern - ensure it can match anywhere in path
-            if fnmatch.fnmatch(file_path, pattern):
-                matched.append(file_path)
-                break
-            # Also try with leading ** if pattern doesn't have it
-            # This handles patterns like "*.tsx" matching "src/components/Button.tsx"
-            if not pattern.startswith("**") and not pattern.startswith("/"):
-                if fnmatch.fnmatch(file_path, f"**/{pattern}"):
-                    matched.append(file_path)
-                    break
-                # Try just matching the filename
-                if fnmatch.fnmatch(Path(file_path).name, pattern):
-                    matched.append(file_path)
-                    break
-    return matched
-
-
-def get_modified_files_for_task(
-    task_id: str,
-    project_root: Path | None = None,
-    session_id: str | None = None,
-) -> list[str]:
-    """Get list of files modified for a task.
-
-    Sources (in order of preference):
-    1. Implementation report (if exists)
-    2. Git diff against main branch
-
-    Args:
-        task_id: Task identifier
-        project_root: Project root path
-        session_id: Optional session ID for worktree lookup
-
-    Returns:
-        List of modified file paths (relative to repo root)
-    """
-    from edison.core.qa.evidence import EvidenceService
-
-    files: list[str] = []
-    root = project_root or Path.cwd()
-
-    # Try implementation report first (most accurate for the task)
-    try:
-        evidence = EvidenceService(task_id, project_root=root)
-        report = evidence.read_implementation_report()
-        if report:
-            # Get files from report
-            files_modified = report.get("filesModified", [])
-            files_created = report.get("filesCreated", [])
-            primary_files = report.get("primaryFiles", [])
-
-            files.extend(files_modified)
-            files.extend(files_created)
-            files.extend(primary_files)
-            files = list(set(files))  # Dedupe
-    except Exception:
-        pass  # Continue to git diff
-
-    # Fallback to git diff if no implementation report
-    if not files:
-        try:
-            from edison.core.utils.git import get_changed_files
-
-            changed = get_changed_files(root, base_branch="main", session_id=session_id)
-            files = [str(f) for f in changed]
-        except Exception:
-            pass  # Return empty list
-
-    return files
 
 
 class EngineRegistry:
     """Registry for validator engines with fallback support.
 
-    The registry loads engine and validator configurations, instantiates
-    engine classes, and provides methods for running validators with
-    automatic fallback when primary engines are unavailable.
+    The registry loads engine configurations, instantiates engine classes,
+    and provides methods for running validators with automatic fallback
+    when primary engines are unavailable.
+
+    NOTE: For validator metadata, this class delegates to ValidatorRegistry.
+    ValidatorRegistry is THE single source of truth for validator data.
 
     Example:
         registry = EngineRegistry(project_root=Path("/path/to/project"))
@@ -133,8 +47,10 @@ class EngineRegistry:
             worktree_path=Path("/path/to/worktree"),
         )
 
-        # Build execution roster for a wave
-        roster = registry.build_execution_roster(
+        # For execution roster building, use ValidatorRegistry directly:
+        from edison.core.registries.validators import ValidatorRegistry
+        validator_registry = ValidatorRegistry()
+        roster = validator_registry.build_execution_roster(
             task_id="T001",
             session_id="session-123",
             wave="critical",
@@ -147,23 +63,23 @@ class EngineRegistry:
         Args:
             project_root: Project root path for configuration loading
         """
-        # Import here to avoid circular imports
         from edison.core.config.domains.qa import QAConfig
+        from edison.core.registries.validators import ValidatorRegistry
 
         self.project_root = project_root
         self._qa_config = QAConfig(repo_root=project_root)
+        self._validator_registry = ValidatorRegistry(project_root=project_root)
         self._engines: dict[str, CLIEngine | ZenMCPEngine] = {}
         self._engine_configs: dict[str, EngineConfig] = {}
-        self._validator_configs: dict[str, ValidatorConfig] = {}
 
-        # Load configurations
-        self._load_configurations()
+        # Load engine configurations only (validators come from ValidatorRegistry)
+        self._load_engine_configurations()
 
-    def _load_configurations(self) -> None:
-        """Load engine and validator configurations from QAConfig."""
+    def _load_engine_configurations(self) -> None:
+        """Load engine configurations from QAConfig."""
         validation_config = self._qa_config.validation_config
 
-        # Load engine configurations
+        # Load engine configurations only
         engines = validation_config.get("engines", {})
         if isinstance(engines, dict):
             for engine_id, engine_data in engines.items():
@@ -172,19 +88,7 @@ class EngineRegistry:
                         engine_id, engine_data
                     )
 
-        # Load validator configurations
-        validators = validation_config.get("validators", {})
-        if isinstance(validators, dict):
-            for validator_id, validator_data in validators.items():
-                if isinstance(validator_data, dict):
-                    self._validator_configs[validator_id] = ValidatorConfig.from_dict(
-                        validator_id, validator_data
-                    )
-
-        logger.debug(
-            f"Loaded {len(self._engine_configs)} engines, "
-            f"{len(self._validator_configs)} validators"
-        )
+        logger.debug(f"Loaded {len(self._engine_configs)} engines")
 
     def _get_or_create_engine(self, engine_id: str) -> CLIEngine | ZenMCPEngine | None:
         """Get or create an engine instance.
@@ -278,39 +182,31 @@ class EngineRegistry:
             return EngineConfig.from_dict(engine_id, defaults[engine_id])
         return None
 
-    def get_validator(self, validator_id: str) -> ValidatorConfig | None:
+    def get_validator(self, validator_id: str) -> "ValidatorMetadata | None":
         """Get validator configuration by ID.
+
+        Delegates to ValidatorRegistry for single source of truth.
 
         Args:
             validator_id: Validator identifier
 
         Returns:
-            ValidatorConfig or None if not found
+            ValidatorMetadata or None if not found
         """
-        return self._validator_configs.get(validator_id)
+        return self._validator_registry.get(validator_id)
 
     def list_validators(self) -> list[str]:
         """List all registered validator IDs.
 
+        Delegates to ValidatorRegistry for single source of truth.
+
         Returns:
             List of validator identifiers
         """
-        return list(self._validator_configs.keys())
+        return self._validator_registry.list_names()
 
-    def get_validators_for_wave(self, wave: str) -> list[ValidatorConfig]:
-        """Get all validators for a specific wave.
-
-        Args:
-            wave: Wave name
-
-        Returns:
-            List of validator configs for that wave
-        """
-        return [
-            config
-            for config in self._validator_configs.values()
-            if config.wave == wave
-        ]
+    # NOTE: get_validators_for_wave() has been removed.
+    # Use ValidatorRegistry.get_by_wave() directly as the single source of truth.
 
     def run_validator(
         self,
@@ -319,7 +215,7 @@ class EngineRegistry:
         session_id: str,
         worktree_path: Path,
         round_num: int | None = None,
-        evidence_service: EvidenceService | None = None,
+        evidence_service: "EvidenceService | None" = None,
     ) -> ValidationResult:
         """Run a specific validator by ID.
 
@@ -339,18 +235,18 @@ class EngineRegistry:
         Raises:
             ValueError: If validator not found
         """
-        config = self.get_validator(validator_id)
-        if not config:
+        validator = self.get_validator(validator_id)
+        if not validator:
             raise ValueError(f"Validator '{validator_id}' not found")
 
         # Get primary engine
-        engine = self._get_or_create_engine(config.engine)
+        engine = self._get_or_create_engine(validator.engine)
 
         # Check if primary engine can execute
         if engine and engine.can_execute():
-            logger.info(f"Running validator '{validator_id}' with engine '{config.engine}'")
+            logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
             return engine.run(
-                config=config,
+                validator=validator,
                 task_id=task_id,
                 session_id=session_id,
                 worktree_path=worktree_path,
@@ -359,15 +255,15 @@ class EngineRegistry:
             )
 
         # Try fallback engine
-        if config.fallback_engine:
-            fallback = self._get_or_create_engine(config.fallback_engine)
+        if validator.fallback_engine:
+            fallback = self._get_or_create_engine(validator.fallback_engine)
             if fallback and fallback.can_execute():
                 logger.info(
-                    f"Primary engine '{config.engine}' unavailable, "
-                    f"using fallback '{config.fallback_engine}' for '{validator_id}'"
+                    f"Primary engine '{validator.engine}' unavailable, "
+                    f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
                 )
                 return fallback.run(
-                    config=config,
+                    validator=validator,
                     task_id=task_id,
                     session_id=session_id,
                     worktree_path=worktree_path,
@@ -380,197 +276,14 @@ class EngineRegistry:
         return ValidationResult(
             validator_id=validator_id,
             verdict="blocked",
-            summary=f"No available engine for validator. Primary: {config.engine}, Fallback: {config.fallback_engine}",
+            summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
             error="Engine not available",
         )
 
-    def build_execution_roster(
-        self,
-        task_id: str,
-        session_id: str | None = None,
-        wave: str | None = None,
-        extra_validators: list[dict[str, str]] | None = None,
-    ) -> dict[str, Any]:
-        """Build an execution roster for validators.
-
-        Validators are selected based on:
-        1. always_run=true validators (always included)
-        2. Validators whose triggers match modified files
-        3. Extra validators specified by orchestrator
-
-        Args:
-            task_id: Task identifier
-            session_id: Optional session identifier
-            wave: Optional specific wave to build roster for
-            extra_validators: Optional list of extra validators to add
-                Each item: {"id": "validator-id", "wave": "wave-name"}
-
-        Returns:
-            Roster dict with validator execution information
-        """
-        # Get validators to run
-        if wave:
-            validators = self.get_validators_for_wave(wave)
-        else:
-            validators = list(self._validator_configs.values())
-
-        # Get modified files for trigger matching
-        modified_files = get_modified_files_for_task(
-            task_id=task_id,
-            project_root=self.project_root,
-            session_id=session_id,
-        )
-
-        logger.debug(f"Modified files for task '{task_id}': {modified_files}")
-
-        # Build roster entries
-        always_required = []
-        triggered_blocking = []
-        triggered_optional = []
-        skipped = []
-
-        for config in validators:
-            entry = {
-                "id": config.id,
-                "name": config.name,
-                "engine": config.engine,
-                "wave": config.wave,
-                "zenRole": config.zen_role,
-                "priority": 1 if config.always_run else 2,
-                "blocking": config.blocking,
-                "context7Required": config.context7_required,
-                "context7Packages": config.context7_packages,
-                "focus": config.focus,
-                "triggers": config.triggers,
-            }
-
-            if config.always_run:
-                entry["reason"] = f"{config.wave.title()} validator (always runs)"
-                always_required.append(entry)
-            else:
-                # Check if triggers match modified files
-                matched = match_triggers(modified_files, config.triggers)
-                if matched:
-                    entry["reason"] = f"Triggered by: {', '.join(matched[:3])}" + (
-                        f" (+{len(matched) - 3} more)" if len(matched) > 3 else ""
-                    )
-                    entry["matchedFiles"] = matched
-                    if config.blocking:
-                        triggered_blocking.append(entry)
-                    else:
-                        triggered_optional.append(entry)
-                else:
-                    skipped.append({
-                        "id": config.id,
-                        "name": config.name,
-                        "triggers": config.triggers,
-                        "reason": "No matching files",
-                    })
-
-        # Handle extra validators added by orchestrator
-        extra_added = []
-        if extra_validators:
-            for extra in extra_validators:
-                validator_id = extra.get("id")
-                target_wave = extra.get("wave", "comprehensive")
-
-                # Skip if already in roster
-                existing_ids = (
-                    [e["id"] for e in always_required]
-                    + [e["id"] for e in triggered_blocking]
-                    + [e["id"] for e in triggered_optional]
-                )
-                if validator_id in existing_ids:
-                    continue
-
-                config = self.get_validator(validator_id)
-                if not config:
-                    logger.warning(f"Extra validator '{validator_id}' not found")
-                    continue
-
-                entry = {
-                    "id": config.id,
-                    "name": config.name,
-                    "engine": config.engine,
-                    "wave": target_wave,  # Use orchestrator-specified wave
-                    "zenRole": config.zen_role,
-                    "priority": 3,  # Lower priority than auto-detected
-                    "blocking": config.blocking,
-                    "context7Required": config.context7_required,
-                    "context7Packages": config.context7_packages,
-                    "focus": config.focus,
-                    "triggers": config.triggers,
-                    "reason": f"Added by orchestrator (wave: {target_wave})",
-                    "addedByOrchestrator": True,
-                }
-                extra_added.append(entry)
-                if config.blocking:
-                    triggered_blocking.append(entry)
-                else:
-                    triggered_optional.append(entry)
-
-        return {
-            "taskId": task_id,
-            "modifiedFiles": modified_files,
-            "alwaysRequired": sorted(always_required, key=lambda x: x["priority"]),
-            "triggeredBlocking": triggered_blocking,
-            "triggeredOptional": triggered_optional,
-            "extraAdded": extra_added,
-            "skipped": skipped,
-            "totalBlocking": (
-                len(always_required)
-                + len([t for t in triggered_blocking if t["blocking"]])
-            ),
-            "decisionPoints": self._build_decision_points(
-                modified_files, skipped, extra_added
-            ),
-        }
-
-    def _build_decision_points(
-        self,
-        modified_files: list[str],
-        skipped: list[dict[str, Any]],
-        extra_added: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Build decision points for orchestrator guidance.
-
-        Identifies validators that might be relevant but weren't auto-triggered.
-        """
-        points = []
-
-        # Check for potential React validation in non-.tsx files
-        react_id = "react"
-        react_skipped = next((s for s in skipped if s["id"] == react_id), None)
-        if react_skipped:
-            # Check if any .js files might have React code
-            js_files = [f for f in modified_files if f.endswith((".js", ".mjs"))]
-            if js_files:
-                points.append({
-                    "validator": react_id,
-                    "suggestion": "Consider adding 'react' validator",
-                    "reason": f"Found .js files that may contain React: {', '.join(js_files[:3])}",
-                    "command": "--add-validators react",
-                })
-
-        # Check for API validation in non-route files
-        api_id = "api"
-        api_skipped = next((s for s in skipped if s["id"] == api_id), None)
-        if api_skipped:
-            # Check for files with api/fetch/handler patterns in name
-            potential_api = [
-                f for f in modified_files
-                if any(p in f.lower() for p in ["handler", "service", "client", "fetch"])
-            ]
-            if potential_api:
-                points.append({
-                    "validator": api_id,
-                    "suggestion": "Consider adding 'api' validator",
-                    "reason": f"Found files that may contain API logic: {', '.join(potential_api[:3])}",
-                    "command": "--add-validators api",
-                })
-
-        return points
+    # NOTE: build_execution_roster() has been removed.
+    # Use ValidatorRegistry.build_execution_roster() directly as the single source of truth.
+    # Access via: self._validator_registry.build_execution_roster(...)
 
 
-__all__ = ["EngineRegistry", "match_triggers", "get_modified_files_for_task"]
+__all__ = ["EngineRegistry"]
 

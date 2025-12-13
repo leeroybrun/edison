@@ -88,6 +88,9 @@ class FilePatternRegistry:
                 data = self._load_yaml_file(yaml_file, required=False)
                 if isinstance(data, dict):
                     data["_path"] = str(yaml_file)
+                    # Source/origin marker for tests and debugging.
+                    # Convention: "core" | "project" | "pack:<pack>"
+                    data["_origin"] = label
                     data["_source"] = label
                     results.append(data)
         

@@ -17,15 +17,16 @@ SUMMARY = "Audit guidelines quality"
 
 
 def _get_cli_threshold_default() -> float:
-    """Load CLI threshold default from config (NO HARDCODED VALUES principle)."""
+    """Load CLI threshold default from CompositionConfig (NO HARDCODED VALUES principle).
+    
+    Uses CompositionConfig.threshold which accesses composition.defaults.dedupe.threshold.
+    """
     try:
-        from edison.core.config import ConfigManager
-        cfg = ConfigManager().load_config(validate=False)
-        dry_config = cfg.get("composition", {}).get("dryDetection", {})
-        # Try cliThreshold first, then threshold, then fallback
-        return dry_config.get("cliThreshold") or dry_config.get("threshold") or 0.3
+        from edison.core.config.domains.composition import CompositionConfig
+        return CompositionConfig().threshold
     except Exception:
-        return 0.3  # Fallback only if config loading fails
+        # Fallback only if config loading fails entirely
+        return 0.37
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:

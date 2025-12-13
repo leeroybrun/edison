@@ -152,17 +152,30 @@ class QAConfig(BaseDomainConfig):
         """
         return self.engines_config.get(engine_id)
 
+    @cached_property
+    def _validator_registry(self) -> Any:
+        """Get ValidatorRegistry instance (cached).
+
+        Returns:
+            ValidatorRegistry instance for delegation
+        """
+        from edison.core.registries.validators import ValidatorRegistry
+        return ValidatorRegistry(project_root=self.repo_root)
+
     def get_validators(self) -> dict[str, dict[str, Any]]:
         """Get all validator configurations (flat format).
+
+        Delegates to ValidatorRegistry for single source of truth.
 
         Returns:
             Dictionary of validator_id -> validator configuration
         """
-        validators = self.validation_config.get("validators", {})
-        return validators if isinstance(validators, dict) else {}
+        return {v.id: v.to_dict() for v in self._validator_registry.get_all()}
 
     def get_validator(self, validator_id: str) -> dict[str, Any] | None:
         """Get a specific validator configuration.
+
+        Delegates to ValidatorRegistry for single source of truth.
 
         Args:
             validator_id: Validator identifier
@@ -170,7 +183,8 @@ class QAConfig(BaseDomainConfig):
         Returns:
             Validator configuration dict or None if not found
         """
-        return self.get_validators().get(validator_id)
+        v = self._validator_registry.get(validator_id)
+        return v.to_dict() if v else None
 
     def get_waves(self) -> list[dict[str, Any]]:
         """Get wave configurations.
@@ -193,24 +207,32 @@ class QAConfig(BaseDomainConfig):
     def get_validators_for_wave(self, wave_name: str) -> list[dict[str, Any]]:
         """Get all validators for a wave.
 
+        Delegates to ValidatorRegistry for single source of truth.
+
         Args:
             wave_name: Name of the wave
 
         Returns:
             List of validator configurations for that wave
         """
-        waves = self.get_waves()
-        wave = next((w for w in waves if w.get("name") == wave_name), None)
-        if not wave:
-            return []
+        return [v.to_dict() for v in self._validator_registry.get_by_wave(wave_name)]
 
-        wave_validator_ids = wave.get("validators", [])
-        all_validators = self.get_validators()
-        return [
-            all_validators[vid]
-            for vid in wave_validator_ids
-            if vid in all_validators
-        ]
+    @cached_property
+    def _defaults(self) -> dict[str, Any]:
+        """Return the ``validation.defaults`` section from configuration."""
+        defaults = self.validation_config.get("defaults", {})
+        return defaults if isinstance(defaults, dict) else {}
+
+    def get_default_wave(self) -> str:
+        """Return the default wave for validators without explicit wave assignment.
+
+        Returns:
+            Default wave name (e.g., "comprehensive")
+        """
+        wave = self._defaults.get("wave")
+        if not wave:
+            return "comprehensive"  # Last-resort fallback
+        return str(wave)
 
 
 def load_config(repo_root: Path | None = None) -> QAConfig:

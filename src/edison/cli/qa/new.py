@@ -12,7 +12,6 @@ from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.qa.evidence import EvidenceService
-from edison.core.utils.io import write_json_atomic
 
 SUMMARY = "Create new QA brief for a task"
 
@@ -44,49 +43,26 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Create QA brief - delegates to QA library."""
+    """Create QA brief - uses EvidenceService.create_qa_brief()."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         repo_root = get_repo_root(args)
 
-        # Create evidence service
+        # Use EvidenceService for QA brief creation
         ev_svc = EvidenceService(args.task_id, project_root=repo_root)
 
-        # Determine round number
-        round_num = args.round
-        if round_num is None:
-            # Get next round number
-            current = ev_svc.get_current_round()
-            round_num = 1 if current is None else current + 1
+        # Create QA brief using the canonical method
+        qa_brief = ev_svc.create_qa_brief(
+            session_id=args.session,
+            round_num=args.round,
+        )
 
-        # Create evidence directory
+        # Get the round number and path
+        round_num = ev_svc.get_current_round() or 1
         round_dir = ev_svc.ensure_round(round_num)
-        evidence_dir = ev_svc.get_evidence_root()
-
-        # Create QA brief
-        qa_brief = {
-            "task_id": args.task_id,
-            "session_id": args.session,
-            "round": round_num,
-            "created_at": None,  # Will be set by actual implementation
-            "status": "pending",
-            "validators": [],
-            "evidence": [],
-        }
-
         brief_path = round_dir / "qa-brief.json"
-        write_json_atomic(brief_path, qa_brief)
-
-        # Update metadata
-        metadata_path = evidence_dir / "metadata.json"
-        metadata = {
-            "task_id": args.task_id,
-            "currentRound": round_num,
-            "round": round_num,
-        }
-        write_json_atomic(metadata_path, metadata)
 
         result = {
             "qaPath": str(brief_path),

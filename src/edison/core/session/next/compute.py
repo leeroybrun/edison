@@ -22,7 +22,7 @@ import sys
 from typing import Any
 
 from edison.core.config.domains.workflow import WorkflowConfig
-from edison.core.qa.engines import EngineRegistry
+from edison.core.qa.engines import ValidationExecutor
 from edison.core.session import lifecycle as session_manager
 from edison.core.session._config import get_config
 from edison.core.session.core.context import SessionContext
@@ -39,7 +39,7 @@ from edison.core.session.next.actions import (
     read_validator_jsons,
 )
 from edison.core.session.next.output import format_human_readable
-from edison.core.session.next.rules import rules_for
+from edison.core.session.next.rules import get_rules_for_context, rules_for
 from edison.core.session.next.utils import (
     allocate_child_id,
     extract_wave_and_base_id,
@@ -53,23 +53,6 @@ from edison.core.utils.io import read_json as io_read_json
 
 load_session = session_manager.get_session
 validate_session_id = session_store_validate_session_id
-
-
-def _can_execute_validator(registry: EngineRegistry, validator_id: str) -> bool:
-    """Check if a validator can be executed directly via CLI.
-
-    Args:
-        registry: EngineRegistry instance
-        validator_id: Validator identifier
-
-    Returns:
-        True if the validator's engine CLI is available
-    """
-    config = registry.get_validator(validator_id)
-    if not config:
-        return False
-    engine = registry._get_or_create_engine(config.engine)
-    return engine is not None and engine.can_execute()
 
 
 def _format_cmd_template(template: list[str], **kwargs) -> list[str]:
@@ -185,18 +168,20 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             qa_wip = STATES["qa"]["wip"]
             recommendations = workflow_cfg.get_recommendations("qa", qa_todo, qa_wip)
 
-            # Build validator roster for this action (with session ID for git-based detection)
-            engine_registry = EngineRegistry()
-            roster = engine_registry.build_execution_roster(task_id, session_id=session_id)
+            # Build validator roster using ValidatorRegistry (single source of truth)
+            from edison.core.registries.validators import ValidatorRegistry
+            validator_registry = ValidatorRegistry()
+            roster = validator_registry.build_execution_roster(task_id, session_id=session_id)
 
-            # Check if any validators can be executed directly
+            # Check if any validators can be executed directly using ValidationExecutor
+            executor = ValidationExecutor()
             validators_in_roster = (
                 roster.get("alwaysRequired", [])
                 + roster.get("triggeredBlocking", [])
                 + roster.get("triggeredOptional", [])
             )
             can_execute_directly = any(
-                _can_execute_validator(engine_registry, v["id"])
+                executor.can_execute_validator(v["id"])
                 for v in validators_in_roster
             )
 
@@ -332,7 +317,9 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
 
     # Delegation hints for wip tasks (non-mutating suggestions)
     # Guidance rule comes from config (workflow.yaml guidance section)
-    delegation_guidance_rule = workflow_cfg.get_guidance_rule("delegation")
+    # Get guidance rules for delegation context
+    delegation_guidance_rules = get_rules_for_context("delegation")
+    delegation_guidance_rule = delegation_guidance_rules[0].get("id") if delegation_guidance_rules else None
     for task_id, task_entry in session.get("tasks", {}).items():
         if task_entry.get("status") == STATES["task"]["wip"] and scope in (None, "tasks"):
             basic_hint = simple_delegation_hint(

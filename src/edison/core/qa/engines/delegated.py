@@ -13,10 +13,11 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .base import EngineConfig, ValidationResult, ValidatorConfig
+from .base import EngineConfig, ValidationResult
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.registries.validators import ValidatorMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class ZenMCPEngine:
 
     def run(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         task_id: str,
         session_id: str,
         worktree_path: Path,
@@ -68,7 +69,7 @@ class ZenMCPEngine:
         """Generate delegation instructions for the validator.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata from ValidatorRegistry
             task_id: Task identifier
             session_id: Session identifier
             worktree_path: Path to git worktree
@@ -79,12 +80,12 @@ class ZenMCPEngine:
             ValidationResult with delegation instructions
         """
         logger.info(
-            f"Generating delegation instructions for validator '{config.id}'"
+            f"Generating delegation instructions for validator '{validator.id}'"
         )
 
         # Build delegation instructions
         instructions = self._build_delegation_instructions(
-            config=config,
+            validator=validator,
             task_id=task_id,
             session_id=session_id,
             worktree_path=worktree_path,
@@ -95,15 +96,15 @@ class ZenMCPEngine:
         if evidence_service:
             self._save_instructions(
                 evidence_service=evidence_service,
-                validator_id=config.id,
+                validator_id=validator.id,
                 instructions=instructions,
                 round_num=round_num,
             )
 
         return ValidationResult(
-            validator_id=config.id,
+            validator_id=validator.id,
             verdict="pending",
-            summary=f"Delegation required for {config.name}",
+            summary=f"Delegation required for {validator.name}",
             raw_output=instructions,
             duration=0.0,
             exit_code=0,
@@ -111,8 +112,8 @@ class ZenMCPEngine:
             follow_up_tasks=[
                 {
                     "type": "delegation",
-                    "validator": config.id,
-                    "zenRole": config.zen_role,
+                    "validator": validator.id,
+                    "zenRole": validator.zen_role,
                     "instructions": instructions,
                 }
             ],
@@ -120,7 +121,7 @@ class ZenMCPEngine:
 
     def _build_delegation_instructions(
         self,
-        config: ValidatorConfig,
+        validator: "ValidatorMetadata",
         task_id: str,
         session_id: str,
         worktree_path: Path,
@@ -129,7 +130,7 @@ class ZenMCPEngine:
         """Build human/AI-readable delegation instructions.
 
         Args:
-            config: Validator configuration
+            validator: Validator metadata
             task_id: Task identifier
             session_id: Session identifier
             worktree_path: Working directory
@@ -139,41 +140,41 @@ class ZenMCPEngine:
             Formatted delegation instructions
         """
         lines = [
-            f"# Validator Delegation: {config.name}",
+            f"# Validator Delegation: {validator.name}",
             "",
             "## Context",
-            f"- **Validator ID**: {config.id}",
+            f"- **Validator ID**: {validator.id}",
             f"- **Task ID**: {task_id}",
             f"- **Session ID**: {session_id}",
             f"- **Round**: {round_num or 'N/A'}",
             f"- **Worktree**: {worktree_path}",
             "",
             "## Zen Role",
-            f"Execute as: `{config.zen_role}`",
+            f"Execute as: `{validator.zen_role}`",
             "",
         ]
 
         # Add prompt reference if available
-        if config.prompt:
+        if validator.prompt:
             lines.extend([
                 "## Prompt File",
-                f"Use validation prompt from: `{config.prompt}`",
+                f"Use validation prompt from: `{validator.prompt}`",
                 "",
             ])
 
         # Add focus areas if specified
-        if config.focus:
+        if validator.focus:
             lines.extend([
                 "## Focus Areas",
-                *[f"- {f}" for f in config.focus],
+                *[f"- {f}" for f in validator.focus],
                 "",
             ])
 
         # Add Context7 requirements if any
-        if config.context7_required:
+        if validator.context7_required:
             lines.extend([
                 "## Context7 Requirements",
-                f"Required packages: {', '.join(config.context7_packages)}",
+                f"Required packages: {', '.join(validator.context7_packages)}",
                 "",
             ])
 
@@ -193,7 +194,7 @@ class ZenMCPEngine:
             "## Expected Output",
             "",
             "Save the validation report to:",
-            f"`validator-{config.id}-report.json`",
+            f"`validator-{validator.id}-report.json`",
             "",
         ])
 

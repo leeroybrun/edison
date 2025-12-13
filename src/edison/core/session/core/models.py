@@ -15,6 +15,7 @@ from edison.core.entity import (
     EntityMetadata,
     StateHistoryEntry,
 )
+from edison.core.entity.base import record_transition_impl
 from edison.core.config.domains.session import SessionConfig
 
 
@@ -96,15 +97,13 @@ class Session:
         reason: Optional[str] = None,
         violations: Optional[List[str]] = None,
     ) -> None:
-        """Record a state transition in history."""
-        entry = StateHistoryEntry.create(
-            from_state=from_state,
-            to_state=to_state,
-            reason=reason,
-            violations=violations,
+        """Record a state transition in history.
+        
+        Delegates to shared record_transition_impl for DRY compliance.
+        """
+        record_transition_impl(
+            self, from_state, to_state, reason=reason, violations=violations
         )
-        self.state_history.append(entry)
-        self.metadata.touch()
     
     def add_activity(self, message: str) -> None:
         """Add an activity log entry."""
