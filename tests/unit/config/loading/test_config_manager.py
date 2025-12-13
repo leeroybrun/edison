@@ -84,8 +84,9 @@ def test_load_config_uses_canonical_config_schema() -> None:
     """
     mgr = ConfigManager(ROOT)
 
-    # API default must be validate=True so callers get validation by default.
-    assert ConfigManager.load_config.__defaults__ == (True,)
+    # API default must be validate=True, include_packs=True so callers get
+    # full validation and pack-aware loading by default.
+    assert ConfigManager.load_config.__defaults__ == (True, True)
 
     # Canonical schema path is bundled in edison.data
     schema_path = get_data_path("schemas", "config/config.schema.json")
@@ -151,16 +152,17 @@ def test_dry_detection_constants_in_composition_config() -> None:
     mgr = ConfigManager(ROOT)
     cfg = mgr.load_config(validate=False)
 
-    # DRY detection config must exist under composition
+    # DRY detection config must exist under composition.defaults.dedupe
     composition = cfg.get("composition", {})
-    dry_config = composition.get("dryDetection", {})
+    defaults = composition.get("defaults", {})
+    dedupe_config = defaults.get("dedupe", {})
 
     # Must have min_shingles defined
-    assert "minShingles" in dry_config, "composition.dryDetection.minShingles must be defined"
-    assert isinstance(dry_config["minShingles"], int)
-    assert dry_config["minShingles"] >= 1
+    assert "min_shingles" in dedupe_config, "composition.defaults.dedupe.min_shingles must be defined"
+    assert isinstance(dedupe_config["min_shingles"], int)
+    assert dedupe_config["min_shingles"] >= 1
 
-    # Must have k (shingle size) defined
-    assert "shingleSize" in dry_config, "composition.dryDetection.shingleSize must be defined"
-    assert isinstance(dry_config["shingleSize"], int)
-    assert dry_config["shingleSize"] >= 1
+    # Must have shingle_size defined
+    assert "shingle_size" in dedupe_config, "composition.defaults.dedupe.shingle_size must be defined"
+    assert isinstance(dedupe_config["shingle_size"], int)
+    assert dedupe_config["shingle_size"] >= 1

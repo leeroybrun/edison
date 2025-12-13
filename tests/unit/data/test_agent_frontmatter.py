@@ -12,62 +12,31 @@ AGENT_SPECS = {
         "filename": "api-builder.md",
         "model": "codex",
         "description": "Backend API specialist for route handlers, validation, and data flow",
-        "context7_ids": [
-            "/vercel/next.js",
-            "/colinhacks/zod",
-            "/prisma/prisma",
-        ],
     },
     "component-builder": {
         "filename": "component-builder.md",
         "model": "claude",
-        "description": "UI component specialist for accessible, responsive Next.js/React interfaces",
-        "context7_ids": [
-            "/vercel/next.js",
-            "/facebook/react",
-            "/tailwindlabs/tailwindcss",
-            "/motiondivision/motion",
-        ],
+        "description": "UI component specialist for accessible, responsive interfaces",
     },
     "database-architect": {
         "filename": "database-architect.md",
         "model": "codex",
         "description": "Database schema and migration specialist for reliable, performant data layers",
-        "context7_ids": [
-            "/prisma/prisma",
-        ],
     },
     "code-reviewer": {
         "filename": "code-reviewer.md",
         "model": "claude",
         "description": "Code quality reviewer ensuring TDD compliance and actionable feedback",
-        "context7_ids": [
-            "/vercel/next.js",
-            "/facebook/react",
-            "/prisma/prisma",
-            "/colinhacks/zod",
-        ],
     },
     "test-engineer": {
         "filename": "test-engineer.md",
         "model": "codex",
         "description": "Test automation and TDD guardian ensuring coverage and reliability",
-        "context7_ids": [
-            "/vitest-dev/vitest",
-            "/vercel/next.js",
-        ],
     },
     "feature-implementer": {
         "filename": "feature-implementer.md",
         "model": "claude",
         "description": "Full-stack feature implementer delivering end-to-end product experiences",
-        "context7_ids": [
-            "/vercel/next.js",
-            "/facebook/react",
-            "/prisma/prisma",
-            "/colinhacks/zod",
-            "/tailwindlabs/tailwindcss",
-        ],
     },
 }
 
@@ -77,7 +46,6 @@ REQUIRED_KEYS = {
     "description",
     "model",
     "zenRole",
-    "context7_ids",
     "allowed_tools",
     "requires_validation",
     "constitution",
@@ -102,11 +70,6 @@ def _construct_mapping(loader: yaml.SafeLoader, node: yaml.Node, deep: bool = Fa
 UniqueKeyLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping
 )
-
-
-def _package_name(context7_id: str) -> str:
-    """Return the short package name from a Context7 identifier."""
-    return context7_id.rsplit("/", maxsplit=1)[-1]
 
 
 def _load_frontmatter(path: Path) -> dict:
@@ -144,11 +107,12 @@ def test_agent_frontmatter_required_fields(agent_name: str, spec: dict) -> None:
     missing = REQUIRED_KEYS - set(fm)
     assert not missing, f"{path} missing required frontmatter fields: {sorted(missing)}"
 
+    assert "context7_ids" not in fm, f"{path} must not hardcode technology-specific context7_ids in core"
+
     assert fm["name"] == agent_name
     assert fm["description"] == spec["description"]
     assert fm["model"] == spec["model"]
     assert fm["zenRole"] == f"{{{{project.zenRoles.{agent_name}}}}}", "zenRole must use project variable"
-    assert fm["context7_ids"] == spec["context7_ids"]
     assert fm["allowed_tools"] == ALLOWED_TOOLS
     assert fm["requires_validation"] is True
     assert fm["constitution"] == CONSTITUTION_PATH
@@ -162,13 +126,12 @@ def test_agent_frontmatter_yaml_parses_without_duplicates(agent_name: str, spec:
 
 
 def test_component_builder_has_server_client_examples() -> None:
-    """Test that component-builder.md includes Server and Client Component examples.
+    """Test that the Next.js pack overlay includes Server/Client examples.
 
     This validates T-027: Server/Client examples must be present to demonstrate
     Next.js 16 App Router patterns for when to use Server vs Client Components.
     """
-    agents_dir = get_data_path("agents")
-    path = agents_dir / "component-builder.md"
+    path = Path("src/edison/data/packs/nextjs/agents/overlays/component-builder.md")
     content = path.read_text(encoding="utf-8")
 
     # Check for Server Components section
@@ -254,10 +217,3 @@ def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
 
     assert "config/context7.yaml" in section, \
         f"{path} must point to config/context7.yaml for versions"
-
-    for warning in ("Next.js 16", "React 19", "Tailwind CSS 4", "Prisma 6"):
-        assert warning in section, f"{path} missing version warning for {warning}"
-
-    package_names = {_package_name(pkg) for pkg in spec["context7_ids"]}
-    assert any(name in section for name in package_names), \
-        f"{path} Context7 examples must mention at least one agent package: {sorted(package_names)}"

@@ -168,6 +168,24 @@ composition:
 
         assert content is None
 
+    def test_compose_resolves_includes_from_bundled_core_dir(
+        self, isolated_project_env: Path
+    ) -> None:
+        """compose() must resolve {{include:...}} relative to bundled core_dir.
+
+        Core templates use include paths like `constitutions/agents-base.md`
+        which live under the bundled `edison.data` root, not the repo root.
+        """
+        from edison.core.composition.registries.generic import GenericRegistry
+
+        registry = GenericRegistry("agents", project_root=isolated_project_env)
+        content = registry.compose("api-builder", packs=[])
+
+        assert content is not None
+        rendered = str(content)
+        assert "<!-- ERROR: Include not found:" not in rendered
+        assert "## TDD Principles (All Roles)" in rendered
+
 
 class TestGenericRegistryStrategyConfig:
     """Tests for strategy config loading from composition.yaml."""

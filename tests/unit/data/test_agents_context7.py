@@ -21,19 +21,11 @@ def test_agents_include_context7_examples(agent_path: Path) -> None:
 
     assert "## Context7 Knowledge Refresh (MANDATORY)" in content
 
-    assert "mcp__context7__resolve-library-id({" in content
-    assert 'libraryName: "next.js"' in content
-    assert "react, tailwindcss, prisma, zod, motion" in content
+    # Core agents must be tech-agnostic; they should show a generic Context7 workflow.
+    assert "mcp__context7__resolve_library_id" in content
+    assert "libraryName" in content
 
-    assert "mcp__context7__get-library-docs({" in content
-    assert 'context7CompatibleLibraryID: "/vercel/next.js"' in content
-    # Topics can be in JSON array format or as comma-separated values
-    assert '"route handlers"' in content or "route handlers" in content
+    assert "mcp__context7__get_library_docs" in content
+    assert "context7CompatibleLibraryID" in content
 
     assert "config/context7.yaml" in content
-
-    # Version info can be in list format or inline
-    assert "Next.js 16" in content
-    assert "React 19" in content
-    assert "Tailwind CSS 4" in content
-    assert "Prisma 6" in content

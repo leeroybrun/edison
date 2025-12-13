@@ -1,11 +1,11 @@
-"""Regression tests for the Code Smell Checklist in QUALITY.md."""
+"""Regression tests for the Code Smell Checklist in QUALITY_PATTERNS.md."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 
-GUIDELINE_PATH = Path("src/edison/data/guidelines/shared/QUALITY.md")
+GUIDELINE_PATH = Path("src/edison/data/guidelines/shared/QUALITY_PATTERNS.md")
 
 
 def _extract_code_smell_section(text: str) -> str:
@@ -13,7 +13,7 @@ def _extract_code_smell_section(text: str) -> str:
 
     marker = "## Code Smell Checklist"
     start = text.find(marker)
-    assert start != -1, "QUALITY.md is missing the Code Smell Checklist section"
+    assert start != -1, "QUALITY_PATTERNS.md is missing the Code Smell Checklist section"
 
     section = text[start:]
     # Stop at the next top-level heading (## ) if present

@@ -12,7 +12,7 @@ def _get_ids(rules):
     return {rule.get("id") for rule in rules}
 
 
-def _get_get_stems(rules):
+def _get_stems(rules):
     return {Path(rule.get("_path", "")).stem for rule in rules if rule.get("_path")}
 
 
@@ -57,7 +57,11 @@ def test_pack_file_patterns_load_when_active(packs, expected_ids) -> None:
     for rid in expected_ids:
         assert rid in composed_ids, f"Missing pack rule {rid} for packs {packs}"
 
-    origins = {rule["id"]: rule.get("_origin") for rule in composed if rule.get("id") in expected_ids}
+    origins = {
+        rule["id"]: (rule.get("_origin") or "")
+        for rule in composed
+        if rule.get("id") in expected_ids
+    }
     for rid in expected_ids:
         assert origins.get(rid, "").startswith("pack:"), f"{rid} should be marked as pack-origin"
 

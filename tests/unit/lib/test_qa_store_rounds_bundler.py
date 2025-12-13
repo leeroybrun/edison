@@ -35,7 +35,8 @@ def test_rounds_next_round_detects_existing(tmp_path: Path, monkeypatch: pytest.
     assert rounds.round_dir("t-1", 2) == ev_root / "round-2"
 
 
-def test_bundler_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bundler_path_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test bundler path resolution (I/O moved to EvidenceService)."""
     setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import bundler
 
@@ -50,9 +51,18 @@ def test_bundler_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     path = bundler.bundle_summary_path("t-2", 1, config=cfg)
     assert path == tmp_path / ".project" / "qa" / "validation-evidence" / "t-2" / "round-1" / "bundle-approved.json"
 
-    data = {"approved": True, "round": 1}
-    bundler.write_bundle_summary("t-2", 1, data, config=cfg)
 
-    loaded = bundler.load_bundle_summary("t-2", 1, config=cfg)
+def test_evidence_service_bundle_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test EvidenceService bundle I/O (replaces old bundler I/O)."""
+    setup_project_root(monkeypatch, tmp_path)
+    from edison.core.qa.evidence import EvidenceService
+
+    ev_svc = EvidenceService("t-2", project_root=tmp_path)
+    ev_svc.create_next_round()  # Create round-1
+
+    data = {"approved": True, "round": 1}
+    ev_svc.write_bundle(data, round_num=1)
+
+    loaded = ev_svc.read_bundle(round_num=1)
     assert loaded == data
 

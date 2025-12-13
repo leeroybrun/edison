@@ -5,16 +5,16 @@ from edison.data import get_data_path
 
 
 def _read_motion_guide() -> str:
-    """Read the bundled MOTION_12_PATTERNS guideline content."""
-    path = get_data_path("guidelines/shared", "MOTION_12_PATTERNS.md")
+    """Read the Motion pack's MOTION_12_PATTERNS guideline content."""
+    path = get_data_path("packs/motion/guidelines/motion", "MOTION_12_PATTERNS.md")
     if not path.exists():
-        pytest.fail("MOTION_12_PATTERNS.md not found in guidelines/shared")
+        pytest.fail("MOTION_12_PATTERNS.md not found in motion pack guidelines")
     return path.read_text(encoding="utf-8")
 
 
 def test_motion_guideline_exists() -> None:
     """The Motion 12 patterns guideline must exist."""
-    path = get_data_path("guidelines/shared", "MOTION_12_PATTERNS.md")
+    path = get_data_path("packs/motion/guidelines/motion", "MOTION_12_PATTERNS.md")
     assert path.exists(), "MOTION_12_PATTERNS.md should exist"
 
 

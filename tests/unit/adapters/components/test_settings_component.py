@@ -49,7 +49,14 @@ def _build_context(tmp_path: Path, config: dict) -> AdapterContext:
 
 
 def test_settings_composer_merges_core_and_project(tmp_path: Path) -> None:
-    # Core settings
+    """Test that ConfigManager loads and merges project settings.
+
+    ConfigManager loads:
+    1. Bundled core settings (from edison.data/config/settings.yaml)
+    2. Project settings (from .edison/config/settings.yaml)
+
+    This test verifies project settings can override/extend bundled settings.
+    """
     ctx = _build_context(
         tmp_path,
         config={
@@ -58,28 +65,16 @@ def test_settings_composer_merges_core_and_project(tmp_path: Path) -> None:
         },
     )
 
-    core_settings = ctx.core_dir / "config" / "settings.yaml"
-    core_settings.write_text(
-        """
-settings:
-  claude:
-    env:
-      CORE: "1"
-    permissions:
-      allow: ["a"]
-""",
-        encoding="utf-8",
-    )
-
+    # Write project settings that extend bundled defaults
     project_settings = ctx.project_dir / "config" / "settings.yaml"
     project_settings.write_text(
         """
 settings:
   claude:
     env:
-      PROJECT: "1"
+      PROJECT_CUSTOM: "test_value"
     permissions:
-      allow: ["b"]
+      allow: ["+", "custom_test_permission"]
 """,
         encoding="utf-8",
     )
@@ -87,7 +82,9 @@ settings:
     composer = SettingsComposer(ctx)
     result = composer.compose()
 
-    assert result["env"]["CORE"] == "1"
-    assert result["env"]["PROJECT"] == "1"
-    assert "a" in result["permissions"]["allow"]
-    assert "b" in result["permissions"]["allow"]
+    # Project settings should be merged with bundled defaults
+    assert result["env"]["PROJECT_CUSTOM"] == "test_value"
+    # Should have bundled permissions AND the appended one
+    assert "custom_test_permission" in result["permissions"]["allow"]
+    # Bundled permissions should still be present
+    assert any("Read" in p for p in result["permissions"]["allow"])

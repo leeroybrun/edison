@@ -1,10 +1,14 @@
+"""Tests for constitution.yaml configuration.
+
+Constitution.yaml v2.0.0 has embedded content in prompts, so:
+- mandatoryReads is empty (content embedded via {{include:}})
+- optionalReads are for on-demand deep-dive
+"""
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List
-import json
 
-import jsonschema
 import yaml
 import pytest
 
@@ -21,7 +25,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
 
 
 def _get_role_config(cfg: Dict[str, Any], role: str) -> Dict[str, Any]:
-    """Get role configuration from new schema (constitutions.<role>)."""
+    """Get role configuration from schema (constitutions.<role>)."""
     return cfg.get("constitutions", {}).get(role, {})
 
 
@@ -36,20 +40,14 @@ def _get_optional_reads(cfg: Dict[str, Any], role: str) -> List[Dict[str, Any]]:
 
 
 def test_constitution_file_exists() -> None:
-    """
-    Test that constitution.yaml exists at the expected location.
-    """
+    """Test that constitution.yaml exists at the expected location."""
     assert CONSTITUTION_CONFIG_PATH.exists(), (
         f"Constitution config file must exist at {CONSTITUTION_CONFIG_PATH}"
     )
 
 
 def test_constitution_yaml_parses_without_errors() -> None:
-    """
-    Test that constitution.yaml is valid YAML and can be parsed.
-
-    This verifies the file structure is syntactically correct.
-    """
+    """Test that constitution.yaml is valid YAML and can be parsed."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
     assert isinstance(cfg, dict), "Constitution config must be a dictionary"
     assert len(cfg) > 0, "Constitution config must not be empty"
@@ -59,7 +57,8 @@ def test_constitution_has_version() -> None:
     """Test that constitution.yaml contains a version field."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
     assert "version" in cfg, "Constitution config must have a version field"
-    assert cfg["version"] == "1.0.0", "Version must be 1.0.0"
+    # v2.0.0 uses embedded content
+    assert cfg["version"] == "2.0.0", "Version must be 2.0.0"
 
 
 def test_constitution_has_constitutions_section() -> None:
@@ -70,11 +69,7 @@ def test_constitution_has_constitutions_section() -> None:
 
 
 def test_all_three_role_types_defined() -> None:
-    """
-    Test that all three role types are defined in constitutions section.
-
-    Required roles: orchestrator, agents, validators
-    """
+    """Test that all three role types are defined in constitutions section."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
     constitutions = cfg.get("constitutions", {})
 
@@ -88,9 +83,7 @@ def test_all_three_role_types_defined() -> None:
 
 
 def test_each_role_has_mandatory_and_optional_reads() -> None:
-    """
-    Test that each role has both mandatoryReads and optionalReads sections.
-    """
+    """Test that each role has both mandatoryReads and optionalReads sections."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
 
     for role in ["orchestrator", "agents", "validators"]:
@@ -104,9 +97,7 @@ def test_each_role_has_mandatory_and_optional_reads() -> None:
 
 
 def test_each_read_has_path_and_purpose() -> None:
-    """
-    Test that each read entry (mandatory or optional) has both 'path' and 'purpose' fields.
-    """
+    """Test that each read entry (mandatory or optional) has both 'path' and 'purpose' fields."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
 
     for role in ["orchestrator", "agents", "validators"]:
@@ -136,12 +127,7 @@ def test_each_read_has_path_and_purpose() -> None:
 
 
 def test_paths_reference_generated_locations() -> None:
-    """
-    Test that paths reference generated file locations (not source files).
-
-    Paths should be relative paths like 'constitutions/ORCHESTRATORS.md'
-    rather than source paths like 'src/edison/data/constitutions/ORCHESTRATORS.md'.
-    """
+    """Test that paths reference generated file locations (not source files)."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
 
     # Paths should NOT contain these source indicators
@@ -157,37 +143,22 @@ def test_paths_reference_generated_locations() -> None:
                     assert not path.startswith(forbidden), (
                         f"Path '{path}' in {read_type} entry {idx} for role '{role}' must not "
                         f"start with '{forbidden}'. Use generated file locations like "
-                        f"'constitutions/ORCHESTRATORS.md' instead."
+                        f"'guidelines/shared/QUALITY_PATTERNS.md' instead."
                     )
 
 
-def test_orchestrator_mandatory_reads() -> None:
-    """Test that orchestrator role has expected mandatory reads."""
+def test_mandatory_reads_empty_in_v2() -> None:
+    """Test that mandatoryReads is empty in v2.0.0 (content is embedded).
+
+    In v2.0.0, all critical content is embedded in constitution/prompt files
+    via {{include:}} and {{include-section:}}. No separate reads needed.
+    """
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
-    mandatory_reads = _get_mandatory_reads(cfg, "orchestrator")
 
-    # Check that we have the minimum expected reads
-    assert len(mandatory_reads) >= 7, (
-        "Orchestrator must have at least 7 mandatory reads"
-    )
-
-    # Extract paths for validation
-    paths = [read["path"] for read in mandatory_reads]
-
-    # Verify key paths are present
-    expected_paths = [
-        "constitutions/ORCHESTRATORS.md",
-        "guidelines/orchestrators/SESSION_WORKFLOW.md",
-        "guidelines/shared/DELEGATION.md",
-        "AVAILABLE_AGENTS.md",
-        "AVAILABLE_VALIDATORS.md",
-        "guidelines/shared/TDD.md",
-        "guidelines/shared/VALIDATION.md",
-    ]
-
-    for expected_path in expected_paths:
-        assert expected_path in paths, (
-            f"Orchestrator must have mandatory read for '{expected_path}'"
+    for role in ["orchestrator", "agents", "validators"]:
+        mandatory_reads = _get_mandatory_reads(cfg, role)
+        assert len(mandatory_reads) == 0, (
+            f"Role '{role}' mandatoryReads should be empty in v2.0.0 (content is embedded)"
         )
 
 
@@ -196,16 +167,17 @@ def test_orchestrator_optional_reads() -> None:
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
     optional_reads = _get_optional_reads(cfg, "orchestrator")
 
-    # Orchestrator should have optional reads
+    # Orchestrator should have optional reads for on-demand lookup
     assert len(optional_reads) >= 1, (
         "Orchestrator should have at least 1 optional read"
     )
 
     paths = [read["path"] for read in optional_reads]
 
-    # Verify key optional paths
+    # Verify key optional paths exist
     expected_optional = [
-        "guidelines/shared/CONTEXT7.md",
+        "AVAILABLE_AGENTS.md",
+        "AVAILABLE_VALIDATORS.md",
     ]
 
     for expected_path in expected_optional:
@@ -214,84 +186,23 @@ def test_orchestrator_optional_reads() -> None:
         )
 
 
-def test_agents_mandatory_reads() -> None:
-    """Test that agents role has expected mandatory reads."""
-    cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
-    mandatory_reads = _get_mandatory_reads(cfg, "agents")
-
-    # Check that we have the minimum expected reads
-    assert len(mandatory_reads) >= 7, (
-        "Agents must have at least 7 mandatory reads"
-    )
-
-    # Extract paths for validation
-    paths = [read["path"] for read in mandatory_reads]
-
-    # Verify key paths are present
-    expected_paths = [
-        "constitutions/AGENTS.md",
-        "guidelines/agents/MANDATORY_WORKFLOW.md",
-        "guidelines/agents/OUTPUT_FORMAT.md",
-        "guidelines/shared/TDD.md",
-        "guidelines/shared/CONTEXT7.md",
-        "guidelines/shared/QUALITY.md",
-        "guidelines/shared/EPHEMERAL_SUMMARIES_POLICY.md",
-    ]
-
-    for expected_path in expected_paths:
-        assert expected_path in paths, (
-            f"Agents must have mandatory read for '{expected_path}'"
-        )
-
-
 def test_agents_optional_reads() -> None:
     """Test that agents role has expected optional reads."""
     cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
     optional_reads = _get_optional_reads(cfg, "agents")
 
-    # Agents should have optional reads
+    # Agents should have optional reads for deep-dive
     assert len(optional_reads) >= 1, (
         "Agents should have at least 1 optional read"
     )
 
     paths = [read["path"] for read in optional_reads]
 
-    # Verify key optional paths
-    expected_optional = [
-        "AVAILABLE_AGENTS.md",
-    ]
-
-    for expected_path in expected_optional:
-        assert expected_path in paths, (
-            f"Agents should have optional read for '{expected_path}'"
-        )
-
-
-def test_validators_mandatory_reads() -> None:
-    """Test that validators role has expected mandatory reads."""
-    cfg = _load_yaml(CONSTITUTION_CONFIG_PATH)
-    mandatory_reads = _get_mandatory_reads(cfg, "validators")
-
-    # Check that we have the minimum expected reads
-    assert len(mandatory_reads) >= 4, (
-        "Validators must have at least 4 mandatory reads"
+    # Verify at least one quality/patterns read exists
+    quality_reads = [p for p in paths if "QUALITY" in p or "PATTERNS" in p]
+    assert len(quality_reads) >= 1, (
+        "Agents should have optional read for quality patterns"
     )
-
-    # Extract paths for validation
-    paths = [read["path"] for read in mandatory_reads]
-
-    # Verify key paths are present
-    expected_paths = [
-        "constitutions/VALIDATORS.md",
-        "guidelines/validators/VALIDATOR_WORKFLOW.md",
-        "guidelines/validators/OUTPUT_FORMAT.md",
-        "guidelines/shared/CONTEXT7.md",
-    ]
-
-    for expected_path in expected_paths:
-        assert expected_path in paths, (
-            f"Validators must have mandatory read for '{expected_path}'"
-        )
 
 
 def test_validators_optional_reads() -> None:
@@ -306,15 +217,11 @@ def test_validators_optional_reads() -> None:
 
     paths = [read["path"] for read in optional_reads]
 
-    # Verify key optional paths
-    expected_optional = [
-        "guidelines/shared/TDD.md",
-    ]
-
-    for expected_path in expected_optional:
-        assert expected_path in paths, (
-            f"Validators should have optional read for '{expected_path}'"
-        )
+    # Verify at least one quality/patterns read exists
+    quality_reads = [p for p in paths if "QUALITY" in p or "OUTPUT" in p]
+    assert len(quality_reads) >= 1, (
+        "Validators should have optional read for quality patterns or output format"
+    )
 
 
 def test_no_duplicate_paths_per_role() -> None:

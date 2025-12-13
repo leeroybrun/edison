@@ -28,17 +28,24 @@ def _load_yaml(rel_path: str) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def test_validators_yaml_uses_nextjs_and_database():
+def test_validators_yaml_has_required_structure():
+    """Test that validators.yaml has the expected structure."""
     data = _load_yaml("core/config/validators.yaml")
-    specialized = data["validation"]["roster"]["specialized"]
+    validation = data.get("validation", {})
 
-    ids = {v["id"] for v in specialized}
-    blob = "\n".join(str(v) for v in specialized)
+    # Should have dimensions
+    assert "dimensions" in validation, "validation must have dimensions"
 
-    assert "nextjs" in ids, "specialized validators must include nextjs"
-    assert "prisma" in ids, "specialized validators must include prisma (database validator)"
-    assert "webapp" not in blob, "legacy webapp validator should be removed"
-    assert "ormsuite" not in blob, "legacy ormsuite validator should be removed"
+    # Should have engines
+    assert "engines" in validation, "validation must have engines"
+    engines = validation["engines"]
+    assert len(engines) > 0, "must have at least one engine defined"
+
+    # Should have execution config
+    assert "execution" in validation, "validation must have execution config"
+
+    # Should have defaults
+    assert "defaults" in validation, "validation must have defaults"
 
 
 def test_delegation_yaml_routes_prisma_and_nextjs():

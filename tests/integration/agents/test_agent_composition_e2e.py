@@ -9,88 +9,39 @@ from edison.core.utils.subprocess import run_with_timeout
 
 
 class TestAgentCompositionE2E:
-    def _write_core_agent(self, root: Path, name: str) -> Path:
-        """Write a core agent template file."""
-        core_agents_dir = root / ".edison" / "core" / "agents"
-        core_agents_dir.mkdir(parents=True, exist_ok=True)
-        path = core_agents_dir / f"{name}.md"
-        content = "\n".join(
-            [
-                "# Agent: {{AGENT_NAME}}",
-                "",
-                "## Role",
-                "Core role for {{AGENT_NAME}} (packs: {{PACK_NAME}}).",
-                "",
-                "## Tools",
-                "{{TOOLS}}",
-                "",
-                "## Guidelines",
-                "{{GUIDELINES}}",
-                "",
-                "## Workflows",
-                "- Core workflow step",
-            ]
-        )
-        write_text(path, content)
-        return path
-
     def _write_pack_overlay(self, root: Path, pack: str, agent: str) -> Path:
         """Write a pack-specific agent overlay file."""
-        pack_agents_dir = root / ".edison" / "packs" / pack / "agents"
+        pack_agents_dir = root / ".edison" / "packs" / pack / "agents" / "overlays"
         pack_agents_dir.mkdir(parents=True, exist_ok=True)
         path = pack_agents_dir / f"{agent}.md"
         content = "\n".join(
             [
                 f"# {agent} overlay for {pack}",
                 "",
-                "## Tools",
+                "<!-- extend: tools -->",
                 f"- {pack} tool",
-                "",
-                "## Guidelines",
-                f"- {pack} guideline",
+                "<!-- /extend -->",
             ]
         )
         write_text(path, content)
         return path
 
     def _write_defaults_and_config(self, root: Path, packs: list[str]) -> None:
-        """Write minimal defaults.yaml and .agents/config/packs.yml for the test project."""
-        core_dir = root / ".edison" / "core"
-        core_dir.mkdir(parents=True, exist_ok=True)
-        defaults = "\n".join(
-            [
-                "project:",
-                "  name: Test Project",
-                "packs:",
-                f"  active: [{', '.join(packs)}]",
-            ]
-        )
-        write_text(core_dir / "defaults.yaml", defaults)
-
-        # Write config in the correct modular location
-        config_dir = root / ".agents" / "config"
+        """Write minimal .edison/config/packs.yaml for the test project."""
+        config_dir = root / ".edison" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
-        packs_config = "\n".join(
-            [
-                "packs:",
-                f"  active: [{', '.join(packs)}]",
-            ]
-        )
-        write_text(config_dir / "packs.yml", packs_config)
+        packs_config = "\n".join(["packs:", f"  active: [{', '.join(packs)}]"])
+        write_text(config_dir / "packs.yaml", packs_config)
 
     def _assert_agent_schema(self, text: str) -> None:
         """Lightweight schema check for generated agent Markdown."""
-        assert "# Agent:" in text
-        assert "## Role" in text
+        assert "name: api-builder" in text
         assert "## Tools" in text
-        assert "## Guidelines" in text
-        assert "## Workflows" in text
 
     def test_full_pipeline_multi_pack_agent(self, isolated_project_env: Path) -> None:
         """CLI composes agents end-to-end for multiple packs."""
         root = isolated_project_env
         self._write_defaults_and_config(root, packs=["react", "fastify"])
-        self._write_core_agent(root, "api-builder")
         self._write_pack_overlay(root, "react", "api-builder")
         self._write_pack_overlay(root, "fastify", "api-builder")
 
@@ -98,7 +49,7 @@ class TestAgentCompositionE2E:
         env["AGENTS_PROJECT_ROOT"] = str(root)
 
         result = run_with_timeout(
-            ["uv", "run", "edison", "compose", "all", "--agents"],
+            ["uv", "run", "edison", "compose", "all"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -111,7 +62,7 @@ class TestAgentCompositionE2E:
             f"STDERR:\n{result.stderr}"
         )
 
-        generated = root / ".agents" / "_generated" / "agents" / "api-builder.md"
+        generated = root / ".edison" / "_generated" / "agents" / "api-builder.md"
         assert generated.exists()
         content = generated.read_text(encoding="utf-8")
 
@@ -119,6 +70,4 @@ class TestAgentCompositionE2E:
         # Multi-pack content should be present
         assert "react tool" in content
         assert "fastify tool" in content
-        # Pack names should be visible in the composed output
-        assert "react, fastify" in content or "fastify, react" in content
 

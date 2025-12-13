@@ -156,7 +156,7 @@ def test_validators_constitution_has_role_header(tmp_path, real_args):
 
 
 def test_validators_constitution_has_mandatory_reads(tmp_path, real_args):
-    """Test that mandatory reads match constitution.yaml validators section."""
+    """v2.0.0: mandatoryReads are empty; content is embedded instead."""
     _setup_minimal_edison_structure(tmp_path)
     real_args.project_root = str(tmp_path)
 
@@ -167,9 +167,8 @@ def test_validators_constitution_has_mandatory_reads(tmp_path, real_args):
     validators_constitution = config_dir / "_generated" / "constitutions" / "VALIDATORS.md"
 
     content = validators_constitution.read_text(encoding="utf-8")
-    # Check for mandatory reads from constitution.yaml
-    assert "guidelines/VALIDATION.md: Validation guidelines" in content, \
-        "VALIDATORS.md should have mandatory reads from constitution.yaml"
+    # Embedded constitution base content should be present
+    assert "## TDD Principles (All Roles)" in content
 
 
 def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
@@ -187,7 +186,7 @@ def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
     # Verify that rules section was rendered (should have at least one rule)
     # The actual rule content depends on the bundled rules registry
     # We just verify the template was processed correctly
-    assert "{{#each rules.validator}}" not in content, \
+    assert "{{#each rules" not in content, \
         "Template placeholders should be rendered"
     assert "{{/each}}" not in content, \
         "Template placeholders should be rendered"
@@ -242,7 +241,7 @@ def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
 
 
 def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
-    """Test that mandatory reads match constitution.yaml orchestrator section."""
+    """v2.0.0: mandatoryReads are empty; content is embedded instead."""
     _setup_minimal_edison_structure(tmp_path)
     real_args.project_root = str(tmp_path)
 
@@ -253,8 +252,7 @@ def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
     orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
 
     content = orchestrators_constitution.read_text(encoding="utf-8")
-    assert "guidelines/SESSION_WORKFLOW.md: Session workflow" in content, \
-        "ORCHESTRATORS.md should have mandatory reads from constitution.yaml"
+    assert "## TDD Principles (All Roles)" in content
 
 
 def test_orchestrators_constitution_has_rules_and_roster_references(tmp_path, real_args):
@@ -271,7 +269,7 @@ def test_orchestrators_constitution_has_rules_and_roster_references(tmp_path, re
 
     content = orchestrators_constitution.read_text(encoding="utf-8")
     # Verify Handlebars markers were rendered and an actual rule id appears
-    assert "{{#each rules.orchestrator}}" not in content
+    assert "{{#each rules" not in content
     rules = get_rules_for_role("orchestrator")
     assert rules, "Expected orchestrator rules to be available"
     assert rules[0]["id"] in content, "Orchestrator rules should be rendered into constitution"

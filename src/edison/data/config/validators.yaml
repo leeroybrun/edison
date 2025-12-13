@@ -20,6 +20,10 @@ validation:
     concurrency: 4        # max parallel validators when mode=parallel
     timeout: 300          # per-validator timeout in seconds
 
+  # Defaults for validator assignment
+  defaults:
+    wave: comprehensive   # Default wave for validators without explicit wave assignment
+
   # Engine definitions (execution backends)
   # Each engine defines how to execute validators using that backend
   engines:

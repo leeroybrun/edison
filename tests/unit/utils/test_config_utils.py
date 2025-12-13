@@ -75,11 +75,11 @@ def config_utils(isolated_project_env: Path):
     from edison.core.utils import config
     config._load_config_section_impl.cache_clear()
 
-    # Import workflow module for state functions
-    from edison.core.config.domains import workflow
+    # Import WorkflowConfig class for state functions
+    from edison.core.config.domains.workflow import WorkflowConfig
 
-    # Return both modules - utils for generic functions, workflow for state functions
-    return {"utils": config, "workflow": workflow}
+    # Return utils module and WorkflowConfig instance
+    return {"utils": config, "workflow": WorkflowConfig(repo_root=isolated_project_env)}
 
 
 def test_load_config_section_returns_section(config_utils):
@@ -184,7 +184,13 @@ def test_get_semantic_state_unknown_returns_key(config_utils):
 def test_load_config_section_with_explicit_repo_root(isolated_project_env: Path):
     """load_config_section accepts explicit repo_root parameter."""
     _write_test_config(isolated_project_env)
+    
+    # Clear caches to ensure test config is loaded
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
+    
     from edison.core.utils import config
+    config._load_config_section_impl.cache_clear()
 
     section = config.load_config_section(
         "statemachine",

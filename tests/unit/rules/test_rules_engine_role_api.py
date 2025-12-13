@@ -12,10 +12,16 @@ from __future__ import annotations
 import pytest
 
 from edison.core.rules import (
-    load_bundled_rules,
+    RulesRegistry,
     get_rules_for_role,
     filter_rules,
 )
+
+
+def load_bundled_rules():
+    """Load rules using the new RulesRegistry API."""
+    registry = RulesRegistry()
+    return registry.load_composed_rules()
 
 
 def test_get_all_returns_all_rules_from_registry() -> None:

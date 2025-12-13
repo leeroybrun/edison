@@ -23,10 +23,11 @@ def test_engine_api_imports() -> None:
         run_validator,
         EngineRegistry,
         ValidationResult,
-        ValidatorConfig,
         CLIEngine,
         ZenMCPEngine,
     )
+    # ValidatorMetadata is now in registries module
+    from edison.core.registries.validators import ValidatorMetadata
 
     exported = {
         "validate_dimension_weights": validate_dimension_weights,
@@ -34,23 +35,22 @@ def test_engine_api_imports() -> None:
         "run_validator": run_validator,
         "EngineRegistry": EngineRegistry,
         "ValidationResult": ValidationResult,
-        "ValidatorConfig": ValidatorConfig,
+        "ValidatorMetadata": ValidatorMetadata,
         "CLIEngine": CLIEngine,
         "ZenMCPEngine": ZenMCPEngine,
     }
 
     for name, value in exported.items():
-        assert value is not None, f"{name} should be exported from edison.core.qa.validator"
+        assert value is not None, f"{name} should be exported from appropriate module"
 
 
 def test_engines_module_structure() -> None:
     """The engines module should have the expected structure."""
     from edison.core.qa import engines
 
-    # Check main exports
+    # Check main exports (ValidatorConfig moved to registries as ValidatorMetadata)
     assert hasattr(engines, "EngineRegistry")
     assert hasattr(engines, "ValidationResult")
-    assert hasattr(engines, "ValidatorConfig")
     assert hasattr(engines, "EngineConfig")
     assert hasattr(engines, "CLIEngine")
     assert hasattr(engines, "ZenMCPEngine")
@@ -73,7 +73,6 @@ def test_parsers_module_structure() -> None:
             "edison.core.qa.engines.base",
             {
                 "ValidationResult",
-                "ValidatorConfig",
                 "EngineConfig",
                 "EngineProtocol",
             },
@@ -94,6 +93,13 @@ def test_parsers_module_structure() -> None:
             "edison.core.qa.engines.registry",
             {
                 "EngineRegistry",
+            },
+        ),
+        (
+            "edison.core.registries.validators",
+            {
+                "ValidatorRegistry",
+                "ValidatorMetadata",
             },
         ),
     ],

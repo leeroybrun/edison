@@ -177,7 +177,7 @@ composition:
       description: "JSON schemas"
       composition_mode: json_merge
       dedupe: false
-      registry: edison.core.composition.registries.schemas.JsonSchemaComposer
+      registry: edison.core.composition.registries.schemas.JsonSchemaRegistry
       content_path: "schemas"
       file_pattern: "*.json"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/schemas"

@@ -17,7 +17,6 @@ from edison.core.utils import git as git_utils
 from edison.core.utils import subprocess as subprocess_utils
 from edison.core.task.paths import _get_root as task_paths_get_root
 from edison.core.composition import includes as composition_includes
-from edison.core.composition.registries import guidelines as composition_guidelines
 # from edison.core.adapters.sync import zen as zen_adapter
 from edison.core.adapters.platforms import cursor as cursor_adapter
 from tests.helpers.cache_utils import reset_edison_caches
@@ -101,7 +100,6 @@ class TestRepoRootConsolidation:
         composition_includes._REPO_ROOT_OVERRIDE = None
         
         assert composition_includes._repo_root() == temp_git_repo
-        # guidelines module uses PathResolver directly, no _repo_root wrapper
 
     def test_utils_subprocess_timeout_context(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that subprocess timeout configuration can resolve root."""

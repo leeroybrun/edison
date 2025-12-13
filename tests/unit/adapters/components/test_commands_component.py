@@ -50,34 +50,33 @@ def _build_context(tmp_path: Path) -> AdapterContext:
 
 
 def test_command_composer_writes_platform_files(tmp_path: Path) -> None:
+    """Test that CommandComposer loads bundled commands and writes them.
+
+    CommandComposer uses ConfigManager which loads bundled commands from
+    edison.data/config/commands.yaml. This test verifies that bundled
+    commands are properly written to the output directory.
+    """
     ctx = _build_context(tmp_path)
 
-    # Core commands config
-    commands_yaml = ctx.core_dir / "config" / "commands.yaml"
-    commands_yaml.write_text(
-        """
-commands:
-  definitions:
-    - id: hello
-      domain: general
-      command: hello-world
-      short_desc: Say hello
-      full_desc: Prints hello
-      cli: hello
-      args: []
-      when_to_use: anytime
-      related_commands: []
-""",
-        encoding="utf-8",
-    )
-
     composer = CommandComposer(ctx)
-    results = composer.compose_for_platform("claude", composer.compose())
+    definitions = composer.compose()
 
-    # Should write a markdown file to .claude/commands/
-    assert "hello" in results
-    out_path = results["hello"]
-    assert out_path.exists()
-    content = out_path.read_text(encoding="utf-8")
-    assert "hello-world" in content
-    assert "Say hello" in content
+    # Should have bundled commands loaded
+    assert len(definitions) > 0, "Should have bundled command definitions"
+
+    # Compose for claude platform
+    results = composer.compose_for_platform("claude", definitions)
+
+    # Should write bundled commands (e.g., session-next, task-claim)
+    assert len(results) > 0, "Should write command files"
+
+    # Verify at least one known bundled command exists
+    known_commands = {"session-next", "session-status", "task-claim", "task-status"}
+    found_commands = set(results.keys())
+    assert found_commands & known_commands, f"Expected bundled commands, got: {found_commands}"
+
+    # Verify files are actually written
+    for cmd_id, out_path in results.items():
+        assert out_path.exists(), f"Command file should exist: {out_path}"
+        content = out_path.read_text(encoding="utf-8")
+        assert len(content) > 0, f"Command file should have content: {cmd_id}"

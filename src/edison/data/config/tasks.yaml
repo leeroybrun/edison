@@ -4,6 +4,7 @@ tasks:
     qaRoot: ".project/qa"
     metaRoot: ".project/tasks/meta"
     template: ".project/tasks/TEMPLATE.md"
+    evidenceSubdir: "validation-evidence"
   defaults:
     ownerPrefix: "- **Owner:** "
     validatorOwnerPrefix: "- **Validator Owner:** "

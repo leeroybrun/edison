@@ -64,7 +64,8 @@ class MockEntity(BaseEntity):
 class MockRepository(BaseRepository[MockEntity]):
     """In-memory repository for testing."""
 
-    def __init__(self):
+    def __init__(self, project_root: Path):
+        super().__init__(project_root=project_root)
         self._storage: Dict[EntityId, MockEntity] = {}
         self.entity_type = "test_entity"
 
@@ -167,47 +168,25 @@ def repo_env(tmp_path, monkeypatch):
     write_yaml(
         config_dir / "defaults.yaml",
         {
-            "statemachine": {
-                "test_entity": state_machine_spec,
-            },
+            # State machine config is sourced from workflow.statemachine (canonical).
+            "workflow": {"statemachine": {"test_entity": state_machine_spec}},
         },
     )
+    # Ensure subsequent domain config reads pick up our freshly-written file.
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
 
     # Set repo root so config loading works
     monkeypatch.setenv("EDISON_ROOT", str(repo))
     monkeypatch.chdir(repo)
 
-    # Register test_entity state machine via real configuration
-    # We add the test_entity configuration to the state machine registry
-    # by extending the real registry, not by mocking
-    from edison.core.state.engine import RichStateMachine
-    from edison.core.state.guards import registry as guard_registry
-    from edison.core.state.conditions import registry as condition_registry
-    from edison.core.state.actions import registry as action_registry
-    from edison.core.state import transitions
-
-    # Create real state machine instance for test_entity
-    test_entity_sm = RichStateMachine(
-        "test_entity",
-        state_machine_spec,
-        guard_registry,
-        condition_registry,
-        action_registry,
-    )
-
-    # Register it in the real state machine cache
-    # This is configuration, not mocking - we're adding a real entity type
-    if not hasattr(transitions, '_STATE_MACHINE_CACHE'):
-        transitions._STATE_MACHINE_CACHE = {}
-    transitions._STATE_MACHINE_CACHE['test_entity'] = test_entity_sm
-
     return repo
 
 
 @pytest.fixture
-def repository():
+def repository(repo_env: Path):
     """Create test repository instance."""
-    return MockRepository()
+    return MockRepository(project_root=repo_env)
 
 
 @pytest.fixture

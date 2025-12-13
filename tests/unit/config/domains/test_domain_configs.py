@@ -75,27 +75,28 @@ class TestCompositionConfig:
         assert comp_config.min_shingles >= 1
         assert 0 < comp_config.threshold <= 1.0
     
-    def test_composition_config_returns_output_paths(self, tmp_path: Path) -> None:
-        """CompositionConfig should return output path configuration."""
+    def test_composition_config_returns_content_types(self, tmp_path: Path) -> None:
+        """CompositionConfig should return content types configuration."""
         from edison.core.config.domains import CompositionConfig
-        
+
         comp_config = CompositionConfig(repo_root=tmp_path)
-        
-        # Should have outputs configuration
-        outputs = comp_config.outputs
-        assert outputs is not None
-        assert "canonical_entry" in outputs or "agents" in outputs
-    
+
+        # Should have content types from bundled config
+        content_types = comp_config.content_types
+        assert content_types is not None
+        # Should have at least some content types defined
+        assert len(content_types) > 0
+
     def test_composition_config_caches_result(self, tmp_path: Path) -> None:
         """CompositionConfig should cache loaded configuration."""
         from edison.core.config.domains import CompositionConfig
-        
+
         comp_config = CompositionConfig(repo_root=tmp_path)
-        
+
         # Access twice
-        first = comp_config.outputs
-        second = comp_config.outputs
-        
+        first = comp_config.content_types
+        second = comp_config.content_types
+
         # Should be same object (cached)
         assert first is second
 

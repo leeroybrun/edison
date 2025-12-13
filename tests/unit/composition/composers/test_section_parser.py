@@ -268,9 +268,9 @@ class TestMergeExtensions:
     def test_merge_single_extension(self) -> None:
         """Merge one extension into a section."""
         base_content = """
-<!-- SECTION: tools -->
+<!-- section: tools -->
 - Base tool
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 """
         extensions = {"tools": ["- Extended tool"]}
 
@@ -279,15 +279,15 @@ class TestMergeExtensions:
 
         assert "Base tool" in result
         assert "Extended tool" in result
-        assert "<!-- SECTION: tools -->" in result
-        assert "<!-- /SECTION: tools -->" in result
+        assert "<!-- section: tools -->" in result
+        assert "<!-- /section: tools -->" in result
 
     def test_merge_multiple_extensions(self) -> None:
         """Merge multiple extensions into same section."""
         base_content = """
-<!-- SECTION: tools -->
+<!-- section: tools -->
 - Base tool
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 """
         extensions = {"tools": ["- Pack A tool", "- Pack B tool"]}
 
@@ -301,24 +301,24 @@ class TestMergeExtensions:
     def test_merge_preserves_section_markers(self) -> None:
         """Markers should be preserved after merging."""
         base_content = """
-<!-- SECTION: composed-additions -->
-<!-- /SECTION: composed-additions -->
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->
 """
         extensions = {"composed-additions": ["## New Section\nNew content"]}
 
         parser = SectionParser()
         result = parser.merge_extensions(base_content, extensions)
 
-        assert "<!-- SECTION: composed-additions -->" in result
-        assert "<!-- /SECTION: composed-additions -->" in result
+        assert "<!-- section: composed-additions -->" in result
+        assert "<!-- /section: composed-additions -->" in result
         assert "## New Section" in result
 
     def test_merge_no_extensions(self) -> None:
         """No extensions returns original content."""
         base_content = """
-<!-- SECTION: tools -->
+<!-- section: tools -->
 Content
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 """
         parser = SectionParser()
         result = parser.merge_extensions(base_content, {})
@@ -328,9 +328,9 @@ Content
     def test_merge_unmatched_extension_ignored(self) -> None:
         """Extensions for non-existent sections are ignored."""
         base_content = """
-<!-- SECTION: tools -->
+<!-- section: tools -->
 Content
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 """
         extensions = {"nonexistent": ["Should be ignored"]}
 

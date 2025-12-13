@@ -30,6 +30,6 @@ def test_all_agents_have_metadata_version_and_linecount() -> None:
         metadata = frontmatter.get("metadata")
 
         assert metadata, f"{path.name} missing metadata section"
-        assert metadata.get("version") == "1.0.0"
+        assert metadata.get("version") == "2.0.0"
         assert "approx_lines" in metadata, f"{path.name} missing approx_lines"
         assert metadata["approx_lines"] == _line_count(text)
