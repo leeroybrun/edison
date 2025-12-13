@@ -55,13 +55,13 @@
 
 ### Type Hints
 - **Path**: `guidelines/python/TYPING.md`
-- **Purpose**: mypy strict mode compliance
+- **Purpose**: Strict type checker compliance
 - **When to Read**: Before writing Python code
-- **Key Topics**: Type annotations, generics, forward references, mypy configuration
+- **Key Topics**: Type annotations, generics, forward references, type checker configuration
 
 ### Testing
 - **Path**: `guidelines/python/TESTING.md`
-- **Purpose**: pytest patterns without mocks
+- **Purpose**: Test framework patterns without mocks
 - **When to Read**: Before writing tests
 - **Key Topics**: NO MOCKS policy, fixtures, tmp_path, real behavior testing
 
@@ -75,7 +75,7 @@
 - **Path**: `guidelines/python/PYTHON.md`
 - **Purpose**: General Python best practices for Edison
 - **When to Read**: Before starting Python development
-- **Key Topics**: Project structure, imports, code style, tooling (mypy, ruff, pytest)
+- **Key Topics**: Project structure, imports, code style, tooling (type checker, linter, test runner)
 
 ## Additional Shared Guidelines
 
@@ -115,11 +115,11 @@
 - **When to Read**: Before creating any documentation
 - **Key Topics**: No NOTES.md, no SUMMARY.md, canonical evidence only
 
-### Motion 12 Patterns
-- **Path**: `guidelines/shared/MOTION_12_PATTERNS.md`
-- **Purpose**: Motion 12 integration patterns
-- **When to Read**: When working with Motion 12
-- **Key Topics**: Motion-specific patterns and best practices
+### Pack-Specific Patterns
+- **Path**: `packs/<pack>/guidelines/**` (composed into `.edison/_generated/guidelines/**` when active)
+- **Purpose**: Technology-specific patterns provided by active packs
+- **When to Read**: When implementing features covered by an active pack
+- **Key Topics**: Pack-specific best practices, constraints, and checklists
 
 ## Usage Pattern
 

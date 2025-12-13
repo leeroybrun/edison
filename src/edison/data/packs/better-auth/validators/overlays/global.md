@@ -1,4 +1,4 @@
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 # Better Auth - Global Validator Overlay
 
 General best practices and validation for all Better Auth implementations across the codebase.
@@ -23,4 +23,4 @@ General best practices and validation for all Better Auth implementations across
 - Integration tests for middleware
 - End-to-end tests for auth flows
 - Security tests for vulnerability checks
-<!-- /EXTEND -->
+<!-- /extend -->

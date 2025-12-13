@@ -25,11 +25,11 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 - After any context compaction
 
 ## Mandatory Preloads (All Validators)
-{{#each mandatoryReads.validators}}
-{{/each}}
+{{include:constitutions/validators-base.md}}
 
 ## Optional References
-{{#each optionalReads.validators}}
+{{#each optionalReads}}
+- {{this.path}}: {{this.purpose}}
 {{/each}}
 
 ## Validation Workflow
@@ -42,7 +42,7 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 See: guidelines/validators/OUTPUT_FORMAT.md
 
 ## Applicable Rules
-{{#each rules.validator}}
+{{#each rules}}
 ### {{this.id}}: {{this.name}}
 {{this.content}}
 {{/each}}

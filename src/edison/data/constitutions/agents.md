@@ -26,11 +26,11 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 - When instructed by the orchestrator
 
 ## Mandatory Preloads (All Agents)
-{{#each mandatoryReads.agents}}
-{{/each}}
+{{include:constitutions/agents-base.md}}
 
 ## Optional References
-{{#each optionalReads.agents}}
+{{#each optionalReads}}
+- {{this.path}}: {{this.purpose}}
 {{/each}}
 
 ## Workflow Requirements
@@ -43,7 +43,7 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 See: guidelines/agents/OUTPUT_FORMAT.md
 
 ## Applicable Rules
-{{#each rules.agent}}
+{{#each rules}}
 ### {{this.id}}: {{this.name}}
 {{this.content}}
 {{/each}}

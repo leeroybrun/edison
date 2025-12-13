@@ -41,8 +41,8 @@ Validators are **independent code reviewers** that ensure production-ready quali
 ### Step 1: Context7 Knowledge Refresh (MANDATORY)
 
 - Follow `.edison/_generated/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` before validating any task that touches post-training packages.
-- Use the pack-provided `<!-- SECTION: tech-stack -->
-<!-- /SECTION: tech-stack -->` hints to target the correct libraries and topics.
+- Use the pack-provided `<!-- section: tech-stack -->
+<!-- /section: tech-stack -->` hints to target the correct libraries and topics.
 - **Why**: Your training data is stale for post-training packages. Using outdated patterns can cause complete feature failures, breaking API changes, and security vulnerabilities.
 
 ### Step 2: Gather Evidence (MANDATORY)
@@ -68,16 +68,16 @@ Validators should run domain-specific verification commands and save output to e
 
 ```bash
 # Type checking
-mypy --strict src/ > command-type-check.txt 2>&1
+<type-check-command> > command-type-check.txt 2>&1
 
 # Linting
-ruff check src/ tests/ > command-lint.txt 2>&1
+<lint-command> > command-lint.txt 2>&1
 
 # Testing
-pytest tests/ -v --tb=short > command-test.txt 2>&1
+<test-command> > command-test.txt 2>&1
 
 # Build
-python -m build > command-build.txt 2>&1 || echo "No build configured"
+<build-command> > command-build.txt 2>&1
 ```
 
 **All evidence files must be created BEFORE validation begins.**
@@ -144,8 +144,8 @@ Every validator MUST perform these universal checks:
 **Goal**: Production-ready code standards
 
 **Type Safety**:
-- ✅ Strong typing (avoid `any`/`unknown` without justification)
-- ✅ No type assertion workarounds (fix root cause)
+- ✅ Strong typing (avoid “escape hatch”/dynamic types without justification)
+- ✅ No unsafe type coercions/workarounds (fix root cause)
 - ✅ Proper interface/type definitions
 - ✅ Explicit return types on functions
 - ✅ Type checking passes with zero errors
@@ -279,7 +279,7 @@ If a domain-specific validator encounters issues outside its domain:
 - Multiple domain violations
 - Unclear whether issue is blocking
 
-**Example**: Python validator finds architecture violation affecting multiple domains → escalate to global validator for comprehensive review.
+**Example**: A domain-specific validator finds an architecture violation affecting multiple domains → escalate to the global validator for comprehensive review.
 
 ---
 
@@ -298,7 +298,7 @@ See `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` for detailed out
 ## Maintainability Baseline
 
 - **Long-Term Maintainability**: no clever shortcuts, consistent patterns, documented trade-offs, no hardcoded values, avoid premature optimization, and keep dependencies justified.
-- **Red Flags**: copy-paste blocks, unexplained magic numbers, tight coupling, deprecated APIs, hidden `@ts-ignore`/`any`, TODOs without tickets, or focused/skipped tests.
+- **Red Flags**: copy-paste blocks, unexplained magic numbers, tight coupling, deprecated APIs, hidden type suppressions/dynamic types, TODOs without tickets, or focused/skipped tests.
 
 ---
 

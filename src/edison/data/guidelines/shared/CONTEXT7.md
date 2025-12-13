@@ -10,19 +10,7 @@ For agent-specific patterns, detailed examples, and deep-dive workflows, see:
 - Check your project's config for the complete list and supported versions
 
 ## Workflow (two steps)
-1) Resolve library ID first
-```ts
-const pkgId = await mcp__context7__resolve_library_id({ libraryName: '<package-name>' })
-```
-2) Query docs using resolved ID
-```ts
-await mcp__context7__get_library_docs({
-  context7CompatibleLibraryID: pkgId,
-  topic: '<relevant topic>',
-  mode: 'code',
-  page: 1
-})
-```
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
 
 ## Rules
 - Always query Context7 BEFORE coding with post‑training packages.
@@ -36,11 +24,11 @@ await mcp__context7__get_library_docs({
 
 Read full: `.edison/_generated/guidelines/shared/CONTEXT7.md`.
 
-<!-- SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
+<!-- section: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
 **Context7 evidence:** Create `context7-<package>.txt` markers when using postTrainingPackages; guards block `wip→done` if missing.
-<!-- /SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
+<!-- /section: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
 
-<!-- SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
+<!-- section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 ## Evidence markers (required when used)
 - When a task uses any package listed in `postTrainingPackages` (see ConfigManager overlays: `.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`), include a marker file per package in the current round evidence directory, e.g.:
   - `.project/qa/validation-evidence/<task-id>/round-<N>/context7-<package>.txt`
@@ -48,7 +36,7 @@ Read full: `.edison/_generated/guidelines/shared/CONTEXT7.md`.
 - Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.
 - Notes in task files (e.g., "Context7 (<library>)") are NOT accepted as evidence.
 - When HMAC stamping is enabled in config, include the stamped digest inside each marker.
-<!-- /SECTION: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
+<!-- /section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 
 ## Auto-detection & enforcement
 - `edison task ready` auto-detects post-training packages from the git diff and blocks readiness if matching markers are absent.

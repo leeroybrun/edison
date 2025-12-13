@@ -5,8 +5,9 @@ pack:
 
 triggers:
   filePatterns:
-    - "apps/api/**/*"
-    - "packages/api-core/**/*"
+    - "**/*fastify*"
+    - "**/src/**/routes/**"
+    - "**/src/**/plugins/**"
 
 provides:
   guidelines:

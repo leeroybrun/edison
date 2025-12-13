@@ -83,7 +83,7 @@ A task moves to `tasks/validated/` only when:
 Before marking any task as ready, run:
 
 ```bash
-pnpm run type-check && pnpm run lint && pnpm run test && pnpm run build
+<type-check-command> && <lint-command> && <test-command> && <build-command>
 ```
 
 All must pass with zero warnings.
@@ -196,11 +196,9 @@ function DataList({ data, isLoading, error }) {
 
 ### Responsive Design
 
-Breakpoints (Tailwind defaults):
-- `sm`: 640px (mobile landscape)
-- `md`: 768px (tablet)
-- `lg`: 1024px (desktop)
-- `xl`: 1280px (large desktop)
+Breakpoints:
+- Define breakpoints in the project's design system / configuration
+- Prefer a small, consistent set (e.g. small / medium / large / extra-large)
 
 Mobile-first approach:
 
@@ -221,17 +219,10 @@ Minimum requirements:
 - Focus indicators: Visible on all interactive elements
 - Keyboard navigation: All functionality accessible via keyboard
 - Screen reader: Semantic HTML + ARIA where needed
-- Reduced motion: Respect `prefers-reduced-motion`
+- Reduced animations: Respect the OS/browser reduced-animation preference (via the appropriate media feature)
 
 ```tsx
-<motion.div
-  animate={{ opacity: 1 }}
-  transition={{ duration: 0.2 }}
-  // Respect user preference
-  style={{
-    '@media (prefers-reduced-motion: reduce)': { transition: 'none' }
-  }}
->
+<div style={/* disable transitions when reduced animations are requested */}>
 ```
 
 ### Dark Mode Support

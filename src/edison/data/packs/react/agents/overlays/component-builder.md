@@ -1,20 +1,20 @@
 # component-builder overlay for React pack
 
-<!-- EXTEND: Tools -->
-- React 19 with strict TypeScript; hooks/components in `apps/dashboard/src/**`.
-- Testing with Vitest/RTL via `pnpm test --filter dashboard`.
+<!-- extend: tools -->
+- React 19 with strict typing; place hooks/components in your UI application's component directories.
+- Testing with Vitest/RTL via your project's test command (avoid hardcoded workspace filters).
 - Motion 12.23+ for animations (formerly Framer Motion).
 - Zod for form validation schemas.
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 - Favor composition and pure components; avoid side effects in render paths.
-- Use `use`/Server Components patterns when inside Next.js, otherwise standard client components with suspense-ready data flows.
+- If you are in a Server Components-capable environment, prefer server-first data fetching; otherwise keep client data flows suspense-ready.
 - Keep props typed, stable, and documented; lift shared state; memoize where performance matters.
 - Ensure accessibility (labels, focus, keyboard) and responsive layouts aligned to design system.
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: ReactComponentPatterns -->
+<!-- section: ReactComponentPatterns -->
 ## Client Components Pattern
 
 When you need interactivity, state, or browser APIs, use the `'use client'` directive:
@@ -25,7 +25,7 @@ When you need interactivity, state, or browser APIs, use the `'use client'` dire
 import { useState } from 'react'
 import { motion } from 'motion/react'
 
-export function LeadList({ leads }) {
+export function ItemList({ items }) {
   const [filter, setFilter] = useState('')
 
   return (
@@ -35,7 +35,7 @@ export function LeadList({ leads }) {
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         className="w-full px-4 py-2 rounded-md font-sans"
-        placeholder="Filter leads..."
+        placeholder="Filter items..."
       />
 
       <motion.div
@@ -43,10 +43,10 @@ export function LeadList({ leads }) {
         animate={{ opacity: 1 }}
         className="mt-4 space-y-2"
       >
-        {leads
-          .filter((lead) => lead.name.includes(filter))
-          .map((lead) => (
-            <LeadCard key={lead.id} lead={lead} />
+        {items
+          .filter((item) => item.name.includes(filter))
+          .map((item) => (
+            <ItemCard key={item.id} item={item} />
           ))}
       </motion.div>
     </div>
@@ -92,12 +92,12 @@ useEffect(() => {
 import { useState } from 'react'
 import { z } from 'zod'
 
-const leadSchema = z.object({
+const itemSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email'),
 })
 
-export function LeadForm() {
+export function ItemForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -109,14 +109,14 @@ export function LeadForm() {
       email: formData.get('email') as string,
     }
 
-    const result = leadSchema.safeParse(data)
+    const result = itemSchema.safeParse(data)
     if (!result.success) {
       setErrors(result.error.flatten().fieldErrors)
       return
     }
 
     // Submit to API
-    await fetch('/api/v1/leads', {
+    await fetch('/api/v1/items', {
       method: 'POST',
       body: JSON.stringify(result.data),
     })
@@ -201,7 +201,7 @@ export function AnimatedList({ items }) {
 - Import from `motion/react` (not `framer-motion`)
 - Use `AnimatePresence` for exit animations
 - Prefer `variants` for coordinated animations
-<!-- /SECTION: ReactComponentPatterns -->
+<!-- /section: ReactComponentPatterns -->
 
 
 

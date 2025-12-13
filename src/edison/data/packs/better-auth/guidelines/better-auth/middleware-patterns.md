@@ -7,7 +7,7 @@ Best practices for implementing authentication middleware with Better Auth.
 ### Next.js Middleware Pattern
 ```typescript
 // middleware.ts - Global authentication middleware
-import { betterAuth } from '@/lib/auth';
+import { betterAuth } from '<auth-module>';
 import { NextRequest, NextResponse } from 'next/server';
 
 const protectedRoutes = ['/dashboard', '/settings', '/api/protected'];

@@ -28,7 +28,7 @@
 
 4. **Clear `.next` cache** after CSS changes:
    ```bash
-   rm -rf apps/dashboard/.next && npm run dev
+   rm -rf <framework-cache-dir> && <dev-command>
    ```
 
 5. **PostCSS plugin** (v4 syntax):

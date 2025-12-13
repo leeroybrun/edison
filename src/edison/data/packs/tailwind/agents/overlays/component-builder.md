@@ -1,19 +1,19 @@
 # component-builder overlay for Tailwind pack
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 - Tailwind CSS v4 with `@import "tailwindcss"` syntax; config in `postcss.config.mjs` using `@tailwindcss/postcss` plugin.
-- Dark theme design tokens from `../DESIGN.md`.
-- `pnpm lint --filter dashboard` and `pnpm test --filter dashboard` for UI.
-<!-- /EXTEND -->
+- Dark theme design tokens from your project's design guidelines.
+- Run your project's lint/test commands to verify UI quality (avoid hardcoded workspace filters).
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 - Use v4 syntax (no `@tailwind base/components/utilities`); clear `.next` cache if utilities fail.
 - Always add `font-sans` and dark-theme colors; prefer arbitrary values for custom palette.
 - Build accessible, responsive components; keep class names concise with `cn` helper.
 - Follow Context7 for React 19/Next 16/Tailwind v4 updates before coding.
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: TailwindV4Patterns -->
+<!-- section: TailwindV4Patterns -->
 ## CRITICAL: Tailwind CSS v4 Syntax
 
 **Tailwind v4 is DIFFERENT from v3!** Using v3 syntax will break styling.
@@ -55,7 +55,7 @@
 
 ```bash
 # If styles don't apply, clear cache and restart
-rm -rf apps/dashboard/.next && npm run dev
+rm -rf <framework-cache-dir> && <dev-command>
 ```
 
 ### Rule 5: PostCSS plugin (v4 syntax)
@@ -98,7 +98,7 @@ export default {
 
 ```tsx
 import { type ComponentProps } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '<utils-module>'
 
 interface MetricCardProps extends ComponentProps<'div'> {
   title: string
@@ -150,7 +150,7 @@ export function MetricCard({
   )
 }
 ```
-<!-- /SECTION: TailwindV4Patterns -->
+<!-- /section: TailwindV4Patterns -->
 
 
 

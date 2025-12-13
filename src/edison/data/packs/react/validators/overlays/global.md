@@ -1,13 +1,13 @@
 # global overlay for React pack
 
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 ## React Validation Context
 
 ### Guidelines
-{{include:.edison/_generated/guidelines/react/hooks-patterns.md}}
-{{include:.edison/_generated/guidelines/react/component-design.md}}
-{{include:.edison/_generated/guidelines/react/server-client-components.md}}
-{{include:.edison/_generated/guidelines/react/accessibility.md}}
+{{include:packs/react/guidelines/react/hooks-patterns.md}}
+{{include:packs/react/guidelines/react/component-design.md}}
+{{include:packs/react/guidelines/react/server-client-components.md}}
+{{include:packs/react/guidelines/react/accessibility.md}}
 
 ### Concrete Checks
 - Follow Rules of Hooks; no conditional hooks.
@@ -15,4 +15,4 @@
 - Add proper Suspense boundaries and meaningful fallback UI.
 - Use `use()` for promise handling where appropriate in React 19.
 - Ensure accessible names, roles, and keyboard navigation.
-<!-- /EXTEND -->
+<!-- /extend -->

@@ -259,20 +259,20 @@ edison qa validate <task-id> --execute
 **Orchestrators can ADD validators but cannot remove auto-detected ones.**
 
 Sometimes auto-detection misses validators because:
-- React components in `.js` files (not `.tsx`)
+- UI components living in unexpected file extensions or locations (outside the configured triggers)
 - API logic in non-standard locations
 - Framework-specific patterns not covered by triggers
 
 **To add extra validators:**
 ```bash
-# Add react validator even if no .tsx files
-edison qa validate TASK-123 --add-validators react --execute
+# Add a validator even if it was not auto-triggered
+edison qa validate TASK-123 --add-validators <validator-id> --execute
 
 # Add multiple validators
-edison qa validate TASK-123 --add-validators react api --execute
+edison qa validate TASK-123 --add-validators <validator-id-1> <validator-id-2> --execute
 
 # Specify wave for added validators
-edison qa validate TASK-123 --add-validators react --add-to-wave critical --execute
+edison qa validate TASK-123 --add-validators <validator-id> --add-to-wave critical --execute
 ```
 
 **When the CLI shows "ORCHESTRATOR DECISION POINTS":**
@@ -283,9 +283,9 @@ Review these suggestions and add validators as needed.
 ```
 ═══ ORCHESTRATOR DECISION POINTS ═══
 The following validators were NOT auto-triggered but may be relevant:
-  ► Consider adding 'react' validator
-    Reason: Found .js files that may contain React: src/utils/helpers.js
-    To add: edison qa validate TASK-123 --add-validators react
+  ► Consider adding '<validator-id>' validator
+    Reason: Found files matching an untriggered pattern: src/utils/helpers.<ext>
+    To add: edison qa validate TASK-123 --add-validators <validator-id>
 ```
 
 ---
@@ -346,7 +346,7 @@ Orchestrators use delegation tools (Task tool, agent invocation) to assign work 
 
 **Delegation priority chain:**
 1. User instruction (highest priority)
-2. File pattern matching (`.tsx` → component-builder, `api/**` → api-builder)
+2. File pattern matching (`.<ui-ext>` → component-builder, `<api-path-glob>` → api-builder)
 3. Task type (ui → component-builder, database → database-architect)
 4. Default fallback (feature-implementer)
 
@@ -355,9 +355,9 @@ Orchestrators use delegation tools (Task tool, agent invocation) to assign work 
 ```bash
 # Via Task tool (in agent context):
 delegate_to_agent(
-  agent="component-builder-nextjs",
+  agent="component-builder",
   task="Implement UserProfile component",
-  files=["app/components/UserProfile.tsx"]
+  files=["app/components/UserProfile.<ext>"]
 )
 
 # Or via explicit agent file invocation

@@ -17,4 +17,4 @@ Templates for Claude Code hook scripts. Each template is Bash rendered via Jinja
 - Common keys used across templates: `config.include_*`, `config.file_patterns`, `config.rules_by_state`, `config.only_for_states`, `config.skip_test_files`, `config.require_tests_pass`, `config.require_coverage`, `config.coverage_threshold`, `config.tools`, `config.save_logs`, `config.log.enabled`, `config.log.path`.
 
 ## Testing
-Run `pytest .edison/tests/templates/test_hook_templates.py` to ensure templates render with/without config, produce valid bash, and respect blocking behavior hints.
+Run `<test-command>` (repo equivalent) to ensure templates render with/without config, produce valid shell, and respect blocking behavior hints.

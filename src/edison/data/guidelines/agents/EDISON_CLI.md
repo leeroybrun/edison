@@ -146,7 +146,7 @@ edison session track complete --task TASK-123
 
 ### Looking Up Library Documentation
 
-```typescript
+```
 // Via MCP tools (within agent context):
 
 // Step 1: Resolve library (use names from active packs)

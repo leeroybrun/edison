@@ -53,8 +53,8 @@ npx tailwindcss -i ./src/styles/globals.css -o /tmp/tw-validate.css --minify --c
 
 ### Step 4: Run UI Safety Nets (TDD alignment)
 
-- `pnpm lint` (or repo equivalent) for class-name lint rules (`eslint-plugin-tailwindcss` if present).
-- `pnpm test` for visual/state regressions where snapshots contain Tailwind classes.
+- `<lint-command>` (repo equivalent) for class-name lint rules (`eslint-plugin-tailwindcss` if present).
+- `<test-command>` for visual/state regressions where snapshots contain Tailwind classes.
 - If smoke build or lint is skipped, record that in warnings.
 
 ### Step 5: Apply Tailwind Checklist (sections below)
@@ -218,9 +218,9 @@ const badge = cva(
 - Maintain consistent radius and shadow tokens (`rounded-lg`, `shadow-card`) per design spec.  
 
 **(WARN) Watch**
-- Nested flex/grid without gap or alignment hints -> leads to uneven spacing.  
+- Nested flex/grid without gap or alignment hints -> causes uneven spacing.  
 - Hard-coded widths/heights causing overflow on smaller screens.  
-- Mixing percentage widths with grid fractions leading to uneven layouts.  
+- Mixing percentage widths with grid fractions causing uneven layouts.  
 
 **Examples**
 
@@ -284,7 +284,7 @@ const badge = cva(
 - Labels and helper text present with proper spacing (`space-y-1`), `sr-only` labels only when paired with `aria-label`.  
 
 **(WARN) Watch**
-- Mixing native validation UI with custom styles leading to double outlines.  
+- Mixing native validation UI with custom styles causing double outlines.  
 - Form controls without `id/for` pairing.  
 - Placeholder colors insufficient contrast (`placeholder:text-foreground/40`).  
 
@@ -323,7 +323,7 @@ const badge = cva(
 
 **(WARN) Watch**
 - Infinite animations without user intent.  
-- Large `transition-all` on complex components leading to layout thrash; prefer property-scoped transitions.  
+- Large `transition-all` on complex components causing layout thrash; prefer property-scoped transitions.  
 - Animations tied to scroll without throttling or motion-safe guards.  
 
 **Examples**
@@ -418,7 +418,7 @@ const badge = cva(
 - Overuse of `!important` to fight specificity problems caused by class conflicts.  
 - Component-scoped CSS that redefines Tailwind resets.  
 - Copy-pasted class strings with unused variants (`md:` with no base class).  
-- Grid/flex definitions missing gap/spacing tokens leading to inconsistent rhythm.  
+- Grid/flex definitions missing gap/spacing tokens causing inconsistent rhythm.
 - No `font-sans` on body/root causing fallback serif flashes (regression noted in pre-v4 guidance).  
 
 ---

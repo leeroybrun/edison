@@ -4,7 +4,7 @@ Comprehensive guide for pytest-based testing. For NO MOCKS policy, see the agent
 
 ---
 
-<!-- SECTION: pytest-config -->
+<!-- section: pytest-config -->
 ## pytest Configuration
 
 ### pyproject.toml
@@ -26,11 +26,11 @@ markers = [
 ]
 asyncio_mode = "auto"
 ```
-<!-- /SECTION: pytest-config -->
+<!-- /section: pytest-config -->
 
 ---
 
-<!-- SECTION: test-organization -->
+<!-- section: test-organization -->
 ## Test Organization
 
 ### Directory Structure
@@ -70,11 +70,11 @@ def test_create_task_fails_with_empty_title():
 def test_get_task_returns_none_when_not_found():
     ...
 ```
-<!-- /SECTION: test-organization -->
+<!-- /section: test-organization -->
 
 ---
 
-<!-- SECTION: fixtures -->
+<!-- section: fixtures -->
 ## Fixtures
 
 ### Basic Fixtures
@@ -141,11 +141,11 @@ def test_with_factory(make_task):
     task2 = make_task(id="2", status="completed")
     assert task1.id != task2.id
 ```
-<!-- /SECTION: fixtures -->
+<!-- /section: fixtures -->
 
 ---
 
-<!-- SECTION: pytest-patterns -->
+<!-- section: pytest-patterns -->
 ## Testing Patterns
 
 ### File System Tests
@@ -235,11 +235,11 @@ def test_create_item_via_api(client: TestClient):
     get_response = client.get(f"/items/{data['id']}")
     assert get_response.status_code == 200
 ```
-<!-- /SECTION: pytest-patterns -->
+<!-- /section: pytest-patterns -->
 
 ---
 
-<!-- SECTION: parametrize -->
+<!-- section: parametrize -->
 ## Parametrized Tests
 
 ### Basic Parametrization
@@ -268,11 +268,11 @@ def test_validate_rejects_invalid_input(invalid_input):
     with pytest.raises(ValidationError):
         validate(invalid_input)
 ```
-<!-- /SECTION: parametrize -->
+<!-- /section: parametrize -->
 
 ---
 
-<!-- SECTION: async-testing -->
+<!-- section: async-testing -->
 ## Async Testing
 
 ### pytest-asyncio
@@ -306,11 +306,11 @@ async def test_with_async_db(async_db):
     result = await async_db.query("SELECT 1")
     assert result == 1
 ```
-<!-- /SECTION: async-testing -->
+<!-- /section: async-testing -->
 
 ---
 
-<!-- SECTION: markers -->
+<!-- section: markers -->
 ## Test Markers
 
 ### Custom Markers
@@ -336,11 +336,11 @@ def test_database_connection():
 # Run only integration tests
 # pytest -m integration
 ```
-<!-- /SECTION: markers -->
+<!-- /section: markers -->
 
 ---
 
-<!-- SECTION: coverage -->
+<!-- section: coverage -->
 ## Coverage
 
 ### Configuration
@@ -374,7 +374,7 @@ pytest --cov=src --cov-report=html
 # Fail if coverage below threshold
 pytest --cov=src --cov-fail-under=80
 ```
-<!-- /SECTION: coverage -->
+<!-- /section: coverage -->
 
 ---
 

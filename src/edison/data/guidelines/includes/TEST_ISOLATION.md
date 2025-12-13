@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Test Isolation Principles (All Roles)
 
 ### Core Rules
@@ -22,9 +22,9 @@
 - Global variables modified by tests
 - File system artifacts left behind
 - External service state
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: agent-implementation -->
+<!-- section: agent-implementation -->
 ## Test Isolation Implementation (Agents)
 
 ### Pattern 1: Unique Identifiers
@@ -93,9 +93,9 @@ test("writes file", tmp_path):
 ❌ Relying on test execution order
 ❌ Using fixed IDs that can collide
 ❌ Not cleaning up after tests
-<!-- /SECTION: agent-implementation -->
+<!-- /section: agent-implementation -->
 
-<!-- SECTION: validator-check -->
+<!-- section: validator-check -->
 ## Test Isolation Validation (Validators)
 
 ### Checklist
@@ -116,4 +116,4 @@ test("writes file", tmp_path):
 - Flaky test history
 - Long test setup times (isolation overhead)
 - External service dependencies
-<!-- /SECTION: validator-check -->
+<!-- /section: validator-check -->

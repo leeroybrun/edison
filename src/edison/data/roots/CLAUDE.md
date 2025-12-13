@@ -12,7 +12,7 @@ This file configures Claude Code for this project.
 
 This file will direct you to the appropriate constitution based on your role.
 
-<!-- SECTION: composed-additions -->
+<!-- section: composed-additions -->
 
-<!-- /SECTION: composed-additions -->
+<!-- /section: composed-additions -->
 

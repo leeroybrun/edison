@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## TDD Principles (All Roles)
 
 Test-Driven Development is NON-NEGOTIABLE for all implementation work.
@@ -31,9 +31,9 @@ Commits MUST include explicit markers to document TDD compliance:
 - `[RED]` tag for commits with failing test (test written before implementation)
 - `[GREEN]` tag for commits where tests pass (minimal implementation added)
 - `[REFACTOR]` tag for commits with code cleanup (tests still green)
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: agent-execution -->
+<!-- section: agent-execution -->
 ## TDD Execution (Agents)
 
 ### Mandatory Workflow
@@ -108,9 +108,9 @@ Improve code quality while keeping tests passing.
 | API/Service tests | <100ms each | Service layer with real dependencies |
 | UI/Component tests | <200ms each | Rendering and interaction tests |
 | End-to-End tests | <5s each | Full user journey tests |
-<!-- /SECTION: agent-execution -->
+<!-- /section: agent-execution -->
 
-<!-- SECTION: validator-check -->
+<!-- section: validator-check -->
 ## TDD Compliance Checking (Validators)
 
 ### Verification Checklist
@@ -146,15 +146,15 @@ Improve code quality while keeping tests passing.
 - Complex tests that are hard to understand
 - Tests coupled to implementation details
 - Missing edge case coverage
-<!-- /SECTION: validator-check -->
+<!-- /section: validator-check -->
 
-<!-- SECTION: orchestrator-verify -->
+<!-- section: orchestrator-verify -->
 ## TDD Verification (Orchestrators)
 
 ### Before Accepting Work from Sub-Agent
 
 #### 1. Test-First Evidence
-- [ ] Tests exist in appropriate __tests__/ directory
+- [ ] Tests exist in the appropriate test directory for the active stack (per pack conventions)
 - [ ] Test file created BEFORE implementation (check git history)
 - [ ] Tests cover the requirements specified in task
 
@@ -182,11 +182,11 @@ Build [Component] using TDD:
 
 CRITICAL: Follow TDD cycle strictly (RED-GREEN-REFACTOR)
 
-1. FIRST: Write component test ([Component].test.tsx)
+1. FIRST: Write component test (`[Component].test.<ext>`)
    RUN TEST: Verify test FAILS (component doesn't exist yet)
    Document failure in response
 
-2. THEN: Implement component ([Component].tsx)
+2. THEN: Implement component (`[Component].<ext>`)
    RUN TEST: Verify tests PASS
    Document success in response
 
@@ -227,4 +227,4 @@ Return:
 - Verification of TDD cycle
 `)
 ```
-<!-- /SECTION: orchestrator-verify -->
+<!-- /section: orchestrator-verify -->

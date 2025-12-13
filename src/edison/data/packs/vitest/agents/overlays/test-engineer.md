@@ -1,28 +1,25 @@
 # test-engineer overlay for Vitest pack
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 - Vitest for unit/integration tests; config in `vitest.config.*`.
 - React Testing Library for components; Playwright for E2E where applicable.
-- Coverage commands: `pnpm test --filter dashboard -- --coverage`.
-- Test utilities: `@/test/auth-helpers`, `@/test/db/template-pool`, `@/test/db`.
-<!-- /EXTEND -->
+- Coverage: run your project's test command with coverage enabled (project-script / CI command).
+- Test utilities: use your project's shared test helpers/fixtures (avoid hardcoded import aliases and paths).
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
-- Write failing tests first (TDD) covering happy path, edge cases, and regression risks; avoid brittle mocks.
+<!-- extend: guidelines -->
+- Write failing tests first (TDD) covering happy path, edge cases, and regression risks; avoid brittle stubbing.
 - Prefer RTL queries by role/text/label; avoid test IDs unless necessary.
-- Keep tests isolated and parallel-safe; reset modules/mocks and clean up DOM between runs.
+- Keep tests isolated and parallel-safe; clean up DOM/state between runs.
 - For Playwright, record evidence (screenshots/logs) and keep selectors resilient.
-- Use `vi.mock()` only for external APIs, never for internal modules (ORM, auth).
-- Use `vi.spyOn()` to observe behavior without replacing implementation.
-- Clean up mocks between tests with `vi.clearAllMocks()` or `vi.resetAllMocks()`.
-<!-- /EXTEND -->
+- Avoid mocking internal modules (DB/ORM, auth, business logic). Prefer real dependencies and boundary-only test doubles when unavoidable.
+<!-- /extend -->
 
-<!-- SECTION: VitestPatterns -->
+<!-- section: VitestPatterns -->
 ## Vitest Tech Stack
 - **Vitest**: Unit + integration tests
 - **React Testing Library**: Component tests
 - **Playwright**: E2E tests
-- **MSW** (Mock Service Worker): External API mocking
 
 ## Vitest Test Structure
 ```typescript
@@ -72,24 +69,8 @@ export default defineConfig({
 })
 ```
 
-## Vitest Mocking Patterns
-```typescript
-import { vi, describe, it, expect } from 'vitest'
-
-// Mock external modules only
-vi.mock('external-api-client', () => ({
-  fetchData: vi.fn(),
-}))
-
-// Mock timers for time-dependent tests
-vi.useFakeTimers()
-vi.advanceTimersByTime(1000)
-vi.useRealTimers()
-
-// Spy on functions
-const spy = vi.spyOn(object, 'method')
-expect(spy).toHaveBeenCalledWith(expectedArgs)
-```
+## Boundary Stubbing (Only When Unavoidable)
+If an external third-party boundary cannot be exercised in tests (rate limits, costs, nondeterminism), stub **only** that boundary and keep all internal modules real.
 
 ## React Testing Library Patterns
 ```typescript
@@ -152,25 +133,22 @@ test('user flow works end to end', async ({ page }) => {
 
 ## Vitest Commands
 ```bash
-# Run all tests
-pnpm test
+# Run all tests (use your configured test command)
+<test-command>
 
-# Run specific test file
-pnpm test path/to/test.ts
-
-# Run with coverage
-pnpm test -- --coverage
+# Run with coverage (use your configured coverage flags)
+<test-command> -- --coverage
 
 # Run in watch mode
-pnpm test -- --watch
+<test-command> -- --watch
 
 # Run specific test by name
-pnpm test -- -t "should filter by status"
+<test-command> -- -t "should filter by status"
 
 # Run with verbose output
-pnpm test -- --reporter=verbose
+<test-command> -- --reporter=verbose
 ```
-<!-- /SECTION: VitestPatterns -->
+<!-- /section: VitestPatterns -->
 
 
 

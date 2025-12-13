@@ -1,14 +1,14 @@
-### Fastify route pattern (primary)
+### Next.js route handler pattern (primary)
 
-**File location**: `apps/dashboard/src/app/api/v1/dashboard/[resource]/route.ts`
+**File location**: `app/api/v1/<resource>/route.ts`
 
 **Example**:
 ```typescript
-// apps/dashboard/src/app/api/v1/dashboard/leads/route.ts
+// app/api/v1/<resource>/route.ts
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth/api-helpers'
-import { prisma } from '@/lib/prisma'
+import { requireAuth } from '<auth-helper-module>'
+import { db } from '<data-access-module>'
 import { z } from 'zod'
 
 // Zod schema for validation
@@ -21,7 +21,7 @@ const QuerySchema = z.object({
 // ✅ CORRECT - Next.js 16 route handler
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authentication (Better-Auth)
+    // 1. Authentication (project auth helper)
     const user = await requireAuth(request)
 
     // 2. Validate query parameters
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit'),
     })
 
-    // 3. Database query (Prisma)
-    const leads = await prisma.lead.findMany({
+    // 3. Data access layer query
+    const items = await db.item.findMany({
       where: query.status ? { status: query.status } : {},
       skip: (query.page - 1) * query.limit,
       take: query.limit,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 4. Return NextResponse
-    return NextResponse.json({ data: leads }, { status: 200 })
+    return NextResponse.json({ data: items }, { status: 200 })
   } catch (error) {
     // 5. Error handling
     if (error instanceof z.ZodError) {
@@ -79,17 +79,17 @@ export async function POST(request: NextRequest) {
 
   const validated = BodySchema.parse(body)
 
-  const lead = await prisma.lead.create({
+  const item = await db.item.create({
     data: validated,
   })
 
-  return NextResponse.json({ data: lead }, { status: 201 })
+  return NextResponse.json({ data: item }, { status: 201 })
 }
 ```
 
 ### Next.js proxy handler (thin) – example
 ```typescript
-// apps/dashboard/src/app/api/v1/leads/route.ts
+// app/api/v1/items/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -106,6 +106,6 @@ export async function GET(req: NextRequest) {
 - ✅ Export named functions: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
 - ✅ Accept `NextRequest` parameter
 - ✅ Return `NextResponse` objects
-- ✅ Use `requireAuth()` for authentication
-- ✅ Use Zod for validation
-- ✅ Use Prisma for database queries
+- ✅ Use your project's auth helper for authentication
+- ✅ Use a validation library when accepting untrusted input
+- ✅ Use your data access layer consistently (do not duplicate business logic)

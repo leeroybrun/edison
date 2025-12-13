@@ -4,7 +4,7 @@ pack: python
 overlay_type: extend
 ---
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 
 ### Python Testing Tools
 
@@ -34,9 +34,9 @@ pytest tests/ --cov=src --cov-report=html
 mypy tests/
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 
 ### Python Testing Guidelines (NO MOCKS)
 
@@ -121,9 +121,9 @@ tests/
     sample_config.yaml
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: PytestPatterns -->
+<!-- section: PytestPatterns -->
 
 ## Pytest Patterns
 
@@ -179,4 +179,4 @@ def test_database():
 # Run: pytest -m "not slow"
 ```
 
-<!-- /SECTION: PytestPatterns -->
+<!-- /section: PytestPatterns -->

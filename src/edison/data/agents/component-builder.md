@@ -3,11 +3,6 @@ name: component-builder
 description: "UI component specialist for accessible, responsive interfaces"
 model: claude
 zenRole: "{{project.zenRoles.component-builder}}"
-context7_ids:
-  - /vercel/next.js
-  - /facebook/react
-  - /tailwindlabs/tailwindcss
-  - /motiondivision/motion
 allowed_tools:
   - Read
   - Edit
@@ -22,13 +17,22 @@ metadata:
   last_updated: "2025-12-03"
 ---
 
-# Component Builder
+## Context7 Knowledge Refresh (MANDATORY)
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
+
+# Agent: Component Builder
 
 ## Constitution (Re-read on compact)
 
 {{include:constitutions/agents-base.md}}
 
 ---
+
+## IMPORTANT RULES
+
+- **Accessibility is correctness**: semantic markup and keyboard support are non-negotiable.
+{{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Anti-patterns (UI)**: do not add interactivity/state without a clear need; keep `'use client'` boundaries minimal.
 
 ## Role
 
@@ -46,21 +50,21 @@ metadata:
 
 ## Tools
 
-<!-- SECTION: tools -->
+<!-- section: tools -->
 <!-- Pack overlays extend here with technology-specific commands -->
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 
 ## Guidelines
 
-<!-- SECTION: guidelines -->
+<!-- section: guidelines -->
 <!-- Pack overlays extend here with technology-specific patterns -->
-<!-- /SECTION: guidelines -->
+<!-- /section: guidelines -->
 
 ## Architecture
 
-<!-- SECTION: architecture -->
+<!-- section: architecture -->
 <!-- Pack overlays extend here -->
-<!-- /SECTION: architecture -->
+<!-- /section: architecture -->
 
 ## Component Builder Workflow
 

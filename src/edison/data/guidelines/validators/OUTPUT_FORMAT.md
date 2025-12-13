@@ -23,10 +23,10 @@
 ## Evidence
 | Check | Command | Status |
 |-------|---------|--------|
-| Type Check | mypy --strict | ✅ PASS / ❌ FAIL |
-| Lint | ruff check | ✅ PASS / ❌ FAIL |
-| Tests | pytest | ✅ PASS / ❌ FAIL |
-| Build | python -m build | ✅ PASS / ❌ FAIL / N/A |
+| Type Check | <type-check-command> | ✅ PASS / ❌ FAIL |
+| Lint | <lint-command> | ✅ PASS / ❌ FAIL |
+| Tests | <test-command> | ✅ PASS / ❌ FAIL |
+| Build | <build-command> | ✅ PASS / ❌ FAIL / N/A |
 
 ---
 
@@ -84,7 +84,7 @@ Numbered checks with status indicators (✅ PASS | ⚠️ WARNING | ❌ FAIL)
 **Example**:
 ```markdown
 ### 1. Type Safety: ❌ FAIL
-- `src/auth/login.py:42` - Missing return type annotation
+- `path/to/file.ext:42` - Missing return type annotation
 ```
 
 ### 5. Critical Issues & Warnings
@@ -115,6 +115,6 @@ Two-line format: Status + Reasoning (1-2 sentences)
 
 Validators may add domain-specific sections:
 
-- **Python**: Modern Python Patterns, Async Patterns (if applicable)
-- **Edison**: CLI Command Pattern, Configuration Pattern, Entity Pattern, CLAUDE.md Compliance
-- **Global**: 10-point checklist, Context7 refresh notes, Git diff analysis
+- **Stack-specific**: Language/runtime conventions, framework patterns, async/concurrency rules (when applicable)
+- **Edison**: CLI command patterns, configuration patterns, entity patterns, platform output compliance
+- **Global**: Checklist, Context7 refresh notes, git diff analysis

@@ -21,11 +21,5 @@ def test_agents_include_context7_examples(agent_path: Path) -> None:
 
     assert "## Context7 Knowledge Refresh (MANDATORY)" in content
 
-    # Core agents must be tech-agnostic; they should show a generic Context7 workflow.
-    assert "mcp__context7__resolve_library_id" in content
-    assert "libraryName" in content
-
-    assert "mcp__context7__get_library_docs" in content
-    assert "context7CompatibleLibraryID" in content
-
-    assert "config/context7.yaml" in content
+    # Agents should load the canonical snippet via include-section (single source of truth).
+    assert "{{include-section:guidelines/includes/CONTEXT7.md#agent}}" in content

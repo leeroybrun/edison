@@ -2,7 +2,7 @@
 
 > Canonical path: `.edison/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
 
-<!-- SECTION: rules -->
+<!-- section: rules -->
 ## Delegation Criteria
 
 - Load delegation config first: `.edison/_generated/constitutions/ORCHESTRATORS.md` → pack overlays → `.edison/config/delegation.yml` (fail if missing).
@@ -67,4 +67,4 @@
 - Use sequential delegation when outputs are serially dependent (e.g., schema design → API scaffold → UI wiring) or when coordination risk is high.
 - Keep validators separate and parallelizable; do not co-locate implementer and validator roles.
 - Always log the chosen pattern (parallel/sequential/mixed) and rationale in the Activity Log for traceability.
-<!-- /SECTION: rules -->
+<!-- /section: rules -->

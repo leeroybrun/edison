@@ -17,7 +17,7 @@ export const authClient = createAuthClient({
 // Usage in client components
 'use client';
 
-import { authClient } from '@/lib/auth-client';
+import { authClient } from '<auth-client-module>';
 
 export function LoginButton() {
   const handleLogin = async () => {
@@ -45,7 +45,7 @@ export default authClient;
 
 // src/hooks/useAuth.ts
 import { useQuery } from '@tanstack/react-query';
-import authClient from '@/lib/auth-client';
+import authClient from '<auth-client-module>';
 
 export function useAuth() {
   return useQuery({
@@ -74,7 +74,7 @@ if (session) {
 ```typescript
 // React component with session watching
 import { useEffect, useState } from 'react';
-import authClient from '@/lib/auth-client';
+import authClient from '<auth-client-module>';
 
 export function UserProfile() {
   const [user, setUser] = useState(null);
@@ -171,7 +171,7 @@ const handleSignOut = async () => {
 ### Zustand Store Pattern
 ```typescript
 import { create } from 'zustand';
-import authClient from '@/lib/auth-client';
+import authClient from '<auth-client-module>';
 
 interface AuthStore {
   user: any | null;
@@ -206,7 +206,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 ```typescript
 // app/dashboard/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '<auth-module>';
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession();
@@ -222,7 +222,7 @@ export default async function DashboardPage() {
 ### React Router Protection
 ```typescript
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '<auth-hook-module>';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();

@@ -62,7 +62,7 @@ git diff           # Unstaged changes
 
 ## 10-Point Checklist
 
-<!-- SECTION: checklist -->
+<!-- section: checklist -->
 ### 1. Task Completion
 - ✅ All acceptance criteria met
 - ✅ No "TODO" or "FIXME" comments
@@ -112,15 +112,15 @@ git diff           # Unstaged changes
 ### 10. Documentation
 - ✅ Complex logic explained
 - ✅ Task/QA files updated
-<!-- /SECTION: checklist -->
+<!-- /section: checklist -->
 
 ---
 
 ## Technology Stack
 
-<!-- SECTION: tech-stack -->
+<!-- section: tech-stack -->
 <!-- Pack overlays extend here with framework-specific validation -->
-<!-- /SECTION: tech-stack -->
+<!-- /section: tech-stack -->
 
 ---
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import pytest
 import yaml
@@ -203,6 +204,19 @@ def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
         f"{path} Context7 section must appear immediately after frontmatter and before the Agent heading"
 
     section = _extract_context7_section(content, path)
+
+    # Allow canonical include-section directive (single source of truth).
+    canonical = "{{include-section:guidelines/includes/CONTEXT7.md#agent}}"
+    if canonical in section:
+        include_path = get_data_path("guidelines/includes", "CONTEXT7.md")
+        inc = include_path.read_text(encoding="utf-8")
+        m = re.search(
+            r"<!--\s*section:\s*agent\s*-->\n(.+?)\n<!--\s*/section:\s*agent\s*-->",
+            inc,
+            flags=re.S | re.I,
+        )
+        assert m, "Canonical CONTEXT7 include section 'agent' missing"
+        section = section.replace(canonical, m.group(1).strip())
 
     assert "Resolve Library ID" in section, f"{path} missing resolve step heading"
     assert "mcp__context7__resolve_library_id" in section, \

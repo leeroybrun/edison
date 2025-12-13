@@ -73,9 +73,9 @@ You are a **CodeRabbit output analyzer** responsible for transforming raw CodeRa
 
 ## Technology Stack
 
-<!-- SECTION: tech-stack -->
+<!-- section: tech-stack -->
 <!-- Pack overlays extend here -->
-<!-- /SECTION: tech-stack -->
+<!-- /section: tech-stack -->
 
 ---
 
@@ -118,7 +118,7 @@ You are a **CodeRabbit output analyzer** responsible for transforming raw CodeRa
     {
       "severity": "critical|high|medium|low|info",
       "category": "security|performance|...",
-      "file": "path/to/file.ts",
+      "file": "path/to/file.<ext>",
       "line": 42,
       "message": "Description",
       "suggestion": "How to fix"

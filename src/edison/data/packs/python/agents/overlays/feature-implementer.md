@@ -4,7 +4,7 @@ pack: python
 overlay_type: extend
 ---
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 
 ### Python Development Tools
 
@@ -34,9 +34,9 @@ pip install -e ".[dev]"
 python -m build
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 
 ### Python-Specific Implementation Guidelines
 
@@ -82,9 +82,9 @@ tests/
   conftest.py
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Architecture -->
+<!-- extend: architecture -->
 
 ### Python Architecture Patterns
 
@@ -116,4 +116,4 @@ class ValidationError(DomainError):
         super().__init__(f"{field}: {message}")
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->

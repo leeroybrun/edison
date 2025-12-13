@@ -372,8 +372,8 @@ export const itemVariants = {
 }
 
 // In component
-import { cardVariants } from '@/animations/cardVariants'
-import { containerVariants, itemVariants } from '@/animations/listVariants'
+import { cardVariants } from '<variants-module>'
+import { containerVariants, itemVariants } from '<variants-module>'
 
 export function Gallery({ cards }) {
   return (

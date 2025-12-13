@@ -5,14 +5,14 @@
 - **ALWAYS** use real database connections with proper isolation.
 
 ## Extended Documentation
-See `docs/testing/TEST_ISOLATION_GUIDE.md` for comprehensive patterns.
+See your project's test isolation guide for comprehensive patterns.
 
 ## PostgreSQL Template Pool Pattern
 
 Use `withTestDatabase()` for isolated unit tests:
 
 ```typescript
-import { withTestDatabase } from '@project/db/test-utils'
+import { withTestDatabase } from '<db-test-utils-module>'
 
 it('tests business logic', async () => {
   await withTestDatabase(async (prisma) => {
@@ -44,5 +44,5 @@ it('tests business logic', async () => {
 ## When to Use Template Pool vs Namespace
 | Pattern | Use Case | Speed | Isolation |
 |---------|----------|-------|-----------|
-| `withTestDatabase()` | Unit tests in `packages/api-core` | Slower | Physical |
-| Namespace + `withTestServer()` | Integration tests in `apps/api` | Faster | Logical |
+| `withTestDatabase()` | Unit tests in your service layer | Slower | Physical |
+| Namespace + `withTestServer()` | Integration tests against your API service | Faster | Logical |

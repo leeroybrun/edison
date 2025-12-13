@@ -407,7 +407,7 @@ if (taskCount <= maxConcurrent - currentActive) {
 
 ### 1. Delegation Without Context
 ❌ "Implement the login feature"
-✅ "Implement JWT-based login following pattern in auth/helpers.ts, config from .edison/config/auth.yml"
+✅ "Implement JWT-based login following pattern in auth/helpers.<ext>, config from .edison/config/auth.yml"
 
 ### 2. Over-Delegating Trivial Work
 ❌ Delegating a one-line typo fix
@@ -423,7 +423,7 @@ if (taskCount <= maxConcurrent - currentActive) {
 
 ### 5. Insufficient Context Passing
 ❌ "Use the existing pattern"
-✅ "Follow pattern in src/api/users/route.ts lines 45-67 (auth + validation)"
+✅ "Follow pattern in src/api/users/route.<ext> lines 45-67 (auth + validation)"
 
 ### 6. No Output Requirements
 ❌ "Let me know when done"

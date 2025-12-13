@@ -13,7 +13,7 @@ await mcp__context7__get_library_docs({
   mode: "code"
 })
 ```
-- Check `config/context7.yml` for active versions. Expect major diffs in **Next.js 16**, **React 19**, **Tailwind CSS 4**, **Prisma 6**, and other post-training packages.
+- Check `config/context7.yml` for active versions. Expect major diffs in actively configured (post-training) packages.
 - Create Context7 evidence markers as required in `guidelines/shared/CONTEXT7.md`; guards block readiness without them.
 - Follow the full workflow in `guidelines/shared/CONTEXT7.md` when package docs are involved.
 

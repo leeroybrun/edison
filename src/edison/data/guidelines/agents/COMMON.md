@@ -33,11 +33,11 @@ Use this roster instead of repeating the table in each agent file:
 - Validator execution (automatic in QA workflow)
 - Bundle generation (automatic in `edison qa bundle`)
 
-<!-- SECTION: tools -->
-<!-- /SECTION: tools -->
+<!-- section: tools -->
+<!-- /section: tools -->
 
 ## Pack-Specific Guidelines Anchor
 Pack overlays inject additional rules here when present.
 
-<!-- SECTION: guidelines -->
-<!-- /SECTION: guidelines -->
+<!-- section: guidelines -->
+<!-- /section: guidelines -->

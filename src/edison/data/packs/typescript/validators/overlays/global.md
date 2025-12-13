@@ -1,6 +1,6 @@
 # global overlay for TypeScript pack
 
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 ## TypeScript Validation Context
 
 ### Type Safety
@@ -12,4 +12,4 @@
 ### Linting & Type-Checking
 - `npm run typecheck` must pass with zero errors.
 - No `@ts-ignore` or `@ts-expect-error` without issue link and scope.
-<!-- /EXTEND -->
+<!-- /extend -->

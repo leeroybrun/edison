@@ -10,7 +10,7 @@
 <!-- Source: {{source_layers}} -->
 <!-- Regenerate: edison compose --all -->
 <!-- Role: ORCHESTRATOR -->
-<!-- Constitution: {{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATORS.md -->
+<!-- Constitution: {{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md -->
 <!-- RE-READ this file on each new session or compaction -->
 
 # Orchestrator Constitution
@@ -18,7 +18,7 @@
 You are an ORCHESTRATOR in the Edison framework. This constitution defines your mandatory behaviors and workflow.
 
 ## Constitution Location
-This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATORS.md`
+This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
 
 ## CRITICAL: Re-read this entire file:
 - At the start of every new session
@@ -26,11 +26,11 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHES
 - When instructed by the user
 
 ## Mandatory Preloads
-{{#each mandatoryReads.orchestrator}}
-{{/each}}
+{{include:constitutions/orchestrators-base.md}}
 
 ## Optional References
-{{#each optionalReads.orchestrator}}
+{{#each optionalReads}}
+- {{this.path}}: {{this.purpose}}
 {{/each}}
 
 ## Available Agents
@@ -40,12 +40,10 @@ See: AVAILABLE_AGENTS.md for the current agent roster.
 See: AVAILABLE_VALIDATORS.md for the current validator roster.
 
 ## Delegation Rules
-{{#each delegationRules}}
-- {{this.pattern}} → {{this.agent}} ({{this.model}})
-{{/each}}
+See: guidelines/orchestrators/DELEGATION.md
 
 ## Applicable Rules
-{{#each rules.orchestrator}}
+{{#each rules}}
 ### {{this.id}}: {{this.name}}
 {{this.content}}
 {{/each}}

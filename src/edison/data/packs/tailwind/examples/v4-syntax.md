@@ -4,7 +4,7 @@ This example shows how this example project uses **Tailwind CSS 4** with the
 CSS‑first `@theme` directive to map design tokens to utility classes.
 
 ```css
-/* apps/dashboard/src/app/globals.css */
+/* app/globals.css (or your project's global stylesheet) */
 
 @import "tailwindcss";
 

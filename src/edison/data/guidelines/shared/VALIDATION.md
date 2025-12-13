@@ -46,7 +46,7 @@ Validators run in waves for efficiency and fast feedback:
 ┌─────────────────────────────────────────────────────────────┐
 │ Wave 3: Specialized Validators (Parallel, Pattern-Triggered)│
 │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐    │
-│ │ react  │ │ nextjs │ │  api   │ │database│ │testing │    │
+│ │ <v-a>  │ │ <v-b>  │ │ <v-c>  │ │ <v-d>  │ │ <v-e>  │    │
 │ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -97,7 +97,7 @@ When validation fails:
 ```
 Round 1: Initial Validation
     ↓ (REJECT)
-Task returns to wip
+Task returns to WIP
     ↓
 Fix issues identified
     ↓
@@ -168,7 +168,7 @@ edison qa report --task <task-id> --validator global-codex --model codex --round
 # Reject example with finding and follow-up
 edison qa report --task <task-id> --validator security --model codex \
   --verdict reject \
-  --add-finding "severity=high,category=security,description=JWT not validated,location=apps/api/src/auth.ts:120,recommendation=Validate JWT signature,blocking=true" \
+  --add-finding "severity=high,category=security,description=JWT not validated,location=path/to/file.ext:120,recommendation=Validate JWT signature,blocking=true" \
   --add-follow-up "title=Add JWT validation middleware,severity=high,blocking=true"
 
 # Validate a single report file

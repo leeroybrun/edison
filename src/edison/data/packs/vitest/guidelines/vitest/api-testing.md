@@ -6,7 +6,7 @@
 - Use real database connections in isolated contexts when feasible.
 
 ## Extended Documentation
-See `docs/testing/TEST_ISOLATION_GUIDE.md` for comprehensive patterns.
+See your project's test isolation guide for comprehensive patterns.
 
 ## Namespace Pattern (REQUIRED for Integration Tests)
 
@@ -26,10 +26,10 @@ const TEST_NS = 'my-test' // ❌ NEVER DO THIS
 ```typescript
 afterAll(async () => {
   // 1. Children first
-  await prisma.leadEvent.deleteMany(nsCleanupWhere(SUITE_NS, 'lead.sourceUrl'))
-  await prisma.aIFeedback.deleteMany(nsCleanupWhere(SUITE_NS, 'lead.sourceUrl'))
+  await db.childEntity.deleteMany(nsCleanupWhere(SUITE_NS, '<foreign_key_path>'))
+  await db.anotherChildEntity.deleteMany(nsCleanupWhere(SUITE_NS, '<foreign_key_path>'))
   // 2. Parents last
-  await prisma.lead.deleteMany(nsCleanupWhere(SUITE_NS, 'sourceUrl'))
+  await db.parentEntity.deleteMany(nsCleanupWhere(SUITE_NS, '<parent_unique_field>'))
 })
 ```
 

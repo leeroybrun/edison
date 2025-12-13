@@ -94,11 +94,23 @@ git diff
 
 ---
 
+## Pack Context
+
+Security review must be **pack-aware**:
+- Core security rules apply to every task.
+- Active packs may contribute additional **pack-specific security rules** (framework/library-specific).
+
+Pack rule registries live in:
+- `.edison/packs/<pack>/rules/registry.yml`
+- `src/edison/data/packs/<pack>/rules/registry.yml`
+
+The validator should load and **merge core + pack security rules** using the configured rules loader (RulesRegistry).
+
 ## Technology Stack
 
-<!-- SECTION: tech-stack -->
+<!-- section: tech-stack -->
 <!-- Pack overlays extend here with framework-specific security patterns -->
-<!-- /SECTION: tech-stack -->
+<!-- /section: tech-stack -->
 
 ---
 
@@ -125,7 +137,7 @@ git diff
    - **Fix**: [remediation]
 
 ## Evidence
-- npm audit: [results]
+- <dependency-audit-command>: [results]
 - Auth library: ✅ VERIFIED | ❌ NOT FOUND
 - Schema validation coverage: X%
 

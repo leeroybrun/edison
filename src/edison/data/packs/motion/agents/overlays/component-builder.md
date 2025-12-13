@@ -1,22 +1,22 @@
 # component-builder overlay for Motion pack
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 - Motion 12+ for animations: `import { motion, AnimatePresence } from 'motion/react'`
 - React 19 with TypeScript for components
 - Gesture support via motion props: drag, whileHover, whileTap
 - Variants for reusable animations
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 - Use AnimatePresence for mount/unmount animations with meaningful exit states
 - Prefer layout animations with layout prop over manual positioning
 - Implement gesture handling (drag, hover) for interactive feedback
 - Define and reuse variants for complex animations
 - Optimize animations with GPU-accelerated transforms (x, y, rotate, opacity, scale)
 - Memoize animated components to prevent unnecessary re-renders
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: MotionComponentPatterns -->
+<!-- section: MotionComponentPatterns -->
 ## AnimatePresence Pattern
 
 When components mount/unmount, use AnimatePresence for smooth transitions:

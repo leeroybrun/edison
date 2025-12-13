@@ -1,20 +1,20 @@
 # component-builder overlay for Next.js pack
 
-<!-- EXTEND: Tools -->
-- Next.js 16 App Router components in `apps/dashboard/src/app/**`.
+<!-- extend: tools -->
+- Next.js 16 App Router components in `app/**` (or your project's equivalent root).
 - React Server/Client Components with strict TypeScript.
-- `pnpm lint --filter dashboard` and `pnpm test --filter dashboard`.
-<!-- /EXTEND -->
+- Run your project's lint/test commands for Next.js code (avoid hardcoded workspace filters).
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 - Default to Server Components; mark `"use client"` only when needed (state, effects, event handlers).
 - Keep data fetching in Server Components; pass serialized props to clients.
 - Use Next.js conventions: file-based routing, `route.ts` API proxies, metadata exports, and `next/image` for assets.
 - Co-locate loading/error states with routes; avoid client-only data fetching unless required.
-- Align with design system classes; prefer shared utilities from `@/lib/*`.
-<!-- /EXTEND -->
+- Align with design system classes; prefer shared utilities from your project's shared library modules.
+<!-- /extend -->
 
-<!-- SECTION: NextJSComponentPatterns -->
+<!-- section: NextJSComponentPatterns -->
 ## Server Components (Default)
 
 Server Components are the default in Next.js App Router. Use them for:
@@ -24,20 +24,20 @@ Server Components are the default in Next.js App Router. Use them for:
 - Sensitive data access
 
 ```tsx
-// app/leads/page.tsx - Server Component (default, no directive needed)
+// app/items/page.tsx - Server Component (default, no directive needed)
 
-import { prisma } from '@/lib/prisma'
-import { LeadList } from '@/components/leads/LeadList'
+import { listItems } from '<data-access-module>'
+import { ItemList } from '<component-module>'
 
 // Server Component - can query database directly
-export default async function LeadsPage() {
-  // Direct database query - no API needed
-  const leads = await prisma.lead.findMany()
+export default async function ItemsPage() {
+  // Direct data access - no client API hop needed
+  const items = await listItems()
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold font-sans mb-6">Leads</h1>
-      <LeadList leads={leads} />
+      <h1 className="text-3xl font-bold font-sans mb-6">Items</h1>
+      <ItemList items={items} />
     </div>
   )
 }
@@ -63,6 +63,27 @@ export default async function LeadsPage() {
 | Animations | Client Component |
 | Third-party hooks | Client Component |
 
+## Client Components (When Needed)
+
+Client Components are required for interactivity (state, effects, event handlers, browser APIs).
+
+```tsx
+// app/items/ItemFilters.tsx
+'use client'
+
+import { useState } from 'react'
+
+export function ItemFilters() {
+  const [status, setStatus] = useState('all')
+  return (
+    <select value={status} onChange={(e) => setStatus(e.target.value)}>
+      <option value="all">All</option>
+      <option value="active">Active</option>
+    </select>
+  )
+}
+```
+
 ## Data Fetching Patterns
 
 ### Server-Side Fetch
@@ -87,15 +108,15 @@ export default async function DashboardPage() {
 ```tsx
 // Fetch multiple data sources in parallel
 export default async function DashboardPage() {
-  const [leads, metrics, activity] = await Promise.all([
-    getLeads(),
+  const [items, metrics, activity] = await Promise.all([
+    getItems(),
     getMetrics(),
     getActivity()
   ])
 
   return (
     <>
-      <LeadsSummary leads={leads} />
+      <ItemsSummary items={items} />
       <MetricsDisplay data={metrics} />
       <ActivityFeed items={activity} />
     </>
@@ -106,12 +127,12 @@ export default async function DashboardPage() {
 ## Loading and Error States
 
 ```tsx
-// app/leads/loading.tsx
+// app/items/loading.tsx
 export default function Loading() {
-  return <LeadsSkeleton />
+  return <ItemsSkeleton />
 }
 
-// app/leads/error.tsx
+// app/items/error.tsx
 'use client'
 
 export default function Error({
@@ -129,7 +150,7 @@ export default function Error({
   )
 }
 ```
-<!-- /SECTION: NextJSComponentPatterns -->
+<!-- /section: NextJSComponentPatterns -->
 
 
 

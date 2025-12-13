@@ -1,20 +1,20 @@
 # database-architect overlay for Prisma pack
 
-<!-- EXTEND: Tools -->
-- Prisma schema at `apps/dashboard/prisma/schema.prisma` with PostgreSQL 16 datasource.
-- `pnpm prisma migrate dev --name <change>` and `pnpm prisma generate`.
-- `pnpm test --filter dashboard` to validate migrations against template DBs.
-<!-- /EXTEND -->
+<!-- extend: tools -->
+- Prisma schema lives in your project's Prisma schema location (commonly `prisma/schema.prisma`).
+- Run Prisma migrate/generate via your project's configured Prisma commands.
+- Run your project's test suite to validate migrations against the test database strategy in use.
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
-- Prefix tables with `dashboard_` using `@@map` and prefer `@default(cuid())` IDs plus `createdAt/updatedAt` timestamps.
+<!-- extend: guidelines -->
+- Follow your project's table naming convention with `@@map` and prefer stable IDs plus `createdAt/updatedAt` timestamps.
 - Model relations with explicit foreign keys and supporting indexes; avoid unbounded cascades.
 - Plan migrations for rollback safety; avoid destructive changes without backfill/guards.
 - Use Context7 for Prisma 6/PostgreSQL 16 fresh patterns before changes; record markers.
 - Keep performance in mind: add indexes for FK and common filters; analyze query plans when adding joins.
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: PrismaSchemaPatterns -->
+<!-- section: PrismaSchemaPatterns -->
 ## Prisma Schema Patterns
 
 ### Schema Structure
@@ -29,7 +29,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Lead {
+model Record {
   id            String   @id @default(cuid())
   name          String
   email         String?  @unique
@@ -45,7 +45,7 @@ model Lead {
   updatedAt     DateTime @updatedAt
 
   // Table name with project prefix
-  @@map("dashboard_leads")
+  @@map("<project_prefix>_records")
 
   // Indexes - FK + frequently queried
   @@index([status])
@@ -71,17 +71,17 @@ model Lead {
 # ... make schema changes ...
 
 # 2. Create migration (generates SQL)
-npx prisma migrate dev --name add_lead_status_index
+<prisma-migrate-command> --name add_record_status_index
 
 # 3. Verify migration SQL
-cat prisma/migrations/[timestamp]_add_lead_status_index/migration.sql
+cat prisma/migrations/[timestamp]_add_record_status_index/migration.sql
 
 # 4. Test migration against template DBs
-npm test
+<test-command>
 
 # 5. Commit schema + migration together
 git add prisma/
-git commit -m "feat: add lead status index for faster filtering"
+git commit -m "feat: add record status index for faster filtering"
 ```
 
 ### Migration Safety
@@ -103,7 +103,7 @@ git commit -m "feat: add lead status index for faster filtering"
 ### Index Strategy
 
 ```prisma
-model Lead {
+model Record {
   // ... fields ...
 
   // Single-column indexes
@@ -121,7 +121,7 @@ model Lead {
 
 ```typescript
 // GOOD - Use select to limit fields
-const leads = await prisma.lead.findMany({
+const records = await prisma.record.findMany({
   select: {
     id: true,
     name: true,
@@ -130,10 +130,10 @@ const leads = await prisma.lead.findMany({
 })
 
 // BAD - Fetches all fields unnecessarily
-const leads = await prisma.lead.findMany()
+const records = await prisma.record.findMany()
 
 // GOOD - Use include for relations
-const lead = await prisma.lead.findUnique({
+const record = await prisma.record.findUnique({
   where: { id },
   include: {
     user: {
@@ -143,10 +143,10 @@ const lead = await prisma.lead.findUnique({
 })
 
 // BAD - N+1 query problem
-const leads = await prisma.lead.findMany()
-for (const lead of leads) {
+const records = await prisma.record.findMany()
+for (const record of records) {
   const user = await prisma.user.findUnique({
-    where: { id: lead.userId },
+    where: { id: record.userId },
   })
 }
 ```
@@ -158,17 +158,17 @@ for (const lead of leads) {
 ```prisma
 model User {
   id    String @id @default(cuid())
-  leads Lead[]  // One user has many leads
+  records Record[]  // One user has many records
 
-  @@map("dashboard_users")
+  @@map("<project_prefix>_users")
 }
 
-model Lead {
+model Record {
   id     String @id @default(cuid())
   userId String
   user   User @relation(fields: [userId], references: [id])
 
-  @@map("dashboard_leads")
+  @@map("<project_prefix>_records")
   @@index([userId])
 }
 ```
@@ -176,34 +176,34 @@ model Lead {
 ### Many-to-Many Pattern
 
 ```prisma
-model Lead {
+model Record {
   id   String @id @default(cuid())
-  tags LeadTag[]
+  tags RecordTag[]
 
-  @@map("dashboard_leads")
+  @@map("<project_prefix>_records")
 }
 
 model Tag {
   id    String @id @default(cuid())
   name  String @unique
-  leads LeadTag[]
+  records RecordTag[]
 
-  @@map("dashboard_tags")
+  @@map("<project_prefix>_tags")
 }
 
 // Explicit join table for extra control
-model LeadTag {
-  leadId String
+model RecordTag {
+  recordId String
   tagId  String
 
-  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  record Record @relation(fields: [recordId], references: [id], onDelete: Cascade)
   tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@id([leadId, tagId])
-  @@map("dashboard_lead_tags")
+  @@id([recordId, tagId])
+  @@map("<project_prefix>_record_tags")
 }
 ```
-<!-- /SECTION: PrismaSchemaPatterns -->
+<!-- /section: PrismaSchemaPatterns -->
 
 
 

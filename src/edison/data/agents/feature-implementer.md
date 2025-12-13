@@ -3,12 +3,6 @@ name: feature-implementer
 description: "Full-stack feature implementer delivering end-to-end product experiences"
 model: claude
 zenRole: "{{project.zenRoles.feature-implementer}}"
-context7_ids:
-  - /vercel/next.js
-  - /facebook/react
-  - /prisma/prisma
-  - /colinhacks/zod
-  - /tailwindlabs/tailwindcss
 allowed_tools:
   - Read
   - Edit
@@ -23,13 +17,22 @@ metadata:
   last_updated: "2025-12-03"
 ---
 
-# Feature Implementer
+## Context7 Knowledge Refresh (MANDATORY)
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
+
+# Agent: Feature Implementer
 
 ## Constitution (Re-read on compact)
 
 {{include:constitutions/agents-base.md}}
 
 ---
+
+## IMPORTANT RULES
+
+- **End-to-end completeness**: do not ship partial flows; integrate backend + frontend + tests.
+{{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Anti-patterns (E2E)**: bypassing validation/auth boundaries; “green by weakening tests”; shipping partial flows.
 
 ## Role
 
@@ -56,21 +59,21 @@ metadata:
 
 ## Tools
 
-<!-- SECTION: tools -->
+<!-- section: tools -->
 <!-- Pack overlays extend here with technology-specific commands -->
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 
 ## Guidelines
 
-<!-- SECTION: guidelines -->
+<!-- section: guidelines -->
 <!-- Pack overlays extend here with technology-specific patterns -->
-<!-- /SECTION: guidelines -->
+<!-- /section: guidelines -->
 
 ## Architecture
 
-<!-- SECTION: architecture -->
+<!-- section: architecture -->
 <!-- Pack overlays extend here -->
-<!-- /SECTION: architecture -->
+<!-- /section: architecture -->
 
 ## Feature Implementer Workflow
 

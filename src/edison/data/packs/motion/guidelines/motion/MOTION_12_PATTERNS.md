@@ -1,7 +1,7 @@
 # Motion 12 Animation Patterns
 
 ## Overview
-This guideline establishes the standard patterns for using Motion 12 (formerly Framer Motion) within the Edison project. Motion 12 provides a declarative API for animations, gestures, and layout transitions in React applications.
+This guideline establishes standard patterns for using Motion 12 (formerly Framer Motion). Motion 12 provides a declarative API for animations, gestures, and layout transitions in React applications.
 
 We use the unified `motion/react` entry point introduced in Motion 12.
 

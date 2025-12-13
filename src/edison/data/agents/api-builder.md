@@ -3,10 +3,6 @@ name: api-builder
 description: "Backend API specialist for route handlers, validation, and data flow"
 model: codex
 zenRole: "{{project.zenRoles.api-builder}}"
-context7_ids:
-  - /vercel/next.js
-  - /colinhacks/zod
-  - /prisma/prisma
 allowed_tools:
   - Read
   - Edit
@@ -21,13 +17,22 @@ metadata:
   last_updated: "2025-12-03"
 ---
 
-# API Builder
+## Context7 Knowledge Refresh (MANDATORY)
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
+
+# Agent: API Builder
 
 ## Constitution (Re-read on compact)
 
 {{include:constitutions/agents-base.md}}
 
 ---
+
+## IMPORTANT RULES
+
+- **Security-first**: validate all untrusted input and enforce auth/authorization by default.
+{{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Anti-patterns (API)**: do not mock internal business logic/data/auth layers; assert real behavior and outcomes.
 
 ## Role
 
@@ -46,21 +51,21 @@ metadata:
 
 ## Tools
 
-<!-- SECTION: tools -->
+<!-- section: tools -->
 <!-- Pack overlays extend here with technology-specific commands -->
-<!-- /SECTION: tools -->
+<!-- /section: tools -->
 
 ## Guidelines
 
-<!-- SECTION: guidelines -->
+<!-- section: guidelines -->
 <!-- Pack overlays extend here with technology-specific patterns -->
-<!-- /SECTION: guidelines -->
+<!-- /section: guidelines -->
 
 ## Architecture
 
-<!-- SECTION: architecture -->
+<!-- section: architecture -->
 <!-- Pack overlays extend here -->
-<!-- /SECTION: architecture -->
+<!-- /section: architecture -->
 
 ## API Builder Workflow
 
@@ -112,7 +117,7 @@ if query.search: where.name = { contains: query.search }
 results = db.resource.findMany({ where })
 ```
 
-### Error Handling
+### API Error Handling
 
 ```pseudocode
 try:

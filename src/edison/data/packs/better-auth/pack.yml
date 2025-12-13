@@ -21,5 +21,4 @@ provides:
     - guidelines/security-best-practices.md
   validators:
     - validators/auth-security.md
-  agents:
-    - agents/overlays/auth-setup.md
+  agents: []

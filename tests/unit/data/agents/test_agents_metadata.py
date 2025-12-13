@@ -25,11 +25,10 @@ def test_all_agents_have_metadata_version_and_linecount() -> None:
     assert len(agent_files) == 6, "Expected six core agent files"
 
     for path in agent_files:
-        text = path.read_text(encoding="utf-8")
         frontmatter = _load_frontmatter(path)
         metadata = frontmatter.get("metadata")
 
         assert metadata, f"{path.name} missing metadata section"
         assert metadata.get("version") == "2.0.0"
-        assert "approx_lines" in metadata, f"{path.name} missing approx_lines"
-        assert metadata["approx_lines"] == _line_count(text)
+        # last_updated is required to make pack/core drift visible in reviews.
+        assert metadata.get("last_updated"), f"{path.name} missing last_updated"

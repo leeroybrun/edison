@@ -33,9 +33,9 @@
 - **Agent**: You are implementing features, writing code, fixing bugs
 - **Validator**: You are reviewing code, validating changes, running checks
 
-<!-- SECTION: composed-additions -->
+<!-- section: composed-additions -->
 
-<!-- /SECTION: composed-additions -->
+<!-- /section: composed-additions -->
 
 ---
 

@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Type Safety Principles (All Roles)
 
 ### Core Rules
@@ -24,56 +24,34 @@ Type suppressions are allowed ONLY when:
 3. Complex generic constraints (documented)
 
 Every suppression requires a comment explaining why.
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: agent-implementation -->
+<!-- section: agent-implementation -->
 ## Type Safety Implementation (Agents)
 
-### TypeScript Rules
-```typescript
-// ✅ CORRECT: Explicit types
-function processUser(user: User): ProcessedUser {
-  return { ...user, processed: true };
-}
+### Rules
+- Prefer explicit types over inference when it improves clarity
+- Avoid “escape hatch” types (e.g., dynamic/untyped) unless justified
+- If you must suppress a type error, include a comment explaining **why** and **how it’s safe**
 
-// ❌ WRONG: any type
-function processUser(user: any): any {
-  return { ...user, processed: true };
-}
+### Example (Pseudocode)
+```pseudocode
+// ✅ CORRECT: explicit input/output types
+function process_user(user: User) -> ProcessedUser:
+  return ProcessedUser(user, processed=true)
+
+// ❌ WRONG: untyped inputs/outputs (hard to validate/refactor)
+function process_user(user):
+  return { processed: true, ...user }
 ```
 
-### Python Rules (mypy strict)
-```python
-# ✅ CORRECT: Type hints
-def process_user(user: User) -> ProcessedUser:
-    return ProcessedUser(**user.dict(), processed=True)
-
-# ❌ WRONG: No type hints
-def process_user(user):
-    return {"processed": True, **user}
-```
-
-### Suppression Format
-```typescript
-// @ts-ignore - Third-party lib XYZ has incorrect types for method foo()
-// See: https://github.com/xyz/issues/123
-```
-
-```python
-# type: ignore[arg-type]  # External API returns untyped dict, validated via Pydantic
-```
-
-### Type Checking Commands
+### Type Checking Command
 ```bash
-# TypeScript
-npx tsc --noEmit
-
-# Python
-mypy --strict src/
+<type-check-command>
 ```
-<!-- /SECTION: agent-implementation -->
+<!-- /section: agent-implementation -->
 
-<!-- SECTION: validator-check -->
+<!-- section: validator-check -->
 ## Type Safety Validation (Validators)
 
 ### Checklist
@@ -95,4 +73,4 @@ mypy --strict src/
 - Many type assertions (`as Type`)
 - Complex generic constraints
 - Frequent use of `unknown`
-<!-- /SECTION: validator-check -->
+<!-- /section: validator-check -->

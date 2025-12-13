@@ -128,7 +128,7 @@ Validators produce JSON reports in this structure:
       "severity": "blocking",
       "category": "testing",
       "description": "Missing test coverage for edge cases",
-      "file": "src/utils/validator.ts",
+      "file": "src/utils/validator.<ext>",
       "line": 45,
       "suggestion": "Add tests for null and undefined inputs"
     }
@@ -283,7 +283,7 @@ Before approving a task, validators should check:
 
 ### Best Practices
 - [ ] Follows pack-specific guidelines
-- [ ] TypeScript types are correct
+- [ ] Type checking passes (per active stack)
 - [ ] API contracts are validated
 - [ ] Documentation is adequate
 

@@ -68,7 +68,7 @@ Use your authentication library (e.g., NextAuth/Auth.js, Clerk, Supabase) to ver
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth'; // Example auth import
+import { auth } from '<auth-module>'; // Example auth import
 
 export async function GET(request: NextRequest) {
   const session = await auth();

@@ -1,14 +1,14 @@
 # global overlay for Next.js pack
 
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 ## Next.js Validation Context
 
 ### Guidelines
-{{include:.edison/_generated/guidelines/nextjs/app-router.md}}
-{{include:.edison/_generated/guidelines/nextjs/route-handlers.md}}
-{{include:.edison/_generated/guidelines/nextjs/server-actions.md}}
-{{include:.edison/_generated/guidelines/nextjs/metadata.md}}
-{{include:.edison/_generated/guidelines/nextjs/caching.md}}
+{{include:packs/nextjs/guidelines/nextjs/app-router.md}}
+{{include:packs/nextjs/guidelines/nextjs/route-handlers.md}}
+{{include:packs/nextjs/guidelines/nextjs/server-actions.md}}
+{{include:packs/nextjs/guidelines/nextjs/metadata.md}}
+{{include:packs/nextjs/guidelines/nextjs/caching.md}}
 
 ### Concrete Checks
 - Use the App Router (`app/` directory) and Server Components by default.
@@ -16,4 +16,4 @@
 - Mutations use Server Actions with proper input validation on the server.
 - Metadata configured via `generateMetadata` or static export where appropriate.
 - Apply appropriate caching strategy (`dynamic`, `revalidate`) per route.
-<!-- /EXTEND -->
+<!-- /extend -->

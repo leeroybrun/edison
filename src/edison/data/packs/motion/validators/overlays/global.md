@@ -1,6 +1,6 @@
 # global overlay for Motion pack
 
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 ## Motion Animation Validation Context
 
 ### Guidelines
@@ -18,4 +18,4 @@
 - Only transform and opacity properties animated (no width/height/etc)
 - Memoized components in animated lists to prevent re-renders
 - willChange hints for complex animations
-<!-- /EXTEND -->
+<!-- /extend -->

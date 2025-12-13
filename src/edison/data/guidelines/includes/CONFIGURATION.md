@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Configuration-First Principles (All Roles)
 
 ### Core Rule
@@ -27,9 +27,9 @@ NO hardcoded values. ALL configuration comes from YAML.
 Default (code) → Core YAML → Pack YAML → Project YAML → Environment
 ```
 Later layers override earlier ones.
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: check -->
+<!-- section: check -->
 ## Configuration Validation (All Roles)
 
 ### Checklist
@@ -85,4 +85,4 @@ api:
   key: ${API_KEY}
   secret: ${API_SECRET}
 ```
-<!-- /SECTION: check -->
+<!-- /section: check -->

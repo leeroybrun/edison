@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Quality Principles (All Roles)
 
 ### Type Safety
@@ -33,9 +33,9 @@
 - No hardcoded values—all config from YAML
 - No magic numbers or strings in code
 - Every behavior must be configurable
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: agent-checklist -->
+<!-- section: agent-checklist -->
 ## Quality Checklist (Agents)
 
 ### Before Marking Ready
@@ -58,13 +58,12 @@
 Before marking any task as ready, run:
 ```bash
 # Verify all automation passes
-pnpm run type-check && pnpm run lint && pnpm run test && pnpm run build
-# Or equivalent for your stack
+<type-check-command> && <lint-command> && <test-command> && <build-command>
 ```
 All must pass with zero warnings.
-<!-- /SECTION: agent-checklist -->
+<!-- /section: agent-checklist -->
 
-<!-- SECTION: validator-checklist -->
+<!-- section: validator-checklist -->
 ## Quality Validation (Validators)
 
 ### Type Safety Check
@@ -99,4 +98,4 @@ All must pass with zero warnings.
 - [ ] No circular dependencies
 - [ ] No global mutable state
 - [ ] No layer violations
-<!-- /SECTION: validator-checklist -->
+<!-- /section: validator-checklist -->

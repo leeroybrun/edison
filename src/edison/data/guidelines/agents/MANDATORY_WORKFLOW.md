@@ -9,7 +9,7 @@ This document defines the mandatory workflow that ALL implementing agents must f
 
 ## Requirements
 
-<!-- SECTION: workflow -->
+<!-- section: workflow -->
 ### Workflow Overview
 
 **YOU MUST FOLLOW** the implementer runbook and orchestrator playbook before ANY implementation work.
@@ -53,17 +53,11 @@ Follow the implementation workflow:
 # Create new QA evidence round
 edison qa new <task-id>
 
-# Run tests
-npm test
-
-# Type check
-npm run type-check
-
-# Lint
-npm run lint
-
-# Build
-npm run build
+# Run project automation (commands come from the active pack / project config)
+<test-command>
+<type-check-command>
+<lint-command>
+<build-command>
 ```
 
 #### Phase 3: Mark Ready for Validation
@@ -150,7 +144,7 @@ edison qa validate <task-id>
 4. **ALWAYS provide evidence** - No evidence = incomplete work
 5. **ALWAYS check delegation** - Verify you're the right agent
 
-<!-- /SECTION: workflow -->
+<!-- /section: workflow -->
 
 ## References
 

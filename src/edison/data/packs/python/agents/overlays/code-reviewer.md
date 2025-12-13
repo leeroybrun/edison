@@ -4,7 +4,7 @@ pack: python
 overlay_type: extend
 ---
 
-<!-- EXTEND: Tools -->
+<!-- extend: tools -->
 
 ### Python Review Tools
 
@@ -31,9 +31,9 @@ bandit -r src/
 radon cc src/ -a
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- EXTEND: Guidelines -->
+<!-- extend: guidelines -->
 
 ### Python Code Review Checklist
 
@@ -88,7 +88,7 @@ radon cc src/ -a
 ```markdown
 ## Python Code Review
 
-### Type Safety
+### Type Checking
 - [ ] mypy --strict: PASS/FAIL
 - Issues: [list specific issues with file:line]
 
@@ -110,4 +110,4 @@ radon cc src/ -a
 - [ ] REJECTED
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->

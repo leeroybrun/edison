@@ -4,7 +4,7 @@ pack: python
 overlay_type: extend
 ---
 
-<!-- EXTEND: TechStack -->
+<!-- extend: tech-stack -->
 
 ## Python Technology Stack
 
@@ -55,9 +55,9 @@ pytest tests/ -v --tb=short > command-test.txt 2>&1
 python -m build > command-build.txt 2>&1 || echo "No build configured"
 ```
 
-<!-- /EXTEND -->
+<!-- /extend -->
 
-<!-- SECTION: PythonChecks -->
+<!-- section: PythonChecks -->
 
 ## Python-Specific Validation
 
@@ -141,4 +141,4 @@ ruff format --check src/ tests/
 - Config loaded from YAML files
 - Secrets from environment variables only
 
-<!-- /SECTION: PythonChecks -->
+<!-- /section: PythonChecks -->

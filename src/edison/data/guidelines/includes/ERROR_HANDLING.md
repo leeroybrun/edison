@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Error Handling Principles (All Roles)
 
 ### Core Rules
@@ -18,9 +18,9 @@
 
 ### Fail-Closed Philosophy
 When in doubt, fail closed. Better to halt than proceed with invalid state.
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: agent-implementation -->
+<!-- section: agent-implementation -->
 ## Error Handling Implementation (Agents)
 
 ### API/Service Layer
@@ -69,9 +69,9 @@ log_error(error, {
   input: sanitized_input
 })
 ```
-<!-- /SECTION: agent-implementation -->
+<!-- /section: agent-implementation -->
 
-<!-- SECTION: validator-check -->
+<!-- section: validator-check -->
 ## Error Handling Validation (Validators)
 
 ### Checklist
@@ -94,4 +94,4 @@ log_error(error, {
 - No retry logic for network operations
 - Missing loading states
 - Errors logged without context
-<!-- /SECTION: validator-check -->
+<!-- /section: validator-check -->

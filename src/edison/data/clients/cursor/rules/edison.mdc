@@ -6,7 +6,7 @@ alwaysApply: true
 
 # Edison Framework Rules
 
-<!-- SECTION: principles -->
+<!-- section: principles -->
 ## Critical Principles (Non-Negotiable)
 
 1. **STRICT TDD**: Write failing test FIRST (RED), then implement (GREEN), then refactor
@@ -19,18 +19,18 @@ alwaysApply: true
 8. **KISS**: Keep It Simple, Stupid - no over-engineering
 9. **YAGNI**: You Aren't Gonna Need It - remove speculative features
 10. **ROOT CAUSE**: ALWAYS find and fix root causes, never dirty fixes
-<!-- /SECTION: principles -->
+<!-- /section: principles -->
 
-<!-- SECTION: practices -->
+<!-- section: practices -->
 ## Development Practices
 
 - When updating code, ALL related tests should be updated (unit, integration, e2e)
 - When a test fails, analyze and fix the ROOT CAUSE - never simplify/skip tests
 - Before implementing, search for existing patterns to reuse/extend
 - Maintain strict coherence and unity across the codebase
-<!-- /SECTION: practices -->
+<!-- /section: practices -->
 
-<!-- SECTION: testing -->
+<!-- section: testing -->
 ## Testing Guidelines
 
 - Use `tmp_path` fixture for file system tests
@@ -38,9 +38,9 @@ alwaysApply: true
 - Use real HTTP clients with test servers
 - Use pytest fixtures for setup/teardown
 - FORBIDDEN: `unittest.mock`, `@patch`, `MagicMock`
-<!-- /SECTION: testing -->
+<!-- /section: testing -->
 
-<!-- SECTION: composed-additions -->
+<!-- section: composed-additions -->
 <!-- Pack/project extensions go here -->
-<!-- /SECTION: composed-additions -->
+<!-- /section: composed-additions -->
 

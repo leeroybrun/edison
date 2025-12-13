@@ -249,3 +249,6 @@ res.setHeader(
 // WRONG: Missing CSP
 // No CSP headers
 ```
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

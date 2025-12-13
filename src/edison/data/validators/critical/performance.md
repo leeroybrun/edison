@@ -43,6 +43,22 @@ git diff
 
 ---
 
+## Pack-Specific Performance Context
+
+Performance review must be **pack-aware**:
+- Core performance rules apply to every task.
+- Active packs may contribute additional **pack performance rules** (framework/library-specific).
+
+**Where pack rules live**:
+- Project pack registry: `.edison/packs/<pack>/rules/registry.yml`
+- Bundled pack registry: `src/edison/data/packs/<pack>/rules/registry.yml`
+
+**How rules are loaded/merged**:
+- Use the rules loader to **merge core + pack performance rules** for the active packs.
+- Implementation reference (conceptual): `RulesRegistry.compose(packs=[...])`
+
+---
+
 ## Performance Checklist
 
 ### 1. Bundle Size
@@ -98,9 +114,9 @@ git diff
 
 ## Technology Stack
 
-<!-- SECTION: tech-stack -->
+<!-- section: tech-stack -->
 <!-- Pack overlays extend here with framework-specific performance patterns -->
-<!-- /SECTION: tech-stack -->
+<!-- /section: tech-stack -->
 
 ---
 

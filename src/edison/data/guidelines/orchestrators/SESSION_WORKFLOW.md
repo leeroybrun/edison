@@ -1,6 +1,6 @@
 # Session Workflow (Active Session Playbook)
 
-<!-- SECTION: workflow -->
+<!-- section: workflow -->
 > **Canonical Location**: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
 
 Canonical path: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
@@ -35,12 +35,12 @@ Session state names map to on-disk directories as follows:
 - `.project/sessions/done/` (closing)
 - `.project/sessions/validated/` (validated)
 
-- <!-- SECTION: RULE.SESSION.ISOLATION -->
+- <!-- section: RULE.SESSION.ISOLATION -->
 - Claiming a task into a session physically moves it under `.project/sessions/wip/<session-id>/tasks/<status>/` (session state: active). Paired QA lives under `.project/sessions/wip/<session-id>/qa/<status>/`.
 - While the session is active, operate on the session-scoped queues by passing `--session <id>` (or set your project’s session-owner environment variable so CLIs auto-detect).
 - Other agents must never touch items under another session’s `sessions/wip/<id>/` (active) tree. Global queues contain only unclaimed work.
 - Session completion restores all session-scoped files back to the global queues, preserving final status.
-- <!-- /SECTION: RULE.SESSION.ISOLATION -->
+- <!-- /section: RULE.SESSION.ISOLATION -->
 
 ## Session Timeouts (WP-002)
 
@@ -70,20 +70,20 @@ Session state names map to on-disk directories as follows:
 
 ## Context Budget (token minimization)
 
-<!-- SECTION: RULE.CONTEXT.BUDGET_MINIMIZE -->
-<!-- SECTION: context-budget -->
+<!-- section: RULE.CONTEXT.BUDGET_MINIMIZE -->
+<!-- section: context-budget -->
 Keep orchestrator context under roughly 50K tokens by default. Prefer concise summaries and diffs over full files, and aggressively trim stale or redundant content from the session.
 Use focused snippets around the relevant change (for example, 80–120 lines of code or a single section of a document) instead of entire files whenever possible.
-<!-- /SECTION: context-budget -->
-<!-- /SECTION: RULE.CONTEXT.BUDGET_MINIMIZE -->
+<!-- /section: context-budget -->
+<!-- /section: RULE.CONTEXT.BUDGET_MINIMIZE -->
 
-<!-- SECTION: RULE.CONTEXT.NO_BIG_FILES -->
+<!-- section: RULE.CONTEXT.NO_BIG_FILES -->
 Avoid loading very large files (logs, generated artefacts, bundled assets) into prompts unless absolutely necessary for the current decision. When large inputs are unavoidable, extract only the minimal relevant portion and reference the full artefact by path.
-<!-- /SECTION: RULE.CONTEXT.NO_BIG_FILES -->
+<!-- /section: RULE.CONTEXT.NO_BIG_FILES -->
 
-<!-- SECTION: RULE.CONTEXT.SNIPPET_ONLY -->
+<!-- section: RULE.CONTEXT.SNIPPET_ONLY -->
 When sharing code or documentation with sub-agents, send focused snippets around the change (functions, components, or paragraphs) instead of whole files. Combine multiple small snippets when cross-references are required rather than sending the entire project tree.
-<!-- /SECTION: RULE.CONTEXT.SNIPPET_ONLY -->
+<!-- /section: RULE.CONTEXT.SNIPPET_ONLY -->
 
 ## Active Session Board
 
@@ -101,32 +101,32 @@ When sharing code or documentation with sub-agents, send focused snippets around
 ### Hierarchy & State Machine
 
 - Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the Markdown view for humans/LLMs.
-<!-- SECTION: RULE.LINK.SESSION_SCOPE_ONLY -->
+<!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
-<!-- /SECTION: RULE.LINK.SESSION_SCOPE_ONLY -->
+<!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Before promoting a task to `done/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
 - Before invoking validators, run `edison qa bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
 - Use `edison session status` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
-<!-- SECTION: RULE.GUARDS.FAIL_CLOSED -->
+<!-- section: RULE.GUARDS.FAIL_CLOSED -->
 > All status moves are fail-closed and MUST go through guarded Python CLIs (`edison task status`, `edison qa promote`, `edison qa round`, `edison session`). Direct file moves or legacy TS movers are forbidden.
-<!-- /SECTION: RULE.GUARDS.FAIL_CLOSED -->
+<!-- /section: RULE.GUARDS.FAIL_CLOSED -->
 
-<!-- SECTION: RULE.GUARDS.NO_MANUAL_MOVES -->
+<!-- section: RULE.GUARDS.NO_MANUAL_MOVES -->
 All task/QA moves MUST go through guarded CLIs (`edison task status`, `edison qa promote`, `edison qa round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
-<!-- /SECTION: RULE.GUARDS.NO_MANUAL_MOVES -->
+<!-- /section: RULE.GUARDS.NO_MANUAL_MOVES -->
 
-<!-- SECTION: RULE.QA.PAIR_ON_WIP -->
+<!-- section: RULE.QA.PAIR_ON_WIP -->
 Create and pair a QA brief (`qa/waiting/`) as soon as a task enters `tasks/wip/`. Do not defer QA creation to later phases.
-<!-- /SECTION: RULE.QA.PAIR_ON_WIP -->
+<!-- /section: RULE.QA.PAIR_ON_WIP -->
 
-<!-- SECTION: RULE.STATE.NO_SKIP -->
+<!-- section: RULE.STATE.NO_SKIP -->
 State transitions must be adjacent per the state machine; skipping states (e.g., `todo → validated`) is not allowed.
-<!-- /SECTION: RULE.STATE.NO_SKIP -->
+<!-- /section: RULE.STATE.NO_SKIP -->
 
-<!-- SECTION: RULE.SESSION.CLOSE_NO_BLOCKERS -->
+<!-- section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
 Close a session only when all scoped tasks are `validated`, paired QA are `done|validated`, and no unresolved blockers or report/schema errors remain.
-<!-- /SECTION: RULE.SESSION.CLOSE_NO_BLOCKERS -->
+<!-- /section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
 
 ## 1. Keep the session record alive
 1. Use `edison session status <session-id>` at least every two hours to confirm every scoped task/QA still lives where you expect.
@@ -225,9 +225,9 @@ This guard verifies:
 - ✅ Context7 auto-detected packages from the git diff have matching `context7-<pkg>.txt` markers (HMAC stamped when enabled)
 - ✅ Evidence set matches config-driven requirements from ConfigManager (core → pack → project overlays)
 
-<!-- SECTION: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
+<!-- section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 Parent tasks MUST NOT move to `done/` until every child task in the session scope is `done|validated`.
-<!-- /SECTION: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
+<!-- /section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 
 **If guard fails:** Fix issues before proceeding. Guard errors are explicit about what's missing.
 
@@ -247,7 +247,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ### 3.1. Validator Independence Rules
 
-<!-- SECTION: RULE.VALIDATION.INDEPENDENCE -->
+<!-- section: RULE.VALIDATION.INDEPENDENCE -->
 **🔴 CRITICAL:** Validators MUST be independent from implementation.
 
 **FORBIDDEN:**
@@ -263,7 +263,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 - ✅ Wait for ALL blocking validators to complete before making approval decision
 
 **Rationale:** Independent validation catches blind spots. Self-validation is confirmation bias.
-<!-- /SECTION: RULE.VALIDATION.INDEPENDENCE -->
+<!-- /section: RULE.VALIDATION.INDEPENDENCE -->
 
 ### 3.2. Prepare for Validation
 
@@ -499,18 +499,18 @@ edison session track stale
    - If no, leave it in `tasks/todo/` for a future session but document the handoff.
 5. After fixes are implemented, move the parent task to `done/`, QA to `todo/`, and re-run the validator waves (Round 2, Round 3, etc.).
 
-<!-- SECTION: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
+<!-- section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 ### Linking semantics for follow-ups (fail-closed)
 - Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done` or `validated`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
 - The readiness gate runs `edison task ensure_followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
-<!-- /SECTION: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
+<!-- /section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 
-<!-- SECTION: RULE.FOLLOWUPS.DEDUPE_FIRST -->
+<!-- section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
 ### Duplicate prevention before creation
 - Before creating any follow-up, search existing tasks by slug/title similarity. If a near-duplicate (≥0.82) exists, do NOT create a new task—link/record the existing ID where appropriate.
 - The helper `edison task ensure_followups` performs this check automatically.
-<!-- /SECTION: RULE.FOLLOWUPS.DEDUPE_FIRST -->
+<!-- /section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
 
 ### Parent Requeue (auto‑suggested)
 - When a parent task is set to `blocked` and all its child follow‑ups are `done` or `validated`, the Active Session "next" plan will suggest:
@@ -534,7 +534,7 @@ edison session track stale
 - Rejoining later? Claim/resume each task via `edison task claim --session <session-id>` so `Last Active` timestamps confirm the work is in progress.
 - Handing off? Mention the session ID inside each task/QA file's metadata so the next orchestrator can pick it up.
 
-<!-- /SECTION: workflow -->
+<!-- /section: workflow -->
 
 ---
 

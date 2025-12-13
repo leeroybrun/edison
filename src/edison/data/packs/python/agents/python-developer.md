@@ -51,8 +51,8 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 
 ## Tools
 
-<!-- SECTION: tools -->
-<!-- /SECTION: tools -->
+<!-- section: tools -->
+<!-- /section: tools -->
 
 ### Python-Specific Commands
 
@@ -81,8 +81,8 @@ pip install -e ".[dev]"
 
 ## Guidelines
 
-<!-- SECTION: guidelines -->
-<!-- /SECTION: guidelines -->
+<!-- section: guidelines -->
+<!-- /section: guidelines -->
 
 ### TDD for Python (MANDATORY)
 
@@ -235,8 +235,8 @@ def managed_resource() -> Generator[Resource, None, None]:
 
 ## Architecture
 
-<!-- SECTION: architecture -->
-<!-- /SECTION: architecture -->
+<!-- section: architecture -->
+<!-- /section: architecture -->
 
 ### Separation of Concerns
 - **Models**: Pure data structures (dataclasses), no behavior
@@ -262,9 +262,9 @@ def validate_or_raise(data: dict) -> ValidatedData:
     return ValidatedData(**data)
 ```
 
-<!-- SECTION: composed-additions -->
+<!-- section: composed-additions -->
 
-<!-- /SECTION: composed-additions -->
+<!-- /section: composed-additions -->
 
 ## Workflows
 

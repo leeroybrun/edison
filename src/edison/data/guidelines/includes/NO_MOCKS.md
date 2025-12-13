@@ -2,7 +2,7 @@
 
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-<!-- SECTION: philosophy -->
+<!-- section: philosophy -->
 ## NO MOCKS Philosophy (All Roles)
 
 ### Core Principle
@@ -23,9 +23,9 @@ Test real behavior, not mocked behavior. Mocking internal code means testing not
 
 ### Only Mock at System Boundaries
 External APIs you don't control (third-party services, payment gateways, email providers) may be mocked at the boundary. Everything internal must be real.
-<!-- /SECTION: philosophy -->
+<!-- /section: philosophy -->
 
-<!-- SECTION: agent-implementation -->
+<!-- section: agent-implementation -->
 ## NO MOCKS Implementation (Agents)
 
 ### Allowed Testing Patterns
@@ -91,25 +91,20 @@ assert(database_client.save).was_called_with(data)
 2. **Transaction Rollback**: Wrap tests in transactions
 3. **Template Databases**: Clone fresh database per test
 4. **Cleanup Hooks**: Clean up after each test
-<!-- /SECTION: agent-implementation -->
+<!-- /section: agent-implementation -->
 
-<!-- SECTION: validator-flags -->
+<!-- section: validator-flags -->
 ## NO MOCKS Validation (Validators)
 
 ### Patterns to Flag (Blocking)
 
-#### Python
-- `unittest.mock` imports
-- `@patch` decorators
-- `MagicMock` usage
-- `patch.object()` calls
+Flag any use of mocking/stubbing/spying facilities applied to **internal code** (data access, authentication, business logic, domain services).
 
-#### JavaScript/TypeScript
-- `vi.mock()` of internal modules
-- `jest.mock()` of internal modules
-- `sinon.stub()` on internal code
-- Mocked Prisma client
-- Mocked auth implementations
+Examples of what to flag (language-agnostic):
+- Importing a mocking library and substituting internal modules/classes/functions
+- Stubbing/spying on internal service methods as “proof” instead of asserting outcomes
+- Replacing the real database/data-layer client with a fake object
+- Replacing real authentication/authorization with fakes
 
 ### Immediate Rejection Triggers
 🚩 **Reject if found:**
@@ -128,4 +123,4 @@ assert(database_client.save).was_called_with(data)
 1. Does this test exercise real code paths?
 2. Would this test catch a real production bug?
 3. Is the mock at a true system boundary?
-<!-- /SECTION: validator-flags -->
+<!-- /section: validator-flags -->

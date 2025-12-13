@@ -371,12 +371,12 @@ FAIL: Circular import detected
 
 ---
 
-<!-- SECTION: tech-stack -->
-<!-- /SECTION: tech-stack -->
+<!-- section: tech-stack -->
+<!-- /section: tech-stack -->
 
-<!-- SECTION: composed-additions -->
+<!-- section: composed-additions -->
 
-<!-- /SECTION: composed-additions -->
+<!-- /section: composed-additions -->
 
 ---
 
