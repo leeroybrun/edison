@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.augmentcode.com/schemas/settings.json",
+  "description": "Edison validation settings - read-only mode for code review",
+  "toolPermissions": [
+    {
+      "toolName": "view",
+      "permission": { "type": "allow" },
+      "description": "Allow viewing file contents"
+    },
+    {
+      "toolName": "codebase-retrieval",
+      "permission": { "type": "allow" },
+      "description": "Allow codebase context retrieval"
+    },
+    {
+      "toolName": "grep-search",
+      "permission": { "type": "allow" },
+      "description": "Allow searching code"
+    },
+    {
+      "toolName": "web-search",
+      "permission": { "type": "allow" },
+      "description": "Allow web searches for documentation"
+    },
+    {
+      "toolName": "web-fetch",
+      "permission": { "type": "allow" },
+      "description": "Allow fetching web content"
+    },
+    {
+      "toolName": "str-replace-editor",
+      "permission": { "type": "deny" },
+      "description": "Deny file editing - validators are read-only"
+    },
+    {
+      "toolName": "save-file",
+      "permission": { "type": "deny" },
+      "description": "Deny file saving - validators are read-only"
+    },
+    {
+      "toolName": "remove-files",
+      "permission": { "type": "deny" },
+      "description": "Deny file deletion - validators are read-only"
+    },
+    {
+      "toolName": "launch-process",
+      "permission": { "type": "deny" },
+      "description": "Deny process launching for security"
+    }
+  ]
+}
+
