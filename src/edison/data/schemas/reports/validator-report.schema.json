@@ -20,8 +20,7 @@
     },
     "model": {
       "type": "string",
-      "enum": ["claude", "codex", "gemini"],
-      "description": "AI model used for this validation (must match validator config)"
+      "description": "Execution backend identifier used for this validation (e.g., 'claude', 'codex', 'gemini', 'auggie', 'coderabbit', 'human')."
     },
     "zenRole": {
       "type": "string",

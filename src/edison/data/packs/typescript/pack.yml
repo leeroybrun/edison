@@ -9,13 +9,7 @@ triggers:
     - "**/*.tsx"
 dependencies: []
 validators:
-  - codex-context.md
-  - claude-context.md
-  - gemini-context.md
-guidelines:
-  - strict-mode.md
-  - type-safety.md
-  - advanced-types.md
+  - typescript.md
 examples:
   - strict-types.ts
   - strict-config.json

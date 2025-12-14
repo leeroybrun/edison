@@ -6,6 +6,7 @@ Schemas for agent output formats and structured reports.
 
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
+| `implementation-report.schema.json` | Implementation round report (agents/orchestrator) | Runtime (when schema validation is enabled) |
 | `validator-report.schema.json` | Validator execution results | Tests |
 | `delegation-report.schema.json` | Agent delegation summaries | Tests |
 
@@ -13,6 +14,7 @@ Schemas for agent output formats and structured reports.
 
 Report schemas define the structure of output documents produced by agents:
 
+- **implementation-report**: Structured output from implementation rounds including follow-ups and validator-facing notes
 - **validator-report**: Structured output from validator executions including tracking info, verdicts, and timestamps
 - **delegation-report**: Summary of delegation decisions and outcomes
 

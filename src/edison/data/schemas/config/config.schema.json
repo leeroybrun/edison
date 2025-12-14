@@ -58,8 +58,8 @@
         },
         "legacy_project_config_dir": {
           "type": "string",
-          "description": "Legacy project configuration directory name (e.g., .agents).",
-          "default": ".agents"
+          "description": "Legacy project configuration directory name (deprecated).",
+          "default": ".project-config"
         }
       },
       "additionalProperties": false
@@ -78,14 +78,49 @@
           "type": ["string", "null"],
           "default": null
         },
+        "description": {
+          "type": "string",
+          "description": "Human-readable project description."
+        },
+        "language": {
+          "type": "string",
+          "description": "Primary project language (project-level metadata)."
+        },
+        "pythonVersion": {
+          "type": "string",
+          "description": "Python version string (project-level metadata)."
+        },
+        "sourceDir": {
+          "type": "string",
+          "description": "Primary source directory (project-level metadata)."
+        },
+        "testsDir": {
+          "type": "string",
+          "description": "Primary tests directory (project-level metadata)."
+        },
+        "commands": {
+          "type": "object",
+          "description": "Project command shortcuts (project-level metadata).",
+          "additionalProperties": { "type": "string" }
+        },
+        "paths": {
+          "type": "object",
+          "description": "Project path shortcuts (project-level metadata).",
+          "additionalProperties": { "type": "string" }
+        },
         "audit_terms": {
           "description": "Additional project-specific terms to ban from core/pack guidelines",
           "type": "array",
           "items": { "type": "string" },
           "default": []
+        },
+        "zenRoles": {
+          "description": "Mapping of agent names to Zen MCP role identifiers.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "session": {
       "type": "object",
@@ -93,11 +128,11 @@
         "worktree": {
           "type": "object",
           "properties": {
-            "baseDirectory": {
-              "type": "string",
-              "description": "Base directory for session worktrees",
-              "default": "../{PROJECT_NAME}-worktrees",
-              "examples": ["../my-project-worktrees", "/var/lib/edison-worktrees"]
+            "uuidSuffixLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "description": "Length of UUID suffix used when resolving worktree path collisions."
             },
             "timeouts": {
               "type": "object",
@@ -115,6 +150,7 @@
               "additionalProperties": false
             }
           },
+          "required": ["uuidSuffixLength"],
           "additionalProperties": true
         },
         "timeoutMinutes": {
@@ -125,6 +161,41 @@
         }
       },
       "additionalProperties": true
+    },
+    "worktrees": {
+      "type": "object",
+      "description": "Top-level worktree configuration (used for baseDirectory, archiveDirectory, branchPrefix, etc.).",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "baseBranch": { "type": "string", "default": "main" },
+        "baseDirectory": {
+          "type": "string",
+          "description": "Base directory for session worktrees.",
+          "default": "../{PROJECT_NAME}-worktrees",
+          "examples": ["../my-project-worktrees", "/var/lib/edison-worktrees"]
+        },
+        "archiveDirectory": {
+          "type": "string",
+          "description": "Archive directory for session worktrees.",
+          "default": "../{PROJECT_NAME}-worktrees/_archived"
+        },
+        "branchPrefix": { "type": "string", "default": "session/" },
+        "pathTemplate": {
+          "type": "string",
+          "description": "Optional path template for worktree location.",
+          "default": "../{PROJECT_NAME}-worktrees/{sessionId}"
+        },
+        "cleanup": {
+          "type": "object",
+          "properties": {
+            "autoArchive": { "type": "boolean", "default": true },
+            "archiveAfterDays": { "type": "integer", "minimum": 0, "default": 30 },
+            "deleteAfterDays": { "type": "integer", "minimum": 0, "default": 90 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
     "orchestrators": {
       "type": "object",

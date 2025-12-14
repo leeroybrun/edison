@@ -1,0 +1,24 @@
+context7:
+  triggers:
+    react:
+      - "*.tsx"
+      - "*.jsx"
+      - "**/components/**/*"
+
+  aliases:
+    react-dom: "react"
+
+  packages:
+    react:
+      version: "19.2.0"
+      context7Id: "/facebook/react"
+      criticalChanges:
+        - "New use() hook"
+        - "Server Components"
+        - "Actions"
+      topics:
+        - "hooks"
+        - "server components"
+        - "suspense"
+
+

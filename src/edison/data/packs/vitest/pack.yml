@@ -10,12 +10,6 @@ triggers:
     - "**/*.spec.ts"
 
 provides:
-  guidelines:
-    - guidelines/TESTING.md
-    - guidelines/tdd-workflow.md
-    - guidelines/test-quality.md
-    - guidelines/api-testing.md
-    - guidelines/component-testing.md
   agents:
     - agents/test-engineer.md
   validators:

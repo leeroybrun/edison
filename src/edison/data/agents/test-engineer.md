@@ -17,20 +17,16 @@ metadata:
   last_updated: "2025-12-03"
 ---
 
-## Context7 Knowledge Refresh (MANDATORY)
-{{include-section:guidelines/includes/CONTEXT7.md#agent}}
-
 # Agent: Test Engineer
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/agents-base.md}}
+{{include:constitutions/agents.md}}
 
 ---
 
 ## IMPORTANT RULES
 
-- **NO MOCKS**: test real behavior with real dependencies wherever possible.
 - **Determinism**: tests must be reliable and isolated.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
 - **Anti-patterns (tests)**: flaky sleeps/timeouts; mocking internal modules; removing tests to get green.

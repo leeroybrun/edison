@@ -7,7 +7,7 @@ Schemas for validating Edison configuration files and settings.
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
 | `config.schema.json` | Main edison.yaml/defaults.yaml | Production: `ConfigManager` |
-| `delegation-config.schema.json` | delegation/config.json | Production: `$schema` ref |
+| `delegation-config.schema.json` | delegation routing rules (YAML) | Production: `ConfigManager` (merged config) |
 | `delegation.schema.json` | delegation.yaml structure | Tests |
 | `orchestrator-config.schema.json` | Orchestrator profiles | Production: `OrchestratorConfig.validate()` |
 | `pack.schema.json` | Tech pack definitions | Production: `validate_pack()` |

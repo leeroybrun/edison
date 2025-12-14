@@ -1,6 +1,7 @@
 # TypeScript pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "**/*.ts"
     instructions: |
       Review TypeScript code for:

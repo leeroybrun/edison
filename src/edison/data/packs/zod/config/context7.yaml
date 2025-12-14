@@ -1,0 +1,29 @@
+context7:
+  triggers:
+    zod:
+      - "**/*.schema.ts"
+      - "**/*.validation.ts"
+      - "**/*schema.ts"
+      - "**/*validation.ts"
+
+  contentDetection:
+    zod:
+      filePatterns:
+        - "**/*.ts"
+        - "**/*.tsx"
+      searchPatterns:
+        - "import.*zod"
+        - "from.*zod"
+        - "z\\."
+
+  packages:
+    zod:
+      version: "4.1.12"
+      context7Id: "/colinhacks/zod"
+      criticalChanges:
+        - "Breaking changes from earlier major versions"
+      topics:
+        - "validation"
+        - "schemas"
+
+

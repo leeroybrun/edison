@@ -207,7 +207,7 @@ edison task status TASK-123 --json
 
 - `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md` - Full agent workflow
 - `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md` - Output format requirements
-- `.edison/_generated/guidelines/TDD.md` - TDD requirements for implementation
+- `.edison/_generated/constitutions/AGENTS.md` - TDD requirements (embedded)
 
 ---
 

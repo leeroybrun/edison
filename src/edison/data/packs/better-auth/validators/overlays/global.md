@@ -3,6 +3,14 @@
 
 General best practices and validation for all Better Auth implementations across the codebase.
 
+## Guidelines
+
+{{include-section:packs/better-auth/guidelines/includes/better-auth/session-management.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/provider-configuration.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/middleware-patterns.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/client-setup-patterns.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/security-best-practices.md#patterns}}
+
 ## Code Quality Standards
 
 - All auth code should be well-documented

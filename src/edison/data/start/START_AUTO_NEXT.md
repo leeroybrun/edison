@@ -5,7 +5,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `.edison/_generated/constitutions/ORCHESTRATORS.md`
+   Read: `.edison/_generated/constitutions/ORCHESTRATOR.md`
 
 2. **Find Ready Tasks**
    Run: `edison task ready --json`
@@ -17,7 +17,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
    - Different agent types
 
 4. **Create Session and Claim**
-   Run: `edison session start --auto`
+   Run: `edison session create [--session-id <id>]`
    Run: `edison task claim <task-id>` for each selected task
 
 5. **Begin Work**
@@ -43,7 +43,7 @@ Valid task state transitions:
 Transition triggers:
 - todo → wip: claim a task (`edison task claim <task-id>`)
 - wip → done: mark done after TDD green and evidence
-- done → validated: run validators (`edison qa validate <task-id>`)
+- done → validated: run validators (`edison qa validate <task-id> --session <session-id> --execute`)
 
 Task states can also transition to blocked if blockers are encountered.
 
@@ -52,6 +52,6 @@ State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagr
 ## Key Commands
 ```bash
 edison task ready --json     # Get ready tasks as JSON
-edison session start --auto  # Start session with auto-select
+edison session create [--session-id <id>]  # Create a session record (ID auto-infers if omitted)
 edison task claim <id>       # Claim tasks
 ```

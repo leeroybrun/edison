@@ -1,9 +1,9 @@
 <!-- extend: composed-additions -->
 # Next.js API Validation Context
 
-{{include:packs/nextjs/guidelines/nextjs/route-handlers.md}}
-{{include:packs/nextjs/guidelines/nextjs/app-router.md}}
-{{include:packs/nextjs/guidelines/nextjs/caching.md}}
+{{include-section:packs/nextjs/guidelines/includes/nextjs/route-handlers.md#patterns}}
+{{include-section:packs/nextjs/guidelines/includes/nextjs/app-router.md#patterns}}
+{{include-section:packs/nextjs/guidelines/includes/nextjs/caching.md#patterns}}
 
 ## Next.js API Checks
 - Handlers live in `app/api/**/route.ts` using `NextRequest`/`NextResponse`; avoid legacy `pages/api` patterns.

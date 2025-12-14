@@ -1,6 +1,7 @@
 # Tailwind pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "**/*.{tsx,jsx}"
     instructions: |
       Review Tailwind CSS usage:

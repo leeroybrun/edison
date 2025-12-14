@@ -13,7 +13,9 @@ from typing import List, Optional
 from ..base import BaseDomainConfig
 from edison.core.utils.paths import get_project_config_dir
 
-DEFAULT_PROJECT_TERMS = ["project", "app_", "better-auth", "odoo"]
+# Default audit terms are intentionally empty.
+# Projects should declare `project.audit_terms` in `.edison/config/project.yaml` when needed.
+DEFAULT_PROJECT_TERMS: List[str] = []
 
 
 class ProjectConfig(BaseDomainConfig):
@@ -131,7 +133,7 @@ class ProjectConfig(BaseDomainConfig):
         if self.name:
             lower_name = self.name.lower()
             terms.append(lower_name)
-            terms.append(lower_name.replace("-", " "))
+            terms.append(lower_name.replace("-", "_"))
 
         for extra in self.audit_terms:
             t = str(extra).strip().lower()

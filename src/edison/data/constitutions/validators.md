@@ -8,7 +8,7 @@
   To modify, edit the source template or configuration.
 -->
 <!-- Source: {{source_layers}} -->
-<!-- Regenerate: edison compose --all -->
+<!-- Regenerate: edison compose all -->
 <!-- Role: VALIDATOR -->
 <!-- Constitution: {{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md -->
 <!-- RE-READ this file on each new session or compaction -->
@@ -24,14 +24,62 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 - At the start of every validation assignment
 - After any context compaction
 
-## Mandatory Preloads (All Validators)
-{{include:constitutions/validators-base.md}}
+---
 
+{{if:config(constitutions.validators.mandatoryReads)}}
+## Mandatory Preloads
+{{#each mandatoryReads}}
+- {{this.path}}: {{this.purpose}}
+{{/each}}
+
+---
+
+{{/if}}
+## Core Principles (CRITICAL)
+
+{{include-section:guidelines/includes/TDD.md#principles}}
+
+{{include-section:guidelines/includes/NO_MOCKS.md#philosophy}}
+
+{{include-section:guidelines/includes/QUALITY.md#principles}}
+
+{{include-section:guidelines/includes/CONFIGURATION.md#principles}}
+
+---
+
+{{include-section:guidelines/includes/TDD.md#validator-check}}
+
+{{include-section:guidelines/includes/NO_MOCKS.md#validator-flags}}
+
+{{include-section:guidelines/includes/QUALITY.md#validator-checklist}}
+
+---
+
+## Context7 Knowledge Refresh (CRITICAL)
+
+{{include-section:guidelines/includes/CONTEXT7.md#workflow}}
+
+{{include-section:guidelines/includes/CONTEXT7.md#validator}}
+
+---
+
+## Pack Extensions
+
+<!-- section: pack-constitution -->
+<!-- Pack overlays extend here with pack-specific validation criteria -->
+<!-- /section: pack-constitution -->
+
+---
+
+{{if:config(constitutions.validators.optionalReads)}}
 ## Optional References
 {{#each optionalReads}}
 - {{this.path}}: {{this.purpose}}
 {{/each}}
 
+---
+
+{{/if}}
 ## Validation Workflow
 1. Refresh Context7 knowledge for relevant packages
 2. Review changes against validation criteria
@@ -43,6 +91,8 @@ See: guidelines/validators/OUTPUT_FORMAT.md
 
 ## Applicable Rules
 {{#each rules}}
-### {{this.id}}: {{this.name}}
-{{this.content}}
+### {{this.id}}: {{this.title}}
+{{#if this.body}}
+{{this.body}}
+{{/if}}
 {{/each}}

@@ -13,12 +13,6 @@ triggers:
     - ".env*"
 
 provides:
-  guidelines:
-    - guidelines/session-management.md
-    - guidelines/provider-configuration.md
-    - guidelines/middleware-patterns.md
-    - guidelines/client-setup-patterns.md
-    - guidelines/security-best-practices.md
   validators:
     - validators/auth-security.md
   agents: []

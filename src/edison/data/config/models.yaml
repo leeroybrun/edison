@@ -38,7 +38,7 @@ delegation:
         note: "Anthropic API standard limits"
       strengths: [architecture-design, ui-ux-thinking, component-composition, integration-work, documentation, planning, holistic-thinking]
       weaknesses: [deep-static-analysis, precise-refactoring-across-many-files]
-      optimalFor: ["React components and UI", "System architecture", "Feature planning", "Documentation", "Integration work", "UX decisions"]
+      optimalFor: ["UI components", "System architecture", "Feature planning", "Documentation", "Integration work", "UX decisions"]
       avoidFor: [deep-static-analysis, precise-refactoring-across-many-files]
     gemini:
       displayName: "Gemini 2.5 Pro/Flash"

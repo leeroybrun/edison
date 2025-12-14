@@ -5,7 +5,7 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `.edison/_generated/constitutions/ORCHESTRATORS.md`
+   Read: `.edison/_generated/constitutions/ORCHESTRATOR.md`
 
 2. **Load Mandatory Reads**
    See constitution for mandatory file list.
@@ -44,7 +44,7 @@ Valid task state transitions:
 Transition triggers:
 - todo → wip: claim a task (`edison task claim <task-id>`)
 - wip → done: mark done after TDD green and evidence
-- done → validated: run validators (`edison qa validate <task-id>`)
+- done → validated: run validators (`edison qa validate <task-id> --session <session-id> --execute`)
 
 Task states can also transition to blocked if blockers are encountered.
 
@@ -52,7 +52,7 @@ State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagr
 
 ## Key Commands
 ```bash
-edison session start         # Start new session
+edison session create [--session-id <id>]  # Create a new session record (optional worktree; ID auto-infers if omitted)
 edison session status        # Check session status
 edison task ready            # List ready tasks
 edison task claim <id>       # Claim a task

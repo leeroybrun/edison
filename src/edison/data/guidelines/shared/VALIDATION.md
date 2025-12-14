@@ -4,21 +4,26 @@
 Run after implementation is complete and before a task can advance beyond `done/`. QA briefs are the canonical validation record.
 
 ## Validation Checklist (fail-closed)
-- Load the validator config via ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`) for triggers, blocking rules, and `postTrainingPackages` (Context7 list).
+- Build the triggered validator roster from the merged `validation.validators` config (core → packs → project) and the task/session file context (git diff + primary files).
 - Automation passing for the round (type-check, lint, test, build or project equivalent).
 - QA brief exists in `qa/{waiting|todo|wip}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).
-- Context7 refreshed for every package in `postTrainingPackages`; add marker files per package in the round evidence directory.
+- Context7 refreshed for every Context7-detected package; add `context7-<pkg>.txt` markers per package in the round evidence directory.
 - Required validators launched in waves up to the concurrency cap; record the model used.
 - If any blocking validator rejects → task stays in `wip`, QA returns to `waiting`, follow-ups created.
 - If any validator is blocked or missing, halt and resolve before proceeding.
 
 ## Validator Roster & Waves
-See `AVAILABLE_VALIDATORS.md` (generated from the ValidatorRegistry) for the current validator roster, models, and trigger patterns.
+To inspect the computed roster for a task (including triggered validators and wave membership), run:
+
+```bash
+edison qa validate <task-id> --session <session-id> --dry-run
+```
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
 **Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Specialized (triggered, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
 
@@ -78,7 +83,7 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 
 ## Sequence (strict order)
 1) Automation evidence captured (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`, etc.).
-2) Context7 refreshes for all `postTrainingPackages` (see config path above); save `context7-<pkg>.txt` markers.
+2) Context7 refreshes for all Context7-detected packages; save `context7-<pkg>.txt` markers.
 3) Detect changed files → map to validator roster.
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.
 5) Run validators in waves (respect models and concurrency cap). Summarize each report in QA.
@@ -154,25 +159,18 @@ Session completion enforces: parent is `tasks/validated/` with QA in `qa/done|va
 
 ## CLI Helpers
 
-### Write Validator Reports (non-interactive, fail-closed)
+### Run Validators (writes reports automatically)
 
-Use the guarded CLI to create/update validator reports without hand-editing JSON. It fails with a non-zero exit and detailed messages if required fields are missing/invalid, and it always validates after writing.
+Run the full roster (all waves in order) and write `validator-*-report.json` files into the current round:
 
 ```bash
-# Approve example
-edison qa report --task <task-id> --validator global-codex --model codex --round 1 \
-  --verdict approve --summary "All checks green" \
-  --add-strength "Solid test coverage" \
-  --add-evidence .project/qa/validation-evidence/<task-id>/round-1/command-test.txt
+edison qa validate <task-id> --session <session-id> --execute
+```
 
-# Reject example with finding and follow-up
-edison qa report --task <task-id> --validator security --model codex \
-  --verdict reject \
-  --add-finding "severity=high,category=security,description=JWT not validated,location=path/to/file.ext:120,recommendation=Validate JWT signature,blocking=true" \
-  --add-follow-up "title=Add JWT validation middleware,severity=high,blocking=true"
+Run a single validator (writes `validator-<id>-report.json` for CLI-executed validators; delegated validators emit `delegation-<id>.md` instructions):
 
-# Validate a single report file
-edison qa validate .project/qa/validation-evidence/<task-id>/round-1/validator-security-report.json
+```bash
+edison qa run <validator-id> <task-id> --session <session-id> --round <N>
 ```
 
 ## Promotion rules

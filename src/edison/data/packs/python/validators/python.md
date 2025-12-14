@@ -8,7 +8,7 @@
 ---
 
 ## Mandatory Reads
-- `.edison/_generated/guidelines/shared/COMMON.md` - Shared validation rules
+- `.edison/_generated/constitutions/VALIDATORS.md` - Cross-role rules (TDD, Context7, configuration-first)
 - `.edison/_generated/guidelines/validators/COMMON.md` - Validator baseline
 
 ---

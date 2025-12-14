@@ -4,10 +4,10 @@
 ## React Validation Context
 
 ### Guidelines
-{{include:packs/react/guidelines/react/hooks-patterns.md}}
-{{include:packs/react/guidelines/react/component-design.md}}
-{{include:packs/react/guidelines/react/server-client-components.md}}
-{{include:packs/react/guidelines/react/accessibility.md}}
+{{include-section:packs/react/guidelines/includes/react/hooks-patterns.md#patterns}}
+{{include-section:packs/react/guidelines/includes/react/component-design.md#patterns}}
+{{include-section:packs/react/guidelines/includes/react/server-client-components.md#patterns}}
+{{include-section:packs/react/guidelines/includes/react/accessibility.md#patterns}}
 
 ### Concrete Checks
 - Follow Rules of Hooks; no conditional hooks.

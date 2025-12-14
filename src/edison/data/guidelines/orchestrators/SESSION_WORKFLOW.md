@@ -5,17 +5,17 @@
 
 Canonical path: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
 
-This guide assumes you already ran the appropriate intake prompt (`ORCHESTRATORS.md constitution` or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`. From this point on, every action revolves around the tasks and QA briefs listed in that session file.
+This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`. From this point on, every action revolves around the tasks and QA briefs listed in that session file.
 
 ## CLI naming (dispatcher + auto-start)
-- Use the dispatcher: `edison session start|next|verify|close|recovery --session <id>`.
-- **Auto-start:** `edison session start` bootstraps the orchestrator using ConfigManager (core → pack → project YAML overlays), delivers the prompt template to the active agent, and restores/creates the session record. Run this once per session.
-- Prompt templates for the current role/session are injected automatically on start; do not hand-edit the rendered prompt.
+- Orchestration is driven by the loop driver: `edison session next <session-id>`.
+- Session records are created with `edison session create [--session-id <id>]` (manual; ID auto-infers if omitted) or by launching an orchestrator process via `edison orchestrator start` (end-to-end).
+- Prompt templates for the current role/session are injected automatically by the launcher; do not hand-edit rendered prompts.
 - Set the project owner environment variable (`<PROJECT>_OWNER`) if your orchestration layer expects it for default session ownership.
 
 ## Worktree isolation (new)
 - Sessions operate from an isolated git worktree created under `../${PROJECT}-worktrees/<session-id>/`.
-- Manage lifecycle via `edison git worktree-create|worktree-restore|worktree-archive|worktree-cleanup` (or `edison git worktree-*`). Auto-start invokes create/restore when configured.
+- Manage lifecycle via `edison git worktree-create|worktree-restore|worktree-archive|worktree-cleanup`. Auto-start invokes create/restore when configured.
 - Never develop directly in the primary worktree while a session is active; keep changes confined to the session worktree to prevent cross-session conflicts.
 
 ## Session States
@@ -44,10 +44,10 @@ Session state names map to on-disk directories as follows:
 
 ## Session Timeouts (WP-002)
 
-- Default inactivity timeout is configured in `.edison/_generated/constitutions/ORCHESTRATORS.md (session.timeout_hours` (default: 8).
+- Default inactivity timeout is configured in `.edison/_generated/constitutions/ORCHESTRATOR.md` (`session.timeout_hours`, default: 8).
 - Stale detection cadence is `session.stale_check_interval_hours` (default: 1) for schedulers.
 - When a session exceeds the timeout window (based on the most recent of `lastActive`, `claimedAt`, or `createdAt`):
-  - `edison session detect-stale` detects and automatically cleans up expired sessions.
+  - `edison session cleanup-expired` detects and automatically cleans up expired sessions.
   - Cleanup restores all session-scoped tasks/QA back to the global queues and moves the session JSON from `sessions/wip/` → `sessions/done/`.
   - `meta.expiredAt` is stamped and an Activity Log entry is appended for auditability.
 - All claim paths fail-closed: `edison task claim` refuses operations into an expired session.
@@ -66,7 +66,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Rejections keep tasks in `tasks/wip/` and QA in `qa/waiting/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
 - [ ] State transitions follow `.edison/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
-- [ ] Auto-start ran (`edison session start`) and worktree isolation is active for this session (external worktree path recorded).
+- [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
 
@@ -154,7 +154,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `.edison/_generated/constitutions/ORCHESTRATORS.md`:**
+**Delegate according to `.edison/_generated/constitutions/ORCHESTRATOR.md`:**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
@@ -214,16 +214,14 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 **Run readiness check:**
 ```bash
-edison task ready <task-id> --session <session-id> [--run] [--disable-tdd --reason \"justification\"]
+edison task ready <task-id> --session <session-id>
 ```
 
-This guard verifies:
-- ✅ Implementation report exists with tracking stamps (startedAt, completedAt, processId)
-- ✅ Automation evidence files present (command-type-check.txt, command-lint.txt, command-test.txt, command-build.txt)
-- ✅ QA brief paired
-- ✅ Child tasks ready (if any)
-- ✅ Context7 auto-detected packages from the git diff have matching `context7-<pkg>.txt` markers (HMAC stamped when enabled)
-- ✅ Evidence set matches config-driven requirements from ConfigManager (core → pack → project overlays)
+This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
+- ✅ The latest round contains a non-empty implementation report (`implementation-report.json` by default; config-driven)
+- ✅ Automation evidence files exist per project config (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`)
+- ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
+- ✅ QA brief is ready to move `waiting → todo` once the task is `done`
 
 <!-- section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 Parent tasks MUST NOT move to `done/` until every child task in the session scope is `done|validated`.
@@ -541,7 +539,7 @@ edison session track stale
 **References**
 - `.edison/_generated/constitutions/AGENTS.md` – orchestration policies & delegation guardrails
 - `.edison/_generated/guidelines/shared/VALIDATION.md` – validator gate specifics
-- `.edison/_generated/guidelines/TDD.md` – RED/GREEN/REFACTOR protocol
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` – TDD verification requirements (embedded)
 - `.edison/_generated/guidelines/shared/HONEST_STATUS.md` – directory semantics + reporting rules
 - `.edison/_generated/AVAILABLE_AGENTS.md` – agent roster and delegation patterns
 - `.edison/_generated/AVAILABLE_VALIDATORS.md` – validator triggers + block/allow list

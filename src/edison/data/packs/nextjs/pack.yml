@@ -14,11 +14,4 @@ triggers:
 validators:
   - api.md
   - nextjs.md
-guidelines:
-  - ROUTING.md
-  - app-router.md
-  - route-handlers.md
-  - server-actions.md
-  - metadata.md
-  - caching.md
 examples: []

@@ -11,6 +11,11 @@ mcp:
         - "--from"
         - "git+https://github.com/BeehiveInnovations/zen-mcp-server.git"
         - "zen-mcp-server"
+      # Script-based command variant (preferred for local + deterministic setups).
+      # `edison init --mcp-script` copies `scripts/zen/*.sh` into `{PROJECT_ROOT}/.edison/scripts/zen/`.
+      script:
+        command: "{PROJECT_ROOT}/.edison/scripts/zen/run-server.sh"
+        args: []
       env:
         ZEN_WORKING_DIR: "{PROJECT_ROOT}"
       setup:

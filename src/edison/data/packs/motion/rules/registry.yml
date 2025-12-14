@@ -1,51 +1,41 @@
-# Motion Pack Rules Registry
-
-# Motion-specific validation rules for animations
-# These rules check for common animation patterns and best practices
-
 rules:
-  animate_presence_pattern:
-    description: "AnimatePresence must wrap dynamic content with exit animations"
+  - id: RULE.MOTION.PREFER_TRANSFORMS
+    title: Prefer transforms/opacity over layout for performance
+    category: performance
     severity: warning
-    patterns:
-      - "AnimatePresence.*\\{[^}]*\\}"
+    sourcePath: packs/motion/guidelines/includes/motion/performance.md
+    description: |
+      Prefer transform/opacity animations (GPU-friendly) over animating layout properties.
+      This reduces layout thrash and keeps motion animations smooth.
 
-  layout_animation_pattern:
-    description: "Use layout prop for position/size changes instead of manual positioning"
-    severity: info
-    patterns:
-      - "motion\\.div.*layout"
-
-  gpu_accelerated_only:
-    description: "Animate only GPU-accelerated properties (transform, opacity)"
+  - id: RULE.MOTION.USE_VARIANTS_FOR_STATE
+    title: Use variants for state-driven motion
+    category: maintainability
     severity: warning
-    properties:
-      - x
-      - y
-      - rotate
-      - scale
-      - opacity
+    sourcePath: packs/motion/guidelines/includes/motion/variants-system.md
+    description: |
+      Use variants to centralize animation state and avoid duplicated animate props.
 
-  gesture_constraints:
-    description: "Drag gestures must have dragConstraints defined"
+  - id: RULE.MOTION.GESTURES_ARE_INTENTIONAL
+    title: Gesture handling must be intentional and constrained
+    category: correctness
     severity: warning
-    patterns:
-      - "drag"
+    sourcePath: packs/motion/guidelines/includes/motion/gesture-handling.md
+    description: |
+      Gesture interactions (hover/tap/drag) should be constrained and tested.
 
-  variants_reusable:
-    description: "Extract repeated animations to variants object"
-    severity: info
-    min_occurrences: 2
-
-  memoized_lists:
-    description: "Animated list items should be memoized to prevent re-renders"
-    severity: info
-    patterns:
-      - "map.*motion"
-
-  animation_timing:
-    description: "Keep animations between 100-500ms for optimal feel"
+  - id: RULE.MOTION.LAYOUT_ANIMATIONS_ARE_SCOPED
+    title: Layout animations should be scoped to the smallest subtree
+    category: performance
     severity: warning
-    limits:
-      min_duration: 0.1  # seconds
-      max_duration: 0.5  # seconds
+    sourcePath: packs/motion/guidelines/includes/motion/layout-animations.md
+    description: |
+      Use layout animations for reflow/reorder, but keep the animated subtree small.
+
+  - id: RULE.MOTION.ANIMATE_PRESENCE_KEYS
+    title: AnimatePresence requires stable keys for exit animations
+    category: correctness
+    severity: warning
+    sourcePath: packs/motion/guidelines/includes/motion/animate-presence.md
+    description: |
+      Ensure stable keys so exit animations can run correctly when components unmount.

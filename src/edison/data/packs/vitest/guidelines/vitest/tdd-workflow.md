@@ -1,6 +1,6 @@
-# TDD Workflow
+# TDD Workflow (Vitest)
 
-- Write a failing test first; commit the failing state when practical.
-- Implement the minimum to pass, then refactor with safety.
-- Keep feedback loop fast; narrow the scope of each test.
+<!-- section: patterns -->
+{{include-section:packs/vitest/guidelines/includes/vitest/tdd-workflow.md#patterns}}
+<!-- /section: patterns -->
 

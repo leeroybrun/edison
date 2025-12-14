@@ -11,12 +11,6 @@ triggers:
     - "**/*animation*"
 
 provides:
-  guidelines:
-    - guidelines/animate-presence.md
-    - guidelines/layout-animations.md
-    - guidelines/gesture-handling.md
-    - guidelines/variants-system.md
-    - guidelines/performance.md
   agents:
     - agents/component-builder.md
   validators:

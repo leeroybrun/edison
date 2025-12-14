@@ -4,10 +4,10 @@
 ## Prisma Validation Context
 
 ### Guidelines
-{{include:packs/prisma/guidelines/prisma/schema-design.md}}
-{{include:packs/prisma/guidelines/prisma/migrations.md}}
-{{include:packs/prisma/guidelines/prisma/query-optimization.md}}
-{{include:packs/prisma/guidelines/prisma/relationships.md}}
+{{include-section:packs/prisma/guidelines/includes/prisma/schema-design.md#patterns}}
+{{include-section:packs/prisma/guidelines/includes/prisma/migrations.md#patterns}}
+{{include-section:packs/prisma/guidelines/includes/prisma/query-optimization.md#patterns}}
+{{include-section:packs/prisma/guidelines/includes/prisma/relationships.md#patterns}}
 
 ### Concrete Checks
 - Avoid N+1 queries; use `include`/`select` appropriately.

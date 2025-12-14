@@ -72,7 +72,10 @@ validation:
       description: "Generate delegation instructions for orchestrator"
 
   # Flat validator definitions
-  # Each validator references an engine and optionally a fallback
+  # Each validator references an engine and optionally a fallback.
+  #
+  # Core is technology-agnostic: only cross-cutting validators live here.
+  # Packs/projects may add additional validators via config overlays.
   validators:
     # Global validators - always run, use same prompt with different models
     global-codex:
@@ -85,7 +88,7 @@ validation:
       blocking: true
       timeout: 300
       context7_required: true
-      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      context7_packages: []
       triggers: ["*"]
       focus: []
 
@@ -99,7 +102,7 @@ validation:
       blocking: true
       timeout: 300
       context7_required: true
-      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      context7_packages: []
       triggers: ["*"]
       focus: []
 
@@ -113,7 +116,7 @@ validation:
       blocking: false  # Non-blocking, consensus reinforcement
       timeout: 300
       context7_required: true
-      context7_packages: [next, react, uistylescss, zod, typescript, framer-motion]
+      context7_packages: []
       triggers: ["*"]
       focus: []
 
@@ -131,18 +134,18 @@ validation:
       triggers: ["*"]
       focus: []
 
-    # Critical validators - important but triggered by patterns
+    # Critical validators - cross-cutting (security/performance).
     security:
       name: "Security Validator"
       engine: codex-cli
       fallback_engine: zen-mcp
-      prompt: "critical/security.md"
+      prompt: "_generated/validators/security.md"
       wave: critical
-      always_run: false
+      always_run: true
       blocking: true
       timeout: 300
       context7_required: true
-      context7_packages: [next, zod]
+      context7_packages: []
       triggers: ["*"]
       focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
 
@@ -150,13 +153,13 @@ validation:
       name: "Performance Validator"
       engine: codex-cli
       fallback_engine: zen-mcp
-      prompt: "critical/performance.md"
+      prompt: "_generated/validators/performance.md"
       wave: critical
-      always_run: false
+      always_run: true
       blocking: true
       timeout: 300
       context7_required: true
-      context7_packages: [next, react]
+      context7_packages: []
       triggers: ["*"]
       focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
 
@@ -164,7 +167,7 @@ validation:
       name: "CodeRabbit AI Review"
       engine: coderabbit-cli
       fallback_engine: zen-mcp
-      prompt: "critical/coderabbit.md"
+      prompt: "_generated/validators/coderabbit.md"
       wave: critical
       always_run: false
       blocking: true
@@ -174,100 +177,15 @@ validation:
       triggers: ["*"]
       focus: []
 
-    # Specialized validators - file-pattern triggered
-    react:
-      name: "React Validator"
-      engine: codex-cli
-      fallback_engine: zen-mcp
-      prompt: "specialized/react.md"
-      wave: comprehensive
-      always_run: false
-      blocking: false
-      timeout: 300
-      context7_required: true
-      context7_packages: [react, uistylescss]
-      triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
-      focus: []
-
-    nextjs:
-      name: "Next.js Validator"
-      engine: codex-cli
-      fallback_engine: zen-mcp
-      prompt: "specialized/nextjs.md"
-      wave: comprehensive
-      always_run: false
-      blocking: false
-      timeout: 300
-      context7_required: true
-      context7_packages: [next, react]
-      triggers: ["app/**/*.tsx", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
-      focus: []
-
-    api:
-      name: "API Validator"
-      engine: codex-cli
-      fallback_engine: zen-mcp
-      prompt: "specialized/api.md"
-      wave: comprehensive
-      always_run: false
-      blocking: false
-      timeout: 300
-      context7_required: true
-      context7_packages: [next, zod, typescript]
-      triggers: ["**/api/**/*.ts", "**/route.ts"]
-      focus: []
-
-    prisma:
-      name: "Prisma Validator"
-      engine: codex-cli
-      fallback_engine: zen-mcp
-      prompt: "specialized/database.md"
-      wave: comprehensive
-      always_run: false
-      blocking: true
-      timeout: 300
-      context7_required: true
-      context7_packages: [prisma]
-      triggers: ["schema.*", "**/*.sql", "prisma/**/*", "migrations/**/*", "db/**/*", "schema.prisma"]
-      focus: []
-
-    testing:
-      name: "Testing Validator"
-      engine: codex-cli
-      fallback_engine: zen-mcp
-      prompt: "specialized/testing.md"
-      wave: comprehensive
-      always_run: false
-      blocking: true
-      timeout: 300
-      context7_required: false
-      context7_packages: [typescript, vitest]
-      triggers: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
-      focus: []
-
   # Wave definitions (execution groups)
   # Waves define the order and behavior of validator execution
   waves:
     - name: critical
-      validators:
-        - global-codex
-        - global-claude
-        - global-gemini
-        - global-auggie
-        - security
-        - performance
-        - coderabbit
       execution: parallel
       continue_on_fail: false
       requires_previous_pass: false
 
     - name: comprehensive
-      validators:
-        - react
-        - nextjs
-        - api
-        - prisma
-        - testing
       execution: parallel
       continue_on_fail: true
       requires_previous_pass: true
@@ -277,20 +195,7 @@ validation:
     bundleSummaryFile: "bundle-approved.json"
     implementationReportFile: "implementation-report.json"
 
-  # Approval criteria (documentation only, logic uses blocking field)
+  # Approval criteria (documentation only; logic uses `blocking` and the roster)
   approvalCriteria:
-    globalValidators:
-      global-codex: "MUST approve (blocking)"
-      global-claude: "MUST approve (blocking)"
-      global-gemini: "SHOULD approve (non-blocking, consensus reinforcement)"
-      global-auggie: "SHOULD approve (non-blocking, additional AI perspective)"
-    criticalValidators:
-      security: "MUST approve (blocking)"
-      performance: "MUST approve (blocking)"
-      coderabbit: "MUST approve (blocking)"
-    specializedValidators:
-      prisma: "MUST approve (blocking)"
-      testing: "MUST approve (blocking)"
-      react: "SHOULD approve (non-blocking)"
-      nextjs: "SHOULD approve (non-blocking)"
-      api: "SHOULD approve (non-blocking)"
+    criticalWave: "All blocking validators in the critical wave MUST approve."
+    comprehensiveWave: "Triggered validators run in comprehensive wave; blocking validators MUST approve; non-blocking are advisory."

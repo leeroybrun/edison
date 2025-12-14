@@ -1,6 +1,7 @@
 # React pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "**/*.jsx"
     instructions: |
       Review React JSX code for:

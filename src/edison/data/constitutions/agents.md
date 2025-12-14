@@ -8,7 +8,7 @@
   To modify, edit the source template or configuration.
 -->
 <!-- Source: {{source_layers}} -->
-<!-- Regenerate: edison compose --all -->
+<!-- Regenerate: edison compose all -->
 <!-- Role: AGENT -->
 <!-- Constitution: {{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md -->
 <!-- RE-READ this file on each new session or compaction -->
@@ -25,25 +25,71 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 - After any context compaction
 - When instructed by the orchestrator
 
-## Mandatory Preloads (All Agents)
-{{include:constitutions/agents-base.md}}
+---
 
+{{if:config(constitutions.agents.mandatoryReads)}}
+## Mandatory Preloads
+{{#each mandatoryReads}}
+- {{this.path}}: {{this.purpose}}
+{{/each}}
+
+---
+
+{{/if}}
+## Core Principles (CRITICAL)
+
+{{include-section:guidelines/includes/TDD.md#principles}}
+
+{{include-section:guidelines/includes/NO_MOCKS.md#philosophy}}
+
+{{include-section:guidelines/includes/QUALITY.md#principles}}
+
+{{include-section:guidelines/includes/CONFIGURATION.md#principles}}
+
+---
+
+{{include-section:guidelines/includes/TDD.md#agent-execution}}
+
+---
+
+## Context7 Knowledge Refresh (CRITICAL)
+
+{{include-section:guidelines/includes/CONTEXT7.md#workflow}}
+
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
+
+---
+
+## Pack Extensions
+
+<!-- section: pack-constitution -->
+<!-- Pack overlays extend here with pack-specific constitution content -->
+<!-- /section: pack-constitution -->
+
+---
+
+{{if:config(constitutions.agents.optionalReads)}}
 ## Optional References
 {{#each optionalReads}}
 - {{this.path}}: {{this.purpose}}
 {{/each}}
 
+---
+
+{{/if}}
 ## Workflow Requirements
 1. Follow MANDATORY_WORKFLOW.md
-2. Query Context7 for post-training packages BEFORE coding
+2. When applicable, follow the Context7 workflow above and record required evidence markers
 3. Generate implementation report upon completion
-4. Mark ready via edison CLI
+4. Handoff to the orchestrator for promotion and validation (agents do not move task/QA state by default)
 
 ## Output Format
 See: guidelines/agents/OUTPUT_FORMAT.md
 
 ## Applicable Rules
 {{#each rules}}
-### {{this.id}}: {{this.name}}
-{{this.content}}
+### {{this.id}}: {{this.title}}
+{{#if this.body}}
+{{this.body}}
+{{/if}}
 {{/each}}

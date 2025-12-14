@@ -46,7 +46,7 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 
 ## MANDATORY GUIDELINES (Read Before Any Task)
 
-- Read `.edison/_generated/guidelines/shared/COMMON.md` for cross-role rules (Context7, YAML config, TDD evidence)
+- Re-read `.edison/_generated/constitutions/AGENTS.md` for cross-role rules (TDD, Context7, configuration-first)
 - Read `.edison/_generated/guidelines/agents/COMMON.md` for agent baseline rules
 
 ## Tools

@@ -19,12 +19,6 @@ dependencies: []
 validators:
   - python.md
 
-guidelines:
-  - python/PYTHON.md
-  - python/TYPING.md
-  - python/TESTING.md
-  - python/ASYNC.md
-
 agents:
   - python-developer.md
 

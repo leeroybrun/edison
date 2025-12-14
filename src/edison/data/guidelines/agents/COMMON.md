@@ -1,29 +1,28 @@
 # Agent Common Guidelines (MANDATORY)
 
-Read this alongside your role file and the shared common instructions in `.edison/_generated/guidelines/shared/COMMON.md`.
+Read this alongside your role constitution: `.edison/_generated/constitutions/AGENTS.md`.
 
 ## Canonical Guideline Roster
 Use this roster instead of repeating the table in each agent file:
 
 | # | Guideline | Path | Purpose |
 |---|-----------|------|---------|
-| 1 | **Workflow** | `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Claim → Implement → Ready cycle |
-| 2 | **TDD** | `.edison/_generated/guidelines/agents/TDD_REQUIREMENT.md` | RED-GREEN-REFACTOR protocol |
-| 3 | **Validation** | `.edison/_generated/guidelines/agents/VALIDATION_AWARENESS.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
+| 1 | **Workflow** | `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Implement → evidence/report → handoff (no orchestration) |
+| 2 | **TDD (embedded)** | `.edison/_generated/constitutions/AGENTS.md` | TDD principles + execution requirements |
+| 3 | **Validation** | `.edison/_generated/guidelines/shared/VALIDATION.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
 | 4 | **Delegation** | `.edison/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
-| 5 | **Context7** | `.edison/_generated/guidelines/agents/CONTEXT7_REQUIREMENT.md` | Post-training package docs |
+| 5 | **Context7** | `.edison/_generated/guidelines/shared/CONTEXT7.md` | Post-training package docs |
 | 6 | **Rules** | `.edison/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
 
 ## Edison CLI & Validation Tools
 
 ### Edison CLI
-- `edison task claim <task-id>` - Claim a task for implementation
-- `edison task ready [--run] [--disable-tdd --reason \"...\"]` - Mark task ready for validation
-- `edison qa new <task-id>` - Create QA brief for task
-- `edison session next [<session-id>]` - Get next recommended action
-- `edison git worktree-create <session-id>` - Create isolated worktree for session
-- `edison git worktree-archive <session-id>` - Archive completed session worktree
-- `edison prompts compose [--type TYPE]` - Regenerate composed prompts
+- `edison task status <task-id>` - Read-only: check task details/state
+- `edison session track start --task <task-id> --type implementation` - Optional tracking signal (project-dependent)
+- `edison session track complete --task <task-id>` - Optional tracking signal (project-dependent)
+- `edison config show <domain> --format yaml` - Inspect merged config (read-only)
+
+> Orchestrator-only (do not run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa new`, `edison qa promote`, `edison qa bundle`, `edison qa validate`, `edison session next`, `edison git worktree-*`, `edison compose all`.
 
 ### Context7 Tools
 - Context7 package detection (automatic in `edison task ready`)

@@ -1,7 +1,6 @@
 # Delegation Awareness
 
 <!-- MANDATORY: All agents MUST read this before implementation -->
-<!-- Generated from pre-Edison agent content extraction -->
 
 ## Purpose
 
@@ -11,18 +10,18 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Config**: `.edison/_generated/constitutions/ORCHESTRATORS.md` (single source of truth for model selection)
+**Delegation Roster**: `.edison/_generated/AVAILABLE_AGENTS.md` (single source of truth for agent routing hints and model bindings presented to LLMs)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
 - Task type classification
-- Model strengths (Claude for UI, Codex for precision, etc.)
+- Model/role preferences defined in the config (do not assume defaults)
 
 ### Your Role as a Sub-Agent
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `.edison/_generated/constitutions/ORCHESTRATORS.md` to understand your scope
+1. **READ** `.edison/_generated/AVAILABLE_AGENTS.md` to understand the active roster and routing hints
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -81,20 +80,11 @@ Orchestrator → component-builder (UI work)
 ### Reading the Delegation Config
 
 ```pseudocode
-// Example: Reading your scope
-config = load_yaml('.edison/_generated/constitutions/ORCHESTRATORS.md')
+// Example: Reading the roster
+roster = read_markdown('.edison/_generated/AVAILABLE_AGENTS.md')
 
-// Check file pattern rules
-filePatterns = config.filePatternRules
-// Example: { '<pattern>': { preferredModel: 'model-name', agent: 'agent-name' } }
-
-// Check task type rules
-taskTypes = config.taskTypeRules
-// Example: { 'task-type': { preferredModel: 'model-name', agent: 'agent-name' } }
-
-// Check your defaults
-myDefaults = config.subAgentDefaults['your-agent-name']
-// Example: { defaultModel: 'model-name', implementDirectly: true }
+// Find your assigned agent entry and its scope hints (as rendered in the roster)
+// Then follow the orchestrator's instructions for your slice.
 ```
 
 ### Workflow Decision Tree
@@ -102,7 +92,7 @@ myDefaults = config.subAgentDefaults['your-agent-name']
 ```
 Receive task from orchestrator
         ↓
-Read delegation config
+Read delegation roster (AVAILABLE_AGENTS)
         ↓
 Does task match my scope?
     ├── YES → Implement directly
@@ -161,8 +151,8 @@ Or for MISMATCH:
 ## CLI Commands
 
 ```bash
-# View delegation config
-cat .edison/_generated/constitutions/ORCHESTRATORS.md
+# Show merged delegation config (for humans; do not hardcode paths in prompts)
+edison config show delegation --format yaml
 
 # Check which agent handles a file pattern (orchestrator tool)
 edison delegation check "<path-to-file>"
@@ -175,9 +165,8 @@ edison agents scope api-builder
 
 ## References
 
-- Delegation guide: `.edison/_generated/guidelines/DELEGATION.md`
-- Extended patterns: `.edison/_generated/guidelines/shared/DELEGATION.md`
-- Config schema: `.edison/_generated/constitutions/ORCHESTRATORS.md`
+- Delegation guide: `.edison/_generated/guidelines/shared/DELEGATION.md`
+- Schema: `.edison/_generated/schemas/config/delegation-config.schema.json`
 
 ---
 

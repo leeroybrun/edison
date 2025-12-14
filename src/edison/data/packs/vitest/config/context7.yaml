@@ -1,0 +1,14 @@
+context7:
+  packages:
+    vitest:
+      version: "3.0.0"
+      context7Id: "/vitest-dev/vitest"
+      criticalChanges:
+        - "New runner features and config options"
+      topics:
+        - "test structure"
+        - "assertions"
+        - "mocking"
+        - "async testing"
+
+

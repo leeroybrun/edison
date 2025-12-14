@@ -3,6 +3,11 @@
 <!-- extend: tech-stack -->
 ## TypeScript Validation Context
 
+### Guidelines
+{{include-section:packs/typescript/guidelines/includes/typescript/strict-mode.md#patterns}}
+{{include-section:packs/typescript/guidelines/includes/typescript/type-safety.md#patterns}}
+{{include-section:packs/typescript/guidelines/includes/typescript/advanced-types.md#patterns}}
+
 ### Type Safety
 - Enforce `strict` mode for all TS projects.
 - Avoid `any` unless justified with comments and tests.

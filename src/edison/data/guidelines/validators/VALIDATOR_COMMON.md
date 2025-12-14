@@ -1,6 +1,6 @@
 # Validator Common Guidelines (MANDATORY)
 
-Read this alongside your role file and the shared common instructions in `.edison/_generated/guidelines/shared/COMMON.md`.
+Read this alongside your role constitution: `.edison/_generated/constitutions/VALIDATORS.md`.
 
 ---
 
@@ -40,7 +40,7 @@ Validators are **independent code reviewers** that ensure production-ready quali
 
 ### Step 1: Context7 Knowledge Refresh (MANDATORY)
 
-- Follow `.edison/_generated/guidelines/shared/COMMON.md#context7-knowledge-refresh-mandatory` before validating any task that touches post-training packages.
+- Follow the **Context7 Knowledge Refresh** section in `.edison/_generated/constitutions/VALIDATORS.md` before validating any task that touches post-training packages.
 - Use the pack-provided `<!-- section: tech-stack -->
 <!-- /section: tech-stack -->` hints to target the correct libraries and topics.
 - **Why**: Your training data is stale for post-training packages. Using outdated patterns can cause complete feature failures, breaking API changes, and security vulnerabilities.
@@ -106,7 +106,7 @@ Every validator MUST perform these universal checks:
 - ✅ No `TODO` or `FIXME` comments in production code
 - ✅ No commented-out code
 - ✅ Git diff shows ONLY changes related to this task
-- ✅ Test runners must not be focused or skipped: no `.only()`/`.skip()` in committed tests (BLOCKING)
+- ✅ Test runners must not include focused/skipped/disabled tests in committed code (BLOCKING)
 
 **Fail if**:
 - Changes beyond task scope (scope creep)
@@ -121,7 +121,7 @@ Every validator MUST perform these universal checks:
 
 **Check**:
 - ✅ ALL existing tests still pass (run test suite)
-- ✅ No tests skipped (`.skip`) without documented reason
+- ✅ No tests skipped/disabled without documented reason
 - ✅ Build succeeds
 - ✅ Type-check passes
 - ✅ No unintended deletions

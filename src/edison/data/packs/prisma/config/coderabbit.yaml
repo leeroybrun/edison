@@ -1,6 +1,7 @@
 # Prisma pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "prisma/**/*"
     instructions: |
       Review database code for:

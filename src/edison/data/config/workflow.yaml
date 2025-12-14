@@ -71,7 +71,7 @@ workflow:
                   entity: task
                   rationale: "Mark task complete after implementation"
                   blocking: true
-                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "done"]
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--status", "done"]
             - to: todo
               guard: always_allow
             - to: validated
@@ -87,7 +87,7 @@ workflow:
                   entity: task
                   rationale: "Unblock and resume work"
                   blocking: false
-                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "wip"]
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--status", "wip"]
             - to: todo
               guard: always_allow
         done:
@@ -101,7 +101,7 @@ workflow:
                   entity: task
                   rationale: "Task implementation complete, ready for validation"
                   blocking: true
-                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "validated"]
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--status", "validated"]
             - to: wip
               guard: requires_rollback_reason
               rules: [RULE.QA.ROUND_HISTORY]
@@ -113,7 +113,7 @@ workflow:
                   entity: task
                   rationale: "Validation rejected, return to implementation"
                   blocking: false
-                  cmd_template: ["edison", "task", "status", "{task_id}", "--to", "wip", "--reason", "{rollback_reason}"]
+                  cmd_template: ["edison", "task", "status", "{task_id}", "--status", "wip", "--reason", "{rollback_reason}"]
         validated:
           description: "Validated and complete"
           final: true
@@ -274,7 +274,7 @@ workflow:
                   entity: session
                   rationale: "Blockers resolved, resume session"
                   blocking: true
-                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "active"]
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--status", "active"]
         done:
           description: "Session work complete"
           allowed_transitions:
@@ -303,7 +303,7 @@ workflow:
                   entity: session
                   rationale: "Issues detected during close, move to recovery"
                   blocking: false
-                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "recovery"]
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--status", "recovery"]
         validated:
           description: "Session validated"
           allowed_transitions:
@@ -320,7 +320,7 @@ workflow:
                   entity: session
                   rationale: "Recovery complete, resume active work"
                   blocking: false
-                  cmd_template: ["edison", "session", "status", "{session_id}", "--to", "active"]
+                  cmd_template: ["edison", "session", "status", "{session_id}", "--status", "active"]
             - to: closing
               guard: can_complete_session
               recommendations:

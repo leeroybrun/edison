@@ -6,10 +6,9 @@
 ## Type Safety Principles (All Roles)
 
 ### Core Rules
-- Strict typing enabled in all projects
-- No `any` type without documented justification
+- Type safety settings are defined by project configuration
 - No type suppressions without explanation
-- All function parameters and return types explicit
+- Public interfaces/contracts should be typed as applicable for the language/tooling
 
 ### Benefits
 - Catch bugs at compile time, not runtime
@@ -56,17 +55,16 @@ function process_user(user):
 
 ### Checklist
 - [ ] Type checking passes with zero errors
-- [ ] No `any` types without justification comment
-- [ ] No bare `@ts-ignore` or `# type: ignore`
+- [ ] No type-system escape hatches without justification
+- [ ] No ignore/suppression directives without an explicit rationale
 - [ ] All suppressions have explanatory comments
-- [ ] Function signatures are fully typed
-- [ ] Return types are explicit
+- [ ] Public-facing interfaces/contracts are fully typed (as applicable)
 
 ### Red Flags
 🚩 **Immediate rejection:**
-- `any` used as escape hatch without comment
+- Type-system escape hatches without comment/rationale
 - Bare suppressions without explanation
-- Strict mode disabled
+- Project type-safety settings disabled without explicit approval
 - Type errors ignored in CI
 
 🟡 **Needs review:**

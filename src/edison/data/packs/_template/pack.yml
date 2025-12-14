@@ -7,5 +7,4 @@ triggers:
   filePatterns: []
 dependencies: []
 validators: []
-guidelines: []
 examples: []

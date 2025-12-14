@@ -1,8 +1,5 @@
 # Git Workflow (Condensed, Mandatory)
 
-
-See extended guide: .edison/_generated/guidelines/shared/GIT_WORKFLOW.md
-
 ## Git Checklist
 - [ ] Safety: no force‑push to main; no `--no‑verify`; no destructive commands
 - [ ] Conventional commit: `type(scope): description`
@@ -27,8 +24,6 @@ See extended guide: .edison/_generated/guidelines/shared/GIT_WORKFLOW.md
 
 ## Worktree isolation (new)
 - Default session worktrees live in `../${PROJECT}-worktrees/<session-id>/` to isolate changes per session.
-- Manage lifecycle with `edison git worktree-create|worktree-restore|worktree-archive|worktree-cleanup` (or `edison git worktree-*` shorthands). Archive before long pauses; cleanup removes abandoned worktrees after closure.
-- `edison session start` will create or restore the external worktree automatically when configured; stay inside that worktree for all session work.
+- Manage lifecycle with `edison git worktree-create|worktree-restore|worktree-archive|worktree-cleanup`. Archive before long pauses; cleanup removes abandoned worktrees after closure.
+- `edison orchestrator start` (or `edison session create` when configured) will create or restore the external worktree automatically; stay inside that worktree for all session work.
 - Never share a worktree across sessions; guard rails should reject mixed-session worktrees.
-
-Read full: `.edison/_generated/guidelines/shared/GIT_WORKFLOW.md`.

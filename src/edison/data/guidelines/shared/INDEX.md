@@ -11,7 +11,7 @@
 - **Key Topics**: TDD, NO MOCKS, NO HARDCODING, DRY, ROOT CAUSE, REFACTORING ESSENTIALS
 
 ### TDD (Test-Driven Development)
-- **Path**: `guidelines/shared/TDD.md`
+- **Canonical**: Embedded in role constitutions (`constitutions/AGENTS.md`, `constitutions/VALIDATORS.md`, `constitutions/ORCHESTRATOR.md`)
 - **Purpose**: RED→GREEN→REFACTOR workflow
 - **When to Read**: Before implementing any feature
 - **Key Topics**: Test-first development, coverage targets (≥90% overall, 100% on new files), no mocks
@@ -92,7 +92,7 @@
 - **Key Topics**: Commit messages, branching, PR workflow, worktree usage
 
 ### Delegation
-- **Path**: `guidelines/shared/SHARED_DELEGATION.md`
+- **Path**: `guidelines/shared/DELEGATION.md`
 - **Purpose**: Shared delegation patterns
 - **When to Read**: When delegating work to sub-agents
 - **Key Topics**: Task decomposition, delegation boundaries, orchestrator patterns
@@ -127,7 +127,7 @@ Reference guidelines selectively in prompts:
 
 ```markdown
 ## Mandatory Reading
-- See `guidelines/shared/TDD.md` for TDD workflow
+- Re-read your role constitution for TDD workflow
 - See `guidelines/python/TYPING.md` for type hint requirements
 - See `guidelines/agents/MANDATORY_WORKFLOW.md` for implementation steps
 ```

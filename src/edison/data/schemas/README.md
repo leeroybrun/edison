@@ -18,6 +18,7 @@ schemas/
 │   ├── pack.schema.json     # Tech pack definitions
 │   └── state-machine-rich.schema.json
 ├── reports/                 # Agent output formats
+│   ├── implementation-report.schema.json
 │   ├── validator-report.schema.json
 │   └── delegation-report.schema.json
 ├── adapters/                # IDE adapter schemas

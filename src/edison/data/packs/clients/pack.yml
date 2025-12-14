@@ -11,7 +11,5 @@ triggers:
     - "apps/**/clients/**/*"
 
 provides:
-  guidelines:
-    - claude/CLAUDE.md
   agents: []
   validators: []

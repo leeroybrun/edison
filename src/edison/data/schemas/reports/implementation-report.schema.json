@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ImplementationReport",
+  "description": "Structured report for every task implementation round. Captures outcomes, blockers, delegation metadata, follow-ups, and validator-facing context.",
+  "type": "object",
+  "required": [
+    "taskId",
+    "round",
+    "implementationApproach",
+    "primaryModel",
+    "completionStatus",
+    "followUpTasks",
+    "notesForValidator",
+    "tracking"
+  ],
+  "properties": {
+    "taskId": {
+      "type": "string",
+      "description": "Task ID this report describes (e.g., '150-wave2-auth-gate')"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Implementation round number (starts at 1; increments on rework)"
+    },
+    "implementationApproach": {
+      "type": "string",
+      "enum": ["orchestrator-direct", "delegated-single", "delegated-mixed"],
+      "description": "How the work was performed"
+    },
+    "primaryModel": {
+      "type": "string",
+      "description": "Primary execution backend identifier used for implementation (e.g., 'claude', 'codex', 'gemini', 'human')"
+    },
+    "completionStatus": {
+      "type": "string",
+      "enum": ["complete", "blocked", "partial"],
+      "description": "Implementation outcome for this round"
+    },
+    "delegations": {
+      "type": "array",
+      "description": "Delegation entries (required when implementationApproach is delegated-*)",
+      "items": {
+        "type": "object",
+        "required": ["filePattern", "model", "role"],
+        "properties": {
+          "filePattern": { "type": "string" },
+          "model": { "type": "string" },
+          "role": { "type": "string" },
+          "rationale": { "type": "string" },
+          "continuationId": { "type": "string" },
+          "outcome": {
+            "type": "string",
+            "enum": ["success", "mismatch", "error"]
+          }
+        }
+      },
+      "default": []
+    },
+    "blockers": {
+      "type": "array",
+      "description": "Obstacles encountered during implementation that prevent completion or require external resolution",
+      "items": {
+        "type": "object",
+        "required": ["description"],
+        "properties": {
+          "description": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "owner": { "type": "string" }
+        }
+      },
+      "default": []
+    },
+    "followUpTasks": {
+      "type": "array",
+      "description": "Follow-up tasks discovered during implementation (used by session planning and dependency gating)",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["bugfix", "refactor", "test", "docs", "security", "perf", "migration", "infra"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "blockingBeforeValidation": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, this follow-up must be completed before the parent can be promoted"
+          },
+          "claimNow": {
+            "type": "boolean",
+            "default": false,
+            "description": "Suggestion to claim the follow-up in the current session"
+          },
+          "parentId": { "type": "string" },
+          "files": { "type": "array", "items": { "type": "string" } },
+          "suggestedSlug": { "type": "string" },
+          "suggestedWave": { "type": "string" },
+          "relatedFiles": { "type": "array", "items": { "type": "string" } },
+          "existingTaskId": { "type": "string" }
+        }
+      },
+      "default": []
+    },
+    "notesForValidator": {
+      "type": "string",
+      "description": "Important context validators should know: trade-offs, design decisions, known limitations, and where to scrutinize"
+    },
+    "implementationNotes": {
+      "type": "string",
+      "description": "Optional extra technical notes about the implementation approach"
+    },
+    "tddCompliance": {
+      "type": "object",
+      "description": "TDD workflow compliance details",
+      "properties": {
+        "followed": { "type": "boolean" },
+        "redEvidence": { "type": "string" },
+        "greenEvidence": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "delegationCompliance": {
+      "type": "boolean",
+      "description": "Whether delegation followed project policy (only relevant when implementationApproach is delegated-*)"
+    },
+    "tracking": {
+      "type": "object",
+      "description": "Process tracking metadata for traceability and audits",
+      "required": ["processId", "startedAt", "completedAt"],
+      "properties": {
+        "processId": { "type": "integer" },
+        "hostname": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "continuationId": { "type": "string" }
+      }
+    }
+  }
+}
+

@@ -16,5 +16,5 @@ Manifest schemas define the structure of Edison's self-describing metadata:
 
 ## Related Code
 
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Project manifest
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Project manifest
 - `edison.core.composition.registries` - Registry management

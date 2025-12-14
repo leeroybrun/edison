@@ -6,7 +6,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/v4-syntax.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/v4-syntax.md
     guidance: "Use @import \"tailwindcss\" (v4 syntax), not @tailwind base/components/utilities (v3 syntax)."
 
   - id: RULE.TAILWIND.FONT_SANS_REQUIRED
@@ -14,7 +14,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#font-sans
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#font-sans
     guidance: "Tailwind v4 does not inject a default font; add font-sans to body/layout and text elements to avoid Times New Roman fallbacks."
 
   - id: RULE.TAILWIND.ARBITRARY_VALUES_FOR_THEME
@@ -22,7 +22,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#arbitrary-values
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#arbitrary-values
     guidance: "Use arbitrary values (e.g., bg-[#0a0a0a]) or theme tokens when colors are outside the design system; do not guess with default palette names."
 
   - id: RULE.TAILWIND.CLEAR_CACHE_AFTER_CSS_CHANGES
@@ -30,7 +30,7 @@ rules:
     category: quality
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#cache-clear
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#cache-clear
     guidance: "If classes stop applying, clear the .next cache and restart dev server before debugging Tailwind v4 output."
 
   - id: RULE.TAILWIND.POSTCSS_V4_PLUGIN
@@ -38,7 +38,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#postcss-v4
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#postcss-v4
     guidance: "Configure PostCSS with '@tailwindcss/postcss' (v4 preset); the legacy tailwindcss plugin will not generate utilities in v4."
 
   - id: RULE.TAILWIND.THEME_TOKENS_IN_CSS
@@ -46,7 +46,7 @@ rules:
     category: implementation
     blocking: true
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/TAILWIND_V4_RULES.md#theme-tokens
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#theme-tokens
     guidance: "Declare design tokens inside an @theme block so components consume generated classes (bg-surface, border-border) instead of hardcoded values."
 
   - id: RULE.TAILWIND.AVOID_APPLY
@@ -54,7 +54,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/tailwind/guidelines/v4-syntax.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/v4-syntax.md
     guidance: "Avoid legacy @apply usage in component files; prefer design tokens, utility classes, or @layer definitions instead."
 
   - id: RULE.TAILWIND.DESIGN_TOKENS
@@ -62,7 +62,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/tailwind/guidelines/design-tokens.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/design-tokens.md
     guidance: "Use design tokens for consistent theming and maintainability."
 
   - id: RULE.TAILWIND.RESPONSIVE_DESIGN
@@ -70,7 +70,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent, validator]
-    sourcePath: packs/tailwind/guidelines/responsive.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/responsive.md
     guidance: "Follow mobile-first responsive design patterns using Tailwind's responsive prefixes."
 
   - id: RULE.TAILWIND.UTILITY_FIRST
@@ -78,7 +78,7 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/tailwind/guidelines/STYLING.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/STYLING.md
     guidance: "Favor Tailwind utility classes over custom CSS when appropriate."
 
   - id: RULE.TAILWIND.SEMANTIC_NAMING
@@ -86,5 +86,5 @@ rules:
     category: implementation
     blocking: false
     applies_to: [agent]
-    sourcePath: packs/tailwind/guidelines/STYLING.md
+    sourcePath: packs/tailwind/guidelines/includes/tailwind/STYLING.md
     guidance: "Organize utility classes semantically and consistently."

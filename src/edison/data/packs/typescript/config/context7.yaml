@@ -1,0 +1,12 @@
+context7:
+  packages:
+    typescript:
+      version: "5.7.0"
+      context7Id: "/microsoft/typescript"
+      criticalChanges:
+        - "New type inference features"
+      topics:
+        - "type inference"
+        - "satisfies operator"
+
+

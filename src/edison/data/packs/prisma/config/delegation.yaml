@@ -1,0 +1,16 @@
+delegation:
+  filePatternRules:
+    schema.prisma:
+      preferredModel: codex
+      reason: "Schema precision, relationship correctness, migration safety"
+      subAgentType: database-architect
+      preferredZenRole: database-architect
+      confidence: very-high
+    prisma/migrations/**/*:
+      preferredModel: codex
+      reason: "Migration safety, rollback consideration, data integrity"
+      subAgentType: database-architect
+      preferredZenRole: database-architect
+      confidence: very-high
+
+

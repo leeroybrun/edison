@@ -10,13 +10,6 @@ triggers:
     - "prisma/**/*"
     - "migrations/**/*"
 
-guidelines:
-  - TESTING.md
-  - schema-design.md
-  - migrations.md
-  - query-optimization.md
-  - relationships.md
-
 agents:
   - overlays/database-architect.md
 

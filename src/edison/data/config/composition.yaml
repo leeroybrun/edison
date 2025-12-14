@@ -76,7 +76,7 @@ composition:
       description: "Agent prompt templates"
       composition_mode: section_merge
       dedupe: false
-      registry: null  # Use GenericRegistry
+      registry: edison.core.composition.registries.agent_prompts.AgentPromptRegistry
       content_path: "agents"
       file_pattern: "*.md"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/agents"
@@ -90,7 +90,7 @@ composition:
       description: "Validator prompt templates"
       composition_mode: section_merge
       dedupe: false
-      registry: null  # Use GenericRegistry
+      registry: edison.core.composition.registries.validator_prompts.ValidatorPromptRegistry
       content_path: "validators"
       file_pattern: "*.md"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/validators"
@@ -104,7 +104,7 @@ composition:
       description: "Guideline documents"
       composition_mode: concatenate
       dedupe: true
-      registry: null  # Use GenericRegistry
+      registry: null  # Use GenericRegistry (unified composition engine)
       content_path: "guidelines"
       file_pattern: "*.md"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/guidelines"

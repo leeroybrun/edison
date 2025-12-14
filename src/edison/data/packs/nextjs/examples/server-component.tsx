@@ -1,46 +1,28 @@
-interface Lead {
-  id: string;
-  name: string;
-  email: string;
+interface Item {
+  id: string
+  name: string
 }
 
-// Simulate a database call
-async function getLeads(): Promise<Lead[]> {
-  // In a real application, this would fetch data from a database
-  // For this example, we return mock data after a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: '1', name: 'Alice Smith', email: 'alice@example.com' },
-        { id: '2', name: 'Bob Johnson', email: 'bob@example.com' },
-        { id: '3', name: 'Charlie Brown', email: 'charlie@example.com' },
-      ]);
-    }, 500); // Simulate network delay
-  });
+async function getItems(): Promise<Item[]> {
+  // Illustrative: in a real app, fetch from DB or service on the server.
+  return [
+    { id: '1', name: 'Alpha' },
+    { id: '2', name: 'Beta' },
+  ]
 }
 
-function LeadCard({ lead }: { lead: Lead }) {
-  return (
-    <div style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
-      <h3>{lead.name}</h3>
-      <p>{lead.email}</p>
-    </div>
-  );
+function ItemRow(props: { item: Item }) {
+  return <li>{props.item.name}</li>
 }
 
-// Server Component - no 'use client' needed
-// This component fetches data directly on the server
-export default async function LeadsPage() {
-  const leads = await getLeads();
+// Server Component - no 'use client' needed.
+export default async function ItemsPage() {
+  const items = await getItems()
 
   return (
     <div>
-      <h1>Server Component - Leads</h1>
-      {leads.length === 0 ? (
-        <p>No leads found.</p>
-      ) : (
-        leads.map((l) => <LeadCard key={l.id} lead={l} />)
-      )}
+      <h1>Server Component - Items</h1>
+      {items.length === 0 ? <p>No items found.</p> : <ul>{items.map((i) => <ItemRow key={i.id} item={i} />)}</ul>}
     </div>
-  );
+  )
 }

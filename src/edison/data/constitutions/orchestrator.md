@@ -8,7 +8,7 @@
   To modify, edit the source template or configuration.
 -->
 <!-- Source: {{source_layers}} -->
-<!-- Regenerate: edison compose --all -->
+<!-- Regenerate: edison compose all -->
 <!-- Role: ORCHESTRATOR -->
 <!-- Constitution: {{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md -->
 <!-- RE-READ this file on each new session or compaction -->
@@ -25,14 +25,58 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHES
 - After any context compaction
 - When instructed by the user
 
-## Mandatory Preloads
-{{include:constitutions/orchestrators-base.md}}
+---
 
+{{if:config(constitutions.orchestrator.mandatoryReads)}}
+## Mandatory Preloads
+{{#each mandatoryReads}}
+- {{this.path}}: {{this.purpose}}
+{{/each}}
+
+---
+
+{{/if}}
+## Core Principles (CRITICAL)
+
+{{include-section:guidelines/includes/TDD.md#principles}}
+
+{{include-section:guidelines/includes/NO_MOCKS.md#philosophy}}
+
+{{include-section:guidelines/includes/QUALITY.md#principles}}
+
+{{include-section:guidelines/includes/CONFIGURATION.md#principles}}
+
+---
+
+{{include-section:guidelines/includes/TDD.md#orchestrator-verify}}
+
+---
+
+## Context7 Knowledge Refresh (CRITICAL)
+
+{{include-section:guidelines/includes/CONTEXT7.md#workflow}}
+
+{{include-section:guidelines/includes/CONTEXT7.md#orchestrator}}
+
+---
+
+## Pack Extensions
+
+<!-- section: pack-constitution -->
+<!-- Pack overlays extend here with pack-specific orchestration rules -->
+<!-- /section: pack-constitution -->
+
+---
+
+{{if:config(constitutions.orchestrator.optionalReads)}}
 ## Optional References
 {{#each optionalReads}}
 - {{this.path}}: {{this.purpose}}
 {{/each}}
 
+---
+
+{{/if}}
 ## Available Agents
 See: AVAILABLE_AGENTS.md for the current agent roster.
 
@@ -44,8 +88,10 @@ See: guidelines/orchestrators/DELEGATION.md
 
 ## Applicable Rules
 {{#each rules}}
-### {{this.id}}: {{this.name}}
-{{this.content}}
+### {{this.id}}: {{this.title}}
+{{#if this.body}}
+{{this.body}}
+{{/if}}
 {{/each}}
 
 ## Session Workflow

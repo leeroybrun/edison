@@ -8,7 +8,13 @@ rules:
   applies_to: [orchestrator]
   contexts: [guidance, delegation]
   sourcePath: guidelines/orchestrators/DELEGATION.md
-  guidance: ''
+  guidance: |
+    Make delegation decisions deterministically using the configured priority chain:
+    - User instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers.
+    - Do not “shop” for models after selection; take the first deterministic match.
+    - Stop and escalate if routing is ambiguous or config is missing.
+
+    Reference: `guidelines/orchestrators/DELEGATION.md`
   cli:
     commands: ["task claim", "task new"]
     timing: before
@@ -20,7 +26,12 @@ rules:
   applies_to: [orchestrator, validator]
   contexts: [validation, transition]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Before expanding scope, prioritize validation work already inside the current session:
+    - Validate owned/paired QA briefs tied to tasks you already own before claiming new work.
+    - If any blocking validator is missing/blocked, halt and resolve before proceeding.
+
+    Reference: `guidelines/shared/VALIDATION.md`
   cli:
     commands: ["qa promote", "task status"]
     timing: before
@@ -32,7 +43,12 @@ rules:
   applies_to: [orchestrator, validator]
   contexts: [validation]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Always validate from a bundle/manifest first:
+    - Generate the bundle/manifest before launching any validator.
+    - Validators must review only what the bundle lists (task(s), QA, evidence paths, diffs).
+
+    Reference: `guidelines/shared/VALIDATION.md`
   cli:
     commands: ["qa promote"]
     timing: before
@@ -44,7 +60,12 @@ rules:
   applies_to: [orchestrator, validator]
   contexts: [validation, transition]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Bundle approval must be explicitly recorded:
+    - After ALL blocking validators approve, ensure the configured “bundle approved” marker exists in the round evidence directory.
+    - Promotions that require approval must fail-closed if the marker is missing or indicates not approved.
+
+    Reference: `guidelines/shared/VALIDATION.md`
   cli:
     commands: ["qa promote"]
     timing: after
@@ -55,7 +76,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Do not create duplicate QA briefs:
+    - Before creating a QA, search for an existing QA for the same task.
+    - If one exists, reuse it (move it through states), don’t create a new file.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.CONTEXT7.POSTTRAINING_REQUIRED
   title: Context7 Required For Post-Training Packages
   category: context
@@ -63,7 +89,12 @@ rules:
   severity: warning
   applies_to: [agent, orchestrator]
   sourcePath: guidelines/shared/CONTEXT7.md
-  guidance: ''
+  guidance: |
+    If work touches any configured post-training package:
+    - Refresh up-to-date docs via Context7 BEFORE implementation decisions.
+    - Use `edison config show context7 --format yaml` as the source of truth for what is “post-training”.
+
+    Reference: `guidelines/shared/CONTEXT7.md`
 - id: RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED
   title: Round Evidence Requires 4 Command Outputs
   category: validation
@@ -71,7 +102,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Each evidence round must include the project’s required automation command outputs:
+    - Capture type-check, lint, test, and build outputs (or project equivalents) using the configured filenames.
+    - Evidence must come from trusted runners/guards (not manually fabricated output).
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.QA.ROUND_HISTORY
   title: QA Round History On Rejection
   category: validation
@@ -79,7 +115,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    On any rejection:
+    - Append a new “Round N” section to the QA brief summarizing findings and linking evidence.
+    - Create a new round evidence directory; never overwrite prior rounds.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.LINK.SESSION_SCOPE_ONLY
   title: Link Only Tasks In Current Session (Force to override)
   category: general
@@ -87,7 +128,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Only create task links within the current session scope:
+    - Linking implies shared ownership within the session (it gates promotion).
+    - Out-of-scope links must require an explicit force/override flag and must be logged.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.SESSION.ISOLATION
   title: Session-scoped file isolation is mandatory
   category: session
@@ -95,7 +141,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Enforce session isolation:
+    - Operate only within the session worktree and session-scoped queues for that session.
+    - Never touch tasks/QA owned by a different active session.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN
   title: Parent cannot move to done until children are done|validated
   category: general
@@ -103,7 +154,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Parent promotion is gated by children:
+    - Parent tasks MUST NOT advance to “done” until every child in the session scope is “done” or “validated”.
+    - Use the readiness guard to enforce this; do not bypass with manual moves.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.PARENT.VALIDATE_BUNDLE_ONLY
   title: Validate bundle on the parent QA only
   category: general
@@ -111,7 +167,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Validate the whole cluster (bundle) once, on the parent:
+    - Bundle validation produces a single approval artifact that covers parent + children.
+    - Do not create redundant per-child full validation passes unless explicitly required by config.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.SESSION.COMPLETE_PARENT_VALIDATED_CHILDREN_DONE
   title: 'Session completion: parent validated; children done|validated'
   category: session
@@ -119,7 +180,13 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Session completion criteria (high level):
+    - Parent must be validated.
+    - Children must be done or validated per policy/config.
+    - All blocking validation must be complete with evidence linked from QA.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.DELEGATION.PARALLELIZE_WHEN_RELEVANT
   title: Orchestrator should parallelize via tasks/split for non-trivial tasks
   category: delegation
@@ -127,7 +194,13 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/DELEGATION.md
-  guidance: ''
+  guidance: |
+    Parallelize when it improves throughput:
+    - Split work into independent slices (API/UI/DB/tests) when coupling is low.
+    - Respect the configured concurrency cap; batch overflow instead of over-assigning.
+    - Keep validators independent from implementers.
+
+    Reference: `guidelines/orchestrators/DELEGATION.md`
 - id: RULE.GUARDS.FAIL_CLOSED
   title: 'Fail-Closed: All Moves Through Guarded Python CLIs'
   category: transition
@@ -135,7 +208,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    State moves must be fail-closed:
+    - All task/QA/session transitions must go through the guarded Edison CLIs.
+    - Manual filesystem moves are forbidden (they bypass guards and corrupt state).
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.SESSION.NEXT_LOOP_DRIVER
   title: Drive execution via session next (loop driver)
   category: session
@@ -143,7 +221,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: start/START_NEW_SESSION.md
-  guidance: ''
+  guidance: |
+    Use the loop driver to stay “on rails”:
+    - Run `edison session next <session-id>` frequently to get the next actions, required rules, and validator roster.
+    - Prefer “next” guidance over ad-hoc manual workflows.
+
+    Reference: `start/START_NEW_SESSION.md`
 - id: RULE.IMPLEMENTATION.REPORT_REQUIRED
   title: Implementation Report JSON is required per round
   category: implementation
@@ -152,7 +235,12 @@ rules:
   applies_to: [agent]
   contexts: [guidance, implementation]
   sourcePath: guidelines/agents/OUTPUT_FORMAT.md
-  guidance: ''
+  guidance: |
+    Each implementation round must produce an implementation report JSON in the round evidence directory:
+    - Include summary, changed files, automation outputs, Context7 packages queried, follow-ups, and blockers.
+    - Do not invent new report paths or filenames; follow the project’s configured schema/locations.
+
+    Reference: `guidelines/agents/OUTPUT_FORMAT.md`
   cli:
     commands: ["task ready", "task status"]
     timing: before
@@ -163,7 +251,12 @@ rules:
   severity: warning
   applies_to: [agent, orchestrator]
   sourcePath: guidelines/shared/CONTEXT7.md
-  guidance: ''
+  guidance: |
+    When Context7 is required for a round:
+    - Create a `context7-<package>.txt` marker per detected package in the round evidence directory.
+    - Notes in task/QA text are not accepted as evidence; use marker files only.
+
+    Reference: `guidelines/shared/CONTEXT7.md`
 - id: RULE.VALIDATION.MODEL_BINDING_STRICT
   title: Validator model binding must match config
   category: validation
@@ -171,7 +264,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Validator model binding is strict:
+    - Validators must run with the exact model binding defined by merged config (core → packs → project).
+    - If the configured model is unavailable, the run is “blocked” and must be recorded as such (do not silently substitute).
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.VALIDATION.CONCURRENCY_CAP
   title: Respect validator concurrency cap and batch overflow
   category: validation
@@ -179,7 +277,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Respect the configured concurrency cap:
+    - Launch validators in parallel up to the cap.
+    - Batch overflow into subsequent waves; do not exceed cap “because it’s faster”.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.VALIDATION.WAVES_SEQUENCE
   title: Validator waves must run in order
   category: validation
@@ -187,7 +290,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Run validator waves in strict order:
+    - Global → Critical → Specialized (triggered).
+    - Do not start later waves until earlier blocking waves have completed and passed.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.EVIDENCE.ROUND_IMMUTABLE_APPEND
   title: Evidence rounds are append-only
   category: validation
@@ -195,7 +303,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Evidence is append-only:
+    - Each re-run creates a new round directory; do not overwrite previous evidence.
+    - Never edit old evidence outputs to “make it look green”; rerun commands.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.EVIDENCE.COMMANDS_VIA_TASKS_READY
   title: Automation evidence must be captured via tasks/ready
   category: validation
@@ -203,7 +316,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Capture automation evidence through guarded tooling:
+    - Use the Edison guard/runner to generate command outputs and evidence markers.
+    - Do not paste manual command output into docs as a substitute for evidence files.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.QA.WAITING_TO_TODO_TASK_DONE
   title: QA waiting→todo allowed only when task is done
   category: validation
@@ -211,7 +329,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Promotion gating:
+    - QA may move from waiting → todo only when the task is in done.
+    - If QA is “todo” while task is not done, treat it as a state mismatch and correct it.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.GUARDS.NO_MANUAL_MOVES
   title: No manual file moves; use guarded CLIs
   category: transition
@@ -219,7 +342,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Manual moves are forbidden:
+    - Do not move task/QA/session files by hand (filesystem or `git mv`).
+    - Always use guarded Edison CLIs so invariants and logs stay correct.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.QA.PAIR_ON_WIP
   title: Create QA brief when task enters wip
   category: validation
@@ -227,7 +355,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Pair QA early:
+    - As soon as a task enters wip, create (or move) its QA brief into waiting and add both to session scope.
+    - Do not defer QA creation until validation time.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.STATE.NO_SKIP
   title: Disallow skipping states in task/QA transitions
   category: transition
@@ -235,7 +368,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    State transitions must be adjacent:
+    - Follow the state machine; do not skip intermediate states.
+    - If something is in an impossible combination, correct it via guarded CLIs.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.SESSION.CLOSE_NO_BLOCKERS
   title: Close session only when no blockers remain and all scope is validated
   category: session
@@ -243,7 +381,13 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Close sessions only when clean:
+    - No unresolved blockers.
+    - All scoped items have reached their required final states per policy/config.
+    - Evidence and reports are complete and linked from QA.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.DELEGATION.NO_REDELEGATION
   title: Sub-agents must not re-delegate
   category: delegation
@@ -251,7 +395,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/DELEGATION.md
-  guidance: ''
+  guidance: |
+    Sub-agents are implementers, not orchestrators:
+    - Sub-agents must not delegate to other agents/models.
+    - If work needs splitting, return to the orchestrator with a proposed split.
+
+    Reference: `guidelines/orchestrators/DELEGATION.md`
 - id: RULE.VALIDATION.INDEPENDENCE
   title: Orchestrator Cannot Self-Validate
   category: validation
@@ -259,7 +408,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Validation must be independent:
+    - Orchestrator must not validate their own implementation work.
+    - Use separate validator roles/models where possible; do not collapse implementer + validator into one.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING
   title: Link only blocking follow-ups; link implies same-session claim
   category: general
@@ -267,7 +421,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Linking semantics are strict:
+    - Linking a follow-up as a child implies it is blocking and must be claimed in the same session.
+    - Only link truly blocking follow-ups; otherwise create the task without linking.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.FOLLOWUPS.DEDUPE_FIRST
   title: Deduplicate follow-ups before creating tasks
   category: general
@@ -275,7 +434,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Before creating follow-ups:
+    - Search for existing tasks/QA covering the same issue.
+    - Prefer linking/reusing an existing follow-up over creating duplicates.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.FOLLOWUPS.CREATE_NO_LINK_FOR_SOFT
   title: Create non-blocking validator follow-ups without linking
   category: general
@@ -283,7 +447,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/shared/VALIDATION.md
-  guidance: ''
+  guidance: |
+    Non-blocking follow-ups must not gate promotion:
+    - Create the follow-up task so it’s tracked.
+    - Do NOT link it as a child unless it is explicitly blocking.
+
+    Reference: `guidelines/shared/VALIDATION.md`
 - id: RULE.CONTEXT.BUDGET_MINIMIZE
   title: Preserve context budget – load only what's needed
   category: context
@@ -291,7 +460,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Preserve context budget:
+    - Load only the minimum files/sections necessary for the current decision.
+    - Prefer diffs + focused snippets over whole files.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.CONTEXT.NO_BIG_FILES
   title: Do not load big files unless necessary
   category: context
@@ -299,7 +473,12 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Avoid loading huge inputs:
+    - Do not paste logs/build artefacts/large generated files into prompts.
+    - Extract only the minimal relevant excerpt and reference the full artifact by path.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
 - id: RULE.DELEGATION.MOST_WORK
   title: Delegate the majority of work
   category: delegation
@@ -307,7 +486,12 @@ rules:
   severity: warning
   applies_to: [orchestrator]
   sourcePath: guidelines/orchestrators/DELEGATION.md
-  guidance: ''
+  guidance: |
+    Default to delegation:
+    - Orchestrator should delegate most non-trivial implementation to specialized agents.
+    - Only implement directly when truly trivial or explicitly required by policy/config.
+
+    Reference: `guidelines/orchestrators/DELEGATION.md`
 - id: RULE.CONTEXT.SNIPPET_ONLY
   title: Share snippets not whole files in prompts
   category: context
@@ -315,4 +499,9 @@ rules:
   severity: warning
   applies_to: [orchestrator, agent, validator]
   sourcePath: guidelines/orchestrators/SESSION_WORKFLOW.md
-  guidance: ''
+  guidance: |
+    Share snippets, not entire files:
+    - Provide the minimal relevant function/component/section with small surrounding context.
+    - Combine multiple small snippets when cross-references are required instead of dumping a full file.
+
+    Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`

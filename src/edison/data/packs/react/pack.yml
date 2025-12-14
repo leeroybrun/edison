@@ -11,12 +11,6 @@ triggers:
 dependencies: []
 validators:
   - react.md
-guidelines:
-  - HOOKS.md
-  - hooks-patterns.md
-  - component-design.md
-  - server-client-components.md
-  - accessibility.md
 agents:
   - component-builder.md
 examples:

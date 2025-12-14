@@ -50,7 +50,7 @@ edison session next sess-001
 ### Create New Session
 
 ```bash
-edison session create --session-id <id>
+edison session create [--session-id <id>]
 ```
 
 **Purpose**: Create a session record in `sessions/wip/`
@@ -66,15 +66,15 @@ edison session create --session-id sess-001
 ### Start Session with Orchestrator
 
 ```bash
-edison session start <task-id> --orchestrator <profile> [--detach]
+edison orchestrator start --profile <profile> [--detach] [--no-worktree]
 ```
 
-**Purpose**: Create session, optional worktree, and launch orchestrator
-**When to use**: Starting a new task with full session setup
+**Purpose**: Create session, optional worktree, and launch the orchestrator process
+**When to use**: Starting a new orchestration session end-to-end
 
 **Example:**
 ```bash
-edison session start TASK-123 --orchestrator dev --detach
+edison orchestrator start --profile dev --detach
 ```
 
 ---
@@ -101,19 +101,25 @@ edison session status sess-001 --json
 
 ---
 
-### Complete Session
+### Close Session
+
+```bash
+edison session close <session-id>
+```
+
+**Purpose**: Verify everything is ready and transition the session to the closing state
+**When to use**: When you want to stop active work and begin close-out (moves `active → closing` when guards allow)
+
+---
+
+### Complete Session (Promote to Validated)
 
 ```bash
 edison session complete <session-id>
 ```
 
-**Purpose**: Verify everything is validated and archive the session
-**When to use**: After all tasks are validated and promoted
-
-**Requirements:**
-- All tasks in session must be `validated`
-- All QA briefs must be `validated`
-- No pending work remains
+**Purpose**: Verify and promote the session to the validated/final state
+**When to use**: After close-out checks are satisfied and you’re ready to finalize the session lifecycle
 
 ---
 
@@ -501,8 +507,8 @@ edison session next sess-001
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/SESSION_WORKFLOW.md` - Full session workflow
-- `.edison/_generated/guidelines/DELEGATION.md` - Delegation priority chain
+- `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` - Full session workflow
+- `.edison/_generated/guidelines/shared/DELEGATION.md` - Delegation priority chain
 - `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
 
 ---

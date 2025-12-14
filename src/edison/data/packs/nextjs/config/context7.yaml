@@ -1,0 +1,27 @@
+context7:
+  triggers:
+    next:
+      - "app/**/*"
+      - "**/route.ts"
+      - "**/layout.tsx"
+      - "**/page.tsx"
+
+  aliases:
+    next/router: "next"
+    nextjs: "next"
+
+  packages:
+    next:
+      version: "16.0.0"
+      context7Id: "/vercel/next.js"
+      criticalChanges:
+        - "App Router is now default"
+        - "Server Components by default"
+        - "New caching behavior"
+      topics:
+        - "route handlers"
+        - "app router patterns"
+        - "server components"
+        - "metadata API"
+
+

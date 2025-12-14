@@ -1,6 +1,7 @@
 # Vitest pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "**/*.test.ts"
     instructions: |
       Enforce TDD compliance and test quality:

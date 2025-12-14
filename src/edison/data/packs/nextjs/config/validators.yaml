@@ -1,0 +1,31 @@
+validation:
+  validators:
+    nextjs:
+      name: "Next.js Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/nextjs.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: ["+", "next", "react"]
+      triggers: ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx", "**/middleware.ts"]
+      focus: []
+
+    api:
+      name: "Next.js API Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/api.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: ["+", "next"]
+      triggers: ["**/route.ts", "app/api/**/*"]
+      focus: []
+
+

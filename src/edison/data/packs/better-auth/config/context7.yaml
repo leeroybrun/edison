@@ -1,0 +1,12 @@
+context7:
+  packages:
+    better-auth:
+      version: "1.0.0"
+      context7Id: "/better-auth/better-auth"
+      criticalChanges:
+        - "New authentication library"
+      topics:
+        - "authentication"
+        - "sessions"
+
+

@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/validators-base.md}}
+{{include:constitutions/validators.md}}
 
 ---
 

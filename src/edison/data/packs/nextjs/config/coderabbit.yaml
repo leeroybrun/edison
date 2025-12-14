@@ -1,6 +1,7 @@
 # Next.js pack overlay for CodeRabbit
 
 path_instructions:
+  - "+"
   - path: "app/**/*.tsx"
     instructions: |
       Review Next.js App Router patterns:

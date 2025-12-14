@@ -1,0 +1,19 @@
+delegation:
+  filePatternRules:
+    "*.tsx":
+      preferredModel: claude
+      reason: "UI/UX thinking, component design, accessibility"
+      subAgentType: component-builder
+      preferredZenRole: component-builder
+      confidence: high
+      excludePatterns: ["**/*.test.tsx", "**/*.spec.tsx"]
+      examples: ["Button.tsx", "Card.tsx", "Modal.tsx"]
+    "*.jsx":
+      preferredModel: claude
+      reason: "UI/UX thinking, component design, accessibility"
+      subAgentType: component-builder
+      preferredZenRole: component-builder
+      confidence: high
+      examples: ["Button.jsx", "Card.jsx", "Modal.jsx"]
+
+

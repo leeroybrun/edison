@@ -17,14 +17,11 @@ metadata:
   last_updated: "2025-12-03"
 ---
 
-## Context7 Knowledge Refresh (MANDATORY)
-{{include-section:guidelines/includes/CONTEXT7.md#agent}}
-
 # Agent: Feature Implementer
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/agents-base.md}}
+{{include:constitutions/agents.md}}
 
 ---
 

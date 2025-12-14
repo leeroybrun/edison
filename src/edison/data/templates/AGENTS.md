@@ -10,19 +10,19 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATORS.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
+1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATOR.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
 
-2. **Correct intake prompt** – Start every session via `.edison/_generated/constitutions/ORCHESTRATORS.md`. That checklist handles QA sweeps + task selection.
+2. **Correct intake prompt** – Start every session via `.edison/_generated/constitutions/ORCHESTRATOR.md`. That checklist handles QA sweeps + task selection.
 
-3. **Session record alive** – Every session has a JSON file under `.project/sessions/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison scripts.
+3. **Session record alive** – Every session has a JSON file under `.project/sessions/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
 
 4. **Work from task files** – Operate exclusively inside `.project/tasks/*` + `.project/qa/*`; keep IDs spaced by ≥50 so follow-ups slot cleanly.
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `.edison/_generated/constitutions/ORCHESTRATORS.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `.edison/_generated/constitutions/ORCHESTRATOR.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
-7. **Context7 first** – Query Context7 before coding against any package listed under `postTrainingPackages` in validator config. Never guess about post-training APIs.
+7. **Context7 first** – Query Context7 before coding against any post-training package detected by `context7.triggers` / `context7.contentDetection`. Never guess about post-training APIs.
 
 8. **Automated checks first** – Build, type-check, lint, and test must be green before QA moves to `todo/`. No exceptions.
 
@@ -36,7 +36,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 13. **Fail closed** – Any guardrail breach (preload, Context7, automation, validator availability, session timeout) **halts work until resolved**. When in doubt, stop and ask.
 
-**Enforcement**: Edison scripts enforce these checks at every transition. Violations block progress.
+**Enforcement**: Edison guards (CLI transitions) enforce these checks at every transition. Violations block progress.
 
 ---
 
@@ -58,13 +58,13 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 ### Project Configuration (Always)
 
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Authoritative preload list (project-specific)
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list (project-specific)
 - `.edison/_generated/AVAILABLE_VALIDATORS.md` - Validator roster and triggers (project-specific)
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Delegation model routing (project-specific)
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Delegation model routing (project-specific)
 
 ### Project-Specific Client Rules (Conditional)
 
-Configured in `.edison/_generated/constitutions/ORCHESTRATORS.md` under `mandatory` array. May include:
+Configured in `.edison/_generated/constitutions/ORCHESTRATOR.md` under `mandatory` array. May include:
 - Claude-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
 - Cursor-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
 - Other client packs as needed
@@ -134,14 +134,14 @@ edison rules require <RULE_ID>
 See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
 
 **Key Phases**:
-1. **Session Intake** (via ORCHESTRATORS.md constitution checklist)
+1. **Session Intake** (via ORCHESTRATOR.md constitution checklist)
 2. **Task Claiming** (moves files to session scope)
 3. **Implementation** (TDD cycle with evidence logging)
 4. **Validation** (automated checks + validator waves)
 5. **QA** (multi-round validation until approved)
 6. **Session Completion** (transactional restore to global queues)
 
-**Session Timeout**: Sessions expire after `session.timeout_hours` (default 8). Use `edison session heartbeat` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
+**Session Timeout**: Sessions expire after `session.timeout_hours` (default 8). Use `edison session track heartbeat --task <task-id>` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
 
 ---
 
@@ -187,7 +187,7 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 - Session-scoped queues prevent race conditions
 
 ### Delegation
-- Route complex work through `.edison/_generated/constitutions/ORCHESTRATORS.md`
+- Route complex work through `.edison/_generated/constitutions/ORCHESTRATOR.md`
 - Match file patterns to model capabilities
 - Specialized implementers for frontend/backend/database/testing
 
@@ -210,11 +210,11 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 ### Core Configuration
 
 **Framework Defaults**:
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Framework orchestration
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Framework orchestration
 
 **Project Overlay**:
 - `edison.yaml` - Project-specific configuration overrides
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Authoritative preload list
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list
 
 **State Machine**:
 - `.edison/_generated/STATE_MACHINE.md` - State definitions and transitions
@@ -224,7 +224,7 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 
 All in `.edison/_generated/guidelines/`:
 - `SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `DELEGATION.md` + `.edison/_generated/constitutions/ORCHESTRATORS.md` - Delegation routing
+- `DELEGATION.md` + `.edison/_generated/constitutions/ORCHESTRATOR.md` - Delegation routing
 - `TDD.md` - Test-driven development enforcement (RED→GREEN→REFACTOR)
 - `QUALITY.md` - Code quality standards and patterns
 - `HONEST_STATUS.md` - Status integrity and directory-name truth
@@ -241,7 +241,7 @@ All in `.edison/_generated/guidelines/`:
 
 **Session Templates**:
 - `.edison/_generated/STATE_MACHINE.md` - State machine definitions
-- `.edison/_generated/constitutions/ORCHESTRATORS.md` - Session intake checklist
+- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Session intake checklist
 
 ### CLI Reference (Automation)
 
@@ -264,7 +264,7 @@ All in `.edison/_generated/guidelines/`:
 - `edison qa bundle` - Bundle validation for parent+children
 
 **Validator Orchestration**:
-- `edison qa run-wave` - Execute validator wave (batched)
+- `edison qa validate <task-id> --session <session-id> --execute` - Execute validator waves (batched, respects wave config)
 - `edison qa validate` - Aggregate validator verdicts
 
 **Delegation**:
@@ -350,7 +350,7 @@ Each follows standard workflow:
 Parent task coordinates validation:
 
 ```bash
-edison qa run-wave <parent-task-id> --bundle
+edison qa validate <parent-task-id> --session <session-id> --execute
 ```
 
 Runs validators on **entire cluster** (parent + all children).
@@ -438,4 +438,4 @@ This orchestration hub ensures:
 - ✅ Delegation patterns (route complex work to specialists)
 - ✅ Post-training safety (Context7 queries mandatory)
 
-**Next Step**: Read `.edison/_generated/constitutions/ORCHESTRATORS.md` to begin a session correctly.
+**Next Step**: Read `.edison/_generated/constitutions/ORCHESTRATOR.md` to begin a session correctly.

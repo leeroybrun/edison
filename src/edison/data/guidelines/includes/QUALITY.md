@@ -7,8 +7,8 @@
 
 ### Type Safety
 - No untyped escape hatches
-- Justify any type suppressions (`@ts-ignore`, `# type: ignore`)
-- Strict typing enabled in project config
+- Justify any type suppressions (language-specific ignore directives, dynamic-typing escape hatches)
+- Type safety settings come from project configuration
 
 ### Code Hygiene
 - No TODO/FIXME placeholders in production code
@@ -67,11 +67,9 @@ All must pass with zero warnings.
 ## Quality Validation (Validators)
 
 ### Type Safety Check
-- [ ] No `any` types without justification
-- [ ] No `@ts-ignore` without comment explaining why
-- [ ] Strict mode enabled
-- [ ] All function parameters typed
-- [ ] Return types explicit
+- [ ] No type-system escape hatches without justification
+- [ ] No ignore directives without an explicit rationale
+- [ ] Project type-safety settings are enforced
 
 ### Code Smell Check
 - [ ] No god classes (excessive responsibilities)

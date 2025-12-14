@@ -10,139 +10,72 @@ This document defines the mandatory workflow that ALL implementing agents must f
 ## Requirements
 
 <!-- section: workflow -->
-### Workflow Overview
+### Workflow Overview (Agents / Implementers)
 
-**YOU MUST FOLLOW** the implementer runbook and orchestrator playbook before ANY implementation work.
+**Key Principle (role boundary):** Agents implement code and produce evidence. **Orchestrators** manage sessions and state transitions (`task claim`, `task ready`, QA moves, bundling). Agents MUST NOT perform orchestration actions unless the orchestrator explicitly delegates that responsibility.
 
-**Key Principle**: Agents do NOT operate autonomously. They receive tasks from the orchestrator, implement within their scope, and return results for validation.
+### The Implement‑and‑Handoff Cycle (what you do)
 
-### The Claim-Implement-Ready Cycle
+#### Phase 0: Intake (from orchestrator)
 
-Every task follows this three-phase workflow:
+You should receive from the orchestrator:
+- Task ID + acceptance criteria
+- Scope boundaries (in/out)
+- File paths to touch (or at least directory hints)
+- Any required packs/project guidelines to follow
+- Where to put evidence (task evidence directory + round)
 
-#### Phase 1: Claim Task
+If the task is missing acceptance criteria or scope boundaries, stop and ask for them.
 
-```bash
-# Claim the task assigned by orchestrator
-edison task claim <task-id>
-```
+#### Phase 1: Implement (TDD + Context7)
 
-**What this does**:
-- Moves task from `todo/` to `sessions/wip/<session-id>/`
-- Associates task with your session
-- Locks task from other sessions
+1. Read requirements and locate existing patterns in the codebase.
+2. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
+3. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
+4. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (e.g., `command-test.txt`).
 
-**Rules**:
-- Only claim tasks assigned to you by the orchestrator
-- Never claim tasks already claimed by other sessions
-- One task at a time (complete current before claiming new)
+#### Phase 2: Produce the Implementation Report (required)
 
-#### Phase 2: Implement
+Create or update the implementation report JSON for the current round:
+- **Path**: `.project/qa/validation-evidence/<task-id>/round-<N>/implementation-report.json` (filename is config-driven; default is `implementation-report.json`).
+- **Schema (LLM reference)**: `.edison/_generated/schemas/reports/implementation-report.schema.json`
+- Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
-Follow the implementation workflow:
+#### Phase 3: Handoff to orchestrator (do NOT self-validate)
 
-1. **Read task requirements** - Understand acceptance criteria
-2. **Check delegation config** - Verify you're the right agent
-3. **Query Context7** - For post-training packages (CRITICAL)
-4. **Follow TDD** - Write tests FIRST (RED-GREEN-REFACTOR)
-5. **Implement** - Complete ALL requirements
-6. **Verify** - Tests pass, type-check passes, lint passes, build passes
+Return a crisp handoff to the orchestrator:
+- What changed and why
+- Commands you ran and where the evidence files live
+- Where the implementation report lives
+- Any blockers or follow-ups (especially those that must block validation)
 
-**Key Commands During Implementation**:
-```bash
-# Create new QA evidence round
-edison qa new <task-id>
+### Agent CLI (what you may run)
 
-# Run project automation (commands come from the active pack / project config)
-<test-command>
-<type-check-command>
-<lint-command>
-<build-command>
-```
-
-#### Phase 3: Mark Ready for Validation
+Agents are generally **read-only** on task/session orchestration:
 
 ```bash
-# Mark task ready for validation
-edison task ready <task-id>
-```
-
-**What this does**:
-- Signals orchestrator that implementation is complete
-- Triggers validation workflow
-- Moves task to validation queue
-
-**Rules**:
-- ONLY mark ready when ALL work is COMPLETE
-- NEVER mark ready with TODOs, skipped tests, or failing tests
-- NEVER mark ready if you encountered blockers
-
-### State Machine
-
-Tasks follow a strict state machine:
-
-```
-todo → wip → validating → done
-             ↓
-           blocked → wip (after fixes)
-```
-
-**State Transitions**:
-- `todo` → `wip`: When claimed by agent
-- `wip` → `validating`: When marked ready
-- `validating` → `done`: When ALL validators pass
-- `validating` → `blocked`: When validators find issues
-- `blocked` → `wip`: When agent addresses issues
-
-## Evidence Required
-
-Every implementation round must provide:
-
-1. **Implementation Report JSON** (per `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`)
-2. **TDD Evidence** - Proof that tests were written first
-3. **Test Results** - All tests passing
-4. **Build Verification** - Type-check, lint, build all pass
-5. **Evidence Paths** - Reference artefacts in `.project/qa/validation-evidence/<task-id>/`
-
-## CLI Commands
-
-### Task Management
-```bash
-# List tasks ready to claim
-edison task ready
-
-# Claim a task
-edison task claim <task-id>
-
-# Check task status
+# Read-only: inspect task state/details
 edison task status <task-id>
 
-# Mark task ready for validation
-edison task ready <task-id>
+# Optional: produce lightweight tracking signals (if your project uses them)
+edison session track start --task <task-id> --type implementation
+edison session track complete --task <task-id>
 ```
 
-### QA and Evidence
-```bash
-# Create new QA evidence round
-edison qa new <task-id>
+> Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa promote`, `edison qa bundle`, `edison qa validate`.
 
-# Check QA status
-edison qa status <task-id>
-```
+## Evidence Required (minimum)
 
-### Validation
-```bash
-# Orchestrator runs validation (agents do NOT run this)
-edison qa validate <task-id>
-```
+- Implementation report JSON exists for the latest round.
+- Automation evidence files exist per project config (typically: `command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`).
+- Context7 markers exist for any required packages (if applicable).
 
 ## Critical Rules
 
-1. **NEVER bypass the workflow** - Always claim before implementing
-2. **NEVER mark ready prematurely** - Only when 100% complete
-3. **NEVER implement without tests** - TDD is mandatory
-4. **ALWAYS provide evidence** - No evidence = incomplete work
-5. **ALWAYS check delegation** - Verify you're the right agent
+1. **Never orchestrate by default** – do not move tasks/QA or run promotion commands unless explicitly delegated.
+2. **Never implement without tests** – TDD is mandatory.
+3. **Always provide evidence** – no evidence = not ready for validation.
+4. **Always check delegation scope** – if mis-assigned, return MISMATCH rather than doing the wrong work.
 
 <!-- /section: workflow -->
 

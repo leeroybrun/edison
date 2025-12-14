@@ -3,6 +3,12 @@
 
 Security validation rules for Better Auth implementations to ensure safe authentication and authorization practices.
 
+## Guidelines
+
+{{include-section:packs/better-auth/guidelines/includes/better-auth/security-best-practices.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/session-management.md#patterns}}
+{{include-section:packs/better-auth/guidelines/includes/better-auth/provider-configuration.md#patterns}}
+
 ## Critical Security Checks
 
 ### 1. Token Validation

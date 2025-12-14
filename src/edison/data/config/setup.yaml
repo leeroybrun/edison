@@ -26,13 +26,11 @@ setup:
       type: choice
       source: static
       options:
-        - "Next.js Full-Stack"
-        - "Fastify API"
-        - "React App"
-        - "Python Library"
-        - "Node.js Library"
-        - "Go Application"
-        - "Rust Project"
+        - "Full-stack web application"
+        - "Backend API / service"
+        - "Frontend UI application"
+        - "Library"
+        - "CLI tool"
         - "Other"
       default: "Other"
       help: "Type of project (helps select appropriate packs)"
@@ -68,12 +66,9 @@ setup:
       type: choice
       source: static
       options:
-        - "better-auth"
-        - "next-auth"
-        - "clerk"
-        - "auth0"
-        - "Custom"
         - "None"
+        - "Third-party (enable via packs)"
+        - "Custom"
       default: "None"
 
     - id: enable_worktrees

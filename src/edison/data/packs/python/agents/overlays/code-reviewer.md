@@ -37,6 +37,10 @@ radon cc src/ -a
 
 ### Python Code Review Checklist
 
+{{include-section:packs/python/guidelines/includes/python/PYTHON.md#patterns}}
+{{include-section:packs/python/guidelines/includes/python/TYPING.md#patterns}}
+{{include-section:packs/python/guidelines/includes/python/TESTING.md#patterns}}
+
 1. **Type Safety**
    - [ ] All functions have type annotations
    - [ ] mypy --strict passes with 0 errors

@@ -28,8 +28,9 @@ constitutions:
         purpose: Extended code smell examples (deep-dive)
 
   agents:
-    # All critical content embedded in agent constitution
-    # Constitution is included via {{include:constitutions/agents-base.md}}
+    # All critical content embedded in agent constitution via {{include-section:...}}
+    # Constitution is included in agent prompts via: {{include:constitutions/agents.md}}
+    # mandatoryReads is intentionally empty - all content is embedded
     mandatoryReads: []
     optionalReads:
       - path: guidelines/shared/QUALITY_PATTERNS.md
@@ -42,8 +43,9 @@ constitutions:
         purpose: Detailed report format reference
 
   validators:
-    # All critical content embedded in validator constitution
-    # Constitution is included via {{include:constitutions/validators-base.md}}
+    # All critical content embedded in validator constitution via {{include-section:...}}
+    # Constitution is included in validator prompts via: {{include:constitutions/validators.md}}
+    # mandatoryReads is intentionally empty - all content is embedded
     mandatoryReads: []
     optionalReads:
       - path: guidelines/shared/QUALITY_PATTERNS.md

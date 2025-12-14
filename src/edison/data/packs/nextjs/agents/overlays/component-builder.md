@@ -3,7 +3,7 @@
 <!-- extend: tools -->
 - Next.js 16 App Router components in `app/**` (or your project's equivalent root).
 - React Server/Client Components with strict TypeScript.
-- Run your project's lint/test commands for Next.js code (avoid hardcoded workspace filters).
+- Run your project's lint/test commands for Next.js code.
 <!-- /extend -->
 
 <!-- extend: guidelines -->
@@ -89,7 +89,7 @@ export function ItemFilters() {
 ### Server-Side Fetch
 
 ```tsx
-// app/dashboard/page.tsx
+// app/overview/page.tsx
 async function getMetrics() {
   const res = await fetch('https://api.example.com/metrics', {
     next: { revalidate: 60 }  // Cache for 60 seconds
@@ -97,7 +97,7 @@ async function getMetrics() {
   return res.json()
 }
 
-export default async function DashboardPage() {
+export default async function OverviewPage() {
   const metrics = await getMetrics()
   return <MetricsDisplay data={metrics} />
 }
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
 
 ```tsx
 // Fetch multiple data sources in parallel
-export default async function DashboardPage() {
+export default async function OverviewPage() {
   const [items, metrics, activity] = await Promise.all([
     getItems(),
     getMetrics(),

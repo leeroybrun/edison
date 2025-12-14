@@ -1,0 +1,16 @@
+name: zod
+version: "1.0.0"
+description: "Zod schema validation pack (Context7 + validation patterns)"
+category: "validation"
+tags: ["validation", "schemas"]
+triggers:
+  filePatterns:
+    - "**/*.schema.ts"
+    - "**/*.validation.ts"
+    - "**/*schema.ts"
+    - "**/*validation.ts"
+depends: []
+validators: []
+agents: []
+examples: []
+

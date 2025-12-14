@@ -4,10 +4,10 @@
 ## Tailwind CSS Validation Context
 
 ### Guidelines
-{{include:packs/tailwind/guidelines/tailwind/v4-syntax.md}}
-{{include:packs/tailwind/guidelines/tailwind/TAILWIND_V4_RULES.md}}
-{{include:packs/tailwind/guidelines/tailwind/design-tokens.md}}
-{{include:packs/tailwind/guidelines/tailwind/responsive.md}}
+{{include-section:packs/tailwind/guidelines/includes/tailwind/v4-syntax.md#patterns}}
+{{include-section:packs/tailwind/guidelines/includes/tailwind/TAILWIND_V4_RULES.md#patterns}}
+{{include-section:packs/tailwind/guidelines/includes/tailwind/design-tokens.md#patterns}}
+{{include-section:packs/tailwind/guidelines/includes/tailwind/responsive.md#patterns}}
 
 ### Concrete Checks
 - Use Tailwind v4 import syntax (no `@tailwind base/components/utilities`).
