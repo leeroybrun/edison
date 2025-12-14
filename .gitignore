@@ -3,3 +3,4 @@ __pycache__/
 .env
 .pytest_cache/
 .mcp.json
+.ruff_cache/
