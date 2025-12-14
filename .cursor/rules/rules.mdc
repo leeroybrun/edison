@@ -1,3 +1,7 @@
+---
+alwaysApply: true
+---
+
 # 🎯 CRITICAL PRINCIPLES (NON-NEGOTIABLE)
 1. ✅ **STRICT TDD**: Write failing test FIRST (RED), then implement (GREEN), then refactor
 2. ✅ **NO MOCKS**: Test real behavior, real code, real libs - NO MOCKS EVER

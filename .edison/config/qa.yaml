@@ -1,0 +1,38 @@
+# Edison Project QA Configuration
+# Quality assurance settings for Edison framework development
+
+validation:
+  # Python-specific evidence files
+  requiredEvidenceFiles:
+    - command-type-check.txt    # mypy --strict output
+    - command-lint.txt          # ruff check output
+    - command-test.txt          # pytest output
+    - command-build.txt         # build output (optional)
+
+  # Evidence collection commands for Python
+  evidenceCommands:
+    type-check:
+      command: "mypy --strict src/"
+      outputFile: "command-type-check.txt"
+      required: true
+
+    lint:
+      command: "ruff check src/ tests/"
+      outputFile: "command-lint.txt"
+      required: true
+
+    test:
+      command: "pytest tests/ -v --tb=short"
+      outputFile: "command-test.txt"
+      required: true
+
+    build:
+      command: "python -m build"
+      outputFile: "command-build.txt"
+      required: false
+
+orchestration:
+  # Validation orchestration settings
+  maxConcurrentAgents: 4
+  validatorTimeout: 600  # 10 minutes for full test suite
+  executionMode: parallel

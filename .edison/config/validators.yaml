@@ -1,0 +1,68 @@
+# Edison Project Validator Configuration
+# Overrides for validators when developing Edison itself
+
+validation:
+  # Python-specific evidence files (override TypeScript defaults)
+  requiredEvidenceFiles:
+    - command-type-check.txt    # mypy output
+    - command-lint.txt          # ruff output
+    - command-test.txt          # pytest output
+    - command-build.txt         # python -m build output
+
+  # Validation execution settings
+  execution:
+    mode: parallel
+    concurrency: 4
+    timeout: 600  # Longer timeout for full test suite
+
+  # Edison-specific validator roster additions
+  roster:
+    specialized:
+      # Python validator (from python pack)
+      - id: python
+        name: Python Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-python
+        specFile: specialized/python.md
+        triggers:
+          - "**/*.py"
+          - "pyproject.toml"
+        alwaysRun: true
+        priority: 3
+        blocksOnFail: true
+        outputFormat: PythonReport
+        reportSection: "Validator Findings & Verdicts > Python"
+
+      # Edison architecture validator (project-specific)
+      - id: edison-architecture
+        name: Edison Architecture Validator
+        model: codex
+        interface: clink
+        role: codereviewer
+        zenRole: validator-edison
+        specFile: specialized/edison.md
+        triggers:
+          - "src/edison/**/*.py"
+          - ".edison/**/*"
+          - "src/edison/data/config/*.yaml"
+        alwaysRun: true
+        priority: 3
+        blocksOnFail: true
+        outputFormat: EdisonReport
+        reportSection: "Validator Findings & Verdicts > Edison Architecture"
+
+  # Edison-specific blocking validators
+  blocking_validators:
+    - global-codex
+    - global-claude
+    - security
+    - python
+    - edison-architecture
+
+  # Approval criteria for Edison project
+  approvalCriteria:
+    specializedValidators:
+      python: "MUST approve (blocks task on fail)"
+      edison-architecture: "MUST approve (blocks task on fail)"

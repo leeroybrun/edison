@@ -1,0 +1,22 @@
+# Edison Project Pack Configuration
+# This file enables and configures packs for the Edison project itself
+
+packs:
+  # Explicitly enable Python pack for this Python project
+  active:
+    - python
+
+  # Auto-activate packs based on file patterns
+  autoActivate: true
+
+  # Pack-specific settings
+  settings:
+    python:
+      # Python version for this project
+      pythonVersion: "3.12"
+      # Testing framework
+      testRunner: pytest
+      # Type checker
+      typeChecker: mypy
+      # Linter/formatter
+      linter: ruff
