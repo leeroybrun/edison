@@ -814,7 +814,7 @@ version: "1.0.0"
 
 mandatoryReads:
   orchestrator:
-    - path: constitutions/ORCHESTRATORS.md
+    - path: constitutions/ORCHESTRATOR.md
       purpose: Main orchestrator constitution
     - path: guidelines/orchestrators/SESSION_WORKFLOW.md
       purpose: Session lifecycle management
@@ -1274,7 +1274,6 @@ Path configuration for Edison project structure.
 ```yaml
 paths:
   project_config_dir: ".edison"
-  legacy_project_config_dir: ".project-config"
 ```
 
 ---

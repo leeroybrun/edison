@@ -9,7 +9,7 @@ Test Coverage:
 - Priority guidance
 
 IMPORTANT: These tests execute REAL CLI commands, NOT mock data.
-All behaviors must match guidelines in .agents/guidelines/*.md
+All behaviors must match the composed guidelines in `.edison/_generated/guidelines/`.
 """
 from __future__ import annotations
 

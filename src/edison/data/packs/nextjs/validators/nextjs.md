@@ -290,3 +290,6 @@ Machine-readable JSON report (required):
 - **Server Components by default**
 - **Server Actions for mutations**
 - **Warnings only** - doesn't block task completion
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

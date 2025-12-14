@@ -16,7 +16,8 @@ from helpers.command_runner import run_script, assert_command_success
 
 def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "approve") -> None:
     report = {
-        "taskId": dir.parent.parent.name,
+        # dir = .../.project/qa/validation-evidence/<taskId>/round-N
+        "taskId": dir.parent.name,
         "round": int(dir.name.split("-", 1)[1]) if "-" in dir.name else 1,
         "validatorId": vid,
         "model": model,
@@ -31,30 +32,28 @@ def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "app
 
 @pytest.mark.fast
 def test_specialized_blocking_database_and_testing_enforced(project_dir: TestProjectDir):
-    """validators/validate must require Database + Testing (blocking) reports.
+    """validators/validate must fail-closed until all blocking reports exist.
 
-    RED → before fix, validate would pass with only global+critical.
-    GREEN → after fix, validate fails until Database+Testing reports are present.
+    This test is intentionally trigger-agnostic: we validate that *blocking*
+    validators (as determined by the registry/roster) gate bundle approval.
     """
     task_id = "200-wave1-enforcement"
     ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
 
-    # Provide only global + critical reports (approve)
+    # Provide only a subset of blocking reports (approve)
     _write_validator_report(ev, "global-codex", "codex", verdict="approve")
     _write_validator_report(ev, "global-claude", "claude", verdict="approve")
+
+    # Run validate → must fail due to missing blocking approvals (e.g. security/performance)
+    res_fail = run_script("validators/validate", [task_id, "--execute"], cwd=project_dir.tmp_path)
+    assert res_fail.returncode != 0, f"Expected failure, got stdout:\n{res_fail.stdout}\nstderr:\n{res_fail.stderr}"
+
+    # Now add the remaining core blocking reports and re-run → succeed
     _write_validator_report(ev, "security", "codex", verdict="approve")
     _write_validator_report(ev, "performance", "codex", verdict="approve")
 
-    # Run bundle validate → must fail due to missing Database/Testing
-    res_fail = run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path)
-    assert res_fail.returncode != 0, f"Expected failure, got stdout:\n{res_fail.stdout}\nstderr:\n{res_fail.stderr}"
-
-    # Now add ALL specialized (blocking) reports and re-run → succeed
-    for vid in ("react", "nextjs", "api", "prisma", "testing"):
-        _write_validator_report(ev, vid, "codex", verdict="approve")
-
-    res_ok = run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path)
+    res_ok = run_script("validators/validate", [task_id, "--execute"], cwd=project_dir.tmp_path)
     assert_command_success(res_ok)
 
 

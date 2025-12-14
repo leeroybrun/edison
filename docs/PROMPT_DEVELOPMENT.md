@@ -123,7 +123,7 @@ Constitutions are EMBEDDED in agent/validator prompts via `{{include:}}`. This e
 
 ```
 # agents/test-engineer.md
-{{include:constitutions/agents-base.md}}
+{{include:constitutions/agents.md}}
 
 ## Test Engineer Role
 [Agent-specific content]
@@ -192,14 +192,14 @@ data/
 │   └── ...
 │
 ├── validators/                      # Core validator prompts
-│   ├── global/global.md            # Technology-agnostic
+│   ├── global.md                   # Technology-agnostic
 │   ├── critical/security.md
 │   └── ...
 │
 ├── constitutions/                   # Role constitutions (include-only)
-│   ├── agents-base.md              # Embedded in all agents
-│   ├── validators-base.md          # Embedded in all validators
-│   └── orchestrator-base.md
+│   ├── agents.md                   # Embedded in all agents
+│   ├── validators.md               # Embedded in all validators
+│   └── orchestrator.md             # Embedded in orchestrator
 │
 ├── guidelines/
 │   ├── includes/                    # NEVER read directly
@@ -235,7 +235,7 @@ data/
 | Agent | `kebab-case.md` | `test-engineer.md` |
 | Validator | `kebab-case.md` | `global.md`, `security.md` |
 | Guideline | `SCREAMING_SNAKE.md` | `TDD.md`, `NO_MOCKS.md` |
-| Constitution | `role-base.md` | `agents-base.md` |
+| Constitution | `role.md` | `agents.md` |
 | Pack overlay | Same as target | `overlays/test-engineer.md` |
 
 ---
@@ -461,7 +461,7 @@ model: {model}
 # {Agent Name}
 
 ## Constitution (Re-read on compact)
-{{include:constitutions/agents-base.md}}
+{{include:constitutions/agents.md}}
 
 ## Role
 [2-3 bullet points defining this agent's specialty]
@@ -485,7 +485,7 @@ model: {model}
 
 ### 7.2 Agent Rules
 
-1. **Constitution embedded** - First content is `{{include:constitutions/agents-base.md}}`
+1. **Constitution embedded** - First content is `{{include:constitutions/agents.md}}`
 2. **No generic content** - TDD, NO MOCKS, etc. come from constitution
 3. **No technology content** - Packs inject via EXTEND
 4. **SECTION placeholders** - Empty sections for pack extension
@@ -501,7 +501,7 @@ model: {model}
 # {Validator Name}
 
 ## Constitution (Re-read on compact)
-{{include:constitutions/validators-base.md}}
+{{include:constitutions/validators.md}}
 
 ## Mission
 [What this validator checks]
@@ -523,7 +523,7 @@ model: {model}
 
 ### 8.2 Validator Rules
 
-1. **Constitution embedded** - Always include validators-base.md
+1. **Constitution embedded** - Always include validators.md
 2. **Clear triggers** - File patterns that activate this validator
 3. **Blocking status** - Whether failures block merge
 4. **Generic checklist** - Technology-agnostic checks
@@ -545,7 +545,8 @@ packs/{pack}/
 │   └── overlays/          # EXTEND core validators
 │       └── global.md
 ├── guidelines/
-│   └── {pack}/            # Pack-specific guidelines
+│   ├── {pack}/            # Pack-specific guidelines (agent-readable references)
+│   └── includes/{pack}/   # Pack include-only sources (for {{include-section:...}})
 │       └── TESTING.md
 └── functions/             # Pack-specific functions
     └── {pack}_helpers.py
@@ -567,7 +568,7 @@ overlay_type: extend
 
 <!-- EXTEND: guidelines -->
 ### {Pack} Patterns
-{{include-section:packs/{pack}/guidelines/{pack}/TESTING.md#patterns}}
+{{include-section:packs/{pack}/guidelines/includes/{pack}/TESTING.md#patterns}}
 <!-- /EXTEND -->
 ```
 
@@ -732,7 +733,7 @@ Valid states: {{fn:task_states}}
 
 # NEW PATTERN (CORRECT)
 # Constitution embedded in agent file
-{{include:constitutions/agents-base.md}}
+{{include:constitutions/agents.md}}
 # Single instruction: "re-read your agent file"
 ```
 
@@ -750,7 +751,7 @@ Valid states: {{fn:task_states}}
 
 ### 12.2 For Agent Prompts
 
-- [ ] Constitution is embedded via `{{include:constitutions/agents-base.md}}`
+- [ ] Constitution is embedded via `{{include:constitutions/agents.md}}`
 - [ ] No generic TDD/NO_MOCKS content (in constitution)
 - [ ] No technology-specific content (in pack overlays)
 - [ ] SECTION: tools placeholder exists
@@ -759,7 +760,7 @@ Valid states: {{fn:task_states}}
 
 ### 12.3 For Validator Prompts
 
-- [ ] Constitution is embedded via `{{include:constitutions/validators-base.md}}`
+- [ ] Constitution is embedded via `{{include:constitutions/validators.md}}`
 - [ ] Clear triggers defined
 - [ ] Blocking status specified
 - [ ] SECTION: checklist defined
@@ -789,7 +790,7 @@ Valid states: {{fn:task_states}}
 ### 12.7 Final Validation
 
 After composition, verify:
-- [ ] `edison compose --all` succeeds
+- [ ] `edison compose all` succeeds
 - [ ] No broken includes/sections
 - [ ] Context sizes reduced (not increased)
 - [ ] No duplicate content in composed output
@@ -808,7 +809,7 @@ After composition, verify:
 7. **Functions for Dynamic**: No hardcoded states/rosters/versions
 8. **Includes are Private**: `guidelines/includes/` files are never read directly
 9. **Single Re-Read**: "Re-read your file" gives everything
-10. **Compose to Verify**: Always run `edison compose --all` to validate
+10. **Compose to Verify**: Always run `edison compose all` to validate
 
 ---
 

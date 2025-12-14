@@ -506,3 +506,6 @@ const badge = cva(
 - **Responsive & accessible**: mobile-first variants, container queries where needed, focus-visible + reduced-motion support.  
 - **Config hygiene**: single source of truth, minimal plugins, safelist only what's necessary.  
 - **Warnings only**: validator does not block merges but should surface actionable, reproducible issues.  
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

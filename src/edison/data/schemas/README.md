@@ -1,6 +1,10 @@
 # Edison Core Schemas
 
-JSON Schema definitions (Draft 2020-12) that validate Edison configuration and data payloads.
+JSON Schema definitions that validate Edison configuration and data payloads.
+
+**Schema drafts used**:
+- **Draft 2020-12**: `config/`, `domain/`, `adapters/`, `manifests/`
+- **Draft-07**: `reports/` (currently)
 
 ## Directory Structure
 
@@ -59,7 +63,9 @@ validate_payload(config_dict, "config/config.schema.json")
 
 ## Schema Guidelines
 
-1. **Use Draft 2020-12**: All schemas should declare `"$schema": "https://json-schema.org/draft/2020-12/schema"`
+1. **Match the family’s draft**:
+   - `config/`, `domain/`, `adapters/`, `manifests/` → `"$schema": "https://json-schema.org/draft/2020-12/schema"`
+   - `reports/` → `"$schema": "http://json-schema.org/draft-07/schema#"`
 2. **Strict validation**: Set `additionalProperties: false` to catch typos
 3. **Project-agnostic**: Core schemas must not contain project-specific terms
 4. **Use placeholders**: Use `{PROJECT_NAME}` for customizable paths

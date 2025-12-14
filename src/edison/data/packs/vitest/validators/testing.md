@@ -123,3 +123,6 @@ git diff -- '**/*.test.ts' '**/*.spec.ts'
 
 - Tests are a safety net: flaky tests are worse than no tests
 - Prefer real behavior over mocked behavior
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

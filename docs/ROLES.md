@@ -23,7 +23,7 @@ Each role has:
 Coordinate work, delegate tasks to specialized agents, manage session lifecycle, and orchestrate validation.
 
 ### Constitution
-`.edison/_generated/constitutions/ORCHESTRATORS.md`
+`.edison/_generated/constitutions/ORCHESTRATOR.md`
 
 ### Mandatory Reads
 Orchestrators MUST read these files at session start:
@@ -38,7 +38,7 @@ Orchestrators MUST read these files at session start:
 
 #### Session Management
 ```bash
-edison session create <session-id>     # Create new session
+edison session create [--session-id <id>]     # Create new session (ID auto-infers if omitted)
 edison session start <task-id>         # Start session with orchestrator
 edison session status <session-id>     # Check session state
 edison session next <session-id>       # Get next recommended actions (CRITICAL)
@@ -345,7 +345,7 @@ Defined in active packs, check `AVAILABLE_VALIDATORS.md` for current roster:
 
 1. **Determine context** - Are they starting a session, implementing a task, or validating?
 2. **Read appropriate constitution** - Based on context, load the correct constitution:
-   - Orchestrator: `.edison/_generated/constitutions/ORCHESTRATORS.md`
+   - Orchestrator: `.edison/_generated/constitutions/ORCHESTRATOR.md`
    - Agent: `.edison/_generated/constitutions/AGENTS.md`
    - Validator: `.edison/_generated/constitutions/VALIDATORS.md`
 3. **Load mandatory reads** - Each constitution lists required reading materials
@@ -466,7 +466,7 @@ Edison uses **multiple LLM models as validators** to achieve consensus and catch
 **Orchestrator** (Session Owner):
 ```bash
 # 1. Create session
-edison session create sess-001
+edison session create --session-id sess-001
 
 # 2. Claim task
 edison task claim TASK-123 --session sess-001
@@ -627,7 +627,7 @@ edison qa promote --task TASK-123 --to validated
 |--------|-------------|-------|-----------|
 | **Primary Focus** | Coordination | Implementation | Quality Assurance |
 | **Key Verb** | Delegate | Build | Validate |
-| **Constitution** | ORCHESTRATORS.md | AGENTS.md | VALIDATORS.md |
+| **Constitution** | ORCHESTRATOR.md | AGENTS.md | VALIDATORS.md |
 | **Can Implement?** | No (delegate) | Yes (TDD) | No (report only) |
 | **Can Validate?** | No (delegate) | No (never self) | Yes (independent) |
 | **Can Manage Sessions?** | Yes | No | No |

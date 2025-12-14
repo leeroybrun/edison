@@ -210,6 +210,16 @@ class ClaudeAdapter(PlatformAdapter):
         Returns:
             Content with Claude frontmatter prepended
         """
+        # Idempotency: modern Edison agent prompts already include YAML frontmatter.
+        # If the file already starts with a frontmatter block, do not prepend another.
+        stripped = content.lstrip()
+        if stripped.startswith("---"):
+            lines = stripped.splitlines()
+            # Detect the closing delimiter within a small bound (avoid scanning huge files).
+            for i in range(1, min(len(lines), 80)):
+                if lines[i].strip() == "---":
+                    return content
+
         from edison.core.utils.text import format_frontmatter
 
         # Extract description from first non-empty, non-comment, non-heading line

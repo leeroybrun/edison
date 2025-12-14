@@ -169,3 +169,6 @@ Human-readable report (required):
 - **Hooks rules** are non-negotiable
 - **Accessibility** is part of correctness
 - **Warnings only** - doesn't block task completion
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

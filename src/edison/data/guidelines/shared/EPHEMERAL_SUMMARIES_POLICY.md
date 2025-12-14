@@ -12,9 +12,9 @@
 - Git history – commits tied to task IDs (mention ID in commit body when useful).
 
 ## Exceptions
-- Validation artefacts stored under `.project/qa/validation-evidence/task-XXX/`, but they must be referenced from the QA document (legacy evidence remains in `docs/project/validation-evidence/`).
+- Validation artefacts stored under `.project/qa/validation-evidence/task-XXX/`, but they must be referenced from the QA document.
 - Archive/analysis files go under `docs/archive/` only when explicitly requested.
 
 ## Enforcement
-- Before marking work complete, ensure there are no stray `*_SUMMARY.md` / `*_ANALYSIS.md` files or similar
+- Before marking work complete, ensure there are no stray `*_SUMMARY.md` / `*_ANALYSIS.md` files or similar.
 - Delete unapproved summaries, note the cleanup in the relevant task file, and rely on the canonical directories instead.

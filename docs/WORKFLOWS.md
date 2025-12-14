@@ -24,7 +24,7 @@ The complete lifecycle of an Edison session from creation to archival.
 
 ```bash
 # Create new session
-edison session create --session-id <id>
+edison session create [--session-id <id>]
 ```
 
 **What happens:**
@@ -45,7 +45,7 @@ The orchestrator reads the generated constitution to understand available agents
 
 **Constitution location:**
 ```
-.edison/_generated/constitutions/ORCHESTRATORS.md
+.edison/_generated/constitutions/ORCHESTRATOR.md
 ```
 
 **What it contains:**
@@ -662,8 +662,8 @@ edison qa run <validator-id> <task-id>
 # Add extra validators (orchestrator feature)
 edison qa validate <task-id> --add-validators react api --execute
 
-# Add validators to specific wave
-edison qa validate <task-id> --add-validators react --add-to-wave critical --execute
+# Add validators with specific waves using [WAVE:]VALIDATOR syntax
+edison qa validate <task-id> --add-validators critical:react comprehensive:api --execute
 ```
 
 **Validator Auto-Detection:**

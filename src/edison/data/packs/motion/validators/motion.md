@@ -497,3 +497,6 @@ export function List({ items }) {
 - **Performance** - 60fps target, GPU-accelerated transforms only
 - **Context7 MANDATORY** for latest Motion 12+ API
 - **Warnings only** - doesn't block task completion
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

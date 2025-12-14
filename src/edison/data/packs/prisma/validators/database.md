@@ -190,3 +190,6 @@ model Record {
 - Database correctness blocks the task when wrong
 - Schema changes require query/index review
 - Migration safety must be explicit
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

@@ -55,11 +55,6 @@
           "type": "string",
           "description": "Preferred project configuration directory name (e.g., .edison).",
           "default": ".edison"
-        },
-        "legacy_project_config_dir": {
-          "type": "string",
-          "description": "Legacy project configuration directory name (deprecated).",
-          "default": ".project-config"
         }
       },
       "additionalProperties": false

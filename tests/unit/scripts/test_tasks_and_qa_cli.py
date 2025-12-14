@@ -139,7 +139,7 @@ Validation scope
 """)
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa", "round", ["--task", task_id, "--status", "approved", "--json"], env)
+    result = run("qa", "round", [task_id, "--status", "approved", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["taskId"] == task_id
     assert payload["round"] == 2

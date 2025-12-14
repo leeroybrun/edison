@@ -10,7 +10,7 @@ Test Coverage:
 - Session completion via real `session complete` CLI
 
 IMPORTANT: These tests execute REAL CLI commands, NOT mock data.
-All behaviors must match guidelines in .agents/guidelines/SESSION_WORKFLOW.md
+All behaviors must match the composed guidelines in `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`.
 """
 from __future__ import annotations
 

@@ -3,4 +3,3 @@
 
 paths:
   project_config_dir: ".edison"
-  legacy_project_config_dir: ".project-config"

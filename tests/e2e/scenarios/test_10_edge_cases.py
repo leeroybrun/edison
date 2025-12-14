@@ -124,14 +124,18 @@ def test_empty_evidence_directory(project_dir: TestProjectDir):
     )
     assert_command_success(qa)
 
-    # Run validator bundle check → should fail: No round-* dirs
+    # `qa/new` should NOT create evidence rounds. `validators/validate --execute`
+    # is responsible for creating a round directory before writing reports.
+    evidence_root = project_dir.project_root / "qa" / "validation-evidence" / task_id
+    assert not any(evidence_root.glob("round-*"))
+
     validate = run_script(
         "validators/validate",
-        ["--task", task_id],
+        [task_id, "--execute"],
         cwd=project_dir.tmp_path,
     )
     assert_command_failure(validate)
-    assert_output_contains(validate, "No round directories", in_stderr=False)
+    assert any(evidence_root.glob("round-*"))
 
 
 @pytest.mark.edge_case
@@ -161,17 +165,21 @@ def test_orphaned_task_no_owner(project_dir: TestProjectDir):
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_orphaned_qa_no_task(project_dir: TestProjectDir):
-    """qa/promote waiting→todo should fail when parent task is missing."""
+    """qa/promote should fail when the QA record does not exist.
+
+    QA records are created alongside tasks (single source of truth).
+    `qa/new` initializes evidence (qa-brief.json) but does not create QA records.
+    """
     task_id = "250-wave1-orphaned"
 
     # Create QA for a non-existent task (allowed by qa/new)
     qa = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
     assert_command_success(qa)
 
-    # Promote waiting→todo should fail because the parent task doesn't exist/done
-    promote = run_script("qa/promote", ["--task", task_id, "--to", "todo"], cwd=project_dir.tmp_path)
+    # Promote should fail because there is no QA record to promote
+    promote = run_script("qa/promote", [task_id, "--status", "todo"], cwd=project_dir.tmp_path)
     assert_command_failure(promote)
-    assert_error_contains(promote, "Cannot move QA waiting→todo")
+    assert_error_contains(promote, "QA brief not found")
 
 
 @pytest.mark.edge_case
@@ -239,24 +247,26 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
     round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
 
-    def write_report(validator_id: str, model: str) -> None:
+    def write_report(validator_id: str, model: str, verdict: str = "approve") -> None:
         payload = {
             "taskId": task_id,
             "round": 1,
             "validatorId": validator_id,
             "model": model,
-            "verdict": "approve",
+            "verdict": verdict,
             "tracking": {"processId": 12345, "startedAt": "2025-01-01T00:00:00Z"},
         }
         (round_dir / f"validator-{validator_id}-report.json").write_text(json.dumps(payload))
 
     write_report("global-codex", "codex")
     write_report("global-claude", "claude")
-    # Missing: security (codex), performance (codex)
+    # Create *present but not approved* blocking reports to avoid executing external CLIs.
+    write_report("security", "codex", verdict="pending")
+    write_report("performance", "codex", verdict="pending")
 
-    res = run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path)
+    res = run_script("validators/validate", [task_id, "--execute", "--blocking-only"], cwd=project_dir.tmp_path)
     assert_command_failure(res)
-    assert_output_contains(res, "missing report:")
+    assert_output_contains(res, "Missing/insufficient blocking reports", in_stderr=False)
 
 
 @pytest.mark.edge_case
@@ -352,7 +362,7 @@ def test_multiple_qa_rounds_same_task(project_dir: TestProjectDir):
 
     # Append multiple rounds via real CLI
     for i in range(1, 4):
-        round_res = run_script("qa/round", ["--task", task_id, "--status", "approved", "--note", f"r{i}"], cwd=project_dir.tmp_path)
+        round_res = run_script("qa/round", [task_id, "--status", "approved", "--note", f"r{i}"], cwd=project_dir.tmp_path)
         assert_command_success(round_res)
 
     qa_path = project_dir.project_root / "qa" / "waiting" / f"{task_id}-qa.md"

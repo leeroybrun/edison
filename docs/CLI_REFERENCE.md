@@ -23,7 +23,8 @@
 13. [Rules Domain](#rules-domain)
 14. [MCP Domain](#mcp-domain)
 15. [Orchestrator Domain](#orchestrator-domain)
-16. [Typical Workflows](#typical-workflows)
+16. [Import Domain](#import-domain)
+17. [Typical Workflows](#typical-workflows)
 
 ---
 
@@ -51,6 +52,7 @@ edison <domain> <command> [options]
 | `rules` | Rule management and checking |
 | `mcp` | MCP server configuration |
 | `orchestrator` | Orchestrator session management |
+| `import` | Import tasks from external systems (SpecKit) |
 
 ---
 
@@ -1242,8 +1244,7 @@ edison qa validate <task_id> [options]
 | `--round` | Validation round number (default: create new round) |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
-| `--add-validators` | Extra validators to add to auto-detected roster (orchestrator feature) |
-| `--add-to-wave` | Wave for added validators (default: `comprehensive`) |
+| `--add-validators` | Extra validators to add: `react` (default wave) or `critical:react` (specific wave) |
 | `--blocking-only` | Only run blocking validators |
 | `--execute` | Execute validators directly (default: show roster only) |
 | `--sequential` | Run validators sequentially instead of in parallel |
@@ -1283,8 +1284,8 @@ edison qa validate 150-auth-feature --execute --validators global-codex security
 # Add extra validators (orchestrator feature)
 edison qa validate 150-auth-feature --add-validators react api --execute
 
-# Add validators to specific wave
-edison qa validate 150-auth-feature --add-validators react --add-to-wave critical --execute
+# Add validators with specific waves using [WAVE:]VALIDATOR syntax
+edison qa validate 150-auth-feature --add-validators critical:react comprehensive:api --execute
 ```
 
 **Validator Auto-Detection:**
@@ -1296,8 +1297,8 @@ Validators are automatically selected based on:
 **Adding Extra Validators (Orchestrator Feature):**
 
 Orchestrators can ADD validators that weren't auto-triggered:
-- Use `--add-validators react api` to add specific validators
-- Use `--add-to-wave critical` to specify which wave
+- Use `--add-validators react api` to add validators (default wave: `comprehensive`)
+- Use `--add-validators critical:react` to specify a wave with the `[WAVE:]VALIDATOR` syntax
 - Cannot remove auto-detected validators (only add)
 
 The CLI shows "ORCHESTRATOR DECISION POINTS" when validators might be relevant
@@ -2542,6 +2543,111 @@ edison orchestrator profiles
 # Get JSON output
 edison orchestrator profiles --json
 ```
+
+---
+
+## Import Domain
+
+Import tasks from external task management systems into Edison.
+
+### import speckit - Import SpecKit Tasks
+
+Import or sync tasks from GitHub's SpecKit SDD (Spec-Driven Development) tool.
+
+```bash
+edison import speckit <source> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `source` | Path to SpecKit feature folder or tasks.md file |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--prefix` | Custom task ID prefix (default: folder name) |
+| `--dry-run` | Preview changes without writing files |
+| `--no-qa` | Skip creating QA records for imported tasks |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Importing SpecKit-generated tasks into Edison
+- Re-syncing after specs have changed
+- Converting external task lists to Edison format
+
+**Examples:**
+
+```bash
+# Import tasks from a SpecKit feature folder
+edison import speckit specs/auth-feature/
+
+# Import with custom task prefix
+edison import speckit specs/authentication/ --prefix auth
+
+# Preview what would be imported
+edison import speckit specs/payment/ --dry-run
+
+# Import without creating QA records
+edison import speckit specs/feature/ --no-qa
+
+# Get JSON output for scripting
+edison import speckit specs/feature/ --json
+```
+
+**What It Does:**
+
+1. Parses SpecKit tasks.md checklist format
+2. Detects available spec documents (spec.md, plan.md, etc.)
+3. Creates Edison tasks with links to spec docs
+4. Optionally creates QA records for each task
+5. On re-sync: updates changed tasks, flags removed tasks
+
+**SpecKit Task Format:**
+
+```markdown
+## Phase 1: Setup
+
+- [ ] T001 Create project structure
+- [ ] T002 [P] Initialize dependencies
+- [x] T003 Already completed task
+
+## Phase 2: User Story 1
+
+- [ ] T010 [US1] Create User model in src/models/user.py
+- [ ] T011 [P] [US1] Create UserService
+```
+
+**Sync Behavior:**
+
+| Scenario | Action |
+|----------|--------|
+| New task in SpecKit | Create Edison task |
+| Existing task changed | Update metadata |
+| Task in wip/done | Preserve Edison state |
+| Task removed from SpecKit | Flag with `removed-from-spec` tag |
+
+**Output:**
+
+```
+SpecKit Import: auth-feature
+Prefix: auth
+
+Created (2 tasks):
+  + auth-T001
+  + auth-T002
+```
+
+**Exit Codes:**
+
+- `0` - Import successful
+- `1` - Error during import
+
+For detailed documentation, see [SPECKIT_INTEGRATION.md](SPECKIT_INTEGRATION.md).
 
 ---
 

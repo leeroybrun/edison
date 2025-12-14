@@ -805,7 +805,7 @@ class RulesRegistry:
             "startAnchor": f"<!-- ANCHOR: {anchor_part} -->" if anchor_part else "",
             "endAnchor": f"<!-- END ANCHOR: {anchor_part} -->" if anchor_part else "",
             "content": rule.get("body", ""),
-            "guidance": rule.get("category", ""),  # Use category as guidance fallback
+            "guidance": str(rule.get("guidance") or "").strip(),
             "contexts": rule.get("contexts", []),
         }
 
@@ -829,7 +829,7 @@ class RulesRegistry:
                 "blocking": rule.get("blocking", False),
                 "sourcePath": source_path_str,
                 "content": rule.get("body", ""),
-                "guidance": rule.get("category", ""),  # Use category as guidance
+                "guidance": str(rule.get("guidance") or "").strip(),
                 "contexts": rule.get("contexts", []),
             })
 

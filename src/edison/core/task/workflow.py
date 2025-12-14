@@ -71,6 +71,7 @@ class TaskQAWorkflow:
         description: str = "",
         session_id: Optional[str] = None,
         owner: Optional[str] = None,
+        continuation_id: Optional[str] = None,
         create_qa: bool = True,
     ) -> Task:
         """Create a new task with optional QA record.
@@ -113,6 +114,7 @@ class TaskQAWorkflow:
             session_id=session_id,
             owner=owner,
             state=todo_state,
+            continuation_id=continuation_id,
         )
 
         # Persist task

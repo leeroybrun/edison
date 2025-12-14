@@ -136,3 +136,40 @@ def test_list_sessions(project_root):
     sessions = manager.list_sessions(state="active")
     assert "s1" in sessions
     assert "s2" in sessions
+
+
+def test_render_markdown_includes_session_scoped_qa(project_root):
+    """render_markdown must resolve QA IDs as <task_id>-qa (not <task_id>)."""
+    from edison.core.task.models import Task
+    from edison.core.task.repository import TaskRepository
+    from edison.core.qa.models import QARecord
+    from edison.core.qa.workflow.repository import QARepository
+
+    sid = "sess-md-qa"
+    manager.create_session(sid, owner="me", create_wt=False)
+
+    task_id = "150-wave1-demo"
+    task_repo = TaskRepository(project_root=project_root)
+    task = Task.create(
+        task_id=task_id,
+        title="Demo task",
+        session_id=sid,
+        owner="me",
+        state="wip",
+    )
+    task_repo.save(task)
+
+    qa_repo = QARepository(project_root=project_root)
+    qa_id = f"{task_id}-qa"
+    qa = QARecord.create(
+        qa_id=qa_id,
+        task_id=task_id,
+        title=f"QA for {task_id}",
+        session_id=sid,
+        state="waiting",
+    )
+    qa_repo.save(qa)
+
+    sess = manager.get_session(sid)
+    md = manager.render_markdown(sess)
+    assert qa_id in md

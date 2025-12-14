@@ -58,14 +58,14 @@ def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int =
 def _qa_to_done(task_id: str, session_id: str, project_root: Path, cwd: Path) -> None:
     """Promote QA through required states with evidence so done transition succeeds."""
     assert_command_success(
-        run_script("qa/promote", ["--task", task_id, "--to", "todo", "--session", session_id], cwd=cwd)
+        run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=cwd)
     )
     assert_command_success(
-        run_script("qa/promote", ["--task", task_id, "--to", "wip", "--session", session_id], cwd=cwd)
+        run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=cwd)
     )
     _seed_validation_evidence(project_root, task_id)
     assert_command_success(
-        run_script("qa/promote", ["--task", task_id, "--to", "done", "--session", session_id], cwd=cwd)
+        run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=cwd)
     )
 
 
@@ -375,16 +375,16 @@ def test_recovery_from_failed_validation(project_dir: TestProjectDir):
 
     # Create QA and move to wip, then rejection back to waiting (Round 1)
     assert_command_success(run_script("qa/new", [task_id, "--session", session_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "todo", "--session", session_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "wip", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
     # Rejected → back to waiting
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "waiting", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "waiting", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Round 2: fixes applied → move again to todo → wip → done
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "todo", "--session", session_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "wip", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
     _seed_validation_evidence(project_dir.project_root, task_id, round_num=2)
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "done", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Markers for round directories (not mock helpers): create simple evidence markers

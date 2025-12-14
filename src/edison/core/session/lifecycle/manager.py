@@ -218,7 +218,8 @@ def render_markdown(session: Dict[str, Any], state_spec: Optional[Dict[str, Any]
     qa_records = []
     for task in session_tasks:
         try:
-            qa = qa_repo.get(task.id)
+            # QA IDs are conventionally derived from task IDs.
+            qa = qa_repo.get(f"{task.id}-qa")
             if qa:
                 qa_records.append(qa)
         except Exception:

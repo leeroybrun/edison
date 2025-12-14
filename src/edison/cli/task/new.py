@@ -82,8 +82,6 @@ def main(args: argparse.Namespace) -> int:
             description += f"Parent: {args.parent}\n"
         if args.session:
             description += f"Session: {args.session}\n"
-        if args.continuation_id:
-            description += f"Continuation ID: {args.continuation_id}\n"
 
         # Create task using TaskManager (uses TaskRepository.create_task)
         repo_root = get_repo_root(args)
@@ -94,6 +92,7 @@ def main(args: argparse.Namespace) -> int:
             description=description.strip(),
             session_id=args.session,
             owner=args.owner,
+            continuation_id=args.continuation_id,
         )
 
         # Get task file path (relative to project root for portability)

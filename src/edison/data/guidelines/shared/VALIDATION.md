@@ -79,7 +79,7 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 ### Bundle approval marker
 - Generate bundle manifest with `edison qa bundle <root-task>`; paste into QA before any validator runs.
 - After all blocking validators approve, produce `bundle-approved.json` in the round evidence directory (guards enforce its presence). Promotion `qa wip→done` and `task done→validated` is blocked until `approved=true` in this file.
-- QA promotion guards (`edison qa promote` and `edison qa promote --to validated`) now enforce both bundle manifest + `bundle-approved.json` existence.
+- QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `bundle-approved.json` existence.
 
 ## Sequence (strict order)
 1) Automation evidence captured (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`, etc.).
@@ -133,7 +133,7 @@ Repeat until APPROVE or escalate
 
 Bundle validation (cluster): Validators MUST review the entire cluster - the parent task + parent QA and all child tasks + their QA - using the bundle manifest from `edison qa bundle`.
 
-- Run the unified validator: `edison qa validate --task <parent> --session <sid>`.
+- Run the unified validator: `edison qa validate <parent> --session <sid>`.
 - It writes a single `bundle-approved.json` under the parent's evidence directory with:
   - `approved` (overall cluster decision)
   - `tasks[]` array with per-task `approved` booleans for every task in the bundle (parent and children).

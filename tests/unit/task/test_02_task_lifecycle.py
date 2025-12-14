@@ -8,7 +8,7 @@ Test Coverage:
 - Task ownership via real `tasks/claim` CLI
 
 IMPORTANT: These tests execute REAL CLI commands, NOT mock data.
-All behaviors must match guidelines in .agents/guidelines/*.md
+All behaviors must match the composed guidelines in `.edison/_generated/guidelines/`.
 """
 from __future__ import annotations
 

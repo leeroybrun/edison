@@ -91,8 +91,8 @@ When sharing code or documentation with sub-agents, send focused snippets around
 |------------|------------------|------------|-----------------|
 | `tasks/todo/` (new follow-ups created during the session) | `qa/waiting/` | Decide whether to claim now. If claimed, move task → `wip/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison task status <id> --status wip`<br/>`edison qa new <id> --session <session-id>` |
 | `tasks/wip/` | `qa/waiting/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
-| `tasks/wip/` (ready for validation) | `qa/todo/` | Move QA to `todo/` when implementation is in `done/`. Do **not** move the task to `done/` until QA is ready. | `edison qa promote --task <task-id> --to todo` |
-| `tasks/done/` | `qa/wip/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote --task <task-id> --to wip` to begin validation. |
+| `tasks/wip/` (ready for validation) | `qa/todo/` | Move QA to `todo/` when implementation is in `done/`. Do **not** move the task to `done/` until QA is ready. | `edison qa promote <task-id> --status todo` |
+| `tasks/done/` | `qa/wip/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote <task-id> --status wip` to begin validation. |
 | `tasks/wip/` (after rejection) | `qa/waiting/` | Task returns/stays in `wip/` until fixes are validated. QA re-enters `waiting/` with a “Round N” section summarizing findings. | Spawn follow-ups in `tasks/todo/` + `qa/waiting/` immediately; link them in both task + QA documents. |
 | `tasks/validated/` | `qa/validated/` or `qa/done/` | Only promote when **all** blocking validators approve and evidence is linked. Then update the session Activity Log and remove the task from the scope list. | `edison session verify --phase closing` transitions the session to closing, then `edison session close <session-id>` moves the session to `sessions/validated/`. |
 
@@ -173,7 +173,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 3. **Monitor progress:**
    ```bash
    edison session track active  # See if sub-agent is still working
-   edison session track stale   # Detect if sub-agent crashed
+   edison session verify <session-id>   # Detect metadata drift / stale state
    ```
 
 4. **When sub-agent reports back:**
@@ -273,7 +273,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 2. **Move QA to wip:**
    ```bash
-   edison qa promote --task <task-id> --to wip
+   edison qa promote <task-id> --status wip
    ```
    This signals validation has started.
 
@@ -393,7 +393,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 edison session track active
 
 # Detect crashed validators
-edison session track stale
+edison session verify <session-id>
 ```
 
 **If validator crashes:** Remove stale report, investigate logs, re-launch validator.
@@ -478,7 +478,7 @@ edison session track stale
 
 > **💡 MONITORING UTILITIES:**
 > - `edison session track active` - See all running validators (PIDs, models, start times)
-> - `edison session track stale` - Detect crashed validators (PID no longer running)
+> - `edison session verify <session-id>` - Detect metadata drift and stale state
 > - `edison session track heartbeat` - Not typically needed (validators should complete quickly)
 
 ## 4. Handling rejections & follow-ups

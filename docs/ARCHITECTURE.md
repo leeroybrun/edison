@@ -55,8 +55,12 @@ edison.cli/
 │   ├── show.py            # Display configuration
 │   └── configure.py       # Configure project
 ├── git/                    # Git/worktree management
-│   ├── worktree_create.py # Create worktree for session
-│   ├── worktree_cleanup.py # Clean up worktrees
+│   ├── worktree_create.py  # CLI: worktree-create (create worktree for session)
+│   ├── worktree_restore.py # CLI: worktree-restore (restore archived worktree)
+│   ├── worktree_archive.py # CLI: worktree-archive (archive worktree)
+│   ├── worktree_cleanup.py # CLI: worktree-cleanup (cleanup worktrees)
+│   ├── worktree_list.py    # CLI: worktree-list (list worktrees)
+│   ├── worktree_health.py  # CLI: worktree-health (health checks)
 │   └── status.py          # Show git status
 ├── rules/                  # Rule management
 │   ├── list.py            # List all rules
@@ -541,7 +545,7 @@ _generated/
 │   └── global/
 ├── constitutions/       # Composed constitutions
 │   ├── AGENTS.md
-│   ├── ORCHESTRATORS.md
+│   ├── ORCHESTRATOR.md
 │   └── VALIDATORS.md
 ├── guidelines/          # Composed guidelines
 │   ├── TDD.md

@@ -41,7 +41,7 @@ Markers (HTML comments):
 Behavior:
 - Section merge (default) for all markdown types except guidelines.
 - Guidelines: concat-by-name (merge_same_name) + optional dedupe; project_overrides can drop project layer if False.
-- DRY dedupe: shingle-based; config via `composition.dryDetection` (shingleSize, minShingles, enabled per strategy).
+- DRY dedupe: shingle-based; config via `composition.defaults.dedupe` (shingle_size, min_shingles, threshold) and per-type `composition.content_types.<type>.dedupe`.
 
 ## 3) Templating Pipeline (order matters)
 
@@ -107,7 +107,7 @@ All states: {{fn:task_states}}
 
 Key knobs:
 - `outputs`: per-content-type output paths, filename patterns, preserve_structure
-- `dryDetection`: `enabled`, `shingleSize`, `minShingles`
+- `defaults.dedupe`: `shingle_size`, `min_shingles`, `threshold`
 - `composition.guidelines.mergeSameName`: true (concat + dedupe) vs overlays (false, legacy)
 - `functions`: enable/disable loading; optional allowlist/denylist per layer (if configured)
 
@@ -249,7 +249,7 @@ This ensures all composition configuration is properly namespaced under `composi
 - Built-in variables: PROJECT_ROOT, REPO_ROOT, PROJECT_EDISON_DIR, PROJECT_CONFIG_DIR, timestamp; config access via {{config.path}}.
 - Preserve structure: when preserve_structure is true for a type (e.g., guidelines by default), subfolders under the content type are kept in outputs. Configurable per type in composition.yaml outputs.*.preserve_structure.
 - Errors are fail-fast: missing include/section, unknown condition function, or bad expression raises during composition.
-- Dedupe config: composition.dryDetection (enabled, shingleSize, minShingles) and strategy.enable_dedupe; guidelines use dedupe by default.
+- Dedupe config: composition.defaults.dedupe (shingle_size, min_shingles, threshold) and composition.content_types.<type>.dedupe; guidelines use dedupe by default.
 - Overlays apply only when merge_same_name is false (non-guidelines).
 - Functions precedence: core → active packs → project; functions live in functions/ directories; later overrides earlier.
 - Context vars type: string values for `{{var}}` substitution; list/dict values for `{{#each}}` loops.

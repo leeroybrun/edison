@@ -32,3 +32,19 @@ def test_all_rule_ids_resolve_and_extract() -> None:
             failures.append(f"{rid}: extracted content is empty")
 
     assert not failures, "Rules registry anchor check failed:\n- " + "\n- ".join(failures)
+
+
+def test_load_composed_rules_includes_rule_guidance_text() -> None:
+    """CLI filtering relies on `guidance` containing the human guidance text (not category)."""
+    from edison.core.rules import RulesRegistry
+
+    repo_root = get_repo_root()
+    registry = RulesRegistry(repo_root)
+    rules = registry.load_composed_rules()
+
+    rule = next((r for r in rules if r.get("id") == "RULE.DELEGATION.PRIORITY_CHAIN"), None)
+    assert rule is not None, "Expected core rule RULE.DELEGATION.PRIORITY_CHAIN to exist"
+
+    guidance = rule.get("guidance") or ""
+    assert isinstance(guidance, str)
+    assert "Make delegation decisions deterministically" in guidance

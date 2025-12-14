@@ -250,12 +250,10 @@ def test_continuation_id_end_to_end(project_dir: TestProjectDir):
     assert_command_success(
         run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug, "--session", session_id, "--continuation-id", cid], cwd=project_dir.tmp_path)
     )
-    # Stamp QA with continuation ID as well
-    assert_command_success(
-        run_script("qa/new", [task_id, "--session", session_id, "--continuation-id", cid], cwd=project_dir.tmp_path)
-    )
+    # NOTE: QA records are created alongside tasks; `qa/new` initializes evidence
+    # (qa-brief.json) and does not accept a continuation-id flag.
 
-    # Verify task file contains continuation line
+    # Verify task file contains continuation ID in YAML frontmatter
     task_path = (
         project_dir.project_root
         / "sessions" / "wip" / session_id / "tasks" / "todo" / f"{task_id}.md"
@@ -263,21 +261,13 @@ def test_continuation_id_end_to_end(project_dir: TestProjectDir):
     assert_file_exists(task_path)
     from helpers.assertions import read_file
     content = read_file(task_path)
-    assert f"- **Continuation ID:** {cid}" in content
+    assert f"continuation_id: {cid}" in content
 
-    # Verify session JSON persisted continuation under task automation
-    session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
-    data = json.loads(session_path.read_text())
-    entry = data.get("tasks", {}).get(task_id, {})
-    assert entry and (entry.get("automation", {}).get("continuationId") == cid)
+    # NOTE: Session JSON is not the source of truth for task metadata; tasks carry
+    # continuation IDs in their own YAML frontmatter.
 
-    # validators/validate receives continuation ID (will still fail due to missing reports)
-    # Prepare evidence dir so validators/validate can emit bundle-approved.json even when missing reports
-    ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
-    ev.mkdir(parents=True, exist_ok=True)
-    v = run_script("validators/validate", ["--task", task_id, "--continuation-id", cid], cwd=project_dir.tmp_path)
-    assert v.returncode != 0  # expected missing reports
-    assert "bundle-approved.json" in (v.stdout + v.stderr)
+    # NOTE: Continuation IDs are persisted on task + QA records. Validator execution
+    # is handled by `edison qa validate` and does not accept a continuation-id flag.
 
 
 @pytest.mark.fast

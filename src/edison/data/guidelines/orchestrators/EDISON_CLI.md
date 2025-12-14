@@ -210,7 +210,7 @@ edison task ready TASK-123 --session sess-001
 ### Promote QA Brief
 
 ```bash
-edison qa promote --task <task-id> --to <state>
+edison qa promote <task-id> --status <state>
 ```
 
 **Purpose**: Advance QA brief through validation states
@@ -221,16 +221,16 @@ edison qa promote --task <task-id> --to <state>
 **Example:**
 ```bash
 # Start validation
-edison qa promote --task TASK-123 --to todo
+edison qa promote TASK-123 --status todo
 
 # Mark validation in progress
-edison qa promote --task TASK-123 --to wip
+edison qa promote TASK-123 --status wip
 
 # Mark validation complete
-edison qa promote --task TASK-123 --to done
+edison qa promote TASK-123 --status done
 
 # Finalize after bundle approval
-edison qa promote --task TASK-123 --to validated
+edison qa promote TASK-123 --status validated
 ```
 
 **Requirements for `done → validated`:**
@@ -334,7 +334,7 @@ edison qa validate TASK-123 --execute
 ```
 Use Task/Delegation tool to invoke validator agent:
 - Agent: code-reviewer (or specialized validator)
-- Command: edison qa validate --task <task-id>
+- Command: edison qa validate <task-id>
 - Monitor: Validator writes reports to evidence directory
 ```
 
@@ -452,13 +452,13 @@ edison task status TASK-123
 edison task ready TASK-123 --session sess-001
 
 # 3. Start validation
-edison qa promote --task TASK-123 --to todo
+edison qa promote TASK-123 --status todo
 
 # 4. Delegate to validator
 # (use Task tool to delegate to code-reviewer)
 
 # 5. After validation passes, promote QA
-edison qa promote --task TASK-123 --to validated
+edison qa promote TASK-123 --status validated
 
 # 6. Check session state
 edison session next sess-001

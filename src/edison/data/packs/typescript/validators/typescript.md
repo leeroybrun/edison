@@ -36,3 +36,6 @@ echo "Exit code: $?" >> command-typecheck.txt
 - `packs/typescript/guidelines/includes/typescript/strict-mode.md`
 - `packs/typescript/guidelines/includes/typescript/type-safety.md`
 - `packs/typescript/guidelines/includes/typescript/advanced-types.md`
+
+<!-- section: composed-additions -->
+<!-- /section: composed-additions -->

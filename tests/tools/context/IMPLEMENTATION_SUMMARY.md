@@ -221,7 +221,7 @@ EOF
 
 ```bash
 # Extract condensed version
-head -200 .agents/guides/extended/TDD_GUIDE.md > .agents/guidelines/TDD_CHECKLIST.md
+head -200 .edison/guides/extended/TDD_GUIDE.md > .edison/guidelines/TDD_CHECKLIST.md
 
 # Update manifest.json to use checklist instead
 # Add full guide to "guides" section for reference
@@ -231,7 +231,7 @@ head -200 .agents/guides/extended/TDD_GUIDE.md > .agents/guidelines/TDD_CHECKLIS
 
 ```bash
 # Extract common template
-cat > .agents/validators/global/_shared-checklist.md << 'EOF'
+cat > .edison/validators/global/_shared-checklist.md << 'EOF'
 # Global Validation Checklist
 [Extract common sections from codex-global.md]
 EOF
@@ -243,7 +243,7 @@ EOF
 ### 3. Modularize delegation/config.json (Medium-term - 1,500 tokens/task saved)
 
 ```bash
-mkdir -p .agents/delegation/modules
+mkdir -p .edison/delegation/modules
 
 # Split into:
 # - modules/file-patterns.json
@@ -260,11 +260,11 @@ mkdir -p .agents/delegation/modules
 {
   "guides": {
     "tdd": {
-      "path": ".agents/guidelines/TDD.md",
+      "path": ".edison/guidelines/TDD.md",
       "load": "mandatory"
     },
     "tdd_extended": {
-      "path": ".agents/guides/extended/TDD_GUIDE.md",
+      "path": ".edison/guides/extended/TDD_GUIDE.md",
       "load": "on-demand",  # <-- Add this
       "trigger": "when TDD mentioned in task description"
     }
