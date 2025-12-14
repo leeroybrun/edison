@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from ..includes import _repo_root
+from edison.core.utils.paths import PathResolver
 from .loader import PackManifest, load_pack, _load_yaml
 
 
@@ -92,7 +92,7 @@ def compose(
 
     Returns keys: packs, loadOrder, dependencies, devDependencies, scripts, conflicts
     """
-    repo = _repo_root()
+    repo = PathResolver.resolve_project_root()
     graph, manifests = _collect_graph(repo, selected_packs)
     load_order = _toposort(graph, selected_packs)
 

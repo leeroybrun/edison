@@ -60,7 +60,7 @@ def collect_task_files(task_ids: Iterable[str], session_id: Optional[str] = None
         except FileNotFoundError:
             pass
         try:
-            files.append(qa_repo.get_path(tid))
+            files.append(qa_repo.get_path(f"{tid}-qa"))
         except FileNotFoundError:
             pass
     return files

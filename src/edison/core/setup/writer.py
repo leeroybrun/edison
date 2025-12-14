@@ -76,7 +76,7 @@ class ConfigWriter:
         "ci": "commands.yml",
         "commands": "commands.yml",
         "hooks": "hooks.yml",
-        "context7": "context7-packages.yml",
+        "context7": "context7.yml",
     }
 
     def __init__(self, repo_root: Path) -> None:

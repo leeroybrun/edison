@@ -82,8 +82,8 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     for task_id in session_task_ids:
         qa_id = f"{task_id}-qa"
         try:
-            p = qa_repo.get_path(task_id)
-            entity = qa_repo.get(task_id)
+            p = qa_repo.get_path(qa_id)
+            entity = qa_repo.get(qa_id)
             dir_status = p.parent.name
             entity_state = entity.state if entity else None
             if entity_state and entity_state != dir_status:
@@ -110,7 +110,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     for task_id in session_task_ids:
         qa_id = f"{task_id}-qa"
         try:
-            p = qa_repo.get_path(task_id)
+            p = qa_repo.get_path(qa_id)
             status = p.parent.name
         except FileNotFoundError:
             status = "missing"
@@ -135,7 +135,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         if tpath.parent.name == task_done:
             # QA must be done/validated
             try:
-                qpath = qa_repo.get_path(task_id)
+                qpath = qa_repo.get_path(f"{task_id}-qa")
                 qstate = qpath.parent.name
             except FileNotFoundError:
                 qpath = None

@@ -37,15 +37,16 @@ class BaseDomainConfig(ABC):
         print(cfg.my_setting)
     """
 
-    def __init__(self, repo_root: Optional[Path] = None) -> None:
+    def __init__(self, repo_root: Optional[Path] = None, *, include_packs: bool = True) -> None:
         """Initialize domain config.
 
         Args:
             repo_root: Repository root path. Uses auto-detection if None.
+            include_packs: Whether to include pack config overlays (default: True).
         """
         self._repo_root = repo_root
         # Load config via centralized cache
-        self._config = get_cached_config(repo_root=repo_root)
+        self._config = get_cached_config(repo_root=repo_root, include_packs=include_packs)
 
     @property
     def repo_root(self) -> Path:

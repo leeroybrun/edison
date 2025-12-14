@@ -20,7 +20,6 @@ from edison.core.config.domains.project import DEFAULT_PROJECT_TERMS, ProjectCon
 
 PACK_TECH_TERMS = [
     "nextjs",
-    "nextjs",
     "react",
     "prisma",
     "uistyles",

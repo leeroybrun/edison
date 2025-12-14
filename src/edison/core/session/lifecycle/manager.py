@@ -138,13 +138,11 @@ def transition_session(session_id: str, target_state: str) -> None:
     current = str(entity.state).lower()
     target = str(target_state).lower()
 
-    # Build context for guards and actions
+    # Build context for guards and actions using the current entity snapshot.
+    # This avoids FAIL-CLOSED guards blocking transitions due to missing data.
     context = {
         "session_id": sid,
-        "session": {
-            "id": sid,
-            "state": current,
-        },
+        "session": entity.to_dict(),
         "entity_type": "session",
         "entity_id": sid,
     }
@@ -304,8 +302,16 @@ class SessionManager:
         current = str(entity.state).lower()
         target = str(to_state).lower()
 
-        # Validate via unified state validator
-        self._validator.ensure_transition("session", current, target)
+        # Validate via unified state validator.
+        # Guards commonly require session context (e.g., can_complete_session checks `ready`),
+        # so pass the current entity snapshot.
+        ctx = {
+            "session_id": sid,
+            "session": entity.to_dict(),
+            "entity_type": "session",
+            "entity_id": sid,
+        }
+        self._validator.ensure_transition("session", current, target, context=ctx)
 
         entity.record_transition(current, target)
         entity.state = target

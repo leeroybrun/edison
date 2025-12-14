@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Literal
 
-from ..includes import _repo_root as _composition_repo_root
+from edison.core.utils.paths import PathResolver
 from ..core import CompositionPathResolver
 
 
@@ -32,7 +32,7 @@ class GuidelineRecord:
     pack: Optional[str] = None  # for category == "pack"
 
     def relpath(self, repo_root: Optional[Path] = None) -> Path:
-        root = repo_root or _composition_repo_root()
+        root = repo_root or PathResolver.resolve_project_root()
         try:
             return self.path.relative_to(root)
         except ValueError:
@@ -40,8 +40,8 @@ class GuidelineRecord:
 
 
 def _repo_root() -> Path:
-    """Delegate to composition engine root resolution."""
-    return _composition_repo_root()
+    """Canonical repo root resolution."""
+    return PathResolver.resolve_project_root()
 
 
 def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecord]:
@@ -53,7 +53,6 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
     - bundled: edison.data/guidelines/**/*.md (bundled defaults)
     - pack:    .edison/packs/*/guidelines/**/*.md
     - project: .edison/guidelines/**/*.md (including overlays)
-    - other:   any additional guidelines/*.md directories not covered above
     """
     root = repo_root or _repo_root()
     
@@ -91,21 +90,6 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
             if "README.md" == path.name:
                 continue
             records.append(GuidelineRecord(path=path, category="project"))
-
-    # Any other guidelines directories in the repo
-    known_roots = {
-        core_dir.resolve() if core_dir.exists() else Path("/nonexistent"),
-        *(r.path.parent.resolve() for r in records if r.category in ("pack", "project")),
-    }
-    for gdir in root.rglob("guidelines"):
-        if not gdir.is_dir():
-            continue
-        if any(str(gdir).startswith(str(known)) for known in known_roots):
-            continue
-        for path in sorted(gdir.glob("*.md")):
-            if path.name == "README.md":
-                continue
-            records.append(GuidelineRecord(path=path, category="other"))
 
     return records
 

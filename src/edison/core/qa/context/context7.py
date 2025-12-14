@@ -2,7 +2,7 @@
 
 Design principles:
 - No mocks or legacy fallbacks; configuration is loaded from YAML/JSON under
-  the project `.agents` directory when present.
+  the project configuration directory (resolved by Edison path rules).
 - Package detection is driven by declarative `triggers` patterns with sensible
   defaults so guards keep working even when config is absent.
 - Evidence is validated against the latest round only and must contain minimal
@@ -17,10 +17,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
-import yaml
-
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.patterns import matches_any_pattern
 from edison.core.qa.evidence import EvidenceService
@@ -34,90 +31,27 @@ logger = logging.getLogger(__name__)
 def _load_triggers() -> Dict[str, List[str]]:
     """Load triggers from config.
 
-    Raises:
-        RuntimeError: If triggers configuration is not available.
+    Returns:
+        Dict mapping package->patterns. Empty dict means "no post-training packages configured".
     """
     cfg = Context7Config()
     triggers = cfg.get_triggers()
-    if not triggers:
-        raise RuntimeError(
-            "Context7 triggers configuration missing; "
-            "define triggers in context7.yaml or .edison/config/context7.yaml"
-        )
     return triggers
 
 
 def _load_aliases() -> Dict[str, str]:
     """Load aliases from config.
 
-    Raises:
-        RuntimeError: If aliases configuration is not available.
+    Returns:
+        Dict mapping alias->canonical. Empty dict means "no aliases configured".
     """
     cfg = Context7Config()
     aliases = cfg.get_aliases()
-    if not aliases:
-        raise RuntimeError(
-            "Context7 aliases configuration missing; "
-            "define aliases in context7.yaml or .edison/config/context7.yaml"
-        )
     return aliases
 
 
 def _project_root() -> Path:
     return PathResolver.resolve_project_root()
-
-
-def load_validator_config(*, fail_closed: bool = False) -> Dict:
-    """Load Context7 validator config from the project.
-
-    When ``fail_closed`` is True, missing config raises SystemExit to satisfy
-    the explicit guard tests; otherwise an empty dict is returned.
-    """
-    root = _project_root()
-    config_root = get_project_config_dir(root)
-    candidates = [
-        config_root / "config" / "validators.yaml",
-        config_root / "validators" / "config.json",
-    ]
-    for path in candidates:
-        if path.exists():
-            try:
-                from edison.core.utils.io import read_yaml, read_json
-
-                if path.suffix == ".yaml":
-                    return read_yaml(path, raise_on_error=True) or {}
-
-                return read_json(path)
-            except (FileNotFoundError, OSError) as e:
-                logger.debug("Config file not readable at %s: %s", path, e)
-                if fail_closed:
-                    raise SystemExit("Context7 config invalid or unreadable")
-                return {}
-            except ValueError as e:
-                logger.error("Invalid YAML/JSON in config file %s: %s", path, e)
-                if fail_closed:
-                    raise SystemExit("Context7 config invalid or unreadable")
-                return {}
-    if fail_closed:
-        raise SystemExit("Context7 config missing (validators.yaml)")
-    return {}
-
-
-def _merge_triggers(cfg: Dict) -> Dict[str, List[str]]:
-    """Merge config-loaded triggers with validator config overrides."""
-    # Start with config-loaded triggers (or fallback defaults)
-    triggers = {k: list(v) for k, v in _load_triggers().items()}
-
-    # Merge in any validator config overrides
-    packages = (cfg.get("postTrainingPackages") or {}) if isinstance(cfg, dict) else {}
-    for pkg, meta in packages.items():
-        pats = meta.get("triggers") if isinstance(meta, dict) else None
-        if not pats:
-            continue
-        existing = triggers.get(pkg, [])
-        merged = list(dict.fromkeys([*existing, *pats]))
-        triggers[pkg] = merged
-    return triggers
 
 
 def _parse_primary_files(task_path: Path) -> List[str]:
@@ -146,7 +80,7 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
         
         root = _project_root()
         mgmt_paths = get_management_paths(root)
-        for base in (root / "tasks", mgmt_paths.get_tasks_root()):
+        for base in (mgmt_paths.get_tasks_root(),):
             for state in WorkflowConfig().get_states("task"):
                 path = base / state / task_path.name
                 if path.exists():
@@ -166,17 +100,6 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
                 diff_files = []
             if diff_files:
                 candidates.extend([p.as_posix() for p in diff_files])
-            else:
-                for path in wt_path.rglob("*"):
-                    if not path.is_file():
-                        continue
-                    rel = path.relative_to(wt_path).as_posix()
-                    # Keep the list focused to avoid noise
-                    if any(
-                        rel.endswith(ext)
-                        for ext in (".ts", ".tsx", ".jsx", ".prisma", ".sql")
-                    ) or "prisma/" in rel or "app/" in rel:
-                        candidates.append(rel)
     except (OSError, ValueError, RuntimeError) as e:
         logger.debug("Failed to scan worktree for candidate files: %s", e)
 
@@ -195,8 +118,7 @@ def _normalize(pkg: str) -> str:
 
 def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
     """Detect which post-training packages are implicated by file patterns/content."""
-    cfg = load_validator_config(fail_closed=False)
-    triggers = _merge_triggers(cfg)
+    triggers = _load_triggers()
     packages: Set[str] = set()
 
     candidates = _collect_candidate_files(task_path, session)

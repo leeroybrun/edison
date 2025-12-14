@@ -20,6 +20,9 @@ class TaskConfig(BaseDomainConfig):
 
     Note: This config also provides QA configuration access since tasks and QA
     are tightly coupled (each task has an associated QA record).
+
+    Pack overlays should not redefine task/workflow mechanics, but this domain
+    still uses the unified config cache to avoid accidental double-loading.
     """
 
     def _config_section(self) -> str:

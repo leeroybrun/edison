@@ -64,8 +64,12 @@ def compose_for_role(
         config: Optional config dict (used when adapter_or_repo_root is a Path)
         active_packs: Optional list of active packs (used when adapter_or_repo_root is a Path)
     """
+    # NOTE: This function is legacy-ish formatting glue used by the Zen adapter.
+    # Prefer composing validators via the unified registry pipeline when possible.
     from ..core import CompositionPathResolver
-    from ..includes import resolve_includes
+    from ..engine import TemplateEngine
+    from edison.core.composition.includes import ComposedIncludeProvider
+    from edison.core.composition.registries._types_manager import ComposableTypesManager
     
     # Handle both adapter objects and direct Path arguments
     if isinstance(adapter_or_repo_root, Path):
@@ -86,7 +90,21 @@ def compose_for_role(
     core_template = resolver.core_dir / "validators" / "global" / f"{role}.md"
     if core_template.exists():
         parts.append(f"# Edison Core Context for {role}")
-        expanded, _ = resolve_includes(core_template.read_text(encoding="utf-8"), core_template)
+        raw = core_template.read_text(encoding="utf-8")
+        include_provider = ComposedIncludeProvider(
+            types_manager=ComposableTypesManager(project_root=repo_root),
+            packs=tuple(packs),
+            materialize=False,
+        ).build()
+        engine = TemplateEngine(
+            config=cfg,
+            packs=packs,
+            project_root=repo_root,
+            source_dir=resolver.core_dir,
+            include_provider=include_provider,
+            strip_section_markers=True,
+        )
+        expanded, _report = engine.process(raw, entity_name=f"validators/global/{role}", entity_type="validators")
         parts.append(expanded)
 
     if packs:
@@ -107,7 +125,21 @@ def compose_for_role(
     overlay_path = resolver.project_dir / "validators" / "overlays" / f"{role}.md"
     if overlay_path.exists():
         parts.append("\n# Project Overlay")
-        expanded, _ = resolve_includes(overlay_path.read_text(encoding="utf-8"), overlay_path)
+        raw = overlay_path.read_text(encoding="utf-8")
+        include_provider = ComposedIncludeProvider(
+            types_manager=ComposableTypesManager(project_root=repo_root),
+            packs=tuple(packs),
+            materialize=False,
+        ).build()
+        engine = TemplateEngine(
+            config=cfg,
+            packs=packs,
+            project_root=repo_root,
+            source_dir=resolver.core_dir,
+            include_provider=include_provider,
+            strip_section_markers=True,
+        )
+        expanded, _report = engine.process(raw, entity_name=f"validators/overlays/{role}", entity_type="validators")
         parts.append(expanded)
 
     content = "\n\n".join(parts)

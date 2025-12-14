@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import importlib.resources
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, Callable, ClassVar, Dict, List, Optional
 
 from ._base import ComposableRegistry
 
@@ -166,7 +166,13 @@ class JsonSchemaRegistry(ComposableRegistry[str]):
         
         return schema
 
-    def compose(self, name: str, packs: Optional[List[str]] = None) -> Optional[str]:
+    def compose(
+        self,
+        name: str,
+        packs: Optional[List[str]] = None,
+        *,
+        include_provider: Optional[Callable[[str], Optional[str]]] = None,
+    ) -> Optional[str]:
         """Compose a schema and return as JSON string.
         
         Implements standard ComposableRegistry interface.
@@ -178,13 +184,19 @@ class JsonSchemaRegistry(ComposableRegistry[str]):
         Returns:
             JSON string of composed schema, or None if not found
         """
+        _ = include_provider  # Schemas do not use template includes
         packs = packs or self.get_active_packs()
         schema = self._compose_schema_dict(name, packs)
         if schema is None:
             return None
         return json.dumps(schema, indent=2)
 
-    def compose_all(self, packs: Optional[List[str]] = None) -> Dict[str, str]:
+    def compose_all(
+        self,
+        packs: Optional[List[str]] = None,
+        *,
+        include_provider: Optional[Callable[[str], Optional[str]]] = None,
+    ) -> Dict[str, str]:
         """Compose all schemas.
         
         Standard interface - returns Dict[str, str] (JSON strings).
@@ -195,6 +207,7 @@ class JsonSchemaRegistry(ComposableRegistry[str]):
         Returns:
             Dict mapping schema name to JSON string
         """
+        _ = include_provider  # Schemas do not use template includes
         packs = packs or self.get_active_packs()
         results: Dict[str, str] = {}
         

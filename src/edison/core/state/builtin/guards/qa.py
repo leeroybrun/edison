@@ -175,41 +175,56 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
     try:
         from edison.core.config.domains.qa import QAConfig
         from edison.core.qa.evidence import read_validator_jsons
+        from edison.core.registries.validators import ValidatorRegistry
+        from edison.core.context.files import FileContextService
 
         qa_config = QAConfig()
         waves = qa_config.get_waves()
-        validators = qa_config.get_validators()
+
+        registry = ValidatorRegistry(project_root=qa_config.repo_root)
+
+        session_obj = ctx.get("session")
+        session_id = None
+        if isinstance(session_obj, Mapping):
+            session_id = session_obj.get("id")
+
+        file_ctx = FileContextService(project_root=qa_config.repo_root).get_for_task(
+            task_id=str(task_id),
+            session_id=str(ctx.get("session_id") or session_id or ""),
+        )
+        always_run, triggered_blocking, triggered_optional = registry.get_triggered_validators(
+            files=file_ctx.all_files
+        )
+        expected_ids = {v.id for v in (always_run + triggered_blocking + triggered_optional)}
 
         v = read_validator_jsons(str(task_id))
         reports = v.get("reports", [])
-
         if not reports:
             return False  # FAIL-CLOSED: no reports
 
-        # Build map of validator verdicts
-        verdicts = {}
+        verdicts: dict[str, bool] = {}
         for report in reports:
             vid = report.get("validatorId") or report.get("id")
-            verdicts[vid] = _is_passed(report)
+            if vid:
+                verdicts[str(vid)] = _is_passed(report)
 
-        # Check waves in order
         previous_wave_passed = True
         for wave in waves:
+            wave_name = str(wave.get("name") or "")
+            if not wave_name:
+                return False  # FAIL-CLOSED
             if wave.get("requires_previous_pass") and not previous_wave_passed:
-                return False  # Previous wave failed, can't continue
+                return False
 
-            # Get validators in this wave
-            wave_validator_ids = wave.get("validators", [])
+            wave_validators = [v for v in registry.get_by_wave(wave_name) if v.id in expected_ids]
+            blocking_ids = [v.id for v in wave_validators if v.blocking]
 
-            # Check if all blocking validators in this wave passed
             wave_passed = True
-            for vid in wave_validator_ids:
-                validator_cfg = validators.get(vid, {})
-                if validator_cfg.get("blocking", True):
-                    if vid not in verdicts or not verdicts[vid]:
-                        wave_passed = False
-                        if not wave.get("continue_on_fail", False):
-                            return False  # Critical wave failed
+            for vid in blocking_ids:
+                if vid not in verdicts or not verdicts[vid]:
+                    wave_passed = False
+                    if not wave.get("continue_on_fail", False):
+                        return False
 
             previous_wave_passed = wave_passed
 

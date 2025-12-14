@@ -1,6 +1,8 @@
 """Evidence operations for Edison framework."""
 from __future__ import annotations
 
+from . import reports as reports
+from . import rounds as rounds
 from .exceptions import EvidenceError
 from .service import EvidenceService
 from .followups import (
@@ -22,4 +24,6 @@ __all__ = [
     "load_impl_followups",
     "load_bundle_followups",
     "has_required_evidence",
+    "rounds",
+    "reports",
 ]

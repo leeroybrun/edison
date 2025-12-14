@@ -77,6 +77,11 @@ class ConditionalTransformer(ContentTransformer):
         # Process conditional includes
         def include_resolver(path: str) -> str:
             """Resolve include path to content."""
+            if context.include_provider is not None:
+                provided = context.include_provider(path)
+                if provided is not None:
+                    context.record_include(path)
+                    return provided
             full_path = self._resolve_path(path, context)
             if full_path and full_path.exists():
                 context.record_include(path)
@@ -136,7 +141,9 @@ class ValidationTransformer(ContentTransformer):
             context.record_variable(marker, resolved=False)
 
         # Strip section markers
-        return self.parser.strip_markers(content)
+        if getattr(context, "strip_section_markers", True):
+            return self.parser.strip_markers(content)
+        return content
 
 
 class TemplateEngine:
@@ -153,6 +160,9 @@ class TemplateEngine:
         packs: Optional[List[str]] = None,
         project_root: Optional[Path] = None,
         source_dir: Optional[Path] = None,
+        include_provider: Optional[Callable[[str], Optional[str]]] = None,
+        *,
+        strip_section_markers: bool = True,
     ) -> None:
         """Initialize the template engine.
 
@@ -166,6 +176,8 @@ class TemplateEngine:
         self.packs = packs or []
         self.project_root = project_root
         self.source_dir = source_dir
+        self.include_provider = include_provider
+        self.strip_section_markers = strip_section_markers
 
         # Load custom functions from layered functions/ folders
         try:
@@ -252,6 +264,8 @@ class TemplateEngine:
             active_packs=self.packs,
             project_root=self.project_root,
             source_dir=self.source_dir,
+            include_provider=self.include_provider,
+            strip_section_markers=self.strip_section_markers,
             context_vars=merged_vars,
         )
 

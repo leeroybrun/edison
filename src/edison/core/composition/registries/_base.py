@@ -20,7 +20,7 @@ Architecture:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Callable, ClassVar, Dict, Generic, List, Optional, TypeVar
 
 from ..core.base import CompositionBase
 from ..core.discovery import LayerDiscovery
@@ -85,6 +85,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     _project_packs_discovery: Optional[LayerDiscovery] = None
     _strategy: Optional[MarkdownCompositionStrategy] = None
     _comp_config_cache: Optional["CompositionConfig"] = None  # type: ignore[name-defined]
+    _types_manager: Optional["ComposableTypesManager"] = None  # type: ignore[name-defined]
 
     def __init__(self, project_root: Optional[Path] = None) -> None:
         """Initialize composable registry.
@@ -115,12 +116,15 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     def bundled_discovery(self) -> LayerDiscovery:
         """Lazy-initialized LayerDiscovery for bundled packs."""
         if self._bundled_discovery is None:
+            type_cfg = self.comp_config.get_content_type(self.content_type)
+            exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
             self._bundled_discovery = LayerDiscovery(
                 content_type=self.content_type,
                 core_dir=self.core_dir,
                 packs_dir=self.bundled_packs_dir,
                 project_dir=self.project_dir,
                 file_pattern=self.file_pattern,
+                exclude_globs=exclude_globs,
             )
         return self._bundled_discovery
 
@@ -128,12 +132,15 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     def project_packs_discovery(self) -> LayerDiscovery:
         """Lazy-initialized LayerDiscovery for project packs."""
         if self._project_packs_discovery is None:
+            type_cfg = self.comp_config.get_content_type(self.content_type)
+            exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
             self._project_packs_discovery = LayerDiscovery(
                 content_type=self.content_type,
                 core_dir=self.core_dir,
                 packs_dir=self.project_packs_dir,
                 project_dir=self.project_dir,
                 file_pattern=self.file_pattern,
+                exclude_globs=exclude_globs,
             )
         return self._project_packs_discovery
 
@@ -315,6 +322,8 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         self,
         name: str,
         packs: Optional[List[str]] = None,
+        *,
+        include_provider: Optional[Callable[[str], Optional[str]]] = None,
     ) -> Optional[T]:
         """Compose a single entity from all layers.
 
@@ -329,6 +338,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             Composed entity or None if not found
         """
         packs = packs or self.get_active_packs()
+        include_provider = include_provider or self._default_include_provider(packs)
 
         # Gather layer content
         layers = self._gather_layers(name, packs)
@@ -348,11 +358,20 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             # bundled core data root (edison.data). Without this, {{include:...}}
             # would incorrectly resolve relative to the repository root.
             source_dir=self.core_dir,
+            include_provider=include_provider,
+            strip_section_markers=self._should_strip_section_markers(name),
             context_vars=context_vars,
         )
 
         # Compose using strategy
         composed = self.strategy.compose(layers, context)
+
+        # If this composed artifact still contains SECTION/EXTEND markers (common for
+        # include-only fragments under guidelines/includes/** when composed via
+        # concatenate), merge EXTEND blocks into SECTION regions while preserving
+        # SECTION markers so downstream {{include-section:...}} extraction works.
+        from edison.core.composition.includes import merge_extends_preserve_sections
+        composed = merge_extends_preserve_sections(composed)
 
         # Post-process
         return self._post_compose(name, composed)
@@ -450,6 +469,8 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     def compose_all(
         self,
         packs: Optional[List[str]] = None,
+        *,
+        include_provider: Optional[Callable[[str], Optional[str]]] = None,
     ) -> Dict[str, T]:
         """Compose all entities across all layers.
 
@@ -460,15 +481,45 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             Dict mapping entity names to composed entities
         """
         packs = packs or self.get_active_packs()
+        include_provider = include_provider or self._default_include_provider(packs)
         all_entities = self.discover_all(packs)
 
         results: Dict[str, T] = {}
         for name in all_entities:
-            composed = self.compose(name, packs)
+            composed = self.compose(name, packs, include_provider=include_provider)
             if composed is not None:
                 results[name] = composed
 
         return results
+
+    def _default_include_provider(self, packs: List[str]) -> Callable[[str], Optional[str]]:
+        """Default include provider: resolve includes via composed entities."""
+        from edison.core.composition.includes import ComposedIncludeProvider
+
+        provider = ComposedIncludeProvider(
+            types_manager=self._get_types_manager(),
+            packs=tuple(packs),
+            materialize=False,
+        )
+        return provider.build()
+
+    def _get_types_manager(self) -> "ComposableTypesManager":  # type: ignore[name-defined]
+        if self._types_manager is None:
+            from edison.core.composition.registries._types_manager import ComposableTypesManager
+
+            self._types_manager = ComposableTypesManager(project_root=self.project_root)
+        return self._types_manager
+
+    def _should_strip_section_markers(self, name: str) -> bool:
+        """Return True if TemplateEngine should strip SECTION/EXTEND markers.
+
+        Most composed artifacts should not expose markers. However include-only
+        fragments must preserve SECTION markers so downstream include-section
+        extraction can target composed output.
+        """
+        if self.content_type == "guidelines" and name.startswith("includes/"):
+            return False
+        return True
 
     def _gather_layers(
         self,
@@ -627,6 +678,137 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             Sorted list of entity names
         """
         return sorted(self.discover_all(packs).keys())
+
+    # -------------------------------------------------------------------------
+    # Compatibility helpers (used by adapters/tests)
+    # -------------------------------------------------------------------------
+
+    def all_names(self, packs: List[str], *, include_project: bool) -> List[str]:
+        """Return all entity names, optionally excluding project layer."""
+        if include_project:
+            return self.list_names(packs)
+        return sorted(self._discover_without_project(packs).keys())
+
+    def core_path(self, name: str) -> Optional[Path]:
+        """Return the bundled-core path for an entity, if present."""
+        core = self.bundled_discovery.discover_core()
+        src = core.get(name)
+        return src.path if src else None
+
+    def pack_paths(self, name: str, packs: List[str]) -> List[Path]:
+        """Return pack-layer paths that contribute to an entity."""
+        paths: List[Path] = []
+        core = self.bundled_discovery.discover_core()
+        existing = set(core.keys())
+
+        for pack in packs:
+            # Bundled pack new + overlays
+            try:
+                new = self.bundled_discovery.discover_pack_new(pack, existing)
+                if name in new:
+                    paths.append(new[name].path)
+                existing.update(new.keys())
+            except Exception:
+                pass
+            try:
+                over = self.bundled_discovery.discover_pack_overlays(pack, existing)
+                if name in over:
+                    paths.append(over[name].path)
+            except Exception:
+                pass
+
+            # Project pack new + overlays
+            try:
+                new = self.project_packs_discovery.discover_pack_new(pack, existing)
+                if name in new:
+                    paths.append(new[name].path)
+                existing.update(new.keys())
+            except Exception:
+                pass
+            try:
+                over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
+                if name in over:
+                    paths.append(over[name].path)
+            except Exception:
+                pass
+
+        return paths
+
+    def project_override_path(self, name: str) -> Optional[Path]:
+        """Return project-layer path (new or overlay) for an entity, if present."""
+        packs = self.get_active_packs()
+        core = self.bundled_discovery.discover_core()
+        existing = set(core.keys())
+
+        # account for pack-new entities so project overlays validate correctly
+        for pack in packs:
+            try:
+                existing.update(self.bundled_discovery.discover_pack_new(pack, existing).keys())
+            except Exception:
+                pass
+            try:
+                existing.update(self.project_packs_discovery.discover_pack_new(pack, existing).keys())
+            except Exception:
+                pass
+
+        try:
+            proj_new = self.bundled_discovery.discover_project_new(existing)
+            if name in proj_new:
+                return proj_new[name].path
+            existing.update(proj_new.keys())
+        except Exception:
+            pass
+
+        try:
+            proj_over = self.bundled_discovery.discover_project_overlays(existing)
+            if name in proj_over:
+                return proj_over[name].path
+        except Exception:
+            pass
+
+        return None
+
+    def _discover_without_project(self, packs: List[str]) -> Dict[str, Path]:
+        """Discover entities across core + packs only (no project layer)."""
+        result: Dict[str, Path] = {}
+
+        core = self.bundled_discovery.discover_core()
+        for name, src in core.items():
+            result[name] = src.path
+
+        existing = set(result.keys())
+        for pack in packs:
+            # Bundled packs
+            try:
+                new = self.bundled_discovery.discover_pack_new(pack, existing)
+                for k, src in new.items():
+                    result[k] = src.path
+                existing.update(new.keys())
+            except Exception:
+                pass
+            try:
+                over = self.bundled_discovery.discover_pack_overlays(pack, existing)
+                for k, src in over.items():
+                    result[k] = src.path
+            except Exception:
+                pass
+
+            # Project packs
+            try:
+                new = self.project_packs_discovery.discover_pack_new(pack, existing)
+                for k, src in new.items():
+                    result[k] = src.path
+                existing.update(new.keys())
+            except Exception:
+                pass
+            try:
+                over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
+                for k, src in over.items():
+                    result[k] = src.path
+            except Exception:
+                pass
+
+        return result
 
 
 __all__ = [

@@ -20,15 +20,17 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from ..core.base import CompositionBase
 from ._base import ComposableRegistry
 from .generic import GenericRegistry
+from edison.core.composition.includes import ComposedIncludeProvider
 from edison.core.config.domains.composition import (
     CompositionConfig,
     ContentTypeConfig,
 )
+from edison.core.utils.profiling import span
 
 
 class ComposableTypesManager(CompositionBase):
@@ -151,15 +153,21 @@ class ComposableTypesManager(CompositionBase):
         Returns:
             Dict mapping entity names to composed content (as strings)
         """
-        registry = self.get_registry(type_name)
-        if not registry:
-            return {}
-        
-        packs = packs or registry.get_active_packs()
-        results = registry.compose_all(packs)
-        
-        # Normalize to strings (handle custom result types)
-        return {name: self._to_string(result) for name, result in results.items()}
+        with span("compose.type.compose", type=type_name):
+            registry = self.get_registry(type_name)
+            if not registry:
+                return {}
+            
+            packs = packs or registry.get_active_packs()
+            include_provider = ComposedIncludeProvider(
+                types_manager=self,
+                packs=tuple(packs),
+                materialize=False,
+            ).build()
+            results = registry.compose_all(packs, include_provider=include_provider)
+            
+            # Normalize to strings (handle custom result types)
+            return {name: self._to_string(result) for name, result in results.items()}
     
     def _to_string(self, result: Any) -> str:
         """Convert registry result to string.
@@ -168,12 +176,6 @@ class ComposableTypesManager(CompositionBase):
         """
         if isinstance(result, str):
             return result
-        elif hasattr(result, "text"):
-            # GuidelineCompositionResult
-            return result.text
-        elif hasattr(result, "content"):
-            # ConstitutionResult
-            return result.content
         return str(result)
     
     # =========================================================================
@@ -184,6 +186,7 @@ class ComposableTypesManager(CompositionBase):
         self,
         type_name: str,
         packs: Optional[List[str]] = None,
+        path_mapper: Optional[Callable[[Path], Path]] = None,
     ) -> List[Path]:
         """Compose and write all entities of a type.
         
@@ -194,25 +197,69 @@ class ComposableTypesManager(CompositionBase):
         Returns:
             List of written file paths
         """
-        type_cfg = self.get_type(type_name)
-        if not type_cfg or not type_cfg.enabled:
-            return []
-        
-        results = self.compose_type(type_name, packs)
-        if not results:
-            return []
-        
-        output_path = self._comp_config.resolve_output_path(type_cfg.output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
-        
-        written: List[Path] = []
-        for name, content in results.items():
-            file_path = self._resolve_file_path(type_cfg, name, output_path)
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content, encoding="utf-8")
-            written.append(file_path)
-        
-        return written
+        with span("compose.type.write", type=type_name):
+            type_cfg = self.get_type(type_name)
+            if not type_cfg or not type_cfg.enabled:
+                return []
+
+            registry = self.get_registry(type_name)
+            if not registry:
+                return []
+
+            packs = packs or registry.get_active_packs()
+            include_provider = ComposedIncludeProvider(
+                types_manager=self,
+                packs=tuple(packs),
+                materialize=True,
+                path_mapper=path_mapper,
+            ).build()
+
+            composed = registry.compose_all(packs, include_provider=include_provider)
+            results = {name: self._to_string(obj) for name, obj in composed.items()}
+            if not results:
+                return []
+            
+            output_path = self._comp_config.resolve_output_path(type_cfg.output_path)
+            
+            written: List[Path] = []
+            for name, content in results.items():
+                with span("compose.file.write", type=type_name, entity=name):
+                    file_path = self._resolve_file_path(type_cfg, name, output_path)
+                    target_path = path_mapper(file_path) if path_mapper else file_path
+                    # Unified output writer (single source of truth for file writes)
+                    self.writer.write_text(target_path, content)
+                    written.append(target_path)
+
+            # Prune stale generated files for this type.
+            # IMPORTANT: We only prune inside the project's `_generated/` subtree and
+            # never the `_generated/` root itself (it contains multiple types).
+            try:
+                from edison.core.utils.paths import get_project_config_dir
+
+                project_dir = get_project_config_dir(self.project_root, create=False)
+                generated_root = (project_dir / "_generated").resolve()
+                out_dir = output_path.resolve()
+                if out_dir != generated_root and generated_root in out_dir.parents:
+                    written_set = {p.resolve() for p in written}
+                    # Remove any files under output_path that were not written this run.
+                    for p in out_dir.rglob("*"):
+                        try:
+                            if p.is_file() and p.resolve() not in written_set:
+                                p.unlink()
+                        except Exception:
+                            continue
+                    # Clean up empty directories (deepest first).
+                    for p in sorted(out_dir.rglob("*"), key=lambda x: len(x.as_posix()), reverse=True):
+                        try:
+                            if p.is_dir() and not any(p.iterdir()):
+                                p.rmdir()
+                        except Exception:
+                            continue
+            except Exception:
+                # Never fail composition due to cleanup.
+                pass
+            
+            return written
     
     def _resolve_file_path(
         self,

@@ -51,8 +51,8 @@ def main(args: argparse.Namespace) -> int:
         fwd_argv.extend(["--scope", args.scope])
     if getattr(args, "json", False):
         fwd_argv.append("--json")
-    if getattr(args, "project_root", None):
-        fwd_argv.extend(["--repo-root", str(args.project_root)])
+    if getattr(args, "repo_root", None):
+        fwd_argv.extend(["--repo-root", str(args.repo_root)])
 
     # Swap argv and call core library main
     original_argv = sys.argv

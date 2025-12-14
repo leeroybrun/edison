@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.composition import validate_composition
 from edison.core.utils.paths import get_project_config_dir
 from edison.data import get_data_path
 

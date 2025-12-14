@@ -14,6 +14,7 @@ from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_r
 from edison.core.rules import RulesEngine
 from edison.core.rules.checker import get_rules_for_context_formatted, format_rules_output
 from edison.core.config import ConfigManager
+from edison.core.utils.profiling import span
 
 SUMMARY = "Check rules applicable to a specific context or transition"
 
@@ -52,10 +53,13 @@ def main(args: argparse.Namespace) -> int:
 
 
     try:
-        repo_root = get_repo_root(args)
+        with span("rules.check.repo_root"):
+            repo_root = get_repo_root(args)
         cfg_mgr = ConfigManager(repo_root)
-        config = cfg_mgr.load_config(validate=False)
-        engine = RulesEngine(config)
+        with span("rules.check.config.load"):
+            config = cfg_mgr.load_config(validate=False)
+        with span("rules.check.engine.init"):
+            engine = RulesEngine(config)
 
         # Determine what to check
         if not args.context and not args.transition:
@@ -63,18 +67,20 @@ def main(args: argparse.Namespace) -> int:
             return 1
 
         # Get formatted rules data from core
-        rules_data = get_rules_for_context_formatted(
-            engine=engine,
-            contexts=args.context,
-            transition=args.transition,
-            task_id=args.task_id,
-        )
+        with span("rules.check.evaluate"):
+            rules_data = get_rules_for_context_formatted(
+                engine=engine,
+                contexts=args.context,
+                transition=args.transition,
+                task_id=args.task_id,
+            )
 
         if args.json:
             formatter.json_output(rules_data)
         else:
             # Use core formatting logic
-            output = format_rules_output(rules_data, format_mode=args.format)
+            with span("rules.check.format", mode=str(args.format)):
+                output = format_rules_output(rules_data, format_mode=args.format)
             formatter.text(output)
 
         return 0

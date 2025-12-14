@@ -93,7 +93,6 @@ def validate_pack(
 
     validators_list = list(data.get("validators") or [])
     _check_files("validators", validators_list)
-    _check_files("guidelines", list(data.get("guidelines") or []))
     _check_files("examples", list(data.get("examples") or []))
 
     # 3) Minimum validator requirements: every pack must provide validators/overlays/global.md

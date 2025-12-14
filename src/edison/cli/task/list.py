@@ -10,8 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
-from edison.cli._choices import get_combined_state_choices
-from edison.core.session import validate_session_id
 
 SUMMARY = "List tasks across queues"
 
@@ -20,7 +18,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
         "--status",
-        choices=get_combined_state_choices(),
         help="Filter by status",
     )
     parser.add_argument(
@@ -46,9 +43,23 @@ def main(args: argparse.Namespace) -> int:
         # Resolve project root
         project_root = get_repo_root(args)
 
+        # Validate status against config-driven states (do this at runtime to keep CLI startup fast)
+        if args.status:
+            from edison.core.config.domains.workflow import WorkflowConfig
+
+            cfg = WorkflowConfig(repo_root=project_root)
+            valid = sorted(set(cfg.get_states("task") + cfg.get_states("qa")))
+            if args.status not in valid:
+                raise ValueError(
+                    f"Invalid status: {args.status}. Valid values: {', '.join(valid)}"
+                )
+
         # Normalize session ID if provided
         session_id = None
         if args.session:
+            # Import lazily to keep CLI startup fast for common invocations.
+            from edison.core.session import validate_session_id
+
             session_id = validate_session_id(args.session)
 
         # Get repository based on type

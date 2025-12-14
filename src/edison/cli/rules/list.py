@@ -16,6 +16,11 @@ from edison.core.rules import RulesRegistry
 SUMMARY = "List all available rules"
 
 
+def _display_rule_id(rule_id: str) -> str:
+    """Normalize rule id for CLI display without duplicating prefixes."""
+    return str(rule_id or "").strip().upper()
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
@@ -64,7 +69,7 @@ def main(args: argparse.Namespace) -> int:
             })
         elif args.format == "full":
             for rule in rules:
-                formatter.text(f"RULE.{rule['id'].upper()}")
+                formatter.text(_display_rule_id(rule["id"]))
                 formatter.text(f"  Contexts: {', '.join(rule.get('contexts', []))}")
                 formatter.text(f"  Priority: {rule.get('priority', 'normal')}")
                 if rule.get("anchor"):
@@ -82,7 +87,7 @@ def main(args: argparse.Namespace) -> int:
             formatter.text("# Edison Rules")
             formatter.text("")
             for rule in rules:
-                formatter.text(f"## RULE.{rule['id'].upper()}")
+                formatter.text(f"## {_display_rule_id(rule['id'])}")
                 formatter.text(f"**Contexts**: {', '.join(rule.get('contexts', []))}")
                 formatter.text(f"**Priority**: {rule.get('priority', 'normal')}")
                 if rule.get("content"):
@@ -94,7 +99,7 @@ def main(args: argparse.Namespace) -> int:
             for rule in rules:
                 contexts = ', '.join(rule.get('contexts', []))
                 priority = rule.get('priority', 'normal')
-                formatter.text(f"  RULE.{rule['id'].upper()} [{contexts}] (priority: {priority})")
+                formatter.text(f"  {_display_rule_id(rule['id'])} [{contexts}] (priority: {priority})")
 
         return 0
 

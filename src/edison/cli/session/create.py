@@ -7,14 +7,14 @@ SUMMARY: Create a new Edison session
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
+from edison.core.session.core.naming import generate_session_id
 from edison.core.exceptions import SessionError
-from edison.core.session.lifecycle.autostart import SessionAutoStart
-from pathlib import Path
 
 SUMMARY = "Create a new Edison session"
 
@@ -25,8 +25,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--session-id",
         "--id",
         dest="session_id",
-        required=True,
-        help="Session identifier (e.g., sess-001)",
+        required=False,
+        help="Session identifier (optional; if omitted, auto-inferred from topmost process + PID)",
     )
     parser.add_argument(
         "--owner",
@@ -58,7 +58,14 @@ def main(args: argparse.Namespace) -> int:
 
 
     try:
-        session_id = validate_session_id(args.session_id)
+        # Honor --repo-root by making project root resolution deterministic for this process.
+        # Core session lifecycle uses PathResolver internally (env/cwd based), so we set the
+        # canonical env var used by PathResolver.
+        repo_root = get_repo_root(args)
+        os.environ["AGENTS_PROJECT_ROOT"] = str(repo_root)
+
+        raw = args.session_id or generate_session_id()
+        session_id = validate_session_id(raw)
 
         # Determine worktree creation
         create_wt = not args.no_worktree
@@ -76,17 +83,8 @@ def main(args: argparse.Namespace) -> int:
         # Load session data for output
         session = session_manager.get_session(session_id)
 
-        # Trigger autostart if mode is "start"
-        if args.mode == "start":
-            try:
-
-                repo_root = get_repo_root(args)
-                autostart = SessionAutoStart(project_root=repo_root)
-                autostart_result = autostart.start(process=session_id, orchestrator_profile=None)
-                # Autostart launched in background, don't wait
-            except Exception:
-                # Autostart is optional; if it fails, session is still created
-                pass
+        # NOTE: Orchestrator launch is handled by `edison orchestrator start`.
+        # `edison session create` is intentionally limited to creating the session record (+ optional worktree).
 
         if formatter.json_mode:
             output = {

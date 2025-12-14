@@ -16,13 +16,18 @@ def get_repo_root(args: argparse.Namespace) -> Path:
     """Get repository root from args or auto-detect.
 
     Args:
-        args: Parsed arguments with optional project_root attribute
+        args: Parsed arguments with optional repo_root/project_root attribute
 
     Returns:
         Path: Repository root path
     """
-    if hasattr(args, "project_root") and args.project_root:
-        return Path(args.project_root).resolve()
+    # Canonical flag is --repo-root (attr: repo_root)
+    if hasattr(args, "repo_root") and getattr(args, "repo_root"):
+        return Path(getattr(args, "repo_root")).resolve()
+
+    # Backward-compat for older call sites/tests that used "project_root"
+    if hasattr(args, "project_root") and getattr(args, "project_root"):
+        return Path(getattr(args, "project_root")).resolve()
     return resolve_project_root()
 
 
@@ -33,9 +38,15 @@ def detect_record_type(record_id: str) -> str:
         record_id: Record identifier
 
     Returns:
-        str: 'qa' if ID contains '-qa' or ends with '.qa', else 'task'
+        str: 'qa' if ID is a QA record ID, else 'task'
     """
-    if "-qa" in record_id or record_id.endswith(".qa"):
+    # QA record IDs are derived from the task ID and use a reserved suffix:
+    #   - "<task_id>-qa" (most common)
+    #   - "<task_id>.qa" (alternate form)
+    #
+    # IMPORTANT: Task slugs may legitimately contain "qa" in the middle (e.g. "...-qa-promote"),
+    # so we MUST NOT treat a mere substring match as a QA record.
+    if record_id.endswith("-qa") or record_id.endswith(".qa"):
         return "qa"
     return "task"
 

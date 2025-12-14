@@ -130,7 +130,9 @@ class ProjectConfig(BaseDomainConfig):
         """
         terms: List[str] = list(DEFAULT_PROJECT_TERMS)
 
-        if self.name:
+        # Only treat the project name as an audit term when it was explicitly configured.
+        # This avoids false positives in framework repos or repos without a project overlay.
+        if self.name and self._has_explicit_project_name():
             lower_name = self.name.lower()
             terms.append(lower_name)
             terms.append(lower_name.replace("-", "_"))

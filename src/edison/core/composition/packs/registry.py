@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
 
-from ..includes import _repo_root
+from edison.core.utils.paths import PathResolver
 from .metadata import PackMetadata
 from .validation import validate_pack
 
@@ -25,7 +25,7 @@ class DependencyResult(NamedTuple):
 def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
     """Get packs directory from config, using unified resolver as fallback."""
     base = cfg.get("packs", {}) if isinstance(cfg, dict) else {}
-    root = _repo_root()
+    root = PathResolver.resolve_project_root()
 
     # If config specifies a directory, use it
     if base.get("directory"):
@@ -39,7 +39,7 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
 
 def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     """Discover all valid packs using composition path resolution."""
-    root = root or _repo_root()
+    root = root or PathResolver.resolve_project_root()
 
     # Use composition path resolver for consistent path resolution
     from ..core import CompositionPathResolver

@@ -192,7 +192,7 @@ def build_mcp_servers(
         }
 
         servers[server_id] = McpServerConfig(
-            command=str(cmd_source.get("command")),
+            command=str(cmd_source.get("command")).replace("{PROJECT_ROOT}", str(project_root)),
             args=[str(a).replace("{PROJECT_ROOT}", str(project_root)) for a in args_raw],
             env=resolved_env,
         )

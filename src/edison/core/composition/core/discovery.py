@@ -12,8 +12,9 @@ Directory conventions:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, List, Set, Optional
 
 from .errors import CompositionValidationError
 
@@ -42,12 +43,36 @@ class LayerDiscovery:
         packs_dir: Path,
         project_dir: Path,
         file_pattern: str = "*.md",
+        *,
+        exclude_globs: Optional[List[str]] = None,
     ) -> None:
         self.content_type = content_type
         self.core_dir = core_dir
         self.packs_dir = packs_dir
         self.project_dir = project_dir
         self.file_pattern = file_pattern
+        self.exclude_globs = list(exclude_globs or [])
+
+    def _entity_key(self, base_dir: Path, file_path: Path) -> str:
+        """Derive a stable entity key relative to base_dir.
+
+        Keys preserve subdirectories, enabling arbitrary nesting:
+          <base>/shared/CONTEXT7.md -> "shared/CONTEXT7"
+        """
+        rel = file_path.relative_to(base_dir)
+        return rel.with_suffix("").as_posix()
+
+    def _is_excluded(self, base_dir: Path, file_path: Path) -> bool:
+        """Return True if file_path should be excluded for this content type."""
+        if not self.exclude_globs:
+            return False
+
+        rel = file_path.relative_to(base_dir).as_posix()
+        for pat in self.exclude_globs:
+            # Patterns are evaluated against relative POSIX path.
+            if fnmatch(rel, pat):
+                return True
+        return False
     
     def discover_core(self) -> Dict[str, LayerSource]:
         """Discover all core entity definitions."""
@@ -62,9 +87,9 @@ class LayerDiscovery:
             # Skip files in overlays/ (shouldn't exist in core, but be safe)
             if "overlays" in path.parts:
                 continue
-            name = path.stem
-            if name.startswith("_"):
+            if self._is_excluded(type_dir, path):
                 continue
+            name = self._entity_key(type_dir, path)
             entities[name] = LayerSource(
                 path=path,
                 layer="core",
@@ -86,10 +111,10 @@ class LayerDiscovery:
         if not overlays_dir.exists():
             return entities
         
-        for path in overlays_dir.glob(self.file_pattern):
-            name = path.stem
-            if name.startswith("_"):
+        for path in overlays_dir.rglob(self.file_pattern):
+            if self._is_excluded(overlays_dir, path):
                 continue
+            name = self._entity_key(overlays_dir, path)
             
             # Validate: overlay must reference existing entity
             if name not in existing:
@@ -121,14 +146,13 @@ class LayerDiscovery:
         if not type_dir.exists():
             return entities
         
-        for path in type_dir.glob(self.file_pattern):
+        for path in type_dir.rglob(self.file_pattern):
             # Skip files in overlays/
             if "overlays" in path.parts:
                 continue
-            
-            name = path.stem
-            if name.startswith("_"):
+            if self._is_excluded(type_dir, path):
                 continue
+            name = self._entity_key(type_dir, path)
             
             # Validate: new entity must NOT shadow existing
             if name in existing:
@@ -156,10 +180,10 @@ class LayerDiscovery:
         if not overlays_dir.exists():
             return entities
         
-        for path in overlays_dir.glob(self.file_pattern):
-            name = path.stem
-            if name.startswith("_"):
+        for path in overlays_dir.rglob(self.file_pattern):
+            if self._is_excluded(overlays_dir, path):
                 continue
+            name = self._entity_key(overlays_dir, path)
             
             # Validate: overlay must reference existing entity
             if name not in existing:
@@ -187,14 +211,13 @@ class LayerDiscovery:
         if not type_dir.exists():
             return entities
         
-        for path in type_dir.glob(self.file_pattern):
+        for path in type_dir.rglob(self.file_pattern):
             # Skip files in overlays/
             if "overlays" in path.parts:
                 continue
-            
-            name = path.stem
-            if name.startswith("_"):
+            if self._is_excluded(type_dir, path):
                 continue
+            name = self._entity_key(type_dir, path)
             
             # Validate: new entity must NOT shadow existing
             if name in existing:

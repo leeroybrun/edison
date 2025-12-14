@@ -108,7 +108,9 @@ def load_parsers(project_root: Path | None = None, active_packs: list[str] | Non
 
     # Load parsers from all directories using common utility
     for path in iter_python_files(dirs, exclude=_EXCLUDED_FILES):
-        module = load_module_from_path(path, "edison.parsers")
+        # Load under the real package namespace so parser modules can use
+        # relative imports like `from .base import ParseResult`.
+        module = load_module_from_path(path, "edison.core.qa.engines.parsers")
         if module and hasattr(module, "parse"):
             # Parser ID = file stem (codex.py → "codex")
             parser_id = path.stem

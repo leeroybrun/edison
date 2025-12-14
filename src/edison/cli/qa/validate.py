@@ -323,6 +323,79 @@ def _execute_with_executor(
         round_num=args.round,
     )
 
+    # ---------------------------------------------------------------------
+    # Fail-closed bundle approval:
+    #
+    # - `ExecutionResult.all_blocking_passed` is intentionally permissive and
+    #   treats delegated validators as "pending" (not failed) so execution can
+    #   proceed across waves.
+    # - For promotion guards (qa wip→done, task done→validated) we must require
+    #   explicit approvals for ALL blocking validators.
+    # - Therefore: determine blocking validator IDs from the registry roster and
+    #   verify per-validator reports in evidence are approved.
+    # ---------------------------------------------------------------------
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.utils.time import utc_timestamp
+
+    ev = EvidenceService(args.task_id, project_root=repo_root)
+    round_num = int(result.round_num or 0)
+
+    validator_registry = executor.get_validator_registry()
+    roster = validator_registry.build_execution_roster(
+        task_id=args.task_id,
+        session_id=args.session,
+        wave=args.wave,
+        extra_validators=extra_validators,
+    )
+
+    # Apply same CLI filtering semantics as roster display.
+    if args.blocking_only:
+        roster["triggeredOptional"] = []
+
+    if getattr(args, "validators", None):
+        wanted = set(args.validators or [])
+        for k in ("alwaysRequired", "triggeredBlocking", "triggeredOptional"):
+            roster[k] = [v for v in roster.get(k, []) if v.get("id") in wanted]
+
+    blocking_candidates = (
+        (roster.get("alwaysRequired") or [])
+        + (roster.get("triggeredBlocking") or [])
+        + (roster.get("triggeredOptional") or [])
+    )
+    blocking_ids = [v.get("id") for v in blocking_candidates if v.get("blocking")]
+    blocking_ids = [b for b in blocking_ids if isinstance(b, str) and b]
+
+    approved_verdicts = {"approve", "approved", "pass", "passed"}
+    blocking_missing_or_failed: list[str] = []
+    for vid in blocking_ids:
+        report = ev.read_validator_report(vid, round_num=round_num) if round_num else {}
+        verdict = str((report or {}).get("verdict") or "").strip().lower()
+        if verdict not in approved_verdicts:
+            blocking_missing_or_failed.append(vid)
+
+    all_blocking_approved = (not blocking_missing_or_failed) and bool(blocking_ids)
+
+    # If all blocking validators approved, emit/refresh bundle-approved.json.
+    if all_blocking_approved and round_num:
+        bundle_data = {
+            "taskId": args.task_id,
+            "round": round_num,
+            "approved": True,
+            "generatedAt": utc_timestamp(),
+            # Single-task fallback: embed a per-task approval list for future cluster support.
+            "tasks": [{"taskId": args.task_id, "approved": True}],
+            "validators": [
+                {
+                    "validatorId": v.validator_id,
+                    "verdict": v.verdict,
+                }
+                for w in result.waves
+                for v in w.validators
+            ],
+            "nonBlockingFollowUps": [],
+        }
+        ev.write_bundle(bundle_data, round_num=round_num)
+
     # Display wave-by-wave results
     for wave_result in result.waves:
         formatter.text(f"  Wave: {wave_result.wave}")
@@ -357,7 +430,7 @@ def _execute_with_executor(
         formatter.text("")
         formatter.text("Delegation instructions saved to evidence folder.")
         formatter.text("The orchestrator/LLM must:")
-        formatter.text("  1. Read delegation instructions from: .project/qa/evidence/<task>/round-N/delegation-*.md")
+        formatter.text("  1. Read delegation instructions from: .project/qa/validation-evidence/<task>/round-N/delegation-*.md")
         formatter.text("  2. Execute validation manually using the specified zenRole")
         formatter.text("  3. Save results to: validator-<id>-report.json")
         formatter.text("")
@@ -369,20 +442,22 @@ def _execute_with_executor(
         formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
         formatter.text("")
         formatter.text("Next steps:")
-        formatter.text(f"  edison qa round --task {args.task_id} --status rejected")
-    elif result.all_blocking_passed and result.failed_count == 0 and not result.delegated_validators:
+        formatter.text(f"  edison qa round {args.task_id} --status rejected")
+    elif all_blocking_approved:
         formatter.text("")
-        formatter.text("All validators passed! Next steps:")
-        formatter.text(f"  edison qa promote --task {args.task_id} --to done")
-    elif result.all_blocking_passed and result.delegated_validators:
+        formatter.text("All blocking validators approved and bundle-approved.json was written. Next steps:")
+        formatter.text(f"  edison qa promote {args.task_id} --status done")
+    elif result.delegated_validators or blocking_missing_or_failed:
         formatter.text("")
-        formatter.text("CLI validators passed. Awaiting delegated validator results.")
+        formatter.text("Awaiting blocking validator approvals (some may be delegated).")
+        if blocking_missing_or_failed:
+            formatter.text(f"Missing/insufficient blocking reports: {', '.join(blocking_missing_or_failed)}")
 
     # JSON output if requested
     if formatter.json_mode:
         formatter.json_output(result.to_dict())
 
-    return 0 if result.all_blocking_passed else 1
+    return 0 if all_blocking_approved else 1
 
 
 if __name__ == "__main__":

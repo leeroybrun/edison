@@ -73,7 +73,8 @@ def get_status(
 
     # Collect porcelain status
     result = run_git_command(
-        ["git", "status", "--porcelain"],
+        # IMPORTANT: use file-level untracked paths (not collapsed directories like "apps/").
+        ["git", "status", "--porcelain", "--untracked-files=all"],
         cwd=cwd,
         capture_output=True,
         text=True,

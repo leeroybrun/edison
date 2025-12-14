@@ -142,8 +142,22 @@ class TaskRepository(
         path = self._find_entity_path(entity_id)
         if path is None:
             return None
-        
-        return self._load_task_from_file(path)
+
+        # Strict load for direct lookup: if a file exists but is legacy/unparseable,
+        # surface an actionable error instead of pretending the task doesn't exist.
+        content = path.read_text(encoding="utf-8", errors="strict")
+        if not has_frontmatter(content):
+            if "<!-- TaskID:" in content or "<!-- TaskId:" in content:
+                raise PersistenceError(
+                    f"Legacy task format detected at {path}. "
+                    "Run `edison migrate task-frontmatter --repo-root <project-root>` to convert tasks/QA to YAML frontmatter."
+                )
+            return None
+
+        try:
+            return self._parse_task_markdown(path.stem, content, path)
+        except Exception as exc:
+            raise PersistenceError(f"Failed to parse task file at {path}: {exc}") from exc
     
     def _do_save(self, entity: Task) -> None:
         """Save a task."""
@@ -299,7 +313,7 @@ class TaskRepository(
 
         # Also scan raw file names for any not yet loaded as Task objects
         for state in self._get_states_to_search():
-            state_dir = self.tasks_root / state
+            state_dir = self._get_tasks_root() / state
             if state_dir.exists():
                 for path in state_dir.glob(f"{parent_id}.*{self.file_extension}"):
                     # Extract child number from filename
@@ -353,6 +367,8 @@ class TaskRepository(
             "claimed_at": task.claimed_at,
             "last_active": task.last_active,
             "continuation_id": task.continuation_id,
+            "delegated_to": task.delegated_to,
+            "delegated_in_session": task.delegated_in_session,
             "created_at": task.metadata.created_at,
             "updated_at": task.metadata.updated_at,
             "tags": task.tags if task.tags else None,
@@ -374,8 +390,19 @@ class TaskRepository(
 
     def _load_task_from_file(self, path: Path) -> Optional[Task]:
         """Load a task from a markdown file."""
+        # Tolerant load for directory scans/listings: ignore non-task files and
+        # skip legacy/unparseable content without failing the whole listing.
         try:
-            content = path.read_text(encoding="utf-8")
+            # Fast path: YAML frontmatter always starts with `---` at the very beginning.
+            # Avoid reading whole legacy files just to discover they aren't v2 tasks.
+            with path.open("r", encoding="utf-8", errors="ignore") as f:
+                prefix = f.read(3)
+                if prefix != "---":
+                    return None
+                content = prefix + f.read()
+
+            if not has_frontmatter(content):
+                return None
             return self._parse_task_markdown(path.stem, content, path)
         except Exception:
             return None
@@ -460,6 +487,8 @@ class TaskRepository(
             claimed_at=fm.get("claimed_at"),
             last_active=fm.get("last_active"),
             continuation_id=fm.get("continuation_id"),
+            delegated_to=fm.get("delegated_to"),
+            delegated_in_session=fm.get("delegated_in_session"),
         )
 
 

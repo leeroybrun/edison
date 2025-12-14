@@ -43,15 +43,6 @@ from .output import (
     compose_for_role,
 )
 
-# Includes
-from .includes import (
-    ComposeError,
-    resolve_includes,
-    get_cache_dir,
-    validate_composition,
-    _repo_root,
-)
-
 # Packs
 from .packs import auto_activate_packs
 
@@ -168,12 +159,6 @@ __all__ = [
     "format_for_zen",
     "format_rules_context",
     "compose_for_role",
-    # Includes
-    "ComposeError",
-    "resolve_includes",
-    "get_cache_dir",
-    "validate_composition",
-    "_repo_root",
     # Packs
     "auto_activate_packs",
     # Audit

@@ -22,6 +22,9 @@ class WorkflowConfig(BaseDomainConfig):
 
     This is the SINGLE SOURCE OF TRUTH for all state-related configuration.
     Extends BaseDomainConfig for consistent caching and repo_root handling.
+
+    Pack overlays should not redefine workflow/state-machine mechanics, but this
+    domain still uses the unified config cache to avoid accidental double-loading.
     """
 
     def _config_section(self) -> str:

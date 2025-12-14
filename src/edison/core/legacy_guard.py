@@ -35,9 +35,9 @@ def _resolve_project_root_lightweight() -> Path | None:
     # Fall back to cwd-based detection
     cwd = Path.cwd()
     
-    # Look for .agents or .project directory as marker
+    # Look for project management directories as markers
     for parent in [cwd, *cwd.parents]:
-        if (parent / ".agents").exists() or (parent / ".project").exists():
+        if (parent / ".edison").exists() or (parent / ".project").exists():
             return parent
     
     return None

@@ -128,7 +128,29 @@ class QARepository(
         path = self._find_entity_path(entity_id)
         if path is None:
             return None
-        return self._load_qa_from_file(path)
+
+        # Strict load for direct lookup: if a file exists but is legacy/unparseable,
+        # surface an actionable error instead of pretending the QA doesn't exist.
+        content = path.read_text(encoding="utf-8", errors="strict")
+        if not has_frontmatter(content):
+            legacy_markers = (
+                "<!-- Task:",
+                "<!-- TaskID:",
+                "<!-- Round:",
+                "<!-- Validator:",
+                "<!-- EvidenceDir:",
+            )
+            if any(m in content for m in legacy_markers):
+                raise PersistenceError(
+                    f"Legacy QA format detected at {path}. "
+                    "Run `edison migrate task-frontmatter --repo-root <project-root>` to convert tasks/QA to YAML frontmatter."
+                )
+            return None
+
+        try:
+            return self._parse_qa_markdown(path.stem, content, path)
+        except Exception as exc:
+            raise PersistenceError(f"Failed to parse QA file at {path}: {exc}") from exc
     
     def _do_save(self, entity: QARecord) -> None:
         """Save a QA record."""
@@ -292,10 +314,10 @@ class QARepository(
         if not qa:
             raise PersistenceError(f"QA record not found: {qa_id}")
 
-        # Increment round number
+        # Increment round number (append semantics).
         qa.round += 1
 
-        # Create corresponding evidence directory via EvidenceService
+        # Create corresponding evidence directory for the new round.
         if create_evidence_dir:
             ev_svc = EvidenceService(qa.task_id, project_root=self.project_root)
             ev_svc.create_next_round()
@@ -389,8 +411,17 @@ class QARepository(
 
     def _load_qa_from_file(self, path: Path) -> Optional[QARecord]:
         """Load a QA record from a markdown file."""
+        # Tolerant load for directory scans/listings: ignore non-QA files and
+        # skip legacy/unparseable content without failing the whole listing.
         try:
-            content = path.read_text(encoding="utf-8")
+            with path.open("r", encoding="utf-8", errors="ignore") as f:
+                prefix = f.read(3)
+                if prefix != "---":
+                    return None
+                content = prefix + f.read()
+
+            if not has_frontmatter(content):
+                return None
             return self._parse_qa_markdown(path.stem, content, path)
         except Exception:
             return None

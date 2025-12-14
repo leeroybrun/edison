@@ -10,7 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, OutputFormatter
-from edison.cli._choices import get_state_choices
 from edison.core.session import validate_session_id
 from edison.core.session.lifecycle.verify import verify_session_health
 
@@ -26,7 +25,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--phase",
         required=True,
-        choices=get_state_choices("session"),
         help="Lifecycle phase to verify",
     )
     add_json_flag(parser)
@@ -39,6 +37,15 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         session_id = validate_session_id(args.session_id)
+
+        # Validate phase against config-driven session states (runtime validation for fast CLI startup)
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        cfg = WorkflowConfig()
+        valid = cfg.get_states("session")
+        if args.phase not in valid:
+            raise ValueError(f"Invalid phase: {args.phase}. Valid values: {', '.join(valid)}")
+
         health = verify_session_health(session_id)
 
         if formatter.json_mode:

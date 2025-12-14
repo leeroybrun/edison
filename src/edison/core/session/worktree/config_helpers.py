@@ -40,7 +40,10 @@ def _worktree_base_dir(cfg: Dict[str, Any], repo_dir: Path) -> Path:
     base_dir_path = Path(substituted)
     if base_dir_path.is_absolute():
         return base_dir_path
-    anchor = repo_dir if (base_dir_path.parts and base_dir_path.parts[0] == "..") else repo_dir.parent
+    # Canonical anchoring:
+    # - Any relative path is anchored to the repo root.
+    # - Use explicit "../..." in config to escape to a sibling directory.
+    anchor = repo_dir
     return (anchor / base_dir_path).resolve()
 
 
@@ -81,10 +84,11 @@ def _resolve_archive_directory(cfg: Dict[str, Any], repo_dir: Path) -> Path:
     raw_path = Path(raw)
     if raw_path.is_absolute():
         return raw_path
-    # Paths starting with ".worktrees" are anchored to repo_dir
-    # All other relative paths are anchored to repo_dir.parent
-    anchor = repo_dir if str(raw).startswith(".worktrees") else repo_dir.parent
-    return (anchor / raw).resolve()
+
+    # Keep anchoring consistent with `_worktree_base_dir()`:
+    # any relative path is anchored to the repo root.
+    anchor = repo_dir
+    return (anchor / raw_path).resolve()
 
 
 def _get_worktree_base() -> Path:

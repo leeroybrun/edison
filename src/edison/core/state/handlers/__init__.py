@@ -1,14 +1,14 @@
-"""Core handler implementations for state machine transitions.
+"""State machine handler infrastructure (registries + utilities).
 
-This package contains the built-in handlers (guards, actions, conditions)
-that are loaded by the state machine loader. Pack and project handlers
-can extend or override these.
+Canonical built-in handler implementations live in `edison.core.state.builtin`
+(guards/actions/conditions). The dynamic loader (`edison.core.state.loader`)
+loads from that builtin layer first, then from pack + project layers.
 
-Handler loading order:
-1. Core handlers (this package)
-2. Bundled pack handlers (data/packs/<pack>/)
-3. Project pack handlers (.edison/packs/<pack>/)
-4. Project handlers (.edison/)
+This package intentionally contains only the *infrastructure*:
+- `registries.py`: domain-aware handler registries (guards/actions/conditions)
+- `utils.py`: shared context helpers
 """
+
+
 
 

@@ -144,10 +144,16 @@ class ZenSyncMixin:
               - missing (list[str]): Human-readable entries for missing files
               - missingWorkflow (list[str]): Entries for files lacking workflow loop
         """
-        from edison.core.config.domains import AdaptersConfig
-        adapters_cfg = AdaptersConfig(repo_root=self.project_root)
-        zen_dir = adapters_cfg.get_client_path("zen")
-        cli_dir = zen_dir / "conf" / "cli_clients"
+        # AdaptersConfig was removed; adapter paths are now driven by CompositionConfig.adapters.
+        from edison.core.config.domains import CompositionConfig
+
+        comp_cfg = CompositionConfig(repo_root=self.project_root)
+        zen_adapter = next((a for a in comp_cfg.get_enabled_adapters() if a.name == "zen"), None)
+        if zen_adapter is None:
+            return {"ok": True, "models": [], "roles": [], "missing": [], "missingWorkflow": []}
+
+        zen_conf_dir = (self.project_root / zen_adapter.output_path).resolve()
+        cli_dir = zen_conf_dir / "cli_clients"
         report: Dict[str, Any] = {
             "ok": True,
             "models": [],

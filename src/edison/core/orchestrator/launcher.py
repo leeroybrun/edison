@@ -82,15 +82,24 @@ class OrchestratorLauncher:
 
         tokens = self._build_tokens()
         log_file = None
-        # Only use log file in detached mode
-        if detach and log_path:
+        # If a log_path is provided, always ensure it exists and write launch metadata.
+        # In detached mode, we additionally stream stdout/stderr to this file.
+        if log_path:
             ensure_directory(log_path.parent)
-            log_file = log_path.open("a", encoding="utf-8")
-            log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
-            if initial_prompt is not None:
-                log_file.write("[prompt]\n")
-                log_file.write(f"{initial_prompt}\n")
-            log_file.flush()
+            if detach:
+                log_file = log_path.open("a", encoding="utf-8")
+                log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
+                if initial_prompt is not None:
+                    log_file.write("[prompt]\n")
+                    log_file.write(f"{initial_prompt}\n")
+                log_file.flush()
+            else:
+                with log_path.open("a", encoding="utf-8") as lf:
+                    lf.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
+                    if initial_prompt is not None:
+                        lf.write("[prompt]\n")
+                        lf.write(f"{initial_prompt}\n")
+                    lf.flush()
 
         try:
             profile = self.config.get_profile(

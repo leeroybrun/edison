@@ -17,41 +17,10 @@ Usage:
 """
 from __future__ import annotations
 
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.config.cache import get_cached_config
-
-
-@lru_cache(maxsize=8)
-def _load_config_section_impl(
-    section_name: str,
-    repo_root_str: str,
-    required: bool = True
-) -> Dict[str, Any]:
-    """Internal implementation with string-based caching.
-
-    Args:
-        section_name: Config section to load (e.g., "statemachine", "tasks", "qa")
-        repo_root_str: Project root path as string (empty for auto-detect)
-        required: If True, raise KeyError if section missing
-
-    Returns:
-        Config section dict, or empty dict if not required and missing
-
-    Raises:
-        KeyError: If section is required but missing
-    """
-    repo_root = Path(repo_root_str) if repo_root_str else None
-    config = get_cached_config(repo_root=repo_root)
-
-    if section_name not in config:
-        if required:
-            raise KeyError(f"Config section '{section_name}' not found")
-        return {}
-
-    return config.get(section_name, {})
 
 
 def load_config_section(
@@ -76,40 +45,24 @@ def load_config_section(
         >>> statemachine = load_config_section("statemachine")
         >>> workflow = load_config_section("workflow")
     """
-    return _load_config_section_impl(section_name, str(repo_root) if repo_root else "", required)
-
-
-@lru_cache(maxsize=16)
-def _load_validated_section_impl(
-    section_path_str: str,
-    required_fields_str: str,
-    required_subsections_str: str,
-    repo_root_str: str
-) -> Dict[str, Any]:
-    """Internal implementation with string-based caching.
-
-    Args:
-        section_path_str: JSON-encoded section path (string or list of strings)
-        required_fields_str: JSON-encoded list of required field names
-        required_subsections_str: JSON-encoded list of required subsection names
-        repo_root_str: Project root path as string (empty for auto-detect)
-
-    Returns:
-        Validated config section dict
-
-    Raises:
-        RuntimeError: If section is missing or validation fails
-    """
-    import json as json_module
-
-    # Decode parameters
-    section_path = json_module.loads(section_path_str)
-    required_fields = json_module.loads(required_fields_str) if required_fields_str else None
-    required_subsections = json_module.loads(required_subsections_str) if required_subsections_str else None
-    repo_root = Path(repo_root_str) if repo_root_str else None
-
-    # Load config
     config = get_cached_config(repo_root=repo_root)
+
+    if section_name not in config:
+        if required:
+            raise KeyError(f"Config section '{section_name}' not found")
+        return {}
+
+    return config.get(section_name, {}) or {}
+
+
+def _resolve_section_from_config(
+    config: Dict[str, Any],
+    section_path: str | List[str],
+    *,
+    required_fields: Optional[List[str]] = None,
+    required_subsections: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Resolve and validate a config section from the already-loaded config dict."""
 
     # Navigate to section (handle both string and list paths)
     path_parts = section_path if isinstance(section_path, list) else [section_path]
@@ -181,19 +134,12 @@ def load_validated_section(
         ...     required_subsections=["json", "table", "confirm", "output"]
         ... )
     """
-    import json as json_module
-
-    # Encode parameters for caching
-    section_path_str = json_module.dumps(section_path)
-    required_fields_str = json_module.dumps(required_fields) if required_fields else ""
-    required_subsections_str = json_module.dumps(required_subsections) if required_subsections else ""
-    repo_root_str = str(repo_root) if repo_root else ""
-
-    return _load_validated_section_impl(
-        section_path_str,
-        required_fields_str,
-        required_subsections_str,
-        repo_root_str
+    config = get_cached_config(repo_root=repo_root)
+    return _resolve_section_from_config(
+        config,
+        section_path,
+        required_fields=required_fields,
+        required_subsections=required_subsections,
     )
 
 

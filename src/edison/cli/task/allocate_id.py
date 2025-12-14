@@ -10,7 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
-from edison.core.task import TaskRepository, normalize_record_id
 
 SUMMARY = "Allocate next available task ID"
 
@@ -34,6 +33,9 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
+        # Import lazily to keep CLI startup fast.
+        from edison.core.task import TaskRepository, normalize_record_id
+
         # Resolve project root
         project_root = get_repo_root(args)
         repo = TaskRepository(project_root=project_root)

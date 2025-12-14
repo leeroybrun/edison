@@ -38,7 +38,7 @@ def build_generated_header(
 ) -> str:
     """Render the configured auto-generation header with runtime values."""
     cfg_mgr = config or ConfigManager()
-    cfg = cfg_mgr.load_config(validate=False)
+    cfg = cfg_mgr.load_config(validate=False, include_packs=True)
 
     header_template = load_header_template(cfg_mgr, cfg)
     version = resolve_version(cfg_mgr, cfg)

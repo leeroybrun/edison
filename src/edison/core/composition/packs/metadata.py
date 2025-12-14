@@ -17,7 +17,6 @@ class PackMetadata:
     triggers: Optional[List[str]] = None
     dependencies: Optional[List[str]] = None
     validators: Optional[List[str]] = None
-    guidelines: Optional[List[str]] = None
     examples: Optional[List[str]] = None
 
 
@@ -37,6 +36,5 @@ def load_pack_metadata(pack_path: Path) -> PackMetadata:
         triggers=trigger_patterns,
         dependencies=list(yml.get("dependencies") or []),
         validators=list(yml.get("validators") or []),
-        guidelines=list(yml.get("guidelines") or []),
         examples=list(yml.get("examples") or []),
     )

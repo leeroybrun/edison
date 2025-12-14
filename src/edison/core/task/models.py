@@ -41,6 +41,8 @@ class Task:
         last_active: ISO timestamp of last activity
         continuation_id: Zen MCP continuation ID for tracking
         result: Task result/outcome (optional)
+        delegated_to: Who the task was delegated to (optional)
+        delegated_in_session: Session ID where delegation happened (optional)
     """
     id: str
     state: str
@@ -58,6 +60,8 @@ class Task:
     last_active: Optional[str] = None
     continuation_id: Optional[str] = None
     result: Optional[str] = None
+    delegated_to: Optional[str] = None
+    delegated_in_session: Optional[str] = None
     
     def record_transition(
         self,
@@ -130,6 +134,11 @@ class Task:
         
         if self.result:
             data["result"] = self.result
+
+        if self.delegated_to:
+            data["delegated_to"] = self.delegated_to
+        if self.delegated_in_session:
+            data["delegated_in_session"] = self.delegated_in_session
         
         return data
     
@@ -179,6 +188,8 @@ class Task:
             last_active=data.get("last_active") or data.get("lastActive"),
             continuation_id=data.get("continuation_id") or data.get("continuationId"),
             result=data.get("result"),
+            delegated_to=data.get("delegated_to") or data.get("delegatedTo"),
+            delegated_in_session=data.get("delegated_in_session") or data.get("delegatedInSession"),
         )
     
     @classmethod

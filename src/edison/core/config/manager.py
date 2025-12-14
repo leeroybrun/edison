@@ -11,6 +11,8 @@ import re
 
 from edison.core.utils.merge import deep_merge as _deep_merge, merge_arrays
 from edison.data import get_data_path
+from edison.core.utils.profiling import span
+from edison.core.config.cache import get_cached_config
 
 # Lazy imports to avoid circular dependencies
 # These are imported at runtime inside methods that need them
@@ -83,7 +85,8 @@ class ConfigManager:
 
     def load_yaml(self, path: Path) -> Dict[str, Any]:
         from edison.core.utils.io import read_yaml
-        return read_yaml(path, default={})
+        # Fail closed: configuration must never silently ignore invalid YAML.
+        return read_yaml(path, default={}, raise_on_error=True)
 
     def load_json(self, path: Path) -> Dict[str, Any]:
         if not path.exists():
@@ -157,7 +160,9 @@ class ConfigManager:
             elif seg.upper() == "APPEND":
                 processed.append(self.ARRAY_APPEND_MARKER)
             else:
-                processed.append(seg)
+                # Normalize to lowercase so env overrides create canonical keys,
+                # while still supporting case-insensitive matching for existing keys.
+                processed.append(seg.lower())
         return processed
 
     def _iter_env_overrides(self, *, strict: bool):
@@ -334,10 +339,10 @@ class ConfigManager:
 
         self._set_nested(cfg, ["database", "url"], url)
 
-    def load_config(
+    def _load_config_uncached(
         self, validate: bool = True, include_packs: bool = True
     ) -> Dict[str, Any]:
-        """Load and merge configuration from multiple sources.
+        """Load and merge configuration from multiple sources (UNCACHED).
 
         Configuration uses two-phase loading:
 
@@ -357,32 +362,60 @@ class ConfigManager:
         Returns:
             Merged configuration dictionary
         """
-        cfg: Dict[str, Any] = {}
+        with span("config.load_config.total", include_packs=include_packs, validate=validate):
+            cfg: Dict[str, Any] = {}
 
-        # Layer 1: Core config (bundled defaults)
-        cfg = self._load_directory(self.core_config_dir, cfg)
+            # Layer 1: Core config (bundled defaults)
+            with span("config.load_config.core"):
+                cfg = self._load_directory(self.core_config_dir, cfg)
 
-        # Phase 1 bootstrap: Get active packs from core + project (without pack configs)
-        if include_packs:
-            # Temporarily merge project config to determine active packs
-            bootstrap_cfg = self._load_directory(self.project_config_dir, dict(cfg))
-            active_packs = self._get_bootstrap_packs(bootstrap_cfg)
+            # Phase 1 bootstrap: Get active packs from core + project (without pack configs)
+            if include_packs:
+                with span("config.load_config.bootstrap"):
+                    bootstrap_cfg = self._load_directory(self.project_config_dir, dict(cfg))
+                    active_packs = self._get_bootstrap_packs(bootstrap_cfg)
 
-            # Layer 2: Pack configs (bundled + project packs)
-            if active_packs:
-                cfg = self._load_pack_configs(cfg, active_packs)
+                # Layer 2: Pack configs (bundled + project packs)
+                if active_packs:
+                    with span("config.load_config.packs", count=len(active_packs)):
+                        cfg = self._load_pack_configs(cfg, active_packs)
 
-        # Layer 3: Project config (always wins over packs)
-        cfg = self._load_directory(self.project_config_dir, cfg)
+            # Layer 3: Project config (always wins over packs)
+            with span("config.load_config.project"):
+                cfg = self._load_directory(self.project_config_dir, cfg)
 
-        # Layer 4: Environment overrides
-        self._apply_project_env_aliases(cfg)
-        self._apply_database_env_aliases(cfg)
-        self.apply_env_overrides(cfg, strict=validate)
+            # Layer 4: Environment overrides
+            with span("config.load_config.env"):
+                self._apply_project_env_aliases(cfg)
+                self._apply_database_env_aliases(cfg)
+                self.apply_env_overrides(cfg, strict=validate)
 
+            if validate:
+                with span("config.load_config.validate"):
+                    self.validate_schema(cfg, "config/config.schema.json")
+
+            return cfg
+
+    def load_config(
+        self, validate: bool = True, include_packs: bool = True
+    ) -> Dict[str, Any]:
+        """Load configuration using centralized cache.
+
+        This is the canonical entrypoint for configuration loads.
+        Caching is centralized in `edison.core.config.cache`.
+
+        Notes:
+        - `validate=True` will validate the (cached) config before returning.
+        - Returned dict should be treated as immutable.
+        """
+        cfg = get_cached_config(repo_root=self.repo_root, validate=False, include_packs=include_packs)
         if validate:
-            self.validate_schema(cfg, "config/config.schema.json")
-
+            # Fail-closed: strict parsing of env override paths when validate=True,
+            # even if the base config dict came from cache.
+            # This ensures malformed EDISON_* keys are detected deterministically.
+            _ = list(self._iter_env_overrides(strict=True))
+            with span("config.load_config.validate_cached"):
+                self.validate_schema(cfg, "config/config.schema.json")
         return cfg
 
     # ========== Accessor Methods ==========
@@ -517,7 +550,7 @@ class ConfigManager:
             "ci": "commands.yml",
             "commands": "commands.yml",
             "hooks": "hooks.yml",
-            "context7": "context7-packages.yml",
+            "context7": "context7.yml",
             "session": "session.yml",
             "resilience": "defaults.yml",
             "timeouts": "defaults.yml",

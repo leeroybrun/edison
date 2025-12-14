@@ -6,6 +6,7 @@ SUMMARY: Clear stale locks
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
@@ -36,6 +37,10 @@ def main(args: argparse.Namespace) -> int:
 
 
     try:
+        # Honor --repo-root for underlying path resolution (PathResolver).
+        repo_root = get_repo_root(args)
+        os.environ["AGENTS_PROJECT_ROOT"] = str(repo_root)
+
         if args.session_id:
             # Clear locks for specific session
             cleared = clear_session_locks(args.session_id)

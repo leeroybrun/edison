@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
@@ -94,12 +95,10 @@ def main(args: argparse.Namespace) -> int:
                 "message": f"Validator {args.validator_id} would run with engine {config.engine}",
             }
         else:
-            # Create evidence service if session provided
-            evidence_service = None
-            if args.session:
-                evidence_service = EvidenceService(args.task_id, repo_root)
+            # Evidence service is the canonical persistence mechanism.
+            evidence_service = EvidenceService(args.task_id, project_root=repo_root)
 
-            # Run the validator
+            # Run the validator (CLI engines will also write command output evidence).
             validation_result = registry.run_validator(
                 validator_id=args.validator_id,
                 task_id=args.task_id,
@@ -108,6 +107,27 @@ def main(args: argparse.Namespace) -> int:
                 round_num=args.round,
                 evidence_service=evidence_service,
             )
+
+            # Persist a normalized validator report for non-delegated validators.
+            # Delegated validators must be written by the orchestrator/human after execution.
+            delegated = any(
+                isinstance(t, dict) and t.get("type") == "delegation"
+                for t in (validation_result.follow_up_tasks or [])
+            )
+            if not delegated:
+                rn = args.round or evidence_service.get_current_round() or 1
+                now = datetime.now(timezone.utc).isoformat()
+                engine_id = str(config.engine or "")
+                model = _infer_model_from_engine(engine_id)
+                report = validation_result.to_report(
+                    task_id=args.task_id,
+                    round_num=rn,
+                    model=model,
+                    zen_role=getattr(config, "zen_role", None),
+                    started_at=now,
+                    completed_at=now,
+                )
+                evidence_service.write_validator_report(args.validator_id, report, round_num=rn)
 
             result = {
                 "validator_id": args.validator_id,
@@ -144,6 +164,21 @@ def main(args: argparse.Namespace) -> int:
     except Exception as e:
         formatter.error(e, error_code="run_error")
         return 1
+
+
+def _infer_model_from_engine(engine_id: str) -> str:
+    e = (engine_id or "").lower()
+    if "claude" in e:
+        return "claude"
+    if "codex" in e:
+        return "codex"
+    if "gemini" in e:
+        return "gemini"
+    if "auggie" in e:
+        return "auggie"
+    if "coderabbit" in e:
+        return "coderabbit"
+    return "unknown"
 
 if __name__ == "__main__":
     import argparse

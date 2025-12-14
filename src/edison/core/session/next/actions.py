@@ -38,7 +38,7 @@ def infer_qa_status(task_id: str) -> str:
     from edison.core.qa.workflow.repository import QARepository
     try:
         qa_repo = QARepository()
-        p = qa_repo.get_path(task_id)
+        p = qa_repo.get_path(f"{task_id}-qa")
         return p.parent.name or "missing"
     except FileNotFoundError:
         return "missing"
@@ -141,23 +141,32 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
         qstat = infer_qa_status(task_id)
         if qstat in qa_active_states:
             v = read_validator_jsons(task_id)
-            have = {r.get("validatorId") for r in v.get("reports", [])}
-            # Derive expected blocking IDs from validators config using QAConfig
+            have = {
+                str(r.get("validatorId") or r.get("validator_id") or r.get("id") or "")
+                for r in v.get("reports", [])
+                if (r.get("validatorId") or r.get("validator_id") or r.get("id"))
+            }
+            # Derive expected blocking IDs from the canonical validator roster (trigger-aware)
             try:
-                from edison.core.config.domains.qa import QAConfig
-                qa_cfg = QAConfig()
-                validators = qa_cfg.get_validators()
-                need = [
-                    vid for vid, cfg in validators.items()
-                    if cfg.get("always_run") or cfg.get("blocking", True)
-                ]
-                for vid in need:
-                    if vid not in have:
+                from edison.core.registries.validators import ValidatorRegistry
+
+                registry = ValidatorRegistry()
+                roster = registry.build_execution_roster(task_id, session_id=session_id)
+                need_blocking = {
+                    v["id"]
+                    for v in (roster.get("alwaysRequired", []) + roster.get("triggeredBlocking", []))
+                    if isinstance(v, dict) and v.get("id")
+                }
+                for vid in sorted(need_blocking):
+                    if str(vid) not in have:
                         reports_missing.append({
                             "taskId": task_id,
                             "type": "validator",
                             "validatorId": vid,
-                            "suggested": ["(re)run validator wave and write JSON per schema", f"edison qa promote --task {task_id} --to wip"],
+                            "suggested": [
+                                "(re)run validator wave and write JSON per schema",
+                                f"edison qa validate {task_id} --execute",
+                            ],
                         })
             except Exception:
                 pass
@@ -179,80 +188,59 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
                         "path": rel_path,
                         "suggested": [
                             "Write Implementation Report JSON per schema",
-                            f"edison implementation validate {rel_path}",
+                            f"Create or update: {rel_path}",
                         ],
                     })
         except Exception:
             pass
 
-        # Context7 markers expected for post-training packages used by this task
+        # Context7 markers expected for validators that require Context7 for this task
         try:
-            # Load triggers from context7 config domain (not hardcoded)
-            from edison.core.config.domains.context7 import Context7Config
+            from edison.core.registries.validators import ValidatorRegistry
 
-            def _load_cfg():
-                try:
-                    return io_read_json(project_cfg_dir()/"validators"/"config.json")
-                except Exception:
-                    return {}
+            registry = ValidatorRegistry()
+            roster = registry.build_execution_roster(task_id, session_id=session_id)
+            validators_in_roster = (
+                roster.get("alwaysRequired", [])
+                + roster.get("triggeredBlocking", [])
+                + roster.get("triggeredOptional", [])
+            )
+            required_pkgs: set[str] = set()
+            for v in validators_in_roster:
+                if not isinstance(v, dict):
+                    continue
+                if v.get("context7Required") and isinstance(v.get("context7Packages"), list):
+                    required_pkgs |= {str(p) for p in v.get("context7Packages") if p}
 
-            def _files_for_task(tid: str) -> list[str]:
-                try:
-                    task_repo = TaskRepository()
-                    p = task_repo.get_path(tid)
-                    txt = p.read_text(errors="ignore")
-                except FileNotFoundError:
-                    return []
-                files: list[str] = []
-                capture = False
-                for line in txt.splitlines():
-                    if "Primary Files / Areas" in line:
-                        capture = True
-                        parts = line.split(":", 1)
-                        if len(parts) > 1 and parts[1].strip():
-                            files.extend([f.strip() for f in parts[1].split(",") if f.strip()])
-                        continue
-                    if capture:
-                        if line.startswith("## "):
-                            break
-                        if line.strip().startswith("-"):
-                            files.append(line.split("-", 1)[1].strip())
-                return files
-
-            def _matches(file_path: str, pkg: str, triggers: dict[str, list[str]]) -> bool:
-                """Match file path against package triggers from config."""
-                return matches_any_pattern(file_path, triggers.get(pkg, []))
-
-            # Load triggers from config instead of hardcoding
-            ctx7_config = Context7Config()
-            triggers = ctx7_config.triggers  # From context7.yaml
-
-            cfg = _load_cfg()
-            pkgs = list((cfg.get("postTrainingPackages") or {}).keys())
-            files = _files_for_task(task_id)
-            used = {pkg for pkg in pkgs for f in files if _matches(f, pkg, triggers)}
-            if used:
+            if required_pkgs:
                 ev_svc_ctx7 = EvidenceService(task_id)
-                ev_root = ev_svc_ctx7.get_evidence_root()
                 latest_round_ctx7 = ev_svc_ctx7.get_current_round()
-                latest = ev_root / f"round-{latest_round_ctx7}" if latest_round_ctx7 is not None else None
-                missing_pkgs: list[str] = []
-                for pkg in used:
-                    if not latest or (
-                        not (latest / f"context7-{pkg}.txt").exists()
-                        and not (latest / f"context7-{pkg}.md").exists()
-                    ):
-                        missing_pkgs.append(pkg)
+                latest = (
+                    ev_svc_ctx7.get_evidence_root() / f"round-{latest_round_ctx7}"
+                    if latest_round_ctx7 is not None
+                    else None
+                )
+                missing_pkgs = sorted(
+                    p
+                    for p in required_pkgs
+                    if not latest
+                    or (
+                        not (latest / f"context7-{p}.txt").exists()
+                        and not (latest / f"context7-{p}.md").exists()
+                    )
+                )
                 if missing_pkgs:
-                    reports_missing.append({
-                        "taskId": task_id,
-                        "type": "context7",
-                        "packages": sorted(missing_pkgs),
-                        "suggested": [
-                            "Write context7-<package>.txt in latest round with topics and doc references",
-                            "Add a note in the task file documenting Context7 usage"
-                        ],
-                    })
+                    reports_missing.append(
+                        {
+                            "taskId": task_id,
+                            "type": "context7",
+                            "packages": missing_pkgs,
+                            "suggested": [
+                                "Write context7-<package>.txt in latest round with topics and doc references",
+                                "Add a note in the task file documenting Context7 usage",
+                            ],
+                        }
+                    )
         except Exception:
             pass
 

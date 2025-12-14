@@ -165,14 +165,14 @@ class CursorAdapter(PlatformAdapter):
 
     def _compose_guidelines_block(self, packs: List[str]) -> str:
         """Compose guidelines block for .cursorrules."""
-        names = self.guideline_registry.all_names(packs, include_project=True)
+        names = self.guideline_registry.list_names(packs)
         if not names:
             return ""
 
         sections: List[str] = ["## Guidelines"]
         for name in sorted(names):
-            result = self.guideline_registry.compose(name, packs, project_overrides=True)
-            body = result.text.strip()
+            text = self.guideline_registry.compose(name, packs) or ""
+            body = text.strip()
             sections.append(f"\n### {name}\n\n{body}")
 
         return "\n".join(sections).rstrip()

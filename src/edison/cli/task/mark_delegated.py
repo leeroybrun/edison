@@ -58,8 +58,8 @@ def main(args: argparse.Namespace) -> int:
         if not task_entity:
             raise ValueError(f"Task not found: {task_id}")
 
-        # Check if already delegated (via metadata or entity field)
-        if hasattr(task_entity, "delegated_to") and task_entity.delegated_to:
+        # Check if already delegated
+        if getattr(task_entity, "delegated_to", None):
             formatter.json_output({
                 "status": "already_delegated",
                 "task_id": task_id,
@@ -69,14 +69,9 @@ def main(args: argparse.Namespace) -> int:
             )
             return 1
 
-        # Update task entity with delegation info
-        # Store delegation info in metadata.extra if available
-        if task_entity.metadata and hasattr(task_entity.metadata, "extra"):
-            if task_entity.metadata.extra is None:
-                task_entity.metadata.extra = {}
-            task_entity.metadata.extra["delegated_to"] = args.delegated_to
-            if session_id:
-                task_entity.metadata.extra["delegated_in_session"] = session_id
+        # Update task entity with delegation info (persisted in YAML frontmatter)
+        task_entity.delegated_to = args.delegated_to
+        task_entity.delegated_in_session = session_id
 
         # Save updated task
         task_repo.save(task_entity)

@@ -35,8 +35,29 @@ def get_rules_for_context_formatted(
     applicable_rules = []
     contexts_checked = contexts or []
 
+    # Transition-based rule lookup (from config-driven transition mappings).
+    if transition:
+        from_state, sep, to_state = str(transition).partition("->")
+        if sep and from_state.strip() and to_state.strip():
+            # Currently task transitions only (CLI syntax does not include domain).
+            rules = engine.get_rules_for_transition("task", from_state.strip(), to_state.strip())
+            for rule in rules:
+                applicable_rules.append(
+                    {
+                        "id": rule.get("id") or "",
+                        "description": rule.get("title") or rule.get("id") or "",
+                        "blocking": bool(rule.get("blocking", False)),
+                        "enforced": True,
+                        "contexts": rule.get("contexts", []) or [],
+                        "priority": "normal",
+                    }
+                )
+        contexts_checked = contexts_checked or []
+
     if contexts:
         for ctx in contexts:
+            # Preserve the feature: if rules use filePatterns, allow the engine to
+            # auto-detect changed files (git status / session diff) when needed.
             rules = engine.get_rules_for_context(ctx)
             for rule in rules:
                 rule_dict = {

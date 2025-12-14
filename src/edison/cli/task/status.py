@@ -10,9 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type, get_repository
-from edison.cli._choices import get_combined_state_choices
-from edison.core.task import normalize_record_id
-from edison.core.state.transitions import validate_transition, transition_entity, EntityTransitionError
 
 SUMMARY = "Inspect or transition task/QA status with state-machine guards"
 
@@ -25,8 +22,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--status",
-        choices=get_combined_state_choices(),
         help="Transition to this status (if omitted, shows current status)",
+    )
+    parser.add_argument(
+        "--reason",
+        help="Reason for transition (required for some guarded transitions like done→wip rollback)",
     )
     parser.add_argument(
         "--type",
@@ -56,8 +56,24 @@ def main(args: argparse.Namespace) -> int:
         # Resolve project root
         project_root = get_repo_root(args)
 
+        # Lazy imports to keep CLI startup fast.
+        from edison.core.task import normalize_record_id
+        from edison.core.state.transitions import validate_transition, transition_entity, EntityTransitionError
+
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
+
+        # Validate status against config-driven states (runtime validation for fast CLI startup)
+        if args.status:
+            from edison.core.config.domains.workflow import WorkflowConfig
+
+            cfg = WorkflowConfig(repo_root=project_root)
+            domain = record_type or "task"
+            valid = cfg.get_states(domain)
+            if args.status not in valid:
+                raise ValueError(
+                    f"Invalid status for {domain}: {args.status}. Valid values: {', '.join(valid)}"
+                )
 
         # Normalize the record ID
         record_id = normalize_record_id(record_type, args.record_id)
@@ -110,6 +126,10 @@ def main(args: argparse.Namespace) -> int:
                 "entity_type": record_type or "task",
                 "entity_id": entity.id,
             }
+            if getattr(args, "reason", None):
+                # Guards use snake_case and camelCase variants across call sites.
+                context["task"]["rollback_reason"] = args.reason
+                context["task"]["rollbackReason"] = args.reason
             
             # Execute the transition with guard validation and action execution
             if not args.force:
@@ -131,7 +151,11 @@ def main(args: argparse.Namespace) -> int:
             
             # Update and persist the entity
             entity.state = args.status
-            entity.record_transition(old_state, args.status, reason="cli-status-command")
+            entity.record_transition(
+                old_state,
+                args.status,
+                reason=args.reason or "cli-status-command",
+            )
             repo.save(entity)
 
             formatter.json_output({

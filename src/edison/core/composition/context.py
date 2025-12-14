@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 def get_config_value(config: Dict[str, Any], path: str) -> Any:
@@ -60,6 +60,15 @@ class CompositionContext:
     config: Dict[str, Any] = field(default_factory=dict)
     project_root: Optional[Path] = None
     source_dir: Optional[Path] = None
+    # Optional include provider used by the TemplateEngine for {{include:*}} and
+    # {{include-section:*}} resolution. When provided, transformers should
+    # prefer this over raw filesystem reads so includes can be layered/composed.
+    include_provider: Optional[Callable[[str], Optional[str]]] = None
+    # Whether the TemplateEngine's final validation step should strip SECTION/EXTEND
+    # markers from the processed content. Most composed artifacts should strip these
+    # markers, but include-only fragments (e.g. guidelines/includes/**) must retain
+    # SECTION markers so downstream {{include-section:...}} works on composed output.
+    strip_section_markers: bool = True
     context_vars: Dict[str, Any] = field(default_factory=dict)
 
     def get_config(self, path: str) -> Any:

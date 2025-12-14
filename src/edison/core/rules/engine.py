@@ -17,6 +17,7 @@ from edison.core.utils.patterns import matches_any_pattern
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
 from . import checkers
+from edison.core.utils.profiling import span
 
 
 class RulesEngine:
@@ -46,19 +47,89 @@ class RulesEngine:
 
         # Load composed rules from registry (core → packs → project)
         from .registry import RulesRegistry
-        self._registry = RulesRegistry()
+        with span("rules.engine.init.registry"):
+            self._registry = RulesRegistry()
         self._packs = packs or self._get_active_packs(config)
-        composed = self._registry.compose(packs=self._packs)
+        with span("rules.engine.compose", packs=len(self._packs)):
+            composed = self._registry.compose(packs=self._packs, resolve_sources=False)
         self._rules_map: Dict[str, Dict[str, Any]] = composed.get("rules", {})
 
         # Build state/type mappings from config (for backwards compatibility)
         # These map states/types to rule IDs that are then looked up from _rules_map
-        self.rules_by_state = self._build_state_mappings()
-        self.rules_by_type = self._build_type_mappings()
-        self.project_rules = self._build_project_rules()
+        with span("rules.engine.mappings.build"):
+            self.rules_by_state = self._build_state_mappings()
+            self.rules_by_type = self._build_type_mappings()
+            self.project_rules = self._build_project_rules()
 
         # Lazy cache for context-aware rule lookup
         self._all_rules_cache: Optional[List[Rule]] = None
+        self._resolved_bodies: set[str] = set()
+        self._context_index: Optional[Dict[str, List[Tuple[int, str, Rule, Dict[str, Any]]]]] = None
+
+    def _ensure_rule_body(self, rule_id: str) -> None:
+        """Ensure a composed rule has its full body resolved (source anchors + includes).
+
+        Rules are composed with `resolve_sources=False` for fast startup. We only resolve
+        expensive anchored source content on demand for the small set of rules we need
+        to display or inspect in detail.
+        """
+        if rule_id in self._resolved_bodies:
+            return
+        entry = self._rules_map.get(rule_id)
+        if not entry:
+            return
+        if entry.get("_body_resolved"):
+            self._resolved_bodies.add(rule_id)
+            return
+
+        # Re-compose the body from source + guidance using the registry helper.
+        rule_spec: Dict[str, Any] = {
+            "id": entry.get("id", rule_id),
+            "source": entry.get("source") or {},
+            "guidance": entry.get("guidance"),
+        }
+        with span("rules.engine.resolve_body", id=rule_id):
+            body, deps = self._registry._compose_rule_body(  # noqa: SLF001 - internal perf path
+                rule_spec,
+                origin="runtime",
+                resolve_sources=True,
+            )
+        entry["body"] = body
+        entry["dependencies"] = [str(p) for p in deps]
+        entry["_body_resolved"] = True
+        self._resolved_bodies.add(rule_id)
+
+    def _get_context_index(self) -> Dict[str, List[Tuple[int, str, Rule, Dict[str, Any]]]]:
+        """Build (lazily) an index from context_type -> candidate rule entries.
+
+        This avoids scanning all rules for every context query, which becomes
+        expensive in large projects.
+        """
+        if self._context_index is not None:
+            return self._context_index
+
+        with span("rules.engine.context_index.build"):
+            index: Dict[str, List[Tuple[int, str, Rule, Dict[str, Any]]]] = {}
+            for rule in self._iter_all_rules():
+                cfg = rule.config or {}
+                ctx_entries = cfg.get("contexts") or []
+                if not isinstance(ctx_entries, list):
+                    continue
+                for entry in ctx_entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    entry_type = str(entry.get("type") or "").strip().lower()
+                    if not entry_type:
+                        continue
+                    priority = int(entry.get("priority") or cfg.get("priority") or 100)
+                    index.setdefault(entry_type, []).append((priority, rule.id, rule, entry))
+
+            # Pre-sort each bucket for deterministic/fast retrieval.
+            for key, items in index.items():
+                items.sort(key=lambda t: (t[0], t[1]))
+
+            self._context_index = index
+            return index
 
     def _get_active_packs(self, config: Dict[str, Any]) -> List[str]:
         """Get active packs from config."""
@@ -178,10 +249,12 @@ class RulesEngine:
         Returns:
             List of composed rule dicts that should be displayed
         """
-        return [
-            rule for rule in self._rules_map.values()
-            if self._rule_matches_command(rule, command, timing)
-        ]
+        matched: List[Dict[str, Any]] = []
+        for rid, rule in self._rules_map.items():
+            if self._rule_matches_command(rule, command, timing):
+                self._ensure_rule_body(rid)
+                matched.append(rule)
+        return matched
 
     def _rule_matches_command(self, rule: Dict[str, Any], command: str, timing: str) -> bool:
         """Check if rule should be shown for command at given timing."""
@@ -220,15 +293,20 @@ class RulesEngine:
         Returns:
             List of rule info dicts
         """
-        return [
-            {
-                "id": rid,
-                "title": self._rules_map[rid].get("title", rid),
-                "content": self._rules_map[rid].get("body", ""),
-                "blocking": self._rules_map[rid].get("blocking", False),
-            }
-            for rid in rule_ids if rid in self._rules_map
-        ]
+        out: List[Dict[str, Any]] = []
+        for rid in rule_ids:
+            if rid not in self._rules_map:
+                continue
+            self._ensure_rule_body(rid)
+            out.append(
+                {
+                    "id": rid,
+                    "title": self._rules_map[rid].get("title", rid),
+                    "content": self._rules_map[rid].get("body", ""),
+                    "blocking": self._rules_map[rid].get("blocking", False),
+                }
+            )
+        return out
 
     # ------------------------------------------------------------------
     # Context-aware rule selection (Phase 1B)
@@ -298,13 +376,17 @@ class RulesEngine:
             return []
 
         # Normalise changed_files to repo-relative strings when possible.
-        rel_paths: List[str] = []
-        if changed_files:
-            # Use provided files
+        # IMPORTANT:
+        # - `changed_files=None` means "auto-detect when needed".
+        # - An explicit empty list means "no changed files" (do NOT auto-detect).
+        rel_paths: Optional[List[str]] = [] if changed_files is not None else None
+        if changed_files is not None:
+            # Use provided files (possibly empty)
             try:
                 root = PathResolver.resolve_project_root()
             except EdisonPathError:
                 root = None
+            rel_paths = []
             for p in changed_files:
                 path = Path(p)
                 try:
@@ -315,66 +397,46 @@ class RulesEngine:
                 except Exception:
                     pass
                 rel_paths.append(str(path).replace("\\", "/"))
-        else:
-            # Use FileContextService for automatic detection
-            rel_paths = self._get_changed_files()
 
         task_state_norm = (task_state or "").strip().lower() or None
         op_norm = (operation or "").strip() or None
 
         candidates: List[Tuple[int, str, Rule]] = []
 
-        for rule in self._iter_all_rules():
-            cfg = rule.config or {}
-            ctx_entries = cfg.get("contexts") or []
-            if not isinstance(ctx_entries, list):
-                continue
+        # Fast path: only scan candidates registered for this context type.
+        index = self._get_context_index()
+        bucket = index.get(ctx, [])
 
-            matched = False
-            for entry in ctx_entries:
-                if not isinstance(entry, dict):
+        for priority, rule_id, rule, entry in bucket:
+            # Optional state filter
+            states = entry.get("states")
+            if task_state_norm and isinstance(states, list):
+                states_norm = {str(s).strip().lower() for s in states}
+                if task_state_norm not in states_norm:
                     continue
 
-                entry_type = str(entry.get("type") or "").strip().lower()
-                if entry_type != ctx:
+            # Optional operation filter
+            ops = entry.get("operations")
+            if op_norm and isinstance(ops, list) and ops:
+                ops_norm = {str(o).strip() for o in ops}
+                if op_norm not in ops_norm:
                     continue
 
-                # Optional state filter
-                states = entry.get("states")
-                if task_state_norm and isinstance(states, list):
-                    states_norm = {str(s).strip().lower() for s in states}
-                    if task_state_norm not in states_norm:
-                        continue
+            # Optional file pattern filter - use unified patterns
+            patterns = entry.get("filePatterns") or []
+            if patterns:
+                if rel_paths is None:
+                    # Auto-detect only if we actually need it (patterns present).
+                    rel_paths = self._get_changed_files()
+                if not rel_paths:
+                    # Patterns configured but no changed files provided:
+                    # treat as non-match rather than assume global applicability.
+                    continue
+                pat_list = [str(pat) for pat in patterns]
+                if not any(matches_any_pattern(path, pat_list) for path in rel_paths):
+                    continue
 
-                # Optional operation filter
-                ops = entry.get("operations")
-                if op_norm and isinstance(ops, list) and ops:
-                    ops_norm = {str(o).strip() for o in ops}
-                    if op_norm not in ops_norm:
-                        continue
-
-                # Optional file pattern filter - use unified patterns
-                patterns = entry.get("filePatterns") or []
-                if patterns:
-                    if not rel_paths:
-                        # Patterns configured but no changed files provided:
-                        # treat as non-match rather than assume global applicability.
-                        continue
-                    pat_list = [str(pat) for pat in patterns]
-                    if not any(
-                        matches_any_pattern(path, pat_list)
-                        for path in rel_paths
-                    ):
-                        continue
-
-                priority = int(entry.get("priority") or cfg.get("priority") or 100)
-                candidates.append((priority, rule.id, rule))
-                matched = True
-                break  # One matching context entry is enough
-
-            # No matching context entry → skip; guidance fallback handled below.
-            if matched:
-                continue
+            candidates.append((priority, rule_id, rule))
 
         # Fallback: for guidance contexts with no explicit metadata, surface
         # non-blocking project-wide rules as low-priority hints.

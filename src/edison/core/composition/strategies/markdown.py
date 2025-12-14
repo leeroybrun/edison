@@ -16,6 +16,7 @@ from typing import List, Set, Tuple
 
 from ..core.sections import SectionMode, SectionParser, SectionRegistry
 from .base import CompositionContext, CompositionStrategy, LayerContent
+from edison.core.utils.profiling import span
 
 
 class MarkdownCompositionStrategy(CompositionStrategy):
@@ -79,25 +80,29 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         Returns:
             Composed markdown content
         """
-        if not layers:
-            return ""
+        with span("markdown.compose", layers=len(layers), sections=self.enable_sections, dedupe=self.enable_dedupe):
+            if not layers:
+                return ""
 
-        # Step 1-3: Section-based composition or concatenation
-        if self.enable_sections:
-            result = self._compose_sections(layers, context)
-        else:
-            # Simple concatenation when sections disabled
-            result = self._concatenate_layers(layers)
+            # Step 1-3: Section-based composition or concatenation
+            if self.enable_sections:
+                with span("markdown.compose.sections"):
+                    result = self._compose_sections(layers, context)
+            else:
+                with span("markdown.compose.concat"):
+                    result = self._concatenate_layers(layers)
 
-        # Step 4: DRY deduplication AFTER composition
-        if self.enable_dedupe:
-            result = self._dedupe_result(result)
+            # Step 4: DRY deduplication AFTER composition
+            if self.enable_dedupe:
+                with span("markdown.compose.dedupe"):
+                    result = self._dedupe_result(result)
 
-        # Step 5: Template processing
-        if self.enable_template_processing:
-            result = self._process_templates(result, context)
+            # Step 5: Template processing
+            if self.enable_template_processing:
+                with span("markdown.compose.templates"):
+                    result = self._process_templates(result, context)
 
-        return result
+            return result
 
     def _compose_sections(
         self,
@@ -281,6 +286,8 @@ class MarkdownCompositionStrategy(CompositionStrategy):
             packs=context.active_packs,
             project_root=context.project_root,
             source_dir=context.source_dir,
+            include_provider=context.include_provider,
+            strip_section_markers=context.strip_section_markers,
         )
 
         # Pass context_vars from CompositionContext to TemplateEngine

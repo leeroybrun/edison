@@ -1,7 +1,7 @@
 """Condition registry for state machine transitions.
 
 Conditions are boolean predicates that check prerequisites for transitions.
-Conditions are loaded dynamically from data/conditions/ via the handler loader.
+Conditions are loaded dynamically via the handler loader (builtin + pack + project layers).
 
 Conditions support OR logic for alternative conditions in workflow.yaml:
 ```yaml
@@ -21,8 +21,8 @@ from .handlers.registries import ConditionRegistryBase, DomainRegistry
 class ConditionRegistry(ConditionRegistryBase):
     """Registry of condition predicates.
     
-    Conditions are loaded from data/conditions/ with layered composition:
-    - Core: data/conditions/
+    Conditions are loaded with layered composition:
+    - Core (builtin): core/state/builtin/conditions/
     - Bundled packs: data/packs/<pack>/conditions/
     - Project packs: .edison/packs/<pack>/conditions/
     - Project: .edison/conditions/
@@ -69,8 +69,18 @@ class ConditionRegistry(ConditionRegistryBase):
         self.register(name, condition_fn, domain)
 
     def register_defaults(self) -> None:
-        """No-op: conditions are loaded dynamically via handler loader."""
-        pass
+        """Register builtin conditions.
+
+        See GuardRegistry.register_defaults for rationale: `reset()` must restore
+        builtin handlers to keep test runs deterministic and to avoid cross-test
+        contamination.
+        """
+        try:
+            from edison.core.state.loader import load_conditions
+
+            load_conditions(project_root=None, active_packs=[])
+        except Exception:
+            pass
 
     def check(
         self, 

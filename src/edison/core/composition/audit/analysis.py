@@ -52,33 +52,27 @@ def duplication_matrix(
     """Return list of highly similar guideline pairs using config-driven settings.
 
     Similarity metric: Jaccard index between file‑level shingle sets.
-    k (shingle size) and min_similarity default to composition.dryDetection config.
+    k (shingle size) and min_similarity default to composition.defaults.dedupe config.
     Only pairs with similarity >= min_similarity are returned.
     """
     recs = list(records)
 
     if k is None or min_similarity is None:
+        # Single source of truth: CompositionConfig (composition.yaml).
         import os
-        from ...config import ConfigManager
+        from edison.core.config.domains.composition import CompositionConfig
 
-        # Respect AGENTS_PROJECT_ROOT for test isolation
         repo_root = None
         agents_root = os.environ.get("AGENTS_PROJECT_ROOT")
         if agents_root:
             repo_root = Path(agents_root)
 
-        cfg = ConfigManager(repo_root=repo_root).load_config(validate=False)
-        dry_config = cfg.get("composition", {}).get("dryDetection", {})
+        comp = CompositionConfig(repo_root=repo_root)
 
         if k is None:
-            if "shingleSize" not in dry_config:
-                raise KeyError("composition.dryDetection.shingleSize missing in configuration")
-            k = dry_config["shingleSize"]
-
+            k = int(comp.shingle_size)
         if min_similarity is None:
-            if "minSimilarity" not in dry_config:
-                raise KeyError("composition.dryDetection.minSimilarity missing in configuration")
-            min_similarity = dry_config["minSimilarity"]
+            min_similarity = float(comp.threshold)
 
     index = build_shingle_index(recs, k=k)
     pairs: List[Dict[str, Any]] = []

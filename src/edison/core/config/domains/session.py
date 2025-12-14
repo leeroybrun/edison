@@ -30,27 +30,28 @@ class SessionConfig(BaseDomainConfig):
 
     @cached_property
     def _state_config(self) -> Dict[str, Any]:
-        """Get the statemachine configuration section."""
-        return self._config.get("statemachine", {}) or {}
+        """Get the state machine configuration.
+
+        Canonical source of truth is `workflow.statemachine` (WorkflowConfig),
+        not a top-level `statemachine` section.
+        """
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        wf = WorkflowConfig(repo_root=self.repo_root)
+        return dict(wf._statemachine)
 
     # --- State Machine ---
     def get_states(self, entity: str) -> List[str]:
-        """Get list of valid states for an entity (e.g., 'task', 'qa')."""
-        entity_config = self._state_config.get(entity, {})
-        states = entity_config.get("states", {})
-        if isinstance(states, dict):
-            return list(states.keys())
-        return list(states or [])
+        """Get list of valid states for an entity (e.g., 'task', 'qa', 'session')."""
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        return WorkflowConfig(repo_root=self.repo_root).get_states(entity)
 
     def get_transitions(self, entity: str) -> Dict[str, List[str]]:
         """Get transition map for an entity."""
-        from edison.core.state import _flatten_transitions
+        from edison.core.config.domains.workflow import WorkflowConfig
 
-        entity_config = self._state_config.get(entity, {})
-        states = entity_config.get("states", {})
-        if isinstance(states, dict):
-            return _flatten_transitions(states)
-        return entity_config.get("transitions", {})
+        return WorkflowConfig(repo_root=self.repo_root).get_transitions(entity)
 
     def validate_transition(self, entity: str, current_state: str, next_state: str) -> bool:
         """Check if a transition is valid."""
@@ -62,17 +63,12 @@ class SessionConfig(BaseDomainConfig):
 
     def get_initial_state(self, entity: str) -> str:
         """Return the initial state for an entity (default: active)."""
-        entity_config = self._state_config.get(entity, {})
-        states = entity_config.get("states", {})
-        if isinstance(states, list):
-            # Simple list of strings
-            return states[0] if states else "active"
-        elif isinstance(states, dict):
-            # Rich object format
-            for name, info in states.items():
-                if isinstance(info, dict) and info.get("initial"):
-                    return name
-        return "active"  # Default initial state if not specified
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        try:
+            return WorkflowConfig(repo_root=self.repo_root).get_initial_state(entity)
+        except Exception:
+            return "active"
 
     def is_final_state(self, entity: str, state: str) -> bool:
         """Check if a state is final for an entity."""
@@ -167,13 +163,13 @@ class SessionConfig(BaseDomainConfig):
         defaults = self.section.get("defaults", {})
         if isinstance(defaults, dict) and defaults.get("initialState"):
             return str(defaults["initialState"])
-        # 2) statemachine session state marker
-        sm_session = self._state_config.get("session", {})
-        sm_states = sm_session.get("states", {})
-        if isinstance(sm_states, dict):
-            for name, info in sm_states.items():
-                if isinstance(info, dict) and info.get("initial"):
-                    return str(name)
+        # 2) statemachine session state marker (canonical: workflow.statemachine)
+        try:
+            from edison.core.config.domains.workflow import WorkflowConfig
+
+            return WorkflowConfig(repo_root=self.repo_root).get_initial_state("session")
+        except Exception:
+            pass
         # 3) first configured session state if present
         sess_states = self.get_session_states()
         if sess_states:

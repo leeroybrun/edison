@@ -13,6 +13,7 @@ from typing import Callable, Optional, Set
 
 from .base import ContentTransformer, TransformContext
 from ..core.sections import SectionParser
+from edison.core.utils.profiling import span
 
 
 class IncludeResolver(ContentTransformer):
@@ -109,26 +110,52 @@ class IncludeResolver(ContentTransformer):
         if path in seen:
             return f"<!-- ERROR: Circular include detected: {path} -->"
 
+        # Cache: repeated includes are common across composed entities.
+        cached = context.include_cache.get(path)
+        if cached is not None:
+            context.record_include(path)
+            return cached
+
+        # Prefer the configured include provider (composed/layered include resolution)
+        if context.include_provider is not None:
+            provided = context.include_provider(path)
+            if provided is not None:
+                context.record_include(path)
+                # Recursively resolve includes inside the provided content
+                new_seen = seen | {path}
+                resolved = self._resolve_includes(provided, context, depth + 1, new_seen)
+                context.include_cache[path] = resolved
+                return resolved
+
         # Resolve path
-        full_path = self._resolve_path(path, context)
+        with span("template.include.resolve_path", path=path):
+            full_path = self._resolve_path(path, context)
 
         if full_path is None or not full_path.exists():
             if required:
-                return f"<!-- ERROR: Include not found: {path} -->"
+                value = f"<!-- ERROR: Include not found: {path} -->"
+                context.include_cache[path] = value
+                return value
             return ""
 
         # Read and recursively process
         try:
-            included_content = full_path.read_text(encoding="utf-8")
+            with span("template.include.read", path=path):
+                included_content = full_path.read_text(encoding="utf-8")
             context.record_include(path)
 
             # Recursively resolve includes in included content
             new_seen = seen | {path}
-            return self._resolve_includes(included_content, context, depth + 1, new_seen)
+            with span("template.include.expand", path=path):
+                resolved = self._resolve_includes(included_content, context, depth + 1, new_seen)
+            context.include_cache[path] = resolved
+            return resolved
 
         except Exception as e:
             if required:
-                return f"<!-- ERROR: Failed to include {path}: {e} -->"
+                value = f"<!-- ERROR: Failed to include {path}: {e} -->"
+                context.include_cache[path] = value
+                return value
             return ""
 
     def _resolve_path(self, path: str, context: TransformContext) -> Optional[Path]:
@@ -208,20 +235,46 @@ class SectionExtractor(ContentTransformer):
         Returns:
             Section content or error marker
         """
+        cache_key = f"{file_path}#{section_name}"
+        cached = context.section_cache.get(cache_key)
+        if cached is not None:
+            context.record_section_extract(file_path, section_name)
+            return cached
+
+        # Prefer the configured include provider (composed/layered include resolution)
+        if context.include_provider is not None:
+            provided = context.include_provider(file_path)
+            if provided is not None:
+                try:
+                    section_content = self.parser.extract_section(provided, section_name)
+                    if section_content is None:
+                        return f"<!-- ERROR: Section '{section_name}' not found in {file_path} -->"
+                    context.record_section_extract(file_path, section_name)
+                    context.section_cache[cache_key] = section_content
+                    return section_content
+                except Exception as e:
+                    return (
+                        f"<!-- ERROR: Failed to extract section {section_name} from {file_path}: {e} -->"
+                    )
+
         # Resolve file path
-        full_path = self._resolve_path(file_path, context)
+        with span("template.section.resolve_path", path=file_path, section=section_name):
+            full_path = self._resolve_path(file_path, context)
 
         if full_path is None or not full_path.exists():
             return f"<!-- ERROR: File not found for section extract: {file_path} -->"
 
         try:
-            file_content = full_path.read_text(encoding="utf-8")
-            section_content = self.parser.extract_section(file_content, section_name)
+            with span("template.section.read", path=file_path, section=section_name):
+                file_content = full_path.read_text(encoding="utf-8")
+            with span("template.section.parse", path=file_path, section=section_name):
+                section_content = self.parser.extract_section(file_content, section_name)
 
             if section_content is None:
                 return f"<!-- ERROR: Section '{section_name}' not found in {file_path} -->"
 
             context.record_section_extract(file_path, section_name)
+            context.section_cache[cache_key] = section_content
             return section_content
 
         except Exception as e:

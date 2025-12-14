@@ -54,8 +54,8 @@ class ZenComposerMixin:
         guideline_names = self.get_applicable_guidelines(role)
         guideline_sections: List[str] = []
         for name in guideline_names:
-            result = self.guideline_registry.compose(name, packs, project_overrides=True)
-            guideline_sections.append(f"## Guideline: {name}\n\n{result.text.strip()}")
+            text = self.guideline_registry.compose(name, packs) or ""
+            guideline_sections.append(f"## Guideline: {name}\n\n{text.strip()}")
         guidelines_block = "\n\n".join(guideline_sections)
 
         rules = self.get_applicable_rules(role)

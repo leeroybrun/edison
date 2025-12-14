@@ -21,7 +21,9 @@ from dataclasses import dataclass, field
 
 from edison.core.composition.context import get_config_value
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
+
+from edison.core.utils.profiling import span
 
 if TYPE_CHECKING:
     from edison.core.config import ConfigManager
@@ -46,6 +48,11 @@ class TransformContext:
     # Paths
     project_root: Optional[Path] = None
     source_dir: Optional[Path] = None  # Directory to resolve includes from
+    # Optional provider for resolved include file content. When present,
+    # include transformers should prefer this over filesystem access.
+    include_provider: Optional[Callable[[str], Optional[str]]] = None
+    # Control whether section markers are stripped in the final validation step.
+    strip_section_markers: bool = True
 
     # Runtime context variables (str for simple substitution, list/dict for loops)
     context_vars: Dict[str, Any] = field(default_factory=dict)
@@ -56,6 +63,10 @@ class TransformContext:
     variables_substituted: Set[str] = field(default_factory=set)
     variables_missing: Set[str] = field(default_factory=set)
     conditionals_evaluated: int = 0
+
+    # Hot-path caches (per-entity) to avoid repeated IO + parsing during template processing.
+    include_cache: Dict[str, str] = field(default_factory=dict)
+    section_cache: Dict[str, str] = field(default_factory=dict)
 
     def get_config(self, path: str) -> Any:
         """Get config value by dot-separated path.
@@ -153,7 +164,8 @@ class TransformerPipeline:
         """
         result = content
         for transformer in self.transformers:
-            result = transformer.transform(result, context)
+            with span("template.transform", transformer=transformer.get_name()):
+                result = transformer.transform(result, context)
         return result
 
     def add_transformer(self, transformer: ContentTransformer) -> None:

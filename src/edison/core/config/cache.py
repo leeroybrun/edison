@@ -9,7 +9,8 @@ included in the cached configuration (include_packs=True).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+import os
 
 if TYPE_CHECKING:
     from .manager import ConfigManager
@@ -19,6 +20,21 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _config_cache: Dict[str, Dict[str, Any]] = {}
+_cache_clearers: Dict[str, Callable[[], None]] = {}
+
+
+def _normalize_repo_root(repo_root: Optional[Path]) -> Path:
+    """Resolve repo_root to a canonical absolute Path.
+
+    For `repo_root=None`, this resolves the current project root via PathResolver
+    so the cache key is project-specific (not a single global "__default__").
+    """
+    if repo_root is None:
+        from edison.core.utils.paths import PathResolver
+
+        return PathResolver.resolve_project_root()
+
+    return repo_root.expanduser().resolve()
 
 
 def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
@@ -31,7 +47,7 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
     Returns:
         Cache key string
     """
-    base = str(repo_root) if repo_root else "__default__"
+    base = str(_normalize_repo_root(repo_root))
     suffix = ":packs" if include_packs else ":no_packs"
     return base + suffix
 
@@ -54,28 +70,77 @@ def get_cached_config(
     Returns:
         Configuration dictionary (cached).
     """
-    key = _cache_key(repo_root, include_packs)
+    normalized_root = _normalize_repo_root(repo_root)
+    key = str(normalized_root) + (":packs" if include_packs else ":no_packs")
 
-    if key not in _config_cache:
-        # Lazy import to avoid circular dependency
-        from .manager import ConfigManager
+    # Lazy import to avoid circular dependency
+    from .manager import ConfigManager
+    from edison.core.utils.profiling import span
 
-        manager = ConfigManager(repo_root=repo_root)
-        _config_cache[key] = manager.load_config(
-            validate=validate, include_packs=include_packs
-        )
+    pack_label = "packs" if include_packs else "no_packs"
+    with span("config.cache.get", include_packs=include_packs, validate=validate):
+        # Extra span for profiling clarity (separates packs vs no_packs in summary).
+        with span(f"config.cache.get.{pack_label}"):
+            if key not in _config_cache:
+                with span("config.cache.miss", include_packs=include_packs):
+                    with span(f"config.cache.miss.{pack_label}"):
+                        if not include_packs and os.environ.get("EDISON_PROFILE_CALLERS"):
+                            # Debug aid: identify who is forcing a no-packs config load.
+                            # Printed to stderr so it doesn't pollute command output.
+                            import inspect
+                            import sys
 
-    return _config_cache[key]
+                            frame = None
+                            for f in inspect.stack()[1:10]:
+                                # Skip frames from this module + config manager/cache internals
+                                if (
+                                    "/core/config/cache.py" in f.filename
+                                    or "/core/config/manager.py" in f.filename
+                                    or "/core/config/base.py" in f.filename
+                                ):
+                                    continue
+                                frame = f
+                                break
+                            if frame is not None:
+                                print(
+                                    f"[edison][profile] config cache miss (no_packs) caller: {frame.filename}:{frame.lineno} in {frame.function}",
+                                    file=sys.stderr,
+                                )
+
+                        manager = ConfigManager(repo_root=normalized_root)
+                        # IMPORTANT: call the uncached loader to avoid recursion
+                        _config_cache[key] = manager._load_config_uncached(  # type: ignore[attr-defined]
+                            validate=validate, include_packs=include_packs
+                        )
+            else:
+                with span("config.cache.hit", include_packs=include_packs):
+                    with span(f"config.cache.hit.{pack_label}"):
+                        pass
+
+            # NOTE: returns the cached dict instance (treat as immutable)
+            return _config_cache[key]
 
 
 def clear_all_caches() -> None:
     """Clear all configuration caches atomically.
 
     Call this when configuration files have changed and need to be reloaded.
-    All domain configs now use the centralized cache, so clearing _config_cache
-    is sufficient.
+    This clears:
+    - The centralized config dict cache in this module
+    - Any registered higher-level config singletons that cache derived objects
     """
     _config_cache.clear()
+    for name, clearer in list(_cache_clearers.items()):
+        clearer()
+
+
+def register_cache_clearer(name: str, clearer: Callable[[], None]) -> None:
+    """Register an additional cache clearer to run inside `clear_all_caches()`.
+
+    Use this to keep higher-level singletons (e.g., domain config objects) coherent
+    with the centralized config dict cache.
+    """
+    _cache_clearers[name] = clearer
 
 
 def is_cached(repo_root: Optional[Path] = None, include_packs: bool = True) -> bool:
@@ -94,6 +159,7 @@ def is_cached(repo_root: Optional[Path] = None, include_packs: bool = True) -> b
 __all__ = [
     "get_cached_config",
     "clear_all_caches",
+    "register_cache_clearer",
     "is_cached",
 ]
 

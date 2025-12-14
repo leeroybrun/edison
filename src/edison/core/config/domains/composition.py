@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from ..base import BaseDomainConfig
 from edison.data import get_data_path
+from edison.core.utils.profiling import span
 
 
 @dataclass
@@ -43,6 +44,9 @@ class ContentTypeConfig:
     output_path: str
     filename_pattern: str
     cli_flag: str
+    # Paths are relative to the content-type root (e.g., guidelines/).
+    # Used to exclude include-only or private content from being composed.
+    exclude_globs: List[str] = field(default_factory=list)
     output_mapping: Dict[str, str] = field(default_factory=dict)
     known_sections: List[SectionSchema] = field(default_factory=list)
     
@@ -118,13 +122,11 @@ class CompositionConfig(BaseDomainConfig):
         if self._cached_composition_yaml is not None:
             return self._cached_composition_yaml
 
-        # Use ConfigManager's unified pack-aware loading
-        from ..manager import ConfigManager
-        mgr = ConfigManager(self._repo_root)
-        full_config = mgr.load_config(validate=False, include_packs=True)
-
-        # Extract composition section (all config is under `composition:` key)
-        self._cached_composition_yaml = full_config.get("composition", {})
+        with span("composition.config.load"):
+            # BaseDomainConfig already loaded the full merged config via the centralized cache.
+            # Reuse it to avoid repeated disk IO during composition.
+            full_config = self._config
+            self._cached_composition_yaml = full_config.get("composition", {})
 
         return self._cached_composition_yaml
     
@@ -175,11 +177,19 @@ class CompositionConfig(BaseDomainConfig):
             # Parse known_sections if present
             known_sections: List[SectionSchema] = []
             for section_data in cfg.get("known_sections", []):
-                known_sections.append(SectionSchema(
-                    name=section_data.get("name", ""),
-                    mode=section_data.get("mode", "append"),
-                    description=section_data.get("description", ""),
-                ))
+                # Support shorthand list form:
+                #   known_sections: [intro, usage]
+                if isinstance(section_data, str):
+                    known_sections.append(SectionSchema(name=section_data, mode="append", description=""))
+                    continue
+                if isinstance(section_data, dict):
+                    known_sections.append(
+                        SectionSchema(
+                            name=section_data.get("name", ""),
+                            mode=section_data.get("mode", "append"),
+                            description=section_data.get("description", ""),
+                        )
+                    )
             
             result[name] = ContentTypeConfig(
                 name=name,
@@ -190,6 +200,7 @@ class CompositionConfig(BaseDomainConfig):
                 registry=cfg.get("registry"),
                 content_path=cfg.get("content_path", name),
                 file_pattern=cfg.get("file_pattern", "*.md"),
+                exclude_globs=cfg.get("exclude_globs", []) or [],
                 output_path=cfg.get("output_path", ""),
                 filename_pattern=cfg.get("filename_pattern", "{name}.md"),
                 cli_flag=cfg.get("cli_flag", name.replace("_", "-")),

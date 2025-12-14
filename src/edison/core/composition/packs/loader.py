@@ -8,7 +8,6 @@ from typing import Any, Dict, List
 from edison.core.utils.io import read_yaml
 from edison.data import read_yaml as read_bundled_yaml
 from edison.core.utils.paths import get_project_config_dir
-from ..includes import _repo_root
 
 
 @dataclass

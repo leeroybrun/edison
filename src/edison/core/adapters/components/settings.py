@@ -63,7 +63,10 @@ class SettingsComposer(AdapterComponent):
         from edison.core.config import ConfigManager
 
         cfg_mgr = ConfigManager(repo_root=self.project_root)
-        full_config = cfg_mgr.load_config(validate=False, include_packs=False)
+        from edison.core.utils.profiling import span
+
+        with span("settings.load_core_settings"):
+            full_config = cfg_mgr.load_config(validate=False, include_packs=False)
         settings_section = full_config.get("settings", {}) or {}
         return settings_section.get("claude", {}) if isinstance(settings_section, dict) else {}
 

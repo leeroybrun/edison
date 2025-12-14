@@ -77,6 +77,7 @@ class ZenAdapter(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin, PlatformAdap
             )
 
         # Initialize registries
+        from edison.core.composition.registries.generic import GenericRegistry
         self.guideline_registry = GenericRegistry("guidelines", project_root=self.project_root)
         self.rules_registry = RulesRegistry(project_root=self.project_root)
 

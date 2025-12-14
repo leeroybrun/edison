@@ -10,12 +10,6 @@ import argparse
 import sys
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type
-from edison.cli._choices import get_state_choices, get_semantic_state
-from edison.core.task import TaskQAWorkflow, normalize_record_id
-from edison.core.session import lifecycle as session_manager
-from edison.core.session import validate_session_id
-from edison.core.config.domains.project import ProjectConfig
-from edison.core.config.domains.workflow import WorkflowConfig
 
 SUMMARY = "Claim task or QA into a session with guarded status updates"
 
@@ -41,9 +35,9 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--status",
-        default=get_semantic_state("task", "wip"),
-        choices=get_state_choices("task"),
-        help="Target status after claim (default: wip)",
+        type=str,
+        default=None,
+        help="Target status after claim (default: semantic wip). Validated against config at runtime.",
     )
     parser.add_argument(
         "--reclaim",
@@ -68,6 +62,16 @@ def main(args: argparse.Namespace) -> int:
         # Resolve project root
         project_root = get_repo_root(args)
 
+        # Lazy imports to keep CLI startup fast.
+        from edison.core.task import TaskQAWorkflow, normalize_record_id
+        from edison.core.session import lifecycle as session_manager
+        from edison.core.session import validate_session_id
+        from edison.core.config.domains.project import ProjectConfig
+        from edison.core.config.domains.workflow import WorkflowConfig
+        from edison.core.state.transitions import transition_entity, EntityTransitionError
+        from edison.core.entity import PersistenceError, StateHistoryEntry
+        from edison.core.qa.workflow.repository import QARepository
+
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
 
@@ -91,9 +95,44 @@ def main(args: argparse.Namespace) -> int:
         # Use TaskQAWorkflow for claiming (handles state transition and persistence)
         workflow = TaskQAWorkflow(project_root=project_root)
 
+        workflow_cfg = WorkflowConfig(repo_root=project_root)
+        domain = "qa" if record_type == "qa" else "task"
+        default_state = workflow_cfg.get_semantic_state(domain, "wip")
+        target_state = str(args.status).strip() if args.status else default_state
+
+        valid_states = workflow_cfg.get_states(domain)
+        if target_state not in valid_states:
+            raise ValueError(
+                f"Invalid status for {domain}: {target_state}. Valid values: {', '.join(valid_states)}"
+            )
+
         if record_type == "task":
             # Claim task using entity-based workflow
             task_entity = workflow.claim_task(record_id, session_id)
+
+            # Optional post-claim transition to requested state
+            if target_state != task_entity.state:
+                if not args.force:
+                    try:
+                        transition_entity(
+                            entity_type="task",
+                            entity_id=record_id,
+                            to_state=target_state,
+                            current_state=task_entity.state,
+                            context={
+                                "task": task_entity.to_dict() if hasattr(task_entity, "to_dict") else {"id": record_id},
+                                "session": {"id": session_id},
+                                "session_id": session_id,
+                            },
+                            repo_root=project_root,
+                        )
+                    except EntityTransitionError as e:
+                        raise PersistenceError(f"Transition blocked: {e}") from e
+
+                old_state = task_entity.state
+                task_entity.state = target_state
+                task_entity.record_transition(old_state, target_state, reason="cli-claim-command")
+                workflow.task_repo.save(task_entity)
 
             formatter.json_output({
                 "status": "claimed",
@@ -109,18 +148,13 @@ def main(args: argparse.Namespace) -> int:
                 f"Status: {task_entity.state}"
             )
         else:
-            # QA claim - use QA repository with proper transition validation
-            from edison.core.qa.workflow.repository import QARepository
-            from edison.core.state.transitions import transition_entity, EntityTransitionError
-            from edison.core.entity import StateHistoryEntry
-
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)
             if not qa:
                 raise ValueError(f"QA record not found: {record_id}")
 
             # Use transition_entity to validate guards and execute actions
-            wip_state = WorkflowConfig().get_semantic_state("qa", "wip")
+            wip_state = workflow_cfg.get_semantic_state("qa", "wip")
             old_state = qa.state
             
             try:
@@ -134,6 +168,7 @@ def main(args: argparse.Namespace) -> int:
                         "session": {"id": session_id},
                         "session_id": session_id,
                     },
+                    repo_root=project_root,
                 )
                 
                 # Update QA with transition result
@@ -146,6 +181,32 @@ def main(args: argparse.Namespace) -> int:
                 
             except EntityTransitionError as e:
                 raise ValueError(f"Cannot claim QA: {e}")
+
+            # Optional post-claim transition to requested state
+            if target_state != qa.state:
+                if not args.force:
+                    try:
+                        result2 = transition_entity(
+                            entity_type="qa",
+                            entity_id=record_id,
+                            to_state=target_state,
+                            current_state=qa.state,
+                            context={
+                                "qa": qa.to_dict() if hasattr(qa, "to_dict") else {"id": qa.id},
+                                "session": {"id": session_id},
+                                "session_id": session_id,
+                            },
+                            repo_root=project_root,
+                        )
+                        if "history_entry" in result2:
+                            qa.state_history.append(StateHistoryEntry.from_dict(result2["history_entry"]))
+                    except EntityTransitionError as e:
+                        raise PersistenceError(f"Transition blocked: {e}") from e
+
+                old_state2 = qa.state
+                qa.state = target_state
+                qa.record_transition(old_state2, target_state, reason="cli-claim-command")
+                qa_repo.save(qa)
 
             formatter.json_output({
                 "status": "claimed",

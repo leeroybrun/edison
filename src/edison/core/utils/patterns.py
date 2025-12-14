@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Optional
 
 
@@ -137,20 +138,88 @@ def _matches_pattern(file_path: str, pattern: str) -> bool:
     Returns:
         True if file matches pattern
     """
-    # Direct match
-    if fnmatch.fnmatch(file_path, pattern):
-        return True
+    file_posix = str(PurePosixPath(file_path))
+    pattern_posix = str(PurePosixPath(pattern))
 
-    # Try with leading ** if pattern doesn't have it
-    # This handles patterns like "*.tsx" matching "src/components/Button.tsx"
-    if not pattern.startswith("**") and not pattern.startswith("/"):
-        if fnmatch.fnmatch(file_path, f"**/{pattern}"):
+    # Expand simple brace patterns like "*.{ts,tsx}".
+    expanded = _expand_braces(pattern_posix)
+
+    for pat in expanded:
+        # Strip leading slash (treat as repo-root relative)
+        if pat.startswith("/"):
+            pat = pat[1:]
+
+        # 1) Glob-style match with '**' support.
+        # pathlib's '**' semantics differ slightly from typical bash globstar for patterns like
+        # "apps/api/**/*" (it may not match direct children). We generate a small set of
+        # compatible variants (e.g., also try "apps/api/*").
+        for glob_pat in _expand_globstar_variants(pat):
+            try:
+                if PurePosixPath(file_posix).match(glob_pat):
+                    return True
+            except Exception:
+                pass
+
+        # 2) If pattern is a bare filename glob, also try matching anywhere in the path.
+        if "/" not in pat and not pat.startswith("**"):
+            try:
+                if PurePosixPath(file_posix).match(f"**/{pat}"):
+                    return True
+            except Exception:
+                pass
+
+        # 3) Final fallback: fnmatch (keeps legacy semantics in edge cases).
+        if fnmatch.fnmatch(file_posix, pat):
             return True
-        # Try just matching the filename
-        if fnmatch.fnmatch(Path(file_path).name, pattern):
+        if fnmatch.fnmatch(Path(file_posix).name, pat):
             return True
 
     return False
+
+
+def _expand_braces(pattern: str) -> list[str]:
+    """Expand a single-level brace group like 'foo.{a,b}' into ['foo.a', 'foo.b'].
+
+    Supports multiple brace groups via recursion.
+    If no braces are present, returns [pattern].
+    """
+    start = pattern.find("{")
+    if start == -1:
+        return [pattern]
+    end = pattern.find("}", start + 1)
+    if end == -1:
+        return [pattern]
+
+    before = pattern[:start]
+    inside = pattern[start + 1 : end]
+    after = pattern[end + 1 :]
+
+    # Empty or non-comma group → no expansion
+    parts = [p.strip() for p in inside.split(",") if p.strip()]
+    if len(parts) <= 1:
+        return [pattern]
+
+    out: list[str] = []
+    for part in parts:
+        out.extend(_expand_braces(f"{before}{part}{after}"))
+    return out
+
+
+def _expand_globstar_variants(pattern: str) -> list[str]:
+    """Return globstar-compatible variants for patterns containing '/**/'.
+
+    pathlib.Path.match can treat '**' as requiring at least one component when used as '/**/'.
+    In Edison configs we commonly use patterns like 'apps/api/**/*' which are intended to match
+    both direct and nested children. To preserve that intent, we also try a variant with '/**/'
+    collapsed to '/' (e.g. 'apps/api/*').
+    """
+    if "/**/" not in pattern:
+        return [pattern]
+    # Collapse all occurrences; this is sufficient for our config style (one globstar segment).
+    collapsed = pattern.replace("/**/", "/")
+    if collapsed == pattern:
+        return [pattern]
+    return [pattern, collapsed]
 
 
 __all__ = [

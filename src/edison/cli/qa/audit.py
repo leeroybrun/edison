@@ -12,27 +12,79 @@ from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.composition import audit as guideline_audit
+from edison.core.utils.io import write_json_atomic
 
 SUMMARY = "Audit guidelines quality"
+AUDIT_TASK_ID = "fix-9-guidelines-audit"
 
 
-def _get_cli_threshold_default() -> float:
-    """Load CLI threshold default from CompositionConfig (NO HARDCODED VALUES principle).
-    
-    Uses CompositionConfig.threshold which accesses composition.defaults.dedupe.threshold.
+def _resolve_threshold(repo_root: Path) -> float:
+    """Resolve duplication threshold from config (NO HARDCODED VALUES).
+
+    Priority:
+    1) Project-aware CompositionConfig (core + packs + project)
+    2) Bundled config fallback (still config-driven)
     """
     try:
         from edison.core.config.domains.composition import CompositionConfig
-        return CompositionConfig().threshold
+
+        return float(CompositionConfig(repo_root=repo_root).threshold)
     except Exception:
-        # Fallback only if config loading fails entirely
-        return 0.37
+        from edison.core.utils.io import read_yaml
+        from edison.data import get_data_path
+
+        bundled = get_data_path("config", "composition.yaml")
+        data = read_yaml(Path(bundled), default={}, raise_on_error=True) or {}
+        composition = data.get("composition", {}) if isinstance(data, dict) else {}
+        defaults = composition.get("defaults", {}) if isinstance(composition, dict) else {}
+        dedupe = defaults.get("dedupe", {}) if isinstance(defaults, dict) else {}
+        threshold = dedupe.get("threshold")
+        if threshold is None:
+            raise ValueError("composition.defaults.dedupe.threshold is missing from bundled config")
+        return float(threshold)
+
+
+def _normalize_duplication_item(item: dict, repo_root: Path) -> tuple[str, str, float]:
+    """Normalize duplication matrix item into (path1, path2, similarity)."""
+    similarity = float(item.get("similarity", 0.0))
+
+    # New shape (preferred): {"a": {"path": "..."}, "b": {"path": "..."}}
+    if "a" in item and "b" in item:
+        a = item.get("a") or {}
+        b = item.get("b") or {}
+        if isinstance(a, dict) and isinstance(b, dict):
+            p1 = str(a.get("path") or "")
+            p2 = str(b.get("path") or "")
+            if not p1 or not p2:
+                raise KeyError("duplication item missing a.path or b.path")
+            return p1, p2, similarity
+
+    # Legacy shape (deprecated): {"path1": Path, "path2": Path}
+    if "path1" in item and "path2" in item:
+        p1 = item["path1"]
+        p2 = item["path2"]
+        path1 = str(p1.relative_to(repo_root) if hasattr(p1, "relative_to") else p1)
+        path2 = str(p2.relative_to(repo_root) if hasattr(p2, "relative_to") else p2)
+        return path1, path2, similarity
+
+    raise KeyError("Unrecognized duplication matrix item shape")
+
+
+def _default_threshold() -> float:
+    """Default threshold for CLI args (config-driven, no hardcoded values)."""
+    try:
+        from edison.core.utils.paths import PathResolver
+
+        return _resolve_threshold(PathResolver.resolve_project_root())
+    except Exception:
+        # Fall back to bundled config via _resolve_threshold's own fallback path.
+        from edison.data import get_data_path
+
+        return _resolve_threshold(Path(get_data_path("")).resolve())
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
-    threshold_default = _get_cli_threshold_default()
-
     parser.add_argument(
         "--path",
         type=str,
@@ -58,8 +110,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--threshold",
         type=float,
-        default=threshold_default,
-        help=f"Duplication threshold (0.0-1.0, default: {threshold_default})",
+        default=_default_threshold(),
+        help="Duplication threshold (0.0-1.0). Defaults to composition config.",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -72,6 +124,7 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
+        threshold = args.threshold if args.threshold is not None else _resolve_threshold(repo_root)
 
         # Force JSON format if --json flag is used
         output_format = "json" if formatter.json_mode else args.format
@@ -102,34 +155,28 @@ def main(args: argparse.Namespace) -> int:
         # Check duplication if requested
         if args.check_duplication or not (args.check_purity):
             # Default to duplication check if nothing specified
-            matrix = guideline_audit.duplication_matrix(guidelines, min_similarity=args.threshold)
+            matrix = guideline_audit.duplication_matrix(guidelines, min_similarity=threshold)
 
             results["duplication"] = {
                 "pairs_found": len(matrix),
-                "threshold": args.threshold,
+                "threshold": threshold,
             }
 
             if output_format == "matrix":
                 # Output detailed matrix (matrix items are dicts with 'path1', 'path2', 'similarity')
                 for item in sorted(matrix, key=lambda x: x.get("similarity", 0), reverse=True):
-                    path1 = item["path1"]
-                    path2 = item["path2"]
-                    score = item["similarity"]
-                    rel1 = path1.relative_to(repo_root) if path1.is_relative_to(repo_root) else path1
-                    rel2 = path2.relative_to(repo_root) if path2.is_relative_to(repo_root) else path2
-                    formatter.text(f"{score:.2f}\t{rel1}\t{rel2}")
+                    path1, path2, score = _normalize_duplication_item(item, repo_root)
+                    formatter.text(f"{score:.2f}\t{path1}\t{path2}")
                 return 0
 
             # Add high-duplication pairs to issues
             for item in matrix:
-                path1 = item["path1"]
-                path2 = item["path2"]
-                score = item["similarity"]
+                path1, path2, score = _normalize_duplication_item(item, repo_root)
                 results["issues"].append({
                     "type": "duplication",
                     "severity": "high" if score >= 0.5 else "medium",
                     "score": round(score, 3),
-                    "files": [str(path1), str(path2)],
+                    "files": [path1, path2],
                 })
 
         # Check purity if requested
@@ -151,16 +198,39 @@ def main(args: argparse.Namespace) -> int:
             }
 
             for violation in all_violations:
+                term = violation.get("term")
+                line = violation.get("line")
+                text = violation.get("text")
+                message_parts = []
+                if term:
+                    message_parts.append(f"term='{term}'")
+                if line:
+                    message_parts.append(f"line={line}")
+                if text:
+                    message_parts.append(f"text={text!r}")
+                message = "; ".join(message_parts)
                 results["issues"].append({
                     "type": "purity_violation",
                     "severity": "high",
                     "file": str(violation.get("path", "unknown")),
                     "category": violation.get("category", "unknown"),
-                    "terms": violation.get("terms", []),
-                    "message": violation.get("message", ""),
+                    "terms": [term] if term else [],
+                    "message": message,
                 })
 
         # Output results
+        # Persist evidence under QA validation-evidence for audit traceability.
+        # This is not a "task" per se, but we still store evidence in the canonical evidence root.
+        try:
+            from edison.core.qa._utils import get_evidence_base_path
+
+            evidence_root = get_evidence_base_path(repo_root) / AUDIT_TASK_ID
+            evidence_root.mkdir(parents=True, exist_ok=True)
+            write_json_atomic(evidence_root / "summary.json", results)
+        except Exception:
+            # Evidence writing must never block the audit output.
+            pass
+
         if output_format == "json":
             formatter.json_output(results)
         else:

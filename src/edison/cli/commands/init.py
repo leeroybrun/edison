@@ -255,13 +255,22 @@ def _print_next_steps(formatter: OutputFormatter, config_root: Path) -> None:
     formatter.text("\nNext steps:")
     formatter.text(f"  1. Review {config_root.name}/config/*.yml for your overrides")
     formatter.text("  2. Run 'edison compose all' to regenerate artifacts after changes")
-    formatter.text("  3. Start a session: edison session create <session-id>")
+    formatter.text("  3. Start a session: edison session create [--session-id <id>]")
 
 
 def main(args: argparse.Namespace) -> int:
     """Initialize Edison in the given project directory."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
     project_root = Path(args.project_path).expanduser().resolve()
+
+    # CI / subprocess safety: if stdin is not interactive, default to non-interactive
+    # mode unless the user explicitly requested otherwise.
+    if not getattr(args, "non_interactive", False):
+        try:
+            if not sys.stdin.isatty():
+                args.non_interactive = True
+        except Exception:
+            args.non_interactive = True
     
     # Check if already initialized
     config_root = get_project_config_dir(project_root, create=False)
@@ -289,6 +298,18 @@ def main(args: argparse.Namespace) -> int:
         config_root = _ensure_structure(project_root)
         _copy_mcp_scripts(config_root)
         formatter.text(f"✅ Created {config_root} structure")
+
+        # Fail closed: --mcp-script requires run-server.sh to exist in the project.
+        # This is only available when Edison is running from a source checkout that
+        # includes `scripts/zen/` (unless the package distribution bundles them).
+        if getattr(args, "mcp_script", False):
+            run_script = config_root / "scripts" / "zen" / "run-server.sh"
+            if not run_script.exists():
+                formatter.text("❌ --mcp-script requested but Zen run script is not available.")
+                formatter.text(f"   Missing: {run_script}")
+                formatter.text("   Recommended: use default uvx-based setup (omit --mcp-script).")
+                formatter.text("   Or install Edison from a source checkout that includes scripts/zen.")
+                return 1
         
         # Run questionnaire (interactive mode) or skip (non-interactive)
         if args.non_interactive:

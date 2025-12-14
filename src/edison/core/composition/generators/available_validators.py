@@ -39,7 +39,7 @@ class ValidatorRosterGenerator(ComposableRegistry[str]):
 
         registry = ValidatorRegistry(project_root=self.project_root)
         validators_by_wave = registry.get_all_grouped()
-        qa_config = QAConfig()
+        qa_config = QAConfig(repo_root=self.project_root)
         waves = qa_config.get_waves()
         engines = qa_config.get_engines()
 

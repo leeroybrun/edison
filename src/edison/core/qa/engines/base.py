@@ -11,7 +11,9 @@ as ValidatorMetadata. That is THE single source of truth for validator data.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+import os
+import socket
 from pathlib import Path
 from typing import Any, Protocol, TYPE_CHECKING
 
@@ -77,41 +79,49 @@ class ValidationResult:
 
     def to_report(
         self,
+        *,
         task_id: str,
         round_num: int,
-        model: str = "",
+        model: str,
+        zen_role: str | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
     ) -> dict[str, Any]:
-        """Convert to report format matching validator-report.schema.json.
+        """Convert to a validator report dict.
 
-        Args:
-            task_id: The task identifier
-            round_num: Validation round number
-            model: Model name used for validation
-
-        Returns:
-            Dict matching the validator report schema
+        Must match the JSON schema at: data/schemas/reports/validator-report.schema.json
         """
+        now = datetime.now(timezone.utc).isoformat()
+        report_started = started_at or (self.tracking or {}).get("startedAt") or now
+        report_completed = completed_at or (self.tracking or {}).get("completedAt") or now
+
+        # Normalize verdict into the schema's vocabulary
+        verdict = self.verdict
+        if verdict == "error":
+            verdict = "blocked"
+
         return {
             "taskId": task_id,
-            "round": round_num,
+            "round": int(round_num),
             "validatorId": self.validator_id,
             "model": model,
-            "zenRole": f"validator-{self.validator_id}",
-            "verdict": self.verdict,
-            "findings": self.findings,
-            "strengths": self.strengths,
-            "context7Used": self.context7_used,
-            "context7Packages": self.context7_packages,
-            "evidenceReviewed": self.evidence_reviewed,
-            "summary": self.summary,
-            "followUpTasks": self.follow_up_tasks,
-            "tracking": self.tracking or {
-                "processId": f"{self.validator_id}-{round_num}",
-                "startedAt": datetime.now().isoformat(),
-                "completedAt": datetime.now().isoformat(),
-                "duration": self.duration,
+            "zenRole": zen_role,
+            "verdict": verdict,
+            "findings": self.findings or [],
+            "strengths": self.strengths or [],
+            "context7Used": bool(self.context7_used),
+            "context7Packages": list(self.context7_packages or []),
+            "evidenceReviewed": list(self.evidence_reviewed or []),
+            "summary": self.summary or "",
+            "followUpTasks": list(self.follow_up_tasks or []),
+            "tracking": {
+                "processId": int(os.getpid()),
+                "hostname": socket.gethostname(),
+                "startedAt": report_started,
+                "completedAt": report_completed,
+                "lastActive": (self.tracking or {}).get("lastActive"),
+                "continuationId": (self.tracking or {}).get("continuationId"),
             },
-            "scores": self.scores,
         }
 
 

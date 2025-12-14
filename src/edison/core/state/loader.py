@@ -1,7 +1,7 @@
 """Dynamic handler loader for state machine guards, actions, and conditions.
 
 Loads Python callables from layered folders:
-- Core:            core/state/handlers/guards|actions|conditions/
+- Core:            core/state/builtin/guards|actions|conditions/
 - Bundled packs:   data/packs/<pack>/guards|actions|conditions/
 - Project packs:   .edison/packs/<pack>/guards|actions|conditions/
 - Project:         .edison/guards|actions|conditions/
@@ -41,8 +41,8 @@ def _get_layer_dirs(
 ) -> List[Path]:
     """Get directories for a handler type in layer order.
     
-    Uses the core handlers directory (core/state/handlers/) as the first layer,
-    then pack and project directories.
+    Uses the core handlers directory (`core/state/builtin/`) as the first layer,
+    then pack and project directories (layered override).
     """
     return build_layer_dirs(
         core_dir=_CORE_HANDLERS_DIR,
@@ -62,17 +62,24 @@ def load_guards(project_root: Optional[Path], active_packs: List[str]) -> int:
     Returns:
         Number of guards loaded
     """
-    from edison.core.composition.core.paths import CompositionPathResolver
     from .guards import registry as guard_registry
-    
-    resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(
-        "guards",
-        resolver.bundled_packs_dir,
-        resolver.project_packs_dir,
-        resolver.project_dir,
-        active_packs,
-    )
+
+    # Always load core builtin handlers, even when project_root cannot be resolved.
+    # This prevents "Unknown guard/condition/action" failures in contexts where
+    # AGENTS_PROJECT_ROOT is not set and CWD is not inside a git repo (common in tests).
+    if project_root is None:
+        dirs = [_CORE_HANDLERS_DIR / "guards"]
+    else:
+        from edison.core.composition.core.paths import CompositionPathResolver
+
+        resolver = CompositionPathResolver(project_root)
+        dirs = _get_layer_dirs(
+            "guards",
+            resolver.bundled_packs_dir,
+            resolver.project_packs_dir,
+            resolver.project_dir,
+            active_packs,
+        )
     
     count = 0
     for path in iter_python_files(dirs):
@@ -91,17 +98,21 @@ def load_actions(project_root: Optional[Path], active_packs: List[str]) -> int:
     Returns:
         Number of actions loaded
     """
-    from edison.core.composition.core.paths import CompositionPathResolver
     from .actions import registry as action_registry
-    
-    resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(
-        "actions",
-        resolver.bundled_packs_dir,
-        resolver.project_packs_dir,
-        resolver.project_dir,
-        active_packs,
-    )
+
+    if project_root is None:
+        dirs = [_CORE_HANDLERS_DIR / "actions"]
+    else:
+        from edison.core.composition.core.paths import CompositionPathResolver
+
+        resolver = CompositionPathResolver(project_root)
+        dirs = _get_layer_dirs(
+            "actions",
+            resolver.bundled_packs_dir,
+            resolver.project_packs_dir,
+            resolver.project_dir,
+            active_packs,
+        )
     
     count = 0
     for path in iter_python_files(dirs):
@@ -120,17 +131,21 @@ def load_conditions(project_root: Optional[Path], active_packs: List[str]) -> in
     Returns:
         Number of conditions loaded
     """
-    from edison.core.composition.core.paths import CompositionPathResolver
     from .conditions import registry as condition_registry
-    
-    resolver = CompositionPathResolver(project_root)
-    dirs = _get_layer_dirs(
-        "conditions",
-        resolver.bundled_packs_dir,
-        resolver.project_packs_dir,
-        resolver.project_dir,
-        active_packs,
-    )
+
+    if project_root is None:
+        dirs = [_CORE_HANDLERS_DIR / "conditions"]
+    else:
+        from edison.core.composition.core.paths import CompositionPathResolver
+
+        resolver = CompositionPathResolver(project_root)
+        dirs = _get_layer_dirs(
+            "conditions",
+            resolver.bundled_packs_dir,
+            resolver.project_packs_dir,
+            resolver.project_dir,
+            active_packs,
+        )
     
     count = 0
     for path in iter_python_files(dirs):

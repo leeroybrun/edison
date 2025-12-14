@@ -1,7 +1,7 @@
 """Guard registry for state machine transitions.
 
 Guards are boolean functions that determine if a transition is allowed.
-Guards are loaded dynamically from data/guards/ via the handler loader.
+Guards are loaded dynamically via the handler loader (builtin + pack + project layers).
 
 All guards follow the FAIL-CLOSED principle:
 - Return False if any required data is missing
@@ -18,8 +18,8 @@ from .handlers.registries import GuardRegistryBase, DomainRegistry
 class GuardRegistry(GuardRegistryBase):
     """Registry of guard functions keyed by name.
     
-    Guards are loaded from data/guards/ with layered composition:
-    - Core: data/guards/
+    Guards are loaded with layered composition:
+    - Core (builtin): core/state/builtin/guards/
     - Bundled packs: data/packs/<pack>/guards/
     - Project packs: .edison/packs/<pack>/guards/
     - Project: .edison/guards/
@@ -66,8 +66,23 @@ class GuardRegistry(GuardRegistryBase):
         self.register(name, guard_fn, domain)
 
     def register_defaults(self) -> None:
-        """No-op: guards are loaded dynamically via handler loader."""
-        pass
+        """Register builtin guards.
+
+        IMPORTANT: Tests (and some tooling) call `registry.reset()` to ensure a clean
+        slate. `reset()` is defined on the shared DomainRegistry base and calls
+        `register_defaults()` afterwards. If this is a no-op, a single test that
+        resets the registry will permanently remove builtin guards for the rest of
+        the process, causing cross-test flakiness (e.g. `can_complete_session`).
+        """
+        try:
+            from edison.core.state.loader import load_guards
+
+            # Load only builtin/core handlers by default. Project/pack layers are
+            # loaded by `edison.core.state.load_handlers(...)` when needed.
+            load_guards(project_root=None, active_packs=[])
+        except Exception:
+            # Fail-closed for callers that rely on explicit registrations.
+            pass
 
     def check(
         self, 

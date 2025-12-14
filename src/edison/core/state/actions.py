@@ -1,7 +1,7 @@
 """Action registry for state machine transitions.
 
 Actions are side-effect functions executed during state transitions.
-Actions are loaded dynamically from data/actions/ via the handler loader.
+Actions are loaded dynamically via the handler loader (builtin + pack + project layers).
 
 Actions can be configured to run:
 - `when: before` - Before guard/condition checks
@@ -18,8 +18,8 @@ from .handlers.registries import ActionRegistryBase, DomainRegistry
 class ActionRegistry(ActionRegistryBase):
     """Registry of transition actions.
     
-    Actions are loaded from data/actions/ with layered composition:
-    - Core: data/actions/
+    Actions are loaded with layered composition:
+    - Core (builtin): core/state/builtin/actions/
     - Bundled packs: data/packs/<pack>/actions/
     - Project packs: .edison/packs/<pack>/actions/
     - Project: .edison/actions/
@@ -66,8 +66,16 @@ class ActionRegistry(ActionRegistryBase):
         self.register(name, action_fn, domain)
 
     def register_defaults(self) -> None:
-        """No-op: actions are loaded dynamically via handler loader."""
-        pass
+        """Register builtin actions.
+
+        See GuardRegistry.register_defaults for rationale.
+        """
+        try:
+            from edison.core.state.loader import load_actions
+
+            load_actions(project_root=None, active_packs=[])
+        except Exception:
+            pass
 
     def execute(
         self, 

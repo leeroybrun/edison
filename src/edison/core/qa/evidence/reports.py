@@ -73,3 +73,4 @@ def list_validator_reports(round_dir: Path) -> List[Path]:
 
     files = list(round_dir.glob(f"{_VALIDATOR_PREFIX}*{_REPORT_SUFFIX}"))
     return sorted(files, key=lambda p: p.name)
+

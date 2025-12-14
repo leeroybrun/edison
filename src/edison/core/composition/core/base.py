@@ -53,7 +53,7 @@ class CompositionBase(ABC):
 
         # Config - UNIFIED
         self.cfg_mgr = ConfigManager(self.project_root)
-        base_cfg = self.cfg_mgr.load_config(validate=False)
+        base_cfg = self.cfg_mgr.load_config(validate=False, include_packs=True)
         self.config = self.cfg_mgr.deep_merge(base_cfg, config or {})
 
         # Active packs - UNIFIED (lazy via property)

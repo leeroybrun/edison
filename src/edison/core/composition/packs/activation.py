@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional, Set
 
 from edison.core.utils.io import read_yaml
 from edison.core.utils.patterns import matches_any_pattern
-from ..includes import _repo_root
+from edison.core.utils.paths import PathResolver
 
 try:  # PyYAML is required for pack-trigger discovery
     import yaml  # type: ignore
@@ -24,7 +24,7 @@ def auto_activate_packs(
         return set()
 
     try:
-        root = _repo_root()
+        root = PathResolver.resolve_project_root()
     except Exception:
         root = None  # type: ignore[assignment]
 
