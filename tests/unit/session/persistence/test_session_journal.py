@@ -27,7 +27,12 @@ class TestSessionJournal(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-journal-tests-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
+        # Preserve environment to avoid leaking project root across pytest tests.
+        old_env = os.environ.copy()
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(old_env)))
+
         os.environ["project_ROOT"] = str(self.temp_root)
+        os.environ["AGENTS_PROJECT_ROOT"] = str(self.temp_root)
 
         # Minimal sessions structure
         sessions_root = self.temp_root / ".project" / "sessions"

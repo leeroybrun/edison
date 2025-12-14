@@ -17,31 +17,23 @@ if _CORE_ROOT is None:
 
 CORE_ROOT = _CORE_ROOT
 from edison.core.config import ConfigManager 
-from tests.helpers.delegation import get_role_mapping, map_role
 def test_role_mapping_loaded_from_config():
-    """Loads role mapping via ConfigManager and verifies structure is sane.
-
-    Ensures values come from edison.yaml (no hardcoded project-specific names).
-    """
+    """Delegation config loads and has the expected core shape (no legacy roleMapping)."""
     cfg = ConfigManager().load_config()
-    mapping_cfg = (cfg.get('delegation') or {}).get('roleMapping') or {}
-    mapping = get_role_mapping(cfg)
-    assert isinstance(mapping, dict)
-    assert mapping == mapping_cfg
-    # Ensure at least one generic role exists and maps to a non-empty target
-    assert any(k for k in mapping.keys()), 'expected at least one generic role in mapping'
-    any_key = next(iter(mapping.keys()))
-    assert isinstance(any_key, str) and any_key
-    assert isinstance(mapping[any_key], str) and mapping[any_key]
+    delegation = cfg.get("delegation") or {}
+
+    implementers = delegation.get("implementers") or {}
+    assert isinstance(implementers, dict)
+    assert isinstance(implementers.get("primary"), str) and implementers.get("primary")
+    assert isinstance(implementers.get("fallbackChain"), list)
+
+    # Routing rules are technology/project-specific and are expected to be dicts (often empty in core).
+    assert isinstance(delegation.get("filePatternRules", {}), dict)
+    assert isinstance(delegation.get("taskTypeRules", {}), dict)
 
 
 def test_generic_role_names_work():
-    """Maps a generic role to a concrete target using config mapping."""
-    mapping = get_role_mapping()
-    generic = next(iter(mapping.keys()))
-    target = map_role(generic)
-    # Should resolve to something (may or may not equal generic in generic setups)
-    assert isinstance(target, str) and target
-    # In typical setups mapping changes the value; do not assert specific brand prefix
-    if generic in mapping:
-        assert target == mapping[generic]
+    """Core delegation config should remain project-agnostic and avoid hardcoded roleMapping."""
+    cfg = ConfigManager().load_config()
+    delegation = cfg.get("delegation") or {}
+    assert "roleMapping" not in delegation, "Legacy delegation.roleMapping should not exist in core config"

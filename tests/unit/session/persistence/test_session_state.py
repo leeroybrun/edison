@@ -26,39 +26,43 @@ def session_config(tmp_path, monkeypatch):
     defaults_data = {"edison": {"version": "1.0.0"}}
     (config_dir / "defaults.yml").write_text(yaml.dump(defaults_data))
     
-    # Define a rich state machine with guards/conditions/actions
-    state_machine = {
-        "statemachine": {
-            "session": {
-                "states": {
-                    "active": {
-                        "initial": True,
-                        "allowed_transitions": [
-                            {"to": "closing", "guard": "always_allow"},
-                            {"to": "active"},
-                        ],
+    # Define a rich state machine with guards/conditions/actions.
+    #
+    # Canonical config location is workflow.statemachine (not a top-level statemachine key).
+    workflow_cfg = {
+        "workflow": {
+            "statemachine": {
+                "session": {
+                    "states": {
+                        "active": {
+                            "initial": True,
+                            "allowed_transitions": [
+                                {"to": "closing", "guard": "always_allow"},
+                                {"to": "active"},
+                            ],
+                        },
+                        "closing": {
+                            "allowed_transitions": [
+                                {
+                                    "to": "validated",
+                                    "conditions": [
+                                        {"name": "ready_to_close", "error": "session not ready"}
+                                    ],
+                                    "actions": [{"name": "record_closed"}],
+                                }
+                            ],
+                        },
+                        "validated": {"final": True, "allowed_transitions": []},
                     },
-                    "closing": {
-                        "allowed_transitions": [
-                            {
-                                "to": "validated",
-                                "conditions": [
-                                    {"name": "ready_to_close", "error": "session not ready"}
-                                ],
-                                "actions": [{"name": "record_closed"}],
-                            }
-                        ],
-                    },
-                    "validated": {"final": True, "allowed_transitions": []},
-                },
+                }
             }
         }
     }
-    (config_dir / "state-machine.yml").write_text(yaml.dump(state_machine))
+    (config_dir / "workflow.yml").write_text(yaml.dump(workflow_cfg))
     
     # Set env vars using centralized helper
     setup_project_root(monkeypatch, tmp_path)
-    monkeypatch.setenv("project_ROOT", str(tmp_path))
+    # (Legacy env var removed; canonical root is set by setup_project_root)
 
     # Reset global registries used by state module
     guard_registry.reset()

@@ -333,13 +333,13 @@ def write_orchestrator_constitution(
 
     Examples:
         >>> path = write_orchestrator_constitution(tmp_path)
-        >>> assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+        >>> assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
     """
     base_path = Path(base_path)
     constitutions_dir = base_path / base_dir / "_generated" / "constitutions"
     constitutions_dir.mkdir(parents=True, exist_ok=True)
 
-    constitution_path = constitutions_dir / "ORCHESTRATORS.md"
+    constitution_path = constitutions_dir / "ORCHESTRATOR.md"
 
     # Use default content if not provided
     if content is None:

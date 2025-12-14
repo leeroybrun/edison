@@ -87,33 +87,17 @@ def test_load_functions_core_pack_project(tmp_path: Path, monkeypatch: pytest.Mo
 
 def test_template_engine_executes_functions(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     project_root = tmp_path
-    core_dir = project_root / "core"
-    (core_dir / "functions").mkdir(parents=True, exist_ok=True)
 
+    # Project-layer function (loaded from .edison/functions)
+    project_dir = project_root / ".edison"
     _write_function(
-        core_dir / "functions" / "adder.py",
+        project_dir / "functions" / "adder.py",
         "adder",
         """
         def add(a, b):
             return str(int(a) + int(b))
         """,
     )
-
-    from edison.core.composition.core import paths as paths_mod
-    from edison.core.composition.transformers import functions_loader as fl_mod
-
-    class FakeResolver:
-        def __init__(self, project_root: Path, content_type: Optional[str] = None):
-            self.repo_root = project_root
-            self.project_root = project_root
-            self.project_dir = project_root
-            self.core_dir = core_dir
-            self.packs_dir = project_root / "packs"
-            self.bundled_packs_dir = self.packs_dir
-            self.project_packs_dir = project_root / "packs"
-
-    monkeypatch.setattr(paths_mod, "CompositionPathResolver", FakeResolver)
-    monkeypatch.setattr(fl_mod, "CompositionPathResolver", FakeResolver)
 
     engine = TemplateEngine(config={}, packs=[], project_root=project_root)
     result, _ = engine.process("Result: {{function:add(2, 3)}}")

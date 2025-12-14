@@ -62,11 +62,11 @@ class TestTailwindPackStructure:
             'validators/overlays/global.md',
             'rules/registry.yml',
             'rules/file_patterns/tailwind.yaml',
-            'guidelines/v4-syntax.md',
-            'guidelines/TAILWIND_V4_RULES.md',
-            'guidelines/STYLING.md',
-            'guidelines/design-tokens.md',
-            'guidelines/responsive.md',
+            'guidelines/includes/tailwind/v4-syntax.md',
+            'guidelines/includes/tailwind/TAILWIND_V4_RULES.md',
+            'guidelines/includes/tailwind/STYLING.md',
+            'guidelines/includes/tailwind/design-tokens.md',
+            'guidelines/includes/tailwind/responsive.md',
             'examples/v4-syntax.md',
             'examples/globals.css',
         ]
@@ -134,20 +134,12 @@ class TestTailwindPackManifest:
             data = yaml.safe_load(f)
         
         provides = data.get('provides', {})
-        
-        # Check guidelines
-        assert 'guidelines' in provides, "No guidelines declared"
-        guidelines = provides['guidelines']
-        assert len(guidelines) > 0, "No guidelines provided"
-        assert any('v4' in g.lower() or 'RULES' in g for g in guidelines), \
-            "Missing v4-specific guidelines"
-        
-        # Check validators
+
+        # Pack manifests may declare agents/validators, but guidelines are wired via overlays/rules.
         assert 'validators' in provides, "No validators declared"
         validators = provides['validators']
         assert len(validators) > 0, "No validators provided"
-        
-        # Check agents (should be in overlays or root)
+
         assert 'agents' in provides, "No agents declared"
         agents = provides['agents']
         assert len(agents) > 0, "No agents provided"
@@ -159,7 +151,7 @@ class TestTailwindV4Guidelines:
     def test_v4_syntax_guideline_exists_and_comprehensive(self):
         """v4-syntax.md must exist and explain v4 CSS import."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        guide = pack_dir / 'guidelines/v4-syntax.md'
+        guide = pack_dir / 'guidelines/includes/tailwind/v4-syntax.md'
         
         assert guide.exists(), "v4-syntax.md not found"
         content = guide.read_text(encoding='utf-8')
@@ -173,7 +165,7 @@ class TestTailwindV4Guidelines:
     def test_v4_rules_guideline_exists_and_detailed(self):
         """TAILWIND_V4_RULES.md must exist with 6+ critical rules."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        guide = pack_dir / 'guidelines/TAILWIND_V4_RULES.md'
+        guide = pack_dir / 'guidelines/includes/tailwind/TAILWIND_V4_RULES.md'
         
         assert guide.exists(), "TAILWIND_V4_RULES.md not found"
         content = guide.read_text(encoding='utf-8')
@@ -188,7 +180,7 @@ class TestTailwindV4Guidelines:
     def test_styling_guideline_exists(self):
         """STYLING.md must provide utility and styling guidance."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        guide = pack_dir / 'guidelines/STYLING.md'
+        guide = pack_dir / 'guidelines/includes/tailwind/STYLING.md'
         
         assert guide.exists(), "STYLING.md not found"
         content = guide.read_text(encoding='utf-8')
@@ -200,7 +192,7 @@ class TestTailwindV4Guidelines:
     def test_design_tokens_guideline_exists(self):
         """design-tokens.md must explain token usage."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        guide = pack_dir / 'guidelines/design-tokens.md'
+        guide = pack_dir / 'guidelines/includes/tailwind/design-tokens.md'
         
         assert guide.exists(), "design-tokens.md not found"
         content = guide.read_text(encoding='utf-8')
@@ -212,7 +204,7 @@ class TestTailwindV4Guidelines:
     def test_responsive_guideline_exists(self):
         """responsive.md must explain responsive design patterns."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        guide = pack_dir / 'guidelines/responsive.md'
+        guide = pack_dir / 'guidelines/includes/tailwind/responsive.md'
         
         assert guide.exists(), "responsive.md not found"
         content = guide.read_text(encoding='utf-8')
@@ -461,19 +453,12 @@ class TestTailwindPackIntegration:
         assert 'triggers' in data, "Missing triggers"
 
     def test_all_declared_guidelines_exist(self):
-        """All guidelines declared in pack.yml must exist."""
+        """Tailwind include-only guideline files must exist."""
         pack_dir = Path('src/edison/data/packs/tailwind').resolve()
-        pack_yml = pack_dir / 'pack.yml'
-        
-        with open(pack_yml, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
-        
-        provides = data.get('provides', {})
-        
-        # Check all declared guidelines exist
-        for guideline in provides.get('guidelines', []):
-            path = pack_dir / guideline
-            assert path.exists(), f"Declared guideline not found: {guideline}"
+        includes_dir = pack_dir / "guidelines" / "includes" / "tailwind"
+        assert includes_dir.exists(), f"Missing include-only guidelines dir: {includes_dir}"
+        md_files = list(includes_dir.glob("*.md"))
+        assert md_files, "Expected Tailwind include-only guideline markdown files"
 
     def test_all_declared_validators_exist(self):
         """All validators declared in pack.yml must exist."""
@@ -517,7 +502,7 @@ class TestTailwindPackIntegration:
         all_content = []
         
         # Read all guidelines
-        for guide in (pack_dir / 'guidelines').glob('*.md'):
+        for guide in (pack_dir / 'guidelines').rglob('*.md'):
             all_content.append(guide.read_text(encoding='utf-8'))
         
         # Read all agent overlays

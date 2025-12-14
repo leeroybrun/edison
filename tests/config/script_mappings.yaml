@@ -30,19 +30,19 @@ mappings:
     
   tasks/allocate-id:
     domain: task
-    command: allocate_id
+    command: allocate-id
     
   tasks/ensure-followups:
     domain: task
-    command: ensure_followups
+    command: ensure-followups
     
   tasks/cleanup-stale-locks:
     domain: task
-    command: cleanup_stale_locks
+    command: cleanup-stale-locks
     
   tasks/mark-delegated:
     domain: task
-    command: mark_delegated
+    command: mark-delegated
     
   tasks/list:
     domain: task
@@ -125,24 +125,24 @@ mappings:
   # Git worktree commands
   git/worktree-create:
     domain: git
-    command: worktree_create
+    command: worktree-create
     
   git/worktree-cleanup:
     domain: git
-    command: worktree_cleanup
+    command: worktree-cleanup
     
   git/worktree-archive:
     domain: git
-    command: worktree_archive
+    command: worktree-archive
     
   git/worktree-list:
     domain: git
-    command: worktree_list
+    command: worktree-list
     
   # Rules commands
   rules/show-for-context:
     domain: rules
-    command: show_for_context
+    command: show
 
 # Session subcommand mappings
 # Used when command is null and subcommand is in args

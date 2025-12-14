@@ -17,17 +17,18 @@ class TestNextPackageStructure:
 
     def test_old_file_does_not_exist(self):
         """Ensure the old session/next.py file is deleted."""
-        import os
         from pathlib import Path
 
-        old_file = Path(__file__).parent.parent.parent / "src" / "edison" / "core" / "session" / "next.py"
+        repo_root = Path(__file__).resolve().parents[4]
+        old_file = repo_root / "src" / "edison" / "core" / "session" / "next.py"
         assert not old_file.exists(), "Old session/next.py file should be deleted"
 
     def test_new_package_directory_exists(self):
         """Ensure the new session/next/ directory exists."""
         from pathlib import Path
 
-        next_dir = Path(__file__).parent.parent.parent / "src" / "edison" / "core" / "session" / "next"
+        repo_root = Path(__file__).resolve().parents[4]
+        next_dir = repo_root / "src" / "edison" / "core" / "session" / "next"
         assert next_dir.exists(), "session/next/ directory should exist"
         assert next_dir.is_dir(), "session/next should be a directory"
 
@@ -35,7 +36,8 @@ class TestNextPackageStructure:
         """Ensure all required modules exist in the package."""
         from pathlib import Path
 
-        next_dir = Path(__file__).parent.parent.parent / "src" / "edison" / "core" / "session" / "next"
+        repo_root = Path(__file__).resolve().parents[4]
+        next_dir = repo_root / "src" / "edison" / "core" / "session" / "next"
         # Note: status.py was merged into actions.py for consolidation
         required_modules = ["__init__.py", "compute.py", "actions.py", "rules.py", "utils.py", "output.py"]
 

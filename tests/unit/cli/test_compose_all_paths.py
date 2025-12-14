@@ -22,17 +22,8 @@ def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-v
         encoding="utf-8",
     )
 
-    # Create project guidelines directory (overlays on bundled guidelines)
-    guidelines_dir = repo_root / ".edison" / "guidelines"
-    guidelines_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create project-specific guideline files (these overlay bundled ones)
-    for guideline_name in ["SESSION_WORKFLOW", "DELEGATION", "TDD"]:
-        guideline_file = guidelines_dir / f"{guideline_name}.md"
-        guideline_file.write_text(
-            f"# {guideline_name}\n\nTest guideline content from project overlay.\n",
-            encoding="utf-8",
-        )
+    # NOTE: No project guideline overlays needed for these composition-path tests.
+    # Bundled guidelines come from edison.data and are sufficient.
 
     # Create project config structure
     # ConfigManager reads bundled defaults from edison.data first, then project overrides
@@ -193,7 +184,7 @@ def test_validators_constitution_has_filtered_rules(tmp_path, real_args):
 
 
 def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
-    """Test that edison compose --all generates constitutions/ORCHESTRATORS.md."""
+    """Test that edison compose --all generates constitutions/ORCHESTRATOR.md."""
     _setup_minimal_edison_structure(tmp_path)
     real_args.project_root = str(tmp_path)
 
@@ -203,10 +194,10 @@ def test_compose_all_generates_orchestrators_constitution(tmp_path, real_args):
 
     config_dir = get_project_config_dir(tmp_path)
     constitutions_dir = config_dir / "_generated" / "constitutions"
-    orchestrators_constitution = constitutions_dir / "ORCHESTRATORS.md"
+    orchestrators_constitution = constitutions_dir / "ORCHESTRATOR.md"
 
     assert constitutions_dir.exists(), f"Constitutions directory should exist at {constitutions_dir}"
-    assert orchestrators_constitution.exists(), f"ORCHESTRATORS.md should exist at {orchestrators_constitution}"
+    assert orchestrators_constitution.exists(), f"ORCHESTRATOR.md should exist at {orchestrators_constitution}"
 
 
 def test_compose_generates_state_machine_doc(tmp_path, real_args):
@@ -226,7 +217,7 @@ def test_compose_generates_state_machine_doc(tmp_path, real_args):
 
 
 def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
-    """Test that ORCHESTRATORS.md has Role: ORCHESTRATOR in header."""
+    """Test that ORCHESTRATOR.md has Role: ORCHESTRATOR in header."""
     _setup_minimal_edison_structure(tmp_path)
     real_args.project_root = str(tmp_path)
 
@@ -234,10 +225,10 @@ def test_orchestrators_constitution_has_role_header(tmp_path, real_args):
     assert result == 0, "Compose should succeed"
 
     config_dir = get_project_config_dir(tmp_path)
-    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATOR.md"
 
     content = orchestrators_constitution.read_text(encoding="utf-8")
-    assert "<!-- Role: ORCHESTRATOR -->" in content, "ORCHESTRATORS.md should have Role: ORCHESTRATOR in header"
+    assert "<!-- Role: ORCHESTRATOR -->" in content, "ORCHESTRATOR.md should have Role: ORCHESTRATOR in header"
 
 
 def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
@@ -249,7 +240,7 @@ def test_orchestrators_constitution_has_mandatory_reads(tmp_path, real_args):
     assert result == 0, "Compose should succeed"
 
     config_dir = get_project_config_dir(tmp_path)
-    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+    orchestrators_constitution = config_dir / "_generated" / "constitutions" / "ORCHESTRATOR.md"
 
     content = orchestrators_constitution.read_text(encoding="utf-8")
     assert "## TDD Principles (All Roles)" in content
@@ -265,7 +256,7 @@ def test_orchestrators_constitution_has_rules_and_roster_references(tmp_path, re
 
     config_dir = get_project_config_dir(tmp_path)
     output_dir = config_dir / "_generated"
-    orchestrators_constitution = output_dir / "constitutions" / "ORCHESTRATORS.md"
+    orchestrators_constitution = output_dir / "constitutions" / "ORCHESTRATOR.md"
 
     content = orchestrators_constitution.read_text(encoding="utf-8")
     # Verify Handlebars markers were rendered and an actual rule id appears

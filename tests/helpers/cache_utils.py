@@ -51,7 +51,6 @@ def reset_edison_caches() -> None:
 
     # Composition module caches
     composition_modules = [
-        "edison.core.composition.includes",
         "edison.core.composition.commands",
         "edison.core.composition.composers",
         "edison.core.composition.settings",

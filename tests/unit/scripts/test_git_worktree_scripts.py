@@ -78,16 +78,14 @@ def test_worktree_create_dry_run_json(tmp_path: Path) -> None:
         "sess-123",
         "--dry-run",
         "--json",
-        "--repo-root",
-        str(repo),
     ]
     result = _run_cli("edison.cli.git.worktree_create", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    assert data["sessionId"] == "sess-123"
+    assert data["session_id"] == "sess-123"
     # baseDirectory is relative to repo parent
-    assert Path(data["path"]).resolve() == (repo.parent / ".worktrees" / "sess-123").resolve()
-    assert data["dryRun"] is True
+    assert Path(data["worktree_path"]).resolve() == (repo.parent / ".worktrees" / "sess-123").resolve()
+    assert data["dry_run"] is True
 
 
 def test_worktree_archive_dry_run_json(tmp_path: Path) -> None:
@@ -99,29 +97,27 @@ def test_worktree_archive_dry_run_json(tmp_path: Path) -> None:
         "sess-123",
         "--dry-run",
         "--json",
-        "--repo-root",
-        str(repo),
     ]
     result = _run_cli("edison.cli.git.worktree_archive", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    assert data["sessionId"] == "sess-123"
-    assert Path(data["archivedPath"]).resolve() == (
+    assert data["session_id"] == "sess-123"
+    assert Path(data["archived_path"]).resolve() == (
         repo.parent / ".worktrees" / "_archived" / "sess-123"
     ).resolve()
-    assert data["dryRun"] is True
+    assert data["dry_run"] is True
 
 
 def test_worktree_cleanup_json(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
-    args = [
-        "--dry-run",
-        "--json",
-        "--repo-root",
-        str(repo),
-    ]
+    # Create a real worktree first (so cleanup has a valid target to remove)
+    create_args = ["sess-123", "--json"]
+    create_result = _run_cli("edison.cli.git.worktree_create", create_args, repo)
+    assert create_result.returncode == 0, create_result.stderr
+
+    args = ["sess-123", "--json"]
     result = _run_cli("edison.cli.git.worktree_cleanup", args, repo)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    assert data["dryRun"] is True
-    assert data["status"] == "ok"
+    assert data["session_id"] == "sess-123"
+    assert data["deleted_branch"] is False

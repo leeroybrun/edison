@@ -60,7 +60,6 @@ def test_validate_pack_missing_file_refs(tmp_path: Path):
         triggers:
           filePatterns: ["**/*.ts"]
         validators: [nope.md]
-        guidelines: [missing.md]
         examples: [absent.ts]
     '''))
     res = validate_pack(p)
@@ -178,10 +177,11 @@ def test_packs_config_active_packs(tmp_path: Path):
     """PacksConfig.active_packs returns active packs from edison config."""
     # Create a minimal edison config with active packs
     edison_dir = tmp_path / '.edison'
-    edison_dir.mkdir(parents=True)
-    (edison_dir / 'edison.yaml').write_text(
-        'packs:\n  active:\n    - typescript\n    - react\n',
-        encoding='utf-8'
+    (edison_dir / "config").mkdir(parents=True)
+    # ConfigManager loads project config from .edison/config/*.yaml (alphabetical order)
+    (edison_dir / "config" / "packs.yaml").write_text(
+        "packs:\n  active:\n    - typescript\n    - react\n",
+        encoding="utf-8",
     )
     packs_cfg = PacksConfig(repo_root=tmp_path)
     active = packs_cfg.active_packs

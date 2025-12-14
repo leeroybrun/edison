@@ -71,9 +71,7 @@ def config_utils(isolated_project_env: Path):
     from edison.core.config.cache import clear_all_caches
     clear_all_caches()
 
-    # Clear lru_cache on our utility functions
     from edison.core.utils import config
-    config._load_config_section_impl.cache_clear()
 
     # Import WorkflowConfig class for state functions
     from edison.core.config.domains.workflow import WorkflowConfig
@@ -190,7 +188,6 @@ def test_load_config_section_with_explicit_repo_root(isolated_project_env: Path)
     clear_all_caches()
     
     from edison.core.utils import config
-    config._load_config_section_impl.cache_clear()
 
     section = config.load_config_section(
         "statemachine",
@@ -208,3 +205,28 @@ def test_get_states_caches_result(config_utils):
     # Should return same list
     assert states1 == states2
     assert states1 is states2  # Same object (cached)
+
+
+def test_load_config_section_refreshes_after_clear_all_caches(isolated_project_env: Path) -> None:
+    """Config utilities must not add their own caches beyond the centralized cache.
+
+    If config changes on disk and `clear_all_caches()` is called, subsequent loads
+    must reflect the new config without needing any extra per-function cache clearing.
+    """
+    from edison.core.config.cache import clear_all_caches
+    from edison.core.utils import config as config_utils
+
+    cfg_dir = isolated_project_env / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initial config
+    write_yaml(cfg_dir / "project.yaml", {"project": {"name": "first"}})
+    clear_all_caches()
+    section1 = config_utils.load_config_section("project", repo_root=isolated_project_env)
+    assert section1.get("name") == "first"
+
+    # Change on disk and clear the *central* caches only; config utils must refresh.
+    write_yaml(cfg_dir / "project.yaml", {"project": {"name": "second"}})
+    clear_all_caches()
+    section2 = config_utils.load_config_section("project", repo_root=isolated_project_env)
+    assert section2.get("name") == "second"

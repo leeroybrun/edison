@@ -6,19 +6,13 @@ from edison.data import read_yaml
 
 class TestGeminiSupport:
     def test_gemini_global_in_validation_roster(self) -> None:
-        """global-gemini must be present in validation.roster.global."""
+        """global-gemini must be present in validation.validators (config-driven roster)."""
         # Read validators config directly from data
         validators_cfg = read_yaml("config", "validators.yaml")
-        global_validators = validators_cfg.get("validation", {}).get("roster", {}).get("global", []) or []
-
-        gemini_validator = next(
-            (v for v in global_validators if v.get("id") == "global-gemini"),
-            None,
-        )
-
-        assert gemini_validator is not None, (
-            "global-gemini must be in validation.roster.global. "
-            f"Found validators: {[v.get('id') for v in global_validators]}"
+        validators = validators_cfg.get("validation", {}).get("validators", {}) or {}
+        assert "global-gemini" in validators, (
+            "global-gemini must be defined in validation.validators. "
+            f"Found validators: {list(validators.keys())}"
         )
 
     def test_gemini_role_in_zen_composition(self) -> None:

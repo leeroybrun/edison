@@ -40,8 +40,8 @@ def test_coderabbit_composer_uses_config_not_configs_for_templates(tmp_path: Pat
     composer = CoderabbitAdapter(project_root=tmp_path)
     composer.core_dir = tmp_path
 
-    # ACT: Load core config
-    loaded = composer.load_core_coderabbit_config()
+    # ACT: Compose config
+    loaded = composer.compose_coderabbit_config()
 
     # ASSERT: Should successfully load from templates/config/ directory
     assert loaded == template_config, \
@@ -71,12 +71,13 @@ def test_coderabbit_composer_uses_config_not_configs_for_packs(tmp_path: Path) -
     composer.bundled_packs_dir = tmp_path / "packs"
     composer.project_packs_dir = tmp_path / "packs"
 
-    # ACT: Load pack config
-    loaded = composer._load_pack_coderabbit_config("python")
+    # ACT: Compose config (includes pack)
+    loaded = composer.compose_coderabbit_config()
 
-    # ASSERT: Should successfully load from packs/python/config/ directory
-    assert loaded == pack_config, \
+    # ASSERT: Should successfully include from packs/python/config/ directory
+    assert loaded.get("path_instructions") == pack_config.get("path_instructions"), (
         "Should load pack config from packs/python/config/ not packs/python/configs/"
+    )
 
 
 def test_coderabbit_composer_uses_config_not_configs_for_project(tmp_path: Path) -> None:
@@ -93,13 +94,14 @@ def test_coderabbit_composer_uses_config_not_configs_for_project(tmp_path: Path)
     write_yaml(project_config_dir / "coderabbit.yaml", project_config)
     write_yaml(project_config_dir / "edison.yaml", {"packs": {"active": []}})
 
-    # ACT: Create composer and load project config
+    # ACT: Create composer and compose config
     composer = CoderabbitAdapter(project_root=tmp_path)
-    loaded = composer._load_project_coderabbit_config()
+    loaded = composer.compose_coderabbit_config()
 
-    # ASSERT: Should successfully load from .edison/config/ directory
-    assert loaded == project_config, \
+    # ASSERT: Should successfully include from .edison/config/ directory
+    assert loaded.get("path_instructions") == project_config.get("path_instructions"), (
         "Should load project config from .edison/config/ not .edison/configs/"
+    )
 
 
 def test_no_legacy_configs_directory_support(tmp_path: Path) -> None:
@@ -120,13 +122,14 @@ def test_no_legacy_configs_directory_support(tmp_path: Path) -> None:
     correct_dir.mkdir(parents=True, exist_ok=True)
     write_yaml(correct_dir / "edison.yaml", {"packs": {"active": []}})
 
-    # ACT: Create composer and try to load project config
+    # ACT: Create composer and compose config
     composer = CoderabbitAdapter(project_root=tmp_path)
-    loaded = composer._load_project_coderabbit_config()
+    loaded = composer.compose_coderabbit_config()
 
-    # ASSERT: Should return empty dict, NOT the config from "configs" directory
-    assert loaded == {}, \
+    # ASSERT: Should NOT load from legacy .edison/configs/ directory
+    assert loaded.get("path_instructions") != wrong_config.get("path_instructions"), (
         "Should NOT load from legacy .edison/configs/ directory"
+    )
 
 
 def test_bundled_data_structure_uses_config_directory(tmp_path: Path) -> None:

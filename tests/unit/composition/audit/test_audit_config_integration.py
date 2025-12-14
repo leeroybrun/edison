@@ -22,16 +22,17 @@ from edison.core.composition.audit import GuidelineRecord, duplication_matrix
 from edison.cli.qa.audit import register_args
 
 
-def _write_composition_config(root: Path, *, min_similarity: float, cli_threshold: float, k: int) -> Path:
+def _write_composition_config(root: Path, *, min_similarity: float, k: int) -> Path:
     """Write composition config with DRY detection parameters."""
     config_dir = root / ".edison" / "config"
     composition_yaml = {
         "composition": {
-            "dryDetection": {
-                "minShingles": 2,
-                "shingleSize": k,
-                "minSimilarity": min_similarity,
-                "cliThreshold": cli_threshold,
+            "defaults": {
+                "dedupe": {
+                    "min_shingles": 2,
+                    "shingle_size": k,
+                    "threshold": min_similarity,
+                }
             }
         }
     }
@@ -66,7 +67,7 @@ def _write_guidelines(root: Path) -> list[GuidelineRecord]:
 
 def test_duplication_matrix_uses_config_threshold_and_shingle_size(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo_root = tmp_path
-    _write_composition_config(repo_root, min_similarity=0.5, cli_threshold=0.42, k=4)
+    _write_composition_config(repo_root, min_similarity=0.5, k=4)
     records = _write_guidelines(repo_root)
 
     # Make ConfigManager and path resolution use this isolated repo
@@ -74,14 +75,14 @@ def test_duplication_matrix_uses_config_threshold_and_shingle_size(tmp_path: Pat
 
     pairs = duplication_matrix(records)
 
-    # With config (k=4, minSimilarity=0.5) we expect one pair; hardcoded defaults (k=12, 0.8) would return none
+    # With config (k=4, threshold=0.5) we expect one pair; hardcoded defaults (k=12, 0.37) would be different.
     assert len(pairs) == 1
     assert 0.5 <= pairs[0]["similarity"] < 0.8
 
 
 def test_cli_audit_threshold_defaults_to_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo_root = tmp_path
-    _write_composition_config(repo_root, min_similarity=0.5, cli_threshold=0.37, k=4)
+    _write_composition_config(repo_root, min_similarity=0.37, k=4)
     _write_guidelines(repo_root)
 
     setup_project_root(monkeypatch, repo_root)

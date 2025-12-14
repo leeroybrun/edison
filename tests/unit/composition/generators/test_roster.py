@@ -83,9 +83,9 @@ def test_validator_roster_generator_get_context_vars_returns_dict(tmp_path: Path
     data = generator.get_context_vars("AVAILABLE_VALIDATORS", packs)
 
     assert isinstance(data, dict)
-    assert "global_validators" in data
-    assert "critical_validators" in data
-    assert "specialized_validators" in data
+    assert "waves" in data
+    assert "validators_by_wave" in data
+    assert "all_validators" in data
     assert "generated_at" in data
 
 
@@ -95,9 +95,11 @@ def test_validator_roster_generator_get_context_vars_validators_are_lists(tmp_pa
     packs = generator.get_active_packs()
     data = generator.get_context_vars("AVAILABLE_VALIDATORS", packs)
 
-    assert isinstance(data["global_validators"], list)
-    assert isinstance(data["critical_validators"], list)
-    assert isinstance(data["specialized_validators"], list)
+    assert isinstance(data["waves"], list)
+    assert isinstance(data["all_validators"], list)
+    # Each wave gets a <wave>_validators list accessor.
+    for wave in data.get("wave_names", []) or []:
+        assert isinstance(data.get(f"{wave}_validators"), list)
 
 
 def test_agent_roster_generator_write_creates_file(tmp_path: Path):

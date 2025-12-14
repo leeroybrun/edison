@@ -5,12 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from edison.data import get_data_path
 
-VALIDATOR_FILES = [
-    Path(".agents/validators/global/global-codex.md"),
-    Path(".agents/validators/global/global-claude.md"),
-    Path(".agents/validators/security/codex-security.md"),
-    Path(".agents/validators/performance/codex-performance.md"),
+
+DATA_ROOT = get_data_path("config").parent
+
+# Canonical validator templates live in bundled data (not `.agents/validators/*`).
+VALIDATOR_TEMPLATES = [
+    get_data_path("validators", "global.md"),
+    get_data_path("validators", "critical/security.md"),
+    get_data_path("validators", "critical/performance.md"),
 ]
 
 
@@ -18,138 +22,45 @@ def _read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_validator_files_exist():
-    """All validator files must exist in expected locations."""
-    missing = [str(p) for p in VALIDATOR_FILES if not p.exists()]
-    assert not missing, f"Missing validator files: {missing}"
+def test_validator_files_exist() -> None:
+    missing = [str(p) for p in VALIDATOR_TEMPLATES if not p.exists()]
+    assert not missing, f"Missing validator templates: {missing}"
 
 
-def test_validators_use_includes():
-    """Each validator must use include-based composition with at least two includes."""
-    for vf in VALIDATOR_FILES:
-        if not vf.exists():
-            pytest.skip("validators not created yet")
+def test_validators_use_includes() -> None:
+    """Validators must include the shared validator constitution (minimum)."""
+    for vf in VALIDATOR_TEMPLATES:
         content = _read_file(vf)
-        includes = re.findall(r"\{\{include:([^}]+)\}\}", content)
-        assert len(includes) >= 2, f"{vf} should contain at least 2 include directives"
+        includes = [p.strip() for p in re.findall(r"\{\{include:([^}]+)\}\}", content)]
+        assert includes, f"{vf} should contain at least one {{include:...}} directive"
 
 
-def test_include_paths_valid():
-    """Include directives must point to real template and overlay files."""
-    from edison.data import get_data_path
-
-    # Validator templates are now in bundled data
-    global_template = str(get_data_path("validators", "global/global.md"))
-    security_template = str(get_data_path("validators", "critical/security.md"))
-    performance_template = str(get_data_path("validators", "critical/performance.md"))
-
-    expected_map = {
-        ".agents/validators/global/global-codex.md": [
-            global_template,
-            ".agents/validators/overlays/global-project.md",
-        ],
-        ".agents/validators/global/global-claude.md": [
-            global_template,
-            ".agents/validators/overlays/global-project.md",
-        ],
-        ".agents/validators/security/codex-security.md": [
-            security_template,
-            ".agents/validators/overlays/security-project-requirements.md",
-        ],
-        ".agents/validators/performance/codex-performance.md": [
-            performance_template,
-            ".agents/validators/overlays/performance-project-benchmarks.md",
-        ],
-    }
-
-    for vf in VALIDATOR_FILES:
-        if not vf.exists():
-            pytest.skip("validators not created yet")
+def test_include_paths_valid() -> None:
+    """Every {{include:*}} target must exist relative to the bundled data root."""
+    for vf in VALIDATOR_TEMPLATES:
         content = _read_file(vf)
-        includes = re.findall(r"\{\{include:([^}]+)\}\}", content)
-        included_paths = set(p.strip() for p in includes)
-        for required in expected_map[str(vf)]:
-            assert required in included_paths, f"{vf} missing include for: {required}"
-            assert Path(required).exists(), f"Include target does not exist: {required}"
+        includes = [p.strip().strip("'\"") for p in re.findall(r"\{\{include:([^}]+)\}\}", content)]
+        for inc in includes:
+            target = (DATA_ROOT / inc).resolve()
+            assert target.exists(), f"Include target does not exist: {inc} -> {target}"
 
 
-def test_no_mixed_content_above_includes():
-    """Validators should not contain project-specific inline content before includes.
+def test_rendered_output_has_no_unresolved_includes() -> None:
+    """Rendering via TemplateEngine must fully resolve nested includes."""
+    from edison.core.composition.engine import TemplateEngine
 
-    We allow a small header and composition paragraph, but all concrete project
-    tech stack details should live in overlays or 'Execution Notes' below includes.
-    """
-    forbidden_terms = [
-        "nextjs",
-        "prisma",
-        "React",
-        "uistyles",
-        "sqldb",
-        "Context7",
-    ]
+    engine = TemplateEngine(
+        config={},
+        packs=[],
+        project_root=Path(".").resolve(),
+        source_dir=DATA_ROOT,
+        include_provider=None,
+        strip_section_markers=True,
+    )
 
-    for vf in VALIDATOR_FILES:
-        if not vf.exists():
-            pytest.skip("validators not created yet")
+    for vf in VALIDATOR_TEMPLATES:
         content = _read_file(vf)
-        # Only look at content before the first include
-        pre_include = content.split("{{include:", 1)[0]
-        hits = [t for t in forbidden_terms if t.lower() in pre_include.lower()]
-        assert not hits, f"{vf} contains project-specific terms before includes: {hits}"
+        output, _report = engine.process(content, entity_name=str(vf), entity_type="validators")
+        assert "{{include:" not in output, f"Unresolved include in rendered output for {vf}"
 
 
-def test_rendered_output_complete(tmp_path: Path):
-    """Rendered validators must contain both template and overlay content.
-
-    Uses Python composition module to resolve includes.
-    """
-    from edison.core.composition.includes import resolve_includes
-    from edison.data import get_data_path
-
-    # Probe strings expected in template and overlay outputs
-    # Update paths to bundled data locations
-    template_probes = {
-        str(get_data_path("validators", "global/global.md")): [
-            "Architecture",  # header expected in global template
-            "Code Quality",
-        ],
-        str(get_data_path("validators", "critical/security.md")): [
-            "Authentication & Session",
-            "Input Validation & Output Encoding",
-        ],
-        str(get_data_path("validators", "critical/performance.md")): [
-            "Performance",
-            "Profiling",
-        ],
-    }
-
-    overlay_probes = {
-        ".agents/validators/overlays/global-project.md": ["project", "ExampleApp"],
-        ".agents/validators/overlays/security-project-requirements.md": ["Authentication", "API"],
-        ".agents/validators/overlays/performance-project-benchmarks.md": ["nextjs", "prisma"],
-    }
-
-    for vf in VALIDATOR_FILES:
-        if not vf.exists():
-            pytest.skip("validators not created yet")
-
-        # Render using Python module
-        content = _read_file(vf)
-        try:
-            output, _ = resolve_includes(content, vf)
-        except Exception as e:
-            pytest.fail(f"Include resolution failed for {vf}: {e}")
-
-        assert "{{include:" not in output, "Unresolved include in rendered output"
-
-        # Validate template probes
-        for inc in re.findall(r"\{\{include:([^}]+)\}\}", content):
-            inc = inc.strip()
-            if inc in template_probes:
-                for probe in template_probes[inc]:
-                    assert probe.lower() in output.lower(), (
-                        f"Rendered output missing template probe '{probe}' for {vf}"
-                    )
-            if inc in overlay_probes:
-                found = any(p.lower() in output.lower() for p in overlay_probes[inc])
-                assert found, f"Rendered output missing overlay content for {vf} from {inc}"

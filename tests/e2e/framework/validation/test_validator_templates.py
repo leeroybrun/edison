@@ -22,8 +22,8 @@ def test_validator_templates_are_project_agnostic():
     project_name = os.environ.get("PROJECT_NAME", "").strip()
 
     forbidden_patterns = [
-        (r"\bproject\b", "project name 'project'"),
-        (r"\bproject\b", "capitalized project name 'project'"),
+        # NOTE: The word "project" is generic and allowed; we only ban *specific*
+        # project identifiers (repo names) and tech/version pinning in core templates.
         (r"\bexample-app\b", "specific app name 'example-app'"),
         (r"\bExampleApp\b", "capitalized app name 'ExampleApp'"),
         (r"Next\.js 16", "specific version number"),
@@ -62,36 +62,40 @@ def test_validator_templates_are_project_agnostic():
 
 
 def test_validator_templates_use_placeholders():
-    """Verify templates use {PROJECT_NAME} and other placeholders"""
+    """Verify templates include required composition directives/structure.
+
+    NOTE: The core validator templates are technology-agnostic and do not
+    necessarily use runtime placeholders like {PROJECT_NAME}.
+    """
     # Validator templates are now in bundled data with different structure
     templates_dir = get_data_path("validators")
 
-    required_placeholders = {
-        "global/global.md": ["{PROJECT_NAME}", "{MODEL_ID}", "{INTERFACE}"],
-        "critical/security.md": ["{PROJECT_NAME}"],
-        "critical/performance.md": ["{PROJECT_NAME}"],
+    required_markers = {
+        "global.md": ["# Global Validator", "{{include:constitutions/validators.md}}"],
+        "critical/security.md": ["# Security Validator"],
+        "critical/performance.md": ["# Performance Validator"],
     }
 
     if not templates_dir.exists():
         pytest.skip("templates directory not created yet")
 
-    for template_name, placeholders in required_placeholders.items():
+    for template_name, markers in required_markers.items():
         template_path = templates_dir / template_name
         if not template_path.exists():
             continue  # Skip if not created yet
 
         content = template_path.read_text()
 
-        missing = [p for p in placeholders if p not in content]
+        missing = [m for m in markers if m not in content]
         assert len(missing) == 0, (
-            f"{template_name} missing placeholders: {missing}"
+            f"{template_name} missing required markers: {missing}"
         )
 
 
 def test_global_template_has_all_validation_dimensions():
     """Verify global template covers all validation dimensions"""
     # Validator templates are now in bundled data
-    template_path = get_data_path("validators", "global/global.md")
+    template_path = get_data_path("validators", "global.md")
 
     if not template_path.exists():
         pytest.skip("Template not created yet")
@@ -99,14 +103,12 @@ def test_global_template_has_all_validation_dimensions():
     content = template_path.read_text()
 
     required_dimensions = [
-        "Architecture",
-        "Code Quality",
-        "Testing",
-        "TDD",
-        "Documentation",
-        "Error Handling",
-        "Performance",
-        "Security",
+        "Review Philosophy",
+        "Validation Workflow",
+        "10-Point Checklist",
+        "Technology Stack",
+        "Output Format",
+        "Approval Criteria",
     ]
 
     missing = [dim for dim in required_dimensions if dim not in content]
@@ -124,7 +126,7 @@ def test_all_three_templates_created_and_valid():
         pytest.skip("templates directory not created yet")
 
     expected_templates = [
-        "global/global.md",
+        "global.md",
         "critical/security.md",
         "critical/performance.md",
     ]

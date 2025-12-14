@@ -234,11 +234,11 @@ def test_compose_all_without_orchestrator_flag(tmp_path, real_args):
     # Verify constitutions were generated (replacement for orchestrator manifest)
     config_dir = get_project_config_dir(tmp_path)
     constitutions_dir = config_dir / "_generated" / "constitutions"
-    orchestrators_constitution = constitutions_dir / "ORCHESTRATORS.md"
+    orchestrators_constitution = constitutions_dir / "ORCHESTRATOR.md"
 
     assert constitutions_dir.exists(), f"Constitutions directory should exist at {constitutions_dir}"
     assert orchestrators_constitution.exists(), \
-        f"ORCHESTRATORS.md constitution should exist as replacement for orchestrator manifest"
+        f"ORCHESTRATOR.md constitution should exist as replacement for orchestrator manifest"
 
     # Verify orchestrator-manifest.json is NOT generated (deprecated)
     manifest_file = config_dir / "_generated" / "orchestrator-manifest.json"
@@ -247,28 +247,11 @@ def test_compose_all_without_orchestrator_flag(tmp_path, real_args):
 
 
 def test_compose_all_check_excludes_orchestrator():
-    """Test that the compose_all boolean check does NOT reference orchestrator."""
+    """Compose CLI should not mention the legacy orchestrator flag or special casing."""
     # Read the CLI source
     cli_path = REPO_ROOT / "src" / "edison" / "cli" / "compose" / "all.py"
     content = cli_path.read_text(encoding="utf-8")
 
-    # Find the compose_all_types check (renamed from compose_all)
-    lines = content.split("\n")
-    compose_all_line = None
-    for i, line in enumerate(lines):
-        if "compose_all_types = not any([" in line:
-            # Get the full any() block
-            compose_all_block = []
-            j = i
-            while j < len(lines) and "])" not in lines[j]:
-                compose_all_block.append(lines[j])
-                j += 1
-            compose_all_block.append(lines[j])  # Include the closing line
-            compose_all_line = "\n".join(compose_all_block)
-            break
-
-    assert compose_all_line is not None, "Could not find compose_all_types check"
-
-    # Verify orchestrator is NOT in the check
-    assert "orchestrator" not in compose_all_line, \
-        "compose_all_types check should NOT reference args.orchestrator"
+    # The compose CLI is fully config-driven; it must not refer to a removed orchestrator flag.
+    assert "--orchestrator" not in content
+    assert "args.orchestrator" not in content

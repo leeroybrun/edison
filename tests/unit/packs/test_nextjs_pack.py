@@ -42,6 +42,7 @@ from edison.core.composition.packs import validate_pack
 
 
 NEXTJS_PACK = ROOT / 'src/edison/data/packs/nextjs'
+NEXTJS_GUIDELINES = NEXTJS_PACK / 'guidelines' / 'includes' / 'nextjs'
 
 
 class TestNextJSPackStructure:
@@ -125,12 +126,12 @@ class TestNextJS16Guidelines:
 
     def test_app_router_guideline_exists(self):
         """App Router guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'app-router.md'
+        guideline = NEXTJS_GUIDELINES / 'app-router.md'
         assert guideline.exists(), f"App Router guideline not found at {guideline}"
 
     def test_app_router_covers_file_conventions(self):
         """App Router guideline must cover file conventions (page, layout, loading, error)."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'app-router.md'
+        guideline = NEXTJS_GUIDELINES / 'app-router.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'page.tsx' in content, "Must document page.tsx convention"
         assert 'layout.tsx' in content or 'layout' in content, "Must document layout.tsx"
@@ -139,25 +140,25 @@ class TestNextJS16Guidelines:
 
     def test_app_router_covers_server_components(self):
         """App Router guideline must cover Server Components."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'app-router.md'
+        guideline = NEXTJS_GUIDELINES / 'app-router.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'server component' in content or 'server' in content, "Must document Server Components"
 
     def test_route_handlers_guideline_exists(self):
         """Route handlers guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         assert guideline.exists(), f"Route handlers guideline not found at {guideline}"
 
     def test_route_handlers_covers_all_http_methods(self):
         """Route handlers guideline must cover HTTP methods (GET, POST, PUT, PATCH, DELETE)."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8')
         for method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']:
             assert method in content, f"Must document {method} method"
 
     def test_route_handlers_covers_nextrequest_nextresponse_imports(self):
         """Route handlers guideline must mention NextRequest and NextResponse with imports."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8')
         assert 'NextRequest' in content, "Must document NextRequest"
         assert 'NextResponse' in content, "Must document NextResponse"
@@ -165,87 +166,87 @@ class TestNextJS16Guidelines:
 
     def test_route_handlers_covers_authentication(self):
         """Route handlers guideline must cover authentication patterns."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'auth' in content or 'session' in content, "Must cover authentication patterns"
         assert '401' in content or 'unauthorized' in content, "Must mention 401/Unauthorized"
 
     def test_route_handlers_covers_validation(self):
         """Route handlers guideline must cover validation with Zod."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'zod' in content, "Must cover Zod validation"
         assert 'schema' in content or 'parse' in content, "Must show schema validation"
 
     def test_route_handlers_covers_error_handling(self):
         """Route handlers guideline must cover error handling."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'try' in content and 'catch' in content, "Must show try/catch blocks"
         assert 'status' in content and '500' in content, "Must show 500 status code"
 
     def test_route_handlers_covers_dynamic_params(self):
         """Route handlers guideline must cover dynamic route parameters."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'route-handlers.md'
+        guideline = NEXTJS_GUIDELINES / 'route-handlers.md'
         content = guideline.read_text(encoding='utf-8')
         assert 'params' in content, "Must cover dynamic route parameters"
 
     def test_server_actions_guideline_exists(self):
         """Server Actions guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'server-actions.md'
+        guideline = NEXTJS_GUIDELINES / 'server-actions.md'
         assert guideline.exists(), f"Server Actions guideline not found at {guideline}"
 
     def test_server_actions_covers_use_server(self):
         """Server Actions guideline must document 'use server' directive."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'server-actions.md'
+        guideline = NEXTJS_GUIDELINES / 'server-actions.md'
         content = guideline.read_text(encoding='utf-8')
         assert 'use server' in content or "'use server'" in content, "Must document 'use server' directive"
 
     def test_server_actions_covers_revalidation(self):
         """Server Actions guideline must cover cache revalidation."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'server-actions.md'
+        guideline = NEXTJS_GUIDELINES / 'server-actions.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'revalidate' in content, "Must document cache revalidation"
 
     def test_metadata_guideline_exists(self):
         """Metadata API guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'metadata.md'
+        guideline = NEXTJS_GUIDELINES / 'metadata.md'
         assert guideline.exists(), f"Metadata guideline not found at {guideline}"
 
     def test_metadata_covers_static_metadata(self):
         """Metadata guideline must cover static metadata export."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'metadata.md'
+        guideline = NEXTJS_GUIDELINES / 'metadata.md'
         content = guideline.read_text(encoding='utf-8')
         assert 'metadata' in content.lower(), "Must document metadata export"
         assert 'title' in content.lower() or 'description' in content.lower(), "Must document title/description"
 
     def test_metadata_covers_dynamic_metadata(self):
         """Metadata guideline must cover generateMetadata function."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'metadata.md'
+        guideline = NEXTJS_GUIDELINES / 'metadata.md'
         content = guideline.read_text(encoding='utf-8')
         assert 'generateMetadata' in content or 'generate' in content.lower(), "Must document generateMetadata"
 
     def test_caching_guideline_exists(self):
         """Caching guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'caching.md'
+        guideline = NEXTJS_GUIDELINES / 'caching.md'
         assert guideline.exists(), f"Caching guideline not found at {guideline}"
 
     def test_caching_covers_strategies(self):
         """Caching guideline must cover caching strategies (static, dynamic, revalidate)."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'caching.md'
+        guideline = NEXTJS_GUIDELINES / 'caching.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'cache' in content, "Must document caching"
         assert 'revalidate' in content or 'dynamic' in content, "Must document caching strategies"
 
     def test_caching_covers_fetch_options(self):
         """Caching guideline must cover fetch caching options."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'caching.md'
+        guideline = NEXTJS_GUIDELINES / 'caching.md'
         content = guideline.read_text(encoding='utf-8').lower()
         assert 'fetch' in content, "Must document fetch caching"
 
     def test_routing_guideline_exists(self):
         """Routing guideline must exist."""
-        guideline = NEXTJS_PACK / 'guidelines' / 'ROUTING.md'
+        guideline = NEXTJS_GUIDELINES / 'ROUTING.md'
         assert guideline.exists(), f"Routing guideline not found at {guideline}"
 
 
@@ -515,16 +516,9 @@ class TestNextJSMiddlewarePatterns:
 
     def test_middleware_documented_in_guidelines(self):
         """Middleware patterns must be documented in guidelines."""
-        guidelines_dir = NEXTJS_PACK / 'guidelines'
-        all_guidelines = list(guidelines_dir.glob('*.md'))
-
-        has_middleware_doc = any(
-            'middleware' in f.read_text(encoding='utf-8').lower()
-            for f in all_guidelines
-        )
-
-        assert has_middleware_doc, \
-            "Middleware patterns must be documented in guidelines"
+        guideline = NEXTJS_GUIDELINES / 'middleware.md'
+        assert guideline.exists(), f"Middleware guideline not found at {guideline}"
+        assert 'middleware' in guideline.read_text(encoding='utf-8').lower()
 
 
 class TestNextJSCompleteness:
@@ -536,7 +530,7 @@ class TestNextJSCompleteness:
         all_content = []
 
         # Guidelines
-        for f in (NEXTJS_PACK / 'guidelines').glob('*.md'):
+        for f in (NEXTJS_PACK / 'guidelines').rglob('*.md'):
             all_content.append(f.read_text(encoding='utf-8').lower())
 
         # Validators

@@ -179,24 +179,6 @@ class TestPackSpecificRegistries:
         """
         root = isolated_project_env
 
-        # Create minimal core registry
-        core_registry = root / ".edison" / "core" / "rules" / "registry.yml"
-        core_registry.parent.mkdir(parents=True, exist_ok=True)
-        with open(core_registry, "w", encoding="utf-8") as f:
-            yaml.safe_dump({
-                "version": "2.0.0",
-                "rules": [
-                    {
-                        "id": "RULE.CORE.EXAMPLE",
-                        "title": "Core Example Rule",
-                        "category": "general",
-                        "blocking": False,
-                        "applies_to": ["orchestrator", "agent"],
-                        "guidance": "Core rule guidance.",
-                    }
-                ],
-            }, f, sort_keys=False)
-
         # Create nextjs pack registry
         nextjs_registry = root / ".edison" / "packs" / "nextjs" / "rules" / "registry.yml"
         nextjs_registry.parent.mkdir(parents=True, exist_ok=True)
@@ -221,7 +203,7 @@ class TestPackSpecificRegistries:
 
         # Verify both core and pack rules are present
         rules = result["rules"]
-        assert "RULE.CORE.EXAMPLE" in rules, "Core rule should be present"
+        assert "RULE.DELEGATION.PRIORITY_CHAIN" in rules, "Core rule should be present"
         assert "RULE.NEXTJS.SERVER_FIRST" in rules, "Pack rule should be present"
 
         # Verify pack rule has correct metadata

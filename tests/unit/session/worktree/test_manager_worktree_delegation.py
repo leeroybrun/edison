@@ -169,7 +169,7 @@ def test_no_direct_subprocess_calls_in_manager(session_git_repo_path):
     GREEN: Should only delegate to worktree module, no subprocess imports needed.
     """
     # This is a meta-test that checks the code structure
-    from edison.core.session import lifecycle
+    from edison.core.session.lifecycle import manager as manager
     import inspect
 
     source = inspect.getsource(manager)

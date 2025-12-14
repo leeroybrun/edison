@@ -107,7 +107,7 @@ class TestWriteOrchestratorConstitution:
         """write_orchestrator_constitution creates constitution with default content."""
         path = write_orchestrator_constitution(tmp_path)
 
-        assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+        assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
         assert path.exists()
 
         content = path.read_text(encoding="utf-8")
@@ -125,5 +125,5 @@ class TestWriteOrchestratorConstitution:
         """write_orchestrator_constitution can use .agents as base."""
         path = write_orchestrator_constitution(tmp_path, base_dir=".agents")
 
-        assert path == tmp_path / ".agents" / "_generated" / "constitutions" / "ORCHESTRATORS.md"
+        assert path == tmp_path / ".agents" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
         assert path.exists()

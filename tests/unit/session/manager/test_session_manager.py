@@ -7,6 +7,7 @@ from edison.core.session.persistence.repository import SessionRepository
 from edison.core.state.guards import registry as guard_registry
 from edison.core.state.conditions import registry as condition_registry
 from edison.core.state.actions import registry as action_registry
+from tests.helpers.cache_utils import reset_edison_caches
 
 def session_exists(session_id: str) -> bool:
     """Check if a session exists."""
@@ -36,37 +37,49 @@ def setup_custom_config(project_root):
             },
             "validation": {
                 "idRegex": r"^[a-zA-Z0-9_\-\.]+$",
-                "maxLength": 64
+                "maxLength": 64,
             },
             "states": {
                 "active": "active",
                 "closing": "closing",
-                "validated": "validated"
+                "validated": "validated",
             },
             "defaults": {
-                "initialState": "active"
-            }
+                "initialState": "active",
+            },
         },
-        "statemachine": {
-            "session": {
-                "states": {
-                    "active": {
-                        "initial": True,
-                        "allowed_transitions": [
-                            {"to": "closing", "guard": "always_allow"}
-                        ],
+    }
+    (config_dir / "session.yml").write_text(yaml.dump(session_data))
+
+    # Canonical state machine config lives under workflow.statemachine.
+    workflow_cfg = {
+        "workflow": {
+            "statemachine": {
+                "session": {
+                    "states": {
+                        "active": {
+                            "initial": True,
+                            "allowed_transitions": [
+                                {"to": "closing", "guard": "always_allow"},
+                            ],
+                        },
+                        "closing": {
+                            "allowed_transitions": [
+                                {"to": "closed", "conditions": [{"name": "ready_to_close"}]},
+                            ],
+                        },
+                        "closed": {"final": True, "allowed_transitions": []},
                     },
-                    "closing": {
-                        "allowed_transitions": [
-                            {"to": "closed", "conditions": [{"name": "ready_to_close"}]}
-                        ]
-                    },
-                    "closed": {"final": True, "allowed_transitions": []}
-                }
+                },
             }
         }
     }
-    (config_dir / "session.yml").write_text(yaml.dump(session_data))
+    (config_dir / "workflow.yml").write_text(yaml.dump(workflow_cfg))
+
+    # IMPORTANT: Module imports above may have already loaded config defaults
+    # before these files were written. Reset caches so subsequent calls pick up
+    # the freshly written project config.
+    reset_edison_caches()
     
     # Reset registries and reload configs
     guard_registry.reset()

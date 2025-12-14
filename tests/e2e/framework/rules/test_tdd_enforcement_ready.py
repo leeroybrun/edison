@@ -111,14 +111,23 @@ class TestTddEnforcement(unittest.TestCase):
             )
 
     def test_73_verification_script_thresholds(self):
-        """RED: tdd-verification.sh must require 90% overall and 100% new code.
+        """Coverage thresholds are configured via YAML (no legacy scripts).
 
-        This test is textual to avoid heavy environment coupling. It asserts
-        presence of explicit anchors that the script must expose.
+        Edison enforces quality thresholds via config (e.g., quality.yaml),
+        not via a standalone `scripts/tdd-verification.sh`.
         """
-        script = Path("scripts/tdd-verification.sh").read_text(encoding="utf-8")
-        self.assertIn("TDD_ENFORCEMENT: REQUIRED_COVERAGE=90", script)
-        self.assertIn("TDD_ENFORCEMENT: NEW_CODE_COVERAGE=100", script)
+        from edison.data import get_data_path
+        import yaml
+
+        cfg_path = get_data_path("config", "quality.yaml")
+        self.assertTrue(cfg_path.exists(), f"Missing bundled config: {cfg_path}")
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        quality = cfg.get("quality") or {}
+        coverage = quality.get("coverage") or {}
+        self.assertIn("overall", coverage)
+        self.assertIn("changed", coverage)
+        self.assertIsInstance(coverage["overall"], int)
+        self.assertIsInstance(coverage["changed"], int)
 
 
 if __name__ == "__main__":

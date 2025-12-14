@@ -14,5 +14,5 @@ def test_function_transformer_executes_core_function(tmp_path: Path) -> None:
     engine = TemplateEngine(config={}, packs=[], project_root=tmp_path)
     content, _ = engine.process("{{function:tasks_states()}}", entity_name="test")
 
-    assert "- todo" in content
-    assert "- done" in content
+    assert "**todo**" in content
+    assert "**done**" in content

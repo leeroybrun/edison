@@ -43,3 +43,5 @@ def test_core_guidelines_contain_no_tech_specific_commands() -> None:
         "Move these into packs or replace with placeholders/sections.\n"
         + "\n".join(offenders)
     )
+
+

@@ -68,7 +68,7 @@ class TestRulesRegistryAndComposition:
         self,
         isolated_project_env: Path,
     ) -> None:
-        """Anchors are extracted between ANCHOR and END ANCHOR markers."""
+        """Sections are extracted between SECTION markers."""
         root = isolated_project_env
         guideline = root / ".edison" / "guidelines" / "TEST.md"
 
@@ -78,14 +78,14 @@ class TestRulesRegistryAndComposition:
                 [
                     "# Test Guidelines",
                     "Intro line.",
-                    "<!-- ANCHOR: first -->",
+                    "<!-- SECTION: first -->",
                     "First line A.",
                     "First line B.",
-                    "<!-- END ANCHOR: first -->",
+                    "<!-- /SECTION: first -->",
                     "Outside any anchor.",
-                    "<!-- ANCHOR: second -->",
+                    "<!-- SECTION: second -->",
                     "Second anchor content.",
-                    # Intentionally omit END marker to exercise implicit termination.
+                    "<!-- /SECTION: second -->",
                 ]
             ),
         )
@@ -98,7 +98,6 @@ class TestRulesRegistryAndComposition:
         assert "Outside any anchor." not in text_first
 
         assert "Second anchor content." in text_second
-        # second anchor should run until EOF when END marker is missing
         assert "<!--" not in text_second
 
     def test_missing_anchor_raises_error(
@@ -165,8 +164,10 @@ class TestRulesRegistryAndComposition:
         self,
         isolated_project_env: Path,
     ) -> None:
-        """Circular includes in guidelines are detected when resolving includes."""
-        from edison.core.composition.includes import resolve_includes, ComposeError
+        """Circular composed-includes are surfaced as an error marker (fail-closed consumers should reject)."""
+        from edison.core.composition.engine import TemplateEngine
+        from edison.core.composition.includes import ComposedIncludeProvider
+        from edison.core.composition.registries._types_manager import ComposableTypesManager
         
         root = isolated_project_env
 
@@ -179,7 +180,7 @@ class TestRulesRegistryAndComposition:
                 [
                     "# A",
                     "Content in A",
-                    "{{include:B.md}}",
+                    "{{include:guidelines/B.md}}",
                 ]
             ),
         )
@@ -189,19 +190,23 @@ class TestRulesRegistryAndComposition:
                 [
                     "# B",
                     "Content in B",
-                    "{{include:A.md}}",
+                    "{{include:guidelines/A.md}}",
                 ]
             ),
         )
 
-        # Test circular include detection via resolve_includes
-        with pytest.raises(ComposeError) as exc:
-            resolve_includes(a_path.read_text(), a_path)
-
-        # Should detect circular include or max depth exceeded
-        error_msg = str(exc.value).lower()
-        assert (
-            "include depth" in error_msg
-            or "circular" in error_msg
-            or "already visited" in error_msg
-        ), f"Expected error about circular include or max depth, got: {exc.value}"
+        include_provider = ComposedIncludeProvider(
+            types_manager=ComposableTypesManager(project_root=root),
+            packs=tuple(),
+            materialize=False,
+        ).build()
+        engine = TemplateEngine(
+            config={},
+            packs=[],
+            project_root=root,
+            source_dir=None,
+            include_provider=include_provider,
+            strip_section_markers=True,
+        )
+        out, _report = engine.process(a_path.read_text(encoding="utf-8"), entity_name="A", entity_type="guidelines")
+        assert "Circular composed-include detected" in out

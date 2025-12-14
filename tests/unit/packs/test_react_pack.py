@@ -20,6 +20,7 @@ from edison.core.composition.packs import validate_pack
 
 
 REACT_PACK = ROOT / 'src/edison/data/packs/react'
+REACT_GUIDELINES = REACT_PACK / 'guidelines' / 'includes' / 'react'
 
 
 class TestReactPackStructure:
@@ -71,7 +72,7 @@ class TestReact19Content:
 
     def test_use_hook_content_exists(self):
         """use() hook must be documented (React 19 feature)."""
-        hook_file = REACT_PACK / 'guidelines' / 'HOOKS.md'
+        hook_file = REACT_GUIDELINES / 'HOOKS.md'
         assert hook_file.exists()
         content = hook_file.read_text(encoding='utf-8')
         # Should mention use() hook for promises
@@ -80,21 +81,21 @@ class TestReact19Content:
 
     def test_useFormStatus_documented(self):
         """useFormStatus hook must be documented (React 19)."""
-        hook_file = REACT_PACK / 'guidelines' / 'HOOKS.md'
+        hook_file = REACT_GUIDELINES / 'HOOKS.md'
         content = hook_file.read_text(encoding='utf-8')
         assert 'useformstatus' in content.lower(), \
             "Guidelines must document React 19 useFormStatus hook"
 
     def test_useOptimistic_documented(self):
         """useOptimistic hook must be documented (React 19)."""
-        hook_file = REACT_PACK / 'guidelines' / 'HOOKS.md'
+        hook_file = REACT_GUIDELINES / 'HOOKS.md'
         content = hook_file.read_text(encoding='utf-8')
         assert 'useoptimistic' in content.lower(), \
             "Guidelines must document React 19 useOptimistic hook"
 
     def test_server_client_components_documented(self):
         """Server and Client Components must be documented."""
-        sc_file = REACT_PACK / 'guidelines' / 'server-client-components.md'
+        sc_file = REACT_GUIDELINES / 'server-client-components.md'
         assert sc_file.exists()
         content = sc_file.read_text(encoding='utf-8')
         assert 'use client' in content or "use client" in content.lower(), \
@@ -114,7 +115,7 @@ class TestReact19Content:
 
     def test_hooks_rules_documented(self):
         """Rules of Hooks must be documented."""
-        hooks_file = REACT_PACK / 'guidelines' / 'hooks-patterns.md'
+        hooks_file = REACT_GUIDELINES / 'hooks-patterns.md'
         assert hooks_file.exists()
         content = hooks_file.read_text(encoding='utf-8')
         # Should mention top-level hooks rule
@@ -123,7 +124,7 @@ class TestReact19Content:
 
     def test_component_composition_guidance(self):
         """Component composition guidance must exist."""
-        design_file = REACT_PACK / 'guidelines' / 'component-design.md'
+        design_file = REACT_GUIDELINES / 'component-design.md'
         assert design_file.exists()
         content = design_file.read_text(encoding='utf-8')
         assert 'composition' in content.lower(), \
@@ -131,7 +132,7 @@ class TestReact19Content:
 
     def test_accessibility_guidance(self):
         """Accessibility guidance must exist."""
-        a11y_file = REACT_PACK / 'guidelines' / 'accessibility.md'
+        a11y_file = REACT_GUIDELINES / 'accessibility.md'
         assert a11y_file.exists()
         content = a11y_file.read_text(encoding='utf-8')
         assert ('wcag' in content.lower() or 

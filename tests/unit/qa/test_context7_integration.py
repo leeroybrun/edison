@@ -1,109 +1,58 @@
-"""Integration tests for context7.py config loading."""
+"""Integration tests for context7.py config loading (Context7Config-driven)."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from edison.core.qa.context.context7 import _normalize, _merge_triggers, _load_triggers, _load_aliases
+from edison.core.qa.context.context7 import _normalize, _load_triggers, _load_aliases, detect_packages
+from helpers.cache_utils import reset_edison_caches
 
 
-def test_load_triggers_returns_dict():
-    """Verify _load_triggers returns a dict with expected structure."""
-    triggers = _load_triggers()
-    assert isinstance(triggers, dict)
-    assert len(triggers) > 0
-    assert all(isinstance(k, str) for k in triggers.keys())
-    assert all(isinstance(v, list) for v in triggers.values())
+def test_load_triggers_and_aliases_can_be_empty():
+    """Core is technology-agnostic: triggers/aliases may be empty if no packs/project overrides configured."""
+    assert isinstance(_load_triggers(), dict)
+    assert isinstance(_load_aliases(), dict)
 
 
-def test_load_aliases_returns_dict():
-    """Verify _load_aliases returns a dict with expected structure."""
-    aliases = _load_aliases()
-    assert isinstance(aliases, dict)
-    assert len(aliases) > 0
-    assert all(isinstance(k, str) for k in aliases.keys())
-    assert all(isinstance(v, str) for v in aliases.values())
+def test_detect_packages_uses_project_context7_config(isolated_project_env):
+    """detect_packages() must be driven exclusively by Context7Config triggers (no legacy postTrainingPackages)."""
+    root: Path = isolated_project_env
+
+    # Configure a minimal Context7 trigger set for this isolated project.
+    cfg_path = root / ".edison" / "config" / "context7.yaml"
+    cfg_path.write_text(
+        """
+context7:
+  triggers:
+    react: ["*.tsx"]
+  aliases:
+    react-dom: react
+""".lstrip(),
+        encoding="utf-8",
+    )
+    reset_edison_caches()
+
+    # Create a tiny task file that points at a TSX file via Primary Files.
+    task_path = root / ".project" / "tasks" / "todo" / "t1.md"
+    task_path.write_text(
+        """
+---
+id: t1
+title: Test Context7
+---
+
+## Primary Files / Areas
+- app/components/Button.tsx
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    pkgs = detect_packages(task_path, session=None)
+    assert "react" in pkgs
 
 
 def test_normalize_uses_loaded_aliases():
     """Verify _normalize uses config-loaded aliases."""
-    # Test known aliases from config
-    assert _normalize("react-dom") == "react"
-    assert _normalize("nextjs") == "next"
-    assert _normalize("next/router") == "next"
-    assert _normalize("@prisma/client") == "prisma"
-    assert _normalize("prisma-client") == "prisma"
-
-    # Test normalization of unknown package
+    # With no aliases configured, normalization is just a lowercase identity.
     assert _normalize("unknown-package") == "unknown-package"
-
-    # Test case sensitivity
-    assert _normalize("React-Dom") == "react"
-    assert _normalize("NEXTJS") == "next"
-
-
-def test_merge_triggers_uses_loaded_config():
-    """Verify _merge_triggers uses config-loaded triggers."""
-    # Empty validator config
-    result = _merge_triggers({})
-    assert isinstance(result, dict)
-    assert "react" in result
-    assert "next" in result
-    assert "zod" in result
-    assert "prisma" in result
-
-    # Check specific patterns match config
-    assert "*.tsx" in result["react"]
-    assert "app/**/*" in result["next"]
-
-
-def test_merge_triggers_merges_validator_overrides():
-    """Verify _merge_triggers merges validator config overrides."""
-    validator_config = {
-        "postTrainingPackages": {
-            "react": {
-                "triggers": ["custom-pattern.tsx"]
-            }
-        }
-    }
-
-    result = _merge_triggers(validator_config)
-
-    # Should contain both config patterns and validator override
-    assert "*.tsx" in result["react"]  # From config
-    assert "custom-pattern.tsx" in result["react"]  # From validator override
-
-
-def test_merge_triggers_handles_new_packages_from_validator():
-    """Verify _merge_triggers can add new packages from validator config."""
-    validator_config = {
-        "postTrainingPackages": {
-            "new-package": {
-                "triggers": ["pattern1.ts", "pattern2.ts"]
-            }
-        }
-    }
-
-    result = _merge_triggers(validator_config)
-
-    # Should include the new package
-    assert "new-package" in result
-    assert result["new-package"] == ["pattern1.ts", "pattern2.ts"]
-
-
-def test_merge_triggers_deduplicates_patterns():
-    """Verify _merge_triggers removes duplicate patterns."""
-    validator_config = {
-        "postTrainingPackages": {
-            "react": {
-                "triggers": ["*.tsx", "*.tsx", "custom.tsx"]  # Duplicate *.tsx
-            }
-        }
-    }
-
-    result = _merge_triggers(validator_config)
-
-    # Should deduplicate *.tsx
-    tsx_count = result["react"].count("*.tsx")
-    assert tsx_count == 1, "Duplicate patterns should be removed"

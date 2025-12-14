@@ -33,13 +33,20 @@ def create_repo_with_git(tmp_path: Path, name: Optional[str] = None) -> Path:
     repo = tmp_path / name if name else tmp_path
     repo.mkdir(parents=True, exist_ok=True)
 
-    # Initialize a real git repository
+    # Initialize a real git repository.
+    #
+    # IMPORTANT (test isolation): `run_with_timeout` normally consults TimeoutsConfig,
+    # which consults ConfigManager and populates the global config cache for `repo`.
+    # At this point in many tests, `.edison/config/*.yaml` has not been written yet.
+    # Pass an explicit timeout to avoid priming the config cache with an incomplete
+    # view of project overrides.
     run_with_timeout(
         ["git", "init"],
         cwd=repo,
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        timeout=30,
     )
     return repo
 

@@ -15,7 +15,8 @@ def test_session_file_exists():
 def test_includes_session_id_placeholder():
     content = read_session_text()
     assert "{{session_id}}" in content
-    assert "edison session resume {{session_id}}" in content
+    assert "edison session status {{session_id}}" in content
+    assert "edison session next {{session_id}}" in content
 
 
 def test_includes_recovery_checklist():
@@ -32,4 +33,4 @@ def test_includes_recovery_checklist():
 
 def test_references_constitution():
     content = read_session_text()
-    assert "constitutions/ORCHESTRATORS.md" in content
+    assert "constitutions/ORCHESTRATOR.md" in content

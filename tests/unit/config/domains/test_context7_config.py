@@ -29,26 +29,13 @@ def test_context7_metadata_present() -> None:
     assert section.get("trainingCutoff"), "Config must declare trainingCutoff"
 
 
-def test_context7_packages_include_all_packages() -> None:
+def test_context7_core_is_tech_agnostic() -> None:
+    """Core context7.yaml must not embed technology-specific package metadata.
+
+    Technology-specific triggers/aliases/packages are provided by packs and/or project overlays.
+    """
     cfg = read_yaml("config", "context7.yaml")
     section = cfg.get("context7", {})
-    packages = section.get("packages", {})
-    expected = {"next", "react", "tailwindcss", "zod", "motion", "typescript", "prisma", "better-auth"}
-    missing = expected.difference(packages.keys())
-    assert not missing, f"Missing expected packages: {sorted(missing)}"
-
-
-def test_context7_packages_have_required_fields() -> None:
-    cfg = read_yaml("config", "context7.yaml")
-    section = cfg.get("context7", {})
-    packages = section.get("packages", {})
-
-    required_fields = {"version", "context7Id", "criticalChanges", "topics"}
-
-    for name, pkg in packages.items():
-        present = required_fields.intersection(pkg.keys())
-        assert present == required_fields, f"Package '{name}' missing fields: {sorted(required_fields - present)}"
-        assert isinstance(pkg["criticalChanges"], list) and pkg["criticalChanges"], (
-            f"Package '{name}' must list criticalChanges"
-        )
-        assert isinstance(pkg["topics"], list) and pkg["topics"], f"Package '{name}' must list topics"
+    assert section.get("triggers", {}) == {}
+    assert section.get("aliases", {}) == {}
+    assert section.get("packages", {}) == {}

@@ -11,6 +11,7 @@ from edison.data import read_yaml
 
 @pytest.fixture()
 def context7_config() -> Context7Config:
+    # Default config (core only) is expected to be tech-agnostic and may be empty.
     return Context7Config()
 
 
@@ -31,13 +32,14 @@ def test_aliases_section_exists() -> None:
 
 
 def test_triggers_have_expected_packages() -> None:
-    """Verify triggers contain expected package names."""
+    """Core triggers are intentionally empty (tech-agnostic).
+
+    Packs provide technology-specific triggers.
+    """
     cfg = read_yaml("config", "context7.yaml")
     section = cfg.get("context7", {})
     triggers = section.get("triggers", {})
-    expected = {"react", "next", "zod", "prisma"}
-    missing = expected.difference(triggers.keys())
-    assert not missing, f"Missing expected trigger packages: {sorted(missing)}"
+    assert triggers == {}
 
 
 def test_triggers_have_valid_patterns() -> None:
@@ -48,47 +50,35 @@ def test_triggers_have_valid_patterns() -> None:
 
     for pkg, patterns in triggers.items():
         assert isinstance(patterns, list), f"Triggers for '{pkg}' must be a list"
-        assert patterns, f"Triggers for '{pkg}' must not be empty"
+        # Core triggers may be empty; packs provide non-empty triggers.
         for pat in patterns:
             assert isinstance(pat, str), f"Pattern in '{pkg}' triggers must be string"
             assert pat.strip(), f"Pattern in '{pkg}' triggers must not be empty string"
 
 
 def test_aliases_have_expected_mappings() -> None:
-    """Verify aliases contain expected mappings."""
+    """Core aliases are intentionally empty (tech-agnostic).
+
+    Packs provide technology-specific aliases.
+    """
     cfg = read_yaml("config", "context7.yaml")
     section = cfg.get("context7", {})
     aliases = section.get("aliases", {})
-
-    expected_mappings = {
-        "react-dom": "react",
-        "nextjs": "next",
-        "next/router": "next",
-        "@prisma/client": "prisma",
-        "prisma-client": "prisma",
-    }
-
-    for alias, canonical in expected_mappings.items():
-        assert alias in aliases, f"Missing expected alias '{alias}'"
-        assert aliases[alias] == canonical, f"Alias '{alias}' should map to '{canonical}'"
+    assert aliases == {}
 
 
 def test_context7_config_loads_triggers(context7_config: Context7Config) -> None:
     """Verify Context7Config.triggers loads from config."""
     triggers = context7_config.triggers
     assert isinstance(triggers, dict)
-    assert "react" in triggers
-    assert "next" in triggers
-    assert isinstance(triggers["react"], list)
-    assert len(triggers["react"]) > 0
+    # Core-only is tech-agnostic; triggers may be empty.
 
 
 def test_context7_config_loads_aliases(context7_config: Context7Config) -> None:
     """Verify Context7Config.aliases loads from config."""
     aliases = context7_config.aliases
     assert isinstance(aliases, dict)
-    assert "react-dom" in aliases
-    assert aliases["react-dom"] == "react"
+    # Core-only is tech-agnostic; aliases may be empty.
 
 
 def test_get_triggers_method() -> None:
@@ -96,8 +86,6 @@ def test_get_triggers_method() -> None:
     config = Context7Config()
     triggers = config.get_triggers()
     assert isinstance(triggers, dict)
-    assert "react" in triggers
-    assert "next" in triggers
 
 
 def test_get_aliases_method() -> None:
@@ -105,44 +93,30 @@ def test_get_aliases_method() -> None:
     config = Context7Config()
     aliases = config.get_aliases()
     assert isinstance(aliases, dict)
-    assert "react-dom" in aliases
-    assert aliases["react-dom"] == "react"
 
 
-def test_triggers_match_hardcoded_defaults() -> None:
-    """Verify config triggers match the original hardcoded DEFAULT_TRIGGERS."""
-    config = Context7Config()
-    triggers = config.get_triggers()
+def test_context7_config_merges_pack_triggers_and_aliases(tmp_path: Path) -> None:
+    """When packs are enabled, Context7Config must expose their triggers/aliases/packages."""
+    (tmp_path / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".project").mkdir(parents=True, exist_ok=True)
 
-    # Original hardcoded values
-    expected_react = ["*.tsx", "*.jsx", "**/components/**/*"]
-    expected_next = ["app/**/*", "**/route.ts", "**/layout.tsx", "**/page.tsx"]
-    expected_zod = ["**/*.schema.ts", "**/*.validation.ts", "**/*schema.ts"]
-    expected_prisma = [
-        "**/*.prisma",
-        "**/prisma/schema.*",
-        "**/prisma/migrations/**/*",
-        "**/prisma/seeds/**/*",
-    ]
+    # Enable packs that contribute Context7 config.
+    packs_yml = tmp_path / ".edison" / "config" / "packs.yml"
+    packs_yml.write_text(
+        "packs:\n  active:\n    - react\n    - nextjs\n    - prisma\n    - zod\n",
+        encoding="utf-8",
+    )
 
-    assert triggers["react"] == expected_react
-    assert triggers["next"] == expected_next
-    assert triggers["zod"] == expected_zod
-    assert triggers["prisma"] == expected_prisma
+    cfg = Context7Config(repo_root=tmp_path)
+    triggers = cfg.get_triggers()
+    aliases = cfg.get_aliases()
+    packages = cfg.get_packages()
 
+    for key in ("react", "next", "prisma", "zod"):
+        assert key in triggers
+        assert key in packages
 
-def test_aliases_match_hardcoded_defaults() -> None:
-    """Verify config aliases match the original hardcoded ALIASES."""
-    config = Context7Config()
-    aliases = config.get_aliases()
-
-    # Original hardcoded values
-    expected = {
-        "react-dom": "react",
-        "next/router": "next",
-        "nextjs": "next",
-        "@prisma/client": "prisma",
-        "prisma-client": "prisma",
-    }
-
-    assert aliases == expected
+    # One representative alias from each pack
+    assert aliases.get("react-dom") == "react"
+    assert aliases.get("next/router") == "next"
+    assert aliases.get("@prisma/client") == "prisma"

@@ -22,29 +22,31 @@ def session_path_env(tmp_path, monkeypatch):
     repo = create_repo_with_git(tmp_path)
     config_dir = repo / ".edison" / "config"
 
-    # 1. defaults.yaml
+    # Canonical session config: `session.*` and state machine under `workflow.statemachine`.
     write_yaml(
-        config_dir / "defaults.yaml",
+        config_dir / "session.yml",
         {
-            "statemachine": {
-                "session": {
-                    "states": {
-                        "wip": {"dirname": "wip"},
-                        "done": {"dirname": "done"},
-                        "validated": {"dirname": "validated"},
-                    }
-                }
+            "session": {
+                "paths": {"root": ".project/sessions"},
+                "states": {"wip": "wip", "done": "done", "validated": "validated"},
+                "defaults": {"initialState": "wip"},
+                "validation": {"idRegex": r"^[a-zA-Z0-9_\\-\\.]+$", "maxLength": 64},
+                "lookupOrder": ["wip", "done", "validated"],
             }
         },
     )
-
-    # 2. sessions.yaml
     write_yaml(
-        config_dir / "sessions.yaml",
+        config_dir / "workflow.yml",
         {
-            "sessions": {
-                "paths": {
-                    "root": ".project/sessions",
+            "workflow": {
+                "statemachine": {
+                    "session": {
+                        "states": {
+                            "wip": {"initial": True, "allowed_transitions": [{"to": "done"}]},
+                            "done": {"allowed_transitions": [{"to": "validated"}]},
+                            "validated": {"final": True, "allowed_transitions": []},
+                        }
+                    }
                 }
             }
         },
@@ -61,24 +63,28 @@ def session_path_env(tmp_path, monkeypatch):
     return repo
 
 def test_get_session_bases_without_session_id_finds_all_sessions(session_path_env):
-    """Test get_session_bases without session_id finds all session files (flat layout)."""
-    # Setup: Create session JSON files using flat layout
+    """Test get_session_bases without session_id finds all session bases (nested layout)."""
+    # Setup: Create session directories using nested layout
     sessions_wip = session_path_env / ".project" / "sessions" / "wip"
     sessions_wip.mkdir(parents=True, exist_ok=True)
-    (sessions_wip / "sess-1.json").write_text('{"id": "sess-1"}')
-    (sessions_wip / "sess-2.json").write_text('{"id": "sess-2"}')
+    (sessions_wip / "sess-1").mkdir(parents=True, exist_ok=True)
+    (sessions_wip / "sess-1" / "session.json").write_text('{"id": "sess-1"}')
+    (sessions_wip / "sess-2").mkdir(parents=True, exist_ok=True)
+    (sessions_wip / "sess-2" / "session.json").write_text('{"id": "sess-2"}')
 
     sessions_done = session_path_env / ".project" / "sessions" / "done"
     sessions_done.mkdir(parents=True, exist_ok=True)
-    (sessions_done / "sess-3.json").write_text('{"id": "sess-3"}')
+    (sessions_done / "sess-3").mkdir(parents=True, exist_ok=True)
+    (sessions_done / "sess-3" / "session.json").write_text('{"id": "sess-3"}')
 
     # Act
     bases = get_session_bases(project_root=session_path_env)
 
-    # Assert - all session state directories found
-    # With flat layout, bases should point to state directories
+    # Assert - returns session base directories (per-session dirs under state dirs)
     base_names = {base.name for base in bases}
-    assert "wip" in base_names or "done" in base_names
+    assert "sess-1" in base_names
+    assert "sess-2" in base_names
+    assert "sess-3" in base_names
 
 def test_get_session_bases_with_session_id_finds_specific_session(session_path_env):
     """Test get_session_bases with session_id finds specific session directory."""

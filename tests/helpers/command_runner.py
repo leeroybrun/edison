@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from edison.core.utils.subprocess import run_with_timeout
 from tests.config import load_script_mappings, load_session_subcommands, load_track_subcommands, get_env_var_name
+from tests.helpers.paths import get_repo_root
 
 
 def run_script(
@@ -77,6 +78,19 @@ def run_script(
     test_env = os.environ.copy()
     if env:
         test_env.update(env)
+
+    # Ensure the subprocess can import the in-repo `edison` package.
+    #
+    # In-process tests add `repo/src` to sys.path (see tests/conftest.py), but subprocesses
+    # started from an isolated project directory won't see that. We fail closed by always
+    # injecting the repo's `src/` into PYTHONPATH.
+    repo_root = get_repo_root()
+    src_root = repo_root / "src"
+    existing_py_path = test_env.get("PYTHONPATH", "")
+    py_parts = [str(src_root)]
+    if existing_py_path:
+        py_parts.append(existing_py_path)
+    test_env["PYTHONPATH"] = os.pathsep.join(py_parts)
 
     # Load env var name from config (NO hardcoded values)
     # Set project root to point to test repository root

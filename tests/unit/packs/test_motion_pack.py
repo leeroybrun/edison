@@ -94,11 +94,11 @@ class TestMotionPackStructure:
         
         # Required guidelines
         required_guides = [
-            'animate-presence.md',
-            'layout-animations.md',
-            'gesture-handling.md',
-            'variants-system.md',
-            'performance.md',
+            'includes/motion/animate-presence.md',
+            'includes/motion/layout-animations.md',
+            'includes/motion/gesture-handling.md',
+            'includes/motion/variants-system.md',
+            'includes/motion/performance.md',
         ]
         
         for guide in required_guides:
@@ -151,7 +151,7 @@ class TestMotionPackStructure:
 
     def test_motion_pack_guidelines_content(self, motion_pack_dir: Path):
         """Motion pack guidelines should have substantive content."""
-        guidelines_dir = motion_pack_dir / 'guidelines'
+        guidelines_dir = motion_pack_dir / 'guidelines' / 'includes' / 'motion'
         
         # Each guide should have content
         for guide_file in guidelines_dir.glob('*.md'):

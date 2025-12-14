@@ -417,23 +417,18 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
 
     # Move waiting → todo requires parent task in done/ (enforced)
     # First attempt should fail since task is in todo/
-    res_fail = run_script("qa/promote", ["--task", task_id, "--to", "todo", "--session", session_id], cwd=project_dir.tmp_path)
+    res_fail = run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path)
     assert res_fail.returncode != 0
-    # Place task under tasks/done/ without using guard CLI (test setup only)
-    todo_path = project_dir.project_root / "sessions" / "wip" / session_id / "tasks" / "todo" / f"{task_id}.md"
-    done_path = project_dir.project_root / "sessions" / "wip" / session_id / "tasks" / "done" / f"{task_id}.md"
-    done_path.parent.mkdir(parents=True, exist_ok=True)
-    done_path.write_text("\n".join([f"# Task {task_id}", "", "- **Owner:** _unassigned_", "- **Status:** done"]) + "\n")
-    try:
-        todo_path.unlink()
-    except FileNotFoundError:
-        pass
+    # Move task to done in the session (test setup uses --force to bypass evidence guards)
+    assert_command_success(
+        run_script("tasks/status", [task_id, "--status", "done", "--force"], cwd=project_dir.tmp_path)
+    )
     # Now promote QA waiting → todo
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "todo", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
     assert_file_exists(project_dir.project_root / "sessions" / "wip" / session_id / "qa" / "todo" / f"{task_id}-qa.md")
 
     # todo → wip
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "wip", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
     assert_file_exists(project_dir.project_root / "sessions" / "wip" / session_id / "qa" / "wip" / f"{task_id}-qa.md")
 
     # Prepare minimal bundle summary to attempt wip → done (should be rejected; must re-run validators)
@@ -441,10 +436,14 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     ev.mkdir(parents=True, exist_ok=True)
     (ev / "bundle-approved.json").write_text(json.dumps({"taskId": task_id, "round": 1, "approved": True, "validators": []}, indent=2))
     # Manual bundle-approved.json must not be trusted
-    res_manual = run_script("qa/promote", ["--task", task_id, "--to", "done", "--session", session_id], cwd=project_dir.tmp_path)
+    res_manual = run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path)
     assert res_manual.returncode != 0
-    # Now generate a real bundle via validators/validate and try again (will still fail due to missing reports)
-    res_validate = run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path)
+    # Now generate a real bundle via validators/validate and try again (must fail due to missing blocking approvals)
+    res_validate = run_script(
+        "validators/validate",
+        [task_id, "--session", session_id, "--execute"],
+        cwd=project_dir.tmp_path,
+    )
     assert res_validate.returncode != 0
     # Create minimal required validator reports then approve (include specialized that block)
     vids = [
@@ -463,8 +462,20 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
             "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z", "completedAt": "2025-01-01T00:05:00Z"}
         }
         (ev / f"validator-{vid}-report.json").write_text(json.dumps(report))
-    assert_command_success(run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("qa/promote", ["--task", task_id, "--to", "done", "--session", session_id], cwd=project_dir.tmp_path))
+
+    # Also create required evidence command outputs (config-driven list).
+    # These are required by the QA wip→done guards (fail-closed).
+    from tests.config import get_default_value
+    for fname in get_default_value("qa", "evidence_files"):
+        (ev / fname).write_text("test evidence\n")
+    assert_command_success(
+        run_script(
+            "validators/validate",
+            [task_id, "--session", session_id, "--execute"],
+            cwd=project_dir.tmp_path,
+        )
+    )
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     assert_file_exists(project_dir.project_root / "sessions" / "wip" / session_id / "qa" / "done" / f"{task_id}-qa.md")
 
 

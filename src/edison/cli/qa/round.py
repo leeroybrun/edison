@@ -24,9 +24,7 @@ SUMMARY = "Manage QA rounds"
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
-        "--task",
-        dest="task_id",
-        required=True,
+        "task_id",
         help="Task identifier",
     )
     parser.add_argument(

@@ -110,7 +110,8 @@ def test_worktree_base_uses_project_name(tmp_path, monkeypatch):
     from tests.helpers import session as sessionlib
 
     base_dir = sessionlib._get_worktree_base()
-    expected = (repo.parent / "custom-worktrees").resolve()
+    # Relative worktree paths that do NOT start with '..' are anchored inside the repo.
+    expected = (repo / "custom-worktrees").resolve()
     assert base_dir == expected
 
 

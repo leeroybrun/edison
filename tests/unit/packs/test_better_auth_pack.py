@@ -108,9 +108,9 @@ class TestBetterAuthPackStructure:
         assert 'better-auth' in content.lower(), "pack.yml must contain 'better-auth' ID"
 
     def test_agent_overlay_auth_setup_exists(self, pack_dir: Path):
-        """Agent overlay for auth setup must exist."""
-        overlay = pack_dir / 'agents' / 'overlays' / 'auth-setup.md'
-        assert overlay.exists(), f"Agent overlay auth-setup.md must exist at {overlay}"
+        """Agent overlay for API builder must exist."""
+        overlay = pack_dir / 'agents' / 'overlays' / 'api-builder.md'
+        assert overlay.exists(), f"Agent overlay api-builder.md must exist at {overlay}"
 
     def test_validator_overlay_security_exists(self, pack_dir: Path):
         """Validator overlay for security must exist."""
@@ -119,17 +119,17 @@ class TestBetterAuthPackStructure:
 
     def test_guideline_session_management_exists(self, pack_dir: Path):
         """Session management guideline must exist."""
-        guideline = pack_dir / 'guidelines' / 'session-management.md'
+        guideline = pack_dir / 'guidelines' / 'includes' / 'better-auth' / 'session-management.md'
         assert guideline.exists(), f"Guideline session-management.md must exist at {guideline}"
 
     def test_guideline_provider_config_exists(self, pack_dir: Path):
         """Provider configuration guideline must exist."""
-        guideline = pack_dir / 'guidelines' / 'provider-configuration.md'
+        guideline = pack_dir / 'guidelines' / 'includes' / 'better-auth' / 'provider-configuration.md'
         assert guideline.exists(), f"Guideline provider-configuration.md must exist at {guideline}"
 
     def test_guideline_middleware_patterns_exists(self, pack_dir: Path):
         """Middleware patterns guideline must exist."""
-        guideline = pack_dir / 'guidelines' / 'middleware-patterns.md'
+        guideline = pack_dir / 'guidelines' / 'includes' / 'better-auth' / 'middleware-patterns.md'
         assert guideline.exists(), f"Guideline middleware-patterns.md must exist at {guideline}"
 
     def test_validator_global_overlay_exists(self, pack_dir: Path):

@@ -26,6 +26,8 @@ def setup_project_root(monkeypatch: Any, project_path: Path) -> None:
             # Now AGENTS_PROJECT_ROOT points to tmp_path
     """
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_path))
+    # Ensure `.edison/` resolves inside this isolated repo (some environments override it).
+    monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
     reset_edison_caches()
 
 
@@ -51,6 +53,7 @@ def setup_test_environment(
     """
     # Core project root
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
+    monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
 
     # Also set legacy variable names for compatibility
     monkeypatch.setenv("project_ROOT", str(project_root))

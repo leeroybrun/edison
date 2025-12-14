@@ -75,7 +75,7 @@ class TestClaudeIntegrationE2E:
         # Minimal orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)
         constitutions_dir = root / ".agents" / "_generated" / "constitutions"
         constitutions_dir.mkdir(parents=True, exist_ok=True)
-        constitution = constitutions_dir / "ORCHESTRATORS.md"
+        constitution = constitutions_dir / "ORCHESTRATOR.md"
         constitution.write_text("# Orchestrator Constitution\n\nDetails.", encoding="utf-8")
 
         # Pre-existing CLAUDE.md template to be enriched

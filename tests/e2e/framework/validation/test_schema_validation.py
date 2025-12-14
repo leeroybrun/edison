@@ -11,10 +11,11 @@ from edison.data import get_data_path
 
 CORE = get_data_path("schemas")
 PROJECT = Path(".agents/schemas")
-STATE_MACHINE = get_data_path("config", "state-machine.yaml")
+# Canonical statemachine lives in workflow.yaml (workflow.statemachine.*)
+WORKFLOW = get_data_path("config", "workflow.yaml")
 
 
-def _load_load_schema(name: str) -> dict:
+def _load_schema(name: str) -> dict:
     p = CORE / name
     return json.loads(p.read_text(encoding="utf-8"))
 
@@ -66,13 +67,13 @@ def test_config_yaml_validates():
 project:
   name: my-project
 session:
-  worktree:
-    baseDirectory: ../{PROJECT_NAME}-worktrees
   timeoutMinutes: 45
+  worktree:
+    uuidSuffixLength: 6
 delegation:
-  roles:
-    - name: reviewer
-      capabilities: ["qa", "review"]
+  implementers:
+    primary: codex
+    fallbackChain: [claude]
 validators:
   enabled: ["security", "performance"]
 """
@@ -86,10 +87,10 @@ def test_task_status_enum_matches_state_machine():
     status_enum = schema["properties"]["status"]["enum"]
     assert status_enum, "domain/task.schema.json must declare a non-empty status enum"
 
-    assert STATE_MACHINE.exists(), "Missing state-machine.yaml in core config"
-    sm = yaml.safe_load(STATE_MACHINE.read_text(encoding="utf-8")) or {}
+    assert WORKFLOW.exists(), "Missing workflow.yaml in core config"
+    wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")) or {}
     task_states_cfg = (
-        (sm.get("statemachine") or {}).get("task") or {}
+        ((wf.get("workflow") or {}).get("statemachine") or {}).get("task") or {}
     ).get("states") or {}
     if isinstance(task_states_cfg, dict):
         task_states = list(task_states_cfg.keys())

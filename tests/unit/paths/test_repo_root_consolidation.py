@@ -16,7 +16,6 @@ from edison.core.utils.paths import (
 from edison.core.utils import git as git_utils
 from edison.core.utils import subprocess as subprocess_utils
 from edison.core.task.paths import _get_root as task_paths_get_root
-from edison.core.composition import includes as composition_includes
 # from edison.core.adapters.sync import zen as zen_adapter
 from edison.core.adapters.platforms import cursor as cursor_adapter
 from tests.helpers.cache_utils import reset_edison_caches
@@ -90,16 +89,6 @@ class TestRepoRootConsolidation:
 
         # task.paths (ensure it picks up the override via canonical)
         assert task_paths_get_root() == fake_root
-
-    def test_composition_wrappers_use_canonical(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test that composition modules' _repo_root wrappers work."""
-        monkeypatch.chdir(temp_git_repo)
-        monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
-        
-        # reset overrides if any (though they are module level, so might persist)
-        composition_includes._REPO_ROOT_OVERRIDE = None
-        
-        assert composition_includes._repo_root() == temp_git_repo
 
     def test_utils_subprocess_timeout_context(self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that subprocess timeout configuration can resolve root."""

@@ -19,8 +19,9 @@ def _render(path: Path) -> str:
 
 
 def test_constitution_base_files_exist() -> None:
-    assert (DATA_DIR / "constitutions/agents-base.md").exists()
-    assert (DATA_DIR / "constitutions/validators-base.md").exists()
+    assert (DATA_DIR / "constitutions/agents.md").exists()
+    assert (DATA_DIR / "constitutions/validators.md").exists()
+    assert (DATA_DIR / "constitutions/orchestrator.md").exists()
 
 
 def test_core_agents_do_not_emit_missing_include_errors() -> None:
@@ -44,3 +45,5 @@ def test_core_validators_do_not_emit_missing_include_errors() -> None:
         rendered = _render(path)
         assert "<!-- ERROR: Include not found:" not in rendered
         assert "<!-- ERROR: Circular include detected:" not in rendered
+
+

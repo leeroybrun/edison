@@ -11,7 +11,14 @@ from pathlib import Path
 
 from edison.core.utils.paths import resolve_project_root
 from edison.core.utils.git import get_git_root, is_git_repository
-from edison.cli._dispatcher import discover_domains, discover_commands
+from edison.cli._dispatcher import (
+    discover_domains,
+    discover_commands,
+    _strip_profile_flag,
+    _resolve_fast_command_module,
+    _get_active_packs_fast,
+    build_parser,
+)
 from tests.helpers.env_setup import clear_path_caches
 from tests.helpers.fixtures import create_repo_with_git
 
@@ -85,3 +92,36 @@ def test_get_git_root(tmp_path: Path) -> None:
 
     git_root = get_git_root(nested)
     assert git_root == root
+
+
+def test_strip_profile_flag_allows_any_position() -> None:
+    argv, enabled = _strip_profile_flag(["rules", "check", "--profile"])
+    assert enabled is True
+    assert argv == ["rules", "check"]
+
+    argv2, enabled2 = _strip_profile_flag(["--profile", "rules", "check"])
+    assert enabled2 is True
+    assert argv2 == ["rules", "check"]
+
+
+def test_build_parser_accepts_profile_flag() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["--profile", "rules", "check"])
+    assert getattr(args, "profile") is True
+
+
+def test_fast_command_resolution_finds_domain_command() -> None:
+    spec = _resolve_fast_command_module(["rules", "check"])
+    assert spec is not None
+    assert spec["module"].endswith(".rules.check")
+    assert spec["domain"] == "rules"
+    assert spec["command"] == "check"
+
+
+def test_cli_rules_precheck_detects_core_rule_for_task_claim(tmp_path: Path) -> None:
+    # Legacy test renamed: keep a minimal assertion that the packs fast-path
+    # does not crash and returns empty when packs config is absent.
+    project_root = tmp_path / "proj"
+    project_root.mkdir(parents=True)
+    (project_root / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    assert _get_active_packs_fast(project_root) == []

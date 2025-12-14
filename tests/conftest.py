@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import shutil
 import sys
 import subprocess
@@ -50,12 +51,57 @@ from config import load_states as load_test_states
 from helpers.cache_utils import reset_edison_caches
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_teardown(item, nextitem):  # type: ignore[no-untyped-def]
+    """Guard pytest's own PYTEST_CURRENT_TEST cleanup.
+
+    Some code paths in this repo mutate os.environ directly; when that happens,
+    pytest's internal teardown (which unsets PYTEST_CURRENT_TEST) can crash with
+    KeyError if the variable was removed mid-test.
+    """
+    os.environ.setdefault("PYTEST_CURRENT_TEST", str(getattr(item, "nodeid", "")))
+
+
+# Some unit tests still mutate os.environ directly (without monkeypatch). To keep
+# PathResolver + config loading deterministic, restore only the Edison-related
+# env vars that are known to leak, without touching pytest's own env vars such
+# as PYTEST_CURRENT_TEST.
+_LEAK_PRONE_ENV_KEYS = [
+    "AGENTS_PROJECT_ROOT",
+    "project_ROOT",
+    "PROJECT_NAME",
+    "PROJECT_TERMS",
+    "AGENTS_OWNER",
+    "project_OWNER",
+    "project_SESSION",
+    "EDISON_SESSION_ID",
+    "TASK_ID",
+    # Critical: overrides the location of `.edison/` itself. If this leaks, config loads
+    # will silently ignore `.edison/config/*.yml` written by many tests.
+    "EDISON_paths__project_config_dir",
+]
+
+# Baseline values for Edison leak-prone env vars at pytest session start.
+# We restore only these keys to avoid touching pytest's own env vars like PYTEST_CURRENT_TEST.
+_ENV_BASELINE = {k: os.environ.get(k) for k in _LEAK_PRONE_ENV_KEYS}
+# Tests must be deterministic regardless of developer environment. This env var
+# changes the *name* of the project config directory (e.g. ".edison"), and if it
+# is set in a developer shell it will silently break many tests that create
+# `.edison/config/*.yaml`. Fail-closed by always clearing it for every test.
+_ENV_BASELINE["EDISON_paths__project_config_dir"] = None
+
+
 @pytest.fixture(autouse=True)
 def _reset_global_project_root_cache() -> None:
     """Ensure all global caches are fresh for each test."""
     reset_edison_caches()
     yield
     reset_edison_caches()
+    for k, v in _ENV_BASELINE.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
 
 
 @pytest.fixture
@@ -68,6 +114,9 @@ def isolated_project_env(tmp_path, monkeypatch):
     """
     # Set environment variable and change to tmp directory
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    # Ensure config resolves `.edison/` inside this isolated repo.
+    # Some developer environments set this override; tests must be deterministic.
+    monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
     monkeypatch.chdir(tmp_path)
 
     # Ensure PathResolver uses this isolated root for the duration of the test
@@ -79,7 +128,6 @@ def isolated_project_env(tmp_path, monkeypatch):
 
     # Set composition module repo root overrides to use isolated environment
     composition_modules = [
-        "edison.core.composition.includes",
         "edison.core.composition.commands",
         "edison.core.composition.composers",
         "edison.core.composition.settings",

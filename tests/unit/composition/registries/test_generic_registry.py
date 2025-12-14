@@ -209,6 +209,9 @@ composition:
         - intro
 """
         )
+        # Ensure config cache sees the newly written composition.yaml.
+        from tests.helpers.cache_utils import reset_edison_caches
+        reset_edison_caches()
 
         registry = GenericRegistry("roots", project_root=isolated_project_env)
         config = registry.get_strategy_config()
