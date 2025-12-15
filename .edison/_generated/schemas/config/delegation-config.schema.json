@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/delegation-config.schema.json",
+  "title": "Delegation Config",
+  "type": "object",
+  "required": [
+    "filePatternRules",
+    "taskTypeRules",
+    "subAgentDefaults",
+    "orchestratorGuidance",
+    "zenMcpIntegration"
+  ],
+  "properties": {
+    "filePatternRules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "subAgentType",
+          "delegation"
+        ],
+        "properties": {
+          "preferredModel": {
+            "type": "string"
+          },
+          "preferredModels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subAgentType": {
+            "type": "string"
+          },
+          "delegation": {
+            "type": "string",
+            "enum": [
+              "required",
+              "partial"
+            ]
+          }
+        }
+      }
+    },
+    "taskTypeRules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "subAgentType",
+          "delegation"
+        ],
+        "properties": {
+          "preferredModel": {
+            "type": "string"
+          },
+          "preferredModels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subAgentType": {
+            "type": "string"
+          },
+          "delegation": {
+            "type": "string",
+            "enum": [
+              "required",
+              "partial"
+            ]
+          }
+        }
+      }
+    },
+    "subAgentDefaults": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "defaultModel": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "orchestratorGuidance": {
+      "type": "object",
+      "required": [
+        "alwaysDelegateToSubAgent",
+        "neverImplementDirectly"
+      ],
+      "properties": {
+        "alwaysDelegateToSubAgent": {
+          "type": "boolean"
+        },
+        "neverImplementDirectly": {
+          "type": "boolean"
+        },
+        "tieBreakers": {
+          "type": "object",
+          "properties": {
+            "order": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "modelPriority": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "subAgentPriority": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "zenMcpIntegration": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "availableModels"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "availableModels": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

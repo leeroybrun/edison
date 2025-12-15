@@ -16,31 +16,27 @@ This guide covers CLI commands for validators who review implementation work, ru
 ### Run Validation
 
 ```bash
-edison qa validate --task <task-id> [--round <N>] [--session <session-id>]
+edison qa validate <task-id> [--round <N>] [--session <session-id>] [--execute]
 ```
 
 **Purpose**: Validate validator reports for a task or bundle
 **When to use**: After implementation is complete and task is in `done` state
 
 **Options:**
-- `--task`: Task ID (parent task in bundle mode)
 - `--round`: Round number (defaults to latest)
 - `--session`: Session ID for bundle mode (validates children)
-- `--continuation-id`: Enforce continuationId across reports
+- `--execute`: Execute validators and write reports (otherwise shows roster)
 
 **Example:**
 ```bash
 # Validate latest round
-edison qa validate --task TASK-123
+edison qa validate TASK-123
 
 # Validate specific round
-edison qa validate --task TASK-123 --round 2
+edison qa validate TASK-123 --round 2
 
 # Bundle mode (validate children in session)
-edison qa validate --task TASK-123 --session sess-001
-
-# Enforce continuation tracking
-edison qa validate --task TASK-123 --continuation-id CONT-abc123
+edison qa validate TASK-123 --session sess-001
 ```
 
 **Input location**: `.project/qa/validation-evidence/<task-id>/round-N/`
@@ -89,63 +85,30 @@ edison qa bundle TASK-123
 ### Start Validation Round
 
 ```bash
-edison qa round --task <task-id> --status <status>
+edison qa round <task-id> --status <status>
 ```
 
 **Purpose**: Record validator outcomes for a validation round
 **When to use**: After running validation checks
 
 **Statuses:**
-- `approved` - All checks pass
-- `needs-work` - Issues found, requires fixes
-- `blocked` - Blocking issues prevent progression
+- `approve` - All checks pass
+- `reject` - Issues found, requires fixes
+- `blocked` - Validation could not be completed (missing access, tool failure, etc.)
+- `pending` - Round in progress
 
 **Example:**
 ```bash
-edison qa round --task TASK-123 --status approved
+edison qa round TASK-123 --status approve
 ```
 
 ---
 
 ## Validation Report Format
 
-Validators produce JSON reports in this structure:
-
-**Location**: `.project/qa/validation-evidence/<task-id>/round-N/<validator-name>.json`
-
-**Required fields:**
-```json
-{
-  "validator": "<validator-name>",
-  "task_id": "TASK-123",
-  "round": 1,
-  "timestamp": "2025-11-24T12:00:00Z",
-  "status": "approved",
-  "model": "<model-name>",
-  "continuationId": "CONT-abc123",
-  "issues": [
-    {
-      "severity": "blocking",
-      "category": "testing",
-      "description": "Missing test coverage for edge cases",
-      "file": "src/utils/validator.ts",
-      "line": 45,
-      "suggestion": "Add tests for null and undefined inputs"
-    }
-  ],
-  "summary": "Code quality is good. Identified 1 blocking issue requiring attention.",
-  "metrics": {
-    "files_reviewed": 8,
-    "issues_found": 1,
-    "test_coverage": 85.5
-  }
-}
-```
-
-**Issue severities:**
-- `blocking` - Must be fixed before promotion
-- `warning` - Should be fixed, not blocking
-- `advisory` - Nice to have, optional
+Validator report format is defined in:
+- `guidelines/validators/OUTPUT_FORMAT.md` (canonical human + JSON requirements)
+- `.edison/_generated/schemas/reports/validator-report.schema.json` (exact JSON schema)
 
 ---
 
@@ -154,7 +117,7 @@ Validators produce JSON reports in this structure:
 ### Global Validators (Always Run)
 
 **Global validators** are defined in validator configuration:
-- Check `/Users/leeroy/Documents/Development/edison/.edison/_generated/AVAILABLE_VALIDATORS.md` for current global validators
+- Check `.edison/_generated/AVAILABLE_VALIDATORS.md` for current global validators
 - Typically includes multiple models for diverse perspectives
 - Most global validators are blocking
 
@@ -193,7 +156,7 @@ Validators produce JSON reports in this structure:
 # 1. Check task is ready for validation
 edison task status TASK-123
 
-# Task should be in 'done' state with implementation-report.json
+# Task should be in 'done' state with implementation-report.md
 
 # 2. Inspect validation bundle
 edison qa bundle TASK-123
@@ -201,18 +164,18 @@ edison qa bundle TASK-123
 # Review evidence directory and required validators
 
 # 3. Run validation
-edison qa validate --task TASK-123
+edison qa validate TASK-123
 
 # This checks all required validator reports exist
 
 # 4. If issues found, record round status
-edison qa round --task TASK-123 --status needs-work
+edison qa round TASK-123 --status reject
 
 # 5. After fixes, re-validate
-edison qa validate --task TASK-123 --round 2
+edison qa validate TASK-123 --round 2
 
 # 6. Record approval
-edison qa round --task TASK-123 --status approved
+edison qa round TASK-123 --status approve
 
 # 7. Orchestrator promotes QA to validated
 # (validators don't do this - orchestrator does)
@@ -227,7 +190,7 @@ edison qa bundle TASK-123 --session sess-001
 # Shows parent task + child tasks in session
 
 # 2. Validate all tasks in bundle
-edison qa validate --task TASK-123 --session sess-001
+edison qa validate TASK-123 --session sess-001
 
 # Validates parent + all children
 
@@ -239,14 +202,14 @@ edison qa validate --task TASK-123 --session sess-001
 
 ```bash
 # Round 1: Initial validation
-edison qa validate --task TASK-123 --round 1
+edison qa validate TASK-123 --round 1
 
 # Issues found - developer fixes
 
 # Round 2: Re-validate after fixes
-edison qa validate --task TASK-123 --round 2
+edison qa validate TASK-123 --round 2
 
-# Continue until approved
+# Continue until approve
 ```
 
 ---
@@ -255,7 +218,7 @@ edison qa validate --task TASK-123 --round 2
 
 **Validator reports**: `.project/qa/validation-evidence/<task-id>/round-N/<validator>.json`
 **Bundle summary**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.json`
-**Implementation report**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.json`
+**Implementation report**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.md`
 
 ---
 
@@ -283,7 +246,7 @@ Before approving a task, validators should check:
 
 ### Best Practices
 - [ ] Follows pack-specific guidelines
-- [ ] TypeScript types are correct
+- [ ] Type checking passes (per active stack)
 - [ ] API contracts are validated
 - [ ] Documentation is adequate
 
@@ -295,7 +258,7 @@ Check active pack guidelines for framework-specific validation criteria:
 - **Database Tools**: Schema design, migration strategy
 - **Styling Systems**: Design tokens, responsive patterns
 
-Refer to `/Users/leeroy/Documents/Development/edison/.edison/_generated/AVAILABLE_VALIDATORS.md` for active pack validators and their specific focus areas.
+Refer to `.edison/_generated/AVAILABLE_VALIDATORS.md` for active pack validators and their specific focus areas.
 
 ---
 
@@ -306,7 +269,7 @@ Refer to `/Users/leeroy/Documents/Development/edison/.edison/_generated/AVAILABL
 3. **Use correct severities**: Reserve `blocking` for critical issues
 4. **Write clear summaries**: Help developers understand findings
 5. **Track continuations**: Use `continuationId` for multi-round validation
-6. **Check all evidence**: Review implementation-report.json first
+6. **Check all evidence**: Review implementation-report.md first
 7. **Validate bundles holistically**: Check integration, not just individual tasks
 
 ---

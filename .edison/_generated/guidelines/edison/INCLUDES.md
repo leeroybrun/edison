@@ -1,43 +1,8 @@
----
-description: "Edison Framework Development Rules"
-globs: ["**/*"]
-alwaysApply: true
----
+# Edison Development Guidelines - Includes
 
-# Edison Framework Rules
+This file aggregates critical Edison-specific guidelines for composition into prompts.
 
-## Critical Principles (Non-Negotiable)
-
-1. **STRICT TDD**: Write failing test FIRST (RED), then implement (GREEN), then refactor
-2. **NO MOCKS**: Test real behavior, real code, real libs - NO MOCKS EVER
-3. **NO LEGACY**: Delete old code completely - NO backward compatibility, NO fallbacks
-4. **NO HARDCODED VALUES**: All config from YAML - NO magic numbers/strings in code
-5. **100% CONFIGURABLE**: Every behavior must be configurable via YAML
-6. **DRY**: Zero code duplication - extract to shared utilities
-7. **SOLID**: Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
-8. **KISS**: Keep It Simple, Stupid - no over-engineering
-9. **YAGNI**: You Aren't Gonna Need It - remove speculative features
-10. **ROOT CAUSE**: ALWAYS find and fix root causes, never dirty fixes
-
-## Development Practices
-
-- When updating code, ALL related tests should be updated (unit, integration, e2e)
-- When a test fails, analyze and fix the ROOT CAUSE - never simplify/skip tests
-- Before implementing, search for existing patterns to reuse/extend
-- Maintain strict coherence and unity across the codebase
-
-## Testing Guidelines
-
-- Prefer real behavior tests over mocked behavior.
-- Use temporary directories for filesystem tests (auto-cleaned).
-- Use isolated databases for integration tests (template DBs, containers, or per-test schemas).
-- Use real HTTP clients against local test servers for API tests.
-- Only mock at system boundaries (third-party services you do not control).
-
-<!-- Pack/project extensions go here -->
-## Edison Prompt Engineering Rules
-
-**When modifying Edison agents, validators, constitutions, or guidelines**, follow these rules:
+## Prompt Engineering (When Modifying Edison Prompts/Agents/Validators)
 
 ## Core Principles (All Roles)
 
@@ -129,4 +94,9 @@ After changes:
 - [ ] No duplicate content in composed output
 - [ ] Each role loads only their content
 
-**Full Documentation**: `docs/PROMPT_DEVELOPMENT.md`
+## References
+
+- **Full Documentation**: `docs/PROMPT_DEVELOPMENT.md`
+- **Architecture**: `.edison/guidelines/edison/ARCHITECTURE.md`
+- **Critical Principles**: `.edison/guidelines/edison/CRITICAL_PRINCIPLES.md`
+- **Contributing**: `.edison/guidelines/edison/CONTRIBUTING.md`

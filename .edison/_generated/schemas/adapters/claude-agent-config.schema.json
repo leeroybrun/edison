@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/claude-agent-config.schema.json",
+  "title": "Claude Agent Override Configuration",
+  "description": "Per-agent JSON configuration for Claude Code adapter overrides.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Claude model identifier (e.g. sonnet, haiku)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Override for the exported agent description."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Override for the exported agent name."
+    },
+    "role": {
+      "type": "string",
+      "description": "Optional role metadata to surface in frontmatter."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional tags applied to the agent.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "When false, the agent is skipped during Claude sync."
+    }
+  }
+}

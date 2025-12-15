@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.edison/core/orchestrator-config.schema.json",
+  "title": "Edison Orchestrator Configuration",
+  "description": "Schema for orchestrator launch configuration (commands, prompts, cwd, env).",
+  "type": "object",
+  "required": [
+    "default",
+    "profiles"
+  ],
+  "properties": {
+    "default": {
+      "type": "string",
+      "description": "Name of the default orchestrator profile."
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      }
+    }
+  },
+  "$defs": {
+    "initial_prompt": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "stdin",
+            "file",
+            "arg",
+            "env"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "arg_flag": {
+          "type": "string"
+        },
+        "env_var": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "profile": {
+      "type": "object",
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Executable or script to run."
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Argument list with optional template tokens."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory (templates allowed)."
+        },
+        "type": {
+          "type": "string",
+          "description": "Optional profile type (wrapper, binary, etc)."
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables to set before launch."
+        },
+        "initial_prompt": {
+          "$ref": "#/$defs/initial_prompt"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DelegationReport",
+  "type": "object",
+  "required": [
+    "taskId",
+    "delegations",
+    "compliance"
+  ],
+  "properties": {
+    "taskId": {
+      "type": "string"
+    },
+    "delegations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "filePattern",
+          "model",
+          "role"
+        ],
+        "properties": {
+          "filePattern": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "continuationId": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "suggestedFollowups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "severity"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Brief task title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed task description"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "bug",
+              "enhancement",
+              "refactor",
+              "test",
+              "docs"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "blocking": {
+            "type": "boolean",
+            "default": false
+          },
+          "claimNow": {
+            "type": "boolean",
+            "default": false
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent task ID if this is a subtask"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "suggestedSlug": {
+            "type": "string"
+          },
+          "suggestedWave": {
+            "type": "integer"
+          }
+        }
+      },
+      "default": []
+    }
+  }
+}
