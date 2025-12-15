@@ -166,7 +166,7 @@ edison agents scope api-builder
 ## References
 
 - Delegation guide: `.edison/_generated/guidelines/shared/DELEGATION.md`
-- Schema: `.edison/_generated/schemas/config/delegation-config.schema.json`
+- Schema: `.edison/_generated/schemas/config/delegation-config.schema.yaml`
 
 ---
 

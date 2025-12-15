@@ -96,11 +96,9 @@ class ConfigManager:
         return data or {}
 
     def validate_schema(self, config: Dict[str, Any], schema_name: str) -> None:
-        schema_path = self.schemas_dir / schema_name
-        if not schema_path.exists():
-            return
-        schema = self.load_json(schema_path)
-        jsonschema.validate(instance=config, schema=schema)
+        from edison.core.schemas.validation import validate_payload
+
+        validate_payload(config, schema_name, repo_root=self.repo_root)
 
     ARRAY_APPEND_MARKER = object()
 
@@ -392,7 +390,7 @@ class ConfigManager:
 
             if validate:
                 with span("config.load_config.validate"):
-                    self.validate_schema(cfg, "config/config.schema.json")
+                    self.validate_schema(cfg, "config/config.schema.yaml")
 
             return cfg
 
@@ -415,7 +413,7 @@ class ConfigManager:
             # This ensures malformed EDISON_* keys are detected deterministically.
             _ = list(self._iter_env_overrides(strict=True))
             with span("config.load_config.validate_cached"):
-                self.validate_schema(cfg, "config/config.schema.json")
+                self.validate_schema(cfg, "config/config.schema.yaml")
         return cfg
 
     # ========== Accessor Methods ==========

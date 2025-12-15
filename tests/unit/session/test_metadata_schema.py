@@ -52,8 +52,9 @@ ValidationError = _jsonschema.ValidationError  # type: ignore[attr-defined]
 
 def _load_schema() -> dict:
     from edison.data import get_data_path
-    schema_path = get_data_path("schemas", "domain/session.schema.json")
-    return json.loads(schema_path.read_text(encoding="utf-8"))
+    from edison.core.utils.io import read_yaml
+    schema_path = get_data_path("schemas", "domain/session.schema.yaml")
+    return read_yaml(schema_path, default={}, raise_on_error=True)
 
 
 def _base_session() -> dict:

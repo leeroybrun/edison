@@ -6,9 +6,9 @@ Schemas for agent output formats and structured reports.
 
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
-| `implementation-report.schema.json` | Implementation round report (agents/orchestrator) | Runtime (when schema validation is enabled) |
-| `validator-report.schema.json` | Validator execution results | Tests |
-| `delegation-report.schema.json` | Agent delegation summaries | Tests |
+| `implementation-report.schema.yaml` | Implementation round report (agents/orchestrator) | Runtime (when schema validation is enabled) |
+| `validator-report.schema.yaml` | Validator execution results | Tests |
+| `delegation-report.schema.yaml` | Agent delegation summaries | Tests |
 
 ## Usage
 

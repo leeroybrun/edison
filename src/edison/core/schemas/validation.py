@@ -1,25 +1,23 @@
 """Shared schema validation utilities.
 
-This module provides centralized JSON schema loading and validation
-for use across all Edison implementations.
+Edison validates structured YAML frontmatter payloads using JSON Schema.
+Schemas are stored as YAML files (human-readable + easy to override/compose),
+and loaded in a single, consistent way across the codebase.
 
-Design principles:
-- DRY: Single source of truth for schema operations
-- NO MOCKS: Real jsonschema validation
-- Fail-safe: Gracefully handles missing jsonschema library
-- Path-aware: Uses bundled data for schemas (ALWAYS)
+Schema resolution order (highest priority → lowest):
+1) Project-composed schemas: ``.edison/_generated/schemas/`` (core + packs + project)
+2) Bundled defaults: ``edison.data/schemas/`` (core only)
 
-Architecture:
-- Schemas are ALWAYS from bundled edison.data/schemas/
-- NO .edison/core/schemas/ - that is legacy
+This lets pack/project overlays actually affect runtime validation while keeping
+a safe fallback when composed output is unavailable.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
-from edison.core.utils.io import read_json
+from edison.core.utils.io import read_yaml
+from edison.core.utils.paths import get_project_config_dir
 
 # jsonschema is an optional dependency without type stubs
 # We define a protocol for type checking and handle runtime import gracefully
@@ -61,73 +59,77 @@ class SchemaValidationError(ValueError):
     pass
 
 
-def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
-    """Resolve schemas directory.
+def _iter_schema_dirs(repo_root: Optional[Path] = None) -> List[Path]:
+    """Return schema search roots in priority order."""
+    roots: List[Path] = []
 
-    Schemas are ALWAYS from bundled edison.data package.
-    NO .edison/core/schemas/ - that is legacy.
+    if repo_root is not None:
+        try:
+            project_dir = get_project_config_dir(repo_root, create=False)
+            roots.append(project_dir / "_generated" / "schemas")
+        except Exception:
+            pass
 
-    Args:
-        repo_root: Ignored (kept for API compatibility).
-
-    Returns:
-        Path to bundled schemas directory.
-
-    Raises:
-        FileNotFoundError: If schemas directory cannot be found.
-    """
-    # Schemas are ALWAYS from bundled data
     try:
-        packaged_schemas = get_data_path("schemas")
-        if packaged_schemas.exists():
-            return packaged_schemas
+        roots.append(get_data_path("schemas"))
     except Exception:
         pass
 
-    raise FileNotFoundError(
-        "Schemas directory not found in bundled edison.data package.\n"
-        "Ensure edison is properly installed."
-    )
+    return roots
+
+
+def _get_schemas_dir(repo_root: Optional[Path] = None) -> Path:
+    """Back-compat helper: prefer project-composed schemas dir when present."""
+    for candidate in _iter_schema_dirs(repo_root):
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError("No schemas directory found (project or bundled).")
 
 
 def load_schema(schema_name: str, *, repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Load a JSON schema from the bundled schemas directory.
+    """Load a schema dict from composed or bundled schema directories.
 
-    Automatically appends .json extension if not present.
+    Canonical schema serialization format is YAML (JSON Schema expressed in YAML).
+    Automatically appends ``.yaml`` if no extension is present.
 
     Args:
-        schema_name: Name of schema file (e.g., "claude-agent.schema.json"
-            or "claude-agent.schema")
-        repo_root: Ignored (kept for API compatibility).
+        schema_name: Relative schema file path under schemas root
+            (e.g., "reports/validator-report.schema.yaml" or "config/config.schema").
+        repo_root: Repository root (enables project-composed schema overrides).
 
     Returns:
         Parsed schema dictionary.
 
     Raises:
         FileNotFoundError: If schema file doesn't exist.
-        json.JSONDecodeError: If schema is invalid JSON.
+        ValueError: If schema is not a YAML mapping.
     """
-    # Normalize schema name - add .json if missing
-    if not schema_name.endswith(".json"):
-        schema_name = f"{schema_name}.json"
-
-    schemas_dir = _get_schemas_dir(repo_root)
-    schema_path = schemas_dir / schema_name
-
-    if not schema_path.exists():
-        raise FileNotFoundError(
-            f"Schema not found: {schema_name}\n"
-            f"Looked in: {schemas_dir}"
+    lowered = schema_name.lower()
+    if lowered.endswith(".json"):
+        raise ValueError(
+            f"JSON schemas are no longer supported: {schema_name}. "
+            "Use YAML schemas (e.g., *.schema.yaml)."
         )
 
-    try:
-        return read_json(schema_path)
-    except json.JSONDecodeError as e:
-        raise json.JSONDecodeError(
-            f"Invalid JSON in schema {schema_name}: {e.msg}",
-            e.doc,
-            e.pos,
-        ) from e
+    # Normalize schema name - add .yaml if missing
+    if not (lowered.endswith(".yaml") or lowered.endswith(".yml")):
+        schema_name = f"{schema_name}.yaml"
+
+    schema_path: Optional[Path] = None
+    for schemas_dir in _iter_schema_dirs(repo_root):
+        candidate = schemas_dir / schema_name
+        if candidate.exists():
+            schema_path = candidate
+            break
+
+    if schema_path is None:
+        searched = "\n".join(f"- {p}" for p in _iter_schema_dirs(repo_root))
+        raise FileNotFoundError(f"Schema not found: {schema_name}\nSearched:\n{searched}")
+
+    schema = read_yaml(schema_path, default=None, raise_on_error=True)
+    if not isinstance(schema, dict):
+        raise ValueError(f"Schema must be a YAML mapping, got {type(schema).__name__}")
+    return schema
 
 
 def validate_payload(
@@ -188,7 +190,7 @@ def validate_payload_safe(
 
     try:
         schema = load_schema(schema_name, repo_root=repo_root)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+    except Exception as e:
         # Schema loading failed - return error message
         return [f"Schema loading failed: {e}"]
 

@@ -108,7 +108,7 @@ edison qa round TASK-123 --status approve
 
 Validator report format is defined in:
 - `guidelines/validators/OUTPUT_FORMAT.md` (canonical human + JSON requirements)
-- `.edison/_generated/schemas/reports/validator-report.schema.json` (exact JSON schema)
+- `.edison/_generated/schemas/reports/validator-report.schema.yaml` (exact schema; YAML)
 
 ---
 

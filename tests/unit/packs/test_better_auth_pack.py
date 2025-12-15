@@ -43,11 +43,7 @@ class TestBetterAuthPackStructure:
         assert pack_yml.exists(), f"pack.yml must exist at {pack_yml}"
 
     def test_pack_yml_validates(self, pack_dir: Path):
-        """pack.yml must validate against schema (skip if schema not available)."""
-        schema_path = Path('.edison/core/schemas/pack.schema.json').resolve()
-        if not schema_path.exists():
-            pytest.skip("pack.schema.json not found (optional)")
-        
+        """pack.yml must validate against the canonical pack schema."""
         result = validate_pack(pack_dir)
         assert result.ok, f"Pack validation failed: {[i.message for i in result.issues]}"
 

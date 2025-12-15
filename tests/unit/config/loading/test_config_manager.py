@@ -79,7 +79,7 @@ def test_loads_defaults_yaml_not_yml(tmp_path: Path) -> None:
 
 def test_load_config_uses_canonical_config_schema() -> None:
     """
-    ConfigManager must default to validate=True and use config.schema.json
+    ConfigManager must default to validate=True and use config.schema.yaml
     as the canonical Draft-2020-12 schema for Edison configuration.
     """
     mgr = ConfigManager(ROOT)
@@ -89,12 +89,12 @@ def test_load_config_uses_canonical_config_schema() -> None:
     assert ConfigManager.load_config.__defaults__ == (True, True)
 
     # Canonical schema path is bundled in edison.data
-    schema_path = get_data_path("schemas", "config/config.schema.json")
+    schema_path = get_data_path("schemas", "config/config.schema.yaml")
     assert schema_path.exists(), "Canonical config schema missing"
 
     # Schema itself must be a valid Draft-2020-12 schema.
-    import json
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    from edison.core.utils.io import read_yaml
+    schema = read_yaml(schema_path, default={}, raise_on_error=True)
     Draft202012Validator.check_schema(schema)
 
 

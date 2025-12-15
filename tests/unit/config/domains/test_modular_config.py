@@ -199,13 +199,13 @@ def test_core_repo_config_validates_against_canonical_schema() -> None:
     Real repository config (.edison/config/) must validate against the
     canonical Draft-2020-12 config schema.
     """
-    import json
     from jsonschema import Draft202012Validator, ValidationError
+    from edison.core.utils.io import read_yaml
 
     # For standalone Edison package, use bundled data
-    schema_path = get_data_path("schemas", "config/config.schema.json")
+    schema_path = get_data_path("schemas", "config/config.schema.yaml")
     assert schema_path.exists(), f"Missing core config schema: {schema_path}"
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema = read_yaml(schema_path, default={}, raise_on_error=True)
     Draft202012Validator.check_schema(schema)
 
     # Try to find wilson-leadgen project for project-specific validation

@@ -1,0 +1,62 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.edison/core/qa.schema.yaml
+title: Edison QA Schema (Generic)
+description: Validation results, evidence, and approval state for QA.
+type: object
+$defs:
+  dimension:
+    type: string
+    enum:
+    - architecture
+    - code-quality
+    - testing
+    - documentation
+    - error-handling
+    - performance
+    - security
+    description: Generic validation dimensions
+  qaStatus:
+    type: object
+    properties:
+      status:
+        type: string
+        enum:
+        - pending
+        - in-progress
+        - passed
+        - failed
+        default: pending
+    additionalProperties: false
+properties:
+  status:
+    $ref: '#/$defs/qaStatus/properties/status'
+  dimensions:
+    type: array
+    items:
+      type: object
+      required:
+      - name
+      - score
+      properties:
+        name:
+          $ref: '#/$defs/dimension'
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        notes:
+          type: string
+      additionalProperties: false
+  evidence:
+    type: object
+    properties:
+      files:
+        type: array
+        items:
+          type: string
+    additionalProperties: false
+  approved:
+    type: boolean
+  approvedBy:
+    type: string
+additionalProperties: false

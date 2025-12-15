@@ -1,8 +1,9 @@
 """Edison validate command.
 
-SUMMARY: Validate a structured report file against its JSON schema.
+SUMMARY: Validate a structured report file against its schema.
 
 Canonical report format is Markdown with YAML frontmatter.
+Canonical schema format is YAML (JSON Schema expressed in YAML).
 """
 
 from __future__ import annotations
@@ -33,16 +34,16 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 def _detect_schema(path: Path) -> Optional[str]:
     name = path.name.lower()
     if name.startswith("implementation-report."):
-        return "reports/implementation-report.schema.json"
+        return "reports/implementation-report.schema.yaml"
     if name.startswith("validator-") and "-report." in name:
-        return "reports/validator-report.schema.json"
+        return "reports/validator-report.schema.yaml"
     return None
 
 
 def _label_for_schema(schema_name: str) -> str:
-    if schema_name.endswith("implementation-report.schema.json"):
+    if schema_name.endswith("implementation-report.schema.yaml"):
         return "Implementation report"
-    if schema_name.endswith("validator-report.schema.json"):
+    if schema_name.endswith("validator-report.schema.yaml"):
         return "Validator report"
     return "Report"
 
@@ -61,9 +62,9 @@ def main(args: argparse.Namespace) -> int:
 
     schema_choice = str(getattr(args, "schema", "auto"))
     if schema_choice == "implementation-report":
-        schema_name = "reports/implementation-report.schema.json"
+        schema_name = "reports/implementation-report.schema.yaml"
     elif schema_choice == "validator-report":
-        schema_name = "reports/validator-report.schema.json"
+        schema_name = "reports/validator-report.schema.yaml"
     else:
         schema_name = _detect_schema(path) or ""
 

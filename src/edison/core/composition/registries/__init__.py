@@ -6,7 +6,7 @@ Most content types use GenericRegistry via configuration.
 Special registries:
 - ConstitutionRegistry: Needs get_context_vars() for rules/reads injection
 - RulesRegistry: Domain service for rules (moved to core/rules/registry.py)
-- JsonSchemaRegistry: JSON schema composition
+- SchemaRegistry: Schema composition (YAML; JSON Schema expressed in YAML)
 
 For entity metadata lookup, use core.registries instead:
 - AgentRegistry: Agent metadata from frontmatter
@@ -26,7 +26,7 @@ from .file_patterns import (
     FilePatternRegistry,
 )
 from .schemas import (
-    JsonSchemaRegistry,
+    SchemaRegistry,
 )
 from .generic import GenericRegistry
 from ._base import ComposableRegistry
@@ -45,7 +45,7 @@ __all__ = [
     "generate_all_constitutions",
     # File patterns and schemas
     "FilePatternRegistry",
-    "JsonSchemaRegistry",
+    "SchemaRegistry",
     # Generic
     "GenericRegistry",
     # Base classes

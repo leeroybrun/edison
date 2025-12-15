@@ -1,5 +1,4 @@
 import os
-import json
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -53,8 +52,8 @@ def validate_with_schema(candidate: dict, schema_path: Path) -> None:
     """
     import jsonschema
 
-    with open(schema_path, "r", encoding="utf-8") as f:
-        schema = json.load(f)
+    from edison.core.utils.io import read_yaml
+    schema = read_yaml(schema_path, default={}, raise_on_error=True)
 
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(candidate)
@@ -114,7 +113,7 @@ def test_nested_env_deep_object(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 # C2: Schema Validation Gaps for secret rotation
 def test_schema_validation_secret_rotation(tmp_path: Path):
     from edison.data import get_data_path
-    schema_path = get_data_path("schemas", "config/config.schema.json")
+    schema_path = get_data_path("schemas", "config/config.schema.yaml")
     assert schema_path.exists(), f"Missing core config schema: {schema_path}"
 
     # Valid config should pass

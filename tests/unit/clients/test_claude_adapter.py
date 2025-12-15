@@ -16,17 +16,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class TestClaudeAdapterUnit:
-    def _install_schemas(self, root: Path) -> None:
-        """Copy core Claude schemas into the isolated project."""
-        # Schemas are in the edison package data directory
-        schema_src_dir = REPO_ROOT / "src" / "edison" / "data" / "schemas"
-        schema_dst_dir = root / ".edison" / "core" / "schemas"
-        schema_dst_dir.mkdir(parents=True, exist_ok=True)
-        for name in ("claude-agent.schema.json", "claude-agent-config.schema.json"):
-            src = schema_src_dir / name
-            if src.exists():
-                shutil.copy(src, schema_dst_dir / name)
-
     def test_validate_claude_structure_creates_dirs(self, isolated_project_env: Path) -> None:
         """validate_structure creates .claude and agents subdir when missing."""
         root = isolated_project_env
@@ -62,4 +51,3 @@ class TestClaudeAdapterUnit:
 
         # Source remains untouched
         assert src.read_text(encoding="utf-8").startswith("# Agent: feature-implementer")
-

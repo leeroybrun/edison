@@ -53,11 +53,6 @@ class TestMotionPackStructure:
 
     def test_motion_pack_validates_ok(self, motion_pack_dir: Path):
         """Motion pack should validate with no errors."""
-        # Skip if schema not available (optional validation)
-        schema_path = ROOT / '.edison/core/schemas/pack.schema.json'
-        if not schema_path.exists():
-            pytest.skip("pack schema not found (optional)")
-        
         res = validate_pack(motion_pack_dir)
         assert res.ok, f"Motion pack validation failed: {[i.message for i in res.issues]}"
 

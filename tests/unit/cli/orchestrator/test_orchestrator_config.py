@@ -15,8 +15,8 @@ from edison.data import get_data_path
 
 
 def _write_schema(schemas_dir: Path) -> None:
-    # Schemas are now organized in subfolders; orchestrator-config is in 'config/'
-    config_schemas_dir = schemas_dir / "config"
+    # Write a project-composed schema override where runtime schema loader reads.
+    config_schemas_dir = schemas_dir / ".edison" / "_generated" / "schemas" / "config"
     config_schemas_dir.mkdir(parents=True, exist_ok=True)
     schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -62,8 +62,9 @@ def _write_schema(schemas_dir: Path) -> None:
         },
         "additionalProperties": False,
     }
-    (config_schemas_dir / "orchestrator-config.schema.json").write_text(
-        json.dumps(schema, indent=2), encoding="utf-8"
+    from edison.core.utils.io import dump_yaml_string
+    (config_schemas_dir / "orchestrator-config.schema.yaml").write_text(
+        dump_yaml_string(schema, sort_keys=False), encoding="utf-8"
     )
 
 
@@ -104,7 +105,7 @@ def test_project_overlay_merges_bundled_defaults(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    _write_schema(tmp_path / ".edison" / "core" / "schemas")
+    _write_schema(tmp_path)
 
     cfg = OrchestratorConfig(repo_root=tmp_path, validate=True)
 

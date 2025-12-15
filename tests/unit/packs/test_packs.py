@@ -120,10 +120,6 @@ def test_discover_packs_finds_typescript():
 
 
 def test_dependency_resolution_and_cycles(tmp_path: Path):
-    # Skip if pack schema not available (pre-existing issue)
-    schema_path = Path('.edison/core/schemas/pack.schema.json').resolve()
-    if not schema_path.exists():
-        pytest.skip("pack.schema.json not found (optional)")
     # Build a fake repo root with three packs and a cycle
     base = tmp_path / '.edison/packs'
     # Helper to write a minimal, schema-compliant pack with codex-context validator

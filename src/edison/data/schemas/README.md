@@ -11,25 +11,25 @@ JSON Schema definitions that validate Edison configuration and data payloads.
 ```
 schemas/
 ├── domain/                  # Core framework entities
-│   ├── session.schema.json  # Session state and metadata
-│   ├── task.schema.json     # Task definitions and status
-│   └── qa.schema.json       # QA workflow state
+│   ├── session.schema.yaml  # Session state and metadata
+│   ├── task.schema.yaml     # Task definitions and status
+│   └── qa.schema.yaml       # QA workflow state
 ├── config/                  # Configuration validation
-│   ├── config.schema.json   # edison.yaml/defaults.yaml
-│   ├── delegation-config.schema.json
-│   ├── delegation.schema.json
-│   ├── orchestrator-config.schema.json
-│   ├── pack.schema.json     # Tech pack definitions
-│   └── state-machine-rich.schema.json
+│   ├── config.schema.yaml   # edison.yaml/defaults.yaml
+│   ├── delegation-config.schema.yaml
+│   ├── delegation.schema.yaml
+│   ├── orchestrator-config.schema.yaml
+│   ├── pack.schema.yaml     # Tech pack definitions
+│   └── state-machine-rich.schema.yaml
 ├── reports/                 # Agent output formats
-│   ├── implementation-report.schema.json
-│   ├── validator-report.schema.json
-│   └── delegation-report.schema.json
+│   ├── implementation-report.schema.yaml
+│   ├── validator-report.schema.yaml
+│   └── delegation-report.schema.yaml
 ├── adapters/                # IDE adapter schemas
-│   ├── claude-agent.schema.json
-│   └── claude-agent-config.schema.json
+│   ├── claude-agent.schema.yaml
+│   └── claude-agent-config.schema.yaml
 └── manifests/               # Framework manifests
-    └── manifest.schema.json
+    └── manifest.schema.yaml
 ```
 
 ## Categories
@@ -55,10 +55,10 @@ Framework self-describing metadata and registry definitions.
 from edison.core.schemas import load_schema, validate_payload
 
 # Load a schema
-schema = load_schema("config/config.schema.json")
+schema = load_schema("config/config.schema.yaml")
 
 # Validate a payload
-validate_payload(config_dict, "config/config.schema.json")
+validate_payload(config_dict, "config/config.schema.yaml")
 ```
 
 ## Schema Guidelines

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 import yaml
 from jsonschema import validate, ValidationError
 from edison.data import get_data_path
+from edison.core.utils.io import read_yaml
 
 
 CORE = get_data_path("schemas")
@@ -17,11 +17,13 @@ WORKFLOW = get_data_path("config", "workflow.yaml")
 
 def _load_schema(name: str) -> dict:
     p = CORE / name
-    return json.loads(p.read_text(encoding="utf-8"))
+    data = read_yaml(p, default={}, raise_on_error=True)
+    assert isinstance(data, dict)
+    return data
 
 
 def test_session_json_validates():
-    schema = _load_schema("domain/session.schema.json")
+    schema = _load_schema("domain/session.schema.yaml")
     example = {
         "id": "session-123",
         "state": "active",
@@ -40,7 +42,7 @@ def test_session_json_validates():
 
 
 def test_task_json_validates():
-    schema = _load_schema("domain/task.schema.json")
+    schema = _load_schema("domain/task.schema.yaml")
     example = {
         "id": "task-42",
         "title": "Implement generic schema framework",
@@ -63,7 +65,7 @@ def test_task_json_validates():
 
 
 def test_config_yaml_validates():
-    schema = _load_schema("config/config.schema.json")
+    schema = _load_schema("config/config.schema.yaml")
     config_yaml = """
 project:
   name: my-project
@@ -84,9 +86,9 @@ validators:
 
 def test_task_status_enum_matches_state_machine():
     """Task.status enum must align with the canonical task state machine."""
-    schema = _load_schema("domain/task.schema.json")
+    schema = _load_schema("domain/task.schema.yaml")
     status_enum = schema["properties"]["status"]["enum"]
-    assert status_enum, "domain/task.schema.json must declare a non-empty status enum"
+    assert status_enum, "domain/task.schema.yaml must declare a non-empty status enum"
 
     assert WORKFLOW.exists(), "Missing workflow.yaml in core config"
     wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")) or {}
@@ -111,7 +113,7 @@ def test_pack_scenario_edison_full_yaml_validates_against_config_load_schema():
     Pack scenario configs under fixtures/pack-scenarios must conform to the
     canonical config schema used for edison.yaml.
     """
-    schema = _load_schema("config/config.schema.json")
+    schema = _load_schema("config/config.schema.yaml")
     scenario_path = Path(
         ".edison/core/tests/fixtures/pack-scenarios/edison.full.yaml"
     )
@@ -127,13 +129,13 @@ def test_project_specific_fields_validate_against_project_overlays():
     """Overlay should allow project-specific metadata on tasks while core remains generic."""
     # Load core and overlay via simple composition: overlay uses allOf/$ref
     # Here we check overlay schema exists and allows project-specific fields.
-    overlays = list(PROJECT.glob("*.schema.json"))
+    overlays = list(PROJECT.glob("*.schema.yaml"))
     assert overlays, "project overlays missing; expected at least one project schema."
 
     overlay_task = None
     for p in overlays:
         if "task" in p.name:
-            overlay_task = json.loads(p.read_text(encoding="utf-8"))
+            overlay_task = read_yaml(p, default={}, raise_on_error=True)
             break
     assert overlay_task is not None, "Task overlay schema not found in .agents/schemas"
 

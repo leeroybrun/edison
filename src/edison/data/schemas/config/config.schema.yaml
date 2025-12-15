@@ -1,0 +1,333 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.edison/core/config.schema.yaml
+title: Edison Config Schema (Generic)
+description: Configuration schema for defaults.yaml and edison.yaml.
+type: object
+properties:
+  zen:
+    type: object
+    properties:
+      retry:
+        type: object
+        properties:
+          max_attempts:
+            type: integer
+            minimum: 1
+            maximum: 10
+          initial_delay_seconds:
+            type: number
+            minimum: 0.1
+          backoff_factor:
+            type: number
+            minimum: 1.0
+        additionalProperties: false
+      secret_rotation:
+        type: object
+        required:
+        - enabled
+        - check_interval_hours
+        properties:
+          enabled:
+            type: boolean
+          check_interval_hours:
+            type: integer
+            minimum: 1
+            maximum: 168
+          notification_threshold_days:
+            type: integer
+            minimum: 1
+            maximum: 90
+        additionalProperties: false
+    additionalProperties: false
+  paths:
+    type: object
+    properties:
+      project_config_dir:
+        type: string
+        description: Preferred project configuration directory name (e.g., .edison).
+        default: .edison
+    additionalProperties: false
+  project:
+    type: object
+    required:
+    - name
+    properties:
+      name:
+        type: string
+        description: Project name used in placeholders
+        examples:
+        - '{PROJECT_NAME}'
+        - my-project
+      owner:
+        description: Default owner for tasks/sessions; overrides process detection
+          when set
+        type:
+        - string
+        - 'null'
+        default: null
+      description:
+        type: string
+        description: Human-readable project description.
+      language:
+        type: string
+        description: Primary project language (project-level metadata).
+      pythonVersion:
+        type: string
+        description: Python version string (project-level metadata).
+      sourceDir:
+        type: string
+        description: Primary source directory (project-level metadata).
+      testsDir:
+        type: string
+        description: Primary tests directory (project-level metadata).
+      commands:
+        type: object
+        description: Project command shortcuts (project-level metadata).
+        additionalProperties:
+          type: string
+      paths:
+        type: object
+        description: Project path shortcuts (project-level metadata).
+        additionalProperties:
+          type: string
+      audit_terms:
+        description: Additional project-specific terms to ban from core/pack guidelines
+        type: array
+        items:
+          type: string
+        default: []
+      zenRoles:
+        description: Mapping of agent names to Zen MCP role identifiers.
+        type: object
+        additionalProperties:
+          type: string
+    additionalProperties: false
+  session:
+    type: object
+    properties:
+      worktree:
+        type: object
+        properties:
+          uuidSuffixLength:
+            type: integer
+            minimum: 1
+            maximum: 32
+            description: Length of UUID suffix used when resolving worktree path collisions.
+          timeouts:
+            type: object
+            description: Timeout values for worktree operations (in seconds)
+            properties:
+              health_check:
+                type: integer
+                minimum: 1
+                default: 10
+              fetch:
+                type: integer
+                minimum: 1
+                default: 60
+              checkout:
+                type: integer
+                minimum: 1
+                default: 30
+              worktree_add:
+                type: integer
+                minimum: 1
+                default: 30
+              clone:
+                type: integer
+                minimum: 1
+                default: 60
+              install:
+                type: integer
+                minimum: 1
+                default: 300
+              branch_check:
+                type: integer
+                minimum: 1
+                default: 10
+              prune:
+                type: integer
+                minimum: 1
+                default: 10
+            additionalProperties: false
+        required:
+        - uuidSuffixLength
+        additionalProperties: true
+      timeoutMinutes:
+        type: integer
+        minimum: 1
+        maximum: 10080
+        default: 60
+    additionalProperties: true
+  worktrees:
+    type: object
+    description: Top-level worktree configuration (used for baseDirectory, archiveDirectory,
+      branchPrefix, etc.).
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      baseBranch:
+        type: string
+        default: main
+      baseDirectory:
+        type: string
+        description: Base directory for session worktrees.
+        default: ../{PROJECT_NAME}-worktrees
+        examples:
+        - ../my-project-worktrees
+        - /var/lib/edison-worktrees
+      archiveDirectory:
+        type: string
+        description: Archive directory for session worktrees.
+        default: ../{PROJECT_NAME}-worktrees/_archived
+      branchPrefix:
+        type: string
+        default: session/
+      pathTemplate:
+        type: string
+        description: Optional path template for worktree location.
+        default: ../{PROJECT_NAME}-worktrees/{sessionId}
+      cleanup:
+        type: object
+        properties:
+          autoArchive:
+            type: boolean
+            default: true
+          archiveAfterDays:
+            type: integer
+            minimum: 0
+            default: 30
+          deleteAfterDays:
+            type: integer
+            minimum: 0
+            default: 90
+        additionalProperties: false
+    additionalProperties: false
+  orchestrators:
+    type: object
+    description: Configuration for orchestrator launch profiles.
+    properties:
+      default:
+        type: string
+      profiles:
+        type: object
+    additionalProperties: true
+  delegation:
+    $ref: '#/$defs/delegation'
+  validators:
+    type: object
+    properties:
+      enabled:
+        type: array
+        items:
+          type: string
+        description: List of enabled validator names
+        examples:
+        - - security
+          - performance
+    additionalProperties: false
+  quality:
+    type: object
+    description: Quality control and test coverage configuration
+    properties:
+      coverage:
+        type: object
+        properties:
+          overall:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Minimum overall code coverage percentage
+          changed:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Minimum coverage for changed lines
+        additionalProperties: false
+      allowSkip:
+        type: boolean
+        description: Allow skipping tests
+        default: false
+      blockOnFailingTests:
+        type: boolean
+        description: Block operations when tests fail
+        default: true
+    additionalProperties: false
+  packs:
+    description: Pack configuration. Supports legacy array or v2 object form.
+    oneOf:
+    - type: object
+      description: Pack engine (v2) configuration
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        directory:
+          type: string
+          default: .edison/packs
+        compositionMode:
+          type: string
+          enum:
+          - layered
+          default: layered
+        discoveryMode:
+          type: string
+          enum:
+          - auto
+          - manual
+          default: auto
+        active:
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z][a-z0-9-]*$
+          default: []
+      additionalProperties: true
+    - type: array
+      items:
+        type: string
+        minLength: 1
+    - type: array
+      items:
+        type: object
+        required:
+        - name
+        properties:
+          name:
+            type: string
+          version:
+            type: string
+          source:
+            type: string
+        additionalProperties: false
+$defs:
+  delegation:
+    type: object
+    properties:
+      roles:
+        type: array
+        items:
+          type: object
+          required:
+          - name
+          properties:
+            name:
+              type: string
+            capabilities:
+              type: array
+              items:
+                type: string
+            constraints:
+              type: object
+          additionalProperties: false
+      mcp:
+        type: object
+        properties:
+          endpoint:
+            type: string
+          tokenRef:
+            type: string
+        additionalProperties: false
+    additionalProperties: true
+additionalProperties: true

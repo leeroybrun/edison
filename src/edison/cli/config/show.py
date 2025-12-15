@@ -18,6 +18,14 @@ from edison.core.config import ConfigManager
 
 SUMMARY = "Show current configuration"
 
+def _nest_key(key: str, value):
+    """Nest a dot-notation key into a YAML/JSON-friendly mapping."""
+    parts = [p for p in str(key).split(".") if p]
+    out = value
+    for part in reversed(parts):
+        out = {part: out}
+    return out
+
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
@@ -86,10 +94,10 @@ def main(args: argparse.Namespace) -> int:
                 try:
                     import yaml
 
-                    # Emit valid YAML for the selected key (single-key document).
+                    # Emit YAML as nested mapping so dot-notation keys remain readable.
                     formatter.text(
                         yaml.safe_dump(
-                            {args.key: value},
+                            _nest_key(args.key, value),
                             default_flow_style=False,
                             sort_keys=True,
                             allow_unicode=True,

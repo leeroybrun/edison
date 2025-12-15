@@ -6,7 +6,7 @@ Schemas for framework manifests and registry definitions.
 
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
-| `manifest.schema.json` | Edison framework manifest | Tests |
+| `manifest.schema.yaml` | Edison framework manifest | Tests |
 
 ## Usage
 

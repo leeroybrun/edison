@@ -83,8 +83,9 @@ validation:
 
     def test_schema_tracking_requires_completedAt(self) -> None:
         # Assert canonical schema declares tracking.completedAt as required
-        schema_path = get_data_path("schemas", "reports/validator-report.schema.json")
-        schema = json.loads(schema_path.read_text())
+        from edison.core.utils.io import read_yaml
+        schema_path = get_data_path("schemas", "reports/validator-report.schema.yaml")
+        schema = read_yaml(schema_path, default={}, raise_on_error=True)
         tracking_props = schema.get("properties", {}).get("tracking", {})
         required = set(tracking_props.get("required", []))
         # RED: currently missing 'completedAt' in required list

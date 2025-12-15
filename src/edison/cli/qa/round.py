@@ -20,17 +20,15 @@ from edison.core.qa.workflow.repository import QARepository
 
 SUMMARY = "Manage QA rounds"
 
-def _allowed_round_statuses() -> set[str]:
+def _allowed_round_statuses(*, repo_root: Path) -> set[str]:
     """Return the canonical round status vocabulary.
 
     We align the QA round status with the validator report verdict enum to avoid
     duplicated vocabularies.
     """
-    import json
-    from edison.data import get_data_path
+    from edison.core.schemas.validation import load_schema
 
-    schema_path = get_data_path("schemas") / "reports" / "validator-report.schema.json"
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema = load_schema("reports/validator-report.schema.yaml", repo_root=repo_root)
     verdict = (schema.get("properties") or {}).get("verdict") or {}
     values = verdict.get("enum") or []
     return {str(v) for v in values}
@@ -87,7 +85,7 @@ def main(args: argparse.Namespace) -> int:
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
             status = args.status or "pending"
-            allowed = _allowed_round_statuses()
+            allowed = _allowed_round_statuses(repo_root=repo_root)
             if status not in allowed:
                 raise ValueError(f"Invalid round status: {status}. Valid values: {', '.join(sorted(allowed))}")
 

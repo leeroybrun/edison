@@ -170,18 +170,18 @@ composition:
       cli_flag: "cursor-rules"
 
     # -------------------------------------------------------------------------
-    # SCHEMAS (JSON Schema composition)
+    # SCHEMAS (JSON Schema expressed in YAML)
     # -------------------------------------------------------------------------
     schemas:
       enabled: true
-      description: "JSON schemas"
-      composition_mode: json_merge
+      description: "Schemas (YAML; JSON Schema expressed in YAML)"
+      composition_mode: yaml_merge
       dedupe: false
-      registry: edison.core.composition.registries.schemas.JsonSchemaRegistry
+      registry: edison.core.composition.registries.schemas.SchemaRegistry
       content_path: "schemas"
-      file_pattern: "*.json"
+      file_pattern: "*.yaml"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/schemas"
-      filename_pattern: "{name}.json"
+      filename_pattern: "{name}.yaml"
 
     # -------------------------------------------------------------------------
     # DOCUMENTS (Task/QA templates)

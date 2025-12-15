@@ -16,7 +16,7 @@ Example path:
 ## Schema (single source of truth)
 
 See the schema for the exact required fields:
-- `.edison/_generated/schemas/reports/implementation-report.schema.json`
+- `.edison/_generated/schemas/reports/implementation-report.schema.yaml`
 
 ## Required machine fields (YAML frontmatter)
 

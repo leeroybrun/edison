@@ -3,7 +3,10 @@ tasks:
     root: ".project/tasks"
     qaRoot: ".project/qa"
     metaRoot: ".project/tasks/meta"
-    template: ".project/tasks/TEMPLATE.md"
+    # Document templates are composed into `.edison/_generated/documents/`.
+    # Task/QA creation should source templates from there for pack/project overlays.
+    template: ".edison/_generated/documents/TASK.md"
+    qaTemplate: ".edison/_generated/documents/QA.md"
     evidenceSubdir: "validation-evidence"
   defaults:
     ownerPrefix: "- **Owner:** "

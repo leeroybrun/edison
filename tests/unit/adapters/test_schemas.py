@@ -1,11 +1,11 @@
 """Tests for shared schema validation utilities for adapters.
 
-Note: Schemas are loaded from bundled edison.data/schemas/ ONLY.
-There is NO .edison/core/schemas/ in the current architecture.
+Note: Schemas are YAML files (JSON Schema expressed in YAML), and are resolved
+from project-composed schemas first (when repo_root is provided), then bundled
+defaults as fallback.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -24,20 +24,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 class TestSchemaLoading:
     """Test schema loading functionality.
 
-    Schemas are ALWAYS loaded from bundled edison.data/schemas/ directory.
+    Schemas are loaded from composed/bundled schema roots.
     """
 
     def test_load_schema_success(self) -> None:
         """load_schema returns parsed schema dictionary for valid schema."""
         # Load a real bundled schema
-        schema = load_schema("adapters/claude-agent.schema.json")
+        schema = load_schema("adapters/claude-agent.schema.yaml")
 
         assert isinstance(schema, dict)
         assert "$schema" in schema or "type" in schema or "properties" in schema
         assert schema  # Not empty
 
     def test_load_schema_without_extension(self) -> None:
-        """load_schema accepts schema name without .json extension."""
+        """load_schema accepts schema name without extension."""
         schema = load_schema("adapters/claude-agent.schema")
 
         assert isinstance(schema, dict)
@@ -46,9 +46,9 @@ class TestSchemaLoading:
     def test_load_schema_missing_raises(self) -> None:
         """load_schema raises FileNotFoundError for missing schema."""
         with pytest.raises(FileNotFoundError) as excinfo:
-            load_schema("nonexistent-schema.json")
+            load_schema("nonexistent-schema.yaml")
 
-        assert "nonexistent-schema.json" in str(excinfo.value)
+        assert "nonexistent-schema.yaml" in str(excinfo.value)
 
 
 class TestPayloadValidation:
@@ -70,7 +70,7 @@ class TestPayloadValidation:
         }
 
         # Should not raise - validates against bundled schema
-        validate_payload(payload, "adapters/claude-agent.schema.json")
+        validate_payload(payload, "adapters/claude-agent.schema.yaml")
 
     def test_validate_payload_invalid_raises(self) -> None:
         """validate_payload raises SchemaValidationError for invalid payload."""
@@ -78,14 +78,14 @@ class TestPayloadValidation:
         payload = {"invalid": "data"}
 
         with pytest.raises(SchemaValidationError):
-            validate_payload(payload, "adapters/claude-agent.schema.json")
+            validate_payload(payload, "adapters/claude-agent.schema.yaml")
 
     def test_validate_payload_safe_returns_errors(self) -> None:
         """validate_payload_safe returns list of errors for invalid payload."""
         # Invalid payload - missing required fields
         payload = {"invalid": "data"}
 
-        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.json")
+        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.yaml")
 
         assert isinstance(errors, list)
         # Should have validation errors (or empty if jsonschema not installed)
@@ -104,7 +104,7 @@ class TestPayloadValidation:
             },
         }
 
-        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.json")
+        errors = validate_payload_safe(payload, "adapters/claude-agent.schema.yaml")
 
         assert errors == []
 

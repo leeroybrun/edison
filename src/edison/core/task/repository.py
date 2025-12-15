@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from edison.data import get_data_path
 from edison.core.entity import (
     BaseRepository,
     FileRepositoryMixin,
@@ -17,7 +18,14 @@ from edison.core.entity import (
     PersistenceError,
 )
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.text import parse_frontmatter, format_frontmatter, has_frontmatter, parse_title
+from edison.core.utils.text import (
+    format_frontmatter,
+    has_frontmatter,
+    parse_frontmatter,
+    parse_title,
+    render_template_text,
+    strip_frontmatter_block,
+)
 from edison.core.config.domains import TaskConfig
 from edison.core.utils.time import utc_timestamp
 
@@ -149,7 +157,8 @@ class TaskRepository(
         if not has_frontmatter(content):
             raise PersistenceError(
                 f"Task file at {path} is missing YAML frontmatter. "
-                "Restore the file from TEMPLATE.md or recreate the task via `edison task new`."
+                "Restore the file from the composed template (.edison/_generated/documents/TASK.md) "
+                "or recreate the task via `edison task new`."
             )
 
         try:
@@ -169,27 +178,31 @@ class TaskRepository(
             target_path = self._resolve_entity_path(entity.id, entity.state)
         
         if current_path is None:
-            # New task - create it
             self._do_create(entity)
             return
-        
+
+        # Preserve existing body (tasks are human/LLM-edited documents).
+        content_existing = current_path.read_text(encoding="utf-8", errors="strict")
+        if not has_frontmatter(content_existing):
+            raise PersistenceError(
+                f"Task file at {current_path} is missing YAML frontmatter. "
+                "Restore the file from the composed template or recreate the task via `edison task new`."
+            )
+        body = parse_frontmatter(content_existing).content
+
         # Check if state or location changed (need to move file)
+        cleanup_old = False
         if current_path.resolve() != target_path.resolve():
-            # Move to new state directory
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            # We copy content first then unlink to be safe(r) or use rename
-            # rename is atomic on same filesystem
             try:
                 current_path.rename(target_path)
             except OSError:
-                # Cross-device move?
-                content = self._task_to_markdown(entity)
-                target_path.write_text(content, encoding="utf-8")
-                current_path.unlink()
-        
-        # Write updated content
-        content = self._task_to_markdown(entity)
-        target_path.write_text(content, encoding="utf-8")
+                cleanup_old = True
+
+        # Write updated frontmatter + preserved body
+        target_path.write_text(self._task_to_markdown(entity, body=body), encoding="utf-8")
+        if cleanup_old and current_path.exists():
+            current_path.unlink()
     
     def _do_delete(self, entity_id: EntityId) -> bool:
         """Delete a task."""
@@ -346,11 +359,11 @@ class TaskRepository(
 
     # ---------- File Format Helpers ----------
 
-    def _task_to_markdown(self, task: Task) -> str:
-        """Convert task to markdown format with YAML frontmatter.
+    def _task_to_markdown(self, task: Task, *, body: str | None = None) -> str:
+        """Serialize a task as Markdown with YAML frontmatter.
 
-        State is NOT stored in the frontmatter - it's derived from the directory.
-        All other task metadata is stored in YAML frontmatter for single source of truth.
+        - State is NOT stored in frontmatter (derived from directory).
+        - Body is preserved on saves; template is only used on creation.
         """
         # Build frontmatter data (exclude None values)
         frontmatter_data: Dict[str, Any] = {
@@ -372,19 +385,25 @@ class TaskRepository(
             "tags": task.tags if task.tags else None,
         }
 
-        # Format as YAML frontmatter
         yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
+        rendered_body = body if body is not None else self._render_task_body(task)
+        return yaml_header + (rendered_body or "")
 
-        # Build markdown body
-        body_lines: List[str] = [
-            f"# {task.title}",
-            "",
-        ]
-
-        if task.description:
-            body_lines.append(task.description)
-
-        return yaml_header + "\n".join(body_lines)
+    def _render_task_body(self, task: Task) -> str:
+        """Render the task body from the composed template."""
+        tpl_path = self._config.template_path()
+        if not tpl_path.exists():
+            tpl_path = get_data_path("templates", "documents", "TASK.md")
+        raw = tpl_path.read_text(encoding="utf-8")
+        body = strip_frontmatter_block(raw)
+        return render_template_text(
+            body,
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description or "",
+            },
+        )
 
     def _load_task_from_file(self, path: Path) -> Optional[Task]:
         """Load a task from a markdown file."""

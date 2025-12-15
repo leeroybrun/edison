@@ -12,7 +12,7 @@ Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-re
 ## Report File (REQUIRED): Markdown + YAML frontmatter
 
 **Schema (single source of truth)**:
-- `.edison/_generated/schemas/reports/validator-report.schema.json`
+- `.edison/_generated/schemas/reports/validator-report.schema.yaml`
 
 **Location (per round)**:
 - `.project/qa/validation-evidence/<task-id>/round-<N>/validator-<validatorId>-report.md`

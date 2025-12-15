@@ -41,6 +41,12 @@ from .frontmatter import (
     FRONTMATTER_PATTERN,
 )
 
+from .templates import (
+    strip_frontmatter_block,
+    render_template_text,
+    render_template_value,
+    render_template_dict,
+)
 
 __all__ = [
     # Core
@@ -68,4 +74,9 @@ __all__ = [
     "has_frontmatter",
     "update_frontmatter",
     "FRONTMATTER_PATTERN",
+    # Templates
+    "strip_frontmatter_block",
+    "render_template_text",
+    "render_template_value",
+    "render_template_dict",
 ]

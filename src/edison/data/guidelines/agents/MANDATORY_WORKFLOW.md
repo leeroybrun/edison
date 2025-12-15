@@ -40,7 +40,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 Create or update the implementation report for the current round:
 - **Path**: `.project/qa/validation-evidence/<task-id>/round-<N>/implementation-report.md` (filename is config-driven; default is `implementation-report.md`).
-- **Schema (LLM reference)**: `.edison/_generated/schemas/reports/implementation-report.schema.json`
+- **Schema (LLM reference)**: `.edison/_generated/schemas/reports/implementation-report.schema.yaml`
 - Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
 #### Phase 3: Handoff to orchestrator (do NOT self-validate)

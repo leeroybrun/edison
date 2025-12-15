@@ -36,12 +36,12 @@ def validate_pack(
     data = read_yaml(pack_path / "pack.yml", default={})
     # 1) JSON Schema validation
     if schema_path is None:
-        schema_path = get_data_path("schemas") / "config" / "pack.schema.json"
+        schema_path = get_data_path("schemas") / "config" / "pack.schema.yaml"
     try:
         from jsonschema import Draft202012Validator  # type: ignore
-        from edison.core.utils.io import read_json as _io_read_json
+        from edison.core.utils.io import read_yaml as _io_read_yaml
 
-        schema = _io_read_json(schema_path)
+        schema = _io_read_yaml(schema_path)
         Draft202012Validator.check_schema(schema)
         v = Draft202012Validator(schema)
         for err in sorted(v.iter_errors(data), key=lambda e: list(e.path)):

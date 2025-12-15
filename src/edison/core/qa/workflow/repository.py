@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from edison.data import get_data_path
 from edison.core.entity import (
     BaseRepository,
     FileRepositoryMixin,
@@ -17,7 +18,14 @@ from edison.core.entity import (
     PersistenceError,
 )
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.text import parse_frontmatter, format_frontmatter, has_frontmatter, parse_title
+from edison.core.utils.text import (
+    format_frontmatter,
+    has_frontmatter,
+    parse_frontmatter,
+    parse_title,
+    render_template_text,
+    strip_frontmatter_block,
+)
 from edison.core.config.domains import TaskConfig
 
 from ..models import QARecord
@@ -134,7 +142,8 @@ class QARepository(
         if not has_frontmatter(content):
             raise PersistenceError(
                 f"QA file at {path} is missing YAML frontmatter. "
-                "Restore the file from TEMPLATE.md or recreate the QA via `edison qa new <task-id>`."
+                "Restore the file from the composed template (.edison/_generated/documents/QA.md) "
+                "or recreate the QA via `edison qa new <task-id>`."
             )
 
         try:
@@ -154,18 +163,27 @@ class QARepository(
         if current_path is None:
             self._do_create(entity)
             return
-        
+
+        # Preserve existing body (QA briefs are human/LLM-edited documents).
+        content_existing = current_path.read_text(encoding="utf-8", errors="strict")
+        if not has_frontmatter(content_existing):
+            raise PersistenceError(
+                f"QA file at {current_path} is missing YAML frontmatter. "
+                "Restore the file from the composed template or recreate the QA via `edison qa new <task-id>`."
+            )
+        body = parse_frontmatter(content_existing).content
+
+        cleanup_old = False
         if current_path.resolve() != target_path.resolve():
             target_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 current_path.rename(target_path)
             except OSError:
-                content = self._qa_to_markdown(entity)
-                target_path.write_text(content, encoding="utf-8")
-                current_path.unlink()
-        
-        content = self._qa_to_markdown(entity)
-        target_path.write_text(content, encoding="utf-8")
+                cleanup_old = True
+
+        target_path.write_text(self._qa_to_markdown(entity, body=body), encoding="utf-8")
+        if cleanup_old and current_path.exists():
+            current_path.unlink()
     
     def _do_delete(self, entity_id: EntityId) -> bool:
         """Delete a QA record."""
@@ -359,11 +377,11 @@ class QARepository(
     
     # ---------- File Format Helpers ----------
 
-    def _qa_to_markdown(self, qa: QARecord) -> str:
-        """Convert QA record to markdown format with YAML frontmatter.
+    def _qa_to_markdown(self, qa: QARecord, *, body: str | None = None) -> str:
+        """Serialize a QA record as Markdown with YAML frontmatter.
 
-        State is NOT stored in the frontmatter - it's derived from the directory.
-        All other QA metadata is stored in YAML frontmatter for single source of truth.
+        - State is NOT stored in frontmatter (derived from directory).
+        - Body is preserved on saves; template is only used on creation.
         """
         from typing import Any, Dict
 
@@ -390,14 +408,26 @@ class QARepository(
 
         # Format as YAML frontmatter
         yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
+        rendered_body = body if body is not None else self._render_qa_body(qa)
+        return yaml_header + (rendered_body or "")
 
-        # Build markdown body
-        body_lines: List[str] = [
-            f"# {qa.title}",
-            "",
-        ]
-
-        return yaml_header + "\n".join(body_lines)
+    def _render_qa_body(self, qa: QARecord) -> str:
+        """Render the QA body from the composed template."""
+        tpl_path = self._config.qa_template_path()
+        if not tpl_path.exists():
+            tpl_path = get_data_path("templates", "documents", "QA.md")
+        raw = tpl_path.read_text(encoding="utf-8")
+        body = strip_frontmatter_block(raw)
+        return render_template_text(
+            body,
+            {
+                "id": qa.id,
+                "task_id": qa.task_id,
+                "title": qa.title,
+                "round": qa.round,
+                "validator_owner": qa.validator_owner or qa.metadata.created_by,
+            },
+        )
 
     def _load_qa_from_file(self, path: Path) -> Optional[QARecord]:
         """Load a QA record from a markdown file."""

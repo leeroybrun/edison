@@ -236,8 +236,8 @@ All in `.edison/_generated/guidelines/`:
 ### Templates
 
 **Task/QA Structure**:
-- `.project/tasks/TEMPLATE.md` - Task file structure with TDD evidence sections
-- `.project/qa/TEMPLATE.md` - QA brief structure with validator verdicts
+- `.edison/_generated/documents/TASK.md` - Composed task document template (used by `edison task new`)
+- `.edison/_generated/documents/QA.md` - Composed QA document template (used by `edison qa new`)
 
 **Session Templates**:
 - `.edison/_generated/STATE_MACHINE.md` - State machine definitions

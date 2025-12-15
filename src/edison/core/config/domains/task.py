@@ -47,9 +47,14 @@ class TaskConfig(BaseDomainConfig):
         return self._resolve_required(path, "tasks.paths.metaRoot")
 
     def template_path(self) -> Path:
-        """Get absolute path to task template file."""
+        """Get absolute path to the task document template file."""
         path = self._paths.get("template")
         return self._resolve_required(path, "tasks.paths.template")
+
+    def qa_template_path(self) -> Path:
+        """Get absolute path to the QA document template file."""
+        path = self._paths.get("qaTemplate")
+        return self._resolve_required(path, "tasks.paths.qaTemplate")
 
     def evidence_subdir(self) -> str:
         """Get evidence subdirectory name from config.

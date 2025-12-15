@@ -31,7 +31,7 @@ Unified Naming Convention
 - Pack overlays: `.edison/packs/<pack>/<type>/overlays/<name>.md`
 - Project overlays: `.edison/<type>/overlays/<name>.md`
 
-pack.yml (schema: `.edison/config/schemas/pack.schema.json`)
+pack.yml (schema: `.edison/_generated/schemas/config/pack.schema.yaml`)
 ```yaml
 pack:
   id: typescript

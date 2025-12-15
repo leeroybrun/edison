@@ -6,9 +6,9 @@ Core framework entities that represent the primary business objects in Edison wo
 
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
-| `session.schema.json` | Session state and metadata | Tests, metadata validation |
-| `task.schema.json` | Task definitions and status tracking | Tests, state machine alignment |
-| `qa.schema.json` | QA workflow and validation state | Tests |
+| `session.schema.yaml` | Session state and metadata | Tests, metadata validation |
+| `task.schema.yaml` | Task definitions and status tracking | Tests, state machine alignment |
+| `qa.schema.yaml` | QA workflow and validation state | Tests |
 
 ## Usage
 

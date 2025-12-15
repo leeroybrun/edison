@@ -6,8 +6,8 @@ Schemas for IDE-specific adapters and agent configurations.
 
 | Schema | Purpose | Validated In |
 |--------|---------|--------------|
-| `claude-agent.schema.json` | Claude agent definition structure | Tests |
-| `claude-agent-config.schema.json` | Claude agent configuration | Tests |
+| `claude-agent.schema.yaml` | Claude agent definition structure | Tests |
+| `claude-agent-config.schema.yaml` | Claude agent configuration | Tests |
 
 ## Usage
 

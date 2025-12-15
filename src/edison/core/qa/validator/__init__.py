@@ -30,25 +30,12 @@ For single validator execution:
         worktree_path=Path("/path/to/worktree"),
     )
 
-For backward compatibility with template processing:
-    from edison.core.qa.validator import process_validator_template, validate_dimension_weights
 """
 from __future__ import annotations
 
 from ...legacy_guard import enforce_no_legacy_project_root
 
 enforce_no_legacy_project_root("lib.qa.validator")
-
-# Keep utility functions from base.py
-from .base import (
-    _SAFE_INCLUDE_RE,
-    _is_safe_path,
-    _read_text_safe,
-    _resolve_include_path,
-    process_validator_template,
-    run_validator,
-    validate_dimension_weights,
-)
 
 # New engine-based API
 from ..engines import (
@@ -69,10 +56,6 @@ from ..engines import (
 # from edison.core.registries.validators import ValidatorMetadata
 
 __all__ = [
-    # Utility functions
-    "validate_dimension_weights",
-    "process_validator_template",
-    "run_validator",
     # Engine-based API - Executor (preferred for batch execution)
     "ValidationExecutor",
     "ExecutionResult",

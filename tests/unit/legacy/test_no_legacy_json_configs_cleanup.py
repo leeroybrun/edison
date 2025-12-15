@@ -18,12 +18,10 @@ for cand in _CUR.parents:
 
 
 def test_core_config_has_no_json_configs() -> None:
-    """Core config must be YAML-only; schemas are the only JSON allowed."""
+    """Core config must be YAML-only (no legacy JSON configs)."""
     # Check bundled Edison data
     cfg_dir = get_data_path("config")
-    json_configs = [
-        p for p in cfg_dir.rglob("*.json") if not p.name.endswith(".schema.json")
-    ]
+    json_configs = list(cfg_dir.rglob("*.json"))
     assert not json_configs, f"Legacy JSON configs found in core: {json_configs}"
 
 
