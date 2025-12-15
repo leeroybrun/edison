@@ -12,8 +12,8 @@ from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
 from edison.core.qa import promoter, bundler
-from edison.core.qa.evidence import EvidenceService, read_validator_jsons
-from edison.core.state.transitions import validate_transition, transition_entity, EntityTransitionError
+from edison.core.qa.evidence import EvidenceService, read_validator_reports
+from edison.core.state.transitions import validate_transition
 
 SUMMARY = "Promote QA brief between states"
 
@@ -33,11 +33,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--session",
         type=str,
         help="Session ID for context",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Skip guard checks (use with caution)",
     )
     parser.add_argument(
         "--dry-run",
@@ -107,6 +102,9 @@ def main(args: argparse.Namespace) -> int:
             "entity_type": "qa",
             "entity_id": qa_id,
         }
+        if args.session:
+            context["session_id"] = str(args.session)
+            context["session"] = {"id": str(args.session)}
         
         # Add task context if available
         try:
@@ -125,7 +123,7 @@ def main(args: argparse.Namespace) -> int:
         # Add validation results if available
         if round_num is not None:
             try:
-                validator_data = read_validator_jsons(task_id)
+                validator_data = read_validator_reports(task_id)
                 context["validation_results"] = {
                     "round": round_num,
                     "reports": validator_data.get("reports", []),
@@ -140,6 +138,7 @@ def main(args: argparse.Namespace) -> int:
                 current_status,
                 args.status,
                 context=context,
+                repo_root=repo_root,
             )
             formatter.json_output({
                 "dry_run": True,
@@ -168,26 +167,14 @@ def main(args: argparse.Namespace) -> int:
                 )
                 return 1
 
-        # Execute the promotion with guard validation and action execution
+        # Execute the promotion with guard validation + action execution.
         old_state = qa_entity.state
-        if not args.force:
-            try:
-                # transition_entity validates guards and executes actions
-                transition_entity(
-                    entity_type="qa",
-                    entity_id=qa_id,
-                    to_state=args.status,
-                    current_state=current_status,
-                    context=context,
-                )
-            except EntityTransitionError as e:
-                formatter.error(f"Transition blocked: {e}", error_code="guard_failed")
-                return 1
-        
-        # Update and persist the entity
-        qa_entity.state = args.status
-        qa_entity.record_transition(old_state, args.status, reason="cli-qa-promote")
-        qa_repo.save(qa_entity)
+        qa_entity = qa_repo.transition(
+            qa_id,
+            args.status,
+            context=context,
+            reason="cli-qa-promote",
+        )
         
         result = {
             "task_id": task_id,

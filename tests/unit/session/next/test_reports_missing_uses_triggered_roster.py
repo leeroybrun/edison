@@ -152,12 +152,16 @@ round: 1
     # Evidence round with implementation report that triggers ONLY test-api.
     round_dir = repo_env / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    (round_dir / "implementation-report.json").write_text(
-        '{"filesChanged":["apps/api/server.ts"]}',
+    (round_dir / "implementation-report.md").write_text(
+        """---
+filesChanged:
+  - apps/api/server.ts
+---
+""",
         encoding="utf-8",
     )
 
-    # No validator-*-report.json files exist yet.
+    # No validator-*-report.md files exist yet.
     missing = build_reports_missing({"id": session_id})
 
     missing_validators = {
@@ -176,4 +180,3 @@ round: 1
     ]
     assert ctx7_missing, "Expected Context7 missing entry when required packages are configured"
     assert "fastify" in (ctx7_missing[0].get("packages") or [])
-

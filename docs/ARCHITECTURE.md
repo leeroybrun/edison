@@ -902,7 +902,7 @@ my-project/
 │   │   └── validation-evidence/
 │   │       └── T-001/          # Evidence for task T-001
 │   │           └── round-1/
-│   │               ├── implementation-report.json
+│   │               ├── implementation-report.md
 │   │               └── validator-results/
 │   ├── _generated/             # Composed artifacts (DO NOT EDIT)
 │   │   ├── agents/

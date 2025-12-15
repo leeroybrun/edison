@@ -45,24 +45,7 @@ edison session next
 - QA briefs in progress remain assigned
 - Validators may need re-running if state is unclear
 
-## Session State Machine
-
-Read the generated state machine reference in `.edison/_generated/STATE_MACHINE.md`.
-Follow the allowed transitions for session, task, and QA domains defined there—do
-not assume defaults. Use `edison session next` to stay aligned with the configured
-state machine after resuming.
-
-Valid task state transitions:
-- todo → wip → done → validated
-
-Transition triggers:
-- todo → wip: claim a task (`edison task claim <task-id>`)
-- wip → done: mark done after TDD green and evidence
-- done → validated: run validators (`edison qa validate <task-id>`)
-
-Task states can also transition to blocked if blockers are encountered.
-
-State diagram: See `.edison/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
+{{include:start/includes/SESSION_STATE_MACHINE.md}}
 
 ## Constitution Reference
 

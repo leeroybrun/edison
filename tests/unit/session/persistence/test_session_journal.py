@@ -31,7 +31,6 @@ class TestSessionJournal(unittest.TestCase):
         old_env = os.environ.copy()
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(old_env)))
 
-        os.environ["project_ROOT"] = str(self.temp_root)
         os.environ["AGENTS_PROJECT_ROOT"] = str(self.temp_root)
 
         # Minimal sessions structure

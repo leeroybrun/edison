@@ -70,7 +70,7 @@ def _ensure_base_evidence(project_root: Path, task_id: str, round_num: int = 1) 
     - Start + complete an implementation report via real `track` CLI
     - Create command evidence files expected by the guard
     """
-    # Start and complete implementation tracking to create implementation-report.json
+    # Start and complete implementation tracking to create implementation-report.md
     r1 = run_script(
         "track",
         [
@@ -350,7 +350,7 @@ def test_context7_detection_from_file_extensions(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_done = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_done)
     # Expect at least react and next to appear in the error (typescript may also be flagged)
@@ -398,7 +398,7 @@ def test_context7_detection_from_imports(combined_env):
 
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_done = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_done)
     assert ("react" in res_done.stdout or "react" in res_done.stderr)
@@ -621,7 +621,7 @@ def test_context7_complete_enforcement_workflow(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
     _write_context7(project_dir.project_root, task_id, "react", 1)
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_fail = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_fail)
     assert ("zod" in res_fail.stdout or "zod" in res_fail.stderr)
@@ -687,7 +687,7 @@ model Lead {
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_fail = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_fail)
     assert ("prisma" in res_fail.stdout.lower() or "prisma" in res_fail.stderr.lower())
@@ -737,7 +737,7 @@ def test_context7_prisma_migration_enforcement(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_fail = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_fail)
     assert ("prisma" in res_fail.stdout.lower() or "prisma" in res_fail.stderr.lower())
@@ -787,7 +787,7 @@ def test_context7_prisma_seeds_enforcement(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res_fail = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res_fail)
     assert ("prisma" in res_fail.stdout.lower() or "prisma" in res_fail.stderr.lower())
@@ -818,8 +818,8 @@ def test_context7_fails_closed_when_config_missing(
     import runpy
     from tests.helpers.env_setup import setup_project_root
 
-    # Remove Context7 YAML config in the test project (.agents/config/validators.yml)
-    cfg_yaml = project_dir.agents_root / "config" / "validators.yml"
+    # Remove validators config override in the test project (.edison/config/validators.yaml)
+    cfg_yaml = project_dir.edison_root / "config" / "validators.yaml"
     if cfg_yaml.exists():
         cfg_yaml.unlink()
 
@@ -889,7 +889,7 @@ def test_context7_zod_not_triggered_by_route_only(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res)
     out = (res.stdout + res.stderr)
@@ -932,7 +932,7 @@ def test_context7_non_git_primary_files_detection(project_dir: TestProjectDir):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res)
     out = (res.stdout + res.stderr).lower()
@@ -1016,7 +1016,7 @@ def test_context7_error_message_lists_all_packages(combined_env):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    env = {"project_OWNER": session_id}
+    env = {"AGENTS_OWNER": session_id}
     res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path, env=env)
     assert_command_failure(res)
     # Expect a single explicit line enumerating required packages (stdout or stderr)

@@ -20,6 +20,21 @@ from edison.core.qa.workflow.repository import QARepository
 
 SUMMARY = "Manage QA rounds"
 
+def _allowed_round_statuses() -> set[str]:
+    """Return the canonical round status vocabulary.
+
+    We align the QA round status with the validator report verdict enum to avoid
+    duplicated vocabularies.
+    """
+    import json
+    from edison.data import get_data_path
+
+    schema_path = get_data_path("schemas") / "reports" / "validator-report.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    verdict = (schema.get("properties") or {}).get("verdict") or {}
+    values = verdict.get("enum") or []
+    return {str(v) for v in values}
+
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
@@ -30,7 +45,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--status",
         type=str,
-        help="Status for the round (e.g., approved, rejected)",
+        help="Round status (one of: approve, reject, blocked, pending)",
     )
     parser.add_argument(
         "--note",
@@ -71,17 +86,22 @@ def main(args: argparse.Namespace) -> int:
 
         # Default behavior: append a new round with given status
         if not args.new and not args.list and not args.current:
+            status = args.status or "pending"
+            allowed = _allowed_round_statuses()
+            if status not in allowed:
+                raise ValueError(f"Invalid round status: {status}. Valid values: {', '.join(sorted(allowed))}")
+
             # Use QARepository to append round (no direct file manipulation)
             updated_qa = qa_repo.append_round(
                 qa_id,
-                status=args.status or "pending",
+                status=status,
                 notes=args.note,
             )
 
             result = {
                 "taskId": args.task_id,
                 "round": updated_qa.round,
-                "status": args.status or "pending",
+                "status": status,
             }
             formatter.json_output(result) if formatter.json_mode else formatter.text(
                 f"Appended round {updated_qa.round} for {args.task_id}"

@@ -47,7 +47,7 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.config.domains.qa import QAConfig
-        from edison.core.qa.evidence import read_validator_jsons
+        from edison.core.qa.evidence import read_validator_reports
 
         qa_config = QAConfig()
         validators = qa_config.get_validators()
@@ -58,7 +58,7 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
             if cfg.get("blocking", True)
         }
 
-        v = read_validator_jsons(str(task_id))
+        v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
 
         if not reports:
@@ -98,10 +98,10 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         return False  # FAIL-CLOSED
 
     try:
-        from edison.core.qa.evidence import missing_evidence_blockers, read_validator_jsons
+        from edison.core.qa.evidence import missing_evidence_blockers, read_validator_reports
 
         # Check for validator reports
-        v = read_validator_jsons(str(task_id))
+        v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
         if not reports:
             return False  # FAIL-CLOSED: no reports
@@ -174,7 +174,7 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.config.domains.qa import QAConfig
-        from edison.core.qa.evidence import read_validator_jsons
+        from edison.core.qa.evidence import read_validator_reports
         from edison.core.registries.validators import ValidatorRegistry
         from edison.core.context.files import FileContextService
 
@@ -197,7 +197,7 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
         )
         expected_ids = {v.id for v in (always_run + triggered_blocking + triggered_optional)}
 
-        v = read_validator_jsons(str(task_id))
+        v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
         if not reports:
             return False  # FAIL-CLOSED: no reports
@@ -275,7 +275,7 @@ def has_bundle_approval(ctx: Mapping[str, Any]) -> bool:
 def _is_passed(report: Mapping[str, Any]) -> bool:
     """Check if a validator report indicates pass."""
     verdict = report.get("verdict", "").lower()
-    return verdict in ("pass", "approved", "passed")
+    return verdict == "approve"
 
 
 # Use shared utility for task_id extraction

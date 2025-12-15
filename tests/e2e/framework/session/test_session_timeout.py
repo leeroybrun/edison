@@ -1,62 +1,83 @@
 """Session timeout enforcement tests (WP-002).
 
-TDD: verify detection, claim rejection, and cleanup behaviors.
+Validates:
+- Expired sessions are detectable and cleanable via `edison session cleanup-expired`
+- Claiming into an expired session is fail-closed
+- Timestamp parsing handles Z and +00:00 variants
 """
+
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
-import tempfile
-import textwrap
-import time
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Generator
 
 import pytest
+import yaml
 
 from edison.core.utils.subprocess import run_with_timeout
-from edison.data import get_data_path
-from tests.helpers.timeouts import wait_for_file
-from tests.helpers.paths import get_repo_root, get_core_root
+from tests.config import get_default_value
 from tests.e2e.base import create_project_structure, copy_templates, setup_base_environment
+from tests.helpers.paths import get_repo_root
 
 
 REPO_ROOT = get_repo_root()
-CORE_ROOT = get_core_root()
-SCRIPTS_DIR = CORE_ROOT / "scripts"
+TIMEOUT_HOURS = int(get_default_value("timeouts", "session_timeout_hours"))
+SKEW_ALLOWANCE_SECONDS = int(get_default_value("timeouts", "clock_skew_allowance_seconds"))
 
 
-def _write_file(ts: str) -> str:
-    # Helpers to normalize ISO string with Z suffix
-    return ts.replace("+00:00", "Z")
+def _write_iso(dt: datetime, tz_variant: str = "Z") -> str:
+    ts = dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+    if tz_variant == "Z":
+        return ts.replace("+00:00", "Z")
+    return ts
 
 
 @pytest.fixture
 def session_timeout_env(tmp_path: Path) -> Generator[dict, None, None]:
     """Set up isolated test environment for session timeout tests."""
-    # Use shared base setup functions
     create_project_structure(tmp_path)
     copy_templates(tmp_path)
     env = setup_base_environment(tmp_path, owner="codex-pid-9999")
 
-    env_data = {
-        "tmp": tmp_path,
-        "env": env,
-        "session_cli": SCRIPTS_DIR / "session",
-        "claim_cli": SCRIPTS_DIR / "tasks" / "claim",
-        "detect_stale_cmd": [SCRIPTS_DIR / "session", "detect-stale"],
-    }
+    # Provide deterministic recovery settings for timeout tests.
+    cfg_dir = tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "session.yml").write_text(
+        yaml.safe_dump(
+            {
+                "session": {
+                    "recovery": {
+                        "timeoutHours": TIMEOUT_HOURS,
+                        "clockSkewAllowanceSeconds": SKEW_ALLOWANCE_SECONDS,
+                        "defaultTimeoutMinutes": TIMEOUT_HOURS * 60,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
 
-    yield env_data
+    # Ensure the subprocess can import the in-repo `edison` package.
+    src_root = REPO_ROOT / "src"
+    existing_py_path = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = os.pathsep.join([str(src_root), existing_py_path] if existing_py_path else [str(src_root)])
+
+    yield {
+        "root": tmp_path,
+        "project_root": tmp_path / ".project",
+        "env": env,
+    }
 
 
 def run_cli(env_data: dict, *argv: str | Path, check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Execute CLI command with error handling."""
-    cmd = ["python3", *[str(a) for a in argv]]
-    res = run_with_timeout(cmd, cwd=SCRIPTS_DIR, env=env_data["env"], capture_output=True, text=True)
+    """Execute `python -m edison` with the E2E env."""
+    cmd = [sys.executable, "-m", "edison"] + [str(a) for a in argv]
+    res = run_with_timeout(cmd, cwd=REPO_ROOT, env=env_data["env"], capture_output=True, text=True)
     if check and res.returncode != 0:
         raise AssertionError(
             f"Command failed ({res.returncode})\nCMD: {' '.join(cmd)}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
@@ -64,136 +85,153 @@ def run_cli(env_data: dict, *argv: str | Path, check: bool = True) -> subprocess
     return res
 
 
-def seed_task(env_data: dict, task_id: str, status: str = "todo") -> Path:
-    """Create a minimal task file for testing."""
-    content = textwrap.dedent(
-        f"""
-        # {task_id}
-        - **Task ID:** {task_id}
-        - **Priority Slot:** {task_id.split('-')[0]}
-        - **Wave:** {task_id.split('-')[1]}
-        - **Owner:** _unassigned_
-        - **Status:** {status}
-        - **Created:** 2025-11-16
-        - **Session Info:**
-          - **Claimed At:** _unassigned_
-          - **Last Active:** _unassigned_
-          - **Continuation ID:** _none_
-          - **Primary Model:** _unassigned_
-        """
-    ).strip() + "\n"
-    dest = env_data["tmp"] / ".project" / "tasks" / status / f"{task_id}.md"
-    dest.write_text(content)
-    return dest
+def task_id(slot: int, wave: str, slug: str) -> str:
+    return f"{slot}-{wave}-{slug}"
 
 
-def write_session_age(env_data: dict, session_id: str, hours_old: float, tz_variant: str = "Z") -> None:
-    """Ensure a session exists and stamp createdAt/lastActive accordingly.
+def create_task(env_data: dict, slot: int, wave: str, slug: str) -> str:
+    tid = task_id(slot, wave, slug)
+    run_cli(
+        env_data,
+        "task",
+        "new",
+        "--id",
+        str(slot),
+        "--wave",
+        wave,
+        "--slug",
+        slug,
+        "--repo-root",
+        str(env_data["root"]),
+    )
+    return tid
 
-    tz_variant: 'Z' or '+00:00'
-    """
-    # Create session via CLI if missing
-    sess_path = env_data["tmp"] / ".project" / "sessions" / "wip" / session_id / "session.json"
-    if not sess_path.exists():
-        run_cli(env_data, env_data["session_cli"], "new", "--owner", "tester", "--session-id", session_id)
-    data = json.loads(sess_path.read_text())
+
+def create_session(env_data: dict, session_id: str) -> Path:
+    sess_path = env_data["project_root"] / "sessions" / "wip" / session_id / "session.json"
+    if sess_path.exists():
+        return sess_path
+    run_cli(
+        env_data,
+        "session",
+        "create",
+        "--owner",
+        "tester",
+        "--session-id",
+        session_id,
+        "--no-worktree",
+        "--repo-root",
+        str(env_data["root"]),
+    )
+    return sess_path
+
+
+def write_session_age(env_data: dict, session_id: str, *, hours_old: float, tz_variant: str = "Z") -> None:
+    """Stamp createdAt/lastActive to an older timestamp."""
+    sess_path = create_session(env_data, session_id)
+    data = json.loads(sess_path.read_text(encoding="utf-8"))
     now = datetime.now(timezone.utc)
     past = now - timedelta(hours=hours_old)
-    ts = past.isoformat(timespec="seconds")
-    if tz_variant == "Z":
-        ts = _write_file(ts)
+    ts = _write_iso(past, tz_variant=tz_variant)
     data["meta"]["createdAt"] = ts
     data["meta"]["lastActive"] = ts
-    # Ensure no claimedAt to exercise fallback; later tests set it explicitly
     data["meta"].pop("claimedAt", None)
-    sess_path.write_text(json.dumps(data, indent=2))
+    sess_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 class TestSessionTimeout:
-    """Session timeout enforcement tests."""
-
     def test_detects_expired_session_and_cleans_up(self, session_timeout_env: dict) -> None:
-        """Expired session is detected and cleaned; tasks return to global queues."""
         sid = "s-expired-clean"
-        task_id = "950-wave2-timeout-clean"
-        seed_task(session_timeout_env, task_id)
-        # Create session then claim into it
-        run_cli(session_timeout_env, session_timeout_env["session_cli"], "new", "--owner", "tester", "--session-id", sid)
-        run_cli(session_timeout_env, session_timeout_env["claim_cli"], task_id, "--session", sid)
-        # Make session old (>8h default)
-        write_session_age(session_timeout_env, sid, hours_old=12.0)
+        tid = create_task(session_timeout_env, 950, "wave2", "timeout-clean")
 
-        # Run detector (expects script to exist; RED until implemented)
-        res = run_cli(session_timeout_env, *session_timeout_env["detect_stale_cmd"], "--json")
-        assert res.returncode == 0, res.stderr
-        payload = json.loads(res.stdout or "{}")
-        expired = payload.get("expiredSessions", [])
-        cleaned = payload.get("cleanedSessions", [])
-        assert sid in expired, f"Detector should report expired session: {payload}"
-        assert sid in cleaned, f"Detector should report cleaned session: {payload}"
+        create_session(session_timeout_env, sid)
+        run_cli(session_timeout_env, "task", "claim", tid, "--session", sid, "--repo-root", str(session_timeout_env["root"]))
 
-        # Verify task moved back to global wip
-        global_path = session_timeout_env["tmp"] / ".project" / "tasks" / "wip" / f"{task_id}.md"
-        assert global_path.exists(), f"Task should be restored globally: {global_path}"
-        # Verify session moved to done and stamped
-        sess_done = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / sid / "session.json"
-        assert sess_done.exists(), f"Session JSON should move to done: {sess_done}"
-        data = json.loads(sess_done.read_text())
-        assert "expiredAt" in data.get("meta", {}), "Session should be stamped with expiredAt"
+        # Make session older than configured timeout to trigger cleanup.
+        write_session_age(session_timeout_env, sid, hours_old=float(TIMEOUT_HOURS + 4))
+
+        dry = run_cli(session_timeout_env, "session", "cleanup-expired", "--dry-run", "--json")
+        dry_payload = json.loads(dry.stdout or "{}")
+        assert sid in set(dry_payload.get("expired", []))
+
+        cleaned = run_cli(session_timeout_env, "session", "cleanup-expired", "--json")
+        cleaned_payload = json.loads(cleaned.stdout or "{}")
+        assert sid in set(cleaned_payload.get("cleaned", []))
+
+        # Task restored globally in its current state (wip).
+        global_path = session_timeout_env["project_root"] / "tasks" / "wip" / f"{tid}.md"
+        assert global_path.exists()
+
+        # Session transitioned to semantic "closing" (mapped to done/ directory in tests).
+        sess_done = session_timeout_env["project_root"] / "sessions" / "done" / sid / "session.json"
+        assert sess_done.exists()
+        data = json.loads(sess_done.read_text(encoding="utf-8"))
+        assert "expiredAt" in (data.get("meta") or {})
 
     def test_claim_rejected_when_session_expired(self, session_timeout_env: dict) -> None:
-        """Claim must fail-closed if target session is expired."""
         sid = "s-expired-claim"
-        task_id = "951-wave2-timeout-claim"
-        seed_task(session_timeout_env, task_id)
-        # Create old session before claim
-        write_session_age(session_timeout_env, sid, hours_old=24.0)
-        res = run_cli(session_timeout_env, session_timeout_env["claim_cli"], task_id, "--session", sid, check=False)
-        assert res.returncode != 0, "Claim into expired session should fail"
-        assert "expired" in res.stderr.lower()
+        tid = create_task(session_timeout_env, 951, "wave2", "timeout-claim")
+
+        write_session_age(session_timeout_env, sid, hours_old=float(TIMEOUT_HOURS + 8))
+        res = run_cli(
+            session_timeout_env,
+            "task",
+            "claim",
+            tid,
+            "--session",
+            sid,
+            "--repo-root",
+            str(session_timeout_env["root"]),
+            check=False,
+        )
+        assert res.returncode != 0
+        assert "expired" in (res.stderr or "").lower()
 
     def test_timezone_parsing_z_and_offset(self, session_timeout_env: dict) -> None:
-        """Detector handles both 'Z' and '+00:00' timestamps."""
         sid_z = "s-timezone-z"
         sid_off = "s-timezone-off"
-        # Slightly old but not expired
+
+        # Slightly old but not expired.
         write_session_age(session_timeout_env, sid_z, hours_old=1.5, tz_variant="Z")
         write_session_age(session_timeout_env, sid_off, hours_old=2.0, tz_variant="+00:00")
-        res = run_cli(session_timeout_env, *session_timeout_env["detect_stale_cmd"], "--json")
-        payload = json.loads(res.stdout or "{}")
-        expired = set(payload.get("expiredSessions", []))
+
+        dry = run_cli(session_timeout_env, "session", "cleanup-expired", "--dry-run", "--json")
+        payload = json.loads(dry.stdout or "{}")
+        expired = set(payload.get("expired", []))
         assert sid_z not in expired
         assert sid_off not in expired
 
     def test_clock_skew_small_future_is_tolerated(self, session_timeout_env: dict) -> None:
-        """Small future skew in lastActive does not mark session expired."""
         sid = "s-skew-future"
-        run_cli(session_timeout_env, session_timeout_env["session_cli"], "new", "--owner", "tester", "--session-id", sid)
-        path = session_timeout_env["tmp"] / ".project" / "sessions" / "wip" / f"{sid}.json"
-        data = json.loads(path.read_text())
-        # lastActive 2 minutes in the future
+        sess_path = create_session(session_timeout_env, sid)
+        data = json.loads(sess_path.read_text(encoding="utf-8"))
+
         future = datetime.now(timezone.utc) + timedelta(minutes=2)
-        data["meta"]["lastActive"] = _write_file(future.isoformat(timespec="seconds"))
-        path.write_text(json.dumps(data, indent=2))
-        res = run_cli(session_timeout_env, *session_timeout_env["detect_stale_cmd"], "--json")
-        payload = json.loads(res.stdout or "{}")
-        assert sid not in payload.get("expiredSessions", [])
+        data["meta"]["lastActive"] = _write_iso(future, tz_variant="Z")
+        sess_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+        dry = run_cli(session_timeout_env, "session", "cleanup-expired", "--dry-run", "--json")
+        payload = json.loads(dry.stdout or "{}")
+        assert sid not in set(payload.get("expired", []))
 
     def test_concurrent_cleanup_is_idempotent(self, session_timeout_env: dict) -> None:
-        """Running detector twice concurrently does not corrupt state and succeeds."""
         sid = "s-concurrent-clean"
-        task_id = "952-wave2-concurrent"
-        seed_task(session_timeout_env, task_id)
-        run_cli(session_timeout_env, session_timeout_env["session_cli"], "new", "--owner", "tester", "--session-id", sid)
-        run_cli(session_timeout_env, session_timeout_env["claim_cli"], task_id, "--session", sid)
-        write_session_age(session_timeout_env, sid, hours_old=10.0)
+        tid = create_task(session_timeout_env, 952, "wave2", "concurrent")
 
-        # Launch two detector processes
-        p1 = run_cli(session_timeout_env, *session_timeout_env["detect_stale_cmd"], "--json", check=False)
-        p2 = run_cli(session_timeout_env, *session_timeout_env["detect_stale_cmd"], "--json", check=False)
-        assert 0 in {p1.returncode, p2.returncode}, "At least one detector run should succeed"
-        # Verify final state
-        global_path = session_timeout_env["tmp"] / ".project" / "tasks" / "wip" / f"{task_id}.md"
+        create_session(session_timeout_env, sid)
+        run_cli(session_timeout_env, "task", "claim", tid, "--session", sid, "--repo-root", str(session_timeout_env["root"]))
+        write_session_age(session_timeout_env, sid, hours_old=float(TIMEOUT_HOURS + 2))
+
+        cmd = [sys.executable, "-m", "edison", "session", "cleanup-expired", "--json"]
+        env = session_timeout_env["env"]
+        p1 = subprocess.Popen(cmd, cwd=REPO_ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p2 = subprocess.Popen(cmd, cwd=REPO_ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        out1, err1 = p1.communicate(timeout=60)
+        out2, err2 = p2.communicate(timeout=60)
+
+        assert 0 in {p1.returncode, p2.returncode}, f"p1={p1.returncode} err={err1}\np2={p2.returncode} err={err2}"
+
+        global_path = session_timeout_env["project_root"] / "tasks" / "wip" / f"{tid}.md"
         assert global_path.exists()
-        done_json = session_timeout_env["tmp"] / ".project" / "sessions" / "done" / sid / "session.json"
+        done_json = session_timeout_env["project_root"] / "sessions" / "done" / sid / "session.json"
         assert done_json.exists()

@@ -1,55 +1,66 @@
 # Implementation Report Output Format (Core)
 
-Agents MUST produce a **machine-readable implementation report** for every implementation round. This is the primary structured input for:
-- validators (to understand what was done, what’s risky, what’s incomplete)
-- `edison session next` (to propose follow-ups and keep the session on rails)
+Agents MUST produce a **structured implementation report** for every implementation round.
+
+Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-readable frontmatter).
 
 ## Where it lives
 
 - Evidence root: `.project/qa/validation-evidence/<task-id>/`
 - Round directory: `round-<N>/` (append-only; never overwrite old rounds)
-- Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `implementation-report.json`)
+- Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `implementation-report.md`)
 
 Example path:
-- `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.json`
+- `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.md`
 
 ## Schema (single source of truth)
 
 See the schema for the exact required fields:
 - `.edison/_generated/schemas/reports/implementation-report.schema.json`
 
-## Minimal expected shape (illustrative)
+## Required machine fields (YAML frontmatter)
 
-```json
-{
-  "taskId": "<task-id>",
-  "round": 1,
-  "implementationApproach": "orchestrator-direct | delegated-single | delegated-mixed",
-  "primaryModel": "<model-id>",
-  "completionStatus": "complete | partial | blocked",
-  "notesForValidator": "Key context, tradeoffs, and where to scrutinize",
-  "followUpTasks": [
-    {
-      "title": "Add missing edge-case tests",
-      "blockingBeforeValidation": true,
-      "claimNow": true,
-      "category": "test"
-    }
-  ],
-  "delegations": [
-    { "filePattern": "<path or glob>", "model": "<model-id>", "role": "<agent-role>", "outcome": "success" }
-  ],
-  "blockers": [
-    { "description": "Waiting for <dependency>", "severity": "high", "owner": "user" }
-  ],
-  "tddCompliance": {
-    "followed": true,
-    "redEvidence": "command-test.txt",
-    "greenEvidence": "command-test.txt",
-    "notes": ""
-  }
-}
+```yaml
+---
+taskId: "<task-id>"
+round: 1
+implementationApproach: "orchestrator-direct" # or delegated-single | delegated-mixed
+primaryModel: "<model-id>"
+completionStatus: "complete" # or partial | blocked
+notesForValidator: "Key context, tradeoffs, and where to scrutinize"
+followUpTasks:
+  - title: "Add missing edge-case tests"
+    blockingBeforeValidation: true
+    claimNow: true
+    category: "test"
+delegations:
+  - filePattern: "<path or glob>"
+    model: "<model-id>"
+    role: "<agent-role>"
+    outcome: "success"
+blockers:
+  - description: "Waiting for <dependency>"
+    severity: "high"
+    owner: "user"
+tddCompliance:
+  followed: true
+  redEvidence: "command-test.txt"
+  greenEvidence: "command-test.txt"
+  notes: ""
+tracking:
+  processId: 12345
+  startedAt: "2025-12-02T10:30:45Z"
+  completedAt: "2025-12-02T10:31:12Z"
+---
 ```
+
+## Human body (Markdown)
+
+After the frontmatter, include a short Markdown body for humans/validators (recommended):
+- Summary (what changed)
+- Evidence reviewed/generated (commands + filenames)
+- Risks / known gaps
+- Follow-ups rationale (why blocking/non-blocking)
 
 ## Critical rules
 

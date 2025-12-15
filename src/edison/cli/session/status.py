@@ -9,7 +9,13 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_session_id,
+)
 
 SUMMARY = "Display current session status"
 
@@ -34,11 +40,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Preview transition without making changes",
     )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force transition even when guards fail",
-    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -49,21 +50,15 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
-        from edison.core.session.core.id import validate_session_id
-        from edison.core.session.current import get_current_session
         from edison.core.session.persistence.repository import SessionRepository
 
-        session_id = args.session_id
-        if session_id:
-            session_id = validate_session_id(session_id)
-        else:
-            # Get current/active session using the proper resolver
-            session_id = get_current_session()
-            if not session_id:
-                formatter.error("No active session found.", error_code="no_session")
-                return 1
-
         project_root = get_repo_root(args)
+        session_id = resolve_session_id(
+            project_root=project_root,
+            explicit=args.session_id,
+            required=True,
+        )
+
         repo = SessionRepository(project_root=project_root)
         entity = repo.get(session_id)
         if not entity:
@@ -85,7 +80,23 @@ def main(args: argparse.Namespace) -> int:
             if args.dry_run:
                 from edison.core.state.transitions import validate_transition
 
-                is_valid, msg = validate_transition("session", current_state, args.status)
+                session_payload = entity.to_dict()
+                if args.status == "blocked" and getattr(args, "reason", None):
+                    session_payload = {**session_payload, "blocker_reason": args.reason}
+
+                context = {
+                    "session_id": session_id,
+                    "session": session_payload,
+                    "entity_type": "session",
+                    "entity_id": session_id,
+                }
+                is_valid, msg = validate_transition(
+                    "session",
+                    current_state,
+                    args.status,
+                    context=context,
+                    repo_root=project_root,
+                )
                 formatter.json_output({
                     "dry_run": True,
                     "session_id": session_id,
@@ -99,39 +110,22 @@ def main(args: argparse.Namespace) -> int:
                 )
                 return 0 if is_valid else 1
 
-            # Execute transition with guard enforcement (unless forced)
-            if not args.force:
-                from edison.core.state.transitions import transition_entity, EntityTransitionError
+            session_payload = entity.to_dict()
+            if args.status == "blocked" and getattr(args, "reason", None):
+                session_payload = {**session_payload, "blocker_reason": args.reason}
 
-                context = {
-                    "session_id": session_id,
-                    "session": entity.to_dict(),
-                    "entity_type": "session",
-                    "entity_id": session_id,
-                }
-                if getattr(args, "reason", None):
-                    context["reason"] = args.reason
-
-                try:
-                    transition_entity(
-                        entity_type="session",
-                        entity_id=session_id,
-                        to_state=args.status,
-                        current_state=current_state,
-                        context=context,
-                    )
-                except EntityTransitionError as e:
-                    formatter.error(f"Transition blocked: {e}", error_code="guard_failed")
-                    return 1
-
-            # Update and persist session
-            entity.record_transition(
-                current_state,
+            context = {
+                "session_id": session_id,
+                "session": session_payload,
+                "entity_type": "session",
+                "entity_id": session_id,
+            }
+            repo.transition(
+                session_id,
                 args.status,
+                context=context,
                 reason=getattr(args, "reason", None) or "cli-session-status",
             )
-            entity.state = args.status
-            repo.save(entity)
 
             payload = {"status": "transitioned", "session_id": session_id, "from": current_state, "to": args.status}
             formatter.json_output(payload) if formatter.json_mode else formatter.text(

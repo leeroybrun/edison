@@ -7,8 +7,10 @@ from .bundler import (
     bundle_summary_filename,
     bundle_summary_path,
 )
+from .manifest import build_validation_manifest
 
 __all__ = [
     "bundle_summary_filename",
     "bundle_summary_path",
+    "build_validation_manifest",
 ]

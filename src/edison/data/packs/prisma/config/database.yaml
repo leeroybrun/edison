@@ -1,0 +1,4 @@
+# Prisma pack database configuration
+database:
+  adapter: "prisma"
+

@@ -234,7 +234,7 @@ edison qa promote TASK-123 --status validated
 ```
 
 **Requirements for `done → validated`:**
-- `bundle-approved.json` exists
+- `bundle-approved.md` exists
 - All required validator reports present
 - No blocking failures
 
@@ -306,7 +306,7 @@ The following validators were NOT auto-triggered but may be relevant:
 **For delegated validators:**
 1. Read delegation instructions from evidence folder
 2. Execute validation using the specified zenRole
-3. Save results to `validator-<id>-report.json`
+3. Save results to `validator-<id>-report.md`
 
 **Example with mixed execution:**
 ```bash
@@ -363,7 +363,7 @@ Orchestrators use delegation tools (Task tool, agent invocation) to assign work 
 delegate_to_agent(
   agent="component-builder",
   task="Implement UserProfile component",
-  files=["app/components/UserProfile.<ext>"]
+  files=["src/components/UserProfile.<ext>"]
 )
 
 # Or via explicit agent file invocation
@@ -489,7 +489,7 @@ edison session next sess-001
 **Task files**: `sessions/wip/<session-id>/tasks/{wip,done}/`
 **QA briefs**: `sessions/wip/<session-id>/qa/{waiting,todo,wip,done,validated}/`
 **Validation evidence**: `.project/qa/validation-evidence/<task-id>/round-N/`
-**Bundle summaries**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.json`
+**Bundle summaries**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.md`
 
 ---
 

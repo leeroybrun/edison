@@ -5,7 +5,7 @@ Refactored to use REAL CLI commands and the guarded workflow.
 Coverage:
 - Evidence directory structure via real task + QA creation
 - Required evidence files checked by `tasks/ready` guard
-- Implementation report JSON validated by real validator wrapper
+- Implementation report frontmatter validated by real validator wrapper
 - Multi‑round evidence behavior
 - Evidence completeness failure → success after creating files
 - Git diff/text evidence captured under round dirs
@@ -29,6 +29,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_output_contains,
 )
+from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
 # --- Local helpers for this test module ---
@@ -78,6 +79,13 @@ def _impl_report_json(task_id: str) -> dict:
     }
 
 
+def _write_impl_report(round_dir: Path, payload: dict) -> None:
+    (round_dir / "implementation-report.md").write_text(
+        format_frontmatter(payload) + "\n# Implementation Report\n",
+        encoding="utf-8",
+    )
+
+
 @pytest.mark.fast
 def test_evidence_directory_structure(project_dir: TestProjectDir):
     """Creates a real task + QA, then ensures round-1 directory exists."""
@@ -93,7 +101,7 @@ def test_evidence_directory_structure(project_dir: TestProjectDir):
     # Create minimal implementation report to materialize round-1 dir
     round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    (round_dir / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(round_dir, _impl_report_json(task_id))
 
     # Verify structure
     expected_path = round_dir
@@ -121,7 +129,7 @@ def test_evidence_required_files(project_dir: TestProjectDir):
     # Minimal implementation report (guard requires it)
     round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    (round_dir / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(round_dir, _impl_report_json(task_id))
 
     # Initially missing → ready should fail
     ready = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
@@ -149,7 +157,7 @@ def test_evidence_file_content(project_dir: TestProjectDir):
 
     round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    (round_dir / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(round_dir, _impl_report_json(task_id))
     (round_dir / "command-type-check.txt").write_text("Exit code: 0\nTypeScript: OK\n")
 
     type_check_file = round_dir / "command-type-check.txt"
@@ -159,7 +167,7 @@ def test_evidence_file_content(project_dir: TestProjectDir):
 
 @pytest.mark.fast
 def test_evidence_implementation_report(project_dir: TestProjectDir):
-    """Implementation report JSON is mandatory and validated by wrapper."""
+    """Implementation report is mandatory and validated by wrapper."""
     task_num, wave, slug = "250", "wave1", "impl-report"
     task_id = f"{task_num}-{wave}-{slug}"
 
@@ -169,9 +177,9 @@ def test_evidence_implementation_report(project_dir: TestProjectDir):
     round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
 
-    # Write schema‑compliant JSON and validate with real validator via wrapper
-    impl_report = round_dir / "implementation-report.json"
-    impl_report.write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    # Write schema‑compliant report and validate with real validator via wrapper
+    impl_report = round_dir / "implementation-report.md"
+    _write_impl_report(round_dir, _impl_report_json(task_id))
 
     _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
     # Invoke validator exactly how tasks/ready expects to
@@ -195,7 +203,7 @@ def test_evidence_multiple_rounds(project_dir: TestProjectDir):
     for rn in (1, 2, 3):
         rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / f"round-{rn}"
         rd.mkdir(parents=True, exist_ok=True)
-        (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id) | {"round": rn}))
+        _write_impl_report(rd, _impl_report_json(task_id) | {"round": rn})
         # Create a couple of command outputs per round
         (rd / "command-type-check.txt").write_text(f"Exit code: 0\nround={rn}\n")
         (rd / "command-lint.txt").write_text(f"Exit code: 0\nround={rn}\n")
@@ -229,7 +237,7 @@ def test_evidence_completeness_check(project_dir: TestProjectDir):
 
     rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(rd, _impl_report_json(task_id))
 
     # No command files yet → ready should fail
     r1 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
@@ -254,7 +262,7 @@ def test_evidence_git_diff_capture(project_dir: TestProjectDir):
 
     rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(rd, _impl_report_json(task_id))
 
     git_diff_file = rd / "git-diff.txt"
     git_diff_file.write_text(
@@ -298,7 +306,7 @@ def test_evidence_partial_files(project_dir: TestProjectDir):
 
     rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(rd, _impl_report_json(task_id))
     # Only two of the four
     (rd / "command-type-check.txt").write_text("Exit code: 0\n")
     (rd / "command-lint.txt").write_text("Exit code: 0\n")
@@ -358,7 +366,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
         task_md.write_text(txt)
     # Provide Context7 evidence to satisfy enforcement
     (r1 / "context7-react.txt").write_text("Context7 refreshed: react\n")
-    (r1 / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(r1, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
         (r1 / name).write_text("Exit code: 0\n")
 
@@ -375,7 +383,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     # Round 2 (regression) still allowed and preserved
     r2 = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-2"
     r2.mkdir(parents=True, exist_ok=True)
-    (r2 / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id) | {"round": 2}))
+    _write_impl_report(r2, _impl_report_json(task_id) | {"round": 2})
     (r2 / "command-type-check.txt").write_text("Exit code: 0\n")
 
     assert_directory_exists(r1)
@@ -402,7 +410,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
     # Setup evidence directory with implementation report and required files
     rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
         (rd / name).write_text("Exit code: 0\n")
 
@@ -435,42 +443,26 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
                 "hostname": "e2e-test"
             }
         }
-        (rd / f"validator-{validator_id}-report.json").write_text(
-            __import__("json").dumps(validator_report, indent=2)
+        (rd / f"validator-{validator_id}-report.md").write_text(
+            format_frontmatter(validator_report) + "\n# Validator Report\n",
+            encoding="utf-8",
         )
 
-    # Setup guard wrappers for real CLI invocation
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
-
-    # Create validators wrapper pointing to REAL CLI
-    validators_dir = project_dir.tmp_path / "scripts" / "validators"
-    validators_dir.mkdir(parents=True, exist_ok=True)
-    validators_validate = validators_dir / "validate"
-    validators_validate.write_text(
-        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
-    )
-    validators_validate.chmod(0o755)
-
-    # Call REAL validators/validate CLI with proper environment
-    import os
-    validate_result = project_dir.run_command([
-        str(validators_validate),
-        "--task", task_id,
-    ], cwd=project_dir.tmp_path, env={"AGENTS_PROJECT_ROOT": str(project_dir.tmp_path)})
+    validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
     assert_command_success(validate_result)
-    assert_output_contains(validate_result, "All blocking validator reports approved", in_stderr=True)
+    assert_output_contains(validate_result, "bundle-approved.md was written", in_stderr=False)
 
-    # Verify bundle-approved.json was created by REAL CLI
-    bundle_file = rd / "bundle-approved.json"
+    # Verify bundle-approved.md was created
+    bundle_file = rd / "bundle-approved.md"
     assert_file_exists(bundle_file)
 
     # Verify bundle structure matches REAL CLI output
-    bundle_data = __import__("json").loads(bundle_file.read_text())
+    bundle_data = parse_frontmatter(bundle_file.read_text()).frontmatter
     assert bundle_data["taskId"] == task_id
     assert bundle_data["round"] == 1
     assert bundle_data["approved"] is True
-    assert "validators" in bundle_data
-    assert len(bundle_data["validators"]) == 6  # All 6 blocking validators
+    assert "missing" in bundle_data
+    assert bundle_data["missing"] == []
 
 
 @pytest.mark.fast
@@ -493,7 +485,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     # Setup evidence directory
     rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(__import__("json").dumps(_impl_report_json(task_id)))
+    _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
         (rd / name).write_text("Exit code: 0\n")
 
@@ -525,34 +517,18 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
                 "hostname": "e2e-test"
             }
         }
-        (rd / f"validator-{validator_id}-report.json").write_text(
-            __import__("json").dumps(validator_report, indent=2)
+        (rd / f"validator-{validator_id}-report.md").write_text(
+            format_frontmatter(validator_report) + "\n# Validator Report\n",
+            encoding="utf-8",
         )
 
-    # Setup guard wrappers
-    _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
-
-    # Create validators wrapper pointing to REAL CLI
-    validators_dir = project_dir.tmp_path / "scripts" / "validators"
-    validators_dir.mkdir(parents=True, exist_ok=True)
-    validators_validate = validators_dir / "validate"
-    validators_validate.write_text(
-        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
-    )
-    validators_validate.chmod(0o755)
-
-    # Call REAL validators/validate CLI - should FAIL
-    import os
-    validate_result = project_dir.run_command([
-        str(validators_validate),
-        "--task", task_id,
-    ], cwd=project_dir.tmp_path, env={"AGENTS_PROJECT_ROOT": str(project_dir.tmp_path)})
+    validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
     assert_command_failure(validate_result)  # Should fail because security rejected
-    assert_output_contains(validate_result, "NOT approved", in_stderr=True)
+    assert_output_contains(validate_result, "Bundle NOT approved", in_stderr=False)
 
-    # Verify bundle-approved.json shows approved: false
-    bundle_file = rd / "bundle-approved.json"
+    # Verify bundle-approved.md shows approved: false
+    bundle_file = rd / "bundle-approved.md"
     assert_file_exists(bundle_file)
-    bundle_data = __import__("json").loads(bundle_file.read_text())
+    bundle_data = parse_frontmatter(bundle_file.read_text()).frontmatter
     assert bundle_data["taskId"] == task_id
     assert bundle_data["approved"] is False  # One blocking validator failed

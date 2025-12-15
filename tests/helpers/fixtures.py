@@ -108,10 +108,14 @@ def create_project_structure(
     """
     project_dir = repo / ".project"
 
-    # Default states if not provided
-    task_states = task_states or ["todo", "wip", "done"]
-    qa_states = qa_states or ["pending", "wip", "passed"]
-    session_states = session_states or ["draft", "wip", "completed"]
+    # Default states are loaded from tests/config/states.yaml to avoid hardcoding.
+    if task_states is None or qa_states is None or session_states is None:
+        from tests.config import load_states
+
+        states = load_states()
+        task_states = task_states or states["task"]["unique_dirs"]
+        qa_states = qa_states or states["qa"]["unique_dirs"]
+        session_states = session_states or states["session"]["unique_dirs"]
 
     for state in task_states:
         (project_dir / "tasks" / state).mkdir(parents=True, exist_ok=True)

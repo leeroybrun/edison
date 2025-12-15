@@ -135,6 +135,9 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
     
     def _do_save(self, entity: Session) -> None:
         """Save a session."""
+        # Treat any persistence as activity; keep `meta.lastActive` fresh so
+        # timeout/expiry logic reflects real use.
+        entity.metadata.touch()
         current_path = self._find_entity_path(entity.id)
         target_path = self._resolve_entity_path(entity.id, entity.state)
 
@@ -287,5 +290,4 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
 __all__ = [
     "SessionRepository",
 ]
-
 

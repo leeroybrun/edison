@@ -1,12 +1,23 @@
 # TypeScript pack hook extensions
 hooks:
   definitions:
+    # Enable core auto-format hook for TS/JS projects (stack-specific).
+    auto-format:
+      enabled: true
+      config:
+        tools: [prettier, eslint]
+        file_patterns:
+          - "*.ts"
+          - "*.tsx"
+          - "*.js"
+          - "*.jsx"
+
     # Add TypeScript-specific auto-formatting
     typescript-format:
       type: PostToolUse
       hook_type: command
       matcher: "Write|Edit"
-      enabled: true
+      enabled: false
       blocking: false
       description: "Run TypeScript formatter after edits"
       template: "typescript-format.sh.template"

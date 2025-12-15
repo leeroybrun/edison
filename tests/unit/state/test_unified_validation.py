@@ -156,7 +156,7 @@ def unified_state_config(tmp_path: Path, monkeypatch):
 
     # Set environment
     setup_project_root(monkeypatch, tmp_path)
-    monkeypatch.setenv("project_ROOT", str(tmp_path))
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
     # Note: session.state module removed - state machine built on-demand from config
 
@@ -309,6 +309,13 @@ def test_validate_transition_allows_self_transition(unified_state_config: Path) 
     # Task todo -> todo is declared
     valid, error = validate_transition("task", "todo", "todo")
     assert valid is True
+
+
+def test_validate_transition_fail_closed_for_unknown_entity(unified_state_config: Path) -> None:
+    """validate_transition must fail-closed when entity type has no configured state machine."""
+    valid, error = validate_transition("unknown_entity", "state1", "state2")
+    assert valid is False
+    assert "not configured" in error.lower() or "state machine" in error.lower()
 
 
 # ==============================================================================

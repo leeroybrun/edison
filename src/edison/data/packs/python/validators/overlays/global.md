@@ -44,7 +44,7 @@ pytest tests/ -v --tb=short > command-test.txt 2>&1
 
 **Validation Points:**
 - All tests passing
-- NO MOCKS (per CLAUDE.md)
+- Follow the core NO MOCKS policy (mock only system boundaries)
 - Real files/databases used
 - Edge cases covered
 
@@ -91,7 +91,7 @@ pytest tests/ -v
 **Must Pass:**
 - 100% test pass rate
 - No skipped tests without reason
-- No mocks (CRITICAL - per CLAUDE.md)
+- Follow the core NO MOCKS policy (mock only system boundaries)
 - Fixtures use real resources (tmp_path, real DBs)
 
 **Fail Conditions:**

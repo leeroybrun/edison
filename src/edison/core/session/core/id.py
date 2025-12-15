@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from typing import Optional
 
 from .._config import get_config
@@ -86,17 +87,20 @@ def validate_session_id(session_id: str) -> str:
 def detect_session_id(
     explicit: Optional[str] = None,
     owner: Optional[str] = None,
+    *,
+    project_root: Optional[Path] = None,
 ) -> Optional[str]:
     """Canonical session ID detection with validation.
 
     Detection priority:
     1. Explicit session ID parameter (if provided)
-    2. project_SESSION environment variable (canonical)
-    3. Auto-detect from owner / project_OWNER
+    2. AGENTS_SESSION environment variable (canonical)
+    3. Worktree `.project/.session-id` file (if present + valid + exists)
+    4. Process-derived `{process}-pid-{pid}` lookup (if exists)
+    5. Auto-detect from explicit owner / AGENTS_OWNER (if provided)
 
-    Auto-detection from owner looks for sessions in
-    ``.project/sessions/active/`` whose ``session.json`` contains
-    a matching ``owner`` field.
+    Auto-detection uses SessionRepository as the single source of truth and
+    prefers sessions in semantic "active" state (directory mapping is config-driven).
 
     Args:
         explicit: Explicit session ID if provided by caller
@@ -108,55 +112,134 @@ def detect_session_id(
     Raises:
         SessionIdError: If session ID format is invalid
     """
-    # Priority 1: Explicit parameter
+    from edison.core.utils.paths import resolve_project_root
+    from edison.core.session.persistence.repository import SessionRepository
+
+    root = Path(project_root).resolve() if project_root is not None else resolve_project_root()
+    repo = SessionRepository(project_root=root)
+
+    # Priority 1: Explicit parameter (must exist)
     if explicit:
-        return validate_session_id(explicit)
+        sid = validate_session_id(explicit)
+        return sid if repo.exists(sid) else None
 
-    # Priority 2: project_SESSION environment variable (canonical)
-    project_session = os.environ.get("project_SESSION")
-    if project_session:
-        return validate_session_id(project_session)
+    # Priority 2: AGENTS_SESSION environment variable (canonical)
+    env_session = os.environ.get("AGENTS_SESSION")
+    if env_session:
+        sid = validate_session_id(env_session)
+        return sid if repo.exists(sid) else None
 
-    # Priority 3: Auto-detect from owner / project_OWNER
+    # Priority 3: Worktree session file (exists+valid+points to existing session)
+    try:
+        session_file = (root / ".project" / ".session-id").resolve()
+        if session_file.exists():
+            raw = session_file.read_text(encoding="utf-8").strip()
+            if raw:
+                sid = validate_session_id(raw)
+                if repo.exists(sid):
+                    return sid
+    except (OSError, SessionIdError):
+        # Fail closed by ignoring corrupted or unreadable session-id file.
+        # Callers that require an explicit session must pass it (or set AGENTS_SESSION).
+        pass
+
+    # Priority 4: Process-derived lookup (exists only)
+    try:
+        from edison.core.utils.process.inspector import find_topmost_process
+
+        process_name, pid = find_topmost_process()
+        candidate = validate_session_id(f"{process_name}-pid-{pid}")
+        if repo.exists(candidate):
+            return candidate
+    except Exception:
+        pass
+
+    # Priority 5: Auto-detect from owner / AGENTS_OWNER (best-effort)
     if owner is None:
-        owner = os.environ.get("project_OWNER")
+        owner = os.environ.get("AGENTS_OWNER")
 
     if owner:
         try:
-            # Lazy imports to avoid circular dependencies
-            from edison.core.utils.io import read_json
-            from edison.core.utils.paths import get_management_paths, resolve_project_root
+            from edison.core.config.domains.workflow import WorkflowConfig
 
-            root = resolve_project_root()
-            mgmt_paths = get_management_paths(root)
-            sessions_active = mgmt_paths.get_session_state_dir("active")
+            workflow = WorkflowConfig(repo_root=root)
+            active_state = workflow.get_semantic_state("session", "active")
 
-            if not sessions_active.exists():
+            candidates = [s for s in repo.find_by_owner(str(owner)) if str(s.state) == str(active_state)]
+            if not candidates:
                 return None
 
-            # Look for session directories with matching owner
-            for session_dir in sessions_active.iterdir():
-                if not session_dir.is_dir():
-                    continue
-
-                session_json = session_dir / "session.json"
-                if not session_json.exists():
-                    continue
-
+            def _last_active(sess) -> str:
                 try:
-                    data = read_json(session_json)
-                    if isinstance(data, dict) and data.get("owner") == owner:
-                        return validate_session_id(session_dir.name)
+                    return str(getattr(sess, "metadata").updated_at or "")
                 except Exception:
-                    continue
+                    return ""
+
+            candidates.sort(key=_last_active, reverse=True)
+            return validate_session_id(candidates[0].id)
         except Exception:
-            pass
+            return None
 
     return None
+
+
+def require_session_id(
+    explicit: Optional[str] = None,
+    *,
+    project_root: Optional[Path] = None,
+) -> str:
+    """Resolve a session id using canonical detection and require it to exist.
+
+    This is the recommended entrypoint for CLIs and workflows that need a real
+    session scope (claiming, session status, etc).
+    """
+    from edison.core.utils.paths import resolve_project_root
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.exceptions import SessionNotFoundError
+
+    root = Path(project_root).resolve() if project_root is not None else resolve_project_root()
+    repo = SessionRepository(project_root=root)
+
+    # Explicit always wins and must exist.
+    if explicit:
+        sid = validate_session_id(explicit)
+        if not repo.exists(sid):
+            raise SessionNotFoundError(
+                f"Session {sid} not found",
+                context={"sessionId": sid, "projectRoot": str(root), "source": "explicit"},
+            )
+        return sid
+
+    # AGENTS_SESSION is canonical and must exist.
+    env_session = os.environ.get("AGENTS_SESSION")
+    if env_session:
+        sid = validate_session_id(env_session)
+        if not repo.exists(sid):
+            raise SessionNotFoundError(
+                f"Session {sid} not found (from AGENTS_SESSION)",
+                context={"sessionId": sid, "projectRoot": str(root), "source": "AGENTS_SESSION"},
+            )
+        return sid
+
+    sid = detect_session_id(project_root=root)
+    if not sid:
+        raise SessionNotFoundError(
+            "No session could be resolved. Set AGENTS_SESSION, create a worktree session (session me --set), "
+            "or create a session via `edison session create`.",
+            context={"projectRoot": str(root)},
+        )
+    # detect_session_id guarantees existence for all non-env sources, but keep a defensive check.
+    if not repo.exists(sid):
+        raise SessionNotFoundError(
+            f"Session {sid} not found",
+            context={"sessionId": sid, "projectRoot": str(root)},
+        )
+    return sid
 
 
 __all__ = [
     "SessionIdError",
     "validate_session_id",
     "detect_session_id",
+    "require_session_id",
 ]

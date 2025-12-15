@@ -124,7 +124,7 @@ filePatternRules:
 2. Implements using TDD (RED→GREEN→REFACTOR)
 3. Creates implementation report at:
    ```
-   .project/qa/validation-evidence/<task-id>/round-1/implementation-report.json
+   .project/qa/validation-evidence/<task-id>/round-1/implementation-report.md
    ```
 
 **Implementation report structure:**
@@ -249,12 +249,12 @@ edison qa run <validator-name> --task <task-id>
 3. Collects evidence files:
    ```
    validation-evidence/<task-id>/round-1/
-   ├── implementation-report.json
+   ├── implementation-report.md
    ├── command-test.txt
    ├── command-lint.txt
    ├── command-type-check.txt
    ├── command-build.txt
-   ├── validator-*-report.json
+   ├── validator-*-report.md
    └── context7-*.md
    ```
 
@@ -561,7 +561,7 @@ Detailed validation process with evidence collection and consensus.
 ├── command-lint.txt          # Lint output
 ├── command-type-check.txt    # Type check output
 ├── command-build.txt         # Build output
-├── implementation-report.json # Agent report
+├── implementation-report.md # Agent report
 └── context7-*.md             # Context7 documentation
 ```
 
@@ -736,20 +736,20 @@ Delegation instructions saved to evidence folder.
 For delegated validators, the orchestrator must:
 1. Read delegation instructions from evidence folder
 2. Execute validation manually using the specified zenRole
-3. Save results to `validator-<id>-report.json`
+3. Save results to `validator-<id>-report.md`
 
 ---
 
 ### 4. Consensus Requirements
 
 **Approval criteria:**
-- All validators must approve (status: "approved")
+- All validators must approve (verdict: "approve")
 - No blocking findings
 - All required evidence present
 - Minimum score thresholds met
 
 **Rejection triggers:**
-- Any validator rejects (status: "rejected")
+- Any validator rejects (verdict: "reject")
 - Missing evidence files
 - Failed quality gates
 - Score below threshold
@@ -1007,7 +1007,7 @@ delegation:
 **Sub-agent produces:**
 ```
 .project/qa/validation-evidence/<task-id>/round-1/
-├── implementation-report.json
+├── implementation-report.md
 ├── evidence-red.txt
 ├── evidence-green.txt
 ├── evidence-refactor.txt
@@ -1293,7 +1293,7 @@ edison session close sess-feature-123
 ### Evidence File Checklist
 
 For each task validation round:
-- [ ] `implementation-report.json`
+- [ ] `implementation-report.md`
 - [ ] `command-test.txt`
 - [ ] `command-lint.txt`
 - [ ] `command-type-check.txt`

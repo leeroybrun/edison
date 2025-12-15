@@ -17,20 +17,21 @@ session:
   states:
     draft: "draft"
     active: "wip"
-    wip: "wip"
-    done: "done"
     closing: "done"
+    done: "done"
+    blocked: "blocked"
     validated: "validated"
     recovery: "recovery"
     archived: "archived"
   defaults:
     initialState: "active"
   lookupOrder:
-    - "wip"
     - "active"
-    - "done"
-    - "validated"
+    - "draft"
     - "closing"
+    - "done"
+    - "blocked"
+    - "validated"
     - "recovery"
     - "archived"
   worktree:

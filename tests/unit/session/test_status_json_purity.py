@@ -39,7 +39,7 @@ class TestStatusJsonPurity(unittest.TestCase):
 
         self.env = os.environ.copy()
         self.env.update({
-            "project_ROOT": str(self.tmp),
+            "AGENTS_PROJECT_ROOT": str(self.tmp),
             "PYTHONUNBUFFERED": "1",
         })
 
@@ -93,7 +93,7 @@ class TestStatusJsonPurity(unittest.TestCase):
         # Evidence bundle approved
         ev = self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
         ev.mkdir(parents=True, exist_ok=True)
-        (ev / "bundle-approved.json").write_text(json.dumps({"approved": True}))
+        (ev / "bundle-approved.md").write_text("---\napproved: true\n---\n")
 
         # Session with git metadata and worktree path to trigger archival hook
         worktree = self.tmp / "_worktree" / sid

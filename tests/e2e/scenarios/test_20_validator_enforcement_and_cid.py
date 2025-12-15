@@ -6,12 +6,12 @@ Covers two critical issues:
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import pytest
 
 from helpers.env import TestProjectDir
 from helpers.command_runner import run_script, assert_command_success
+from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
 def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "approve") -> None:
@@ -27,7 +27,10 @@ def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "app
         "evidenceReviewed": [],
         "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z", "completedAt": "2025-01-01T00:10:00Z", "hostname": "test"},
     }
-    (dir / f"validator-{vid}-report.json").write_text(json.dumps(report, indent=2))
+    (dir / f"validator-{vid}-report.md").write_text(
+        format_frontmatter(report) + "\n# Validator Report\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.fast
@@ -63,7 +66,7 @@ def test_run_wave_plumbs_continuation_id(project_dir: TestProjectDir):
     """run-wave passes --continuation-id to track and validators/validate.
 
     - tracking.continuationId appears in a validator report started by run-wave
-    - bundle-approved.json contains continuationId when run-wave invokes validate
+    - bundle-approved.md contains continuationId when run-wave invokes validate
     """
     session_id = "sid-wave-cid"
     task_num, wave, slug = "210", "wave1", "cid-wave"
@@ -86,14 +89,14 @@ def test_run_wave_plumbs_continuation_id(project_dir: TestProjectDir):
 
     ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     # At least one validator report should exist and carry tracking.continuationId
-    any_report = next((p for p in ev.glob("validator-*-report.json")), None)
-    assert any_report is not None, "Expected a validator report JSON to be created by track start"
-    data = json.loads(any_report.read_text())
+    any_report = next((p for p in ev.glob("validator-*-report.md")), None)
+    assert any_report is not None, "Expected a validator report to be created by track start"
+    data = parse_frontmatter(any_report.read_text()).frontmatter
     tracking = data.get("tracking", {}) if isinstance(data.get("tracking"), dict) else {}
     assert tracking.get("continuationId") == cid, "tracking.continuationId not plumbed into report"
 
-    # bundle-approved.json should exist and include continuationId from validate call
-    bundle = ev / "bundle-approved.json"
-    assert bundle.exists(), "bundle-approved.json not created by validators/validate"
-    summary = json.loads(bundle.read_text())
-    assert summary.get("continuationId") == cid, "bundle-approved.json missing continuationId"
+    # bundle-approved.md should exist and include continuationId from validate call
+    bundle = ev / "bundle-approved.md"
+    assert bundle.exists(), "bundle-approved.md not created by validators/validate"
+    summary = parse_frontmatter(bundle.read_text()).frontmatter
+    assert summary.get("continuationId") == cid, "bundle-approved.md missing continuationId"

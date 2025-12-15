@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
 from edison.core.utils.io import read_yaml
-from edison.data import read_yaml as read_bundled_yaml
 from edison.core.utils.paths import get_project_config_dir
 
 
@@ -40,39 +38,13 @@ def _pack_dir(repo_root: Path, name: str) -> Path:
     return config_dir / "packs" / name
 
 
-@lru_cache(maxsize=1)
-def _pack_defaults_catalog() -> Dict[str, Dict[str, Any]]:
-    """Load pack defaults from the canonical config packs.yaml."""
-    try:
-        cfg = read_bundled_yaml("config", "packs.yaml") or {}
-    except Exception:
-        return {}
-    packs_cfg = cfg.get("packs") or {}
-    defaults_cfg = packs_cfg.get("defaults") or {}
-    catalog: Dict[str, Dict[str, Any]] = {}
-    for name, cfg_val in defaults_cfg.items():
-        if isinstance(cfg_val, dict):
-            catalog[str(name)] = cfg_val
-    return catalog
-
-
 def load_pack(repo_root: Path, name: str) -> PackManifest:
     pdir = _pack_dir(repo_root, name)
     if not pdir.exists():
         raise FileNotFoundError(f"Pack '{name}' not found at {pdir}")
 
-    defaults_catalog = _pack_defaults_catalog()
     defaults_path = pdir / "defaults.yaml"
-    defaults = defaults_catalog.get(name, {})
-
-    # Enforce single source of truth: canonical config defaults override any pack-local file.
-    if name in defaults_catalog and defaults_path.exists():
-        raise ValueError(
-            f"Duplicate defaults.yaml for pack '{name}' detected at {defaults_path}. "
-            "Use src/edison/data/config/packs.yaml as the canonical source."
-        )
-    if not defaults and defaults_path.exists():
-        defaults = read_yaml(defaults_path, default={})
+    defaults: Dict[str, Any] = read_yaml(defaults_path, default={}) if defaults_path.exists() else {}
 
     deps_yaml = read_yaml(pdir / "pack-dependencies.yaml", default={})
     deps = deps_yaml.get("dependencies") or {}

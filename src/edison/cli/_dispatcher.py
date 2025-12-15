@@ -117,6 +117,72 @@ def discover_commands(domain: str) -> dict[str, dict[str, Any]]:
     return commands
 
 
+@lru_cache(maxsize=32)
+def discover_command_groups(domain: str) -> dict[str, dict[str, Any]]:
+    """Discover command groups under a domain (one level deep).
+
+    Example:
+        cli/session/recovery/*.py => `edison session recovery <subcommand>`
+        cli/session/db/*.py       => `edison session db <subcommand>`
+
+    Returns:
+        Dict mapping group name -> dict with:
+          - summary: group help text
+          - commands: subcommand mapping (same shape as discover_commands())
+    """
+    with span("cli.discover.domain_command_groups", domain=domain):
+        cli_dir = Path(__file__).parent
+        domain_dir = cli_dir / domain
+
+    groups: dict[str, dict[str, Any]] = {}
+    if not domain_dir.exists():
+        return groups
+
+    for subdir in domain_dir.iterdir():
+        if not subdir.is_dir() or subdir.name.startswith("_"):
+            continue
+        init_py = subdir / "__init__.py"
+        if not init_py.exists():
+            continue
+
+        try:
+            with span("cli.discover.import", module=f"edison.cli.{domain}.{subdir.name}"):
+                pkg = importlib.import_module(f"edison.cli.{domain}.{subdir.name}")
+            summary = (getattr(pkg, "__doc__", "") or "").strip().splitlines()[0] if getattr(pkg, "__doc__", None) else ""
+        except ImportError as e:
+            print(f"Warning: Could not import {domain}.{subdir.name} group: {e}", file=sys.stderr)
+            continue
+
+        subcommands: dict[str, dict[str, Any]] = {}
+        for item in subdir.glob("*.py"):
+            if item.name.startswith("_") or item.name == "__init__.py":
+                continue
+            cmd_name = item.stem
+            try:
+                with span(
+                    "cli.discover.import",
+                    module=f"edison.cli.{domain}.{subdir.name}.{cmd_name}",
+                ):
+                    module = importlib.import_module(f"edison.cli.{domain}.{subdir.name}.{cmd_name}")
+                subcommands[cmd_name] = {
+                    "module": module,
+                    "summary": getattr(module, "SUMMARY", f"{domain} {subdir.name} {cmd_name}"),
+                    "register_args": getattr(module, "register_args", None),
+                    "main": getattr(module, "main", None),
+                }
+            except ImportError as e:
+                print(
+                    f"Warning: Could not import {domain}.{subdir.name}.{cmd_name}: {e}",
+                    file=sys.stderr,
+                )
+                continue
+
+        if subcommands:
+            groups[subdir.name] = {"summary": summary or f"{subdir.name} commands", "commands": subcommands}
+
+    return groups
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     Build the argument parser with auto-discovered domains and commands.
@@ -164,8 +230,10 @@ def build_parser() -> argparse.ArgumentParser:
     # Auto-register domains
     for domain_name in sorted(discover_domains().keys()):
         domain_commands = discover_commands(domain_name)
+        domain_groups = discover_command_groups(domain_name)
         if not domain_commands:
-            continue
+            if not domain_groups:
+                continue
 
         # Create domain parser
         domain_parser = subparsers.add_parser(
@@ -196,6 +264,35 @@ def build_parser() -> argparse.ArgumentParser:
             # Set the main function as default handler
             if cmd_info["main"]:
                 cmd_parser.set_defaults(_func=cmd_info["main"])
+
+        # Auto-register one-level command groups (domain/<group>/<subcommand>.py)
+        for group_name, group_info in sorted(domain_groups.items()):
+            group_primary = group_name.replace("_", "-")
+            group_aliases = [group_name] if group_primary != group_name else []
+            group_parser = cmd_subparsers.add_parser(
+                group_primary,
+                aliases=group_aliases,
+                help=group_info.get("summary") or f"{group_name} commands",
+            )
+            group_subparsers = group_parser.add_subparsers(
+                dest="subcommand",
+                title="subcommands",
+                description=f"Available {domain_name} {group_name} subcommands",
+                metavar="<subcommand>",
+            )
+
+            for subcmd_name, subcmd_info in sorted((group_info.get("commands") or {}).items()):
+                sub_primary = subcmd_name.replace("_", "-")
+                sub_aliases = [subcmd_name] if sub_primary != subcmd_name else []
+                sub_parser = group_subparsers.add_parser(
+                    sub_primary,
+                    aliases=sub_aliases,
+                    help=subcmd_info.get("summary") or f"{domain_name} {group_name} {subcmd_name}",
+                )
+                if subcmd_info.get("register_args"):
+                    subcmd_info["register_args"](sub_parser)
+                if subcmd_info.get("main"):
+                    sub_parser.set_defaults(_func=subcmd_info["main"])
 
     return parser
 

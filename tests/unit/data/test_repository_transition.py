@@ -329,3 +329,27 @@ def test_repository_transition_updates_metadata(repo_env, repository, entity):
     # Note: The timestamp might be updated via record_transition()
     # which calls metadata.touch()
     assert updated.metadata.updated_at >= original_updated_at
+
+
+def test_repository_transition_records_reason(repo_env, repository, entity):
+    """Repository.transition() records a provided reason in history."""
+    repository.create(entity)
+
+    updated = repository.transition(entity.id, "wip", reason="test-reason")
+    assert updated.state == "wip"
+    assert updated.state_history[-1].reason == "test-reason"
+
+
+def test_repository_transition_applies_mutate_hook(repo_env, repository, entity):
+    """Repository.transition() applies caller-provided mutation before save."""
+    repository.create(entity)
+
+    def _mutate(e: MockEntity) -> None:
+        e.data["mutated"] = True
+
+    updated = repository.transition(entity.id, "wip", mutate=_mutate)
+    assert updated.data.get("mutated") is True
+
+    persisted = repository.get(entity.id)
+    assert persisted is not None
+    assert persisted.data.get("mutated") is True

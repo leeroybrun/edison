@@ -31,6 +31,7 @@ from helpers.assertions import (
     assert_json_has_field,
     assert_json_field,
 )
+from edison.core.utils.text import format_frontmatter
 from datetime import datetime
 
 def _is_iso8601(ts: str) -> bool:
@@ -250,8 +251,7 @@ def test_continuation_id_end_to_end(project_dir: TestProjectDir):
     assert_command_success(
         run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug, "--session", session_id, "--continuation-id", cid], cwd=project_dir.tmp_path)
     )
-    # NOTE: QA records are created alongside tasks; `qa/new` initializes evidence
-    # (qa-brief.json) and does not accept a continuation-id flag.
+    # NOTE: QA records are created alongside tasks; `qa/new` exists to ensure QA is present.
 
     # Verify task file contains continuation ID in YAML frontmatter
     task_path = (
@@ -424,14 +424,17 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     # Prepare minimal bundle summary to attempt wip → done (should be rejected; must re-run validators)
     ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
-    (ev / "bundle-approved.json").write_text(json.dumps({"taskId": task_id, "round": 1, "approved": True, "validators": []}, indent=2))
-    # Manual bundle-approved.json must not be trusted
+    (ev / "bundle-approved.md").write_text(
+        format_frontmatter({"taskId": task_id, "round": 1, "approved": True, "validators": []}) + "\n",
+        encoding="utf-8",
+    )
+    # Manual bundle-approved.md must not be trusted
     res_manual = run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path)
     assert res_manual.returncode != 0
     # Now generate a real bundle via validators/validate and try again (must fail due to missing blocking approvals)
     res_validate = run_script(
         "validators/validate",
-        [task_id, "--session", session_id, "--execute"],
+        [task_id, "--session", session_id, "--check-only"],
         cwd=project_dir.tmp_path,
     )
     assert res_validate.returncode != 0
@@ -451,7 +454,7 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
             "verdict": "approve",
             "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z", "completedAt": "2025-01-01T00:05:00Z"}
         }
-        (ev / f"validator-{vid}-report.json").write_text(json.dumps(report))
+        (ev / f"validator-{vid}-report.md").write_text(format_frontmatter(report) + "\n", encoding="utf-8")
 
     # Also create required evidence command outputs (config-driven list).
     # These are required by the QA wip→done guards (fail-closed).
@@ -461,7 +464,7 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     assert_command_success(
         run_script(
             "validators/validate",
-            [task_id, "--session", session_id, "--execute"],
+            [task_id, "--session", session_id, "--check-only"],
             cwd=project_dir.tmp_path,
         )
     )

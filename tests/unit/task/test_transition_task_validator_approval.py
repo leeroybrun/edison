@@ -1,14 +1,13 @@
 """Tests for validator-approval rule enforcement on task validation state transition.
 
 These tests verify that:
-1. Tasks cannot transition to 'validated' state without a bundle-approved.json file
-2. Tasks CAN transition to 'validated' state when bundle-approved.json exists with approved=true
+1. Tasks cannot transition to 'validated' state without a bundle-approved.md file
+2. Tasks CAN transition to 'validated' state when bundle-approved.md exists with approved=true
 
 Uses the new repository pattern and RulesEngine API (replacing legacy task.transition_task).
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict
 
@@ -49,7 +48,7 @@ def test_transition_task_blocks_without_validator_approval(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should block when no bundle-approved.json exists."""
+    """Task transition to validated should block when no bundle-approved.md exists."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -76,7 +75,7 @@ def test_transition_task_blocks_without_validator_approval(
     # Convert task to dict for rule checking (as done in real workflows)
     task_dict = {"id": task_id}
 
-    # Rule check should fail because no bundle-approved.json exists
+    # Rule check should fail because no bundle-approved.md exists
     with pytest.raises(RuleViolationError) as exc_info:
         engine.check_state_transition(task_dict, "done", "validated")
 
@@ -90,7 +89,7 @@ def test_transition_task_allows_when_bundle_approved(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should succeed when bundle-approved.json has approved=true."""
+    """Task transition to validated should succeed when bundle-approved.md has approved=true."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -117,18 +116,29 @@ def test_transition_task_allows_when_bundle_approved(
     round_dir.mkdir(parents=True, exist_ok=True)
     
     # Create implementation report (required by can_finish_task guard)
-    impl_report = round_dir / "implementation-report.json"
-    impl_report.write_text(json.dumps({
-        "taskId": task_id,
-        "round": 1,
-        "status": "complete",
-        "summary": "Test implementation",
-    }), encoding="utf-8")
+    impl_report = round_dir / "implementation-report.md"
+    impl_report.write_text(
+        f"""---
+taskId: "{task_id}"
+round: 1
+status: "complete"
+summary: "Test implementation"
+---
+""",
+        encoding="utf-8",
+    )
     
-    # Create bundle-approved.json (required by validator-approval rule)
-    bundle_path = round_dir / "bundle-approved.json"
-    bundle_data = {"taskId": task_id, "round": 1, "approved": True}
-    bundle_path.write_text(json.dumps(bundle_data), encoding="utf-8")
+    # Create bundle-approved.md (required by validator-approval rule)
+    bundle_path = round_dir / "bundle-approved.md"
+    bundle_path.write_text(
+        f"""---
+taskId: "{task_id}"
+round: 1
+approved: true
+---
+""",
+        encoding="utf-8",
+    )
 
     # Create rules engine with validator-approval rule
     engine = RulesEngine(_rules_cfg())

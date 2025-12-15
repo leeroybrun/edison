@@ -76,7 +76,7 @@ def copy_templates(root: Path) -> None:
     repo_root = get_repo_root()
 
     # Copy session template
-    session_template_dest = root / ".agents" / "sessions" / "TEMPLATE.json"
+    session_template_dest = root / ".edison" / "sessions" / "TEMPLATE.json"
     session_template_dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(
         get_data_path("templates", "session.template.json"),
@@ -108,9 +108,8 @@ def setup_base_environment(root: Path, owner: str = "test-user") -> Dict[str, st
     """
     env = os.environ.copy()
     env.update({
-        "project_ROOT": str(root),
         "AGENTS_PROJECT_ROOT": str(root),
-        "project_OWNER": owner,
+        "AGENTS_OWNER": owner,
         "PYTHONUNBUFFERED": "1",
     })
     return env

@@ -1,6 +1,6 @@
 ---
 description: "Edison Framework Development Rules"
-globs: ["**/*.py", "**/*.md", "**/*.yaml", "**/*.yml"]
+globs: ["**/*"]
 alwaysApply: true
 ---
 
@@ -33,14 +33,13 @@ alwaysApply: true
 <!-- section: testing -->
 ## Testing Guidelines
 
-- Use `tmp_path` fixture for file system tests
-- Use SQLite for database tests
-- Use real HTTP clients with test servers
-- Use pytest fixtures for setup/teardown
-- FORBIDDEN: `unittest.mock`, `@patch`, `MagicMock`
+- Prefer real behavior tests over mocked behavior.
+- Use temporary directories for filesystem tests (auto-cleaned).
+- Use isolated databases for integration tests (template DBs, containers, or per-test schemas).
+- Use real HTTP clients against local test servers for API tests.
+- Only mock at system boundaries (third-party services you do not control).
 <!-- /section: testing -->
 
 <!-- section: composed-additions -->
 <!-- Pack/project extensions go here -->
 <!-- /section: composed-additions -->
-

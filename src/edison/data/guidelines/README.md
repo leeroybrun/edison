@@ -34,35 +34,33 @@ These bidirectional links are enforced by tests under `tests/guidelines/` so age
 
 ## Core orchestration & process (mandatory)
 
-- [Session Workflow](./SESSION_WORKFLOW.md) — Active session playbook and queue isolation.
-- [Honest Status](./HONEST_STATUS.md) — Canonical status reporting and failure logging.
-- [Validation](./VALIDATION.md) — Fail-closed validation workflow and QA expectations.
-- [Quality](./QUALITY.md) — Definition of “done”, hygiene, and review bar.
-- [Test-Driven Development](./TDD.md) — Core, stack-agnostic TDD loop rules.
-- [Context7](./CONTEXT7.md) — External docs usage and context-budget rules.
-- [Git Workflow](./GIT_WORKFLOW.md) — Mandatory Git safety and commit rules.
-- [Delegation](./DELEGATION.md) — Task delegation, orchestration, and parallelization.
-- [State Machine Guards](./orchestrators/STATE_MACHINE_GUARDS.md) — Canonical task/QA state machines.
-- [Ephemeral Summaries Policy](./EPHEMERAL_SUMMARIES_POLICY.md) — Where status and QA live.
-- [Refactoring](./shared/REFACTORING.md) — Safe, incremental refactoring practices.
+- Orchestrator playbook: `orchestrators/SESSION_WORKFLOW.md`
+- Orchestrator delegation rules: `orchestrators/DELEGATION.md`
+- State machine guards: `orchestrators/STATE_MACHINE_GUARDS.md`
+- Shared validation workflow: `shared/VALIDATION.md`
+- Shared status reporting: `shared/HONEST_STATUS.md`
+- Shared ephemeral summaries policy: `shared/EPHEMERAL_SUMMARIES_POLICY.md`
+- Shared git workflow: `shared/GIT_WORKFLOW.md`
 
-## Engineering practice guidelines
+## Include-Only Building Blocks
 
-- [Architecture](./shared/architecture.md) — High-level structure and design principles.
-- [Configuration](./shared/configuration.md) — Configuration design, defaults, and environments.
-- [Dependencies](./shared/dependencies.md) — Dependency selection, pinning, and upgrades.
-- [Deployment](./orchestrators/deployment.md) — Release, rollout, and rollback guidance.
-- [Documentation](./shared/documentation.md) — Documentation structure and expectations.
-- [Code Quality](./validators/code-quality.md) — Maintainability, readability, and hygiene.
-- [Coding Standards](./shared/coding-standards.md) — Language-agnostic style and conventions.
-- [Error Handling](./agents/error-handling.md) — Fail-closed patterns and error classification.
-- [Error Recovery](./agents/error-recovery.md) — Recovery paths and resilience patterns.
-- [Concurrent Operations](./agents/concurrent-operations.md) — Concurrency, locking, race avoidance.
-- [Data Validation](./agents/data-validation.md) — Input validation and normalization rules.
-- [API Design](./agents/api-design.md) — HTTP/API design, boundaries, and contracts.
-- [Performance](./shared/performance.md) — Budgets, measurement, and optimization.
-- [Security](./shared/security.md) — Security controls aligned with OWASP and compliance.
-- [Testing](./validators/testing.md) — Testing strategy and CLI testing policy.
-- [Testing Patterns](./validators/testing-patterns.md) — Structure, fixtures, and isolation patterns.
-- [Naming Conventions](./shared/naming-conventions.md) — Consistent naming for files and symbols.
-- [Review Process](./validators/review-process.md) — Code review expectations and checklists.
+These are designed to be embedded into agent/validator constitutions via `{{include-section:...}}`:
+
+- TDD: `includes/TDD.md`
+- No-mocks philosophy: `includes/NO_MOCKS.md`
+- Test isolation: `includes/TEST_ISOLATION.md`
+- Type safety: `includes/TYPE_SAFETY.md`
+- Error handling: `includes/ERROR_HANDLING.md`
+- Configuration-first: `includes/CONFIGURATION.md`
+- Shared Context7 core blocks: `includes/CONTEXT7.md`
+
+## Role-Specific Guides
+
+- Agents:
+  - Mandatory workflow: `agents/MANDATORY_WORKFLOW.md`
+  - Output format: `agents/OUTPUT_FORMAT.md`
+  - Delegation awareness: `agents/DELEGATION_AWARENESS.md`
+- Validators:
+  - Validator workflow: `validators/VALIDATOR_WORKFLOW.md`
+  - Output format: `validators/OUTPUT_FORMAT.md`
+  - Common validator guidance: `validators/VALIDATOR_COMMON.md`

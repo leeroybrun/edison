@@ -20,7 +20,7 @@ Example usage:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from .base import EntityId
 from .manager import BaseEntityManager
@@ -231,6 +231,8 @@ class BaseRepository(BaseEntityManager[T]):
         to_state: str,
         *,
         context: Optional[Dict[str, Any]] = None,
+        reason: Optional[str] = None,
+        mutate: Optional[Callable[[T], None]] = None,
     ) -> T:
         """Transition an entity to a new state.
 
@@ -282,18 +284,24 @@ class BaseRepository(BaseEntityManager[T]):
         # Update entity state from transition result
         entity.state = result["state"]
 
+        # Allow caller to update other fields atomically before persistence.
+        if mutate is not None:
+            mutate(entity)
+
         # Record history if entity supports it and we have a history entry
         if "history_entry" in result:
             if hasattr(entity, "record_transition"):
                 entity.record_transition(
                     from_state=result["history_entry"]["from"],
                     to_state=result["history_entry"]["to"],
+                    reason=reason,
                 )
             elif hasattr(entity, "state_history"):
                 from .base import StateHistoryEntry
                 entry = StateHistoryEntry.create(
                     from_state=result["history_entry"]["from"],
                     to_state=result["history_entry"]["to"],
+                    reason=reason,
                 )
                 entity.state_history.append(entry)
 

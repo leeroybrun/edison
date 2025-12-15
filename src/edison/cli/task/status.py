@@ -41,7 +41,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force transition even when guards fail",
+        help="Force transition even when guards fail (bypasses validation/actions)",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -58,10 +58,20 @@ def main(args: argparse.Namespace) -> int:
 
         # Lazy imports to keep CLI startup fast.
         from edison.core.task import normalize_record_id
-        from edison.core.state.transitions import validate_transition, transition_entity, EntityTransitionError
+        from edison.core.state.transitions import validate_transition
 
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
+
+        # SECURITY: prevent QA state transitions via tasks/status.
+        #
+        # tasks/status supports inspecting QA records for convenience, but all QA
+        # transitions must be performed via the dedicated workflow command
+        # `edison qa promote`, which enforces validation-first guards.
+        if record_type == "qa" and args.status:
+            raise ValueError(
+                "QA state transitions must use edison qa promote (qa/promote), not tasks/status."
+            )
 
         # Validate status against config-driven states (runtime validation for fast CLI startup)
         if args.status:
@@ -91,10 +101,29 @@ def main(args: argparse.Namespace) -> int:
             # Transition to new status
             if args.dry_run:
                 # Validate without executing
+                context = {
+                    "task": {
+                        "id": entity.id,
+                        "status": current_status,
+                        "state": current_status,
+                        "session_id": entity.session_id,
+                    },
+                    "task_id": entity.id,
+                    "entity_type": record_type or "task",
+                    "entity_id": entity.id,
+                }
+                if getattr(args, "reason", None):
+                    context["task"]["rollback_reason"] = args.reason
+                    context["task"]["rollbackReason"] = args.reason
+                    context["task"]["blocker_reason"] = args.reason
+                    context["task"]["blockerReason"] = args.reason
+
                 is_valid, msg = validate_transition(
                     record_type or "task",
                     current_status,
                     args.status,
+                    context=context,
+                    repo_root=project_root,
                 )
                 if is_valid:
                     dry_run_text = f"Transition {current_status} -> {args.status}: ALLOWED"
@@ -106,15 +135,39 @@ def main(args: argparse.Namespace) -> int:
                     "record_id": record_id,
                     "current_status": current_status,
                     "target_status": args.status,
+                    "force": bool(getattr(args, "force", False)),
                     "valid": is_valid,
                     "message": msg,
                 }) if formatter.json_mode else formatter.text(dry_run_text)
                 return 0 if is_valid else 1
 
-            # Execute transition with guard enforcement
+            # Forced transition: bypass guards/conditions/actions, but still:
+            # - enforce the target status is a configured state (validated above)
+            # - record history + persist via repository
+            if getattr(args, "force", False):
+                old_state = entity.state
+                try:
+                    entity.record_transition(old_state, args.status, reason=args.reason or "cli-force")
+                except Exception:
+                    # FAIL-CLOSED is for guards, not for auditing; if record_transition fails,
+                    # still proceed with the forced state update.
+                    pass
+                entity.state = args.status
+                repo.save(entity)
+
+                formatter.json_output({
+                    "status": "transitioned",
+                    "forced": True,
+                    "record_id": record_id,
+                    "from_status": current_status,
+                    "to_status": args.status,
+                }) if formatter.json_mode else formatter.text(
+                    f"Forced transition {record_id}: {current_status} -> {args.status}"
+                )
+                return 0
+
+            # Execute transition with guard enforcement + action execution.
             old_state = entity.state
-            
-            # Build context for guards
             context = {
                 "task": {
                     "id": entity.id,
@@ -130,36 +183,19 @@ def main(args: argparse.Namespace) -> int:
                 # Guards use snake_case and camelCase variants across call sites.
                 context["task"]["rollback_reason"] = args.reason
                 context["task"]["rollbackReason"] = args.reason
-            
-            # Execute the transition with guard validation and action execution
-            if not args.force:
-                try:
-                    # transition_entity validates guards and executes actions
-                    transition_result = transition_entity(
-                        entity_type=record_type or "task",
-                        entity_id=entity.id,
-                        to_state=args.status,
-                        current_state=old_state,
-                        context=context,
-                    )
-                except EntityTransitionError as e:
-                    formatter.error(f"Transition blocked: {e}", error_code="guard_failed")
-                    return 1
-            else:
-                # Force mode: skip validation
-                transition_result = {"state": args.status, "previous_state": old_state}
-            
-            # Update and persist the entity
-            entity.state = args.status
-            entity.record_transition(
-                old_state,
+                context["task"]["blocker_reason"] = args.reason
+                context["task"]["blockerReason"] = args.reason
+
+            updated = repo.transition(
+                entity.id,
                 args.status,
+                context=context,
                 reason=args.reason or "cli-status-command",
             )
-            repo.save(entity)
 
             formatter.json_output({
                 "status": "transitioned",
+                "forced": False,
                 "record_id": record_id,
                 "from_status": current_status,
                 "to_status": args.status,

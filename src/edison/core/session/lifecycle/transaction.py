@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-from edison.core.utils.paths import PathResolver
+from edison.core.utils.paths import PathResolver, get_management_paths
 from edison.core.utils.io.locking import acquire_file_lock, LockTimeoutError
 from edison.core.utils.io import (
     write_json_atomic as io_write_json_atomic,
@@ -23,7 +23,6 @@ from edison.core.utils.io import (
 from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...exceptions import SessionError
 from ..core.id import validate_session_id
-from edison.core.utils.paths import get_management_paths
 from .._config import get_config
 
 logger = logging.getLogger(__name__)
@@ -32,9 +31,8 @@ logger = logging.getLogger(__name__)
 TX_VALIDATION_SUBDIR = "validation"
 
 def _get_tx_root() -> Path:
-    env_root = os.environ.get("AGENTS_PROJECT_ROOT") or os.environ.get("project_ROOT")
-    root = Path(env_root).resolve() if env_root else PathResolver.resolve_project_root()
-    rel = get_config().get_tx_root_path()
+    root = PathResolver.resolve_project_root()
+    rel = get_config(root).get_tx_root_path()
     return (root / rel).resolve()
 
 def _tx_dir(session_id: str) -> Path:
@@ -43,38 +41,11 @@ def _tx_dir(session_id: str) -> Path:
     return d
 
 def _sid_dir(session_id: str) -> Path:
-    # This should probably use store._session_dir logic or similar,
-    # but for now we can use the configured session root.
-    # Or better, import _session_dir from store?
-    # store._session_dir requires state.
-    # Here we just want the session directory.
-    # If the session directory location depends on state, we have a problem if we don't know the state.
-    # However, _sid_dir seems to be used for validation logs inside the session dir.
-    # If the session moves, the log moves?
-    # Let's look at where _sid_dir is used: _tx_validation_log_path.
-    # And _tx_validation_log_path is used in _append_tx_log.
-    # If we don't know the state, we can't find the directory if it's partitioned by state.
-    # The new store layout IS partitioned by state (active/closing/validated).
-    # So we MUST know the state or search for it.
-    # But _append_tx_log doesn't take state.
-    # We might need to search for the session.
     from ..persistence.repository import SessionRepository
-    from edison.core.entity.exceptions import EntityNotFoundError
-    try:
-        repo = SessionRepository()
-        json_path = repo.get_session_json_path(session_id)
-        return json_path.parent
-    except (FileNotFoundError, OSError, EntityNotFoundError) as e:
-        # Fallback: If session doesn't exist yet, use default active session state location
-        # This allows validation transactions to work even before session is fully initialized
-        logger.debug("Session directory not found for %s, using default: %s", session_id, e)
-        from edison.core.config.domains.session import SessionConfig
-        mgmt_paths = get_management_paths(PathResolver.resolve_project_root())
-        states_map = SessionConfig().get_session_states()
-        active_dir = states_map.get("active", "wip")
-        default_dir = mgmt_paths.get_session_state_dir(active_dir) / validate_session_id(session_id)
-        ensure_directory(default_dir)
-        return default_dir
+    repo = SessionRepository()
+    # Ensure a canonical session record exists so we can reliably derive the
+    # on-disk directory (mapping is config-driven via SessionRepository).
+    return repo.ensure_session(session_id)
 
 def _tx_validation_dir(session_id: str, tx_id: str) -> Path:
     d = _get_tx_root() / validate_session_id(session_id) / TX_VALIDATION_SUBDIR / tx_id

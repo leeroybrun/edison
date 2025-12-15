@@ -21,7 +21,6 @@ from edison.core.utils.paths import PathResolver
 from edison.core.config.domains.session import SessionConfig
 from edison.core.state.validator import StateValidator
 from edison.core.state import StateTransitionError
-from edison.core.state.transitions import transition_entity, EntityTransitionError
 from ...exceptions import SessionError, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -125,18 +124,15 @@ def list_sessions(state: Optional[str] = None) -> List[str]:
 def transition_session(session_id: str, target_state: str) -> None:
     """Transition a session to a new state.
     
-    Uses transition_entity() to ensure guards are validated and actions are executed.
+    Uses repository.transition() to ensure guards are validated and actions are executed.
     """
     project_root = PathResolver.resolve_project_root()
     repo = SessionRepository(project_root=project_root)
 
     sid = validate_session_id(session_id)
-    entity = repo.get(sid)
-    if entity is None:
-        raise FileNotFoundError(f"Session {sid} not found")
-
-    current = str(entity.state).lower()
-    target = str(target_state).lower()
+    entity = repo.get_or_raise(sid)
+    current = str(entity.state or "")
+    target = str(target_state).strip()
 
     # Build context for guards and actions using the current entity snapshot.
     # This avoids FAIL-CLOSED guards blocking transitions due to missing data.
@@ -147,22 +143,12 @@ def transition_session(session_id: str, target_state: str) -> None:
         "entity_id": sid,
     }
 
-    # Execute transition with guard validation and action execution
-    try:
-        transition_entity(
-            entity_type="session",
-            entity_id=sid,
-            to_state=target,
-            current_state=current,
-            context=context,
-        )
-    except EntityTransitionError as e:
-        raise StateTransitionError(str(e)) from e
-
-    # Update and persist the entity
-    entity.record_transition(current, target)
-    entity.state = target
-    repo.save(entity)
+    repo.transition(
+        sid,
+        target,
+        context=context,
+        reason="core-session-manager",
+    )
 
 def touch_session(session_id: str) -> None:
     """Update session lastActive timestamp."""
@@ -281,7 +267,7 @@ class SessionManager:
         self._repo.create(entity)
         return self._repo.get_session_json_path(sid)
 
-    def transition(self, session_id: str, to_state: str) -> Path:
+    def transition(self, session_id: str, to_state: str, *, reason: str | None = None) -> Path:
         """Transition a session to a new state.
 
         Args:
@@ -300,23 +286,24 @@ class SessionManager:
         if entity is None:
             raise FileNotFoundError(f"Session {sid} not found")
 
-        current = str(entity.state).lower()
+        current = str(entity.state or "").lower()
         target = str(to_state).lower()
 
-        # Validate via unified state validator.
-        # Guards commonly require session context (e.g., can_complete_session checks `ready`),
-        # so pass the current entity snapshot.
+        # Build guard/action context from the current entity snapshot.
         ctx = {
             "session_id": sid,
             "session": entity.to_dict(),
             "entity_type": "session",
             "entity_id": sid,
         }
-        self._validator.ensure_transition("session", current, target, context=ctx)
 
-        entity.record_transition(current, target)
-        entity.state = target
-        self._repo.save(entity)
+        # Delegate to repository.transition for unified validation + history + save semantics.
+        self._repo.transition(
+            sid,
+            target,
+            context=ctx,
+            reason=reason or "core-session-manager",
+        )
 
         return self._repo.get_session_json_path(sid)
 
@@ -379,7 +366,7 @@ class SessionManager:
             raise SessionError(f"Session {session_id} not found", session_id=session_id)
         return session.to_dict()
 
-    def transition_state(self, session_id: str, to_state: str) -> Path:
+    def transition_state(self, session_id: str, to_state: str, *, reason: str | None = None) -> Path:
         """Transition a session to a new state (alias for transition).
 
         Args:
@@ -389,7 +376,7 @@ class SessionManager:
         Returns:
             Path to session.json file
         """
-        return self.transition(session_id, to_state)
+        return self.transition(session_id, to_state, reason=reason)
 
     # --- Internal helpers -------------------------------------------------
     def _generate_session_id(self) -> str:

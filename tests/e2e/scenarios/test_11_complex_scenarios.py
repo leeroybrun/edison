@@ -34,6 +34,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_output_contains,
 )
+from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
 def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int = 1) -> Path:
@@ -49,9 +50,18 @@ def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int =
     ]:
         (rd / fname).write_text("ok\n")
 
-    (rd / "implementation-report.json").write_text(json.dumps({"summary": "ok"}))
-    (rd / "bundle-approved.json").write_text(json.dumps({"approved": True}))
-    (rd / "validator-main-report.json").write_text(json.dumps({"status": "ok"}))
+    (rd / "implementation-report.md").write_text(
+        format_frontmatter({"taskId": task_id, "round": round_num, "completionStatus": "complete"}) + "\n",
+        encoding="utf-8",
+    )
+    (rd / "bundle-approved.md").write_text(
+        format_frontmatter({"taskId": task_id, "round": round_num, "approved": True}) + "\n",
+        encoding="utf-8",
+    )
+    (rd / "validator-main-report.md").write_text(
+        format_frontmatter({"taskId": task_id, "round": round_num, "validatorId": "main", "verdict": "approve"}) + "\n",
+        encoding="utf-8",
+    )
     return rd
 
 
@@ -635,7 +645,10 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
                 "hostname": "e2e-test",
             },
         }
-        (rd / "implementation-report.json").write_text(__import__("json").dumps(impl_report, indent=2))
+        (rd / "implementation-report.md").write_text(
+            format_frontmatter(impl_report) + "\n# Implementation Report\n",
+            encoding="utf-8",
+        )
 
         # Validator reports for all blocking validators (global, critical, specialized)
         for validator_id, model in [
@@ -662,8 +675,9 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
                     "hostname": "e2e-test"
                 }
             }
-            (rd / f"validator-{validator_id}-report.json").write_text(
-                __import__("json").dumps(validator_report, indent=2)
+            (rd / f"validator-{validator_id}-report.md").write_text(
+                format_frontmatter(validator_report) + "\n# Validator Report\n",
+                encoding="utf-8",
             )
 
     # Create evidence for all three tasks
@@ -671,40 +685,28 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     create_evidence(child1_id)
     create_evidence(child2_id)
 
-    # Setup validators wrapper pointing to REAL CLI
-    from pathlib import Path
-    validators_dir = project_dir.tmp_path / "scripts" / "validators"
-    validators_dir.mkdir(parents=True, exist_ok=True)
-    validators_validate = validators_dir / "validate"
-    validators_validate.write_text(
-        "#!/usr/bin/env bash\nedison validate \"$@\"\n"
+    # Compute bundle approval from existing evidence (no validator execution).
+    validate_result = run_script(
+        "validators/validate",
+        [parent_id, "--session", session_id, "--check-only"],
+        cwd=project_dir.tmp_path,
     )
-    validators_validate.chmod(0o755)
-
-    # Call validators/validate with parent ID and session
-    # This should trigger bundle mode and validate parent + children as a cluster
-    import os
-    validate_result = project_dir.run_command([
-        str(validators_validate),
-        "--task", parent_id,
-        "--session", session_id,
-    ], cwd=project_dir.tmp_path, env={"AGENTS_PROJECT_ROOT": str(project_dir.tmp_path)})
 
     # Should succeed (all validators approved)
     assert_command_success(validate_result)
 
-    # Verify bundle-approved.json exists ONLY under parent evidence directory
-    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-approved.json"
+    # Verify bundle-approved.md exists ONLY under parent evidence directory
+    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-approved.md"
     assert_file_exists(parent_bundle)
 
-    # Verify children do NOT have individual bundle-approved.json
-    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-approved.json"
-    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-approved.json"
+    # Verify children do NOT have individual bundle-approved.md
+    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-approved.md"
+    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-approved.md"
     assert not child1_bundle.exists()
     assert not child2_bundle.exists()
 
     # Verify parent bundle contains approvals for all tasks in cluster
-    bundle_data = __import__("json").loads(parent_bundle.read_text())
+    bundle_data = parse_frontmatter(parent_bundle.read_text()).frontmatter
     assert bundle_data["taskId"] == parent_id
     assert bundle_data["approved"] is True
     assert "tasks" in bundle_data

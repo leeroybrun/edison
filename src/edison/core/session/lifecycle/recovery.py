@@ -1,6 +1,7 @@
 """Session recovery and expiration management."""
 from __future__ import annotations
 
+import json
 import shutil
 import logging
 import yaml
@@ -8,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from edison.core.exceptions import SessionNotFoundError
 from edison.core.config.domains import TaskConfig
 from edison.core.task.paths import get_task_dirs, get_qa_dirs
 from edison.core.utils.io import ensure_directory, read_json, write_json_atomic, is_locked, safe_move_file
@@ -68,10 +70,10 @@ def _effective_activity_time(session: Dict[str, Any]) -> Optional[datetime]:
     times = [t for t in (last_active, claimed, created) if t is not None]
     return max(times) if times else None
 
-def is_session_expired(session_id: str) -> bool:
+def is_session_expired(session_id: str, *, project_root: Optional[Path] = None) -> bool:
     """Return True when a session exceeded inactivity timeout."""
     try:
-        repo = SessionRepository()
+        repo = SessionRepository(project_root=project_root)
         session_entity = repo.get(session_id)
         if not session_entity:
             return True
@@ -86,7 +88,7 @@ def is_session_expired(session_id: str) -> bool:
     if ref is None:
         return True
     now = datetime.now(timezone.utc)
-    rec_cfg = get_config().get_recovery_config()
+    rec_cfg = get_config(project_root).get_recovery_config()
     skew_allowance = rec_cfg.get("clockSkewAllowanceSeconds")
     if skew_allowance is None:
         raise ValueError("session.recovery.clockSkewAllowanceSeconds not configured")
@@ -222,6 +224,128 @@ def restore_records_to_global_transactional(session_id: str) -> int:
         # Surface a clear rollback marker for callers/tests
         raise RuntimeError(f"Rolled back restore for session {sid}") from exc
 
+
+def recover_session(
+    session_id: str,
+    *,
+    restore_records: bool = False,
+    reason: str = "manual_recovery",
+) -> Path:
+    """Recover a damaged session.
+
+    This is a fail-closed recovery helper that can operate even when the session
+    JSON is corrupted (invalid JSON). It moves the session directory to the
+    configured recovery state directory and writes a minimal valid session.json.
+
+    If restore_records is True, session-scoped task/QA records are restored back
+    to global queues transactionally before the session is moved.
+
+    Returns:
+        Path to the recovered session directory (contains session.json).
+    """
+    sid = validate_session_id(session_id)
+    repo = SessionRepository()
+
+    restored_records = 0
+    if restore_records:
+        restored_records = restore_records_to_global_transactional(sid)
+
+    # Fast path: if the session can be loaded, use canonical transition engine.
+    session_entity = repo.get(sid)
+    if session_entity is not None:
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        recovery_state = WorkflowConfig(repo_root=repo.project_root).get_semantic_state(
+            "session", "recovery"
+        )
+        context = {
+            "session_id": sid,
+            "session": session_entity.to_dict(),
+            "reason": reason,
+            "entity_type": "session",
+            "entity_id": sid,
+        }
+
+        def _mutate(sess) -> None:
+            sess.meta_extra["recoveredAt"] = io_utc_timestamp()
+            sess.meta_extra["recoveryReason"] = reason
+            if restore_records:
+                sess.meta_extra["restoredRecords"] = restored_records
+            sess.add_activity(f"Session recovered ({reason})")
+
+        updated = repo.transition(sid, recovery_state, context=context, reason=reason, mutate=_mutate)
+        rec_dir = repo.get_session_json_path(updated.id).parent
+        write_json_atomic(
+            rec_dir / "recovery.json",
+            {
+                "reason": reason,
+                "captured_at": io_utc_timestamp(),
+                "sessionId": sid,
+                "restoredRecords": restored_records,
+                "session": updated.to_dict(),
+            },
+            acquire_lock=False,
+        )
+        return rec_dir
+
+    # Slow path: corrupted session.json (or otherwise unparseable) - repair manually.
+    session_json_path = repo.get_session_json_path(sid)
+    original_dir = session_json_path.parent.resolve()
+
+    from edison.core.config.domains.workflow import WorkflowConfig
+    from edison.core.session.core.models import Session
+
+    recovery_state = WorkflowConfig(repo_root=repo.project_root).get_semantic_state(
+        "session", "recovery"
+    )
+
+    sessions_root = get_sessions_root()
+    state_map = get_config().get_session_states()
+    recovery_dirname = state_map.get(recovery_state, recovery_state)
+    target_dir = (sessions_root / recovery_dirname / sid).resolve()
+
+    if target_dir.exists() and target_dir != original_dir:
+        raise RuntimeError(f"Recovery target already exists: {target_dir}")
+
+    ensure_directory(target_dir.parent)
+    if target_dir != original_dir:
+        original_dir.rename(target_dir)
+
+    # Preserve the corrupted file for forensics.
+    repaired_session_json = target_dir / "session.json"
+    corrupt_backup = target_dir / "session.json.corrupt"
+    if repaired_session_json.exists():
+        try:
+            json.loads(repaired_session_json.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            if not corrupt_backup.exists():
+                repaired_session_json.rename(corrupt_backup)
+            else:
+                repaired_session_json.unlink(missing_ok=True)
+
+    entity = Session.create(sid, owner=None, state=recovery_state)
+    entity.meta_extra["recoveredAt"] = io_utc_timestamp()
+    entity.meta_extra["recoveryReason"] = reason
+    if restore_records:
+        entity.meta_extra["restoredRecords"] = restored_records
+    entity.add_activity(f"Session recovered ({reason}); session.json was invalid JSON")
+
+    write_json_atomic(repaired_session_json, entity.to_dict(), acquire_lock=False)
+    write_json_atomic(
+        target_dir / "recovery.json",
+        {
+            "reason": reason,
+            "captured_at": io_utc_timestamp(),
+            "original_path": str(original_dir),
+            "sessionId": sid,
+            "restoredRecords": restored_records,
+            "corruptSessionJson": True,
+            "session": entity.to_dict(),
+        },
+        acquire_lock=False,
+    )
+    return target_dir
+
 def cleanup_expired_sessions() -> List[str]:
     """Detect and cleanup expired sessions."""
     cleaned: List[str] = []
@@ -237,56 +361,37 @@ def cleanup_expired_sessions() -> List[str]:
             session_entity = repo.get(sid)
             if not session_entity:
                 continue
-            sess = session_entity.to_dict()
-            current_state = sess.get("state", "active")
-            
-            # Use transition_entity for proper guard and action execution
-            from edison.core.state.transitions import transition_entity, EntityTransitionError
-            
-            session_states = get_config().get_session_states()
-            closing_state = session_states.get("closing", "closing")
-            
-            try:
-                result = transition_entity(
-                    entity_type="session",
-                    entity_id=sid,
-                    to_state=closing_state,
-                    current_state=current_state,
-                    context={
-                        "session": sess,
-                        "session_id": sid,
-                        "reason": "expired",
-                    },
+            from edison.core.config.domains.workflow import WorkflowConfig
+
+            closing_state = WorkflowConfig(repo_root=repo.project_root).get_semantic_state(
+                "session", "closing"
+            )
+
+            def _mutate(sess) -> None:
+                sess.meta_extra["expiredAt"] = io_utc_timestamp()
+                sess.add_activity(
+                    "Session expired due to inactivity; records restored to global queues"
                 )
-                sess["state"] = result["state"]
-                if "history_entry" in result:
-                    sess.setdefault("stateHistory", []).append(result["history_entry"])
-            except EntityTransitionError:
-                # If transition fails, try recovery state instead
-                try:
-                    result = transition_entity(
-                        entity_type="session",
-                        entity_id=sid,
-                        to_state="recovery",
-                        current_state=current_state,
-                        context={"session": sess, "session_id": sid},
-                    )
-                    sess["state"] = result["state"]
-                    if "history_entry" in result:
-                        sess.setdefault("stateHistory", []).append(result["history_entry"])
-                except EntityTransitionError:
-                    logger.warning("Cannot transition session %s to closing or recovery", sid)
-                    continue
-            
-            sess_meta = sess.get("meta", {})
-            sess_meta["expiredAt"] = io_utc_timestamp()
-            sess_meta.setdefault("lastActive", io_utc_timestamp())
-            sess["meta"] = sess_meta
-            append_session_log(sid, "Session expired due to inactivity; records restored to global queues")
-            from ..core.models import Session
-            updated_entity = Session.from_dict(sess)
-            repo.save(updated_entity)
-            # Note: save moves the session directory to the new state
+
+            try:
+                repo.transition(
+                    sid,
+                    closing_state,
+                    context={
+                        "session_id": sid,
+                        "session": session_entity.to_dict(),
+                        "reason": "expired",
+                        "entity_type": "session",
+                        "entity_id": sid,
+                    },
+                    reason="expired",
+                    mutate=_mutate,
+                )
+            except Exception as e:
+                logger.warning("Cannot transition session %s to closing: %s", sid, e)
+                continue
+
+            # Note: save moves the session directory to the new state.
             cleaned.append(sid)
         except SystemExit:
             raise
@@ -302,88 +407,58 @@ def check_timeout(sess_dir: Path, threshold_minutes: Optional[int] = None) -> bo
     if not p.exists():
         raise ValueError('missing session.json')
     data = read_json(p)
-    ts = data.get('last_active_at') # Note: original code used last_active_at, but meta uses lastActive.
-    # I should check if sessionlib uses both.
-    # Line 2559: ts = data.get('last_active_at')
-    if not ts:
-        # Fallback to meta.lastActive?
-        ts = (data.get("meta") or {}).get("lastActive")
-
-    if not ts:
-        raise ValueError('last_active_at missing')
-
-    # _parse_iso is not defined here, I'll use _parse_iso_utc
-    last = _parse_iso_utc(str(ts))
-    if not last:
-         raise ValueError('invalid timestamp')
-
+    ref = _effective_activity_time(data)
+    if ref is None:
+        raise ValueError("missing meta timestamps")
     now = datetime.now(timezone.utc).replace(microsecond=0)
-    delta = now - last
-    return delta > timedelta(minutes=threshold_minutes)
+    delta = now - ref
+    return delta > timedelta(minutes=int(threshold_minutes))
 
 def handle_timeout(sess_dir: Path) -> Path:
     """Handle session timeout by transitioning to recovery state.
     
-    Uses proper state transition API to ensure guards and actions run.
+    Uses the canonical SessionRepository transition API so directory mapping and
+    state history remain consistent (no manual moves).
     """
-    from edison.core.state.transitions import transition_entity, EntityTransitionError
     from edison.core.config.domains.workflow import WorkflowConfig
-    
-    # Read original session data
-    orig = {}
-    try:
-        orig = read_json(_session_json_path(sess_dir))
-    except (FileNotFoundError, OSError) as e:
-        logger.warning("Failed to read session.json for %s: %s", sess_dir, e)
-        orig = {}
-    except ValueError as e:
-        logger.error("Invalid session.json for %s: %s", sess_dir, e)
-        orig = {}
 
     session_id = sess_dir.name
-    current_state = orig.get("state", "active")
-    
-    # Get recovery state from config using semantic lookup
-    recovery_state = WorkflowConfig().get_semantic_state("session", "recovery")
-    
-    # Use transition_entity to properly transition with guards and actions
-    try:
-        result = transition_entity(
-            entity_type="session",
-            entity_id=session_id,
-            to_state=recovery_state,
-            current_state=current_state,
-            context={
-                "session": orig,
-                "session_id": session_id,
-                "reason": "timeout exceeded",
-            },
-        )
-        orig["state"] = result["state"]
-        if "history_entry" in result:
-            orig.setdefault("stateHistory", []).append(result["history_entry"])
-    except EntityTransitionError as e:
-        logger.warning("Transition to recovery failed for %s: %s, forcing state change", session_id, e)
-        # Fall back to direct state assignment for recovery scenarios
-        orig["state"] = recovery_state
+    repo = SessionRepository()
+    entity = repo.get_or_raise(session_id)
 
-    # Move session directory to recovery location
-    rec_dir = get_sessions_root() / 'recovery' / session_id
-    ensure_directory(rec_dir.parent)
-    if rec_dir.exists():
-        shutil.rmtree(rec_dir)
-    shutil.move(str(sess_dir), str(rec_dir))
+    recovery_state = WorkflowConfig(repo_root=repo.project_root).get_semantic_state(
+        "session", "recovery"
+    )
 
-    # Write updated session state
-    write_json_atomic(_session_json_path(rec_dir), orig)
+    def _mutate(sess) -> None:
+        sess.meta_extra["timedOutAt"] = io_utc_timestamp()
+        sess.add_activity("Session timed out due to inactivity")
 
-    # Write recovery reason
-    write_json_atomic(rec_dir / 'recovery.json', {
-        'reason': 'timeout exceeded',
-        'original_path': str(sess_dir),
-        'captured_at': io_utc_timestamp(),
-        'session': orig,
-    })
+    repo.transition(
+        session_id,
+        recovery_state,
+        context={
+            "session_id": session_id,
+            "session": entity.to_dict(),
+            "reason": "timeout exceeded",
+            "entity_type": "session",
+            "entity_id": session_id,
+        },
+        reason="timeout exceeded",
+        mutate=_mutate,
+    )
+
+    rec_dir = repo.get_session_json_path(session_id).parent
+    write_json_atomic(
+        rec_dir / "recovery.json",
+        {
+            "reason": "timeout exceeded",
+            "original_path": str(sess_dir),
+            "captured_at": io_utc_timestamp(),
+            "sessionId": session_id,
+            "session": entity.to_dict(),
+        },
+    )
     return rec_dir
 
 

@@ -81,7 +81,7 @@ def test_essential_functions_still_available():
     # These are essential and should remain
     assert hasattr(evidence, "EvidenceError")
     assert hasattr(evidence, "missing_evidence_blockers")
-    assert hasattr(evidence, "read_validator_jsons")
+    assert hasattr(evidence, "read_validator_reports")
     assert hasattr(evidence, "load_impl_followups")
     assert hasattr(evidence, "load_bundle_followups")
     assert hasattr(evidence, "has_required_evidence")

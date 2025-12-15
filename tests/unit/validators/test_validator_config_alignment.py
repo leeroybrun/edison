@@ -11,6 +11,7 @@ import unittest
 from edison.core.utils.subprocess import run_with_timeout
 from edison.data import get_data_path
 from tests.helpers.paths import get_repo_root
+from edison.core.utils.text import format_frontmatter
 
 
 REPO_ROOT = get_repo_root()
@@ -41,7 +42,7 @@ project:
   name: test-project
 validation:
   artifactPaths:
-    bundleSummaryFile: bundle-approved.json
+    bundleSummaryFile: bundle-approved.md
 """
             (agents_dst / "config.yml").write_text(minimal_config)
 
@@ -66,8 +67,8 @@ validation:
             "verdict": verdict,
             "tracking": tracking,
         }
-        path = ev_dir / f"validator-{vid}-report.json"
-        path.write_text(json.dumps(data))
+        path = ev_dir / f"validator-{vid}-report.md"
+        path.write_text(format_frontmatter(data) + "\n# Validator Report\n")
         return path
 
     def _run(self, args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -105,7 +106,7 @@ validation:
         # misnamed specialized report (should NOT be recognized)
         ev_dir = self.temp_root / ".project" / "qa" / "validation-evidence" / task_id / f"round-{round_n}"
         ev_dir.mkdir(parents=True, exist_ok=True)
-        (ev_dir / "validator-database-report.json").write_text("{}")
+        (ev_dir / "validator-database-report.md").write_text("---\n---\n")
         # testing specialized present
         self._write_report(task_id, round_n, "testing", "codex", "approve")
 
@@ -141,7 +142,7 @@ project:
   name: test-project
 validation:
   artifactPaths:
-    bundleSummaryFile: bundle-summary.json
+    bundleSummaryFile: bundle-summary.md
 """
         cfg_path.write_text(config_content)
 

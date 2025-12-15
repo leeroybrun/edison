@@ -46,18 +46,16 @@ def _bootstrap_minimal_project(tmp_root: Path) -> None:
 
 @pytest.fixture()
 def sandbox_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Provide isolated project_ROOT sandbox and restore env after test."""
+    """Provide isolated project root sandbox and restore env after test."""
     _bootstrap_minimal_project(tmp_path)
     env = os.environ.copy()
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(tmp_path),
-            "project_ROOT": str(tmp_path),
             "PYTHONUNBUFFERED": "1",
         }
     )
     setup_project_root(monkeypatch, tmp_path)
-    monkeypatch.setenv("project_ROOT", str(tmp_path))
     # Re-initialize module-level roots derived from environment by reloading libs
     import importlib
     import edison.core.task as _task  # type: ignore

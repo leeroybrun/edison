@@ -86,6 +86,16 @@ class CLIEngine:
         Returns:
             True if command exists in PATH
         """
+        # Config-driven safety: external CLI validators are disabled unless explicitly enabled.
+        try:
+            from edison.core.config.domains.qa import QAConfig
+
+            allow = QAConfig(repo_root=self.project_root).orchestration_config.get("allowCliEngines", False)
+            if not bool(allow):
+                return False
+        except Exception:
+            return False
+
         if not self.command:
             return False
         return shutil.which(self.command) is not None
@@ -397,4 +407,3 @@ class CLIEngine:
 
 
 __all__ = ["CLIEngine"]
-

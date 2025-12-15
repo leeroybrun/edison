@@ -9,8 +9,9 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
 from edison.core.qa.engines import ValidationExecutor
 from edison.core.registries.validators import ValidatorRegistry
 
@@ -60,6 +61,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Execute validators directly (default: show roster only)",
     )
     parser.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Do not execute validators; compute approval from existing evidence and emit bundle-approved.md",
+    )
+    parser.add_argument(
         "--sequential",
         action="store_true",
         help="Run validators sequentially instead of in parallel",
@@ -85,6 +91,9 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
+        session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
+        if args.execute and args.check_only:
+            raise ValueError("Pass only one of --execute or --check-only")
 
         # Create executor (centralized in core)
         executor = ValidationExecutor(
@@ -102,7 +111,7 @@ def main(args: argparse.Namespace) -> int:
         # Build validator roster for display
         roster = validator_registry.build_execution_roster(
             task_id=args.task_id,
-            session_id=args.session,
+            session_id=session_id,
             wave=args.wave,
             extra_validators=extra_validators,
         )
@@ -145,13 +154,58 @@ def main(args: argparse.Namespace) -> int:
                 repo_root=repo_root,
                 executor=executor,
                 formatter=formatter,
+                session_id=session_id,
                 extra_validators=extra_validators,
             )
+
+        if args.check_only:
+            if args.dry_run:
+                raise ValueError("--check-only cannot be combined with --dry-run")
+            from edison.core.qa.evidence import EvidenceService
+
+            ev = EvidenceService(args.task_id, project_root=repo_root)
+            round_num = int(args.round or ev.get_current_round() or 0)
+            if not round_num:
+                formatter.error("No evidence round found; run tracking/validation first", error_code="no_round")
+                return 1
+
+            bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
+                args=args,
+                repo_root=repo_root,
+                session_id=session_id,
+                validator_registry=validator_registry,
+                round_num=round_num,
+                extra_validators=extra_validators,
+                execution_result=None,
+            )
+            ev.write_bundle(bundle_data, round_num=round_num)
+
+            if formatter.json_mode:
+                formatter.json_output(
+                    {
+                        "task_id": args.task_id,
+                        "round": round_num,
+                        "approved": overall_approved,
+                        "missing": bundle_data.get("missing") or [],
+                        "cluster_missing": cluster_missing,
+                        "bundle_file": str((ev.ensure_round(round_num) / ev.bundle_filename).relative_to(repo_root)),
+                    }
+                )
+            else:
+                if overall_approved:
+                    formatter.text("All blocking validator reports approved and bundle-approved.md was written.")
+                else:
+                    formatter.text("Bundle NOT approved (missing or failing blocking reports).")
+                    for tid, missing in (cluster_missing or {}).items():
+                        suffix = f": {', '.join(missing)}" if missing else ""
+                        formatter.text(f"  - {tid}{suffix}")
+
+            return 0 if overall_approved else 1
 
         # Dry-run or roster-only mode
         results = {
             "task_id": args.task_id,
-            "session_id": args.session,
+            "session_id": session_id,
             "wave": args.wave,
             "roster": roster,
             "status": "dry_run" if args.dry_run else "roster_only",
@@ -295,11 +349,124 @@ def _display_roster(
         formatter.text("    edison qa validate <task> --add-validators critical:react comprehensive:api --execute")
 
 
+def _compute_bundle_summary(
+    *,
+    args: argparse.Namespace,
+    repo_root: Path,
+    session_id: str | None,
+    validator_registry: ValidatorRegistry,
+    round_num: int,
+    extra_validators: list[dict[str, str]] | None = None,
+    execution_result: Any | None = None,
+) -> tuple[dict[str, Any], bool, dict[str, list[str]]]:
+    """Compute bundle-approved payload from existing evidence reports.
+
+    This is the single source of truth for the bundle-approved.md schema payload.
+    """
+    from edison.core.qa.bundler import build_validation_manifest
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.utils.time import utc_timestamp
+
+    approved_verdicts = {"approve"}
+
+    manifest = build_validation_manifest(
+        args.task_id,
+        project_root=repo_root,
+        session_id=session_id,
+    )
+    manifest_tasks = manifest.get("tasks") or []
+
+    tasks_payload: list[dict[str, object]] = []
+    cluster_missing: dict[str, list[str]] = {}
+
+    for t in manifest_tasks:
+        task_id = str(t.get("taskId") or "")
+        if not task_id:
+            continue
+
+        task_ev = EvidenceService(task_id, project_root=repo_root)
+        task_round = int(task_ev.get_current_round() or 0)
+
+        # Determine blocking validator IDs for THIS task (config-driven roster).
+        task_roster = validator_registry.build_execution_roster(
+            task_id=task_id,
+            session_id=session_id,
+            wave=args.wave,
+            extra_validators=extra_validators,
+        )
+
+        # Apply same CLI filtering semantics as roster display.
+        if args.blocking_only:
+            task_roster["triggeredOptional"] = []
+
+        if getattr(args, "validators", None):
+            wanted = set(args.validators or [])
+            for k in ("alwaysRequired", "triggeredBlocking", "triggeredOptional"):
+                task_roster[k] = [v for v in task_roster.get(k, []) if v.get("id") in wanted]
+
+        task_blocking_candidates = (
+            (task_roster.get("alwaysRequired") or [])
+            + (task_roster.get("triggeredBlocking") or [])
+            + (task_roster.get("triggeredOptional") or [])
+        )
+        task_blocking_ids = [v.get("id") for v in task_blocking_candidates if v.get("blocking")]
+        task_blocking_ids = [b for b in task_blocking_ids if isinstance(b, str) and b]
+
+        missing_or_failed: list[str] = []
+        for vid in task_blocking_ids:
+            report = task_ev.read_validator_report(vid, round_num=task_round) if task_round else {}
+            verdict = str((report or {}).get("verdict") or "").strip().lower()
+            if verdict not in approved_verdicts:
+                missing_or_failed.append(vid)
+
+        task_approved = (not missing_or_failed) and bool(task_blocking_ids) and bool(task_round)
+        if not task_approved:
+            cluster_missing[task_id] = missing_or_failed
+
+        tasks_payload.append(
+            {
+                **t,
+                "approved": task_approved,
+                "evidenceRound": task_round,
+                "blockingMissingOrFailed": missing_or_failed,
+            }
+        )
+
+    overall_approved = bool(tasks_payload) and all(bool(t.get("approved")) for t in tasks_payload)
+    missing_flat = sorted({vid for vids in cluster_missing.values() for vid in (vids or []) if vid})
+
+    validators_payload: list[dict[str, object]] = []
+    if execution_result is not None:
+        try:
+            validators_payload = [
+                {"validatorId": v.validator_id, "verdict": v.verdict}
+                for w in execution_result.waves
+                for v in w.validators
+            ]
+        except Exception:
+            validators_payload = []
+
+    bundle_data: dict[str, Any] = {
+        "taskId": args.task_id,
+        "rootTask": args.task_id,
+        "round": int(round_num),
+        "approved": overall_approved,
+        "generatedAt": utc_timestamp(),
+        "tasks": tasks_payload,
+        "validators": validators_payload,
+        "missing": missing_flat,
+        "nonBlockingFollowUps": [],
+    }
+
+    return bundle_data, overall_approved, cluster_missing
+
+
 def _execute_with_executor(
     args: argparse.Namespace,
     repo_root: Path,
     executor: ValidationExecutor,
     formatter: OutputFormatter,
+    session_id: str | None,
     extra_validators: list[dict[str, str]] | None = None,
 ) -> int:
     """Execute validators using the centralized executor."""
@@ -314,7 +481,7 @@ def _execute_with_executor(
     # Execute using centralized executor
     result = executor.execute(
         task_id=args.task_id,
-        session_id=args.session or "cli",
+        session_id=session_id or "cli",
         worktree_path=repo_root,
         wave=args.wave,
         validators=args.validators,
@@ -335,65 +502,24 @@ def _execute_with_executor(
     #   verify per-validator reports in evidence are approved.
     # ---------------------------------------------------------------------
     from edison.core.qa.evidence import EvidenceService
-    from edison.core.utils.time import utc_timestamp
 
     ev = EvidenceService(args.task_id, project_root=repo_root)
     round_num = int(result.round_num or 0)
 
     validator_registry = executor.get_validator_registry()
-    roster = validator_registry.build_execution_roster(
-        task_id=args.task_id,
-        session_id=args.session,
-        wave=args.wave,
+
+    bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
+        args=args,
+        repo_root=repo_root,
+        session_id=session_id,
+        validator_registry=validator_registry,
+        round_num=round_num,
         extra_validators=extra_validators,
+        execution_result=result,
     )
 
-    # Apply same CLI filtering semantics as roster display.
-    if args.blocking_only:
-        roster["triggeredOptional"] = []
-
-    if getattr(args, "validators", None):
-        wanted = set(args.validators or [])
-        for k in ("alwaysRequired", "triggeredBlocking", "triggeredOptional"):
-            roster[k] = [v for v in roster.get(k, []) if v.get("id") in wanted]
-
-    blocking_candidates = (
-        (roster.get("alwaysRequired") or [])
-        + (roster.get("triggeredBlocking") or [])
-        + (roster.get("triggeredOptional") or [])
-    )
-    blocking_ids = [v.get("id") for v in blocking_candidates if v.get("blocking")]
-    blocking_ids = [b for b in blocking_ids if isinstance(b, str) and b]
-
-    approved_verdicts = {"approve", "approved", "pass", "passed"}
-    blocking_missing_or_failed: list[str] = []
-    for vid in blocking_ids:
-        report = ev.read_validator_report(vid, round_num=round_num) if round_num else {}
-        verdict = str((report or {}).get("verdict") or "").strip().lower()
-        if verdict not in approved_verdicts:
-            blocking_missing_or_failed.append(vid)
-
-    all_blocking_approved = (not blocking_missing_or_failed) and bool(blocking_ids)
-
-    # If all blocking validators approved, emit/refresh bundle-approved.json.
-    if all_blocking_approved and round_num:
-        bundle_data = {
-            "taskId": args.task_id,
-            "round": round_num,
-            "approved": True,
-            "generatedAt": utc_timestamp(),
-            # Single-task fallback: embed a per-task approval list for future cluster support.
-            "tasks": [{"taskId": args.task_id, "approved": True}],
-            "validators": [
-                {
-                    "validatorId": v.validator_id,
-                    "verdict": v.verdict,
-                }
-                for w in result.waves
-                for v in w.validators
-            ],
-            "nonBlockingFollowUps": [],
-        }
+    # Always emit/refresh bundle-approved.md for the root task when we have a round.
+    if round_num:
         ev.write_bundle(bundle_data, round_num=round_num)
 
     # Display wave-by-wave results
@@ -401,8 +527,8 @@ def _execute_with_executor(
         formatter.text(f"  Wave: {wave_result.wave}")
 
         for v in wave_result.validators:
-            passed = v.verdict in ("approve", "approved", "pass", "passed")
-            status_icon = "✓" if passed else "✗" if v.verdict in ("reject", "rejected", "error") else "?"
+            passed = v.verdict == "approve"
+            status_icon = "✓" if passed else "✗" if v.verdict in ("reject", "blocked", "error") else "?"
             duration_str = f" ({v.duration:.1f}s)" if v.duration else ""
             formatter.text(f"    {status_icon} {v.validator_id}: {v.verdict}{duration_str}")
 
@@ -432,7 +558,7 @@ def _execute_with_executor(
         formatter.text("The orchestrator/LLM must:")
         formatter.text("  1. Read delegation instructions from: .project/qa/validation-evidence/<task>/round-N/delegation-*.md")
         formatter.text("  2. Execute validation manually using the specified zenRole")
-        formatter.text("  3. Save results to: validator-<id>-report.json")
+        formatter.text("  3. Save results to: validator-<id>-report.md")
         formatter.text("")
         formatter.text("After completing delegated validations:")
         formatter.text(f"  edison qa validate {args.task_id} --execute  # Re-run to check status")
@@ -442,22 +568,24 @@ def _execute_with_executor(
         formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
         formatter.text("")
         formatter.text("Next steps:")
-        formatter.text(f"  edison qa round {args.task_id} --status rejected")
-    elif all_blocking_approved:
+        formatter.text(f"  edison qa round {args.task_id} --status reject")
+    elif overall_approved:
         formatter.text("")
-        formatter.text("All blocking validators approved and bundle-approved.json was written. Next steps:")
+        formatter.text("All blocking validators approved and bundle-approved.md was written. Next steps:")
         formatter.text(f"  edison qa promote {args.task_id} --status done")
-    elif result.delegated_validators or blocking_missing_or_failed:
+    elif result.delegated_validators or cluster_missing:
         formatter.text("")
-        formatter.text("Awaiting blocking validator approvals (some may be delegated).")
-        if blocking_missing_or_failed:
-            formatter.text(f"Missing/insufficient blocking reports: {', '.join(blocking_missing_or_failed)}")
+        formatter.text("Awaiting cluster approvals (some validators may be delegated).")
+        if cluster_missing:
+            for tid, missing in cluster_missing.items():
+                suffix = f": {', '.join(missing)}" if missing else ""
+                formatter.text(f"  - {tid}{suffix}")
 
     # JSON output if requested
     if formatter.json_mode:
         formatter.json_output(result.to_dict())
 
-    return 0 if all_blocking_approved else 1
+    return 0 if overall_approved else 1
 
 
 if __name__ == "__main__":

@@ -18,18 +18,29 @@ class QAConfig(BaseDomainConfig):
     Provides structured access to QA-related configuration with repo_root exposure.
     Extends BaseDomainConfig for consistent caching and repo_root handling.
 
-    Configuration is loaded from:
-    1. Project config: .edison/config/qa.yaml (if exists)
-    2. Bundled defaults: edison.data/config/validators.yaml
+    This domain reads the top-level configuration keys:
+    - ``validation`` (validators, engines, artifact paths, evidence requirements)
+    - ``orchestration`` (validator concurrency, timeouts)
+
+    Edison historically used ``qa`` as a nested config key; the current config
+    layout is top-level and file-oriented (e.g., ``config/validators.yaml``).
     """
 
     def _config_section(self) -> str:
+        # Retained for BaseDomainConfig compatibility; this domain overrides
+        # ``section`` to read from the full merged configuration.
         return "qa"
+
+    @cached_property
+    def section(self) -> dict[str, Any]:
+        """Return the full merged configuration dict for QA-related lookups."""
+        cfg = self._config or {}
+        return cfg if isinstance(cfg, dict) else {}
 
     @cached_property
     def delegation_config(self) -> dict[str, Any]:
         """Return the ``delegation`` section from configuration."""
-        section = self._config.get("delegation", {}) or {}
+        section = self.section.get("delegation", {}) or {}
         return section if isinstance(section, dict) else {}
 
     @cached_property
@@ -39,7 +50,7 @@ class QAConfig(BaseDomainConfig):
         Returns the top-level validation section from ConfigManager,
         which already merges from all sources (bundled defaults, project overrides).
         """
-        section = self._config.get("validation", {}) or {}
+        section = self.section.get("validation", {}) or {}
         return section if isinstance(section, dict) else {}
 
     @cached_property
@@ -49,7 +60,7 @@ class QAConfig(BaseDomainConfig):
         Returns the top-level orchestration section from ConfigManager,
         which already merges from all sources (bundled defaults, project overrides).
         """
-        section = self._config.get("orchestration", {}) or {}
+        section = self.section.get("orchestration", {}) or {}
         return section if isinstance(section, dict) else {}
 
     def get_delegation_config(self) -> dict[str, Any]:

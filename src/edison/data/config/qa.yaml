@@ -9,12 +9,8 @@ validation:
   # are not tied to a specific development session
   defaultSessionId: "validation-session"
 
-  # Required evidence files that must be present in each validation round
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
+  # Required evidence filenames are defined canonically in `config/validators.yaml`
+  # under `validation.requiredEvidenceFiles` to avoid duplication.
 
   # Evidence collection settings
   evidence:
@@ -27,7 +23,7 @@ validation:
       - "command-coderabbit.txt"
       - "context7-*.md"
       - "context7-*.txt"
-      - "validator-*-report.json"
+      - "validator-*-report.md"
 
   # Transaction settings
   transaction:
@@ -43,6 +39,10 @@ orchestration:
 
   # Per-validator timeout (seconds)
   validatorTimeout: 300
+
+  # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
+  # Default is false for safety and test determinism; enable via .edison/config/qa.yaml when desired.
+  allowCliEngines: false
 
   # Execution mode: parallel or sequential
   executionMode: parallel

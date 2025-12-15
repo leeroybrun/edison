@@ -79,16 +79,15 @@ FAIL: mypy --strict: [N] errors
 
 ### 2. Testing (BLOCKING)
 
-**Goal**: Comprehensive tests, no mocks, TDD compliance
+**Goal**: Comprehensive tests with real behavior
 
 **Checks**:
 - All new functions have tests
-- Tests use real objects (NO MOCKS per CLAUDE.md)
+- Tests exercise real behavior (follow core NO MOCKS policy)
 - pytest runs with 100% pass rate
 - No `@pytest.mark.skip` without reason
 - Edge cases covered via parametrize
 - Fixtures use real files/data (tmp_path, etc.)
-- TDD order: test commits before implementation commits
 
 **Evidence Required**: `command-test.txt`
 
@@ -172,21 +171,7 @@ FAIL: Bare except clause found
 
 ### 6. Configuration (NO HARDCODING)
 
-**Goal**: All config from YAML, no magic values
-
-**Checks**:
-- No hardcoded URLs, paths, credentials
-- No magic numbers without named constants
-- Config loaded from YAML files
-- Environment variables for secrets only
-- Config validated at startup
-
-**Output**:
-```
-PASS: No hardcoded values detected
-WARNING: Magic number found at [file:line]
-FAIL: Hardcoded [URL/path/credential] found
-```
+This is covered by core validation (configuration-first) and by critical security validators; keep Python checks focused on Python-specific tooling and patterns.
 
 ---
 
@@ -213,11 +198,7 @@ FAIL: Blocking call in async function: [function_name]
 
 ### 8. Security
 
-**Goal**: No security vulnerabilities
-
-**Checks**:
-- No hardcoded secrets/credentials
-- No SQL string concatenation (use parameterized)
+Security is covered by core/critical validators. If your Python stack uses `bandit` or similar tooling, record findings as advisory (non-blocking) unless policy says otherwise.
 - No eval/exec on user input
 - No pickle on untrusted data
 - subprocess uses shell=False
@@ -383,7 +364,7 @@ FAIL: Circular import detected
 ## Remember
 
 - You are INDEPENDENT - validate objectively
-- NO MOCKS is a critical rule (per CLAUDE.md)
+- NO MOCKS is a critical core rule (mock only system boundaries)
 - mypy --strict is mandatory, not optional
 - Check git diff for scope compliance
 - Production quality means PRODUCTION quality

@@ -22,7 +22,6 @@ from edison.core.config.domains import TaskConfig
 
 from ..models import QARecord
 from .._utils import get_qa_root_path
-import json
 
 
 class QARepository(
@@ -133,19 +132,10 @@ class QARepository(
         # surface an actionable error instead of pretending the QA doesn't exist.
         content = path.read_text(encoding="utf-8", errors="strict")
         if not has_frontmatter(content):
-            legacy_markers = (
-                "<!-- Task:",
-                "<!-- TaskID:",
-                "<!-- Round:",
-                "<!-- Validator:",
-                "<!-- EvidenceDir:",
+            raise PersistenceError(
+                f"QA file at {path} is missing YAML frontmatter. "
+                "Restore the file from TEMPLATE.md or recreate the QA via `edison qa new <task-id>`."
             )
-            if any(m in content for m in legacy_markers):
-                raise PersistenceError(
-                    f"Legacy QA format detected at {path}. "
-                    "Run `edison migrate task-frontmatter --repo-root <project-root>` to convert tasks/QA to YAML frontmatter."
-                )
-            return None
 
         try:
             return self._parse_qa_markdown(path.stem, content, path)
@@ -195,7 +185,7 @@ class QARepository(
         """Advance QA record to a new state using proper state machine validation.
         
         This is a HIGH-LEVEL workflow method that moves QA between states.
-        Uses transition_entity() to ensure guards and actions are executed.
+        Uses repository.transition() to ensure guards and actions are executed.
         
         Args:
             qa_id: QA record identifier
@@ -208,57 +198,57 @@ class QARepository(
         Raises:
             PersistenceError: If QA not found or transition not allowed
         """
-        from edison.core.state.transitions import transition_entity, EntityTransitionError
-        from edison.core.entity import StateHistoryEntry
-        
         qa = self.get(qa_id)
         if not qa:
             raise PersistenceError(f"QA record not found: {qa_id}")
-            
-        old_state = qa.state
-        
-        # Use transition_entity to validate guards and execute actions
-        try:
-            result = transition_entity(
-                entity_type="qa",
-                entity_id=qa_id,
-                to_state=new_state,
-                current_state=old_state,
-                context={
-                    "qa": {"id": qa_id, "task_id": qa.task_id, "state": old_state},
-                    "session": {"id": session_id} if session_id else {},
-                    "session_id": session_id,
-                },
-            )
-            
-            # Update QA with transition result
-            qa.state = result["state"]
+
+        context = {
+            "qa": {"id": qa_id, "task_id": qa.task_id, "state": qa.state},
+            "session": {"id": session_id} if session_id else {},
+            "session_id": session_id,
+            "entity_type": "qa",
+            "entity_id": qa_id,
+        }
+
+        def _mutate(q: QARecord) -> None:
             if session_id:
-                qa.session_id = session_id
-            if "history_entry" in result:
-                entry = StateHistoryEntry.from_dict(result["history_entry"])
-                qa.state_history.append(entry)
-                
-        except EntityTransitionError as e:
+                q.session_id = session_id
+
+        try:
+            return self.transition(
+                qa_id,
+                new_state,
+                context=context,
+                reason="qa.advance_state",
+                mutate=_mutate,
+            )
+        except Exception as e:
             raise PersistenceError(f"Transition not allowed: {e}") from e
-        
-        self.save(qa)
-        
-        return qa
     
     # ---------- Query Implementation ----------
 
     def _do_list_by_state(self, state: str) -> List[QARecord]:
-        """List QA records in a given state."""
-        state_dir = self._get_state_dir(state)
-        if not state_dir.exists():
-            return []
-        
+        """List QA records in a given state (global + session directories)."""
         records: List[QARecord] = []
-        for path in state_dir.glob(f"*{self.file_extension}"):
-            qa = self._load_qa_from_file(path)
-            if qa:
-                records.append(qa)
+
+        # 1) Global QA directory
+        state_dir = self._get_state_dir(state)
+        if state_dir.exists():
+            for path in state_dir.glob(f"*{self.file_extension}"):
+                qa = self._load_qa_from_file(path)
+                if qa:
+                    records.append(qa)
+
+        # 2) Session QA directories
+        for base in self._get_session_bases():
+            session_state_dir = base / self.record_subdir / state
+            if not session_state_dir.exists():
+                continue
+            for path in session_state_dir.glob(f"*{self.file_extension}"):
+                qa = self._load_qa_from_file(path)
+                if qa:
+                    records.append(qa)
+
         return records
     
     def _do_list_all(self) -> List[QARecord]:
@@ -297,7 +287,7 @@ class QARepository(
 
         Args:
             qa_id: QA record identifier
-            status: Status for this round (e.g., "approved", "rejected", "pending")
+            status: Status for this round (canonical: approve|reject|blocked|pending)
             notes: Optional notes for this round (e.g., validator names)
             create_evidence_dir: Whether to create evidence directory (default True)
 
@@ -435,9 +425,6 @@ class QARepository(
         """Parse QA record from markdown content with YAML frontmatter.
 
         State is ALWAYS derived from directory location, never from file content.
-        
-        NOTE: Only YAML frontmatter format is supported. Legacy HTML comment
-        format must be migrated using `edison migrate task_frontmatter`.
 
         Args:
             qa_id: QA ID from filename
@@ -458,8 +445,7 @@ class QARepository(
         # Parse YAML frontmatter (only supported format)
         if not has_frontmatter(content):
             raise ValueError(
-                f"QA record {qa_id} does not have YAML frontmatter. "
-                "Run `edison migrate task_frontmatter` to convert legacy files."
+                f"QA record {qa_id} does not have YAML frontmatter."
             )
 
         doc = parse_frontmatter(content)

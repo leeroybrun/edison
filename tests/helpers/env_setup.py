@@ -55,9 +55,6 @@ def setup_test_environment(
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(project_root))
     monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
 
-    # Also set legacy variable names for compatibility
-    monkeypatch.setenv("project_ROOT", str(project_root))
-
     # Set any additional environment variables
     if additional_env:
         for key, value in additional_env.items():
@@ -99,8 +96,7 @@ def setup_session_environment(
         monkeypatch,
         project_root,
         additional_env={
-            "project_SESSION": session_id,
-            "EDISON_SESSION_ID": session_id,
+            "AGENTS_SESSION": session_id,
         }
     )
 
@@ -125,6 +121,6 @@ def setup_task_environment(
     """
     env = {"TASK_ID": task_id}
     if session_id:
-        env["project_SESSION"] = session_id
+        env["AGENTS_SESSION"] = session_id
 
     setup_test_environment(monkeypatch, project_root, additional_env=env)

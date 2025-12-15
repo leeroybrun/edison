@@ -9,8 +9,8 @@ import pytest
 
 from edison.core.rules import RulesEngine, RuleViolationError
 from tests.helpers import format_round_dir, create_round_dir
-from tests.helpers.io_utils import write_json
 from tests.helpers.env_setup import setup_project_root
+from edison.core.utils.text import format_frontmatter
 
 
 def _create_config(require: bool = True, max_age_days: int = 7) -> dict:
@@ -39,16 +39,17 @@ def _report_path(task_id: str, round_no: int = 1) -> Path:
         Path(".project/qa/validation-evidence")
         / task_id
         / format_round_dir(round_no)
-        / "bundle-approved.json"
+        / "bundle-approved.md"
     ).resolve()
 
 
 def _write_bundle(path: Path, payload: dict | None = None, *, approved: bool = True) -> None:
-    """Helper to write a bundle-approved.json file."""
+    """Helper to write a bundle-approved.md file."""
     data = dict(payload or {})
     # approved flag always wins if explicitly passed
     data.setdefault("approved", bool(approved))
-    write_json(path, data)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(format_frontmatter(data) + "\n# Bundle Approval\n", encoding="utf-8")
 
 
 def test_validator_approval_passes_with_explicit_recent_report(tmp_path: Path):
@@ -82,7 +83,7 @@ def test_validator_approval_blocks_when_missing_evidence_directory(tmp_path: Pat
 
 
 def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Evidence round exists but bundle-approved.json missing → blocks with clear message."""
+    """Evidence round exists but bundle-approved.md missing → blocks with clear message."""
     task_id = "VAL-NO-BUNDLE"
 
     monkeypatch.chdir(tmp_path)
@@ -90,7 +91,7 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
-    assert not (round_dir / "bundle-approved.json").exists()
+    assert not (round_dir / "bundle-approved.md").exists()
 
     engine = RulesEngine(_create_config(require=True))
     task = {"id": task_id}
@@ -99,12 +100,12 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
         engine.check_state_transition(task, "done", "validated")
 
     msg = str(exc.value).lower()
-    assert "bundle-approved.json" in msg
+    assert "bundle-approved.md" in msg
     assert "missing" in msg or "incomplete" in msg
 
 
 def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Old bundle-approved.json beyond maxAgeDays should block as expired."""
+    """Old bundle-approved.md beyond maxAgeDays should block as expired."""
     task_id = "VAL-003"
 
     monkeypatch.chdir(tmp_path)
@@ -112,7 +113,7 @@ def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch:
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
-    rpt = round_dir / "bundle-approved.json"
+    rpt = round_dir / "bundle-approved.md"
     _write_bundle(rpt, approved=True)
 
     # Set mtime to 2 days ago and require maxAgeDays=1
@@ -137,7 +138,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 1)
-    rpt = round_dir / "bundle-approved.json"
+    rpt = round_dir / "bundle-approved.md"
 
     failing_bundle = {
         "taskId": task_id,
@@ -166,7 +167,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
 
 
 def test_validator_approval_allows_when_bundle_approved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """bundle-approved.json with approved=true should allow transition via implicit lookup."""
+    """bundle-approved.md with approved=true should allow transition via implicit lookup."""
     task_id = "VAL-IMPLICIT-APPROVED"
 
     monkeypatch.chdir(tmp_path)
@@ -174,7 +175,7 @@ def test_validator_approval_allows_when_bundle_approved(tmp_path: Path, monkeypa
 
     base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
     round_dir = create_round_dir(base, 2)
-    rpt = round_dir / "bundle-approved.json"
+    rpt = round_dir / "bundle-approved.md"
     _write_bundle(rpt, approved=True)
 
     engine = RulesEngine(_create_config(require=True))
@@ -194,8 +195,8 @@ def test_validator_approval_uses_latest_round_directory(tmp_path: Path, monkeypa
     round1 = create_round_dir(base, 1)
     round3 = create_round_dir(base, 3)
 
-    rpt1 = round1 / "bundle-approved.json"
-    rpt3 = round3 / "bundle-approved.json"
+    rpt1 = round1 / "bundle-approved.md"
+    rpt3 = round3 / "bundle-approved.md"
     _write_bundle(rpt1, approved=False)
     _write_bundle(rpt3, approved=True)
 

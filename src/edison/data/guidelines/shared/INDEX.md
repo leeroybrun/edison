@@ -33,7 +33,7 @@
 ### For Agents
 - **`guidelines/agents/COMMON.md`** - Shared agent workflow, Context7 usage, TDD requirements
 - **`guidelines/agents/MANDATORY_WORKFLOW.md`** - Claim-Implement-Ready cycle, implementation steps
-- **`guidelines/agents/OUTPUT_FORMAT.md`** - Implementation report JSON format
+- **`guidelines/agents/OUTPUT_FORMAT.md`** - Implementation report frontmatter format
 - **`guidelines/agents/VALIDATION_AWARENESS.md`** - Why validation matters, how to pass first try
 - **`guidelines/agents/DELEGATION_AWARENESS.md`** - Delegation rules, MISMATCH pattern, never re-delegate
 - **`guidelines/agents/AGENT_WORKFLOW.md`** - Detailed agent workflow steps
@@ -42,7 +42,7 @@
 ### For Validators
 - **`guidelines/validators/VALIDATOR_COMMON.md`** - Shared validator rules
 - **`guidelines/validators/VALIDATOR_WORKFLOW.md`** - Intake→Execute→Verdict→Report→Handoff workflow
-- **`guidelines/validators/OUTPUT_FORMAT.md`** - Validator report JSON format
+- **`guidelines/validators/OUTPUT_FORMAT.md`** - Validator report frontmatter format
 - **`guidelines/validators/EDISON_CLI.md`** - Edison CLI commands for validators
 
 ### For Orchestrators

@@ -1,0 +1,14 @@
+id: FILE_PATTERN.VITEST_TESTING
+title: Test files trigger the testing validator (Vitest)
+blocking: true
+severity: error
+patterns:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/test/**"
+  - "**/tests/**"
+validators:
+  - testing
+rationale: >-
+  Test changes must be validated to enforce meaningful assertions, determinism, and regression protection.
+

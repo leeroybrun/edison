@@ -163,36 +163,26 @@ def list_recoverable_sessions() -> list[Path]:
 
 
 def resume_from_recovery(recovery_dir: Path) -> Path:
-    """Move a session from ``recovery`` back to ``active``.
+    """Resume a session from ``recovery`` back to semantic ``active``.
 
-    This is a lightweight helper used by tests to validate that sessions
-    can resume after timeout handling. It operates purely on the on-disk
-    layout:
-
-        .project/sessions/recovery/<sid>/session.json
-        → .project/sessions/active/<sid>/session.json
-
-    and rewrites the ``state`` field to ``Active``.
+    This helper is primarily used by tests. It uses the canonical session
+    repository + state machine, so directory mapping (e.g., active → wip)
+    and state history remain consistent.
     """
     rec_dir = Path(recovery_dir).resolve()
     if not rec_dir.exists():
         raise FileNotFoundError(f"Recovery directory not found: {rec_dir}")
 
     sid = rec_dir.name
-    sessions_root = rec_dir.parent.parent  # .../.project/sessions
-    active_root = sessions_root / "active"
-    io_utils.ensure_directory(active_root)
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.config.domains.workflow import WorkflowConfig
 
-    dest_dir = active_root / sid
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir)
-    shutil.move(str(rec_dir), str(dest_dir))
-
-    sess_json = dest_dir / "session.json"
-    payload = io_utils.read_json(sess_json, default={})
-    if not isinstance(payload, dict):
-        payload = {}
-
-    payload["state"] = "Active"
-    io_utils.write_json_atomic(sess_json, payload, ensure_ascii=False)
-    return dest_dir
+    repo = SessionRepository()
+    active_state = WorkflowConfig().get_semantic_state("session", "active")
+    updated = repo.transition(
+        sid,
+        active_state,
+        context={"session_id": sid, "session": (repo.get(sid).to_dict() if repo.get(sid) else {})},
+    )
+    # Return the session directory containing session.json.
+    return repo.get_session_json_path(updated.id).parent

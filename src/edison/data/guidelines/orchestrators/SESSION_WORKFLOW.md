@@ -5,13 +5,15 @@
 
 Canonical path: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
 
-This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`. From this point on, every action revolves around the tasks and QA briefs listed in that session file.
+This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`.
+
+Session JSON stores **session metadata only** (state, owner, timestamps, git info, activity log). Tasks and QA briefs are the single source of truth and are discovered by scanning task/QA frontmatter (session_id) and by the session-scoped directories under `.project/sessions/<state>/<session-id>/`.
 
 ## CLI naming (dispatcher + auto-start)
 - Orchestration is driven by the loop driver: `edison session next <session-id>`.
 - Session records are created with `edison session create [--session-id <id>]` (manual; ID auto-infers if omitted) or by launching an orchestrator process via `edison orchestrator start` (end-to-end).
 - Prompt templates for the current role/session are injected automatically by the launcher; do not hand-edit rendered prompts.
-- Set the project owner environment variable (`<PROJECT>_OWNER`) if your orchestration layer expects it for default session ownership.
+- If your orchestration layer expects defaults, set the configured owner env var (from `.edison/config/project.yml`) {{if:config(project.owner_env_var)}}— e.g. `{{config.project.owner_env_var}}`{{/if}} and optionally a session env var.
 
 ## Worktree isolation (new)
 - Sessions operate from an isolated git worktree created under `../${PROJECT}-worktrees/<session-id>/`.
@@ -55,7 +57,7 @@ Session state names map to on-disk directories as follows:
 
 ## Quick checklist (fail-closed) - ORCHESTRATOR
 
-- [ ] Session record in `.project/sessions/wip/` (active) is current (Owner, Last Active, task & QA scope, Activity Log).
+- [ ] Session record in `.project/sessions/wip/` (active) is current (Owner, Last Active, Activity Log).
 - [ ] Every claimed task has a matching QA brief (in `qa/waiting|todo|wip|done`).
 - [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
@@ -100,7 +102,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 ### Hierarchy & State Machine
 
-- Session files now live in `.project/sessions/<state>/<session>.json` and store every parent/child relationship plus QA linkage. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the Markdown view for humans/LLMs.
+- Session files now live in `.project/sessions/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the view for humans/LLMs.
 <!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
@@ -177,7 +179,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
    ```
 
 4. **When sub-agent reports back:**
-   - Review their implementation report at `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.json`
+   - Review their implementation report at `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.md`
    - Check for blockers, follow-ups, completion status
    - Store `continuation_id` in task file and session record
 
@@ -218,7 +220,7 @@ edison task ready <task-id> --session <session-id>
 ```
 
 This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
-- ✅ The latest round contains a non-empty implementation report (`implementation-report.json` by default; config-driven)
+- ✅ The latest round contains a non-empty implementation report (`implementation-report.md` by default; config-driven)
 - ✅ Automation evidence files exist per project config (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`)
 - ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
 - ✅ QA brief is ready to move `waiting → todo` once the task is `done`
@@ -403,7 +405,7 @@ edison session verify <session-id>
 **When all validators report back:**
 
 1. **Read each validator report:**
-   - `.project/qa/validation-evidence/<task-id>/round-1/validator-<id>-report.json`
+   - `.project/qa/validation-evidence/<task-id>/round-1/validator-<id>-report.md`
 
 2. **Check verdicts:**
    - ✅ `approve` - Validator passed the task
@@ -449,24 +451,24 @@ edison session verify <session-id>
 ## Validator Findings & Verdicts
 
 ### Global Validator 1 ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.json`
+- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.md`
 - Verdict: Approve
 - Summary: Excellent implementation quality...
 
 ### Global Validator 2 ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.json`
+- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.md`
 - Verdict: Approve
 - Summary: Strong TDD compliance...
 
 ### Security ❌ REJECTED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-security-report.json`
+- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-security-report.md`
 - Verdict: Reject
 - Summary: Critical issue found - missing rate limiting...
 - Blocking Issues: 2 (1 critical, 1 high)
 - Follow-Ups: Task <id> created for rate limiting
 
 ### Performance ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-performance-report.json`
+- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-performance-report.md`
 - Verdict: Approve
 - Summary: No performance concerns...
 

@@ -1,10 +1,49 @@
 # Validator Output Format
 
-**Single Source of Truth**: All validators MUST use this standardized Markdown format.
+Validators MUST produce a **structured validator report** for every validation run/round. This is the canonical structured input for:
+- QA promotion guards (bundle approval)
+- `edison qa validate` aggregation
+- auditability and re-validation rounds
+
+Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-readable frontmatter).
 
 ---
 
-## Universal Report Template
+## Report File (REQUIRED): Markdown + YAML frontmatter
+
+**Schema (single source of truth)**:
+- `.edison/_generated/schemas/reports/validator-report.schema.json`
+
+**Location (per round)**:
+- `.project/qa/validation-evidence/<task-id>/round-<N>/validator-<validatorId>-report.md`
+
+**Minimal expected frontmatter (illustrative)**:
+```yaml
+---
+taskId: "TASK-123"
+round: 1
+validatorId: "security"
+model: "codex"
+verdict: "approve" # approve | reject | blocked | pending
+summary: "All checks pass; no blocking issues found."
+findings: []
+tracking:
+  processId: 12345
+  startedAt: "2025-11-24T12:00:00Z"
+  completedAt: "2025-11-24T12:10:00Z"
+---
+```
+
+**Critical rules**
+- The `model` field is mandatory and MUST match the validator’s configured engine/model binding (see `validation.validators` in merged config).
+- The `tracking.*` fields are mandatory; start/complete tracking via the configured Edison tracking commands, do not fabricate timestamps.
+- On rejection, append a new round directory (`round-<N+1>/`) and a new “Round N” section in the QA brief; never overwrite previous round reports.
+
+---
+
+## Markdown Body (RECOMMENDED)
+
+After the frontmatter, include a short Markdown body for humans. For example:
 
 ```markdown
 # {Validator Name} Validation Report
@@ -27,6 +66,8 @@
 | Lint | <lint-command> | ✅ PASS / ❌ FAIL |
 | Tests | <test-command> | ✅ PASS / ❌ FAIL |
 | Build | <build-command> | ✅ PASS / ❌ FAIL / N/A |
+
+Reference the round evidence files (command-*.txt, context7-*.txt, validator-*-report.md, etc).
 
 ---
 

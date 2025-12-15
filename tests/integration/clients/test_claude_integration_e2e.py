@@ -61,8 +61,8 @@ class TestClaudeIntegrationE2E:
         _bootstrap_minimal_project(root)
 
         # Generated Edison artifacts
-        write_generated_agent(root, "api-builder", base_dir=".agents")
-        write_generated_agent(root, "component-builder-nextjs", base_dir=".agents")
+        write_generated_agent(root, "api-builder")
+        write_generated_agent(root, "component-builder-nextjs")
         write_orchestrator_manifest(
             root,
             agents={
@@ -70,7 +70,6 @@ class TestClaudeIntegrationE2E:
                 "specialized": ["api-builder", "component-builder-nextjs"],
                 "project": [],
             },
-            base_dir=".agents"
         )
         # Minimal orchestrator constitution (replaces ORCHESTRATOR_GUIDE.md - T-011)
         constitutions_dir = root / ".agents" / "_generated" / "constitutions"
@@ -134,8 +133,8 @@ class TestClaudeIntegrationE2E:
         root = isolated_project_env
         _bootstrap_minimal_project(root)
 
-        write_generated_agent(root, "feature-implementer", base_dir=".agents")
-        write_orchestrator_manifest(root, agents={"generic": ["feature-implementer"], "specialized": [], "project": []}, base_dir=".agents")
+        write_generated_agent(root, "feature-implementer")
+        write_orchestrator_manifest(root, agents={"generic": ["feature-implementer"], "specialized": [], "project": []})
 
         claude_dir = root / ".claude"
         claude_dir.mkdir(parents=True, exist_ok=True)

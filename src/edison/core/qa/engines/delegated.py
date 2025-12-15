@@ -186,7 +186,7 @@ class ZenMCPEngine:
             "2. Review the code changes in the worktree",
             "3. Apply the validation criteria to the changes",
             "4. Produce a validation report with:",
-            "   - Verdict: APPROVED / REJECTED / BLOCKED",
+            "   - Verdict: approve / reject / blocked",
             "   - Findings: List of issues found",
             "   - Strengths: Positive aspects of the implementation",
             "   - Summary: Overall assessment",
@@ -194,7 +194,7 @@ class ZenMCPEngine:
             "## Expected Output",
             "",
             "Save the validation report to:",
-            f"`validator-{validator.id}-report.json`",
+            f"`validator-{validator.id}-report.md`",
             "",
         ])
 
@@ -232,4 +232,3 @@ class ZenMCPEngine:
 
 
 __all__ = ["ZenMCPEngine"]
-

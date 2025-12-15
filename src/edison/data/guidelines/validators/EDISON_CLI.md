@@ -40,7 +40,7 @@ edison qa validate TASK-123 --session sess-001
 ```
 
 **Input location**: `.project/qa/validation-evidence/<task-id>/round-N/`
-**Output**: `bundle-approved.json` or validation error report
+**Output**: `bundle-approved.md` or validation error report
 
 ---
 
@@ -92,56 +92,23 @@ edison qa round <task-id> --status <status>
 **When to use**: After running validation checks
 
 **Statuses:**
-- `approved` - All checks pass
-- `needs-work` - Issues found, requires fixes
-- `blocked` - Blocking issues prevent progression
+- `approve` - All checks pass
+- `reject` - Issues found, requires fixes
+- `blocked` - Validation could not be completed (missing access, tool failure, etc.)
+- `pending` - Round in progress
 
 **Example:**
 ```bash
-edison qa round TASK-123 --status approved
+edison qa round TASK-123 --status approve
 ```
 
 ---
 
 ## Validation Report Format
 
-Validators produce JSON reports in this structure:
-
-**Location**: `.project/qa/validation-evidence/<task-id>/round-N/<validator-name>.json`
-
-**Required fields:**
-```json
-{
-  "validator": "<validator-name>",
-  "task_id": "TASK-123",
-  "round": 1,
-  "timestamp": "2025-11-24T12:00:00Z",
-  "status": "approved",
-  "model": "<model-name>",
-  "continuationId": "CONT-abc123",
-  "issues": [
-    {
-      "severity": "blocking",
-      "category": "testing",
-      "description": "Missing test coverage for edge cases",
-      "file": "src/utils/validator.<ext>",
-      "line": 45,
-      "suggestion": "Add tests for null and undefined inputs"
-    }
-  ],
-  "summary": "Code quality is good. Identified 1 blocking issue requiring attention.",
-  "metrics": {
-    "files_reviewed": 8,
-    "issues_found": 1,
-    "test_coverage": 85.5
-  }
-}
-```
-
-**Issue severities:**
-- `blocking` - Must be fixed before promotion
-- `warning` - Should be fixed, not blocking
-- `advisory` - Nice to have, optional
+Validator report format is defined in:
+- `guidelines/validators/OUTPUT_FORMAT.md` (canonical human + JSON requirements)
+- `.edison/_generated/schemas/reports/validator-report.schema.json` (exact JSON schema)
 
 ---
 
@@ -189,7 +156,7 @@ Validators produce JSON reports in this structure:
 # 1. Check task is ready for validation
 edison task status TASK-123
 
-# Task should be in 'done' state with implementation-report.json
+# Task should be in 'done' state with implementation-report.md
 
 # 2. Inspect validation bundle
 edison qa bundle TASK-123
@@ -202,13 +169,13 @@ edison qa validate TASK-123
 # This checks all required validator reports exist
 
 # 4. If issues found, record round status
-edison qa round TASK-123 --status needs-work
+edison qa round TASK-123 --status reject
 
 # 5. After fixes, re-validate
 edison qa validate TASK-123 --round 2
 
 # 6. Record approval
-edison qa round TASK-123 --status approved
+edison qa round TASK-123 --status approve
 
 # 7. Orchestrator promotes QA to validated
 # (validators don't do this - orchestrator does)
@@ -227,7 +194,7 @@ edison qa validate TASK-123 --session sess-001
 
 # Validates parent + all children
 
-# 3. Output: bundle-approved.json
+# 3. Output: bundle-approved.md
 # Contains aggregated validation status for all tasks
 ```
 
@@ -242,7 +209,7 @@ edison qa validate TASK-123 --round 1
 # Round 2: Re-validate after fixes
 edison qa validate TASK-123 --round 2
 
-# Continue until approved
+# Continue until approve
 ```
 
 ---
@@ -250,8 +217,8 @@ edison qa validate TASK-123 --round 2
 ## Output Locations
 
 **Validator reports**: `.project/qa/validation-evidence/<task-id>/round-N/<validator>.json`
-**Bundle summary**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.json`
-**Implementation report**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.json`
+**Bundle summary**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.md`
+**Implementation report**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.md`
 
 ---
 
@@ -302,7 +269,7 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active 
 3. **Use correct severities**: Reserve `blocking` for critical issues
 4. **Write clear summaries**: Help developers understand findings
 5. **Track continuations**: Use `continuationId` for multi-round validation
-6. **Check all evidence**: Review implementation-report.json first
+6. **Check all evidence**: Review implementation-report.md first
 7. **Validate bundles holistically**: Check integration, not just individual tasks
 
 ---

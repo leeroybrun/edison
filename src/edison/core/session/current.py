@@ -1,15 +1,15 @@
-"""Current session tracking with worktree-awareness.
+"""Current session tracking with worktree-aware persistence.
 
-Resolution priority:
-1. If in worktree: Read from .project/.session-id file
-2. Fallback: auto_session_for_owner() (PID-based inference)
+Session ID resolution is delegated to the canonical resolver
+`edison.core.session.core.id.detect_session_id`, which uses this priority:
+1. `AGENTS_SESSION` environment variable (must exist)
+2. Worktree `.project/.session-id` file (must exist)
+3. Process-derived `{process}-pid-{pid}` lookup (must exist)
+4. Owner-based active session lookup (best-effort)
 
 Persistence:
-- Only persists in worktree mode (isolated directories)
-- Non-worktree mode: no file storage (concurrent session safety)
-
-This module provides a unified entry point for session ID resolution
-that is aware of the execution context (worktree vs non-worktree).
+- Only persists in worktree mode via `.project/.session-id`
+- Non-worktree mode: no file storage (safe for concurrent sessions)
 """
 from __future__ import annotations
 
@@ -62,22 +62,11 @@ def _get_session_id_file() -> Optional[Path]:
 
 
 def _read_session_id_file(path: Path) -> Optional[str]:
-    """Read session ID from file.
-    
-    Args:
-        path: Path to the session ID file.
-        
-    Returns:
-        Session ID string, or None if file is empty or unreadable.
-    """
+    """Deprecated internal helper (kept for backward compatibility in tests)."""
     try:
         content = path.read_text(encoding="utf-8").strip()
-        if content:
-            # Validate the stored session ID
-            return validate_session_id(content)
-        return None
-    except (OSError, SessionIdError) as exc:
-        logger.debug("Failed to read session ID file %s: %s", path, exc)
+        return validate_session_id(content) if content else None
+    except (OSError, SessionIdError):
         return None
 
 
@@ -117,70 +106,16 @@ def _delete_session_id_file(path: Path) -> None:
         logger.warning("Failed to delete session ID file %s: %s", path, exc)
 
 
-def _session_exists(session_id: str) -> bool:
-    """Check if a session exists.
-
-    Args:
-        session_id: Session ID to check.
-
-    Returns:
-        True if the session exists.
-    """
-    try:
-        from .persistence.repository import SessionRepository
-        repo = SessionRepository()
-        return repo.exists(session_id)
-    except (FileNotFoundError, OSError) as e:
-        logger.debug("Failed to check session existence for %s: %s", session_id, e)
-        return False
-    except ValueError as e:
-        logger.warning("Invalid session ID %s: %s", session_id, e)
-        return False
-
-
-def _auto_session_for_owner() -> Optional[str]:
-    """Get session ID using PID-based inference.
-
-    Returns:
-        Session ID from process tree inference, or None.
-    """
-    try:
-        from .persistence.repository import SessionRepository
-        from edison.core.utils.process import get_current_owner
-        from edison.core.config.domains.session import SessionConfig
-        
-        repo = SessionRepository()
-        owner = get_current_owner()
-        sessions = repo.find_by_owner(owner)
-        
-        # Get active session state from config (lookup order indicates priority)
-        session_cfg = SessionConfig()
-        lookup_order = session_cfg.get_session_lookup_order()
-        # First state in lookup order is typically the active "wip" state
-        active_state = lookup_order[0] if lookup_order else "wip"
-        
-        # Return first session in active state
-        for sess in sessions:
-            if sess.state == active_state:
-                return sess.id
-        return None
-    except (FileNotFoundError, OSError) as e:
-        logger.debug("Failed to infer session from process tree: %s", e)
-        return None
-    except ValueError as e:
-        logger.warning("Invalid session data during inference: %s", e)
-        return None
-
-
 def get_current_session() -> Optional[str]:
     """Get current session ID with worktree-aware resolution.
     
     Resolution priority:
-    1. If in worktree: Read from .project/.session-id file (if exists and valid)
-    2. Fallback: auto_session_for_owner() (PID-based inference from process tree)
+    1. AGENTS_SESSION environment variable (canonical)
+    2. Worktree `.project/.session-id` file (if exists and valid)
+    3. Process-derived `{process}-pid-{pid}` lookup (if exists)
     
     In worktree mode, the file enables crash recovery and session resume.
-    In non-worktree mode, only PID-based inference is used (safe for concurrent sessions).
+    In non-worktree mode, no file storage is used (safe for concurrent sessions).
     
     Returns:
         Current session ID, or None if unable to determine.
@@ -192,27 +127,15 @@ def get_current_session() -> Optional[str]:
         ... else:
         ...     print("No current session found")
     """
-    # 1. Check if we're in a worktree - try file-based resolution first
-    if _is_in_worktree():
-        session_id_file = _get_session_id_file()
-        if session_id_file and session_id_file.exists():
-            stored_id = _read_session_id_file(session_id_file)
-            if stored_id:
-                # Validate the stored session still exists
-                if _session_exists(stored_id):
-                    logger.debug("Using stored session ID from file: %s", stored_id)
-                    return stored_id
-                else:
-                    logger.debug(
-                        "Stored session ID %s no longer exists, falling back to inference",
-                        stored_id,
-                    )
-    
-    # 2. Fallback to process-based inference
-    inferred_id = _auto_session_for_owner()
-    if inferred_id:
-        logger.debug("Using inferred session ID from process tree: %s", inferred_id)
-    return inferred_id
+    try:
+        from edison.core.session.core.id import detect_session_id
+        from edison.core.utils.paths import PathResolver
+
+        root = PathResolver.resolve_project_root()
+        # get_current_session() is intended to return an existing session for scoping.
+        return detect_session_id(project_root=root)
+    except Exception:
+        return None
 
 
 def set_current_session(session_id: str) -> None:
@@ -240,8 +163,30 @@ def set_current_session(session_id: str) -> None:
     if not _is_in_worktree():
         raise SessionError(
             "Cannot set current session outside of a worktree. "
-            "In non-worktree mode, session ID is inferred from the process tree. "
+            "Outside worktrees, session scoping should use AGENTS_SESSION. "
             "Use worktrees for persistent session tracking, or pass --session explicitly.",
+            context={"session_id": session_id},
+        )
+
+    # Fail closed: only allow setting a session that already exists in this project.
+    # Sessions must be created via `edison session create` first.
+    try:
+        from edison.core.utils.paths import PathResolver
+        from .persistence.repository import SessionRepository
+
+        root = PathResolver.resolve_project_root()
+        repo = SessionRepository(project_root=root)
+        if not repo.exists(session_id):
+            raise SessionError(
+                f"Session not found: {session_id}",
+                context={"session_id": session_id, "project_root": str(root)},
+            )
+    except SessionError:
+        raise
+    except Exception:
+        # If project root / repository cannot be resolved, treat it as unsafe.
+        raise SessionError(
+            "Unable to verify session exists; refusing to set current session",
             context={"session_id": session_id},
         )
     

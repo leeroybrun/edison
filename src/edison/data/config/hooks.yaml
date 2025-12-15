@@ -34,13 +34,10 @@ hooks:
       description: "Inject rules for current task state"
       template: "inject-task-rules.sh.template"
       config:
-        # Only inject when these file types in context
+        # Core must remain tech-agnostic. Packs/projects may narrow this.
+        # "*" means the hook can apply regardless of stack (if enabled/configured).
         file_patterns:
-          - "*.ts"
-          - "*.tsx"
-          - "*.js"
-          - "*.jsx"
-          - "*.py"
+          - "*"
         # Rules by task state
         rules_by_state:
           todo: []
@@ -119,17 +116,14 @@ hooks:
       type: PostToolUse
       hook_type: command
       matcher: "Write|Edit"
-      enabled: true
+      enabled: false
       blocking: false
       description: "Auto-format code after modifications"
       template: "auto-format.sh.template"
       config:
-        tools: [prettier, eslint]
-        file_patterns:
-          - "*.ts"
-          - "*.tsx"
-          - "*.js"
-          - "*.jsx"
+        # Core is tech-agnostic. Packs/projects provide formatter tools and file patterns.
+        tools: []
+        file_patterns: []
 
     # ===== Session Lifecycle Hooks =====
 

@@ -102,24 +102,6 @@ def has_implementation_report(ctx: Mapping[str, Any]) -> bool:
     return can_finish_task(ctx)
 
 
-def has_blockers(ctx: Mapping[str, Any]) -> bool:
-    """Check if task has blockers preventing progress.
-    
-    FAIL-CLOSED: Returns False if no blockers can be determined.
-    
-    Args:
-        ctx: Context with 'task' dict
-        
-    Returns:
-        True if task has blockers
-    """
-    task = ctx.get("task")
-    if not isinstance(task, Mapping):
-        return False  # FAIL-CLOSED: can't determine blockers
-    
-    return bool(task.get("blocked") or task.get("blockers"))
-
-
 def requires_rollback_reason(ctx: Mapping[str, Any]) -> bool:
     """Check if task has rollback reason for done->wip transition.
     

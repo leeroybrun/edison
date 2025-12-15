@@ -45,7 +45,6 @@ settings:
       ask:
         - "Bash(git push:*)"
         - "Bash(git tag:*)"
-        - "Bash(npm publish:*)"
         - "Bash(docker push:*)"
 
     # Environment variables

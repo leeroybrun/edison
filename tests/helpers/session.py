@@ -61,7 +61,7 @@ def transition_state(
 
     mgr = SessionManager()
     try:
-        mgr.transition_state(str(session_id), to_state)
+        mgr.transition_state(str(session_id), to_state, reason=reason)
         return True
     except Exception:
         return False
@@ -100,12 +100,9 @@ def get_session_state(session_dir: Path) -> str:
 
 def handle_timeout(session_dir: Path) -> Path:
     """Move a session to recovery state on timeout."""
-    sess_dir = Path(session_dir).resolve()
-    sid = sess_dir.name
-    mgr = SessionManager()
-    mgr.transition_state(sid, "recovery")
-    repo = SessionRepository()
-    return repo.get_session_json_path(sid).parent
+    from edison.core.session.lifecycle.recovery import handle_timeout as _handle_timeout
+
+    return _handle_timeout(Path(session_dir).resolve())
 
 
 def validation_transaction(session_id: str, wave: str) -> Iterator[ValidationTransaction]:

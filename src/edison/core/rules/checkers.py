@@ -20,7 +20,6 @@ from edison.core.utils.paths import get_management_paths
 
 from .models import Rule, RuleViolation
 from .errors import RuleViolationError
-import json
 
 if TYPE_CHECKING:
     from ..qa.evidence import EvidenceService
@@ -64,24 +63,14 @@ def get_checker(rule_id: str) -> Optional[RuleChecker]:
     return _RULE_CHECKERS.get(rule_id)
 
 
-def _load_json_safe(path: Path) -> Dict[str, Any]:
-    """Safely load JSON from a file, returning empty dict on error."""
-    from edison.core.utils.io import read_json
-    try:
-        data = read_json(path, default={})
-        return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError:
-        return {}
-
-
 @register_checker("validator-approval")
 def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
     """Check if task has a valid, recent validator bundle approval.
 
     Semantics (fail-closed, EvidenceManager-backed):
-      - Locate bundle-approved.json for the latest evidence round:
-          <management_dir>/qa/validation-evidence/<task-id>/round-N/bundle-approved.json
-        using EvidenceManager (honours AGENTS_PROJECT_ROOT, project_ROOT, etc.).
+      - Locate bundle-approved.md for the latest evidence round:
+          <management_dir>/qa/validation-evidence/<task-id>/round-N/bundle-approved.md
+        using EvidenceService (honours AGENTS_PROJECT_ROOT and git root detection).
       - Require the bundle file to exist (requireReport=True) and be fresh
         based on maxAgeDays.
       - Require bundle.approved == True.
@@ -121,11 +110,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
         # Caller provided an explicit report path on the task.
         p = Path(str(explicit_path))
         if not p.is_absolute():
-            try:
-                root = PathResolver.resolve_project_root()
-            except EdisonPathError:
-                # Fallback for partially migrated environments
-                root = Path(__file__).resolve().parents[3]
+            root = PathResolver.resolve_project_root()
             p = root / p
         bundle_path = p
     else:
@@ -167,7 +152,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
         if require_report:
             _raise(
                 f"Validation bundle summary missing for task {task_id}: {bundle_path} "
-                "(bundle-approved.json not found)"
+                "(bundle-approved.md not found)"
             )
         return False
 
@@ -184,12 +169,13 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
             f"(older than {max_age_days} days)"
         )
 
-    # Content check: bundle-approved.json must contain approved: true
-    data = _load_json_safe(bundle_path)
+    # Content check: bundle-approved.md must contain approved: true (YAML frontmatter)
+    from edison.core.qa.evidence.report_io import read_structured_report
+    data = read_structured_report(bundle_path)
     if not data:
         if require_report:
             _raise(
-                f"Invalid or empty bundle-approved.json for task {task_id}: "
+                f"Invalid or empty bundle-approved.md for task {task_id}: "
                 f"{bundle_path}"
             )
         return False
@@ -226,7 +212,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
 
         _raise(
             f"Validation bundle not approved for task {task_id}: "
-            f"bundle-approved.json approved=false{details}"
+            f"bundle-approved.md approved=false{details}"
         )
 
     return True

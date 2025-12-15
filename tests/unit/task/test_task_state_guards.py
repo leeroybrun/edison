@@ -58,7 +58,7 @@ def project(tmp_path: Path) -> TestProjectDir:
 
 
 def _create_create_env(owner: str = "tester") -> dict:
-    return {"project_OWNER": owner}
+    return {"AGENTS_OWNER": owner}
 
 
 @pytest.mark.skip(reason="Requires session/new CLI command not yet implemented in Edison CLI")
@@ -126,11 +126,11 @@ def test_status_never_synthesizes_approval(project: TestProjectDir):
         env=_create_env(),
     )
 
-    # Assert: must fail (no synthetic approval), and no bundle-approved.json is created
+    # Assert: must fail (no synthetic approval), and no bundle-approved.md is created
     assert_command_failure(res_validate)
     evidence_dir = project.project_root / "qa" / "validation-evidence" / task_id
     # No evidence rounds should exist as a side effect
-    assert not any(evidence_dir.glob("round-*/bundle-approved.json"))
+    assert not any(evidence_dir.glob("round-*/bundle-approved.md"))
     # Task must not be in validated
     assert project.get_task_state(task_id) != "validated"
 
@@ -188,11 +188,18 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
         env=_create_env(),
     )
 
-    # Seed implementation-report.json to request a blocking follow-up
+    # Seed implementation-report.md to request a blocking follow-up
     round_dir = project.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    impl = {"followUpTasks": [{"title": "blocking-child", "blockingBeforeValidation": True}]}
-    (round_dir / "implementation-report.json").write_text(json.dumps(impl))
+    (round_dir / "implementation-report.md").write_text(
+        """---
+followUpTasks:
+  - title: "blocking-child"
+    blockingBeforeValidation: true
+---
+""",
+        encoding="utf-8",
+    )
 
     # Act: enforce follow-up creation
     res_fus = run_script(

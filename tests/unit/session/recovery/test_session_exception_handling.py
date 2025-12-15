@@ -68,7 +68,6 @@ def session_env():
     old_env = os.environ.copy()
     # Point task/sessionlib ROOT at a temp sandbox
     os.environ["AGENTS_PROJECT_ROOT"] = str(env.temp_root)
-    os.environ["project_ROOT"] = str(env.temp_root)
     # Reload modules so constants derive from the new ROOT
     import importlib
     import edison.core.task as _task  # type: ignore

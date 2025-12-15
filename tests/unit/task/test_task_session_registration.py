@@ -135,18 +135,21 @@ def test_claim_task_registers_in_session(isolated_project_env):
 
 def _create_implementation_report(project_root: Path, task_id: str) -> None:
     """Create minimal implementation report to satisfy can_finish_task guard."""
-    import json
     from edison.core.qa.evidence import EvidenceService
     ev_svc = EvidenceService(task_id, project_root=project_root)
     round_dir = ev_svc.get_evidence_root() / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
-    impl_report = round_dir / "implementation-report.json"
-    impl_report.write_text(json.dumps({
-        "taskId": task_id,
-        "round": 1,
-        "status": "complete",
-        "summary": "Test implementation",
-    }), encoding="utf-8")
+    impl_report = round_dir / "implementation-report.md"
+    impl_report.write_text(
+        f"""---
+taskId: "{task_id}"
+round: 1
+status: "complete"
+summary: "Test implementation"
+---
+""",
+        encoding="utf-8",
+    )
 
 
 def test_complete_task_updates_session(isolated_project_env):

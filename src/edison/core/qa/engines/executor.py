@@ -39,10 +39,7 @@ class WaveResult:
     @property
     def all_passed(self) -> bool:
         """Check if all validators in wave passed."""
-        return all(
-            v.verdict in ("approve", "approved", "pass", "passed")
-            for v in self.validators
-        )
+        return all(v.verdict == "approve" for v in self.validators)
 
     @property
     def has_delegated(self) -> bool:
@@ -74,7 +71,7 @@ class ExecutionResult:
             1
             for w in self.waves
             for v in w.validators
-            if v.verdict in ("approve", "approved", "pass", "passed")
+            if v.verdict == "approve"
         )
 
     @property
@@ -84,7 +81,7 @@ class ExecutionResult:
             1
             for w in self.waves
             for v in w.validators
-            if v.verdict in ("reject", "rejected", "error")
+            if v.verdict in ("reject", "blocked", "error")
         )
 
     @property
@@ -379,7 +376,7 @@ class ValidationExecutor:
         #
         # This is critical for the "delegation" workflow:
         # - First run generates delegation instructions + pending reports.
-        # - Orchestrator/validators write real `validator-*-report.json`.
+        # - Orchestrator/validators write real `validator-*-report.md`.
         # - Re-running validation must detect those reports and treat them as complete.
         # ---------------------------------------------------------------------
         existing_results: list[ValidationResult] = []
@@ -495,9 +492,6 @@ class ValidationExecutor:
                 )
                 if result and result.verdict not in (
                     "approve",
-                    "approved",
-                    "pass",
-                    "passed",
                     "pending",  # Delegated are pending, not failed
                 ):
                     wave_result.blocking_passed = False
@@ -674,7 +668,7 @@ class ValidationExecutor:
         round_num: int | None,
         evidence_service: EvidenceService,
     ) -> None:
-        """Write validator-<id>-report.json for executed validators.
+        """Write validator-<id>-report.md for executed validators.
 
         IMPORTANT:
         - We DO NOT write a report stub for delegated validators (they must be produced by the orchestrator/human).
@@ -735,4 +729,3 @@ class ValidationExecutor:
 
 
 __all__ = ["ValidationExecutor", "ExecutionResult", "WaveResult"]
-

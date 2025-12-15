@@ -14,7 +14,6 @@ running; tests write small files into the staging root exposed by the context.
 """
 from __future__ import annotations
 
-import json
 import os
 import stat
 from pathlib import Path
@@ -53,13 +52,13 @@ def test_validation_tx_commit_success(monkeypatch, tmp_path: Path):
         staging_root = tx.staging_root
         ev = _evidence_paths(staging_root, task_id)
         ev.mkdir(parents=True, exist_ok=True)
-        (ev / "validator-global-codex-report.json").write_text("{\n\"ok\": true\n}\n")
+        (ev / "validator-global-codex-report.md").write_text("---\nverdict: approve\n---\n")
         tx.commit()
 
     # Assert: artifact moved atomically into real project evidence
     final_ev = _evidence_paths(project_root, task_id)
     assert final_ev.exists(), "Expected committed evidence directory to exist"
-    assert (final_ev / "validator-global-codex-report.json").exists(), "Committed artifact missing"
+    assert (final_ev / "validator-global-codex-report.md").exists(), "Committed artifact missing"
     # Log exists in wip state directory
     tx_log = project_root / ".project" / "sessions" / "wip" / sid / "validation-transactions.log"
     assert tx_log.exists(), "Transaction log not created"
@@ -85,7 +84,7 @@ def test_validation_tx_rollback_on_exception(monkeypatch, tmp_path: Path):
         with sessionlib.validation_transaction(session_id=sid, wave="wave2") as tx:
             ev = _evidence_paths(tx.staging_root, task_id)
             ev.mkdir(parents=True, exist_ok=True)
-            (ev / "validator-global-claude-report.json").write_text("{}\n")
+            (ev / "validator-global-claude-report.md").write_text("---\nverdict: approve\n---\n")
             # No commit → raise to trigger rollback
             raise RuntimeError("simulate failure")
     except RuntimeError:
@@ -192,7 +191,7 @@ def test_validation_tx_permission_error_on_commit(monkeypatch, tmp_path: Path):
         with sessionlib.validation_transaction(session_id=sid, wave="wave2") as tx:
             ev = _evidence_paths(tx.staging_root, task_id)
             ev.mkdir(parents=True, exist_ok=True)
-            (ev / "validator-security-report.json").write_text("{}\n")
+            (ev / "validator-security-report.md").write_text("---\nverdict: approve\n---\n")
             with pytest.raises(PermissionError):
                 tx.commit()
     finally:

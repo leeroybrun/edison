@@ -22,5 +22,7 @@ reflect your stack and CI commands, then regenerate integrations with
 
 ## Support
 
-Run `edison utils doctor` to verify your environment, or see
-`.edison/core/docs/HELP_SYSTEM_TEMPLATE.md` for CLI help formatting details.
+Run `edison utils doctor` to verify your environment. For CLI usage:
+- `edison --help`
+- `edison <domain> --help`
+- `edison <domain> <command> --help`

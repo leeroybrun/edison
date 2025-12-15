@@ -10,7 +10,7 @@ from edison.data import get_data_path
 
 
 CORE = get_data_path("schemas")
-PROJECT = Path(".agents/schemas")
+PROJECT = Path(".edison/schemas")
 # Canonical statemachine lives in workflow.yaml (workflow.statemachine.*)
 WORKFLOW = get_data_path("config", "workflow.yaml")
 
@@ -24,16 +24,17 @@ def test_session_json_validates():
     schema = _load_schema("domain/session.schema.json")
     example = {
         "id": "session-123",
-        "state": "Active",
-        "createdAt": "2025-11-17T12:00:00Z",
-        "lastActiveAt": "2025-11-17T12:30:00Z",
-        "worktree": {
-            "baseDirectory": "../{PROJECT_NAME}-worktrees",
-            "path": ".project/sessions/active/session-123"
+        "state": "active",
+        "phase": "implementation",
+        "meta": {
+            "sessionId": "session-123",
+            "owner": "owner-123",
+            "createdAt": "2025-11-17T12:00:00Z",
+            "lastActive": "2025-11-17T12:30:00Z",
+            "status": "active",
         },
-        "timeoutMinutes": 60,
-        "tasks": ["task-1", "task-2"],
-        "qa": {"status": "pending"}
+        "ready": True,
+        "git": {"baseBranch": "main", "branchName": None, "worktreePath": None},
     }
     validate(instance=example, schema=schema)
 

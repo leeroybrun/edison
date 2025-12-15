@@ -61,7 +61,7 @@ def session_state_config(tmp_path, monkeypatch):
 
     # Set env vars
     setup_project_root(monkeypatch, tmp_path)
-    monkeypatch.setenv("project_ROOT", str(tmp_path))
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
 
     # Reset global registries
     guard_registry.reset()

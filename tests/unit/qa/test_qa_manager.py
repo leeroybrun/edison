@@ -14,7 +14,7 @@ from tests.helpers import format_round_dir
 def qa_manager(tmp_path: Path, monkeypatch) -> QAManager:
     """Fixture providing a QAManager with isolated project root."""
     # Set environment for PathResolver
-    monkeypatch.setenv("project_ROOT", str(tmp_path))
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     # Create .project directory structure
     (tmp_path / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
     return QAManager(project_root=tmp_path)
@@ -152,7 +152,7 @@ class TestQAManagerWriteReport:
     """Test write_report operation."""
 
     def test_write_bundle_summary(self, qa_manager: QAManager, task_id: str):
-        """Should write bundle-approved.json to latest round."""
+        """Should write bundle-approved.md to latest round."""
         qa_manager.create_round(task_id)
 
         bundle_data = {
@@ -165,11 +165,11 @@ class TestQAManagerWriteReport:
 
         # Verify file was written
         latest_dir = qa_manager.get_round_dir(task_id)
-        bundle_file = latest_dir / "bundle-approved.json"
+        bundle_file = latest_dir / "bundle-approved.md"
         assert bundle_file.exists()
 
     def test_write_implementation_report(self, qa_manager: QAManager, task_id: str):
-        """Should write implementation-report.json to latest round."""
+        """Should write implementation-report.md to latest round."""
         qa_manager.create_round(task_id)
 
         impl_data = {
@@ -182,24 +182,24 @@ class TestQAManagerWriteReport:
 
         # Verify file was written
         latest_dir = qa_manager.get_round_dir(task_id)
-        impl_file = latest_dir / "implementation-report.json"
+        impl_file = latest_dir / "implementation-report.md"
         assert impl_file.exists()
 
     def test_write_validator_report(self, qa_manager: QAManager, task_id: str):
-        """Should write validator-{name}-report.json to latest round."""
+        """Should write validator-{name}-report.md to latest round."""
         qa_manager.create_round(task_id)
 
         validator_data = {
-            "validatorName": "global-claude",
-            "verdict": "approved",
-            "score": 9.5
+            "validatorId": "global-claude",
+            "verdict": "approve",
+            "score": 9.5,
         }
 
         qa_manager.write_report(task_id, "validator", validator_data, validator_name="global-claude")
 
         # Verify file was written
         latest_dir = qa_manager.get_round_dir(task_id)
-        validator_file = latest_dir / "validator-global-claude-report.json"
+        validator_file = latest_dir / "validator-global-claude-report.md"
         assert validator_file.exists()
 
     def test_write_report_to_specific_round(self, qa_manager: QAManager, task_id: str):
@@ -212,7 +212,7 @@ class TestQAManagerWriteReport:
 
         # Verify file was written to round-1
         round_1_dir = qa_manager.get_round_dir(task_id, round_num=1)
-        impl_file = round_1_dir / "implementation-report.json"
+        impl_file = round_1_dir / "implementation-report.md"
         assert impl_file.exists()
 
 
@@ -220,7 +220,7 @@ class TestQAManagerReadReport:
     """Test read_report operation."""
 
     def test_read_bundle_summary(self, qa_manager: QAManager, task_id: str):
-        """Should read bundle-approved.json from latest round."""
+        """Should read bundle-approved.md from latest round."""
         qa_manager.create_round(task_id)
 
         bundle_data = {
@@ -236,7 +236,7 @@ class TestQAManagerReadReport:
         assert result["taskId"] == task_id
 
     def test_read_implementation_report(self, qa_manager: QAManager, task_id: str):
-        """Should read implementation-report.json from latest round."""
+        """Should read implementation-report.md from latest round."""
         qa_manager.create_round(task_id)
 
         impl_data = {"taskId": task_id, "status": "completed"}

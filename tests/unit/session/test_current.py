@@ -88,18 +88,26 @@ def _create_worktree(repo_path: Path, worktree_name: str) -> Path:
     return worktree_path
 
 
-def _create_session_file(project_root: Path, session_id: str, state: str = "wip") -> Path:
-    """Create a real session file."""
+def _create_session_file(project_root: Path, session_id: str, state: str = "active") -> Path:
+    """Create a real session file under the config-mapped state directory.
+
+    Session ``state`` is semantic (e.g., "active"), while the on-disk directory
+    name is resolved from ``SessionConfig.session.states`` (e.g., active -> wip).
+    """
     import json
     from datetime import datetime, timezone
+    from edison.core.config.domains.session import SessionConfig
 
-    sessions_dir = project_root / ".project" / "sessions" / state
+    session_cfg = SessionConfig(repo_root=project_root)
+    state_dirname = session_cfg.get_session_states().get(state, state)
+    sessions_dir = project_root / ".project" / "sessions" / state_dirname
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
     session_file = sessions_dir / session_id / "session.json"
     session_file.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     session_data = {
+        "id": session_id,
         "meta": {
             "sessionId": session_id,
             "owner": "test-owner",
@@ -335,7 +343,7 @@ class TestGetCurrentSession:
     def test_falls_back_to_inference_when_stored_session_not_exists(
         self, isolated_project_env: Path, monkeypatch
     ) -> None:
-        """Should fall back to inference when stored session no longer exists."""
+        """Falls back to process-derived lookup when stored session no longer exists."""
         # Create real git repo with worktree
         repo_path = isolated_project_env / "repo"
         repo_path.mkdir()
@@ -351,19 +359,21 @@ class TestGetCurrentSession:
         session_file = project_dir / ".session-id"
         session_file.write_text("stale-session-123\n")
 
-        # Create a different session that DOES exist for inference
+        # Create the process-derived session that DOES exist for fallback
         setup_project_root(monkeypatch, worktree_path)
-        monkeypatch.setenv("project_OWNER", "test-owner")
-        _create_session_file(worktree_path, "inferred-session-456")
+        monkeypatch.delenv("AGENTS_SESSION", raising=False)
+        monkeypatch.delenv("AGENTS_OWNER", raising=False)
+        from edison.core.utils.process.inspector import find_topmost_process
+        name, pid = find_topmost_process()
+        derived = f"{name}-pid-{pid}"
+        _create_session_file(worktree_path, derived, state="active")
 
         # Change to worktree
         monkeypatch.chdir(worktree_path)
 
         result = get_current_session()
-        # Should fall back to inference since stored session doesn't exist
-        # In this case, inference won't find anything either (no owner-based lookup in current impl)
-        # So result will be None
-        assert result is None
+        # Stored session doesn't exist -> should fall back to process-derived lookup.
+        assert result == derived
 
     def test_falls_back_to_inference_when_no_file(self, isolated_project_env: Path, monkeypatch) -> None:
         """Should fall back to inference when no session file exists."""
@@ -418,6 +428,9 @@ class TestSetCurrentSession:
 
     def test_writes_session_id_in_worktree(self, isolated_project_env: Path, monkeypatch) -> None:
         """Should write session ID to file when in worktree."""
+        from edison.core.session.core.models import Session
+        from edison.core.session.persistence.repository import SessionRepository
+
         # Create real git repo with worktree
         repo_path = isolated_project_env / "repo"
         repo_path.mkdir()
@@ -432,11 +445,39 @@ class TestSetCurrentSession:
         setup_project_root(monkeypatch, worktree_path)
         monkeypatch.chdir(worktree_path)
 
+        repo = SessionRepository(project_root=worktree_path)
+        repo.create(Session.create("new-session-123", owner="tester", state="active"))
+
         set_current_session("new-session-123")
 
         session_file = project_dir / ".session-id"
         assert session_file.exists()
         assert "new-session-123" in session_file.read_text()
+
+    def test_raises_error_when_session_does_not_exist_in_worktree(
+        self,
+        isolated_project_env: Path,
+        monkeypatch,
+    ) -> None:
+        """Should raise SessionError when session doesn't exist."""
+        # Create real git repo with worktree
+        repo_path = isolated_project_env / "repo"
+        repo_path.mkdir()
+        _init_git_repo(repo_path)
+
+        worktree_path = _create_worktree(repo_path, "test-session")
+
+        # Create .project structure in worktree
+        project_dir = worktree_path / ".project"
+        project_dir.mkdir(parents=True)
+
+        setup_project_root(monkeypatch, worktree_path)
+        monkeypatch.chdir(worktree_path)
+
+        with pytest.raises(SessionError) as exc_info:
+            set_current_session("missing-session-123")
+
+        assert "not found" in str(exc_info.value).lower()
 
     def test_raises_error_when_not_in_worktree(self, isolated_project_env: Path, monkeypatch) -> None:
         """Should raise SessionError when not in worktree."""

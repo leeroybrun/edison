@@ -68,13 +68,10 @@ def pytest_runtest_teardown(item, nextitem):  # type: ignore[no-untyped-def]
 # as PYTEST_CURRENT_TEST.
 _LEAK_PRONE_ENV_KEYS = [
     "AGENTS_PROJECT_ROOT",
-    "project_ROOT",
     "PROJECT_NAME",
     "PROJECT_TERMS",
     "AGENTS_OWNER",
-    "project_OWNER",
-    "project_SESSION",
-    "EDISON_SESSION_ID",
+    "AGENTS_SESSION",
     "TASK_ID",
     # Critical: overrides the location of `.edison/` itself. If this leaks, config loads
     # will silently ignore `.edison/config/*.yml` written by many tests.

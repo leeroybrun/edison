@@ -21,8 +21,8 @@ def test_session_lifecycle_active_closing_validated():
     """Checks the logical state transitions in session.json across lifecycle."""
     sid = 'sess-life-1'
     ensure_session(sid)
-    assert load_session(sid)['state'] == 'Active'
+    assert load_session(sid)['state'] == 'active'
     close_session(sid)
-    assert load_session(sid)['state'] == 'Closing'
+    assert load_session(sid)['state'] == 'closing'
     validate_session(sid)
-    assert load_session(sid)['state'] == 'Validated'
+    assert load_session(sid)['state'] == 'validated'

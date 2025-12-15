@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, resolve_session_id
 from edison.core.qa.engines import EngineRegistry
 from edison.core.qa.evidence import EvidenceService
 
@@ -59,6 +59,7 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
+        session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
 
         # Create engine registry
         registry = EngineRegistry(project_root=repo_root)
@@ -77,7 +78,7 @@ def main(args: argparse.Namespace) -> int:
             result = {
                 "validator_id": args.validator_id,
                 "task_id": args.task_id,
-                "session_id": args.session,
+                "session_id": session_id,
                 "round": args.round,
                 "worktree": str(worktree_path),
                 "config": {
@@ -102,7 +103,7 @@ def main(args: argparse.Namespace) -> int:
             validation_result = registry.run_validator(
                 validator_id=args.validator_id,
                 task_id=args.task_id,
-                session_id=args.session or "cli",
+                session_id=session_id or "cli",
                 worktree_path=worktree_path,
                 round_num=args.round,
                 evidence_service=evidence_service,
@@ -132,7 +133,7 @@ def main(args: argparse.Namespace) -> int:
             result = {
                 "validator_id": args.validator_id,
                 "task_id": args.task_id,
-                "session_id": args.session,
+                "session_id": session_id,
                 "round": args.round,
                 "verdict": validation_result.verdict,
                 "summary": validation_result.summary,

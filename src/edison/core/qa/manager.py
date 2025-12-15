@@ -62,39 +62,6 @@ class QAManager:
         svc = EvidenceService(task_id, project_root=self.project_root)
         return svc.create_next_round()
 
-    def initialize_round(
-        self, 
-        task_id: str, 
-        session_id: Optional[str] = None, 
-        owner: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Initialize a new round with QA brief and metadata.
-        
-        Uses EvidenceService.create_qa_brief() as the canonical method.
-        
-        Args:
-            task_id: Task identifier
-            session_id: Session ID context
-            owner: Validator owner (not used, kept for API compatibility)
-            
-        Returns:
-            Dict with round info and path
-        """
-        svc = EvidenceService(task_id, project_root=self.project_root)
-        
-        # Use EvidenceService.create_qa_brief() as the single source
-        qa_brief = svc.create_qa_brief(session_id=session_id)
-        
-        round_num = svc.get_current_round() or 1
-        round_dir = svc.ensure_round(round_num)
-        brief_path = round_dir / "qa-brief.json"
-        
-        return {
-            "round": round_num,
-            "path": str(brief_path),
-            "brief": qa_brief
-        }
-
     def get_latest_round(self, task_id: str) -> Optional[int]:
         """Get the latest round number for a task.
 

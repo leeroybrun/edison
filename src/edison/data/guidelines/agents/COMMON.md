@@ -18,8 +18,8 @@ Use this roster instead of repeating the table in each agent file:
 
 ### Edison CLI
 - `edison task status <task-id>` - Read-only: check task details/state
-- `edison session track start --task <task-id> --type implementation` - Optional tracking signal (project-dependent)
-- `edison session track complete --task <task-id>` - Optional tracking signal (project-dependent)
+- `edison session track start --task <task-id> --type implementation` - Mandatory: start an implementation round (evidence directory + tracking)
+- `edison session track complete --task <task-id>` - Mandatory: complete the round (stamps/validates required artifacts)
 - `edison config show <domain> --format yaml` - Inspect merged config (read-only)
 
 > Orchestrator-only (do not run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa new`, `edison qa promote`, `edison qa bundle`, `edison qa validate`, `edison session next`, `edison git worktree-*`, `edison compose all`.

@@ -11,8 +11,8 @@
 {{include-section:packs/vitest/guidelines/includes/vitest/TESTING.md#patterns}}
 
 ### Vitest-Specific Checks
-- Enforce RED→GREEN→REFACTOR with Vitest; block `.only` / `.skip` and ensure tests don't leak state between runs.
-- Prefer realistic integration-style tests using `vi.spyOn`/`vi.fn` minimally; avoid over-mocking prisma/auth helpers.
+- Block `.only` / `.skip` and ensure tests don't leak state between runs.
+- Enforce the core NO MOCKS policy: use `vi.spyOn`/`vi.fn` only at system boundaries (third-party calls), never to “prove” internal behavior.
 - Use Testing Library with Vitest for React components; assert real DOM output and user interactions.
 - Run suites with coverage (`vitest --coverage`) and keep suites deterministic (no shared state, use fake timers when needed).
 <!-- /extend -->

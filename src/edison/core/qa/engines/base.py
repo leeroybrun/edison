@@ -89,7 +89,7 @@ class ValidationResult:
     ) -> dict[str, Any]:
         """Convert to a validator report dict.
 
-        Must match the JSON schema at: data/schemas/reports/validator-report.schema.json
+        Must match the canonical validator report frontmatter schema.
         """
         now = datetime.now(timezone.utc).isoformat()
         report_started = started_at or (self.tracking or {}).get("startedAt") or now
@@ -169,4 +169,3 @@ __all__ = [
     "EngineProtocol",
     "ValidationResult",
 ]
-

@@ -11,8 +11,6 @@ from .graph import (
     register_task,
     register_qa,
     link_tasks,
-    gather_cluster,
-    build_validation_bundle,
     create_merge_task,
 )
 
@@ -28,7 +26,5 @@ __all__ = [
     "register_task",
     "register_qa",
     "link_tasks",
-    "gather_cluster",
-    "build_validation_bundle",
     "create_merge_task",
 ]

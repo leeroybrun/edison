@@ -1057,7 +1057,8 @@ validation:
       - "command-*.txt"
       - "context7-*.md"
       - "context7-*.txt"
-      - "validator-*-report.json"
+      - "validator-*-report.md"
+      - "validator-*-report.json" # legacy
 
   transaction:
     maxAgeHours: 24

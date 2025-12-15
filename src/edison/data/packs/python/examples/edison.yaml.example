@@ -1,0 +1,11 @@
+# Example Edison configuration for a Python project
+project:
+  name: "example-python-service"
+
+commands:
+  test: "pytest -q --maxfail=1 --disable-warnings --cov"
+
+dependencies:
+  - "pytest"
+  - "pytest-cov"
+

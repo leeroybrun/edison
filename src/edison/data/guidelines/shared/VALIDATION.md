@@ -78,8 +78,8 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 
 ### Bundle approval marker
 - Generate bundle manifest with `edison qa bundle <root-task>`; paste into QA before any validator runs.
-- After all blocking validators approve, produce `bundle-approved.json` in the round evidence directory (guards enforce its presence). Promotion `qa wip→done` and `task done→validated` is blocked until `approved=true` in this file.
-- QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `bundle-approved.json` existence.
+- After all blocking validators approve, produce `bundle-approved.md` in the round evidence directory (guards enforce its presence). Promotion `qa wip→done` and `task done→validated` is blocked until `approved=true` in this file.
+- QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `bundle-approved.md` existence.
 
 ## Sequence (strict order)
 1) Automation evidence captured (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`, etc.).
@@ -126,7 +126,7 @@ Repeat until APPROVE or escalate
 
 ## QA Ownership & Evidence
 - Assign a single QA owner; multiple validators may run, but one owner curates the QA brief.
-- Name evidence clearly (e.g., `validator-<id>-report.json`, `command-test.txt`, `bundle-approved.json`).
+- Name evidence clearly (e.g., `validator-<id>-report.md`, `command-test.txt`, `bundle-approved.md`).
 - Validator reports must record the model used and it must match the config.
 
 ## Parent vs Child Tasks (Parallel Implementation)
@@ -134,12 +134,12 @@ Repeat until APPROVE or escalate
 Bundle validation (cluster): Validators MUST review the entire cluster - the parent task + parent QA and all child tasks + their QA - using the bundle manifest from `edison qa bundle`.
 
 - Run the unified validator: `edison qa validate <parent> --session <sid>`.
-- It writes a single `bundle-approved.json` under the parent's evidence directory with:
+- It writes a single `bundle-approved.md` under the parent's evidence directory with:
   - `approved` (overall cluster decision)
   - `tasks[]` array with per-task `approved` booleans for every task in the bundle (parent and children).
 - QA promotion rules:
-  - Parent QA `wip->done` requires the parent-level `bundle-approved.json` with `approved=true`.
-  - Child QA `wip->done` is permitted when the parent's `bundle-approved.json` exists and the child's entry shows `approved=true` (no duplicate per-child validation required). If no parent is present, fall back to single-task validation.
+  - Parent QA `wip->done` requires the parent-level `bundle-approved.md` with `approved=true`.
+  - Child QA `wip->done` is permitted when the parent's `bundle-approved.md` exists and the child's entry shows `approved=true` (no duplicate per-child validation required). If no parent is present, fall back to single-task validation.
 
 Child tasks (owned by implementers) produce their own implementation evidence and can have their QA promoted to `done` when their blocking validators approve. Validators may mark some children approved and others not; the bundle captures per-task approvals. The parent cannot complete until every child in the bundle is approved.
 
@@ -161,13 +161,13 @@ Session completion enforces: parent is `tasks/validated/` with QA in `qa/done|va
 
 ### Run Validators (writes reports automatically)
 
-Run the full roster (all waves in order) and write `validator-*-report.json` files into the current round:
+Run the full roster (all waves in order) and write `validator-*-report.md` files into the current round:
 
 ```bash
 edison qa validate <task-id> --session <session-id> --execute
 ```
 
-Run a single validator (writes `validator-<id>-report.json` for CLI-executed validators; delegated validators emit `delegation-<id>.md` instructions):
+Run a single validator (writes `validator-<id>-report.md` for CLI-executed validators; delegated validators emit `delegation-<id>.md` instructions):
 
 ```bash
 edison qa run <validator-id> <task-id> --session <session-id> --round <N>

@@ -36,7 +36,7 @@ from edison.core.session.next.actions import (
     load_bundle_followups,
     load_impl_followups,
     missing_evidence_blockers,
-    read_validator_jsons,
+    read_validator_reports,
 )
 from edison.core.session.next.output import format_human_readable
 from edison.core.session.next.rules import get_rules_for_context, rules_for
@@ -452,13 +452,13 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "blocking": True,
                 })
 
-    # Analyze validator JSON to propose QA next steps
+    # Analyze validator reports to propose QA next steps
     qa_active_states = {STATES["qa"]["wip"], STATES["qa"]["todo"]}
     for task_id, task_entry in tasks_map.items():
         q_status = infer_qa_status(task_id)
         if q_status not in qa_active_states:
             continue
-        v = read_validator_jsons(task_id)
+        v = read_validator_reports(task_id)
         reports = v.get("reports", [])
         if not reports:
             continue
@@ -517,10 +517,10 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             # QA rejection returns to waiting - look up rules from config for wip→todo (restart)
             reject_rules = workflow_cfg.get_transition_rules("qa", STATES["qa"]["wip"], STATES["qa"]["todo"]) or []
             actions.append({
-                "id": "qa.round.rejected",
+                "id": "qa.round.reject",
                 "entity": "qa",
                 "recordId": f"{task_id}-qa",
-                "cmd": ["edison", "qa", "round", task_id, "--status", "rejected", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
+                "cmd": ["edison", "qa", "round", task_id, "--status", "reject", "--note", f"validators: {', '.join(r.get('validatorId','?') for r in blocking_failed)}"],
                 "rationale": "Blocking validators failed; record Round and return QA to waiting",
                 "ruleRef": {"id": reject_rules[0]} if reject_rules else None,
                 "ruleIds": reject_rules,

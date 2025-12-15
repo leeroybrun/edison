@@ -101,7 +101,7 @@ class TestQARoundManagement:
         assert qa.round == 1
 
         # Append a new round
-        updated_qa = repo.append_round(qa_id, status="rejected")
+        updated_qa = repo.append_round(qa_id, status="reject")
 
         # Assert - round incremented
         assert updated_qa.round == 2
@@ -120,12 +120,12 @@ class TestQARoundManagement:
         repo = QARepository(project_root=repo_env)
 
         # Append round with status
-        updated_qa = repo.append_round(qa_id, status="approved")
+        updated_qa = repo.append_round(qa_id, status="approve")
 
         # Assert round history contains status
         assert len(updated_qa.round_history) > 0
         latest = updated_qa.round_history[-1]
-        assert latest["status"] == "approved"
+        assert latest["status"] == "approve"
 
     def test_append_round_with_notes(self, repo_env):
         """Test append_round can include notes."""
@@ -139,7 +139,7 @@ class TestQARoundManagement:
         # Append round with notes
         updated_qa = repo.append_round(
             qa_id, 
-            status="rejected",
+            status="reject",
             notes="validators: context7, code-reviewer"
         )
 
@@ -157,15 +157,15 @@ class TestQARoundManagement:
         repo = QARepository(project_root=repo_env)
 
         # Append round 2
-        qa = repo.append_round(qa_id, status="rejected", notes="First rejection")
+        qa = repo.append_round(qa_id, status="reject", notes="First rejection")
         assert qa.round == 2
 
         # Append round 3
-        qa = repo.append_round(qa_id, status="rejected", notes="Second rejection")
+        qa = repo.append_round(qa_id, status="reject", notes="Second rejection")
         assert qa.round == 3
 
         # Append round 4
-        qa = repo.append_round(qa_id, status="approved")
+        qa = repo.append_round(qa_id, status="approve")
         assert qa.round == 4
 
         # Verify history
@@ -176,7 +176,7 @@ class TestQARoundManagement:
         repo = QARepository(project_root=repo_env)
 
         with pytest.raises(Exception, match="not found"):
-            repo.append_round("NONEXISTENT-qa", status="rejected")
+            repo.append_round("NONEXISTENT-qa", status="reject")
 
     def test_get_current_round(self, repo_env):
         """Test getting current round number."""
@@ -192,7 +192,7 @@ class TestQARoundManagement:
         assert current == 1
 
         # After appending
-        repo.append_round(qa_id, status="rejected")
+        repo.append_round(qa_id, status="reject")
         current = repo.get_current_round(qa_id)
         assert current == 2
 
@@ -206,11 +206,10 @@ class TestQARoundManagement:
         repo = QARepository(project_root=repo_env)
 
         # Add some rounds
-        repo.append_round(qa_id, status="rejected", notes="Round 2")
-        repo.append_round(qa_id, status="approved", notes="Round 3")
+        repo.append_round(qa_id, status="reject", notes="Round 2")
+        repo.append_round(qa_id, status="approve", notes="Round 3")
 
         # List rounds
         rounds = repo.list_rounds(qa_id)
 
         assert len(rounds) >= 2  # At least the appended rounds
-

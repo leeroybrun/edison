@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.io import read_json
+from .report_io import read_structured_report
 from edison.core.config.domains.qa import QAConfig
 from .service import EvidenceService
 
@@ -69,8 +69,8 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
     ]
 
 
-def read_validator_jsons(task_id: str) -> Dict[str, Any]:
-    """Return latest validator-* JSON reports for a task."""
+def read_validator_reports(task_id: str) -> Dict[str, Any]:
+    """Return latest validator reports for a task (Markdown+frontmatter)."""
     ev_svc = EvidenceService(task_id)
     out: Dict[str, Any] = {"round": None, "reports": []}
 
@@ -79,12 +79,10 @@ def read_validator_jsons(task_id: str) -> Dict[str, Any]:
         return out
 
     out["round"] = latest.name
-    for p in latest.glob("validator-*-report.json"):
-        try:
-            data = read_json(p)
+    for p in ev_svc.list_validator_reports(round_num=ev_svc.get_current_round() or None):
+        data = read_structured_report(p)
+        if data:
             out["reports"].append(data)
-        except Exception:
-            continue
     return out
 
 

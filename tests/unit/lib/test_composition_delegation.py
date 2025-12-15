@@ -5,10 +5,10 @@ from edison.data import read_yaml
 
 def test_composition_delegation_uses_yaml_file_pattern_rules() -> None:
     """
-    Delegation config should use YAML-backed config with specific patterns.
+    Delegation config should be YAML-backed and tech-agnostic in core.
 
-    The YAML config includes specific patterns such as **/route.ts for API routes.
-    This test asserts that the delegation config contains these patterns.
+    Core delegation config must not contain stack-specific routing rules; packs/projects
+    provide file-pattern routing rules via YAML overlays.
     """
     # Read delegation config directly from data
     delegation_cfg = read_yaml("config", "delegation.yaml")
@@ -17,5 +17,4 @@ def test_composition_delegation_uses_yaml_file_pattern_rules() -> None:
     file_pattern_rules = delegation_cfg.get("delegation", {}).get("filePatternRules", {})
     patterns = set(file_pattern_rules.keys())
 
-    # YAML rule (present in data/config/delegation.yaml)
-    assert "**/route.ts" in patterns, f"Expected **/route.ts in patterns, found: {patterns}"
+    assert patterns == set(), f"Expected core delegation.filePatternRules to be empty, found: {patterns}"

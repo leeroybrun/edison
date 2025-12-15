@@ -29,19 +29,27 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 #### Phase 1: Implement (TDD + Context7)
 
-1. Read requirements and locate existing patterns in the codebase.
-2. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
-3. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
-4. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (e.g., `command-test.txt`).
+1. **Start tracking (MANDATORY)**: `edison session track start --task <task-id> --type implementation`
+   - This prepares/locks the round evidence directory and establishes the canonical location for round artifacts.
+2. Read requirements and locate existing patterns in the codebase.
+3. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
+4. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
+5. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (e.g., `command-test.txt`).
 
 #### Phase 2: Produce the Implementation Report (required)
 
-Create or update the implementation report JSON for the current round:
-- **Path**: `.project/qa/validation-evidence/<task-id>/round-<N>/implementation-report.json` (filename is config-driven; default is `implementation-report.json`).
+Create or update the implementation report for the current round:
+- **Path**: `.project/qa/validation-evidence/<task-id>/round-<N>/implementation-report.md` (filename is config-driven; default is `implementation-report.md`).
 - **Schema (LLM reference)**: `.edison/_generated/schemas/reports/implementation-report.schema.json`
 - Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
 #### Phase 3: Handoff to orchestrator (do NOT self-validate)
+
+Before handing off, **complete tracking (MANDATORY)**:
+
+```bash
+edison session track complete --task <task-id>
+```
 
 Return a crisp handoff to the orchestrator:
 - What changed and why
@@ -57,7 +65,7 @@ Agents are generally **read-only** on task/session orchestration:
 # Read-only: inspect task state/details
 edison task status <task-id>
 
-# Optional: produce lightweight tracking signals (if your project uses them)
+# Tracking (mandatory for implementation rounds)
 edison session track start --task <task-id> --type implementation
 edison session track complete --task <task-id>
 ```
@@ -66,7 +74,7 @@ edison session track complete --task <task-id>
 
 ## Evidence Required (minimum)
 
-- Implementation report JSON exists for the latest round.
+- Implementation report (`implementation-report.md`) exists for the latest round.
 - Automation evidence files exist per project config (typically: `command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`).
 - Context7 markers exist for any required packages (if applicable).
 

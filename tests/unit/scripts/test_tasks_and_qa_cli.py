@@ -139,13 +139,13 @@ Validation scope
 """)
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa", "round", [task_id, "--status", "approved", "--json"], env)
+    result = run("qa", "round", [task_id, "--status", "approve", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["taskId"] == task_id
     assert payload["round"] == 2
     content = qa_file.read_text()
     assert "round_history" in content
-    assert "approved" in content
+    assert "approve" in content
 
 
 def test_tasks_link_updates_session_graph(tmp_path: Path):
@@ -222,6 +222,13 @@ def test_tasks_ready_moves_wip_to_done(tmp_path: Path):
     root = make_project_root(tmp_path)
     task_id = "150-wave1-demo"
 
+    # Ensure the session exists (session-scoped commands must fail-closed).
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+
+    repo = SessionRepository(project_root=root)
+    repo.create(Session.create("s1", owner="alice", state="wip"))
+
     # session scoped wip task + qa waiting
     wip_task = root / ".project" / "sessions" / "wip" / "s1" / "tasks" / "wip"
     wip_task.mkdir(parents=True, exist_ok=True)
@@ -261,7 +268,14 @@ Validation scope
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
         (evidence / name).write_text("ok\n")
     # Guard can_finish_task requires a non-empty implementation report.
-    (evidence / "implementation-report.json").write_text('{"filesChanged":["src/demo.ts"]}')
+    (evidence / "implementation-report.md").write_text(
+        """---
+filesChanged:
+  - src/demo.ts
+---
+""",
+        encoding="utf-8",
+    )
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
@@ -279,6 +293,13 @@ def test_qa_bundle_outputs_manifest(tmp_path: Path):
     root = make_project_root(tmp_path)
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
+
+    # Ensure the session exists (explicit --session must be validated + exist).
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+
+    repo = SessionRepository(project_root=root)
+    repo.create(Session.create("s1", owner="alice", state="wip"))
 
     # register tasks in session graph
     from edison.core.session import graph as session_graph

@@ -68,6 +68,7 @@ def validate_transition(
     to_state: str,
     *,
     context: Optional[Mapping[str, Any]] = None,
+    repo_root: Optional["Path"] = None,
 ) -> tuple[bool, str]:
     """Validate a state transition without executing it.
 
@@ -78,6 +79,7 @@ def validate_transition(
         from_state: Current state
         to_state: Target state
         context: Optional context for guard/condition evaluation
+        repo_root: Optional repository root for config resolution
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -93,7 +95,7 @@ def validate_transition(
     from edison.core.state.validator import StateValidator, MissingStateMachine
 
     try:
-        validator = StateValidator()
+        validator = StateValidator(repo_root=repo_root)
         validator.ensure_transition(
             entity=entity_type,
             current=from_state,
@@ -102,8 +104,7 @@ def validate_transition(
         )
         return True, ""
     except MissingStateMachine:
-        # No state machine configured - allow all transitions
-        return True, ""
+        return False, f"State machine not configured for entity '{entity_type}'"
     except StateTransitionError as e:
         return False, str(e)
     except Exception as e:
@@ -168,8 +169,14 @@ def transition_entity(
         validator = StateValidator(repo_root=repo_root)
         validator.ensure_transition(entity_type, from_state, to_state, context=ctx)
     except MissingStateMachine:
-        # No state machine configured - allow transition
-        pass
+        raise EntityTransitionError(
+            f"State machine not configured for entity '{entity_type}'",
+            entity_type=entity_type,
+            entity_id=entity_id,
+            from_state=from_state,
+            to_state=to_state,
+            reason="missing_state_machine",
+        )
     except StateTransitionError as e:
         raise EntityTransitionError(
             str(e),
@@ -221,5 +228,4 @@ __all__ = [
     "validate_transition",
     "transition_entity",
 ]
-
 

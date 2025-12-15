@@ -97,13 +97,13 @@ def test_check_timeout(project_root):
     now = datetime.now(timezone.utc)
     
     # Not timed out
-    meta = {"last_active_at": now.isoformat()}
+    meta = {"meta": {"lastActive": now.isoformat()}}
     (sess_dir / "session.json").write_text(json.dumps(meta))
     assert recovery.check_timeout(sess_dir, threshold_minutes=60) is False
     
     # Timed out
     old = now - timedelta(minutes=61)
-    meta["last_active_at"] = old.isoformat()
+    meta["meta"]["lastActive"] = old.isoformat()
     (sess_dir / "session.json").write_text(json.dumps(meta))
     assert recovery.check_timeout(sess_dir, threshold_minutes=60) is True
 
@@ -111,9 +111,10 @@ def test_handle_timeout(project_root):
     """Test handle_timeout moves session to recovery."""
     sid = "sess-handle-timeout"
     _ensure_session_dirs()
-    sess_dir = _session_dir("active", sid)
-    sess_dir.mkdir(parents=True, exist_ok=True)
-    (sess_dir / "session.json").write_text('{"state": "active"}')
+    from edison.core.session.persistence.repository import SessionRepository
+
+    repo = SessionRepository()
+    sess_dir = repo.ensure_session(sid, state="active")
     
     rec_dir = recovery.handle_timeout(sess_dir)
     
@@ -123,4 +124,23 @@ def test_handle_timeout(project_root):
     assert (rec_dir / "recovery.json").exists()
     
     data = json.loads((rec_dir / "session.json").read_text())
+    assert data["state"] == "recovery"
+
+
+def test_recover_session_repairs_corrupted_session_json(project_root):
+    """Recover session can move to recovery even when session.json is invalid JSON."""
+    sid = "sess-corrupt-unit"
+    _ensure_session_dirs()
+    sess_dir = _session_dir("active", sid)
+    sess_dir.mkdir(parents=True, exist_ok=True)
+
+    (sess_dir / "session.json").write_text("{bad json", encoding="utf-8")
+
+    rec_dir = recovery.recover_session(sid)
+
+    assert rec_dir.exists()
+    assert rec_dir.parent.name == "recovery"
+    assert (rec_dir / "session.json").exists()
+    assert (rec_dir / "session.json.corrupt").exists()
+    data = json.loads((rec_dir / "session.json").read_text(encoding="utf-8"))
     assert data["state"] == "recovery"

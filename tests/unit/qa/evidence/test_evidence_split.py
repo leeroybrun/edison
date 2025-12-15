@@ -28,7 +28,7 @@ def test_public_api_reexports():
         "EvidenceError",
         "EvidenceService",
         "missing_evidence_blockers",
-        "read_validator_jsons",
+        "read_validator_reports",
         "load_impl_followups",
         "load_bundle_followups",
         "has_required_evidence",

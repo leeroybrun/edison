@@ -49,7 +49,7 @@ radon cc src/ -a
    - [ ] Generics used correctly (TypeVar, Protocol)
 
 2. **Testing (NO MOCKS)**
-   - [ ] No mock usage (per CLAUDE.md)
+   - [ ] Follow the core NO MOCKS policy (mock only system boundaries)
    - [ ] Real files/databases used
    - [ ] pytest fixtures for setup
    - [ ] Edge cases parametrized

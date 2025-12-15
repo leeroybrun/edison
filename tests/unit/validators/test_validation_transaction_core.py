@@ -10,6 +10,14 @@ from edison.core.utils.subprocess import run_with_timeout
 from tests.helpers.paths import get_repo_root
 
 
+def _with_repo_pythonpath(env: dict[str, str], repo_root: Path) -> dict[str, str]:
+    """Ensure subprocess can import the src-layout edison package."""
+    src = str(repo_root / "src")
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{src}:{existing}" if existing else src
+    return env
+
+
 def _evidence_dir(root: Path, task_id: str, round_num: int) -> Path:
     return (
         root
@@ -37,20 +45,20 @@ def test_validation_transaction_creates_staging_and_journal(
     """ValidationTransaction should create per-task staging + journal metadata."""
     project_root = isolated_project_env
     _seed_session(project_root, "sess-tx-meta")
-    monkeypatch.setenv("project_SESSION", "sess-tx-meta")
+    monkeypatch.setenv("AGENTS_SESSION", "sess-tx-meta")
 
     task_id = "150-wave1-tx-meta"
     round_num = 1
 
     repo_root = get_repo_root()
-    env = os.environ.copy()
+    env = _with_repo_pythonpath(os.environ.copy(), repo_root)
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(project_root),
             "REPO_ROOT": str(repo_root),
             "TASK_ID": task_id,
             "ROUND_NUM": str(round_num),
-            "project_SESSION": "sess-tx-meta",
+            "AGENTS_SESSION": "sess-tx-meta",
         }
     )
 
@@ -99,20 +107,20 @@ def test_validation_transaction_commit_moves_reports_atomically(
     """Committed reports must appear only after successful commit."""
     project_root = isolated_project_env
     _seed_session(project_root, "sess-tx-commit")
-    monkeypatch.setenv("project_SESSION", "sess-tx-commit")
+    monkeypatch.setenv("AGENTS_SESSION", "sess-tx-commit")
 
     task_id = "150-wave1-commit"
     round_num = 1
 
     repo_root = get_repo_root()
-    env = os.environ.copy()
+    env = _with_repo_pythonpath(os.environ.copy(), repo_root)
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(project_root),
             "REPO_ROOT": str(repo_root),
             "TASK_ID": task_id,
             "ROUND_NUM": str(round_num),
-            "project_SESSION": "sess-tx-commit",
+            "AGENTS_SESSION": "sess-tx-commit",
         }
     )
 
@@ -147,9 +155,9 @@ with ValidationTransaction(task_id, round_num) as tx:
 
     final_dir = _evidence_dir(project_root, task_id, round_num)
     assert final_dir.exists()
-    reports = sorted(p.name for p in final_dir.glob("validator-*-report.json"))
-    assert "validator-global-codex-report.json" in reports
-    assert "validator-global-claude-report.json" in reports
+    reports = sorted(p.name for p in final_dir.glob("validator-*-report.md"))
+    assert "validator-global-codex-report.md" in reports
+    assert "validator-global-claude-report.md" in reports
     # Staging directories under TX root should be cleaned after commit
     tx_root = project_root / ".project" / "sessions" / "_tx"
     if tx_root.exists():
@@ -169,20 +177,20 @@ def test_validation_transaction_rollback_on_exception(
     """Exceptions inside the context must trigger rollback (no visible evidence)."""
     project_root = isolated_project_env
     _seed_session(project_root, "sess-tx-rollback")
-    monkeypatch.setenv("project_SESSION", "sess-tx-rollback")
+    monkeypatch.setenv("AGENTS_SESSION", "sess-tx-rollback")
 
     task_id = "150-wave1-rollback"
     round_num = 1
 
     repo_root = get_repo_root()
-    env = os.environ.copy()
+    env = _with_repo_pythonpath(os.environ.copy(), repo_root)
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(project_root),
             "REPO_ROOT": str(repo_root),
             "TASK_ID": task_id,
             "ROUND_NUM": str(round_num),
-            "project_SESSION": "sess-tx-rollback",
+            "AGENTS_SESSION": "sess-tx-rollback",
         }
     )
 
@@ -228,20 +236,20 @@ def test_validation_transaction_partial_validator_failure_no_commit(
     """If any validator in a round fails, no partial evidence should commit."""
     project_root = isolated_project_env
     _seed_session(project_root, "sess-tx-partial")
-    monkeypatch.setenv("project_SESSION", "sess-tx-partial")
+    monkeypatch.setenv("AGENTS_SESSION", "sess-tx-partial")
 
     task_id = "150-wave1-partial"
     round_num = 1
 
     repo_root = get_repo_root()
-    env = os.environ.copy()
+    env = _with_repo_pythonpath(os.environ.copy(), repo_root)
     env.update(
         {
             "AGENTS_PROJECT_ROOT": str(project_root),
             "REPO_ROOT": str(repo_root),
             "TASK_ID": task_id,
             "ROUND_NUM": str(round_num),
-            "project_SESSION": "sess-tx-partial",
+            "AGENTS_SESSION": "sess-tx-partial",
         }
     )
 

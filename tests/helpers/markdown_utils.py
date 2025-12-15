@@ -226,3 +226,20 @@ def create_markdown_task(
     content += f"\n# {title}\n\nTask description here.\n"
 
     path.write_text(content, encoding="utf-8")
+
+
+def create_report_markdown(
+    path: Path,
+    frontmatter_data: Dict[str, Any],
+    *,
+    body: str = "",
+) -> None:
+    """Create a Markdown report file with YAML frontmatter.
+
+    Used for implementation/validator report fixtures in tests.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = format_frontmatter(frontmatter_data)
+    if body:
+        content += body if body.startswith("\n") else f"\n{body}"
+    path.write_text(content, encoding="utf-8")

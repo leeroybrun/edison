@@ -58,7 +58,7 @@ from tests.helpers.io_utils import (
 from tests.helpers.cache_utils import reset_edison_caches, reset_session_store_cache
 
 # Markdown utilities for creating test files
-from tests.helpers.markdown_utils import create_markdown_task
+from tests.helpers.markdown_utils import create_markdown_task, create_report_markdown
 
 # Export main classes and functions - these are the primary interfaces for tests
 __all__ = [
@@ -95,4 +95,5 @@ __all__ = [
     "reset_session_store_cache",
     # Markdown utilities
     "create_markdown_task",
+    "create_report_markdown",
 ]

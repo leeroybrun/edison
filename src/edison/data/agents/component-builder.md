@@ -29,7 +29,7 @@ metadata:
 
 - **Accessibility is correctness**: semantic markup and keyboard support are non-negotiable.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
-- **Anti-patterns (UI)**: do not add interactivity/state without a clear need; keep `'use client'` boundaries minimal.
+- **Anti-patterns (UI)**: do not add interactivity/state without a clear need; keep interactive boundaries minimal.
 
 ## Role
 
@@ -93,19 +93,19 @@ Return:
 
 ```pseudocode
 // CORRECT - Use native elements
-<button type="button" onClick={handleClick}>
+<button type="button" onclick="handleClick()">
   Click me
 </button>
 
 // WRONG - Div with click handler
-<div onClick={handleClick}>Click me</div>
+<div onclick="handleClick()">Click me</div>
 ```
 
 ### ARIA Labels
 
 ```pseudocode
 // Icon-only buttons MUST have aria-label
-<button aria-label="Close dialog" onClick={onClose}>
+<button aria-label="Close dialog" onclick="onClose()">
   <Icon name="close" />
 </button>
 ```
@@ -120,49 +120,30 @@ Return:
 
 - Trap focus within modals
 - Return focus when closing overlays
-- Use `tabIndex={-1}` for programmatic focus
+- Use `tabindex=\"-1\"` for programmatic focus
 
 ## Component Patterns
 
 ### Props Interface
 
 ```pseudocode
-interface ButtonProps extends NativeButtonProps {
-  variant?: 'primary' | 'secondary' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
-  loading?: boolean
-}
+Props:
+  - variant: primary | secondary | ghost (default: primary)
+  - size: sm | md | lg (default: md)
+  - loading: boolean (default: false)
+  - disabled: boolean (default: false)
+  - children: UI content
 
-function Button({
-  variant = 'primary',
-  size = 'md',
-  loading,
-  children,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={mergeClasses(variants[variant], sizes[size])}
-      disabled={loading}
-      {...props}
-    >
-      {loading ? <Spinner /> : children}
-    </button>
-  )
-}
+Render:
+  - Use a native <button> element for click actions
+  - Disable interactions when loading/disabled
+  - Show a spinner/indicator when loading
 ```
 
-### Server vs Client Components
+### Interactivity Boundaries
 
-**Server Components** (default):
-- Data fetching
-- Backend access
-- SEO-critical content
-
-**Client Components** (`"use client"`):
-- Interactive elements
-- State management (useState, useEffect)
-- Browser APIs
+- Default to non-interactive components (presentational) unless interactivity is required.
+- If interactivity is required, keep state local, keep side effects deliberate, and avoid introducing global dependencies.
 
 ## Important Rules
 

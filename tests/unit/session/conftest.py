@@ -45,7 +45,6 @@ def session_git_repo_path(tmp_path: Path, monkeypatch) -> Generator[Path, None, 
 
     # Set environment variables for isolation using centralized helper
     setup_project_root(monkeypatch, repo.repo_path)
-    monkeypatch.setenv("project_ROOT", str(repo.repo_path))
 
     yield repo.repo_path
 

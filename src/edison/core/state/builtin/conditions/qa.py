@@ -75,48 +75,13 @@ def all_blocking_validators_passed(ctx: Mapping[str, Any]) -> bool:
         ctx: Context with task_id or validation_results
 
     Returns:
-        True if all blocking validators passed
+        True if all blocking validators passed (verdict == "approve")
     """
-    task_id = _get_task_id(ctx)
-    if not task_id:
-        return True  # Allow if no task context
+    from edison.core.state.builtin.guards.qa import can_validate_qa
 
-    try:
-        from edison.core.config.domains.qa import QAConfig
-        from edison.core.qa.evidence import read_validator_jsons
-
-        qa_config = QAConfig()
-        validators = qa_config.get_validators()
-
-        # Get blocking validator IDs
-        blocking_ids = {
-            vid for vid, cfg in validators.items()
-            if cfg.get("blocking", True)
-        }
-
-        v = read_validator_jsons(str(task_id))
-        reports = v.get("reports", [])
-
-        if not reports:
-            return False  # No reports = can't verify
-
-        # Build map of verdicts
-        verdicts = {}
-        for report in reports:
-            vid = report.get("validatorId") or report.get("id")
-            verdict = report.get("verdict", "").lower()
-            verdicts[vid] = verdict in ("pass", "approved", "passed")
-
-        # Check all blocking validators passed
-        for bid in blocking_ids:
-            if bid not in verdicts or not verdicts[bid]:
-                return False
-
-        return True
-    except Exception:
-        pass
-
-    return True  # Default to True for flexibility
+    # Delegate to the canonical FAIL-CLOSED implementation to avoid duplicated
+    # evidence parsing and to enforce the current verdict vocabulary.
+    return can_validate_qa(ctx)
 
 
 def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
@@ -133,8 +98,8 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         return True  # Allow if no task context
 
     try:
-        from edison.core.qa.evidence import read_validator_jsons
-        v = read_validator_jsons(str(task_id))
+        from edison.core.qa.evidence import read_validator_reports
+        v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
         return len(reports) > 0
     except Exception:

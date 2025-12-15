@@ -9,7 +9,13 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_session_id,
+)
 
 SUMMARY = "Emit a validation bundle manifest for a task cluster"
 
@@ -36,31 +42,45 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         # Resolve repo root early (ensures PathResolver has a stable cwd when used).
-        _repo_root = get_repo_root(args)
-        _ = _repo_root  # explicit: currently unused; kept for symmetry with other CLIs
+        repo_root = get_repo_root(args)
 
         # Resolve session context (optional but recommended).
-        session_id = getattr(args, "session", None)
-        if not session_id:
-            try:
-                from edison.core.session import lifecycle as session_manager
-                session_id = session_manager.get_current_session()
-            except Exception:
-                session_id = None
+        session_id = resolve_session_id(
+            project_root=repo_root,
+            explicit=getattr(args, "session", None),
+            required=False,
+        )
+        from edison.core.qa.bundler import build_validation_manifest
+        from edison.core.qa.evidence import EvidenceService, rounds
+        from edison.core.utils.time import utc_timestamp
 
-        if not session_id:
-            formatter.error(
-                "No session provided and no current session detected. Provide --session.",
-                error_code="missing_session",
-            )
-            return 1
+        manifest = build_validation_manifest(
+            args.task_id,
+            project_root=repo_root,
+            session_id=session_id,
+        )
 
-        from edison.core.session.persistence import graph as session_graph
+        ev = EvidenceService(args.task_id, project_root=repo_root)
+        round_dir = ev.ensure_round()
+        round_num = rounds.get_round_number(round_dir)
 
-        manifest = session_graph.build_validation_bundle(session_id=session_id, root_task=args.task_id)
+        # Persist a draft bundle summary with per-task approvals defaulting to false.
+        bundle_data = {
+            "taskId": args.task_id,
+            "rootTask": args.task_id,
+            "round": round_num,
+            "approved": False,
+            "generatedAt": utc_timestamp(),
+            "tasks": [{**t, "approved": False} for t in (manifest.get("tasks") or [])],
+            "validators": [],
+            "nonBlockingFollowUps": [],
+        }
+        ev.write_bundle(bundle_data, round_num=round_num)
 
         formatter.json_output(manifest) if formatter.json_mode else formatter.text(
-            f"Bundle manifest for {args.task_id} (session {session_id})\n"
+            f"Bundle manifest for {args.task_id}"
+            + (f" (session {session_id})" if session_id else "")
+            + "\n"
             f"  Tasks: {len(manifest.get('tasks', []) or [])}"
         )
 

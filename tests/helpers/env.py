@@ -1,8 +1,8 @@
 """Test environment helpers for E2E workflow tests.
 
-Provides isolated test environments with:
-- TestProjectDir: Manages isolated .project/ directory
-- TestGitRepo: Manages isolated git repository with worktree support
+Current Edison project layout:
+- Project root contains `.project/` for tasks/qa/sessions data
+- Project root contains `.edison/` for configuration and generated artifacts
 """
 from __future__ import annotations
 
@@ -31,17 +31,16 @@ class TestProjectDir:
             repo_root: Path to actual repository root (for copying configs)
         """
         self.tmp_path = tmp_path
-        self.project_root = repo_root
+        self.repo_root = repo_root
         self.project_root = tmp_path / ".project"
-        # We map the .agents directory to .edison for tests to verify migration
-        self.agents_root = tmp_path / ".edison"
+        self.edison_root = tmp_path / ".edison"
 
         # Setup directory structure
         self._setup_directories()
         self._setup_configs()
 
     def _setup_directories(self) -> None:
-        """Create .project and .agents directory structure."""
+        """Create `.project/` and `.edison/` directory structure."""
         # Load states and paths from YAML config (NO hardcoded values)
         task_states = get_task_states()
         qa_states = get_qa_states()
@@ -51,7 +50,6 @@ class TestProjectDir:
         # Get subdirectory names from config
         project_subdirs = paths_config["subdirectories"]["project"]
         edison_subdirs = paths_config["subdirectories"]["edison"]
-        script_subdirs = paths_config["subdirectories"]["scripts"]
         qa_subdirs = paths_config["subdirectories"]["qa"]
 
         # .project structure - tasks
@@ -67,53 +65,32 @@ class TestProjectDir:
         for state in session_states:
             (self.project_root / project_subdirs["sessions"] / state).mkdir(parents=True, exist_ok=True)
 
-        # .agents structure
-        (self.agents_root / edison_subdirs["sessions"]).mkdir(parents=True, exist_ok=True)
-        (self.agents_root / edison_subdirs["rules"]).mkdir(parents=True, exist_ok=True)
-        (self.agents_root / edison_subdirs["scripts"]).mkdir(parents=True, exist_ok=True)
-        (self.agents_root / edison_subdirs["scripts"] / script_subdirs["lib"]).mkdir(parents=True, exist_ok=True)
+        # .edison structure (config + session templates expected by SessionConfig)
+        (self.edison_root / edison_subdirs["config"]).mkdir(parents=True, exist_ok=True)
+        (self.edison_root / edison_subdirs["_generated"]).mkdir(parents=True, exist_ok=True)
+        (self.edison_root / edison_subdirs["packs"]).mkdir(parents=True, exist_ok=True)
+        (self.edison_root / edison_subdirs["sessions"]).mkdir(parents=True, exist_ok=True)
 
     def _setup_configs(self) -> None:
         """Copy/create necessary config files."""
         # Skip copying if repo_root is the same as tmp_path (already set up by fixture)
-        if self.project_root.resolve() == self.tmp_path.resolve():
+        if self.repo_root.resolve() == self.tmp_path.resolve():
             return
 
-        # Copy manifest.json (required for worktree config and postTrainingPackages)
-        src_manifest = self.project_root / ".agents" / "manifest.json"
-        if src_manifest.exists():
-            dst_manifest = self.agents_root / "manifest.json"
-            copy_if_different(src_manifest, dst_manifest)
-
-        # Copy project .agents/config.yml (legacy) and modular overlays so
-        # ConfigManager in tests sees the same configuration as the real project.
-        src_config = self.project_root / ".agents" / "config.yml"
-        if src_config.exists():
-            dst_config = self.agents_root / "config.yml"
-            copy_if_different(src_config, dst_config)
-
-        src_config_dir = self.project_root / ".agents" / "config"
+        # Copy `.edison/config/*` overrides (if present) from the repo under test.
+        src_config_dir = self.repo_root / ".edison" / "config"
         if src_config_dir.exists():
-            copy_tree_if_different(src_config_dir, self.agents_root / "config")
-
-        # Copy validators config (required for postTrainingPackages detection)
-        src_validators = self.project_root / ".agents" / "validators" / "config.json"
-        if src_validators.exists():
-            validators_dir = self.agents_root / "validators"
-            validators_dir.mkdir(parents=True, exist_ok=True)
-            dst_validators = validators_dir / "config.json"
-            copy_if_different(src_validators, dst_validators)
+            copy_tree_if_different(src_config_dir, self.edison_root / "config")
 
         # NOTE: Session workflow is now defined in bundled state-machine.yaml
         # and accessed via WorkflowConfig domain config. No need to create
         # legacy session-workflow.json files.
 
-        # Copy task template if exists, otherwise create minimal fallback
-        src_template = self.project_root / ".project" / "tasks" / "TEMPLATE.md"
+        # Copy task template if exists in the repo under test, otherwise create fallback.
+        src_template = self.repo_root / ".project" / "tasks" / "TEMPLATE.md"
         dst_template = self.project_root / "tasks" / "TEMPLATE.md"
         if src_template.exists():
-            if src_template.resolve() != dst_template.resolve():
-                shutil.copy(src_template, dst_template)
+            shutil.copy(src_template, dst_template)
         else:
             # Fallback: create minimal task template for tests
             dst_template.write_text(
@@ -124,12 +101,11 @@ class TestProjectDir:
                 encoding="utf-8",
             )
 
-        # Copy QA template if exists, otherwise create minimal fallback
-        src_qa_template = self.project_root / ".project" / "qa" / "TEMPLATE.md"
+        # Copy QA template if exists in the repo under test, otherwise create fallback.
+        src_qa_template = self.repo_root / ".project" / "qa" / "TEMPLATE.md"
         dst_qa_template = self.project_root / "qa" / "TEMPLATE.md"
         if src_qa_template.exists():
-            if src_qa_template.resolve() != dst_qa_template.resolve():
-                shutil.copy(src_qa_template, dst_qa_template)
+            shutil.copy(src_qa_template, dst_qa_template)
         else:
             # Fallback: create minimal QA template for tests
             dst_qa_template.write_text(
@@ -140,28 +116,13 @@ class TestProjectDir:
                 encoding="utf-8",
             )
 
-        # Copy session template from bundled data
+        # Ensure session template exists where SessionConfig.get_template_path() expects it:
+        # `<project-root>/.edison/sessions/TEMPLATE.json`
         from edison.data import get_data_path
         src_session_template = get_data_path("templates", "session.template.json")
         if src_session_template.exists():
-            dst_session_template = self.agents_root / "sessions" / "TEMPLATE.json"
+            dst_session_template = self.edison_root / "sessions" / "TEMPLATE.json"
             copy_if_different(src_session_template, dst_session_template)
-
-        # Copy lib directory (required for CLI scripts to import sessionlib, task)
-        src_lib = self.project_root / ".agents" / "scripts" / "lib"
-        if src_lib.exists():
-            dst_lib = self.agents_root / "scripts" / "lib"
-            copy_tree_if_different(src_lib, dst_lib)
-
-        # Copy task scripts directory (ensure-followups is called by tasks/ready)
-        src_tasks = self.project_root / ".agents" / "scripts" / "tasks"
-        if src_tasks.exists():
-            dst_tasks = self.agents_root / "scripts" / "tasks"
-            dst_tasks.mkdir(parents=True, exist_ok=True)
-            # Copy all task scripts
-            for script_file in src_tasks.glob("*"):
-                if script_file.is_file():
-                    shutil.copy(script_file, dst_tasks / script_file.name)
 
     # === Command Execution ===
 
@@ -265,11 +226,9 @@ class TestProjectDir:
         # Load session states from YAML config (NO hardcoded values)
         session_states = get_session_states()
         for state_dir in session_states:
-            # Check both .project/sessions and .agents/sessions
-            for base in [self.project_root, self.agents_root]:
-                session_path = base / "sessions" / state_dir / session_id / "session.json"
-                if session_path.exists():
-                    return session_path
+            session_path = self.project_root / "sessions" / state_dir / session_id / "session.json"
+            if session_path.exists():
+                return session_path
         return None
 
     def get_session_json(self, session_id: str) -> Optional[Dict[str, Any]]:

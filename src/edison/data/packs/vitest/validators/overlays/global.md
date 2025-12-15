@@ -10,8 +10,7 @@
 {{include-section:packs/vitest/guidelines/includes/vitest/component-testing.md#patterns}}
 
 ### Concrete Checks
-- Follow RED→GREEN→REFACTOR; tests precede implementation.
 - Avoid `.skip()`/`.only()` in committed code.
-- Prefer realistic tests with minimal mocking; isolate side effects.
+- Enforce the core NO MOCKS policy: mock only system boundaries (third-party APIs), never internal modules.
 - Keep tests fast and deterministic with clear naming.
 <!-- /extend -->

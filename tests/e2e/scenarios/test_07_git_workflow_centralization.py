@@ -47,7 +47,7 @@ def _init_git_repo(repo_root: Path, base_branch: str = "main") -> None:
 def test_base_branch_loaded_from_manifest(project_dir: TestProjectDir, tmp_path: Path):
     """session new should respect worktrees.baseBranch from manifest."""
     # Patch manifest baseBranch to 'develop'
-    manifest_path = project_dir.agents_root / "manifest.json"
+    manifest_path = project_dir.edison_root / "manifest.json"
     assert manifest_path.exists(), "manifest.json must exist in test env"
     manifest = json.loads(manifest_path.read_text())
     manifest.setdefault("worktrees", {})["baseBranch"] = "develop"

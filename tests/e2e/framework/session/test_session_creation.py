@@ -16,7 +16,7 @@ if _CORE_ROOT is None:
     _CORE_ROOT = get_repo_root()
 
 CORE_ROOT = _CORE_ROOT
-from tests.helpers.session import ensure_session, load_session, _get_worktree_base 
+from tests.helpers.session import ensure_session, load_session
 def test_session_initialization_and_json(tmp_path):
     """Creates a session and verifies session.json content and computed paths.
 
@@ -28,6 +28,6 @@ def test_session_initialization_and_json(tmp_path):
     assert d.exists()
     meta = load_session(sid)
     assert meta['id'] == sid
-    assert meta['state'] == 'Active'
-    # worktree base is computed via config
-    assert Path(meta['worktreeBase']).resolve() == _get_worktree_base().resolve()
+    assert meta['state'] == 'active'
+    assert meta.get("meta", {}).get("status") == "active"
+    assert "git" in meta

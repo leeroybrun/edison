@@ -53,11 +53,10 @@ class TestWriteGeneratedAgent:
         # Default role should mention the agent name
         assert "test-agent" in content.lower()
 
-    def test_writes_agent_to_custom_base_dir(self, tmp_path: Path) -> None:
-        """write_generated_agent can use .agents as base instead of .edison."""
-        path = write_generated_agent(tmp_path, "custom-agent", base_dir=".agents")
-
-        assert path == tmp_path / ".agents" / "_generated" / "agents" / "custom-agent.md"
+    def test_writes_agent_to_edison_dir_only(self, tmp_path: Path) -> None:
+        """write_generated_agent writes only to .edison (no legacy .agents support)."""
+        path = write_generated_agent(tmp_path, "custom-agent")
+        assert path == tmp_path / ".edison" / "_generated" / "agents" / "custom-agent.md"
         assert path.exists()
 
 
@@ -92,11 +91,10 @@ class TestWriteOrchestratorManifest:
         # agentsCount should reflect total
         assert data["composition"]["agentsCount"] == 3
 
-    def test_writes_manifest_to_custom_base_dir(self, tmp_path: Path) -> None:
-        """write_orchestrator_manifest can use .agents as base."""
-        path = write_orchestrator_manifest(tmp_path, base_dir=".agents")
-
-        assert path == tmp_path / ".agents" / "_generated" / "orchestrator-manifest.json"
+    def test_writes_manifest_to_edison_dir_only(self, tmp_path: Path) -> None:
+        """write_orchestrator_manifest writes only to .edison (no legacy .agents support)."""
+        path = write_orchestrator_manifest(tmp_path)
+        assert path == tmp_path / ".edison" / "_generated" / "orchestrator-manifest.json"
         assert path.exists()
 
 
@@ -121,9 +119,8 @@ class TestWriteOrchestratorConstitution:
         content = path.read_text(encoding="utf-8")
         assert content == custom
 
-    def test_writes_constitution_to_custom_base_dir(self, tmp_path: Path) -> None:
-        """write_orchestrator_constitution can use .agents as base."""
-        path = write_orchestrator_constitution(tmp_path, base_dir=".agents")
-
-        assert path == tmp_path / ".agents" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
+    def test_writes_constitution_to_edison_dir_only(self, tmp_path: Path) -> None:
+        """write_orchestrator_constitution writes only to .edison (no legacy .agents support)."""
+        path = write_orchestrator_constitution(tmp_path)
+        assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
         assert path.exists()

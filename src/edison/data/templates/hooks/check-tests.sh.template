@@ -19,36 +19,18 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // empty' 2>/dev/null || echo
 {% set warn_if_missing = cfg.get("warn_if_missing", False) %}
 
 {% if skip_test_files %}
-# Skip test files
-if echo "$FILE_PATH" | grep -qE '\\.(test|spec)\\.(ts|js|tsx|jsx|py)$'; then
+# Skip obvious test files (stack-agnostic heuristic)
+if echo "$FILE_PATH" | grep -qE '(^|/)(test|tests|spec|specs)(/|$)|(^|/)test[^/]*\\.|\\.(test|spec)\\.'; then
   exit 0
 fi
 {% endif %}
 
-# Try to find corresponding test file
-TEST_PATTERNS=(
-  "${FILE_PATH%.ts}.test.ts"
-  "${FILE_PATH%.js}.test.js"
-  "${FILE_PATH%.py}_test.py"
-  "${FILE_PATH%.tsx}.test.tsx"
-  "${FILE_PATH%.jsx}.test.jsx"
-)
-
-TEST_EXISTS=false
-for pattern in "${TEST_PATTERNS[@]}"; do
-  if [[ -f "$pattern" ]]; then
-    TEST_EXISTS=true
-    break
-  fi
-done
-
 {% if warn_if_missing %}
-if [[ "$TEST_EXISTS" != "true" ]]; then
-  echo ""
-  echo "⚠️  No test file found for: $FILE_PATH"
-  echo "   Consider creating tests following TDD workflow"
-  echo ""
-fi
+echo ""
+echo "⚠️  Test reminder for: $FILE_PATH"
+echo "   Ensure the change is covered by appropriate tests per your project's conventions."
+echo "   Follow TDD: write failing test (RED) → minimal fix (GREEN) → cleanup (REFACTOR)."
+echo ""
 {% endif %}
 
 exit 0

@@ -108,6 +108,7 @@ class Session:
     def add_activity(self, message: str) -> None:
         """Add an activity log entry."""
         from edison.core.utils.time import utc_timestamp
+        self.metadata.touch()
         self.activity_log.append({
             "timestamp": utc_timestamp(),
             "message": message,
@@ -222,4 +223,3 @@ __all__ = [
     "GitInfo",
     "Session",
 ]
-

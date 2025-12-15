@@ -119,7 +119,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})
 
-    # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle-approved.json approved=true
+    # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle-approved.md approved=true
     # Get state names from config
     task_done = WorkflowConfig().get_semantic_state("task", "done")
     qa_done = WorkflowConfig().get_semantic_state("qa", "done")
@@ -167,41 +167,39 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         health["ok"] = False
         return health
 
-    # On success, transition session to closing phase using proper state machine
-    # This ensures guards and actions are executed per workflow.yaml
-    from edison.core.state.transitions import transition_entity, EntityTransitionError
-    from edison.core.session.persistence.repository import SessionRepository
-    from edison.core.session.core.models import Session
-    
-    closing_state = WorkflowConfig().get_semantic_state("session", "closing")
-    current_state = session.get("state", "active")
-    
+    # Restore session-scoped records back to global queues before closing.
+    #
+    # This is part of the session lifecycle contract: the session tree provides isolation
+    # while active, and on close-out we restore all session-owned records to the global
+    # queues transactionally (FAIL-CLOSED on restore errors).
     try:
-        # Use transition_entity to validate guards and execute actions
-        result = transition_entity(
-            entity_type="session",
-            entity_id=session_id,
-            to_state=closing_state,
-            current_state=current_state,
+        from edison.core.session.lifecycle.recovery import restore_records_to_global_transactional
+
+        restore_records_to_global_transactional(session_id)
+    except Exception as e:
+        health["ok"] = False
+        health["details"].append(f"Restore to global queues failed: {e}")
+        return health
+
+    # On success, transition session to closing using the canonical repository API.
+    from edison.core.session.persistence.repository import SessionRepository
+
+    closing_state = WorkflowConfig().get_semantic_state("session", "closing")
+    session_repo = SessionRepository()
+    try:
+        entity = session_repo.get_or_raise(session_id)
+        session_repo.transition(
+            session_id,
+            closing_state,
             context={
-                "session": session,
                 "session_id": session_id,
+                "session": entity.to_dict(),
+                "entity_type": "session",
+                "entity_id": session_id,
             },
+            reason="session-verify",
         )
-        
-        # Update session with transition result
-        session["state"] = result["state"]
-        if "history_entry" in result:
-            session.setdefault("stateHistory", []).append(result["history_entry"])
-        session.setdefault("meta", {})["lastActive"] = io_utc_timestamp()
-        
-        # Save via repository for proper state directory handling
-        session_repo = SessionRepository()
-        session_entity = Session.from_dict(session)
-        session_repo.save(session_entity)
-        
-    except EntityTransitionError as e:
-        # Guard or condition blocked the transition
+    except Exception as e:
         health["ok"] = False
         health["details"].append(f"Transition to closing blocked: {e}")
         return health

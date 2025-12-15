@@ -38,6 +38,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Remove link instead of creating it",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting existing links or creating cycles",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -85,6 +90,39 @@ def main(args: argparse.Namespace) -> int:
                 f"Unlinked {child_id} from parent {parent_id}"
             )
         else:
+            if parent_id == child_id:
+                raise ValueError("Cannot link a task to itself")
+
+            # Prevent cycles + overwrites unless --force.
+            # A cycle would be created if the proposed parent is already a descendant
+            # of the child (i.e., walking parent->parent_id reaches the child).
+            if child_task.parent_id and child_task.parent_id != parent_id and not args.force:
+                raise ValueError(
+                    f"Child task {child_id} already has parent {child_task.parent_id}; "
+                    "use --force to overwrite"
+                )
+
+            cur = parent_task
+            seen: set[str] = set()
+            while cur and cur.parent_id:
+                pid = str(cur.parent_id)
+                if pid in seen:
+                    # Corrupt existing graph; fail closed unless forced.
+                    if not args.force:
+                        raise ValueError(
+                            f"Cycle detected while checking ancestry of {parent_id}; use --force to proceed"
+                        )
+                    break
+                seen.add(pid)
+                if pid == child_id:
+                    if not args.force:
+                        raise ValueError(
+                            f"Cycle detected: linking {parent_id} -> {child_id} would create a loop; "
+                            "use --force to proceed"
+                        )
+                    break
+                cur = task_repo.get(pid)
+
             # Create link - update both task entities
             # Update parent's child_ids
             if child_id not in parent_task.child_ids:

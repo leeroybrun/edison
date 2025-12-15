@@ -16,7 +16,6 @@ from typing import Optional
 
 from edison.core.entity import EntityMetadata, PersistenceError
 from edison.core.utils.paths import PathResolver
-from edison.core.state.transitions import transition_entity, EntityTransitionError
 
 from .models import Task
 from .repository import TaskRepository
@@ -140,7 +139,7 @@ class TaskQAWorkflow:
         """Claim a task for a session (todo -> wip transition).
 
         This workflow operation:
-        1. Validates transition and executes actions using transition_entity()
+        1. Validates transition and executes actions via repository.transition()
         2. Updates state to wip
         3. Updates session_id
         4. Moves file to session wip directory
@@ -158,53 +157,63 @@ class TaskQAWorkflow:
             PersistenceError: If task not found or transition blocked
         """
         from edison.core.config.domains.workflow import WorkflowConfig
+        from edison.core.session.lifecycle.recovery import is_session_expired
+        from edison.core.session.persistence.repository import SessionRepository as _SessionRepository
+
+        sess_repo = _SessionRepository(project_root=self.project_root)
+        if not sess_repo.exists(session_id):
+            raise PersistenceError(f"Session not found: {session_id}")
+        if is_session_expired(session_id, project_root=self.project_root):
+            raise PersistenceError(
+                f"Session {session_id} is expired; run `edison session cleanup-expired` or create a new session."
+            )
 
         # 1. Load task
         task = self.task_repo.get(task_id)
         if not task:
             raise PersistenceError(f"Task not found: {task_id}")
 
+        # FAIL-CLOSED: prevent claiming a task already owned by another session.
+        if task.session_id and str(task.session_id) != str(session_id):
+            raise PersistenceError(
+                f"Task {task_id} is already claimed by '{task.session_id}' (cannot claim from '{session_id}')"
+            )
+
         workflow_config = WorkflowConfig()
         wip_state = workflow_config.get_semantic_state("task", "wip")
 
-        # Build context for guards - include proposed session_id for guard evaluation
-        task.session_id = session_id  # Update in memory for guard check
+        # Build context for guards - include proposed session_id for guard evaluation.
+        task_ctx = task.to_dict()
+        task_ctx["session_id"] = session_id
+        task_ctx["sessionId"] = session_id
         context = {
-            "task": task.to_dict(),
+            "task": task_ctx,
             "task_id": task_id,
             "session": {"id": session_id},
             "session_id": session_id,
             "entity_type": "task",
             "entity_id": task_id,
         }
-        context["task"]["session_id"] = session_id  # Update context to reflect proposed state
 
-        # Validate and execute transition actions
-        try:
-            transition_entity(
-                entity_type="task",
-                entity_id=task_id,
-                to_state=wip_state,
-                current_state=task.state,
-                context=context,
-                repo_root=self.project_root,
-            )
-        except EntityTransitionError as e:
-            raise PersistenceError(f"Cannot claim task {task_id}: {e}") from e
-
-        # 2. Update task entity
         from edison.core.utils.time import utc_timestamp
-        now = utc_timestamp()
-        
-        old_state = task.state
-        task.state = wip_state
-        # task.session_id already set above
-        task.claimed_at = task.claimed_at or now
-        task.last_active = now
-        task.record_transition(old_state, wip_state, reason="claimed")
 
-        # 3. Save (handles move)
-        self.task_repo.save(task)
+        def _mutate(t: Task) -> None:
+            now = utc_timestamp()
+            t.session_id = session_id
+            t.claimed_at = t.claimed_at or now
+            t.last_active = now
+
+        # Validate transition, execute actions, record history, and persist.
+        try:
+            task = self.task_repo.transition(
+                task_id,
+                wip_state,
+                context=context,
+                reason="claimed",
+                mutate=_mutate,
+            )
+        except Exception as e:
+            raise PersistenceError(f"Cannot claim task {task_id}: {e}") from e
 
         # 4. Register task in session
         from edison.core.session.persistence.graph import register_task
@@ -224,7 +233,7 @@ class TaskQAWorkflow:
         """Complete a task (wip -> done transition).
 
         This workflow operation:
-        1. Validates transition and executes actions using transition_entity()
+        1. Validates transition and executes actions via repository.transition()
         2. Updates state to done
         3. Moves file to session done directory
         4. Updates task status in session
@@ -266,30 +275,21 @@ class TaskQAWorkflow:
             "entity_id": task_id,
         }
         
-        # Validate and execute transition actions
-        try:
-            transition_entity(
-                entity_type="task",
-                entity_id=task_id,
-                to_state=done_state,
-                current_state=task.state,
-                context=context,
-                repo_root=self.project_root,
-            )
-        except EntityTransitionError as e:
-            raise PersistenceError(f"Cannot complete task {task_id}: {e}") from e
-
-        # 2. Update task entity
         from edison.core.utils.time import utc_timestamp
-        now = utc_timestamp()
-        
-        old_state = task.state
-        task.state = done_state
-        task.last_active = now
-        task.record_transition(old_state, done_state, reason="completed")
 
-        # 3. Save (handles move)
-        self.task_repo.save(task)
+        def _mutate(t: Task) -> None:
+            t.last_active = utc_timestamp()
+
+        try:
+            task = self.task_repo.transition(
+                task_id,
+                done_state,
+                context=context,
+                reason="completed",
+                mutate=_mutate,
+            )
+        except Exception as e:
+            raise PersistenceError(f"Cannot complete task {task_id}: {e}") from e
 
         # 4. Advance QA
         self._advance_qa_for_completion(task_id, session_id)
@@ -299,46 +299,90 @@ class TaskQAWorkflow:
     # ---------- Internal Helpers ----------
 
     def _create_qa_for_task(self, task: Task) -> None:
-        """Create QA record for a task.
+        """Ensure a QA record exists for a task (idempotent)."""
+        self.ensure_qa(
+            task_id=task.id,
+            session_id=task.session_id,
+            validator_owner=None,
+            created_by=task.metadata.created_by,
+            title=f"QA for {task.id}: {task.title}",
+        )
 
-        Args:
-            task: Task entity
+    def ensure_qa(
+        self,
+        *,
+        task_id: str,
+        session_id: Optional[str] = None,
+        validator_owner: Optional[str] = None,
+        created_by: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> "QARecord":
+        """Ensure the associated QA record exists (create if missing).
+
+        Canonical QA records live under `.project/qa/<state>/<task-id>-qa.md`.
+        Evidence lives under `.project/qa/validation-evidence/<task-id>/round-N/`.
         """
         from edison.core.qa.models import QARecord
         from edison.core.config.domains.workflow import WorkflowConfig
 
-        qa_id = f"{task.id}-qa"
+        task = self.task_repo.get(task_id)
+        if not task:
+            raise PersistenceError(f"Task not found: {task_id}")
 
-        # Don't recreate if already exists
-        if self.qa_repo.exists(qa_id):
-            return
+        qa_id = f"{task_id}-qa"
 
-        waiting_state = WorkflowConfig().get_semantic_state("qa", "waiting")
+        qa = self.qa_repo.get(qa_id)
+        if qa:
+            changed = False
+            if session_id and qa.session_id != session_id:
+                qa.session_id = session_id
+                changed = True
+            if validator_owner is not None and qa.validator_owner != validator_owner:
+                qa.validator_owner = validator_owner
+                changed = True
+            if title and qa.title != title:
+                qa.title = title
+                changed = True
+            if changed:
+                self.qa_repo.save(qa)
+            return qa
+
+        cfg = WorkflowConfig()
+        qa_waiting = cfg.get_semantic_state("qa", "waiting")
+        qa_todo = cfg.get_semantic_state("qa", "todo")
+        task_done = cfg.get_semantic_state("task", "done")
+        task_validated = cfg.get_semantic_state("task", "validated")
+
+        initial_state = qa_todo if task.state in {task_done, task_validated} else qa_waiting
+        resolved_session = session_id or task.session_id
 
         qa = QARecord(
             id=qa_id,
-            task_id=task.id,
-            state=waiting_state,
-            title=f"QA for {task.id}: {task.title}",
-            session_id=task.session_id,
+            task_id=task_id,
+            state=initial_state,
+            title=title or f"QA for {task_id}: {task.title}",
+            session_id=resolved_session,
+            validator_owner=validator_owner,
             metadata=EntityMetadata.create(
-                created_by=task.metadata.created_by,
-                session_id=task.session_id,
+                created_by=created_by or task.metadata.created_by,
+                session_id=resolved_session,
             ),
         )
 
         self.qa_repo.save(qa)
 
-        # Register QA in session if task has session_id
-        if task.session_id:
+        if resolved_session:
             from edison.core.session.persistence.graph import register_qa
+
             register_qa(
-                task.session_id,
-                task.id,
+                resolved_session,
+                task_id,
                 qa_id,
-                status=waiting_state,
+                status=initial_state,
                 round_no=1,
             )
+
+        return qa
 
     def _move_qa_to_session(self, task_id: str, session_id: str) -> None:
         """Move associated QA to session."""

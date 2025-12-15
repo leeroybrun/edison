@@ -44,6 +44,8 @@ workflow:
               conditions:
                 - name: all_work_complete
                 - name: no_pending_commits
+                - name: no_task_graph_cycles
+                  error: "Cycle detected in session task graph"
               actions:
                 - name: record_completion_time
             - to: blocked
@@ -62,6 +64,8 @@ workflow:
               conditions:
                 - name: all_work_complete
                 - name: no_pending_commits
+                - name: no_task_graph_cycles
+                  error: "Cycle detected in session task graph"
               rules: [RULE.GUARDS.FAIL_CLOSED, RULE.IMPLEMENTATION.REPORT_REQUIRED]
               actions:
                 - name: record_completion_time
@@ -179,7 +183,7 @@ workflow:
               guard: can_validate_qa
               conditions:
                 - name: has_bundle_approval
-                  error: "Bundle approval required (bundle-approved.json)"
+                  error: "Bundle approval required (bundle-approved.md)"
                 - name: has_all_waves_passed
                   error: "All validator waves must pass in order"
               rules: [RULE.VALIDATION.BUNDLE_APPROVED_MARKER]
@@ -242,10 +246,6 @@ workflow:
                   when: after
             - to: blocked
               guard: has_blockers
-              conditions:
-                - name: validation_failed
-                  or:
-                    - name: dependencies_missing
               actions:
                 - name: record_blocker_reason
             - to: closing

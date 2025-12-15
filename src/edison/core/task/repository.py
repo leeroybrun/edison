@@ -147,12 +147,10 @@ class TaskRepository(
         # surface an actionable error instead of pretending the task doesn't exist.
         content = path.read_text(encoding="utf-8", errors="strict")
         if not has_frontmatter(content):
-            if "<!-- TaskID:" in content or "<!-- TaskId:" in content:
-                raise PersistenceError(
-                    f"Legacy task format detected at {path}. "
-                    "Run `edison migrate task-frontmatter --repo-root <project-root>` to convert tasks/QA to YAML frontmatter."
-                )
-            return None
+            raise PersistenceError(
+                f"Task file at {path} is missing YAML frontmatter. "
+                "Restore the file from TEMPLATE.md or recreate the task via `edison task new`."
+            )
 
         try:
             return self._parse_task_markdown(path.stem, content, path)
@@ -416,9 +414,6 @@ class TaskRepository(
         """Parse task from markdown content with YAML frontmatter.
 
         State is ALWAYS derived from directory location, never from file content.
-        
-        NOTE: Only YAML frontmatter format is supported. Legacy HTML comment
-        format must be migrated using `edison migrate task_frontmatter`.
 
         Args:
             task_id: Task ID from filename
@@ -437,8 +432,7 @@ class TaskRepository(
         # Parse YAML frontmatter (only supported format)
         if not has_frontmatter(content):
             raise ValueError(
-                f"Task {task_id} does not have YAML frontmatter. "
-                "Run `edison migrate task_frontmatter` to convert legacy files."
+                f"Task {task_id} does not have YAML frontmatter."
             )
 
         doc = parse_frontmatter(content)
@@ -495,5 +489,3 @@ class TaskRepository(
 __all__ = [
     "TaskRepository",
 ]
-
-

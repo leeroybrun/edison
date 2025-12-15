@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import json
 from pathlib import Path
 import sys
 
@@ -11,6 +9,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 from edison.core.qa.evidence import EvidenceService
+from tests.helpers import create_report_markdown
 
 
 class TestEvidenceService:
@@ -41,7 +40,7 @@ class TestEvidenceService:
         assert latest_dir.parent == evidence_base
 
     def test_read_bundle_summary(self, isolated_project_env: Path) -> None:
-        """Service reads bundle-approved.json from latest round."""
+        """Service reads bundle-approved.md from latest round."""
         task_id = "task-200"
         svc = EvidenceService(task_id, project_root=isolated_project_env)
 
@@ -59,15 +58,15 @@ class TestEvidenceService:
         round_dir.mkdir(parents=True, exist_ok=True)
 
         payload = {"approved": True, "taskId": task_id}
-        bundle_path = round_dir / "bundle-approved.json"
-        bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+        bundle_path = round_dir / "bundle-approved.md"
+        create_report_markdown(bundle_path, payload, body="\n# Bundle Approval\n")
 
         data = svc.read_bundle()
         assert data["approved"] is True
         assert data["taskId"] == task_id
 
     def test_read_implementation_report(self, isolated_project_env: Path) -> None:
-        """Service reads implementation-report.json from latest round."""
+        """Service reads implementation-report.md from latest round."""
         task_id = "task-300"
         svc = EvidenceService(task_id, project_root=isolated_project_env)
 
@@ -85,8 +84,8 @@ class TestEvidenceService:
         round_dir.mkdir(parents=True, exist_ok=True)
 
         payload = {"implementer": "test-agent", "taskId": task_id}
-        report_path = round_dir / "implementation-report.json"
-        report_path.write_text(json.dumps(payload), encoding="utf-8")
+        report_path = round_dir / "implementation-report.md"
+        create_report_markdown(report_path, payload, body="\n# Implementation Report\n")
 
         data = svc.read_implementation_report()
         assert data["implementer"] == "test-agent"

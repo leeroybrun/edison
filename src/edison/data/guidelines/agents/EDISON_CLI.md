@@ -75,7 +75,7 @@ edison session track complete --task <task-id>
 edison session track complete --task TASK-123
 ```
 
-**This writes**: `.project/qa/validation-evidence/TASK-123/round-1/implementation-report.json`
+**This writes**: `.project/qa/validation-evidence/TASK-123/round-1/implementation-report.md`
 
 ---
 
@@ -181,7 +181,7 @@ edison task status TASK-123 --json
 
 ## Output Locations
 
-**Implementation evidence**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.json`
+**Implementation evidence**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.md`
 
 **Contents:**
 - Changes made

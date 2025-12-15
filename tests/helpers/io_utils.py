@@ -197,7 +197,6 @@ def write_generated_agent(
     agent_name: str,
     *,
     role_text: str = None,
-    base_dir: str = ".edison",
 ) -> Path:
     """Write generated agent file to _generated/agents/ directory.
 
@@ -208,7 +207,6 @@ def write_generated_agent(
         base_path: Base directory (typically tmp_path in tests)
         agent_name: Name of the agent (e.g., "api-builder")
         role_text: Custom role text (default: generated from agent_name)
-        base_dir: Base directory name (default: ".edison", can be ".agents")
 
     Returns:
         Path: Path to the created agent file
@@ -218,7 +216,7 @@ def write_generated_agent(
         >>> assert path == tmp_path / ".edison" / "_generated" / "agents" / "api-builder.md"
     """
     base_path = Path(base_path)
-    agents_dir = base_path / base_dir / "_generated" / "agents"
+    agents_dir = base_path / ".edison" / "_generated" / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
 
     agent_path = agents_dir / f"{agent_name}.md"
@@ -262,7 +260,6 @@ def write_orchestrator_manifest(
     base_path: Path,
     *,
     agents: dict = None,
-    base_dir: str = ".edison",
 ) -> Path:
     """Write orchestrator manifest JSON to _generated/ directory.
 
@@ -271,7 +268,6 @@ def write_orchestrator_manifest(
     Args:
         base_path: Base directory (typically tmp_path in tests)
         agents: Custom agent roster dict (default: minimal roster)
-        base_dir: Base directory name (default: ".edison", can be ".agents")
 
     Returns:
         Path: Path to the created manifest file
@@ -281,7 +277,7 @@ def write_orchestrator_manifest(
         >>> assert path == tmp_path / ".edison" / "_generated" / "orchestrator-manifest.json"
     """
     base_path = Path(base_path)
-    generated_dir = base_path / base_dir / "_generated"
+    generated_dir = base_path / ".edison" / "_generated"
     generated_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = generated_dir / "orchestrator-manifest.json"
@@ -317,7 +313,6 @@ def write_orchestrator_constitution(
     base_path: Path,
     *,
     content: str = None,
-    base_dir: str = ".edison",
 ) -> Path:
     """Write orchestrator constitution to _generated/constitutions/ directory.
 
@@ -326,7 +321,6 @@ def write_orchestrator_constitution(
     Args:
         base_path: Base directory (typically tmp_path in tests)
         content: Custom constitution content (default: minimal constitution)
-        base_dir: Base directory name (default: ".edison", can be ".agents")
 
     Returns:
         Path: Path to the created constitution file
@@ -336,7 +330,7 @@ def write_orchestrator_constitution(
         >>> assert path == tmp_path / ".edison" / "_generated" / "constitutions" / "ORCHESTRATOR.md"
     """
     base_path = Path(base_path)
-    constitutions_dir = base_path / base_dir / "_generated" / "constitutions"
+    constitutions_dir = base_path / ".edison" / "_generated" / "constitutions"
     constitutions_dir.mkdir(parents=True, exist_ok=True)
 
     constitution_path = constitutions_dir / "ORCHESTRATOR.md"

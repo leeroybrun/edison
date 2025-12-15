@@ -84,15 +84,14 @@ def test_validators_validate_emits_summary_path_on_stdout_and_logs_to_stderr(tmp
     # Create an empty evidence dir (no reports → failure path)
     ev_dir = REPO_ROOT / ".project" / "qa" / "validation-evidence" / task_id
     (ev_dir / "round-1").mkdir(parents=True, exist_ok=True)
-    rc, out, err = run(["edison", "qa", "validate", "--task", task_id])
-    # Should fail due to missing reports
-    assert rc != 0
-    # stdout should contain path to bundle-approved.json (single line acceptable)
-    summary_path = (ev_dir / "round-1" / "bundle-approved.json")
-    assert str(summary_path) in out
+    rc, out, err = run(["edison", "qa", "validate", task_id, "--check-only", "--json"])
+    assert rc != 0  # Not approved
+    payload = json.loads(out)
+    assert payload.get("task_id") == task_id
+    summary_path = REPO_ROOT / str(payload.get("bundle_file"))
     assert summary_path.exists()
-    # stderr should mention missing reports
-    assert "missing report" in err.lower() or "bundle not approved" in err.lower()
+    assert summary_path.name == "bundle-approved.md"
+    assert payload.get("approved") is False
 
 
 def test_delegation_validate_config_json_mode():

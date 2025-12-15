@@ -80,22 +80,22 @@ setup:
     - id: ci_lint
       prompt: "Lint command"
       type: string
-      default: "npm run lint"
+      default: ""
 
     - id: ci_test
       prompt: "Test command"
       type: string
-      default: "npm test"
+      default: ""
 
     - id: ci_build
       prompt: "Build command"
       type: string
-      default: "npm run build"
+      default: ""
 
     - id: ci_type_check
       prompt: "Type check command"
       type: string
-      default: "npm run type-check"
+      default: ""
 
   # Additional questions for advanced mode
   advanced:

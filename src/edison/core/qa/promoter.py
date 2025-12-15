@@ -6,6 +6,7 @@ from typing import Iterable, List, Optional
 
 from ..legacy_guard import enforce_no_legacy_project_root
 from .evidence import EvidenceService
+from .evidence import reports as reportlib
 
 
 enforce_no_legacy_project_root("lib.qa.promoter")
@@ -43,7 +44,7 @@ def collect_validator_reports(task_ids: Iterable[str]) -> List[Path]:
             continue
         # Use EvidenceService.list_rounds() instead of importing from rounds.py
         for rd in ev_svc.list_rounds():
-            reports.extend(sorted(rd.glob("validator-*-report.json")))
+            reports.extend(reportlib.list_validator_reports(rd))
     return reports
 
 
@@ -71,4 +72,3 @@ __all__ = [
     "collect_validator_reports",
     "collect_task_files",
 ]
-

@@ -1,10 +1,10 @@
 """Validator report I/O utilities.
 
-Validator reports are per-round JSON files following a fixed naming convention:
+Validator reports are per-round structured files following a fixed naming convention:
 
-    validator-<name>-report.json
+    validator-<name>-report.md
 
-This module is intentionally small and does not depend on external services.
+They are written as Markdown with YAML frontmatter (machine-readable + LLM-readable).
 """
 
 from __future__ import annotations
@@ -12,11 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
-from edison.core.utils.io import read_json, write_json_atomic
+from .report_io import read_structured_report, write_structured_report
 
 
 _VALIDATOR_PREFIX = "validator-"
-_REPORT_SUFFIX = "-report.json"
+_REPORT_SUFFIX = "-report.md"
 
 
 def _normalize_validator_name(validator_name: str) -> str:
@@ -31,39 +31,38 @@ def validator_report_path(round_dir: Path, validator_name: str) -> Path:
     normalized = _normalize_validator_name(validator_name)
     return round_dir / f"{_VALIDATOR_PREFIX}{normalized}{_REPORT_SUFFIX}"
 
+def _validator_id_from_path(path: Path) -> str:
+    stem = path.stem  # validator-<id>-report
+    if stem.startswith(_VALIDATOR_PREFIX):
+        stem = stem[len(_VALIDATOR_PREFIX) :]
+    if stem.endswith("-report"):
+        stem = stem[: -len("-report")]
+    return stem
+
 
 def write_validator_report(round_dir: Path, validator_name: str, data: Dict[str, Any]) -> Path:
-    """Write a validator report JSON file.
+    """Write a validator report file (Markdown with YAML frontmatter).
 
     Args:
         round_dir: Round evidence directory.
         validator_name: Validator id/name (with or without the 'validator-' prefix).
-        data: JSON-serializable dict.
+        data: Dict payload (serialized as YAML frontmatter).
 
     Returns:
         Path to the written report file.
     """
     round_dir.mkdir(parents=True, exist_ok=True)
     path = validator_report_path(round_dir, validator_name)
-    write_json_atomic(path, data)
+    write_structured_report(path, data)
     return path
 
 
 def read_validator_report(round_dir: Path, validator_name: str) -> Dict[str, Any]:
-    """Read a validator report JSON file.
+    """Read a validator report file.
 
-    Returns an empty dict if the report does not exist or is invalid JSON.
+    Returns an empty dict if the report does not exist or is invalid.
     """
-    path = validator_report_path(round_dir, validator_name)
-    if not path.exists():
-        return {}
-
-    try:
-        data = read_json(path)
-    except Exception:
-        return {}
-
-    return data if isinstance(data, dict) else {}
+    return read_structured_report(validator_report_path(round_dir, validator_name))
 
 
 def list_validator_reports(round_dir: Path) -> List[Path]:
@@ -73,4 +72,3 @@ def list_validator_reports(round_dir: Path) -> List[Path]:
 
     files = list(round_dir.glob(f"{_VALIDATOR_PREFIX}*{_REPORT_SUFFIX}"))
     return sorted(files, key=lambda p: p.name)
-

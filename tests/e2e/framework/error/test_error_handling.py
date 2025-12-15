@@ -1,58 +1,39 @@
 import os
-import sys
 import json
 import stat
 from pathlib import Path
 
 import pytest
 
-from tests.helpers.paths import get_repo_root
-
-_THIS_FILE = Path(__file__).resolve()
-_CORE_ROOT = None
-for _parent in _THIS_FILE.parents:
-    candidate = _parent / ".edison" / "core"
-    if (candidate / "lib").exists():
-        _CORE_ROOT = candidate
-        break
-
-if _CORE_ROOT is None:
-    _CORE_ROOT = get_repo_root()
-
-CORE_ROOT = _CORE_ROOT
 from tests.helpers import session as sessionlib  # type: ignore
 from edison.core.utils import resilience  # type: ignore
 from edison.core.config import ConfigManager
 
 
 def test_missing_project_name_raises(monkeypatch: pytest.MonkeyPatch):
-    """Test that missing PROJECT_NAME raises ValueError.
-
-    Uses real environment setup instead of mocking.
-    """
-    # Remove PROJECT_NAME from environment
+    """Project name resolves via config (no required PROJECT_NAME env var)."""
     monkeypatch.delenv("PROJECT_NAME", raising=False)
-
-    # The real _get_project_name function should raise ValueError
-    # when PROJECT_NAME is not set and get_project_name returns empty
-    with pytest.raises(ValueError) as exc_info:
-        sessionlib._get_project_name()
-
-    # Verify error message is meaningful
-    assert "PROJECT_NAME" in str(exc_info.value) or "required" in str(exc_info.value).lower()
+    name = sessionlib._get_project_name()
+    assert isinstance(name, str)
+    assert name.strip()
 
 
 def test_missing_database_url_raises(monkeypatch: pytest.MonkeyPatch):
+    """Database URL resolution fails closed when database.url is absent."""
+    from edison.core.session.persistence.database import _get_database_url
+
     monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(ValueError):
-        sessionlib._get_database_url()
+        _get_database_url({})
 
 
 def test_invalid_yaml_config_fails_cleanly(tmp_path: Path):
-    # Create a real git repo and invalid edison.yaml
+    # Create a real git repo and invalid project config overlay under .edison/config/
     from tests.helpers.fixtures import create_repo_with_git
     create_repo_with_git(tmp_path)
-    (tmp_path / "edison.yaml").write_text("project: [this: is: invalid]", encoding="utf-8")
+    bad = tmp_path / ".edison" / "config" / "bad.yaml"
+    bad.parent.mkdir(parents=True, exist_ok=True)
+    bad.write_text("project: [this: is: invalid", encoding="utf-8")
     cm = ConfigManager(repo_root=tmp_path)
     with pytest.raises(Exception):
         cm.load_config()
@@ -89,12 +70,12 @@ def test_permission_error_is_raised(tmp_path: Path):
 
 def test_include_recursion_prevention_symlinks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # Create a recovery directory with a symlink causing potential cycles
-    repo_root = Path.cwd()
-    rec_root = repo_root / ".project" / "sessions" / "recovery"
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    rec_root = tmp_path / ".project" / "sessions" / "recovery"
     rec_root.mkdir(parents=True, exist_ok=True)
     real = tmp_path / "recoverable"
     real.mkdir()
-    (real / "session.json").write_text(json.dumps({"state": "Recovery"}), encoding="utf-8")
+    (real / "session.json").write_text(json.dumps({"state": "recovery"}), encoding="utf-8")
     (real / "recovery.json").write_text(json.dumps({"reason": "test"}), encoding="utf-8")
     # Symlink inside recovery pointing back to parent
     symlink = rec_root / "cycle"

@@ -8,4 +8,5 @@ database:
   templateStrategy: "clone"
   cleanupStrategy: "drop"
   sessionPrefix: "session"
-  adapter: "prisma"
+  # Core is tech-agnostic. Packs/projects set the adapter.
+  adapter: null

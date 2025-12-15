@@ -100,7 +100,6 @@ fallbacks:
     description: "Fallback chain for repository root detection"
     chain:
       - AGENTS_PROJECT_ROOT
-      - PROJECT_ROOT
       - "detect from git"
       
   database_url:

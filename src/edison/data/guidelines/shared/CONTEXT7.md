@@ -2,8 +2,9 @@
 
 ## Extended Guide
 
-For agent-specific patterns, detailed examples, and deep-dive workflows, see:
-`guidelines/agents/CONTEXT7_REQUIREMENT.md`
+For agent-specific workflow integration (tracking, evidence directories, and config inspection), see:
+- `guidelines/agents/MANDATORY_WORKFLOW.md`
+- `guidelines/agents/EDISON_CLI.md`
 
 ## When to use
 - For packages detected by your project's Context7 triggers/content rules

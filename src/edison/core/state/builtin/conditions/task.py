@@ -84,3 +84,81 @@ def task_ready_for_qa(ctx: Mapping[str, Any]) -> bool:
     # Check status - done tasks are ready for QA
     status = task.get("status", "")
     return str(status).lower() in ("done", "validated")
+
+
+def no_task_graph_cycles(ctx: Mapping[str, Any]) -> bool:
+    """Return True when the session task graph contains no cycles.
+
+    This condition is used as a safety gate for task completion. Cycles can be
+    introduced via parent/child links (parent_id) or dependency links
+    (depends_on). A cyclic graph makes "blocking" semantics ambiguous and can
+    deadlock promotion workflows.
+
+    FAIL-CLOSED: If a session is present but tasks cannot be loaded, returns False.
+    """
+    session_id = ctx.get("session_id")
+    if not session_id:
+        session = ctx.get("session", {})
+        if isinstance(session, Mapping):
+            session_id = session.get("id")
+    if not session_id:
+        task = ctx.get("task", {})
+        if isinstance(task, Mapping):
+            session_id = task.get("session_id") or task.get("sessionId")
+
+    # If the task is not session-scoped, skip the check.
+    if not session_id:
+        return True
+
+    try:
+        from edison.core.task.repository import TaskRepository
+        from edison.core.utils.paths import PathResolver
+
+        project_root = ctx.get("project_root")
+        repo = TaskRepository(project_root=project_root or PathResolver.resolve_project_root())
+        tasks = repo.find_by_session(str(session_id))
+    except Exception:
+        return False
+
+    tasks_by_id = {t.id: t for t in tasks if getattr(t, "id", None)}
+    if not tasks_by_id:
+        return True
+
+    graph: dict[str, set[str]] = {tid: set() for tid in tasks_by_id.keys()}
+    for tid, t in tasks_by_id.items():
+        parent_id = getattr(t, "parent_id", None)
+        if parent_id and str(parent_id) in tasks_by_id:
+            graph[tid].add(str(parent_id))
+        depends_on = getattr(t, "depends_on", None) or []
+        if isinstance(depends_on, list):
+            for dep in depends_on:
+                dep_id = str(dep)
+                if dep_id in tasks_by_id:
+                    graph[tid].add(dep_id)
+
+    # Directed cycle detection (DFS with colors).
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {tid: WHITE for tid in graph.keys()}
+
+    for start in graph.keys():
+        if color[start] != WHITE:
+            continue
+        color[start] = GRAY
+        stack: list[tuple[str, Any]] = [(start, iter(graph[start]))]
+        while stack:
+            node, it = stack[-1]
+            try:
+                nxt = next(it)
+            except StopIteration:
+                color[node] = BLACK
+                stack.pop()
+                continue
+
+            nxt_color = color.get(nxt, WHITE)
+            if nxt_color == WHITE:
+                color[nxt] = GRAY
+                stack.append((nxt, iter(graph.get(nxt, ()))) )
+            elif nxt_color == GRAY:
+                return False
+
+    return True

@@ -11,7 +11,7 @@ from edison.core.qa.evidence import (
     load_bundle_followups,  # noqa: F401 - re-exported for compute.py
     load_impl_followups,  # noqa: F401 - re-exported for compute.py
     missing_evidence_blockers,  # noqa: F401 - re-exported for compute.py
-    read_validator_jsons,  # noqa: F401 - re-exported for compute.py
+    read_validator_reports,  # noqa: F401 - re-exported for compute.py
 )
 from edison.core.session.next.utils import project_cfg_dir
 from edison.core.task import TaskRepository, safe_relative
@@ -137,10 +137,10 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
     
     for task in session_tasks:
         task_id = task.id
-        # Validators JSON expected when QA is wip/todo
+        # Validator reports expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
         if qstat in qa_active_states:
-            v = read_validator_jsons(task_id)
+            v = read_validator_reports(task_id)
             have = {
                 str(r.get("validatorId") or r.get("validator_id") or r.get("id") or "")
                 for r in v.get("reports", [])
@@ -164,14 +164,14 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
                             "type": "validator",
                             "validatorId": vid,
                             "suggested": [
-                                "(re)run validator wave and write JSON per schema",
+                                "(re)run validator wave and write report per schema",
                                 f"edison qa validate {task_id} --execute",
                             ],
                         })
             except Exception:
                 pass
 
-        # Implementation Report JSON required for ALL tasks
+        # Implementation Report required for ALL tasks
         try:
             ev_svc = EvidenceService(task_id)
             latest_round = ev_svc.get_current_round()
@@ -187,7 +187,7 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
                         "type": "implementation",
                         "path": rel_path,
                         "suggested": [
-                            "Write Implementation Report JSON per schema",
+                            "Write Implementation Report (Markdown frontmatter) per schema",
                             f"Create or update: {rel_path}",
                         ],
                     })

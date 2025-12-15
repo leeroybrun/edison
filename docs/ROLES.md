@@ -253,10 +253,10 @@ Validators MUST read these files before validation:
 
 #### Validation Commands
 ```bash
-edison qa validate --task <task-id> [--round N]          # Validate task
-edison qa validate --task <id> --session <session-id>    # Bundle validation
+edison qa validate <task-id> [--round N]                 # Validate task
+edison qa validate <task-id> --session <session-id>      # Bundle validation
 edison qa bundle <task-id>                               # Inspect bundle
-edison qa round --task <id> --status <status>            # Record round status
+edison qa round <task-id> --status <status>              # Record round status
 ```
 
 #### Read-Only Commands
@@ -529,7 +529,7 @@ edison session track complete --task TASK-123
 edison qa bundle TASK-123
 
 # 2. Run validation
-edison qa validate --task TASK-123
+edison qa validate TASK-123
 
 # 3. Review evidence
 # - Load QA brief
@@ -542,10 +542,10 @@ edison qa validate --task TASK-123
 # - Include verdict, issues, summary
 
 # 5. If approved:
-edison qa round --task TASK-123 --status approved
+edison qa round TASK-123 --status approve
 
 # 6. If rejected:
-edison qa round --task TASK-123 --status needs-work
+edison qa round TASK-123 --status reject
 # (List blocking issues in report)
 ```
 

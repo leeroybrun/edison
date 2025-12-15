@@ -20,6 +20,7 @@ from ._utils import (
     get_repo_root,
     detect_record_type,
     get_repository,
+    resolve_session_id,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "get_repo_root",
     "detect_record_type",
     "get_repository",
+    "resolve_session_id",
 ]

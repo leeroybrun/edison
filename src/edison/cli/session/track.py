@@ -8,9 +8,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter
-from edison.core.qa.scoring.scoring import track_validation_score
-from edison.core.utils.time import utc_timestamp
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 
 SUMMARY = "Track implementation/validation work with heartbeats"
 
@@ -28,9 +26,9 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         choices=["implementation", "validation"],
         help="Type of work being tracked"
     )
-    start_parser.add_argument("--model", help="Model name for validation")
-    start_parser.add_argument("--validator", help="Validator name")
-    start_parser.add_argument("--round", type=int, help="Validation round number")
+    start_parser.add_argument("--model", help="Execution backend/model identifier")
+    start_parser.add_argument("--validator", help="Validator identifier (required for validation)")
+    start_parser.add_argument("--round", type=int, help="Evidence round number (optional)")
     add_json_flag(start_parser)
     add_repo_root_flag(start_parser)
 
@@ -43,6 +41,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     # complete subcommand
     complete_parser = subparsers.add_parser("complete", help="Mark work as complete")
     complete_parser.add_argument("--task", required=True, help="Task ID")
+    complete_parser.add_argument(
+        "--status",
+        choices=["complete", "blocked", "partial"],
+        default="complete",
+        help="Implementation completion status (implementation only)",
+    )
     add_json_flag(complete_parser)
     add_repo_root_flag(complete_parser)
 
@@ -53,69 +57,66 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(args: argparse.Namespace) -> int:
-    """Track session work - delegates to core library."""
+    """Track session work - delegates to core tracking helpers."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-
     try:
+        repo_root = get_repo_root(args)
+        from edison.core.qa.evidence import tracking
+
         if args.subcommand == "start":
-            # Start tracking work
-            result = {
-                "task": args.task,
-                "type": args.type,
-                "started_at": utc_timestamp(),
-                "status": "started"
-            }
-
-            if args.type == "validation" and args.model:
-                result["model"] = args.model
-            if args.validator:
-                result["validator"] = args.validator
-            if args.round:
-                result["round"] = args.round
-
-            if formatter.json_mode:
-                formatter.json_output(result)
+            if args.type == "implementation":
+                result = tracking.start_implementation(
+                    str(args.task),
+                    project_root=repo_root,
+                    model=getattr(args, "model", None),
+                )
             else:
-                formatter.text(f"Started tracking {args.type} for task {args.task}")
+                if not getattr(args, "validator", None):
+                    raise ValueError("--validator is required for type=validation")
+                if not getattr(args, "model", None):
+                    raise ValueError("--model is required for type=validation")
+                result = tracking.start_validation(
+                    str(args.task),
+                    project_root=repo_root,
+                    validator_id=str(args.validator),
+                    model=str(args.model),
+                    round_num=getattr(args, "round", None),
+                )
+
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Started {result['type']} tracking for {result['taskId']} (round {result['round']})"
+            )
 
         elif args.subcommand == "heartbeat":
-            # Send heartbeat
-            result = {
-                "task": args.task,
-                "heartbeat_at": utc_timestamp(),
-                "status": "active"
-            }
-
-            if formatter.json_mode:
-                formatter.json_output(result)
-            else:
-                formatter.text(f"Heartbeat sent for task {args.task}")
+            result = tracking.heartbeat(str(args.task), project_root=repo_root)
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Heartbeat updated ({len(result['updated'])} file(s))"
+            )
 
         elif args.subcommand == "complete":
-            # Mark work as complete
-            result = {
-                "task": args.task,
-                "completed_at": utc_timestamp(),
-                "status": "completed"
-            }
-
-            if formatter.json_mode:
-                formatter.json_output(result)
-            else:
-                formatter.text(f"Marked work complete for task {args.task}")
+            result = tracking.complete(
+                str(args.task),
+                project_root=repo_root,
+                implementation_status=str(getattr(args, "status", "complete")),
+            )
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Completed tracking ({len(result['updated'])} file(s))"
+            )
 
         elif args.subcommand == "active":
-            # List active tracking sessions
-            result = {
-                "active_sessions": [],
-                "queried_at": utc_timestamp()
-            }
-
+            active = tracking.list_active(project_root=repo_root)
             if formatter.json_mode:
-                formatter.json_output(result)
+                formatter.json_output({"active": active, "count": len(active)})
             else:
-                formatter.text("No active tracking sessions found")
+                if not active:
+                    formatter.text("No active tracking sessions found")
+                else:
+                    for it in active:
+                        kind = it.get("type")
+                        task_id = it.get("taskId")
+                        extra = f" ({it.get('validatorId')})" if it.get("validatorId") else ""
+                        formatter.text(f"- {task_id}{extra}: {kind} (round {it.get('round')})")
 
         return 0
 

@@ -12,7 +12,7 @@ Covers Workstream 2 fixes:
 
 Design notes:
 - Uses the real `edison tasks ready` guard via run_script()
- - Creates minimal implementation-report.json in round-1
+ - Creates minimal implementation-report.md in round-1
  - Provides local wrappers under `<tmp>/scripts/*` when required
 """
 from __future__ import annotations
@@ -30,6 +30,7 @@ from helpers.command_runner import (
     assert_command_failure,
 )
 from helpers.env import TestProjectDir, TestGitRepo, create_tdd_evidence
+from edison.core.utils.text import format_frontmatter
 
 
 def _impl_report(task_id: str) -> dict:
@@ -58,7 +59,10 @@ def _ensure_ready_prereqs(project: TestProjectDir, task_id: str, session_id: str
     # Minimal implementation report and round-1 dir
     rd = project.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "implementation-report.json").write_text(json.dumps(_impl_report(task_id)))
+    (rd / "implementation-report.md").write_text(
+        format_frontmatter(_impl_report(task_id)) + "\n# Implementation Report\n",
+        encoding="utf-8",
+    )
     return rd
 
 

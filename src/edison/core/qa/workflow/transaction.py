@@ -10,8 +10,6 @@ The ValidationTransaction integrates with the session transaction system
 to ensure atomic validation operations.
 """
 from __future__ import annotations
-
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -23,6 +21,7 @@ from ...session.lifecycle import transaction as _session_transaction
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.paths import PathResolver
 from .._utils import read_json_safe
+from ..evidence import reports as reportlib
 
 
 class ValidationTransaction:
@@ -41,12 +40,18 @@ class ValidationTransaction:
     def __init__(self, task_id: str, round_num: int) -> None:
         self.task_id = str(task_id)
         self.round_num = int(round_num)
-        # Session id is resolved from env when available; fall back to
-        # configured validation session identifier
-        if "project_SESSION" in os.environ:
-            self._session_id = os.environ["project_SESSION"]
+        # Canonical session id detection:
+        # AGENTS_SESSION → .project/.session-id → process-derived lookup.
+        # For validation runs outside a real session, fall back to the configured
+        # validation session identifier.
+        from edison.core.session.core.id import detect_session_id
+
+        sid = detect_session_id(project_root=PathResolver.resolve_project_root())
+        if sid:
+            self._session_id = sid
         else:
             from edison.core.config.domains.qa import QAConfig
+
             qa_config = QAConfig()
             self._session_id = qa_config.get_validation_session_id()
 
@@ -102,12 +107,11 @@ class ValidationTransaction:
         return self
 
     def write_validator_report(self, validator_name: str, report: Dict[str, Any]) -> None:
-        """Write a validator report JSON into the staging area."""
+        """Write a validator report into the staging area."""
         if self.staging_dir is None:
             raise RuntimeError("ValidationTransaction.begin() must be called before writing reports")
         safe_name = str(validator_name).replace("/", "-")
-        path = self.staging_dir / f"validator-{safe_name}-report.json"
-        io_write_json_atomic(path, report)
+        reportlib.write_validator_report(self.staging_dir, safe_name, report)
 
     def commit(self) -> None:
         """Atomically move staged evidence into the final QA evidence tree."""

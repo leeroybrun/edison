@@ -126,10 +126,14 @@ def test_condensed_and_extended_have_explicit_path_cross_links() -> None:
 
 
 def _resolve_guideline_target_path(reference: str, guidelines_root: Path) -> Path | None:
-    prefix = ".edison/core/guidelines/"
-    if reference.startswith(prefix):
-        relative = reference[len(prefix):].lstrip("/")
-        return guidelines_root / relative
+    prefixes = (
+        ".edison/_generated/guidelines/",
+        ".edison/core/guidelines/",  # legacy (should not be present in new guidelines)
+    )
+    for prefix in prefixes:
+        if reference.startswith(prefix):
+            relative = reference[len(prefix):].lstrip("/")
+            return guidelines_root / relative
     return None
 
 

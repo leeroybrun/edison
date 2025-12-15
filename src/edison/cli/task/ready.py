@@ -9,9 +9,14 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_session_id,
+)
 from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
-from edison.core.session import lifecycle as session_manager
 from edison.core.config.domains.workflow import WorkflowConfig
 
 SUMMARY = "List tasks ready to be claimed or mark task as ready (complete)"
@@ -45,13 +50,11 @@ def main(args: argparse.Namespace) -> int:
             # Ready/complete a specific task (move from wip -> done)
             record_id = normalize_record_id("task", args.record_id)
 
-            # Get session ID
-            session_id = args.session
-            if not session_id:
-                session_id = session_manager.get_current_session()
-
-            if not session_id:
-                raise ValueError("No session specified and no current session found. Use --session to specify one.")
+            session_id = resolve_session_id(
+                project_root=project_root,
+                explicit=args.session,
+                required=True,
+            )
 
             # Use TaskQAWorkflow.complete_task() to move from wip -> done
             workflow = TaskQAWorkflow(project_root=project_root)

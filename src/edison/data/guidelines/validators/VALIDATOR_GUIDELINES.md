@@ -7,4 +7,4 @@
 - Run required automation or reproduction steps exactly as listed; capture outputs in evidence.
 - Record clear findings with severity, category, location, and recommendation; link evidence files.
 - Verdicts are `approve`, `reject`, or `blocked`. If blocked, state what is missing and stop.
-- Update the QA brief with findings and verdict; store the validator report JSON in the round evidence directory.
+- Update the QA brief with findings and verdict; store the validator report (`validator-<id>-report.md`) in the round evidence directory.

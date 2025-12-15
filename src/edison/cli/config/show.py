@@ -71,31 +71,56 @@ def main(args: argparse.Namespace) -> int:
         repo_root = get_repo_root(args)
         config_manager = ConfigManager(repo_root)
 
+        output_format = "json" if args.json else args.format
+
         # Handle specific key lookup
         if args.key:
             value = config_manager.get(args.key)
             if value is None:
                 formatter.text(f"Key not found: {args.key}")
                 return 1
-            
-            if args.json:
+
+            if output_format == "json":
                 formatter.json_output({args.key: value})
+            elif output_format == "yaml":
+                try:
+                    import yaml
+
+                    # Emit valid YAML for the selected key (single-key document).
+                    formatter.text(
+                        yaml.safe_dump(
+                            {args.key: value},
+                            default_flow_style=False,
+                            sort_keys=True,
+                            allow_unicode=True,
+                        ).rstrip()
+                    )
+                except ImportError:
+                    formatter.text("PyYAML not installed, falling back to JSON")
+                    formatter.json_output({args.key: value})
             else:
-                formatter.text(f"{args.key}: {_format_value(value)}")
+                formatted = _format_value(value, indent=1)
+                formatter.text(f"{args.key}:")
+                formatter.text(formatted)
             return 0
 
         # Get full merged config
         config_data = config_manager.get_all()
 
         # Handle full config display
-        output_format = "json" if args.json else args.format
-
         if output_format == "json":
             formatter.json_output(config_data)
         elif output_format == "yaml":
             try:
                 import yaml
-                formatter.text(yaml.dump(config_data, default_flow_style=False, sort_keys=True))
+                formatter.text(
+                    yaml.safe_dump(
+                        config_data,
+                        default_flow_style=False,
+                        sort_keys=True,
+                        allow_unicode=True,
+                    ).rstrip()
+                )
             except ImportError:
                 formatter.text("PyYAML not installed, falling back to JSON")
                 formatter.json_output(config_data)

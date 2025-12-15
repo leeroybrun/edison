@@ -1,0 +1,12 @@
+id: FILE_PATTERN.NEXTJS_API
+title: Next.js route handlers trigger api validator
+blocking: true
+severity: error
+patterns:
+  - "**/app/**/route.*"
+  - "**/pages/api/**"
+validators:
+  - api
+rationale: >-
+  API entrypoints need validation for request schemas, error handling, and security.
+

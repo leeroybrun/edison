@@ -220,19 +220,17 @@ def test_session_next_json_cmds_are_current(project_dir: TestProjectDir):
         / "round-1"
     )
     evidence_dir.mkdir(parents=True, exist_ok=True)
-    (evidence_dir / "implementation-report.json").write_text(
-        json.dumps({
-            "taskId": task_id,
-            "round": 1,
-            "followUpTasks": [
-                {
-                    "title": "Investigate follow-up command shape",
-                    "blockingBeforeValidation": True,
-                    "claimNow": True,
-                    "category": "test",
-                }
-            ],
-        }),
+    (evidence_dir / "implementation-report.md").write_text(
+        f"""---
+taskId: "{task_id}"
+round: 1
+followUpTasks:
+  - title: "Investigate follow-up command shape"
+    blockingBeforeValidation: true
+    claimNow: true
+    category: "test"
+---
+""",
         encoding="utf-8",
     )
 

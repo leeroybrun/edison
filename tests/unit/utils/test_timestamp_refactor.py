@@ -86,54 +86,24 @@ def test_orchestrator_launcher_log_timestamp(valid_repo):
     assert ts.endswith("Z"), f"Log timestamp {ts} should end with Z"
     assert "." not in ts, f"Log timestamp {ts} should not have microseconds"
 
-def test_session_recovery_timestamp(tmp_path):
+def test_session_recovery_timestamp(tmp_path, monkeypatch):
     """Test that session recovery uses canonical timestamp."""
-    # Setup session dir
-    session_dir = tmp_path / "sessions" / "active" / "sess_123"
-    session_dir.mkdir(parents=True)
-    
-    (session_dir / "session.json").write_text('{"last_active_at": "2025-01-01T12:00:00Z"}')
-    
-    # Create recovery root
-    recovery_root = tmp_path / "sessions" / "recovery"
-    recovery_root.mkdir(parents=True)
-    
-    # Need to mock _sessions_root inside recovery.py or ensure it uses our tmp_path
-    # recovery.py uses _sessions_root() from store.py which uses SessionConfig.
-    # This is hard to control without env vars or config.
-    # But handle_timeout takes sess_dir as input. 
-    # It calculates recovery dir as: _sessions_root() / 'recovery' / sess_dir.name
-    # We need to ensure _sessions_root() points to our tmp_path.
-    
-    # We can monkeypatch edison.core.session.recovery._sessions_root or set env var?
-    # Better: set EDISON_SESSIONS_DIR env var if supported?
-    # Or patch the module function.
-    
-    # Let's try to patch the module level function since "NO MOCKS" usually refers to Logic mocks, 
-    # but configuration injection is sometimes necessary.
-    # However, let's see if we can avoid it. 
-    # If we can't redirect where it writes, we might pollute real dirs.
-    # recovery.py imports _sessions_root from .store
-    
-    # Let's try patching just for the path resolution
-    from edison.core.session import recovery
-    original_root = recovery._sessions_root
-    recovery._sessions_root = lambda: tmp_path / "sessions"
-    
-    try:
-        rec_dir = handle_timeout(session_dir)
-        
-        recovery_json = rec_dir / "recovery.json"
-        assert recovery_json.exists()
-        
-        import json
-        data = json.loads(recovery_json.read_text())
-        ts = data["captured_at"]
+    import json
+    from edison.core.session.persistence.repository import SessionRepository
 
-        # Currently: .replace(microsecond=0).isoformat() -> +00:00
-        # Expect: Z
-        assert ts.endswith("Z"), f"Recovery timestamp {ts} should end with Z"
-        
-    finally:
-        recovery._sessions_root = original_root
+    # Use real path resolution (no module patching) by setting the canonical env var.
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
 
+    # Ensure a valid session exists in the canonical layout.
+    sid = "sess-123"
+    repo = SessionRepository(project_root=tmp_path)
+    session_dir = repo.ensure_session(sid, state="active")
+
+    rec_dir = handle_timeout(session_dir)
+    recovery_json = rec_dir / "recovery.json"
+    assert recovery_json.exists()
+
+    data = json.loads(recovery_json.read_text())
+    ts = data["captured_at"]
+    assert ts.endswith("Z"), f"Recovery timestamp {ts} should end with Z"

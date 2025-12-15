@@ -1,21 +1,28 @@
 {
   "id": "session-template",
-  "state": "Active",
-  "createdAt": "2024-01-01T00:00:00Z",
-  "lastActiveAt": "2024-01-01T00:00:00Z",
+  "state": "active",
+  "phase": "implementation",
   "meta": {
     "sessionId": "session-template",
     "owner": "edison",
     "mode": "start",
-    "status": "active",
     "createdAt": "2024-01-01T00:00:00Z",
     "lastActive": "2024-01-01T00:00:00Z",
+    "status": "active",
     "createdBy": "edison",
     "autoStarted": false,
     "namingStrategy": "edison"
   },
-  "tasks": [],
-  "qa": {
-    "status": "pending"
-  }
+  "ready": true,
+  "git": {
+    "worktreePath": null,
+    "branchName": null,
+    "baseBranch": "main"
+  },
+  "activityLog": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "message": "Session created"
+    }
+  ]
 }

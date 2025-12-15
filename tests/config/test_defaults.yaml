@@ -26,6 +26,7 @@ timeouts:
   ai_calls: 120
   file_operations: 10
   session_timeout_hours: 8
+  clock_skew_allowance_seconds: 180
 
 # Session defaults
 session:

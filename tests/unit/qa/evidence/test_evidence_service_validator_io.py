@@ -42,6 +42,6 @@ def test_evidence_service_list_validator_reports(isolated_project_env):
 
     # Check filenames
     report_names = [r.name for r in reports]
-    assert "validator-security-report.json" in report_names
-    assert "validator-performance-report.json" in report_names
-    assert "validator-style-report.json" in report_names
+    assert "validator-security-report.md" in report_names
+    assert "validator-performance-report.md" in report_names
+    assert "validator-style-report.md" in report_names

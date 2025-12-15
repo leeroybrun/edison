@@ -94,9 +94,38 @@ def normalize_record_id(record_type: str, record_id: str) -> str:
     return _normalize(record_type, record_id)
 
 
+def resolve_session_id(
+    *,
+    project_root: Path,
+    explicit: Optional[str] = None,
+    required: bool = False,
+) -> Optional[str]:
+    """Resolve a session id using the canonical core resolution order.
+
+    Resolution (core): explicit → AGENTS_SESSION → `.project/.session-id` → process-derived lookup.
+
+    Semantics:
+    - If `explicit` is provided, it is treated as authoritative and MUST exist (fail-closed).
+    - If `required=True`, a session MUST be resolvable and MUST exist.
+    - Otherwise, returns an existing inferred session id when available, or None.
+    """
+    from edison.core.session.core.id import require_session_id
+
+    if explicit:
+        return require_session_id(explicit=explicit, project_root=project_root)
+
+    if required:
+        return require_session_id(project_root=project_root)
+
+    from edison.core.session.core.id import detect_session_id
+
+    return detect_session_id(project_root=project_root)
+
+
 __all__ = [
     "get_repo_root",
     "detect_record_type",
     "get_repository",
     "normalize_record_id",
+    "resolve_session_id",
 ]

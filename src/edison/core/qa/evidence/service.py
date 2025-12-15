@@ -14,11 +14,12 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.io import read_json, write_json_atomic
+from edison.core.utils.io import write_json_atomic
 from .._utils import get_qa_root_path
 from .exceptions import EvidenceError
 from . import rounds
 from . import reports
+from .report_io import read_structured_report, write_structured_report
 
 
 class EvidenceService:
@@ -58,8 +59,8 @@ class EvidenceService:
             paths = {}
 
         return {
-            "bundle": paths.get("bundleSummaryFile", "bundle-approved.json"),
-            "implementation": paths.get("implementationReportFile", "implementation-report.json"),
+            "bundle": paths.get("bundleSummaryFile", "bundle-approved.md"),
+            "implementation": paths.get("implementationReportFile", "implementation-report.md"),
         }
 
     @property
@@ -133,13 +134,7 @@ class EvidenceService:
         round_dir = self.ensure_round(round_num)
         bundle_path = round_dir / self.bundle_filename
 
-        if not bundle_path.exists():
-            return {}
-        try:
-            return read_json(bundle_path)
-        except Exception:
-            # Invalid JSON is treated as missing
-            return {}
+        return read_structured_report(bundle_path)
 
     def write_bundle(self, data: Dict[str, Any], round_num: Optional[int] = None) -> None:
         """Write bundle summary using configured filename.
@@ -150,7 +145,7 @@ class EvidenceService:
         bundle_path = round_dir / self.bundle_filename
 
         try:
-            write_json_atomic(bundle_path, data)
+            write_structured_report(bundle_path, data)
         except Exception as e:
             raise EvidenceError(
                 f"Failed to write bundle summary to {bundle_path}: {e}"
@@ -168,12 +163,7 @@ class EvidenceService:
         round_dir = self.ensure_round(round_num)
         report_path = round_dir / self.implementation_filename
 
-        if not report_path.exists():
-            return {}
-        try:
-            return read_json(report_path)
-        except Exception:
-            return {}
+        return read_structured_report(report_path)
 
     def write_implementation_report(
         self, data: Dict[str, Any], round_num: Optional[int] = None
@@ -186,7 +176,8 @@ class EvidenceService:
         report_path = round_dir / self.implementation_filename
 
         try:
-            write_json_atomic(report_path, data)
+            # Always write to the configured report path.
+            write_structured_report(report_path, data)
         except Exception as e:
             raise EvidenceError(
                 f"Failed to write implementation report to {report_path}: {e}"
@@ -249,42 +240,3 @@ class EvidenceService:
         metadata_path = self.evidence_root / "metadata.json"
         self.evidence_root.mkdir(parents=True, exist_ok=True)
         write_json_atomic(metadata_path, metadata)
-
-    def create_qa_brief(
-        self,
-        session_id: Optional[str] = None,
-        round_num: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        """Create qa-brief.json for a round.
-
-        Creates a new QA brief file and updates the metadata.
-        This is the canonical method for creating QA briefs.
-
-        Args:
-            session_id: Optional session context
-            round_num: Optional round number (creates next round if not specified)
-
-        Returns:
-            The created QA brief dict
-        """
-        # Ensure round directory exists
-        if round_num is None:
-            # Create next round
-            round_dir = self.create_next_round()
-            rn = self.get_current_round() or 1
-        else:
-            round_dir = self.ensure_round(round_num)
-            rn = round_num
-
-        brief: Dict[str, Any] = {
-            "task_id": self.task_id,
-            "session_id": session_id,
-            "round": rn,
-            "created_at": None,
-            "status": "pending",
-            "validators": [],
-            "evidence": [],
-        }
-        write_json_atomic(round_dir / "qa-brief.json", brief)
-        self.update_metadata(rn)
-        return brief

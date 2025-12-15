@@ -1419,23 +1419,23 @@ edison qa promote --task 150-auth-feature --to done --json
 Manage QA validation rounds and their status.
 
 ```bash
-edison qa round --task <task_id> --status <status> [options]
+edison qa round <task_id> --status <status> [options]
 ```
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
-| `--task` | Task identifier (required) |
-| `--status` | Round status: `approved`, `needs-work`, or `blocked` (required) |
+| `--status` | Round status: `approve`, `reject`, `blocked`, or `pending` (required) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
 **Round Statuses:**
 
-- `approved` - Round passed all validators
-- `needs-work` - Minor issues, requires rework
-- `blocked` - Critical issues, cannot proceed
+- `approve` - Round passed all blocking validators
+- `reject` - Issues found, requires fixes
+- `blocked` - Validation could not be completed
+- `pending` - Round in progress
 
 **When to Use:**
 
@@ -1447,13 +1447,13 @@ edison qa round --task <task_id> --status <status> [options]
 
 ```bash
 # Approve round
-edison qa round --task 150-auth-feature --status approved
+edison qa round 150-auth-feature --status approve
 
-# Mark as needs work
-edison qa round --task 150-auth-feature --status needs-work
+# Mark as rejected (needs work)
+edison qa round 150-auth-feature --status reject
 
 # Block round due to critical issues
-edison qa round --task 150-auth-feature --status blocked
+edison qa round 150-auth-feature --status blocked
 ```
 
 ---

@@ -65,8 +65,8 @@ def isolated_qa_config(tmp_path: Path, monkeypatch) -> Path:
     custom_config = {
         "validation": {
             "artifactPaths": {
-                "bundleSummaryFile": "custom-bundle.json",
-                "implementationReportFile": "custom-impl.json",
+                "bundleSummaryFile": "custom-bundle.md",
+                "implementationReportFile": "custom-impl.md",
             }
         }
     }

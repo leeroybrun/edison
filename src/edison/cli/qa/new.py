@@ -1,19 +1,19 @@
 """
 Edison qa new command.
 
-SUMMARY: Create new QA brief for a task
+SUMMARY: Ensure QA record exists for a task
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
-from edison.core.qa.evidence import EvidenceService
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, resolve_session_id
+from edison.core.qa.workflow.repository import QARepository
+from edison.core.task.workflow import TaskQAWorkflow
 
-SUMMARY = "Create new QA brief for a task"
+SUMMARY = "Ensure QA record exists for a task"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -26,53 +26,59 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--owner",
         type=str,
         default="_unassigned_",
-        help="Validator owner (default: _unassigned_)",
+        help="QA owner/validator (default: _unassigned_)",
     )
     parser.add_argument(
         "--session",
         type=str,
         help="Session ID for context",
     )
-    parser.add_argument(
-        "--round",
-        type=int,
-        help="Validation round number (default: create new round)",
-    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
 
 def main(args: argparse.Namespace) -> int:
-    """Create QA brief - uses EvidenceService.create_qa_brief()."""
+    """Ensure QA record exists for a task (creates if missing)."""
 
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         repo_root = get_repo_root(args)
+        session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
 
-        # Use EvidenceService for QA brief creation
-        ev_svc = EvidenceService(args.task_id, project_root=repo_root)
+        task_id = str(args.task_id)
 
-        # Create QA brief using the canonical method
-        qa_brief = ev_svc.create_qa_brief(
-            session_id=args.session,
-            round_num=args.round,
+        # Canonical ID semantics:
+        # - CLI takes a task_id, but QA entity IDs are stored as "<task_id>-qa" (or "<task_id>.qa").
+        if task_id.endswith("-qa") or task_id.endswith(".qa"):
+            task_id = task_id[:-3]
+
+        qa_id = f"{task_id}-qa"
+
+        workflow = TaskQAWorkflow(project_root=repo_root)
+        qa = workflow.ensure_qa(
+            task_id=task_id,
+            session_id=session_id,
+            validator_owner=str(args.owner) if args.owner else None,
+            title=None,
         )
 
-        # Get the round number and path
-        round_num = ev_svc.get_current_round() or 1
-        round_dir = ev_svc.ensure_round(round_num)
-        brief_path = round_dir / "qa-brief.json"
+        qa_repo = QARepository(project_root=repo_root)
+        qa_path = qa_repo.get_path(qa_id)
+        rel_path = qa_path.relative_to(repo_root) if qa_path.is_relative_to(repo_root) else qa_path
 
         result = {
-            "qaPath": str(brief_path),
-            "round": round_num,
-            "owner": args.owner,
-            "brief": qa_brief,
+            "status": "ok",
+            "task_id": task_id,
+            "qa_id": qa.id,
+            "state": qa.state,
+            "validator_owner": qa.validator_owner,
+            "session_id": qa.session_id,
+            "qaPath": str(rel_path),
         }
 
         formatter.json_output(result) if formatter.json_mode else formatter.text(
-            f"Created QA brief for {args.task_id} round {round_num}\n  Path: {brief_path}"
+            f"QA ready: {qa_id} ({qa.state})\n  @{rel_path}"
         )
 
         return 0

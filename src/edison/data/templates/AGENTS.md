@@ -163,14 +163,14 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
     validated/  - Final approval (matches task validated)
     
   sessions/
-    active/     - Active sessions (not expired)
-    closing/    - Expired or errored sessions being cleaned
+    wip/        - Active sessions (semantic state: active)
+    done/       - Closing / post-timeout cleanup (semantic state: closing)
     validated/  - Completed and archived sessions
 ```
 
 **Honest Status Principle**: Directory name = source of truth. No status lies in comments, summaries, or shadow tracking.
 
-**Session Isolation**: When task claimed into session, file physically moves to `.project/sessions/active/<session-id>/tasks/`. Prevents cross-session interference.
+**Session Isolation**: When task claimed into session, file physically moves to `.project/sessions/wip/<session-id>/tasks/`. Prevents cross-session interference.
 
 ---
 
@@ -274,7 +274,7 @@ All in `.edison/_generated/guidelines/`:
 
 ## Session Isolation (Mandatory)
 
-**Core Principle**: When claiming a task into an active session, the file **physically moves** under `.project/sessions/active/<session-id>/`.
+**Core Principle**: When claiming a task into an active session, the file **physically moves** under `.project/sessions/wip/<session-id>/`.
 
 **Why Physical Movement**:
 - Prevents race conditions (two sessions can't claim same task)
@@ -284,7 +284,7 @@ All in `.edison/_generated/guidelines/`:
 
 **Session-Scoped Queues**:
 ```plaintext
-.project/sessions/active/<session-id>/
+.project/sessions/wip/<session-id>/
   tasks/
     wip/      - Tasks claimed by this session
     done/     - Tasks completed, awaiting validation
@@ -418,9 +418,9 @@ Edison framework is **fail-closed by design**. When something is wrong, **work s
 
 **Recovery**:
 - Edison CLI provides recovery commands
-- Session timeout: `edison recovery repair-session`
-- Lock contention: `edison recovery clear-locks`
-- Orphaned worktrees: `edison recovery clean-worktrees`
+- Session timeout: `edison session recovery repair-session`
+- Lock contention: `edison session recovery clear-locks`
+- Orphaned worktrees: `edison session recovery clean-worktrees`
 
 **Never bypass guardrails**. If blocked, fix the underlying issue.
 

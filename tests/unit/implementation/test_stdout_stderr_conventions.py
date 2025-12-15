@@ -1,7 +1,6 @@
 """Tests for standardizing stderr usage across CLIs.
 
-Focus: edison implementation report should emit logs to stderr and allow
-machine-readable stdout via --print-path (path only).
+Focus: --json mode must emit pure JSON on stdout.
 """
 from __future__ import annotations
 
@@ -16,7 +15,6 @@ from edison.core.utils.subprocess import run_with_timeout
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
 class TestStdErrConventions(unittest.TestCase):
@@ -24,17 +22,13 @@ class TestStdErrConventions(unittest.TestCase):
         self.project_root = REPO_ROOT
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-stderr-tests-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
-        self.project_root = self.temp_root / ".project"
-        self.qa_root = self.project_root / "qa" / "validation-evidence"
-        (self.qa_root).mkdir(parents=True, exist_ok=True)
+        (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
 
         self.base_env = os.environ.copy()
         self.base_env.update({
-            "project_ROOT": str(self.temp_root),
+            "AGENTS_PROJECT_ROOT": str(self.temp_root),
             "PYTHONUNBUFFERED": "1",
         })
-
-        self.impl_report_script = SCRIPTS_DIR / "implement" / "report"
 
     def _run(self, cmd: list[str|Path], check: bool = True) -> subprocess.CompletedProcess[str]:
         result = run_with_timeout([str(c) for c in cmd], cwd=self.project_root, env=self.base_env, capture_output=True, text=True)
@@ -44,25 +38,21 @@ class TestStdErrConventions(unittest.TestCase):
 
     def test_implementation_report_print_path_stdout_only(self) -> None:
         task_id = "stderr-conventions-1"
-        # Minimum required fields to pass schema validation
         res = self._run([
-            "python3", self.impl_report_script,
+            "python3", "-m", "edison",
+            "session", "track", "start",
             "--task", task_id,
-            "--status", "complete",
-            "--notes", "ok",
-            "--approach", "orchestrator-direct",
+            "--type", "implementation",
             "--model", "claude",
-            "--delegation-compliance", "false",
-            "--print-path",
+            "--json",
         ], check=False)
 
-        # RED: Expect only the path on stdout; logs go to stderr.
-        # Current behavior prints a human log line on stdout as well → should fail before fix.
-        stdout_lines = [l for l in res.stdout.splitlines() if l.strip()]
-        self.assertEqual(len(stdout_lines), 1, f"stdout should contain only the path, got: {stdout_lines}")
-        out_path = Path(stdout_lines[0])
-        self.assertTrue(out_path.name == "implementation-report.json")
-        self.assertIn("Implementation report", res.stderr or "", "status/log messages must be in stderr")
+        self.assertEqual(res.returncode, 0, f"command failed: {res.stderr}\nSTDOUT:{res.stdout}")
+        payload = json.loads(res.stdout)
+        self.assertEqual(payload.get("taskId"), task_id)
+        self.assertEqual(payload.get("type"), "implementation")
+        out_path = Path(str(payload.get("path") or ""))
+        self.assertEqual(out_path.name, "implementation-report.md")
 
 
 if __name__ == "__main__":

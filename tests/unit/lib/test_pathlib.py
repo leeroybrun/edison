@@ -81,12 +81,11 @@ class TestPathResolver:
         isolated_project_env: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Session id resolves from project_SESSION environment variable."""
+        """Session id resolves from AGENTS_SESSION environment variable."""
         # Ensure explicit argument would not be used
-        monkeypatch.delenv("EDISON_SESSION_ID", raising=False)
         monkeypatch.delenv("project_SESSION_ID", raising=False)
 
-        monkeypatch.setenv("project_SESSION", "env-session-001")
+        monkeypatch.setenv("AGENTS_SESSION", "env-session-001")
 
         sid = PathResolver.detect_session_id()
         assert sid == "env-session-001"

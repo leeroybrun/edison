@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers.paths import get_repo_root
+from tests.helpers.env_setup import setup_project_root
 
 _THIS_FILE = Path(__file__).resolve()
 _CORE_ROOT = None
@@ -21,61 +22,68 @@ if _CORE_ROOT is None:
 CORE_ROOT = _CORE_ROOT
 from tests.helpers import session as sessionlib  # type: ignore
 from edison.core.utils import resilience  # type: ignore
+from edison.core.session.persistence.repository import SessionRepository
 
 
-def write_session(dirpath: Path, state: str = "Active") -> Path:
-    dirpath.mkdir(parents=True, exist_ok=True)
-    (dirpath / "session.json").write_text(json.dumps({"id": dirpath.name, "state": state}), encoding="utf-8")
-    return dirpath
+@pytest.fixture(autouse=True)
+def _isolated_project_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run each test against an isolated project root (no reliance on repo `.project`)."""
+    setup_project_root(monkeypatch, tmp_path)
+    monkeypatch.setenv("PROJECT_NAME", "example-project")
 
 
-def read_state(dirpath: Path) -> str:
-    return json.loads((dirpath / "session.json").read_text(encoding="utf-8"))["state"]
+def ensure_session(session_id: str, *, state: str = "active") -> Path:
+    return sessionlib.ensure_session(session_id, state=state)
+
+
+def read_state(session_id: str) -> str:
+    return str(sessionlib.load_session(session_id).get("state") or "")
 
 
 def test_happy_flow_active_to_closing_to_validated(tmp_path: Path):
-    sess = write_session(tmp_path / "sess-flow", state="Active")
-    assert sessionlib.transition_state(sess, "Closing") is True
-    assert read_state(sess) == "Closing"
-    assert sessionlib.transition_state(sess, "Validated") is True
-    assert read_state(sess) == "Validated"
+    sid = "sess-flow"
+    ensure_session(sid, state="active")
+    assert sessionlib.transition_state(sid, "closing") is True
+    assert read_state(sid) == "closing"
+    assert sessionlib.transition_state(sid, "validated") is True
+    assert read_state(sid) == "validated"
 
 
 def test_active_to_recovery_on_timeout(tmp_path: Path):
-    repo_root = Path.cwd()
-    active_root = repo_root / ".project" / "sessions" / "active"
-    sess = write_session(active_root / "sess-timeout-sm")
-    rec_path = sessionlib.handle_timeout(sess)
-    assert read_state(rec_path) == "Recovery"
+    sid = "sess-timeout-sm"
+    sess_dir = ensure_session(sid, state="active")
+    rec_dir = sessionlib.handle_timeout(sess_dir)
+    assert sessionlib.get_session_state(rec_dir) == "recovery"
 
 
 def test_recovery_to_active_on_resume(tmp_path: Path):
-    repo_root = Path.cwd()
-    active_root = repo_root / ".project" / "sessions" / "active"
-    sess = write_session(active_root / "sess-resume")
-    rec = sessionlib.handle_timeout(sess)
-    new_active = resilience.resume_from_recovery(rec)
-    assert read_state(new_active) == "Active"
+    sid = "sess-resume"
+    sess_dir = ensure_session(sid, state="active")
+    rec_dir = sessionlib.handle_timeout(sess_dir)
+    new_active = resilience.resume_from_recovery(rec_dir)
+    assert sessionlib.get_session_state(new_active) == "active"
 
 
 def test_invalid_transition_rejected(tmp_path: Path):
-    sess = write_session(tmp_path / "sess-invalid", state="Validated")
-    assert sessionlib.transition_state(sess, "Active") is False
-    assert read_state(sess) == "Validated"
+    sid = "sess-invalid"
+    ensure_session(sid, state="validated")
+    assert sessionlib.transition_state(sid, "active") is False
+    assert read_state(sid) == "validated"
 
 
 def test_concurrent_state_changes_atomicity(tmp_path: Path):
-    sess = write_session(tmp_path / "sess-concurrent", state="Active")
+    sid = "sess-concurrent"
+    ensure_session(sid, state="active")
 
     def t1():
         for _ in range(10):
-            sessionlib.transition_state(sess, "Closing")
-            sessionlib.transition_state(sess, "Active")
+            sessionlib.transition_state(sid, "recovery")
+            sessionlib.transition_state(sid, "active")
 
     def t2():
         for _ in range(10):
-            sessionlib.transition_state(sess, "Closing")
-            sessionlib.transition_state(sess, "Active")
+            sessionlib.transition_state(sid, "recovery")
+            sessionlib.transition_state(sid, "active")
 
     th1 = threading.Thread(target=t1)
     th2 = threading.Thread(target=t2)
@@ -83,19 +91,21 @@ def test_concurrent_state_changes_atomicity(tmp_path: Path):
     th1.join(); th2.join()
 
     # File must always be valid JSON with a known state
-    data = json.loads((sess / "session.json").read_text(encoding="utf-8"))
-    assert data["state"] in {"Active", "Closing"}
+    data = sessionlib.load_session(sid)
+    assert str(data.get("state") or "") in {"active", "recovery"}
 
 
 def test_state_file_atomic_write(tmp_path: Path):
-    sess = write_session(tmp_path / "sess-atomic", state="Active")
-    ok = sessionlib.transition_state(sess, "Closing")
+    sid = "sess-atomic"
+    ensure_session(sid, state="active")
+    ok = sessionlib.transition_state(sid, "closing")
     assert ok is True
-    text = (sess / "session.json").read_text(encoding="utf-8")
+    repo = SessionRepository()
+    text = repo.get_session_json_path(sid).read_text(encoding="utf-8")
     assert text.strip().endswith("}")
     # Parse to ensure no partial writes leaked
     data = json.loads(text)
-    assert data["state"] == "Closing"
+    assert data["state"] == "closing"
 
 
 # === Group 3 Additions: Canonical State Machine & Audit ===
@@ -105,13 +115,9 @@ class Dummy:
 
 
 def _get_session_json_path(session_id: str) -> Path:
-    """Locate the current session.json for a given session id across states."""
-    root = Path('.project/sessions')
-    for state in ('active', 'closing', 'validated', 'recovery', 'archived'):
-        p = root / state / session_id / 'session.json'
-        if p.exists():
-            return p
-    raise FileNotFoundError(f"session.json not found for {session_id}")
+    """Locate the current session.json for a given session id using SessionRepository."""
+    repo = SessionRepository()
+    return repo.get_session_json_path(session_id)
 
 
 def _read_session(session_id: str) -> dict:
@@ -129,7 +135,7 @@ def test_valid_state_transitions(monkeypatch):
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
 
     sid = 'st-g3-valid'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     # active -> closing
     assert sessionlib.transition_state(sid, 'closing', reason='Work complete') is True
@@ -148,7 +154,7 @@ def test_invalid_state_transitions(monkeypatch):
     """D1, D2: Test invalid paths blocked with clear errors."""
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
     sid = 'st-g3-invalid'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     # active -> validated (invalid) - returns False on invalid transitions
     assert sessionlib.transition_state(sid, 'validated') is False
@@ -166,7 +172,7 @@ def test_state_transition_audit_trail(monkeypatch):
     """D1, D3: Test state_history array in session."""
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
     sid = 'st-g3-audit'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     sessionlib.transition_state(sid, 'closing', reason='Test reason')
 
@@ -185,7 +191,7 @@ def test_state_transition_external_audit_log(monkeypatch):
     """D3: Test `.project/logs/state-transitions.jsonl` is written."""
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
     sid = 'st-g3-extlog'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     audit_path = Path('.project/logs/state-transitions.jsonl')
     if audit_path.exists():
@@ -209,7 +215,7 @@ def test_recovery_auto_exit_after_timeout(monkeypatch):
 
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
     sid = 'st-g3-recovery-auto'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     sessionlib.transition_state(sid, 'closing')
     sessionlib.transition_state(sid, 'recovery', reason='Validation failed')
@@ -236,7 +242,7 @@ def test_state_machine_all_paths(monkeypatch):
 
     def fresh(suffix: str) -> str:
         sid = f'st-g3-all-{suffix}'
-        sessionlib.ensure_session(sid, state='Active')
+        sessionlib.ensure_session(sid, state='active')
         return sid
 
     # active -> closing
@@ -285,7 +291,7 @@ def test_concurrent_state_transitions(monkeypatch):
     """Resilience with locking: concurrent state changes should keep consistent JSON."""
     monkeypatch.setenv('PROJECT_NAME', 'example-project')
     sid = 'st-g3-concurrent'
-    sessionlib.ensure_session(sid, state='Active')
+    sessionlib.ensure_session(sid, state='active')
 
     def worker(n: int):
         for _ in range(n):

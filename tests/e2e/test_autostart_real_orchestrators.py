@@ -81,8 +81,11 @@ def _find_log(repo_root: Path, session_id: str) -> Optional[Path]:
 def _load_session(repo_root: Path, session_id: str) -> Dict[str, Any]:
     candidates = [
         repo_root / ".project" / "sessions" / "wip" / session_id / "session.json",
-        repo_root / ".project" / "sessions" / "active" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "draft" / session_id / "session.json",
         repo_root / ".project" / "sessions" / "done" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "validated" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "recovery" / session_id / "session.json",
+        repo_root / ".project" / "sessions" / "archived" / session_id / "session.json",
     ]
     session_path = next((p for p in candidates if p.exists()), None)
     assert session_path is not None, f"session.json not found for {session_id}"
@@ -106,7 +109,6 @@ def autostart_env(tmp_path: Path) -> Dict[str, Any]:
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(tmp_path)
-    env["project_ROOT"] = str(tmp_path)
     env.setdefault("PROJECT_NAME", "edison-autostart-test")
 
     return {

@@ -86,22 +86,35 @@ def main(args: argparse.Namespace) -> int:
                 f"  {entity.id} [{entity.state}]" for entity in entities
             )
 
-        formatter.json_output({
-            "records": [
-                {
-                    "record_id": e.id,
-                    "status": e.state,
-                    "title": getattr(e, "title", ""),
-                }
-                for e in entities
-            ],
-            "count": len(entities),
-            "filters": {
-                "status": args.status,
-                "session": session_id,
-                "type": args.type,
-            },
-        }) if formatter.json_mode else formatter.text(list_text)
+        if formatter.json_mode:
+            records = []
+            for e in entities:
+                try:
+                    p = repo.get_path(e.id)
+                    path_str = str(p.relative_to(project_root)) if p.is_relative_to(project_root) else str(p)
+                except Exception:
+                    path_str = ""
+
+                owner = None
+                try:
+                    owner = e.metadata.created_by if getattr(e, "metadata", None) else None
+                except Exception:
+                    owner = None
+
+                records.append(
+                    {
+                        "id": e.id,
+                        "type": args.type,
+                        "state": e.state,
+                        "title": getattr(e, "title", ""),
+                        "owner": owner,
+                        "session_id": getattr(e, "session_id", None),
+                        "path": path_str,
+                    }
+                )
+            formatter.json_output(records)
+        else:
+            formatter.text(list_text)
 
         return 0
 

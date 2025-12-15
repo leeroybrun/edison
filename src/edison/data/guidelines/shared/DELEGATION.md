@@ -92,6 +92,5 @@
 - Code changes in <file scope>
 - Tests added/updated
 - Evidence files recorded
-- Implementation report JSON
+- Implementation report frontmatter (implementation-report.md)
 ```
-

@@ -28,7 +28,7 @@ class TestCrossSessionClaim(E2ETestCase):
 
         # Override owner for this test
         self.env.update({
-            "project_OWNER": "claude-pid-1111",
+            "AGENTS_OWNER": "claude-pid-1111",
         })
 
         # Add script paths for convenience

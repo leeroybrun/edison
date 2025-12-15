@@ -44,10 +44,10 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 - **Packaging**: pyproject.toml, setuptools, pip, virtual environments
 - **CLI**: argparse, click, typer patterns
 
-## MANDATORY GUIDELINES (Read Before Any Task)
+## Mandatory Baseline
 
-- Re-read `.edison/_generated/constitutions/AGENTS.md` for cross-role rules (TDD, Context7, configuration-first)
-- Read `.edison/_generated/guidelines/agents/COMMON.md` for agent baseline rules
+- Follow the core agent constitution at `.edison/_generated/constitutions/AGENTS.md` (TDD, NO MOCKS, evidence rules).
+- Follow the core agent workflow and report format in `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` and `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`.
 
 ## Tools
 
@@ -84,91 +84,21 @@ pip install -e ".[dev]"
 <!-- section: guidelines -->
 <!-- /section: guidelines -->
 
-### TDD for Python (MANDATORY)
+### Python Patterns (Pack)
 
-1. **RED Phase**: Write failing test first
-   ```python
-   def test_feature_does_expected_thing():
-       result = feature_function(input_data)
-       assert result == expected_output
-   # Run: pytest - MUST FAIL
-   ```
+{{include-section:packs/python/guidelines/includes/python/PYTHON.md#patterns}}
 
-2. **GREEN Phase**: Implement minimal code to pass
-   ```python
-   def feature_function(data: InputType) -> OutputType:
-       # Minimal implementation
-       return expected_output
-   # Run: pytest - MUST PASS
-   ```
+### Typing (mypy --strict)
 
-3. **REFACTOR Phase**: Clean up while keeping tests green
-   - Add comprehensive type hints
-   - Extract helper functions if needed
-   - Ensure mypy passes
-   - Run pytest again - MUST STILL PASS
+{{include-section:packs/python/guidelines/includes/python/TYPING.md#patterns}}
 
-### Type Hints (MANDATORY)
+### Testing (pytest)
 
-All code MUST have comprehensive type annotations:
+{{include-section:packs/python/guidelines/includes/python/TESTING.md#patterns}}
 
-```python
-from __future__ import annotations
-from typing import TypeVar, Protocol, overload
-from collections.abc import Callable, Iterable, Mapping
+### Async (asyncio)
 
-T = TypeVar("T")
-
-class Repository(Protocol[T]):
-    def get(self, id: str) -> T | None: ...
-    def save(self, entity: T) -> None: ...
-
-def process_items(
-    items: Iterable[T],
-    transformer: Callable[[T], T],
-) -> list[T]:
-    """Process items with transformer function."""
-    return [transformer(item) for item in items]
-```
-
-**Rules**:
-- Use `from __future__ import annotations` for forward references
-- All function parameters have type annotations
-- All function return types are annotated
-- Use `T | None` instead of `Optional[T]`
-- Use `list[T]` instead of `List[T]` (Python 3.9+)
-- Use Protocol for duck typing
-- mypy --strict MUST pass with 0 errors
-
-### Testing Patterns (NO MOCKS)
-
-Per CLAUDE.md: **NO MOCKS EVER** - Test real behavior with real code.
-
-```python
-import pytest
-from pathlib import Path
-
-@pytest.fixture
-def temp_config_file(tmp_path: Path) -> Path:
-    """Create real temporary config file."""
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("key: value\n")
-    return config_file
-
-def test_load_config_from_real_file(temp_config_file: Path):
-    """Test loading from actual file, not mock."""
-    config = load_config(temp_config_file)
-    assert config["key"] == "value"
-
-@pytest.mark.parametrize("input_val,expected", [
-    ("valid", True),
-    ("", False),
-    (None, False),
-])
-def test_validation_edge_cases(input_val, expected):
-    """Test edge cases with parametrize."""
-    assert validate(input_val) == expected
-```
+{{include-section:packs/python/guidelines/includes/python/ASYNC.md#patterns}}
 
 ### Code Organization
 
@@ -195,29 +125,8 @@ tests/
   conftest.py            # Shared fixtures
 ```
 
-### Modern Python Patterns
-
-**Dataclasses for data structures**:
-```python
-from dataclasses import dataclass, field
-from datetime import datetime
-
-@dataclass(frozen=True, slots=True)
-class Entity:
-    id: str
-    name: str
-    created_at: datetime = field(default_factory=datetime.now)
-```
-
-**Enums for constants**:
-```python
-from enum import Enum, auto
-
-class Status(Enum):
-    PENDING = auto()
-    ACTIVE = auto()
-    COMPLETED = auto()
-```
+### Notes
+- Core rules (TDD, NO MOCKS, evidence, follow-ups) come from the agent constitution; this pack only adds Python-specific commands and patterns.
 
 **Context managers for resources**:
 ```python

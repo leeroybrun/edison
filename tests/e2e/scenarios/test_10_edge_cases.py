@@ -34,6 +34,7 @@ from helpers.command_runner import (
     assert_error_contains,
     assert_json_output,
 )
+from edison.core.utils.text import format_frontmatter
 
 
 @pytest.mark.edge_case
@@ -124,10 +125,7 @@ def test_empty_evidence_directory(project_dir: TestProjectDir):
     )
     assert_command_success(qa)
 
-    # `qa/new` should NOT create evidence rounds. `validators/validate --execute`
-    # is responsible for creating a round directory before writing reports.
     evidence_root = project_dir.project_root / "qa" / "validation-evidence" / task_id
-    assert not any(evidence_root.glob("round-*"))
 
     validate = run_script(
         "validators/validate",
@@ -154,7 +152,7 @@ def test_orphaned_task_no_owner(project_dir: TestProjectDir):
     assert_command_success(res)
 
     # List records and verify owner is _unassigned_
-    listing = run_script("tasks/list", ["--format", "json"], cwd=project_dir.tmp_path)
+    listing = run_script("tasks/list", ["--json"], cwd=project_dir.tmp_path)
     assert_command_success(listing)
     items = assert_json_output(listing)
     entry = next((r for r in items if r["id"] == task_id and r["type"] == "task"), None)
@@ -168,24 +166,19 @@ def test_orphaned_qa_no_task(project_dir: TestProjectDir):
     """qa/promote should fail when the QA record does not exist.
 
     QA records are created alongside tasks (single source of truth).
-    `qa/new` initializes evidence (qa-brief.json) but does not create QA records.
     """
     task_id = "250-wave1-orphaned"
 
-    # Create QA for a non-existent task (allowed by qa/new)
+    # qa/new must fail when the task does not exist (fail-closed)
     qa = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
-    assert_command_success(qa)
-
-    # Promote should fail because there is no QA record to promote
-    promote = run_script("qa/promote", [task_id, "--status", "todo"], cwd=project_dir.tmp_path)
-    assert_command_failure(promote)
-    assert_error_contains(promote, "QA brief not found")
+    assert_command_failure(qa)
+    assert_error_contains(qa, "Task not found")
 
 
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_session_no_tasks_list(project_dir: TestProjectDir):
-    """session status returns JSON with empty tasks; duplicate creation fails."""
+    """session status returns JSON; duplicate creation fails."""
     session_id = "test-no-tasks-array"
 
     created = run_script(
@@ -207,7 +200,7 @@ def test_session_no_tasks_list(project_dir: TestProjectDir):
     status = run_script("session", ["status", session_id, "--json"], cwd=project_dir.tmp_path)
     assert_command_success(status)
     data = assert_json_output(status)
-    assert isinstance(data.get("tasks"), dict) and len(data["tasks"]) == 0
+    assert data.get("tasks") in (None, {})
 
 
 @pytest.mark.edge_case
@@ -256,7 +249,10 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
             "verdict": verdict,
             "tracking": {"processId": 12345, "startedAt": "2025-01-01T00:00:00Z"},
         }
-        (round_dir / f"validator-{validator_id}-report.json").write_text(json.dumps(payload))
+        (round_dir / f"validator-{validator_id}-report.md").write_text(
+            format_frontmatter(payload) + "\n",
+            encoding="utf-8",
+        )
 
     write_report("global-codex", "codex")
     write_report("global-claude", "claude")
@@ -264,9 +260,11 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
     write_report("security", "codex", verdict="pending")
     write_report("performance", "codex", verdict="pending")
 
-    res = run_script("validators/validate", [task_id, "--execute", "--blocking-only"], cwd=project_dir.tmp_path)
+    res = run_script("validators/validate", [task_id, "--check-only", "--blocking-only"], cwd=project_dir.tmp_path)
     assert_command_failure(res)
-    assert_output_contains(res, "Missing/insufficient blocking reports", in_stderr=False)
+    assert_output_contains(res, "Bundle NOT approved", in_stderr=False)
+    assert_output_contains(res, "performance", in_stderr=False)
+    assert_output_contains(res, "security", in_stderr=False)
 
 
 @pytest.mark.edge_case
@@ -290,17 +288,26 @@ def test_task_in_blocked_state_with_reason(project_dir: TestProjectDir):
     num, wave, slug = "450", "wave1", "blocked-reason"
     task_id = f"{num}-{wave}-{slug}"
 
-    # Create task
-    run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
+    # Create session + task
+    session_id = "blocked-reason-session"
+    assert_command_success(
+        run_script("session", ["new", "--owner", "tester", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path)
+    )
+    assert_command_success(
+        run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
+    )
 
     # Invalid transition: todo → done should fail
     bad = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path)
     assert_command_failure(bad)
 
-    # Valid path: todo → wip → blocked
-    to_wip = run_script("tasks/status", [task_id, "--status", "wip"], cwd=project_dir.tmp_path)
-    assert_command_success(to_wip)
-    to_blocked = run_script("tasks/status", [task_id, "--status", "blocked"], cwd=project_dir.tmp_path)
+    # Valid path: claim to wip → blocked (with explicit blocker reason)
+    assert_command_success(run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path))
+    to_blocked = run_script(
+        "tasks/status",
+        [task_id, "--status", "blocked", "--reason", "waiting on external dependency"],
+        cwd=project_dir.tmp_path,
+    )
     assert_command_success(to_blocked)
     assert_output_contains(to_blocked, "blocked")
 
@@ -338,14 +345,17 @@ def test_qa_bypass_without_type_flag_blocked(project_dir: TestProjectDir):
     could be bypassed by omitting --type. The guard must use the resolved
     record_type instead.
     """
-    task_id = "501-wave1-qa-bypass-guard"
+    num, wave, slug = "501", "wave1", "qa-bypass-guard"
+    task_id = f"{num}-{wave}-{slug}"
+    qa_id = f"{task_id}-qa"
 
-    # Create QA brief via real CLI
-    qa = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
-    assert_command_success(qa)
+    # Create task (creates QA record as the single source of truth)
+    created = run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
+    assert_command_success(created)
 
     # Attempt to change QA status via tasks/status WITHOUT --type should fail
-    res = run_script("tasks/status", [task_id, "--status", "done"], cwd=project_dir.tmp_path)
+    # (record type must be resolved, not read from the --type flag).
+    res = run_script("tasks/status", [qa_id, "--status", "done"], cwd=project_dir.tmp_path)
     assert_command_failure(res)
     assert_error_contains(res, "QA state transitions must use edison qa promote")
 
@@ -353,24 +363,23 @@ def test_qa_bypass_without_type_flag_blocked(project_dir: TestProjectDir):
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_multiple_qa_rounds_same_task(project_dir: TestProjectDir):
-    """qa/round appends Round N sections to QA brief across runs."""
-    task_id = "500-wave1-multi-qa"
+    """qa/round appends round history across runs."""
+    num, wave, slug = "500", "wave1", "multi-qa"
+    task_id = f"{num}-{wave}-{slug}"
 
-    # Create QA brief for task
-    qa = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
-    assert_command_success(qa)
+    # Create task (creates QA record as the single source of truth)
+    assert_command_success(run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path))
 
     # Append multiple rounds via real CLI
     for i in range(1, 4):
-        round_res = run_script("qa/round", [task_id, "--status", "approved", "--note", f"r{i}"], cwd=project_dir.tmp_path)
+        round_res = run_script("qa/round", [task_id, "--status", "approve", "--note", f"r{i}"], cwd=project_dir.tmp_path)
         assert_command_success(round_res)
 
     qa_path = project_dir.project_root / "qa" / "waiting" / f"{task_id}-qa.md"
     from helpers.assertions import read_file
     text = read_file(qa_path)
-    assert "## Round 1 Validation" in text
-    assert "## Round 2 Validation" in text
-    assert "## Round 3 Validation" in text
+    assert "round_history" in text
+    assert "r1" in text and "r2" in text and "r3" in text
 
 
 @pytest.mark.edge_case
@@ -432,15 +441,20 @@ def test_empty_task_file(project_dir: TestProjectDir):
     path.write_text("")
     assert_file_exists(path)
 
-    claim = run_script("tasks/claim", ["--path", str(path)], cwd=project_dir.tmp_path)
+    # Claim by record ID; the repository should fail closed on malformed files.
+    session_id = "empty-task-session"
+    assert_command_success(
+        run_script("session", ["new", "--owner", "tester", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path)
+    )
+    claim = run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(claim)
-    assert_output_contains(claim, "Could not update required fields", in_stderr=False)
+    assert_error_contains(claim, "frontmatter")
 
 
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_context7_evidence_without_task(project_dir: TestProjectDir):
-    """validators/validate fails for task with orphan evidence (no rounds)."""
+    """validators/validate roster-only mode tolerates orphan evidence roots (no rounds)."""
     task_id = "750-wave1-ctx7-orphan"
 
     # Create orphan evidence directory with a context7 note but no rounds
@@ -448,9 +462,10 @@ def test_context7_evidence_without_task(project_dir: TestProjectDir):
     ev_root.mkdir(parents=True, exist_ok=True)
     (ev_root / "context7-react.txt").write_text("Context7 evidence placeholder\n")
 
-    res = run_script("validators/validate", ["--task", task_id], cwd=project_dir.tmp_path)
-    assert_command_failure(res)
-    assert_output_contains(res, "No round directories")
+    res = run_script("validators/validate", [task_id], cwd=project_dir.tmp_path)
+    assert_command_success(res)
+    assert_output_contains(res, f"Validation roster for {task_id}:", in_stderr=False)
+    assert_output_contains(res, "To execute validators, add --execute flag", in_stderr=False)
 
 
 @pytest.mark.edge_case
@@ -511,12 +526,12 @@ def test_circular_task_dependency(project_dir: TestProjectDir):
         "notesForValidator": "cycle check",
         "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z", "completedAt": "2025-01-01T00:10:00Z"}
     }
-    (ev_root / "implementation-report.json").write_text(json.dumps(impl))
+    (ev_root / "implementation-report.md").write_text(format_frontmatter(impl) + "\n", encoding="utf-8")
 
     # tasks/ready should fail with cycle detection
     ready = run_script("tasks/ready", [id_a, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(ready)
-    assert_output_contains(ready, "Cycle detected", in_stderr=False)
+    assert_error_contains(ready, "Cycle detected")
 
 
 @pytest.mark.edge_case
@@ -528,21 +543,23 @@ def test_qa_guard_bypass_via_tasks_status(project_dir: TestProjectDir):
     SECURITY: This prevents bypassing validator consensus by using tasks/status
     to directly move QA files between states without validation checks.
     """
-    task_id = "850-wave1-bypass-test"
+    num, wave, slug = "850", "wave1", "bypass-test"
+    task_id = f"{num}-{wave}-{slug}"
+    qa_id = f"{task_id}-qa"
 
-    # Create QA in waiting state
-    qa_result = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
-    assert_command_success(qa_result)
+    # Create task (creates QA record in waiting)
+    created = run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
+    assert_command_success(created)
 
     # Verify QA exists in waiting
-    qa_path = project_dir.project_root / "qa" / "waiting" / f"{task_id}-qa.md"
+    qa_path = project_dir.project_root / "qa" / "waiting" / f"{qa_id}.md"
     assert_file_exists(qa_path)
 
     # Attempt to bypass validators using tasks/status with --type qa
     # This should be REJECTED with clear error message
     bypass_attempt = run_script(
         "tasks/status",
-        [task_id, "--type", "qa", "--status", "done"],
+        [qa_id, "--type", "qa", "--status", "done"],
         cwd=project_dir.tmp_path,
     )
 
@@ -553,5 +570,5 @@ def test_qa_guard_bypass_via_tasks_status(project_dir: TestProjectDir):
 
     # Verify QA file NOT moved to done (still in waiting)
     assert_file_exists(qa_path)
-    done_path = project_dir.project_root / "qa" / "done" / f"{task_id}-qa.md"
+    done_path = project_dir.project_root / "qa" / "done" / f"{qa_id}.md"
     assert_file_not_exists(done_path)

@@ -59,9 +59,13 @@ def _load_schema() -> dict:
 def _base_session() -> dict:
     return {
         "id": "session-xyz",
-        "state": "Active",
-        "createdAt": "2025-11-22T00:00:00Z",
-        "lastActiveAt": "2025-11-22T00:05:00Z",
+        "state": "active",
+        "meta": {
+            "sessionId": "session-xyz",
+            "createdAt": "2025-11-22T00:00:00Z",
+            "lastActive": "2025-11-22T00:05:00Z",
+            "status": "active",
+        },
     }
 
 
@@ -74,19 +78,15 @@ def _write_session(tmp_path: Path, payload: dict) -> dict:
 def test_session_allows_auto_start_metadata(tmp_path: Path) -> None:
     schema = _load_schema()
     session = _base_session()
-    session["meta"] = {
-        "sessionId": "session-xyz",
+    session["meta"].update({
         "owner": "owner-123",
         "mode": "start",
-        "status": "wip",
-        "createdAt": "2025-11-22T00:00:00Z",
-        "lastActive": "2025-11-22T00:05:00Z",
         "createdBy": "edison",
         "orchestratorProfile": "claude",
         "autoStarted": True,
         "promptPath": "prompts/auto/start.md",
         "namingStrategy": "edison",
-    }
+    })
 
     payload = _write_session(tmp_path, session)
     validate(instance=payload, schema=schema)
@@ -95,12 +95,11 @@ def test_session_allows_auto_start_metadata(tmp_path: Path) -> None:
 def test_session_rejects_invalid_auto_start_values(tmp_path: Path) -> None:
     schema = _load_schema()
     session = _base_session()
-    session["meta"] = {
-        "sessionId": "session-xyz",
+    session["meta"].update({
         "owner": "owner-123",
         "createdBy": "system",  # invalid enum
         "namingStrategy": "random",  # invalid enum
-    }
+    })
 
     payload = _write_session(tmp_path, session)
     with pytest.raises(ValidationError):
@@ -110,12 +109,10 @@ def test_session_rejects_invalid_auto_start_values(tmp_path: Path) -> None:
 def test_session_without_auto_start_fields_still_valid(tmp_path: Path) -> None:
     schema = _load_schema()
     session = _base_session()
-    session["meta"] = {
-        "sessionId": "session-xyz",
+    session["meta"].update({
         "owner": "owner-123",
         "mode": "start",
-        "status": "wip",
-    }
+    })
 
     payload = _write_session(tmp_path, session)
     validate(instance=payload, schema=schema)
