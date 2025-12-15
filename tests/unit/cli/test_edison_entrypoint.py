@@ -118,6 +118,22 @@ def test_fast_command_resolution_finds_domain_command() -> None:
     assert spec["command"] == "check"
 
 
+def test_fast_command_resolution_supports_import_domain_alias() -> None:
+    spec = _resolve_fast_command_module(["import", "speckit"])
+    assert spec is not None
+    assert spec["module"].endswith(".import_.speckit")
+    assert spec["domain"] == "import_"
+    assert spec["command"] == "speckit"
+
+
+def test_build_parser_accepts_import_domain_alias() -> None:
+    from edison.cli.import_.speckit import main as import_speckit_main
+
+    parser = build_parser()
+    args = parser.parse_args(["import", "speckit", "specs/auth", "--dry-run"])
+    assert getattr(args, "_func") is import_speckit_main
+
+
 def test_cli_rules_precheck_detects_core_rule_for_task_claim(tmp_path: Path) -> None:
     # Legacy test renamed: keep a minimal assertion that the packs fast-path
     # does not crash and returns empty when packs config is absent.

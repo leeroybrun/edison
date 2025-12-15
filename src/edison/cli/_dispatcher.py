@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from edison.core.utils.profiling import Profiler, enable_profiler, span
+from edison.cli._aliases import domain_cli_names, resolve_canonical_domain
 
 
 @lru_cache(maxsize=1)
@@ -236,14 +237,16 @@ def build_parser() -> argparse.ArgumentParser:
                 continue
 
         # Create domain parser
+        domain_primary, domain_aliases = domain_cli_names(domain_name)
         domain_parser = subparsers.add_parser(
-            domain_name,
-            help=f"{domain_name.title()} management commands",
+            domain_primary,
+            aliases=domain_aliases,
+            help=f"{domain_primary.title()} management commands",
         )
         cmd_subparsers = domain_parser.add_subparsers(
             dest="command",
             title="commands",
-            description=f"Available {domain_name} commands",
+            description=f"Available {domain_primary} commands",
             metavar="<command>",
         )
 
@@ -482,10 +485,11 @@ def _resolve_fast_command_module(argv: list[str]) -> Optional[dict[str, str]]:
     domains = discover_domains()
 
     # Domain command: `edison <domain> <command> ...`
-    if argv[0] in domains:
+    resolved_domain = resolve_canonical_domain(argv[0], canonical_domains=tuple(domains.keys()))
+    if resolved_domain:
         if len(argv) < 2 or argv[1].startswith("-"):
             return None
-        domain = argv[0]
+        domain = resolved_domain
         cmd_cli = argv[1]
         cmd_mod = cmd_cli.replace("-", "_")
         candidate = cli_dir / domain / f"{cmd_mod}.py"
@@ -546,9 +550,11 @@ def _build_fast_parser(spec: dict[str, str]) -> argparse.ArgumentParser:
 
     with span("cli.fast.parser.register"):
         if spec["domain"]:
+            domain_primary, domain_aliases = domain_cli_names(spec["domain"])
             domain_parser = subparsers.add_parser(
-                spec["domain"],
-                help=f"{spec['domain'].title()} management commands",
+                domain_primary,
+                aliases=domain_aliases,
+                help=f"{domain_primary.title()} management commands",
             )
             cmd_subparsers = domain_parser.add_subparsers(dest="command")
             primary_name = spec["command"].replace("_", "-")
@@ -618,9 +624,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             # Get command name for rules lookup
-            command_name = args.domain
+            domains = discover_domains()
+            canonical_domain = resolve_canonical_domain(
+                args.domain,
+                canonical_domains=tuple(domains.keys()),
+            )
+            command_name = canonical_domain or args.domain
             if getattr(args, "command", None):
-                command_name = f"{args.domain} {args.command}"
+                command_name = f"{command_name} {args.command}"
 
             # Rules commands manage rules themselves; avoid double-initializing the rules engine
             # (dispatcher guidance + rules CLI) which is expensive and redundant.
