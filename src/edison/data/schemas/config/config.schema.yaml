@@ -167,9 +167,19 @@ properties:
       enabled:
         type: boolean
         default: true
-      baseBranch:
+      baseBranchMode:
         type: string
-        default: main
+        description: Base ref selection mode for session worktree creation. "current" uses the current primary worktree HEAD ref, "fixed" uses worktrees.baseBranch.
+        enum:
+        - current
+        - fixed
+        default: current
+      baseBranch:
+        description: Base ref to branch from when baseBranchMode is "fixed". When null, the current primary worktree HEAD ref is used.
+        type:
+        - string
+        - 'null'
+        default: null
       baseDirectory:
         type: string
         description: Base directory for session worktrees.
@@ -188,6 +198,15 @@ properties:
         type: string
         description: Optional path template for worktree location.
         default: ../{PROJECT_NAME}-worktrees/{sessionId}
+      installDeps:
+        type: boolean
+        default: false
+      enableDatabaseIsolation:
+        type: boolean
+        default: false
+      autoCleanupOnMerge:
+        type: boolean
+        default: false
       cleanup:
         type: object
         properties:
@@ -202,6 +221,21 @@ properties:
             type: integer
             minimum: 0
             default: 90
+        additionalProperties: false
+      enforcement:
+        type: object
+        description: Optional hard enforcement for session-scoped commands. When enabled,
+          commands listed under worktrees.enforcement.commands are blocked unless the
+          process is running inside the session worktree directory.
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          commands:
+            type: array
+            items:
+              type: string
+            default: []
         additionalProperties: false
     additionalProperties: false
   orchestrators:

@@ -31,9 +31,11 @@ validation:
       type: cli
       command: "codex"
       subcommand: "exec"
-      output_flags: []
+      output_flags: ["--json"]
       read_only_flags: []
       response_parser: codex
+      prompt_mode: stdin
+      stdin_prompt_arg: "-"
 
     claude-cli:
       type: cli
@@ -42,6 +44,7 @@ validation:
       output_flags: ["--output-format", "json"]
       read_only_flags: ["--permission-mode", "plan"]
       response_parser: claude
+      prompt_mode: arg
 
     gemini-cli:
       type: cli
@@ -50,6 +53,7 @@ validation:
       output_flags: ["--output-format", "json"]
       read_only_flags: []
       response_parser: gemini
+      prompt_mode: arg
 
     auggie-cli:
       type: cli
@@ -58,6 +62,8 @@ validation:
       output_flags: ["--output-format", "json"]
       read_only_flags: ["--print", "--quiet"]
       response_parser: auggie
+      prompt_mode: file
+      prompt_flag: "--instruction-file"
 
     coderabbit-cli:
       type: cli
@@ -66,6 +72,8 @@ validation:
       output_flags: []
       read_only_flags: ["--prompt-only"]
       response_parser: coderabbit
+      prompt_mode: file
+      prompt_flag: "--config"
 
     zen-mcp:
       type: delegated
@@ -170,7 +178,7 @@ validation:
       prompt: "_generated/validators/coderabbit.md"
       wave: critical
       always_run: false
-      blocking: true
+      blocking: false
       timeout: 600
       context7_required: false
       context7_packages: []

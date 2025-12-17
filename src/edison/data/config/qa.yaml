@@ -4,6 +4,14 @@
 version: "1.0.0"
 
 validation:
+  # File context settings (used for validator triggering and rules routing).
+  # These patterns exclude Edison-managed metadata/runtime artifacts so that
+  # "modifiedFiles" reflects product/code changes rather than workflow noise.
+  fileContext:
+    ignorePatterns:
+      - ".project/**"
+      - ".edison/_generated/**"
+
   # Session ID to use for validation transactions when no active session exists
   # This is used as a fallback identifier for validation operations that
   # are not tied to a specific development session

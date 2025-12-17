@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import tempfile
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -124,8 +125,48 @@ class CLIEngine:
         """
         start_time = time.time()
 
+        prompt_input: str | None = None
+        prompt_args: list[str] | None = None
+
+        if validator.prompt:
+            prompt_text = self._render_prompt_text(
+                validator=validator,
+                task_id=task_id,
+                session_id=session_id,
+                worktree_path=worktree_path,
+                round_num=round_num,
+                evidence_service=evidence_service,
+            )
+
+            # Persist the effective prompt for auditability when possible.
+            prompt_path: Path | None = None
+            if evidence_service:
+                try:
+                    round_dir = evidence_service.ensure_round(round_num)
+                    prompt_path = round_dir / f"prompt-{validator.id}.md"
+                    prompt_path.write_text(prompt_text, encoding="utf-8")
+                except Exception:
+                    prompt_path = None
+
+            if self.config.prompt_mode == "stdin":
+                prompt_input = prompt_text
+                sentinel = (self.config.stdin_prompt_arg or "").strip()
+                prompt_args = [sentinel] if sentinel else None
+            elif self.config.prompt_mode == "arg":
+                prompt_args = [prompt_text]
+            else:
+                if prompt_path is None:
+                    # Fall back to a temp file when we can't write to evidence.
+                    tmp = tempfile.NamedTemporaryFile("w", suffix=f"-{validator.id}.md", delete=False)
+                    try:
+                        tmp.write(prompt_text)
+                        prompt_path = Path(tmp.name)
+                    finally:
+                        tmp.close()
+                prompt_args = self._format_prompt_args(prompt_path)
+
         # Build the command
-        cmd_parts = self._build_command(validator, worktree_path)
+        cmd_parts = self._build_command(validator, worktree_path, prompt_args=prompt_args)
 
         logger.info(
             f"Running CLI validator '{validator.id}' with command: {self.command}"
@@ -142,6 +183,7 @@ class CLIEngine:
                 capture_output=True,
                 text=True,
                 check=False,
+                input=prompt_input,
             )
 
             duration = time.time() - start_time
@@ -196,6 +238,8 @@ class CLIEngine:
         self,
         validator: "ValidatorMetadata",
         worktree_path: Path,
+        *,
+        prompt_args: list[str] | None = None,
     ) -> list[str]:
         """Build the command line from configuration.
 
@@ -218,14 +262,102 @@ class CLIEngine:
         # Add read-only flags
         cmd.extend(self.config.read_only_flags)
 
-        # Add prompt file if specified
-        if validator.prompt:
-            # Resolve prompt path relative to project
-            prompt_path = self._resolve_prompt_path(validator.prompt)
-            if prompt_path:
-                cmd.append(str(prompt_path))
+        if prompt_args is not None:
+            cmd.extend(prompt_args)
+        else:
+            # Backward compatibility: treat prompt as a path argument.
+            if validator.prompt:
+                prompt_path = self._resolve_prompt_path(validator.prompt)
+                if prompt_path:
+                    cmd.append(str(prompt_path))
 
         return cmd
+
+    def _format_prompt_args(self, prompt_path: Path) -> list[str]:
+        flag = (self.config.prompt_flag or "").strip()
+        if flag:
+            return [flag, str(prompt_path)]
+        return [str(prompt_path)]
+
+    def _render_prompt_text(
+        self,
+        *,
+        validator: "ValidatorMetadata",
+        task_id: str,
+        session_id: str,
+        worktree_path: Path,
+        round_num: int | None,
+        evidence_service: "EvidenceService | None",
+    ) -> str:
+        prompt_path = self._resolve_prompt_path(validator.prompt)
+        base = ""
+        if prompt_path and prompt_path.exists():
+            base = prompt_path.read_text(encoding="utf-8")
+
+        # Keep the dynamic prelude compact and path-based (avoid embedding large logs).
+        round_dir = None
+        bundle_path = None
+        impl_path = None
+        if evidence_service:
+            try:
+                round_dir = evidence_service.ensure_round(round_num)
+                bundle_path = round_dir / evidence_service.bundle_filename
+                impl_path = round_dir / evidence_service.implementation_filename
+            except Exception:
+                pass
+
+        changed_files: list[str] = []
+        try:
+            from edison.core.context.files import FileContextService
+
+            ctx = FileContextService(project_root=worktree_path).get_for_task(
+                task_id=task_id, session_id=session_id
+            )
+            changed_files = ctx.all_files or []
+        except Exception:
+            changed_files = []
+
+        changed_preview = "\n".join([f"- {p}" for p in changed_files[:30]])
+        if len(changed_files) > 30:
+            changed_preview += f"\n- (+{len(changed_files) - 30} more)"
+
+        prelude_lines = [
+            "# Edison Validator Run (Auto)",
+            "",
+            "## Context",
+            f"- Validator: {validator.id} ({validator.name})",
+            f"- Task ID: {task_id}",
+            f"- Session ID: {session_id}",
+            f"- Round: {round_num if round_num is not None else 'N/A'}",
+            f"- Worktree: {worktree_path}",
+        ]
+        if round_dir:
+            prelude_lines.append(f"- Evidence Round Dir: {round_dir}")
+        if bundle_path:
+            prelude_lines.append(f"- Bundle Summary: {bundle_path}")
+        if impl_path:
+            prelude_lines.append(f"- Implementation Report: {impl_path}")
+
+        prelude_lines.extend(
+            [
+                "",
+                "## Changed Files (Detected)",
+                changed_preview or "- (none detected)",
+                "",
+                "## Instructions",
+                "1. Read the bundle + implementation report paths above (if they exist).",
+                "2. Validate the current working tree in this worktree (use `git status --porcelain` and `git diff`).",
+                "3. Focus only on changes relevant to this Task ID.",
+                "4. Return a clear decision line exactly in this form:",
+                "   Verdict: approve | reject | blocked",
+                "5. Then provide: Summary, Findings (bullets), Strengths (bullets).",
+                "",
+                "---",
+                "",
+            ]
+        )
+
+        return "\n".join(prelude_lines) + base
 
     def _resolve_prompt_path(self, prompt: str) -> Path | None:
         """Resolve prompt file path.
@@ -389,11 +521,36 @@ class CLIEngine:
         Returns:
             Verdict string or None if not found
         """
+        import re
+
         response_lower = response.lower()
+
+        # Prefer explicit "Verdict: <x>" markers when present.
+        m = re.search(r"\bverdict\s*:\s*(approve|approved|reject|rejected|blocked|pending)\b", response_lower)
+        if m:
+            token = m.group(1)
+            if token.startswith("approve"):
+                return "approve"
+            if token.startswith("reject"):
+                return "reject"
+            if token.startswith("block"):
+                return "blocked"
+            if token.startswith("pend"):
+                return "pending"
 
         # Check for explicit verdict indicators
         if "approved" in response_lower or "approve" in response_lower:
-            if "not approved" in response_lower or "cannot approve" in response_lower:
+            if (
+                "not approved" in response_lower
+                or "cannot approve" in response_lower
+                or "can't approve" in response_lower
+                or "cant approve" in response_lower
+                or "can't be approved" in response_lower
+                or "cant be approved" in response_lower
+                or "can’t approve" in response_lower
+                or "can’t be approved" in response_lower
+                or "unable to approve" in response_lower
+            ):
                 return "reject"
             return "approve"
 

@@ -41,7 +41,7 @@ def create_repo_with_git(tmp_path: Path, name: Optional[str] = None) -> Path:
     # Pass an explicit timeout to avoid priming the config cache with an incomplete
     # view of project overrides.
     run_with_timeout(
-        ["git", "init"],
+        ["git", "init", "-b", "main"],
         cwd=repo,
         check=True,
         stdout=subprocess.DEVNULL,

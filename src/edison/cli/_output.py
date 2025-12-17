@@ -81,6 +81,8 @@ class OutputFormatter:
         Args:
             message: Message to output
         """
+        if self.json_mode:
+            return
         print(message)
 
     def text_kv(self, key: str, value: Any, prefix: str = "  ") -> None:

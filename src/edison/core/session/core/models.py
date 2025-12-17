@@ -58,13 +58,13 @@ class GitInfo:
 class Session:
     """A session entity representing a work session.
     
-    Sessions track session-level data only. Task and QA data is stored
+    Sessions track session-level data only. Task and QA content is stored
     in the task/QA files themselves (single source of truth).
-    
-    Use TaskIndex to query tasks/QA for this session:
-        from edison.core.task import TaskIndex
-        index = TaskIndex()
-        tasks = index.list_tasks_in_session(session.id)
+
+    This model also supports an optional, lightweight `tasks` index for UX:
+    a minimal mapping of task_id -> {status, owner, qa_id, ...}. It is not the
+    source of truth, but it enables fast `session status` displays without a
+    full filesystem scan.
     
     Attributes:
         id: Unique session identifier
@@ -87,6 +87,7 @@ class Session:
     state_history: List[StateHistoryEntry] = field(default_factory=list)
     git: GitInfo = field(default_factory=GitInfo)
     activity_log: List[Dict[str, Any]] = field(default_factory=list)
+    tasks: Dict[str, Any] = field(default_factory=dict)
     ready: bool = True
     
     def record_transition(
@@ -142,6 +143,9 @@ class Session:
         
         if self.activity_log:
             data["activityLog"] = self.activity_log
+
+        if self.tasks:
+            data["tasks"] = self.tasks
         
         if self.state_history:
             data["stateHistory"] = [h.to_dict() for h in self.state_history]
@@ -152,7 +156,7 @@ class Session:
     def from_dict(cls, data: Dict[str, Any]) -> "Session":
         """Create Session from dictionary representation.
         
-        Note: `tasks` and `qa` fields in data are ignored - use TaskIndex for queries.
+        Note: `tasks` is treated as an optional index (not source of truth).
         """
         # Handle metadata
         meta = data.get("meta", {})
@@ -177,6 +181,9 @@ class Session:
         
         # Get state from data, fallback to config-driven initial state
         state = data.get("state") or SessionConfig().get_initial_session_state()
+
+        tasks = data.get("tasks")
+        tasks_index: Dict[str, Any] = tasks if isinstance(tasks, dict) else {}
         
         return cls(
             id=data.get("id", ""),
@@ -188,6 +195,7 @@ class Session:
             state_history=state_history,
             git=git,
             activity_log=data.get("activityLog", []),
+            tasks=tasks_index,
             ready=data.get("ready", True),
         )
     

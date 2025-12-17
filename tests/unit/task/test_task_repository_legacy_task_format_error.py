@@ -38,3 +38,5 @@ def test_task_repository_raises_on_legacy_html_comment_task(isolated_project_env
     assert "YAML frontmatter" in msg or "migrate" in msg
 
 
+
+

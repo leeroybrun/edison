@@ -15,6 +15,182 @@ from edison.core.utils.git.worktree import get_existing_worktree_path
 import re as _re
 
 
+def _ensure_shared_sessions_dir(*, worktree_path: Path, repo_dir: Path) -> None:
+    """Ensure `.project/sessions` is shared across git worktrees.
+
+    Git worktrees do not share untracked files. Edison stores session runtime state
+    under `.project/sessions`, so we create a symlink in the worktree that points
+    to the primary checkout's sessions directory.
+    """
+    try:
+        shared = (repo_dir / ".project" / "sessions").resolve()
+        ensure_directory(shared)
+
+        project_dir = worktree_path / ".project"
+        ensure_directory(project_dir)
+
+        link = project_dir / "sessions"
+
+        if link.is_symlink():
+            try:
+                if link.resolve() == shared:
+                    return
+            except Exception:
+                pass
+
+        if link.exists() and link.is_dir() and not link.is_symlink():
+            # Best-effort merge: move any existing entries into the shared dir.
+            try:
+                for child in link.iterdir():
+                    dest = shared / child.name
+                    if dest.exists():
+                        continue
+                    shutil.move(str(child), str(dest))
+            except Exception:
+                # If merge fails, do not risk data loss; keep existing directory.
+                return
+            try:
+                shutil.rmtree(link, ignore_errors=True)
+            except Exception:
+                return
+
+        if link.exists() and not link.is_symlink():
+            # Unexpected file type; avoid clobbering.
+            return
+
+        if not link.exists():
+            try:
+                link.symlink_to(shared, target_is_directory=True)
+            except Exception:
+                # Fallback: create a local directory (sessions won't be shared).
+                ensure_directory(link)
+    except Exception:
+        # Never block worktree creation on best-effort linking.
+        return
+
+
+def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) -> None:
+    """Ensure `.project/.session-id` exists inside the worktree.
+
+    This enables worktree-local session auto-resolution (e.g. `edison session status`
+    without passing `--session` or setting env vars) by allowing the canonical resolver
+    to read the session id from the worktree's management root.
+    """
+    try:
+        project_dir = worktree_path / ".project"
+        ensure_directory(project_dir)
+        target = project_dir / ".session-id"
+        try:
+            if target.exists() and target.read_text(encoding="utf-8").strip() == session_id:
+                return
+        except Exception:
+            pass
+        target.write_text(session_id + "\n", encoding="utf-8")
+    except Exception:
+        # Never block worktree creation on best-effort session id persistence.
+        return
+
+
+def _primary_head_marker(repo_dir: Path) -> str:
+    """Return a stable marker for the primary worktree HEAD.
+
+    Worktree operations must never switch the branch (or detached HEAD) of the
+    primary worktree. This marker is used to assert that invariant.
+    """
+    timeout = _config().get_worktree_timeout("branch_check", 10)
+    try:
+        cp = run_with_timeout(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
+        ref = (cp.stdout or "").strip()
+        if ref and ref != "HEAD":
+            return ref
+    except Exception:
+        pass
+    try:
+        cp2 = run_with_timeout(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
+        sha = (cp2.stdout or "").strip()
+        return f"DETACHED@{sha}" if sha else "DETACHED"
+    except Exception:
+        return "UNKNOWN"
+
+
+def _resolve_current_base_ref(repo_dir: Path) -> str:
+    """Resolve the base ref for baseBranchMode=current without mutating git state."""
+    marker = _primary_head_marker(repo_dir)
+    if marker.startswith("DETACHED@"):
+        return marker.split("@", 1)[1]
+    if marker in {"UNKNOWN", "DETACHED"}:
+        return "HEAD"
+    return marker
+
+
+def _resolve_start_ref(repo_dir: Path, base_ref: str, *, timeout: int) -> str:
+    """Resolve a start ref that can be passed to `git worktree add`.
+
+    Accepts branch names, remote branches, SHAs, and HEAD.
+    """
+
+    def _rev_parse_ok(ref: str) -> bool:
+        rr = run_with_timeout(
+            ["git", "rev-parse", "--verify", f"{ref}^{{commit}}"],
+            cwd=repo_dir,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return rr.returncode == 0
+
+    if _rev_parse_ok(base_ref):
+        return base_ref
+
+    # Try origin/<ref> without requiring a local checkout.
+    if base_ref not in {"HEAD"} and not base_ref.startswith(("origin/", "refs/")):
+        candidate = f"origin/{base_ref}"
+        if _rev_parse_ok(candidate):
+            return candidate
+
+    raise RuntimeError(f"Base ref not found: {base_ref}")
+
+
+def resolve_worktree_base_ref(*, repo_dir: Path, cfg: Dict[str, Any], override: Optional[str] = None) -> str:
+    """Resolve the logical base ref for session worktree creation.
+
+    - If override is provided, it wins.
+    - If cfg.baseBranchMode == "fixed", baseBranch is used (fallback: "main").
+    - Otherwise, the current primary worktree HEAD ref is used.
+
+    The returned ref is the value that should be recorded into session git metadata
+    as `baseBranch` for stable downstream diffs and evidence.
+    """
+    if override:
+        return str(override)
+    mode_raw = cfg.get("baseBranchMode")
+    if mode_raw:
+        base_mode = str(mode_raw)
+    else:
+        # Backward-compatible inference:
+        # - if a baseBranch is explicitly configured, treat it as fixed
+        # - otherwise default to current primary HEAD
+        base_mode = "fixed" if cfg.get("baseBranch") not in (None, "") else "current"
+    if base_mode == "fixed":
+        return str(cfg.get("baseBranch") or "main")
+    return _resolve_current_base_ref(repo_dir)
+
+
 def resolve_worktree_target(session_id: str) -> tuple[Path, str]:
     """Public helper to compute target path/branch using current config."""
     cfg = _config().get_worktree_config()
@@ -39,11 +215,15 @@ def create_worktree(
         return (None, None)
 
     worktree_path, branch_name = _resolve_worktree_target(session_id, config)
-    base_branch_value = base_branch or config.get("baseBranch", "main")
+    base_branch_value = resolve_worktree_base_ref(repo_dir=repo_dir, cfg=config, override=base_branch)
 
     existing_wt = get_existing_worktree_path(branch_name)
     if existing_wt is not None:
-        return (existing_wt.resolve(), branch_name)
+        resolved = existing_wt.resolve()
+        if not dry_run:
+            _ensure_shared_sessions_dir(worktree_path=resolved, repo_dir=repo_dir)
+            _ensure_worktree_session_id_file(worktree_path=resolved, session_id=session_id)
+        return (resolved, branch_name)
 
     # Fail fast when repo has no commits (unborn HEAD) to avoid claiming metadata
     try:
@@ -62,15 +242,23 @@ def create_worktree(
         return (worktree_path, branch_name)
 
     try:
+        # If the configured target exists and is non-empty, choose a sibling path
+        # (never fall back to hardcoded directories).
         if worktree_path.exists() and any(worktree_path.iterdir()):
-            local_root = (repo_dir / ".worktrees").resolve()
-            ensure_directory(local_root)
-            candidate = local_root / session_id
-            if candidate.exists() and any(candidate.iterdir()):
-                suffix_length = config_obj.get_worktree_uuid_suffix_length()
-                candidate = local_root / f"{session_id}-{uuid.uuid4().hex[:suffix_length]}"
-            worktree_path = candidate
+            suffix_length = config_obj.get_worktree_uuid_suffix_length()
+            base_parent = worktree_path.parent
+            base_name = worktree_path.name
+            # Avoid infinite loops if collisions persist
+            for _ in range(5):
+                candidate = base_parent / f"{base_name}-{uuid.uuid4().hex[:suffix_length]}"
+                if not candidate.exists():
+                    worktree_path = candidate
+                    break
+                if not any(candidate.iterdir()):
+                    worktree_path = candidate
+                    break
     except Exception:
+        # Best effort only; the subsequent git command will fail with a clear error.
         pass
 
     base_dir_full = worktree_path.parent
@@ -80,37 +268,54 @@ def create_worktree(
 
     # Timeouts
     t_fetch = config_obj.get_worktree_timeout("fetch", 60)
-    t_checkout = config_obj.get_worktree_timeout("checkout", 30)
     t_add = config_obj.get_worktree_timeout("worktree_add", 30)
-    t_clone = config_obj.get_worktree_timeout("clone", 60)
     t_install = config_obj.get_worktree_timeout("install", 300)
     t_health = config_obj.get_worktree_timeout("health_check", 10)
+    t_branch = config_obj.get_worktree_timeout("branch_check", 10)
+
+    primary_before = _primary_head_marker(repo_dir)
+
+    def _ref_exists(ref: str) -> bool:
+        rr = run_with_timeout(
+            ["git", "show-ref", "--verify", ref],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=config_obj.get_worktree_timeout("branch_check", 10),
+        )
+        return rr.returncode == 0
+
+    # Resolve the base ref without mutating the primary checkout (do not checkout/pull).
+    start_ref = _resolve_start_ref(repo_dir, base_branch_value, timeout=t_branch)
 
     for attempt in range(2):
         try:
             run_with_timeout(["git", "fetch", "--all", "--prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_fetch)
 
-            r = run_with_timeout(["git", "show-ref", "--verify", f"refs/heads/{branch_name}"], cwd=repo_dir, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("branch_check", 10))
-            if r.returncode != 0:
-                run_with_timeout(["git", "checkout", base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_checkout)
-                run_with_timeout(["git", "pull", "--ff-only"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_checkout)
-                run_with_timeout(["git", "branch", branch_name, base_branch_value], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("branch_check", 10))
-
-            run_with_timeout(["git", "worktree", "add", "--", str(worktree_path), branch_name], cwd=repo_dir, check=True, capture_output=True, text=True, timeout=t_add)
+            branch_ref = f"refs/heads/{branch_name}"
+            if _ref_exists(branch_ref):
+                run_with_timeout(
+                    ["git", "worktree", "add", "--", str(worktree_path), branch_name],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=t_add,
+                )
+            else:
+                run_with_timeout(
+                    ["git", "worktree", "add", "-b", branch_name, "--", str(worktree_path), start_ref],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=t_add,
+                )
             break
         except subprocess.CalledProcessError as e:
             last_err = e
             run_with_timeout(["git", "worktree", "prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=config_obj.get_worktree_timeout("prune", 10))
             run_with_timeout(["git", "fetch", "--all", "--prune"], cwd=repo_dir, check=False, capture_output=True, text=True, timeout=t_fetch)
-            if attempt == 1:
-                try:
-                    ensure_directory(worktree_path.parent)
-                    run_with_timeout(["git", "clone", "--local", "--no-hardlinks", "--", str(repo_dir), str(worktree_path)], check=True, capture_output=True, text=True, timeout=t_clone)
-                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=t_checkout)
-                    last_err = None
-                    break
-                except Exception as ce:
-                    last_err = ce
     if last_err is not None:
         raise RuntimeError(f"Failed to create worktree after retries: {last_err}")
 
@@ -128,24 +333,31 @@ def create_worktree(
             raise RuntimeError("Worktree health check failed")
 
         git_file = worktree_path / ".git"
-        if git_file.exists() and git_file.is_file():
-            try:
-                content = git_file.read_text(encoding="utf-8", errors="ignore")
-                if "gitdir:" in content:
-                    target = content.split("gitdir:", 1)[1].strip()
-                    if not (worktree_path / target).exists():
-                        raise FileNotFoundError(target)
-            except Exception:
-                try:
-                    if worktree_path.exists():
-                        shutil.rmtree(worktree_path, ignore_errors=True)
-                    ensure_directory(worktree_path.parent)
-                    run_with_timeout(["git", "clone", "--local", "--no-hardlinks", "--", str(repo_dir), str(worktree_path)], check=True, capture_output=True, text=True, timeout=t_clone)
-                    run_with_timeout(["git", "-C", str(worktree_path), "checkout", "-b", branch_name], check=True, capture_output=True, text=True, timeout=t_checkout)
-                except subprocess.CalledProcessError as e:
-                    raise RuntimeError(f"Worktree pointer verification failed and clone fallback failed: {e.stderr or e}")
+        if not git_file.exists():
+            raise RuntimeError("Worktree missing .git metadata")
+        if not git_file.is_file():
+            raise RuntimeError("Expected a git worktree (.git must be a file), but got a non-worktree checkout")
+
+        content = git_file.read_text(encoding="utf-8", errors="ignore")
+        if "gitdir:" not in content:
+            raise RuntimeError("Worktree .git file is missing gitdir pointer")
+        target_raw = content.split("gitdir:", 1)[1].strip()
+        target_path = Path(target_raw)
+        if not target_path.is_absolute():
+            target_path = (worktree_path / target_path).resolve()
+        if not target_path.exists():
+            raise RuntimeError(f"Worktree .git pointer is invalid: {target_raw}")
     except Exception as e:
         raise RuntimeError(f"Worktree health checks failed: {e}")
+
+    _ensure_shared_sessions_dir(worktree_path=worktree_path, repo_dir=repo_dir)
+    _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
+
+    primary_after = _primary_head_marker(repo_dir)
+    if primary_before != primary_after:
+        raise RuntimeError(
+            f"Primary worktree HEAD changed during worktree creation: {primary_before} -> {primary_after}"
+        )
 
     return (worktree_path, branch_name)
 
@@ -224,6 +436,8 @@ def prepare_session_git_metadata(
     session_id: str,
     worktree_path: Optional[Path] = None,
     branch_name: Optional[str] = None,
+    *,
+    base_branch: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Prepare git metadata dict for session from worktree information.
 
@@ -254,8 +468,8 @@ def prepare_session_git_metadata(
     if branch_name:
         git_meta["branchName"] = branch_name
 
-    # Always include baseBranch from config
-    base_branch = cfg.get("baseBranch", "main")
-    git_meta["baseBranch"] = base_branch
+    resolved_base = base_branch or cfg.get("baseBranch")
+    if resolved_base is not None:
+        git_meta["baseBranch"] = resolved_base
 
     return git_meta

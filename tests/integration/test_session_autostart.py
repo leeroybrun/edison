@@ -386,8 +386,8 @@ def test_autostart_launches_orchestrator(autostart_env: AutoStartEnv, process_tr
     if result.get("orchestrator_process"):
         process_tracker.register(process=result["orchestrator_process"])
 
-    # In detach mode, PID is not returned (process runs in background)
-    assert result["orchestrator_pid"] is None
+    # In detach mode, still return the spawned PID (useful for cleanup/debugging).
+    assert isinstance(result["orchestrator_pid"], int)
     assert wait_for_file(log)
     assert "pid=" in log.read_text()
 
@@ -444,7 +444,7 @@ def test_autostart_with_detach(autostart_env: AutoStartEnv, process_tracker: Pro
     if result.get("orchestrator_process"):
         process_tracker.register(process=result["orchestrator_process"])
 
-    assert result["orchestrator_pid"] is None
+    assert isinstance(result["orchestrator_pid"], int)
     medium_sleep()
     assert wait_for_file(log)
 
@@ -506,6 +506,43 @@ def test_autostart_rollback_on_orchestrator_failure(autostart_env: AutoStartEnv)
     with pytest.raises(SessionAutoStartError):
         # Use detach=True for background mode (needed for tests to avoid stdin issues)
         autostart.start(process="FAIL-ORCH", detach=True)
+
+    sessions = list((autostart_env.root / ".project" / "sessions").rglob("session.json"))
+    assert not sessions
+    wt_root = autostart_env.root / "worktrees"
+    assert not any(wt_root.glob("*"))
+
+
+def test_autostart_rollback_on_orchestrator_exit_nonzero(autostart_env: AutoStartEnv) -> None:
+    """If the orchestrator process exits immediately with non-zero, autostart must fail closed and rollback."""
+    script = autostart_env.root / "bin" / "fail"
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text(
+        dedent(
+            """#!/usr/bin/env bash
+            set -euo pipefail
+            echo "stdin_is_tty=$([ -t 0 ] && echo 1 || echo 0)" >&2
+            exit 1
+            """
+        ).strip() + "\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+
+    autostart_env.write_orchestrator_config(
+        {
+            "fail": {
+                "command": str(script),
+                "cwd": "{session_worktree}",
+                "initial_prompt": {"enabled": False},
+            }
+        },
+        default="fail",
+    )
+    autostart = autostart_env.build_autostart()
+
+    with pytest.raises(SessionAutoStartError):
+        autostart.start(process="FAIL-EXIT", orchestrator_profile="fail", detach=True)
 
     sessions = list((autostart_env.root / ".project" / "sessions").rglob("session.json"))
     assert not sessions
@@ -599,11 +636,25 @@ def test_autostart_cli_start_command(autostart_env: AutoStartEnv) -> None:
     )
     autostart_env.reload_configs()
 
-    cmd = [sys.executable, "-m", "edison", "session", "create", "--session-id", "TASK-CLI", "--no-worktree"]
+    # Exercise the real CLI entrypoint for autostart (no TTY required in detach mode).
+    cmd = [
+        sys.executable,
+        "-m",
+        "edison",
+        "orchestrator",
+        "start",
+        "--profile",
+        "cli",
+        "--no-worktree",
+        "--detach",
+        "--json",
+    ]
 
-    run_with_timeout(cmd, cwd=autostart_env.root, check=True)
+    res = run_with_timeout(cmd, cwd=autostart_env.root, check=True, capture_output=True, text=True)
+    payload = json.loads(res.stdout)
+    session_id = payload["session_id"]
 
     assert wait_for_file(log)
     # Sessions are stored as {session_id}/session.json directories
-    sessions = list((autostart_env.root / ".project" / "sessions" / "wip").glob("*/session.json"))
-    assert sessions
+    session_json = autostart_env.root / ".project" / "sessions" / "wip" / session_id / "session.json"
+    assert session_json.exists()

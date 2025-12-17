@@ -78,8 +78,8 @@ def main(args: argparse.Namespace) -> int:
             required=True,
         )
 
-        # Get owner
-        owner = args.owner or ProjectConfig().get_owner_or_user()
+        # Get owner (for stamping when missing)
+        owner = args.owner or ProjectConfig(repo_root=project_root).get_owner_or_user()
 
         # Use TaskQAWorkflow for claiming (handles state transition and persistence)
         workflow = TaskQAWorkflow(project_root=project_root)
@@ -97,7 +97,7 @@ def main(args: argparse.Namespace) -> int:
 
         if record_type == "task":
             # Claim task using entity-based workflow
-            task_entity = workflow.claim_task(record_id, session_id)
+            task_entity = workflow.claim_task(record_id, session_id, owner=owner)
 
             # Optional post-claim transition to requested state
             if target_state != task_entity.state:
@@ -114,17 +114,19 @@ def main(args: argparse.Namespace) -> int:
                     reason="cli-claim-command",
                 )
 
+            effective_owner = (task_entity.metadata.created_by or owner or "").strip() or "_unassigned_"
+
             formatter.json_output({
                 "status": "claimed",
                 "record_id": record_id,
                 "record_type": record_type,
                 "session_id": session_id,
-                "owner": owner,
+                "owner": effective_owner,
                 "state": task_entity.state,
             }) if formatter.json_mode else formatter.text(
                 f"Claimed task {record_id}\n"
                 f"Session: {session_id}\n"
-                f"Owner: {owner}\n"
+                f"Owner: {effective_owner}\n"
                 f"Status: {task_entity.state}"
             )
         else:
@@ -138,6 +140,10 @@ def main(args: argparse.Namespace) -> int:
 
             def _mutate_claimed(q) -> None:
                 q.session_id = session_id
+                if owner and not (getattr(q, "validator_owner", "") or "").strip():
+                    q.validator_owner = owner
+                if owner and not (getattr(getattr(q, "metadata", None), "created_by", "") or "").strip():
+                    q.metadata.created_by = owner
 
             qa = qa_repo.transition(
                 record_id,
@@ -169,17 +175,19 @@ def main(args: argparse.Namespace) -> int:
                     mutate=_mutate_claimed,
                 )
 
+            effective_owner = (getattr(qa, "validator_owner", None) or getattr(getattr(qa, "metadata", None), "created_by", None) or owner or "").strip() or "_unassigned_"
+
             formatter.json_output({
                 "status": "claimed",
                 "record_id": record_id,
                 "record_type": record_type,
                 "session_id": session_id,
-                "owner": owner,
+                "owner": effective_owner,
                 "state": qa.state,
             }) if formatter.json_mode else formatter.text(
                 f"Claimed QA {record_id}\n"
                 f"Session: {session_id}\n"
-                f"Owner: {owner}\n"
+                f"Owner: {effective_owner}\n"
                 f"Status: {qa.state}"
             )
 

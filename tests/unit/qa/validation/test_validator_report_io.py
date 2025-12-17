@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from edison.core.qa.evidence import reports
+from edison.core.qa.engines.base import ValidationResult
 from edison.core.utils.text import format_frontmatter
 
 
@@ -124,3 +125,13 @@ class TestValidatorReports:
 
         names = [f.name for f in result]
         assert names == sorted(names)
+
+
+def test_validation_result_to_report_omits_optional_tracking_fields() -> None:
+    """Optional tracking fields should not be serialized as null (schema expects strings)."""
+    res = ValidationResult(validator_id="v1", verdict="approve", summary="ok")
+    report = res.to_report(task_id="T001", round_num=1, model="human")
+
+    tracking = report.get("tracking") or {}
+    assert "lastActive" not in tracking
+    assert "continuationId" not in tracking

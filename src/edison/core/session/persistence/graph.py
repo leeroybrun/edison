@@ -51,19 +51,25 @@ def register_task(
     status: str,
     qa_id: Optional[str] = None,
 ) -> None:
-    """Register a task registration event in session activity log.
-    
-    NOTE: This function no longer updates the task file - task files
-    are updated directly by TaskQAWorkflow. This function only logs
-    the activity in the session for audit purposes.
-    
-    The task file is the single source of truth for task metadata.
+    """Register a task event in the session.
+
+    The task file remains the single source of truth, but we keep a small
+    `session.tasks` index for UX (fast session status rendering) and an
+    activity log for auditability.
     """
     sid = validate_session_id(session_id)
     now = io_utc_timestamp()
     
-    # Update session activity log only (task file updated by workflow)
+    # Update session index + activity log (task file updated by workflow)
     sess = _load_or_create_session(sid)
+    tasks = sess.setdefault("tasks", {})
+    if isinstance(tasks, dict):
+        entry = tasks.get(task_id) if isinstance(tasks.get(task_id), dict) else {}
+        entry = dict(entry)
+        entry.update({"status": status, "owner": owner})
+        if qa_id:
+            entry["qaId"] = qa_id
+        tasks[task_id] = entry
     sess.setdefault("activityLog", []).append({
         "timestamp": now,
         "message": f"Task {task_id} registered with status {status}",

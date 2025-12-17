@@ -142,7 +142,7 @@ def isolated_project_env(tmp_path, monkeypatch):
     # Initialize a real git repository so path resolution can rely on
     # `git rev-parse --show-toplevel` instead of synthetic .git markers.
     run_with_timeout(
-        ["git", "init"],
+        ["git", "init", "-b", "main"],
         cwd=tmp_path,
         check=True,
         stdout=subprocess.DEVNULL,

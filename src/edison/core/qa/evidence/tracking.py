@@ -217,7 +217,12 @@ def complete(
     project_root: Optional[Path] = None,
     implementation_status: str = "complete",
 ) -> Dict[str, Any]:
-    """Mark tracking complete for the current process in the current round."""
+    """Mark tracking complete for the current round.
+
+    Note: CLI invocations are separate processes, so completion must not require
+    PID affinity. We mark completion for any tracking payloads present in the
+    task's current round.
+    """
     ev = EvidenceService(task_id, project_root=project_root)
     round_num = int(ev.get_current_round() or 1)
     round_dir = ev.ensure_round(round_num)
@@ -228,7 +233,7 @@ def complete(
     impl = ev.read_implementation_report(round_num=round_num)
     if isinstance(impl, dict):
         tr = impl.get("tracking")
-        if isinstance(tr, dict) and int(tr.get("processId") or 0) == _pid():
+        if isinstance(tr, dict):
             tr["lastActive"] = now
             tr["completedAt"] = now
             impl["tracking"] = tr
@@ -243,7 +248,7 @@ def complete(
         if not isinstance(data, dict):
             continue
         tr = data.get("tracking")
-        if isinstance(tr, dict) and int(tr.get("processId") or 0) == _pid():
+        if isinstance(tr, dict):
             tr["lastActive"] = now
             tr["completedAt"] = now
             data["tracking"] = tr
@@ -251,7 +256,7 @@ def complete(
             updated.append(str(p))
 
     if not updated:
-        raise RuntimeError("No tracking records found for this process")
+        raise RuntimeError("No tracking records found for this round")
 
     return {"taskId": task_id, "round": round_num, "updated": updated, "completedAt": now}
 

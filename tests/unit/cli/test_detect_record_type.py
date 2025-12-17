@@ -17,3 +17,5 @@ def test_detect_record_type_qa_when_suffix_is_dash_qa() -> None:
 def test_detect_record_type_qa_when_suffix_is_dot_qa() -> None:
     assert detect_record_type("170-wave1-qa-promote.qa") == "qa"
 
+
+

@@ -60,7 +60,6 @@ class ProjectConfig(BaseDomainConfig):
         Resolution order:
         1. AGENTS_OWNER environment variable (highest priority)
         2. Config file (project.owner in YAML)
-        3. Process tree detection (edison or LLM process)
 
         Returns:
             Owner string, or None if no owner could be determined.
@@ -74,15 +73,6 @@ class ProjectConfig(BaseDomainConfig):
         owner_raw = self.section.get("owner")
         if isinstance(owner_raw, str) and owner_raw.strip():
             return owner_raw.strip()
-
-        # Fall back to process detection
-        try:
-            from edison.core.utils.process.inspector import find_topmost_process
-            process_name, _ = find_topmost_process()
-            if process_name:
-                return process_name
-        except Exception:
-            pass
 
         return None
 
@@ -103,19 +93,29 @@ class ProjectConfig(BaseDomainConfig):
             return [text] if text else []
 
     def get_owner_or_user(self) -> str:
-        """Get owner, falling back to process name then current system user.
+        """Get owner, falling back to git user.name then current system user.
 
         Returns:
-            Owner string, process name, or current username.
+            Owner string, git user name, or current username.
         """
         if self.owner:
             return self.owner
-        # Try process-based detection before username fallback
+
+        # Prefer git identity (stable) over process-name inference.
         try:
-            from edison.core.utils.process.inspector import find_topmost_process
-            process_name, _ = find_topmost_process()
-            if process_name:
-                return process_name
+            from edison.core.utils.subprocess import run_with_timeout
+
+            res = run_with_timeout(
+                ["git", "config", "--get", "user.name"],
+                cwd=self.repo_root,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout_type="git_operations",
+            )
+            name = (res.stdout or "").strip()
+            if name:
+                return name
         except Exception:
             pass
         return getpass.getuser()
@@ -135,6 +135,7 @@ class ProjectConfig(BaseDomainConfig):
         if self.name and self._has_explicit_project_name():
             lower_name = self.name.lower()
             terms.append(lower_name)
+            terms.append(lower_name.replace("-", " "))
             terms.append(lower_name.replace("-", "_"))
 
         for extra in self.audit_terms:
@@ -168,7 +169,5 @@ __all__ = [
     "ProjectConfig",
     "DEFAULT_PROJECT_TERMS",
 ]
-
-
 
 

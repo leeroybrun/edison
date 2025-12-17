@@ -82,6 +82,32 @@ class TestProjectDir:
         if src_config_dir.exists():
             copy_tree_if_different(src_config_dir, self.edison_root / "config")
 
+        # E2E tests exercise the full "web-stack" workflow (worktrees, Context7 triggers,
+        # evidence requirements) and must not inherit the Edison repo's own pack list.
+        # Keep the test environment deterministic and representative of real projects.
+        packs_path = self.edison_root / "config" / "packs.yaml"
+        packs_path.write_text(
+            "packs:\n"
+            "  active:\n"
+            "    - nextjs\n"
+            "    - react\n"
+            "    - zod\n"
+            "    - prisma\n"
+            "    - fastify\n"
+            "    - tailwind\n"
+            "    - motion\n"
+            "    - vitest\n"
+            "    - typescript\n"
+            "    - better-auth\n"
+            "  autoActivate: true\n",
+            encoding="utf-8",
+        )
+
+        # Some scenarios patch `.edison/manifest.json` to validate legacy override behavior.
+        manifest_path = self.edison_root / "manifest.json"
+        if not manifest_path.exists():
+            manifest_path.write_text("{}", encoding="utf-8")
+
         # NOTE: Session workflow is now defined in bundled state-machine.yaml
         # and accessed via WorkflowConfig domain config. No need to create
         # legacy session-workflow.json files.

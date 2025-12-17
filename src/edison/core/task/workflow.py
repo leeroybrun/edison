@@ -12,7 +12,7 @@ Workflow operations include:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from edison.core.entity import EntityMetadata, PersistenceError
 from edison.core.utils.paths import PathResolver
@@ -135,7 +135,7 @@ class TaskQAWorkflow:
 
         return task
 
-    def claim_task(self, task_id: str, session_id: str) -> Task:
+    def claim_task(self, task_id: str, session_id: str, *, owner: Optional[str] = None) -> Task:
         """Claim a task for a session (todo -> wip transition).
 
         This workflow operation:
@@ -202,6 +202,8 @@ class TaskQAWorkflow:
             t.session_id = session_id
             t.claimed_at = t.claimed_at or now
             t.last_active = now
+            if owner and not (t.metadata.created_by or "").strip():
+                t.metadata.created_by = owner
 
         # Validate transition, execute actions, record history, and persist.
         try:
@@ -220,7 +222,7 @@ class TaskQAWorkflow:
         register_task(
             session_id,
             task_id,
-            owner=task.metadata.created_by or "_unassigned_",
+            owner=task.metadata.created_by or owner or "_unassigned_",
             status=wip_state,
         )
 
@@ -265,12 +267,26 @@ class TaskQAWorkflow:
         workflow_config = WorkflowConfig()
         done_state = workflow_config.get_semantic_state("task", "done")
 
+        # Load session for Context7 detection (worktree diff) and better guard context.
+        session_obj: dict[str, Any] = {"id": session_id}
+        try:
+            from edison.core.session.persistence.repository import SessionRepository
+
+            sess = SessionRepository(project_root=self.project_root).get(session_id)
+            if sess:
+                session_obj = sess.to_dict()
+        except Exception:
+            pass
+
         # Build context for guards like 'can_finish_task' (checks implementation report)
         context = {
             "task": task.to_dict(),
             "task_id": task_id,
-            "session": {"id": session_id},
+            "session": session_obj,
             "session_id": session_id,
+            "project_root": self.project_root,
+            # tasks/ready must enforce evidence requirements (command outputs, etc.)
+            "enforce_evidence": True,
             "entity_type": "task",
             "entity_id": task_id,
         }
@@ -293,6 +309,19 @@ class TaskQAWorkflow:
 
         # 4. Advance QA
         self._advance_qa_for_completion(task_id, session_id)
+
+        # 5. Update session index (best-effort).
+        try:
+            from edison.core.session.persistence.graph import register_task
+
+            register_task(
+                session_id,
+                task_id,
+                owner=task.metadata.created_by or "_unassigned_",
+                status=done_state,
+            )
+        except Exception:
+            pass
 
         return task
 
@@ -334,6 +363,20 @@ class TaskQAWorkflow:
         qa = self.qa_repo.get(qa_id)
         if qa:
             changed = False
+            # Reconcile QA readiness: when a task is already done/validated, the QA should
+            # not remain stuck in "waiting".
+            try:
+                cfg = WorkflowConfig()
+                qa_waiting = cfg.get_semantic_state("qa", "waiting")
+                qa_todo = cfg.get_semantic_state("qa", "todo")
+                task_done = cfg.get_semantic_state("task", "done")
+                task_validated = cfg.get_semantic_state("task", "validated")
+                if qa.state == qa_waiting and task.state in {task_done, task_validated}:
+                    qa.state = qa_todo
+                    changed = True
+            except Exception:
+                # Never fail the caller on best-effort state reconciliation.
+                pass
             if session_id and qa.session_id != session_id:
                 qa.session_id = session_id
                 changed = True

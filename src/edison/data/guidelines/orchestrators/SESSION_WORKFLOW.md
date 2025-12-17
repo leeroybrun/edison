@@ -15,10 +15,13 @@ Session JSON stores **session metadata only** (state, owner, timestamps, git inf
 - Prompt templates for the current role/session are injected automatically by the launcher; do not hand-edit rendered prompts.
 - If your orchestration layer expects defaults, set the configured owner env var (from `.edison/config/project.yml`) {{if:config(project.owner_env_var)}}— e.g. `{{config.project.owner_env_var}}`{{/if}} and optionally a session env var.
 
-## Worktree isolation (new)
-- Sessions operate from an isolated git worktree created under `../${PROJECT}-worktrees/<session-id>/`.
-- Manage lifecycle via `edison git worktree-create|worktree-restore|worktree-archive|worktree-cleanup`. Auto-start invokes create/restore when configured.
-- Never develop directly in the primary worktree while a session is active; keep changes confined to the session worktree to prevent cross-session conflicts.
+{{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#worktree-confinement}}
+
+{{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#worktree-isolation}}
+
+{{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#worktree-base-ref}}
+
+{{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#git-safety}}
 
 ## Session States
 

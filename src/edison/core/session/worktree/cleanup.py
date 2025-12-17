@@ -13,6 +13,15 @@ from .._utils import get_repo_dir
 
 logger = logging.getLogger(__name__)
 
+def _is_session_branch(branch_name: str) -> bool:
+    """Return True if branch_name matches the configured session branch prefix."""
+    try:
+        cfg = _config().get_worktree_config()
+        prefix = str(cfg.get("branchPrefix") or "session/")
+        return branch_name.startswith(prefix)
+    except Exception:
+        return branch_name.startswith("session/")
+
 
 def list_archived_worktrees_sorted() -> List[Path]:
     """List archived worktrees sorted by mtime (newest first)."""
@@ -83,6 +92,9 @@ def cleanup_worktree(session_id: str, worktree_path: Path, branch_name: str, del
 
     # Delete the branch if requested
     if delete_branch and branch_name:
+        if not _is_session_branch(branch_name):
+            logger.warning("Refusing to delete non-session branch: %s", branch_name)
+            return
         try:
             run_with_timeout(
                 ["git", "branch", "-D", "--", branch_name],
@@ -117,6 +129,9 @@ def remove_worktree(worktree_path: Path, branch_name: Optional[str] = None) -> N
             logger.error("Manual worktree cleanup failed for %s: %s", worktree_path, cleanup_err)
 
     if branch_name:
+        if not _is_session_branch(branch_name):
+            logger.warning("Refusing to delete non-session branch: %s", branch_name)
+            return
         try:
             run_with_timeout(
                 ["git", "branch", "-D", "--", branch_name],

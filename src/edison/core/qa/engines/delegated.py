@@ -92,14 +92,23 @@ class ZenMCPEngine:
             round_num=round_num,
         )
 
+        instructions_path: Path | None = None
+
         # Save instructions to evidence if service provided
         if evidence_service:
-            self._save_instructions(
+            instructions_path = self._save_instructions(
                 evidence_service=evidence_service,
                 validator_id=validator.id,
                 instructions=instructions,
                 round_num=round_num,
             )
+
+        instructions_path_rel: str | None = None
+        if instructions_path is not None:
+            try:
+                instructions_path_rel = str(instructions_path.relative_to(worktree_path))
+            except Exception:
+                instructions_path_rel = str(instructions_path)
 
         return ValidationResult(
             validator_id=validator.id,
@@ -114,7 +123,7 @@ class ZenMCPEngine:
                     "type": "delegation",
                     "validator": validator.id,
                     "zenRole": validator.zen_role,
-                    "instructions": instructions,
+                    "instructionsPath": instructions_path_rel,
                 }
             ],
         )

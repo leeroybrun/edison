@@ -50,18 +50,12 @@ def collect_validator_reports(task_ids: Iterable[str]) -> List[Path]:
 
 def collect_task_files(task_ids: Iterable[str], session_id: Optional[str] = None) -> List[Path]:
     from edison.core.task import TaskRepository
-    from edison.core.qa import QARepository
 
     task_repo = TaskRepository()
-    qa_repo = QARepository()
     files: List[Path] = []
     for tid in task_ids:
         try:
             files.append(task_repo.get_path(tid))
-        except FileNotFoundError:
-            pass
-        try:
-            files.append(qa_repo.get_path(f"{tid}-qa"))
         except FileNotFoundError:
             pass
     return files

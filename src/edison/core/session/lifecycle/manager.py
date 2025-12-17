@@ -55,6 +55,7 @@ def create_session(
     owner: str,
     mode: str = "start",
     install_deps: Optional[bool] = None,
+    base_branch: Optional[str] = None,
     *,
     create_wt: bool = True
 ) -> Path:
@@ -83,9 +84,18 @@ def create_session(
     data = sess.to_dict()
     data.setdefault("git", {})
     wt_cfg = _get_worktree_config()
-    base_branch = wt_cfg.get("baseBranch")
-    if base_branch:
-        data["git"].setdefault("baseBranch", base_branch)
+    base_ref = None
+    try:
+        from .. import worktree
+
+        base_ref = worktree.resolve_worktree_base_ref(
+            repo_dir=project_root, cfg=wt_cfg, override=base_branch
+        )
+        if base_ref:
+            data["git"]["baseBranch"] = base_ref
+    except Exception:
+        # Best-effort: baseBranch is used primarily for diffs/evidence.
+        pass
 
     in_git_repo = (project_root / ".git").exists()
 
@@ -93,10 +103,14 @@ def create_session(
         try:
             from .. import worktree
 
-            wt_path, branch = worktree.create_worktree(session_id, install_deps=install_deps)
+            wt_path, branch = worktree.create_worktree(
+                session_id, base_branch=base_ref or base_branch, install_deps=install_deps
+            )
             if wt_path and branch:
                 # Use centralized helper to construct git metadata
-                git_meta = worktree.prepare_session_git_metadata(session_id, wt_path, branch)
+                git_meta = worktree.prepare_session_git_metadata(
+                    session_id, wt_path, branch, base_branch=base_ref or base_branch
+                )
                 data["git"].update(git_meta)
         except Exception as exc:
             raise SessionError(f"Failed to create worktree for session {session_id}: {exc}", session_id=session_id) from exc

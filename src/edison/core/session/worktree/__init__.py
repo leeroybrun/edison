@@ -35,6 +35,7 @@ from .manager import (
     update_worktree_env,
     ensure_worktree_materialized,
     prepare_session_git_metadata,
+    resolve_worktree_base_ref,
 )
 
 # Import config helpers
@@ -100,6 +101,7 @@ __all__ = [
     "ensure_worktree_materialized",
     "update_worktree_env",
     "prepare_session_git_metadata",
+    "resolve_worktree_base_ref",
     # Git operations
     "get_existing_worktree_path",
     "list_worktrees",

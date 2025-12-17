@@ -37,10 +37,17 @@ class EngineConfig:
     read_only_flags: list[str] = field(default_factory=list)
     response_parser: str = "plain_text"
     description: str = ""
+    prompt_mode: str = "file"  # file | arg | stdin
+    prompt_flag: str = ""  # used when prompt_mode == "file"
+    stdin_prompt_arg: str = "-"  # used when prompt_mode == "stdin" (when CLI needs a sentinel)
 
     @classmethod
     def from_dict(cls, engine_id: str, data: dict[str, Any]) -> EngineConfig:
         """Create EngineConfig from configuration dictionary."""
+        prompt_mode = data.get("prompt_mode", data.get("promptMode", "file"))
+        prompt_flag = data.get("prompt_flag", data.get("promptFlag", ""))
+        stdin_prompt_arg = data.get("stdin_prompt_arg", data.get("stdinPromptArg", "-"))
+
         return cls(
             id=engine_id,
             type=data.get("type", "cli"),
@@ -50,6 +57,9 @@ class EngineConfig:
             read_only_flags=data.get("read_only_flags", []),
             response_parser=data.get("response_parser", "plain_text"),
             description=data.get("description", ""),
+            prompt_mode=str(prompt_mode or "file"),
+            prompt_flag=str(prompt_flag or ""),
+            stdin_prompt_arg=str(stdin_prompt_arg or "-"),
         )
 
 
@@ -100,12 +110,24 @@ class ValidationResult:
         if verdict == "error":
             verdict = "blocked"
 
-        return {
+        tracking: dict[str, Any] = {
+            "processId": int(os.getpid()),
+            "hostname": socket.gethostname(),
+            "startedAt": report_started,
+            "completedAt": report_completed,
+        }
+        last_active = (self.tracking or {}).get("lastActive")
+        if last_active is not None:
+            tracking["lastActive"] = last_active
+        continuation_id = (self.tracking or {}).get("continuationId")
+        if continuation_id is not None:
+            tracking["continuationId"] = continuation_id
+
+        report: dict[str, Any] = {
             "taskId": task_id,
             "round": int(round_num),
             "validatorId": self.validator_id,
             "model": model,
-            "zenRole": zen_role,
             "verdict": verdict,
             "findings": self.findings or [],
             "strengths": self.strengths or [],
@@ -114,15 +136,13 @@ class ValidationResult:
             "evidenceReviewed": list(self.evidence_reviewed or []),
             "summary": self.summary or "",
             "followUpTasks": list(self.follow_up_tasks or []),
-            "tracking": {
-                "processId": int(os.getpid()),
-                "hostname": socket.gethostname(),
-                "startedAt": report_started,
-                "completedAt": report_completed,
-                "lastActive": (self.tracking or {}).get("lastActive"),
-                "continuationId": (self.tracking or {}).get("continuationId"),
-            },
+            "tracking": tracking,
         }
+
+        if zen_role is not None:
+            report["zenRole"] = zen_role
+
+        return report
 
 
 class EngineProtocol(Protocol):

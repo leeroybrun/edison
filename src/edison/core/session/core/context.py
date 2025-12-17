@@ -54,7 +54,10 @@ class SessionContext:
 
         resolved = SessionContext._validate_worktree_path(worktree_path)
         env["ZEN_WORKING_DIR"] = str(resolved)
-        env.setdefault("AGENTS_PROJECT_ROOT", str(PathResolver.resolve_project_root()))
+        # Enforce Edison path resolution within the session worktree even if callers
+        # run the process from the primary checkout or change directories later.
+        env["AGENTS_PROJECT_ROOT"] = str(resolved)
+        env["AGENTS_SESSION"] = str(session_id)
         return env
 
     @staticmethod
@@ -66,11 +69,15 @@ class SessionContext:
         worktree_path = SessionContext._extract_worktree_path(session)
         original_cwd = os.getcwd()
         original_zen_dir = os.environ.get("ZEN_WORKING_DIR")
+        original_agents_root = os.environ.get("AGENTS_PROJECT_ROOT")
+        original_agents_session = os.environ.get("AGENTS_SESSION")
         try:
             if worktree_path:
                 try:
                     resolved = SessionContext._validate_worktree_path(worktree_path)
                     os.environ["ZEN_WORKING_DIR"] = str(resolved)
+                    os.environ["AGENTS_PROJECT_ROOT"] = str(resolved)
+                    os.environ["AGENTS_SESSION"] = str(session_id)
                     os.chdir(resolved)
                 except FileNotFoundError:
                     # Gracefully fall back to the original cwd when the
@@ -83,4 +90,12 @@ class SessionContext:
                 os.environ.pop("ZEN_WORKING_DIR", None)
             else:
                 os.environ["ZEN_WORKING_DIR"] = original_zen_dir
+            if original_agents_root is None:
+                os.environ.pop("AGENTS_PROJECT_ROOT", None)
+            else:
+                os.environ["AGENTS_PROJECT_ROOT"] = original_agents_root
+            if original_agents_session is None:
+                os.environ.pop("AGENTS_SESSION", None)
+            else:
+                os.environ["AGENTS_SESSION"] = original_agents_session
             os.chdir(original_cwd)

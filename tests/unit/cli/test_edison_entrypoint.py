@@ -94,14 +94,21 @@ def test_get_git_root(tmp_path: Path) -> None:
     assert git_root == root
 
 
-def test_strip_profile_flag_allows_any_position() -> None:
-    argv, enabled = _strip_profile_flag(["rules", "check", "--profile"])
+def test_strip_profile_flag_only_before_domain() -> None:
+    # Global profiling flag is only recognized before the domain.
+    argv, enabled = _strip_profile_flag(["--profile", "rules", "check"])
     assert enabled is True
     assert argv == ["rules", "check"]
 
-    argv2, enabled2 = _strip_profile_flag(["--profile", "rules", "check"])
-    assert enabled2 is True
-    assert argv2 == ["rules", "check"]
+    # After the domain, `--profile` must be preserved for subcommands that use it.
+    argv2, enabled2 = _strip_profile_flag(["orchestrator", "start", "--profile", "codex"])
+    assert enabled2 is False
+    assert argv2 == ["orchestrator", "start", "--profile", "codex"]
+
+    # When no domain is present, treat `--profile` as global.
+    argv3, enabled3 = _strip_profile_flag(["--profile"])
+    assert enabled3 is True
+    assert argv3 == []
 
 
 def test_build_parser_accepts_profile_flag() -> None:

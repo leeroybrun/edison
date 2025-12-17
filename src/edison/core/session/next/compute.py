@@ -44,7 +44,6 @@ from edison.core.session.next.utils import (
     allocate_child_id,
     extract_wave_and_base_id,
     project_cfg_dir,
-    similar_tasks,
     slugify,
 )
 from edison.core.utils.cli.arguments import parse_common_args
@@ -170,6 +169,22 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         }
         for t in session_tasks
     }
+
+    similarity_index = None
+
+    def _similar(title: str) -> list[dict[str, object]]:
+        nonlocal similarity_index
+        try:
+            if similarity_index is None:
+                from edison.core.task.similarity import TaskSimilarityIndex
+                from edison.core.utils.paths import PathResolver
+
+                similarity_index = TaskSimilarityIndex.build(
+                    project_root=PathResolver.resolve_project_root()
+                )
+            return [m.to_session_next_dict() for m in similarity_index.search(title)]
+        except Exception:
+            return []
 
     # Validation-first: QA in todo with task done → start validators (promote to wip)
     for task_id, _task_entry in tasks_map.items():
@@ -405,7 +420,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "title": fu.get("title"),
                     "cmd": cmd,
                     "note": "Blocking follow-up: link to parent and claim into session",
-                    "similar": similar_tasks(fu.get("title") or "follow-up"),
+                    "similar": _similar(fu.get("title") or "follow-up"),
                 })
             else:
                 cmd = ["edison", "task", "new", "--id", next_id, "--wave", wave, "--slug", slug]
@@ -414,7 +429,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "title": fu.get("title"),
                     "cmd": cmd,
                     "note": "Non-blocking (implementation): create in tasks/todo without linking",
-                    "similar": similar_tasks(fu.get("title") or "follow-up"),
+                    "similar": _similar(fu.get("title") or "follow-up"),
                 })
         for fu in val_fus:
             slug = slugify(fu.get("title") or "follow-up")
@@ -425,7 +440,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 "title": fu.get("title"),
                 "cmd": cmd,
                 "note": "Non-blocking (validator): create in tasks/todo without linking",
-                "similar": similar_tasks(fu.get("title") or "follow-up"),
+                "similar": _similar(fu.get("title") or "follow-up"),
             })
         if fus_cmds:
             followups_plan.append({

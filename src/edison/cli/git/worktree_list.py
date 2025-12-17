@@ -38,17 +38,22 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         # Get list of active worktrees
-        worktrees = worktree.list_worktrees()
+        entries = worktree.list_worktrees()
 
-        # Format as list of dicts
-        worktree_list = [
-            {
-                "path": str(path),
-                "branch": branch,
-                "exists": path.exists(),
-            }
-            for path, branch in worktrees
-        ]
+        worktree_list = []
+        for entry in entries:
+            raw_path = entry.get("path")
+            if not raw_path:
+                continue
+            path = Path(raw_path)
+            branch = entry.get("branch") or entry.get("branch_ref") or "(detached)"
+            worktree_list.append(
+                {
+                    "path": str(path),
+                    "branch": branch,
+                    "exists": path.exists(),
+                }
+            )
 
         # Filter by session if requested
         if args.session:

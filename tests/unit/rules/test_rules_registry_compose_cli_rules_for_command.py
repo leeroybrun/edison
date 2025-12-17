@@ -29,3 +29,5 @@ def test_compose_cli_rules_for_command_filters_to_relevant_rules(isolated_projec
     assert rules_none == {}
 
 
+
+

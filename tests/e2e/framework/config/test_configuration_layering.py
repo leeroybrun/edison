@@ -96,3 +96,5 @@ def test_malformed_env_override_fails_closed_when_validate_true(tmp_path: Path, 
         _ = mgr.load_config(validate=True)
 
 
+
+

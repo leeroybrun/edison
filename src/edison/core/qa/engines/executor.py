@@ -101,7 +101,7 @@ class ExecutionResult:
                             delegation_instructions.append({
                                 "validator_id": v.validator_id,
                                 "zen_role": task.get("zenRole"),
-                                "instructions": task.get("instructions"),
+                                "instructionsPath": task.get("instructionsPath"),
                             })
 
         return {
@@ -417,13 +417,15 @@ class ValidationExecutor:
         executable = []
         delegated = []
 
+        from .cli import CLIEngine
+
         for config in validators_to_run:
             engine = self._registry._get_or_create_engine(config.engine)
-            if engine and engine.can_execute():
+            if isinstance(engine, CLIEngine) and engine.can_execute():
                 executable.append(config)
             elif config.fallback_engine:
                 fallback = self._registry._get_or_create_engine(config.fallback_engine)
-                if fallback and fallback.can_execute():
+                if isinstance(fallback, CLIEngine) and fallback.can_execute():
                     executable.append(config)
                 else:
                     delegated.append(config)
@@ -490,12 +492,14 @@ class ValidationExecutor:
                     (r for r in wave_result.validators if r.validator_id == config.id),
                     None,
                 )
-                if result and result.verdict not in (
-                    "approve",
-                    "pending",  # Delegated are pending, not failed
-                ):
+                # Blocking validators only "pass" when explicitly approved.
+                #
+                # Pending (delegated) validators are not failures, but they still
+                # mean the blocking bar has NOT been met yet.
+                if result is None or result.verdict != "approve":
                     wave_result.blocking_passed = False
-                    wave_result.blocking_failed.append(config.id)
+                    if result is not None and result.verdict != "pending":
+                        wave_result.blocking_failed.append(config.id)
 
         return wave_result
 
@@ -636,23 +640,25 @@ class ValidationExecutor:
         return results
 
     def can_execute_validator(self, validator_id: str) -> bool:
-        """Check if a validator can be executed directly.
+        """Check if a validator can be executed directly via a CLI engine.
 
         Args:
             validator_id: Validator identifier
 
         Returns:
-            True if CLI execution is available
+            True if CLI execution is available (not delegation fallback)
         """
+        from .cli import CLIEngine
+
         config = self._registry.get_validator(validator_id)
         if not config:
             return False
         engine = self._registry._get_or_create_engine(config.engine)
-        if engine and engine.can_execute():
+        if isinstance(engine, CLIEngine) and engine.can_execute():
             return True
         if config.fallback_engine:
             fallback = self._registry._get_or_create_engine(config.fallback_engine)
-            return fallback is not None and fallback.can_execute()
+            return isinstance(fallback, CLIEngine) and fallback.can_execute()
         return False
 
     # ------------------------------------------------------------------

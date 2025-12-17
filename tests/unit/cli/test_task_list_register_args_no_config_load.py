@@ -19,3 +19,5 @@ def test_task_list_register_args_does_not_load_config(isolated_project_env: Path
     assert is_cached(repo_root=None, include_packs=True) is False
 
 
+
+

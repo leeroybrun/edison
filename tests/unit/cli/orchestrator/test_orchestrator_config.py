@@ -7,10 +7,10 @@ import textwrap
 from datetime import datetime
 
 import pytest
-from jsonschema import ValidationError
 
 
 from edison.core.config.domains import OrchestratorConfig
+from edison.core.schemas.validation import SchemaValidationError
 from edison.data import get_data_path
 
 
@@ -142,7 +142,7 @@ def test_schema_validation_rejects_invalid_prompt_method(tmp_path: Path) -> None
 
     _write_schema(tmp_path / ".edison" / "core" / "schemas")
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(SchemaValidationError):
         OrchestratorConfig(repo_root=tmp_path, validate=True)
 
 

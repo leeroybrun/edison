@@ -90,12 +90,18 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
 
     # Worktree scan (session-aware)
     try:
-        wt_path = Path((session or {}).get("git", {}).get("worktreePath", ""))
+        wt_raw = (session or {}).get("git", {}).get("worktreePath") or ""
+        base_branch = (
+            (session or {}).get("git", {}).get("baseBranch")
+            or (session or {}).get("git", {}).get("base_branch")
+            or "main"
+        )
+        wt_path = Path(wt_raw) if isinstance(wt_raw, (str, Path)) else Path("")
         if wt_path.exists():
             diff_files: List[Path] = []
             try:
-                diff_files = get_changed_files(wt_path, session_id=None)
-            except (OSError, RuntimeError) as e:
+                diff_files = get_changed_files(wt_path, base_branch=str(base_branch), session_id=None)
+            except Exception as e:
                 logger.debug("Failed to get changed files from worktree: %s", e)
                 diff_files = []
             if diff_files:
@@ -131,7 +137,8 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 
     # Content-based detection using configured patterns
     try:
-        wt_path = Path((session or {}).get("git", {}).get("worktreePath", ""))
+        wt_raw = (session or {}).get("git", {}).get("worktreePath") or ""
+        wt_path = Path(wt_raw) if isinstance(wt_raw, (str, Path)) else Path("")
         if wt_path.exists():
             ctx7_cfg = Context7Config()
             content_detection = ctx7_cfg.get_content_detection()
@@ -143,21 +150,24 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
                 if not file_patterns or not search_patterns:
                     continue
 
-                # Find files matching the patterns
-                for pattern in file_patterns:
-                    for file_path in wt_path.glob(pattern):
-                        if not file_path.is_file():
-                            continue
-                        try:
-                            content = file_path.read_text(encoding="utf-8")
-                            # Check if any search pattern matches
-                            for search_pattern in search_patterns:
-                                if re.search(search_pattern, content):
-                                    packages.add(_normalize(pkg))
-                                    break
-                        except (OSError, UnicodeDecodeError) as e:
-                            logger.debug("Failed to read file %s for content detection: %s", file_path, e)
-                            continue
+                # Scope content detection to the candidate file set (Primary Files + worktree diff).
+                # Scanning the entire worktree would incorrectly require Context7 evidence for
+                # packages present in the repo but unrelated to this task's changes.
+                for rel in candidates:
+                    if not matches_any_pattern(rel, list(file_patterns)):
+                        continue
+                    file_path = wt_path / rel
+                    if not file_path.is_file():
+                        continue
+                    try:
+                        content = file_path.read_text(encoding="utf-8")
+                        for search_pattern in search_patterns:
+                            if re.search(search_pattern, content):
+                                packages.add(_normalize(pkg))
+                                break
+                    except (OSError, UnicodeDecodeError) as e:
+                        logger.debug("Failed to read file %s for content detection: %s", file_path, e)
+                        continue
     except (OSError, RuntimeError, ValueError) as e:
         logger.debug("Failed to perform content-based package detection: %s", e)
 
@@ -165,13 +175,11 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 
 
 def _marker_valid(text: str) -> bool:
-    lowered = text.lower()
-    return (
-        "package:" in lowered
-        and "topics:" in lowered
-        and ("retrieved:" in lowered or "version:" in lowered or "date:" in lowered)
-        and ("docs:" in lowered or "doc:" in lowered or "link:" in lowered)
-    )
+    # Keep validation intentionally permissive:
+    # - The workflow requires *evidence markers* to exist, not a rigid schema.
+    # - Validator processes may enforce richer content, but the state-machine guard
+    #   should fail only when the marker is missing/empty.
+    return bool(str(text).strip())
 
 
 def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:

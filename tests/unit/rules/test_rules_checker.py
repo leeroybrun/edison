@@ -23,3 +23,5 @@ def test_rules_checker_transition_path_returns_rules() -> None:
     assert out["rules"][0]["id"] == "RULE.DELEGATION.PRIORITY_CHAIN"
 
 
+
+

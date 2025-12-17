@@ -2,6 +2,8 @@
 
 You are cleaning up the project as an **ORCHESTRATOR**.
 
+{{include:start/includes/WORKTREE_CONFINEMENT.md}}
+
 ## Immediate Actions
 
 1. **Load Constitution**

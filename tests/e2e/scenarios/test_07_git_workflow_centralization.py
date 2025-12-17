@@ -24,7 +24,7 @@ from helpers.env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
 
-def _run_run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+def _run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
     return run_with_timeout(["git", *args], cwd=cwd, capture_output=True, text=True)
 
 
@@ -50,6 +50,7 @@ def test_base_branch_loaded_from_manifest(project_dir: TestProjectDir, tmp_path:
     manifest_path = project_dir.edison_root / "manifest.json"
     assert manifest_path.exists(), "manifest.json must exist in test env"
     manifest = json.loads(manifest_path.read_text())
+    manifest.setdefault("worktrees", {})["baseBranchMode"] = "fixed"
     manifest.setdefault("worktrees", {})["baseBranch"] = "develop"
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
@@ -100,11 +101,11 @@ def test_duplicate_worktree_detection_prefers_existing_path(project_dir: TestPro
 @pytest.mark.fast
 def test_archival_listing_sorted_by_mtime(project_dir: TestProjectDir):
     """session status (markdown) lists archived worktrees in deterministic order (newest first)."""
-    # Prepare fake archive directory with 3 entries
-    # Create archives in both candidate locations (repo-root override and parent default)
-    archive_root = project_dir.tmp_path / ".worktrees" / "_archived"
-    archive_root_parent = project_dir.tmp_path.parent / ".worktrees" / "_archived"
-    archive_root_parent.mkdir(parents=True, exist_ok=True)
+    # Prepare fake archive directory with 3 entries.
+    #
+    # The CLI subprocess forces PROJECT_NAME="example-project" for determinism (see helpers/command_runner.py),
+    # and core defaults place worktrees in a sibling directory: ../{PROJECT_NAME}-worktrees/_archived.
+    archive_root = project_dir.tmp_path.parent / "example-project-worktrees" / "_archived"
     archive_root.mkdir(parents=True, exist_ok=True)
     a = archive_root / "a"
     b = archive_root / "b"

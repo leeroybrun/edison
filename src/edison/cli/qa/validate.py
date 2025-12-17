@@ -388,21 +388,16 @@ def _compute_bundle_summary(
         task_round = int(task_ev.get_current_round() or 0)
 
         # Determine blocking validator IDs for THIS task (config-driven roster).
+        #
+        # IMPORTANT: approval is computed against the full blocking roster for the task.
+        # CLI filters like `--validators` and `--wave` affect what we *execute* or *display*,
+        # but must NOT be able to narrow the approval scope (fail-closed).
         task_roster = validator_registry.build_execution_roster(
             task_id=task_id,
             session_id=session_id,
-            wave=args.wave,
+            wave=None,
             extra_validators=extra_validators,
         )
-
-        # Apply same CLI filtering semantics as roster display.
-        if args.blocking_only:
-            task_roster["triggeredOptional"] = []
-
-        if getattr(args, "validators", None):
-            wanted = set(args.validators or [])
-            for k in ("alwaysRequired", "triggeredBlocking", "triggeredOptional"):
-                task_roster[k] = [v for v in task_roster.get(k, []) if v.get("id") in wanted]
 
         task_blocking_candidates = (
             (task_roster.get("alwaysRequired") or [])

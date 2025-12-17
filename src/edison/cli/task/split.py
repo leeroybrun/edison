@@ -92,6 +92,22 @@ def main(args: argparse.Namespace) -> int:
             )
             created.append(child_id)
 
+        # Persist parent/child links in task frontmatter (single source of truth).
+        # `task link` already implements safe graph updates; split should behave equivalently.
+        parent_task = task_repo.get(task_id)
+        if not parent_task:
+            raise ValueError(f"Parent task not found after split: {task_id}")
+        for child_id in created:
+            child_task = task_repo.get(child_id)
+            if not child_task:
+                raise ValueError(f"Child task not found after split: {child_id}")
+
+            if child_id not in parent_task.child_ids:
+                parent_task.child_ids.append(child_id)
+            child_task.parent_id = task_id
+            task_repo.save(child_task)
+        task_repo.save(parent_task)
+
         result_text = f"Split {task_id} into {len(created)} subtasks:\n" + "\n".join(
             f"  - {child_id}" for child_id in created
         )

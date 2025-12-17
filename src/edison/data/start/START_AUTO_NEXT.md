@@ -2,6 +2,8 @@
 
 You are auto-starting work as an **ORCHESTRATOR**.
 
+{{include:start/includes/WORKTREE_CONFINEMENT.md}}
+
 ## Immediate Actions
 
 1. **Load Constitution**

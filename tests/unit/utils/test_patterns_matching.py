@@ -22,3 +22,5 @@ def test_matches_any_pattern_supports_brace_expansion() -> None:
 def test_bare_filename_glob_matches_anywhere() -> None:
     assert matches_any_pattern("src/components/Button.tsx", ["*.tsx"])
 
+
+

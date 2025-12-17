@@ -32,50 +32,84 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
     Returns:
         True if all blocking validators passed
     """
-    # First try context-provided validation results
-    validation_results = ctx.get("validation_results")
-    if isinstance(validation_results, Mapping):
-        reports = validation_results.get("reports", [])
-        if isinstance(reports, list):
-            failed = [r for r in reports if isinstance(r, Mapping) and not _is_passed(r)]
-            return len(failed) == 0
-
     # Fall back to reading actual evidence
     task_id = _get_task_id(ctx)
     if not task_id:
-        return False  # FAIL-CLOSED: can't determine task
+        raise ValueError("Cannot determine task ID for QA validation.")
 
     try:
         from edison.core.config.domains.qa import QAConfig
-        from edison.core.qa.evidence import read_validator_reports
+        from edison.core.qa.evidence import EvidenceService
+        from edison.core.registries.validators import ValidatorRegistry
 
         qa_config = QAConfig()
-        validators = qa_config.get_validators()
+        registry = ValidatorRegistry(project_root=qa_config.repo_root)
 
-        # Get blocking validator IDs
-        blocking_ids = {
-            vid for vid, cfg in validators.items()
-            if cfg.get("blocking", True)
-        }
+        session_obj = ctx.get("session")
+        session_id = None
+        if isinstance(session_obj, Mapping):
+            session_id = session_obj.get("id")
+        session_id = str(ctx.get("session_id") or session_id or "").strip() or None
 
-        v = read_validator_reports(str(task_id))
-        reports = v.get("reports", [])
+        roster = registry.build_execution_roster(
+            task_id=str(task_id),
+            session_id=session_id,
+            wave=None,
+            extra_validators=None,
+        )
+        candidates = (
+            (roster.get("alwaysRequired") or [])
+            + (roster.get("triggeredBlocking") or [])
+            + (roster.get("triggeredOptional") or [])
+        )
+        blocking_ids = [
+            str(v.get("id"))
+            for v in candidates
+            if isinstance(v, Mapping) and v.get("blocking")
+        ]
+        blocking_ids = [b for b in blocking_ids if b]
+        if not blocking_ids:
+            raise ValueError("No blocking validators were detected for this task.")
 
-        if not reports:
-            return False  # FAIL-CLOSED: no reports yet
+        # Prefer context-provided reports (if present), but compute missing/failing
+        # against the required blocking roster (fail-closed).
+        report_by_id: dict[str, Mapping[str, Any]] = {}
+        validation_results = ctx.get("validation_results")
+        if isinstance(validation_results, Mapping):
+            reports = validation_results.get("reports", [])
+            if isinstance(reports, list):
+                for r in reports:
+                    if not isinstance(r, Mapping):
+                        continue
+                    rid = r.get("validatorId") or r.get("id")
+                    if rid:
+                        report_by_id[str(rid)] = r
 
-        # Check all blocking validators passed
-        for report in reports:
-            vid = report.get("validatorId") or report.get("id")
-            if vid in blocking_ids:
-                if not _is_passed(report):
-                    return False  # Blocking validator failed
+        ev = EvidenceService(str(task_id), project_root=qa_config.repo_root)
+        round_num = ev.get_current_round()
+        if round_num is None:
+            raise ValueError("No validation round found; run `edison qa validate <task> --execute` first.")
+
+        missing_or_failed: list[str] = []
+        for vid in blocking_ids:
+            report = report_by_id.get(vid)
+            if report is None:
+                report = ev.read_validator_report(vid, round_num=round_num) or {}
+            verdict = str(report.get("verdict") or "").strip().lower()
+            if verdict != "approve":
+                missing_or_failed.append(vid)
+
+        if missing_or_failed:
+            raise ValueError(
+                "Blocking validators missing or not approved: "
+                + ", ".join(sorted(set(missing_or_failed)))
+            )
 
         return True
-    except Exception:
-        pass
-
-    return False  # FAIL-CLOSED
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f"QA validation check failed: {e}") from e
 
 
 def has_validator_reports(ctx: Mapping[str, Any]) -> bool:

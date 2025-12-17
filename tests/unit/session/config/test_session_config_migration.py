@@ -18,6 +18,7 @@ def test_get_worktree_config_reads_manifest(isolated_project_env):
     manifest_data = {
         "worktrees": {
             "enabled": True,
+            "baseBranchMode": "fixed",
             "baseBranch": "develop"
         }
     }
@@ -32,6 +33,7 @@ def test_get_worktree_config_reads_manifest(isolated_project_env):
     # Assert
     assert wt_config["enabled"] is True
     assert wt_config["baseBranch"] == "develop"
+    assert wt_config["baseBranchMode"] == "fixed"
 
 def test_get_worktree_config_handles_malformed_json(isolated_project_env):
     """Test resilience against bad JSON in manifest."""
@@ -49,4 +51,5 @@ def test_get_worktree_config_handles_malformed_json(isolated_project_env):
     # Should not raise, should return defaults
     wt_config = config.get_worktree_config()
     assert wt_config["enabled"] is True # default
-    assert wt_config["baseBranch"] == "main" # default
+    assert wt_config["baseBranchMode"] == "current" # default
+    assert wt_config["baseBranch"] is None # default

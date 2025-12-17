@@ -202,10 +202,46 @@ class SessionConfig(BaseDomainConfig):
 
         defaults = {
             "enabled": True,
-            "baseBranch": "main",
+            "baseBranchMode": "current",
+            "baseBranch": None,
             "branchPrefix": "session/",
             "baseDirectory": ".worktrees",
             "archiveDirectory": ".worktrees/_archived",
+            "pathTemplate": "../{PROJECT_NAME}-worktrees/{sessionId}",
+            "cleanup": {
+                "autoArchive": True,
+                "archiveAfterDays": 30,
+                "deleteAfterDays": 90,
+            },
+            "enforcement": {
+                # When enabled, certain session-scoped commands are blocked unless the
+                # current working directory is inside the session worktree.
+                #
+                # This is intentionally opt-in because some workflows use the primary
+                # checkout for discovery (task listing, session creation) before
+                # switching into the worktree.
+                "enabled": True,
+                "commands": [
+                    "session close",
+                    "session next",
+                    "session status",
+                    "session track",
+                    "session verify",
+                    "session complete",
+                    "session validate",
+                    "task claim",
+                    "task status",
+                    "task mark-delegated",
+                    "task split",
+                    "task link",
+                    "qa validate",
+                    "qa run",
+                    "qa bundle",
+                    "qa promote",
+                ],
+            },
+            # Optional worktree features (kept here for backward compatibility with
+            # existing project overlays; schema allows these keys).
             "installDeps": False,
             "enableDatabaseIsolation": False,
             "autoCleanupOnMerge": False,
@@ -270,6 +306,3 @@ class SessionConfig(BaseDomainConfig):
 
 
 __all__ = ["SessionConfig"]
-
-
-

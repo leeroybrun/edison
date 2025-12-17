@@ -144,5 +144,31 @@ class TaskConfig(BaseDomainConfig):
             raise ValueError(f"Missing configuration: tasks.defaults.{key}")
         return str(val)
 
+    # ------------------------------------------------------------------
+    # Similarity / dedupe helpers
+    # ------------------------------------------------------------------
+    @cached_property
+    def _similarity(self) -> Dict[str, Any]:
+        """Get similarity configuration section."""
+        return dict(self.section.get("similarity", {}) or {})
+
+    def similarity_top_k(self) -> int:
+        return int(self._similarity.get("topK", 5))
+
+    def similarity_threshold(self) -> float:
+        return float(self._similarity.get("threshold", 0.55))
+
+    def similarity_use_shingles(self) -> bool:
+        return bool(self._similarity.get("useShingles", True))
+
+    def similarity_shingle_size(self) -> int:
+        return int(self._similarity.get("shingleSize", 3))
+
+    def similarity_title_weight(self) -> float:
+        return float(self._similarity.get("titleWeight", 0.7))
+
+    def similarity_body_weight(self) -> float:
+        return float(self._similarity.get("bodyWeight", 0.3))
+
 
 __all__ = ["TaskConfig"]

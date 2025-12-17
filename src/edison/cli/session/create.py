@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from typing import Optional
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
 from edison.core.session import lifecycle as session_manager
@@ -48,8 +49,42 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Install dependencies in worktree (if creating worktree)",
     )
+    parser.add_argument(
+        "--base-branch",
+        "--branch",
+        dest="base_branch",
+        required=False,
+        help="Base ref to branch from for the session worktree (overrides config)",
+    )
+    parser.add_argument(
+        "--prompt",
+        dest="start_prompt",
+        required=False,
+        help="Optional start prompt ID to print after creation (e.g. AUTO_NEXT). See `edison session prompts`.",
+    )
+    parser.add_argument(
+        "--include-prompt-text",
+        action="store_true",
+        help="Include full start prompt text in --json output (can be large).",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
+
+def _emit_worktree_instructions(
+    formatter: OutputFormatter,
+    *,
+    session_id: str,
+    worktree_path: Optional[str],
+) -> None:
+    if not worktree_path:
+        return
+    formatter.text("")
+    formatter.text("WORKTREE CONFINEMENT (CRITICAL)")
+    formatter.text(f"  cd {worktree_path}")
+    formatter.text(f"  export AGENTS_SESSION={session_id}")
+    formatter.text(f"  export AGENTS_PROJECT_ROOT={worktree_path}")
+    formatter.text("  Never run `git checkout` / `git switch` in the primary checkout.")
+    formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
 def main(args: argparse.Namespace) -> int:
@@ -77,21 +112,35 @@ def main(args: argparse.Namespace) -> int:
             owner=args.owner,
             mode=args.mode,
             install_deps=install_deps,
+            base_branch=getattr(args, "base_branch", None),
             create_wt=create_wt,
         )
 
         # Load session data for output
         session = session_manager.get_session(session_id)
+        worktree_path = session.get("git", {}).get("worktreePath")
 
         # NOTE: Orchestrator launch is handled by `edison orchestrator start`.
         # `edison session create` is intentionally limited to creating the session record (+ optional worktree).
 
         if formatter.json_mode:
+            start_prompt_id = getattr(args, "start_prompt", None)
+            prompt_text = None
+            prompt_path = None
+            if start_prompt_id:
+                from edison.core.session.start_prompts import find_start_prompt_path, read_start_prompt
+
+                prompt_path = str(find_start_prompt_path(repo_root, start_prompt_id))
+                if bool(getattr(args, "include_prompt_text", False)):
+                    prompt_text = read_start_prompt(repo_root, start_prompt_id)
             output = {
                 "status": "created",
                 "session_id": session_id,
                 "path": str(sess_path),
                 "session": session,
+                "startPromptId": start_prompt_id,
+                "startPromptPath": prompt_path,
+                "startPrompt": prompt_text,
             }
             formatter.json_output(output)
         else:
@@ -99,10 +148,23 @@ def main(args: argparse.Namespace) -> int:
             formatter.text(f"  Path: {sess_path}")
             formatter.text(f"  Owner: {args.owner}")
             formatter.text(f"  Mode: {args.mode}")
-            if session.get("git", {}).get("worktreePath"):
-                formatter.text(f"  Worktree: {session['git']['worktreePath']}")
+            if worktree_path:
+                formatter.text(f"  Worktree: {worktree_path}")
             if session.get("git", {}).get("branchName"):
                 formatter.text(f"  Branch: {session['git']['branchName']}")
+            if session.get("git", {}).get("baseBranch"):
+                formatter.text(f"  Base: {session['git']['baseBranch']}")
+
+            _emit_worktree_instructions(formatter, session_id=session_id, worktree_path=worktree_path)
+
+            if getattr(args, "start_prompt", None):
+                from edison.core.session.start_prompts import read_start_prompt
+
+                prompt_id = str(args.start_prompt)
+                prompt_text = read_start_prompt(repo_root, prompt_id)
+                formatter.text("")
+                formatter.text(f"START PROMPT ({prompt_id})")
+                formatter.text(prompt_text.rstrip())
 
         return 0
 

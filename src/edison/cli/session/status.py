@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from edison.cli import (
     OutputFormatter,
@@ -147,6 +148,28 @@ def main(args: argparse.Namespace) -> int:
             owner = session.get("owner") or session.get("meta", {}).get("owner")
             if owner:
                 formatter.text(f"Owner: {owner}")
+
+            # Archived worktrees section (deterministic newest-first ordering).
+            try:
+                from edison.core.config.domains.session import SessionConfig
+                from edison.core.config.domains.project import ProjectConfig
+
+                wt_cfg = SessionConfig(repo_root=project_root).get_worktree_config()
+                raw = wt_cfg.get("archiveDirectory")
+                substituted = ProjectConfig(repo_root=project_root).substitute_project_tokens(str(raw or ""))
+                archive_dir = Path(substituted)
+                if not archive_dir.is_absolute():
+                    archive_dir = (project_root / archive_dir).resolve()
+
+                formatter.text("\n## Archived Worktrees")
+                if archive_dir.exists():
+                    dirs = [p for p in archive_dir.iterdir() if p.is_dir()]
+                    dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                    for p in dirs:
+                        formatter.text(f"- {p}")
+            except Exception:
+                # Status output must never fail due to archival listing.
+                pass
 
         return 0
 

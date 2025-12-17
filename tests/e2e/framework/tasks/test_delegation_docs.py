@@ -45,3 +45,5 @@ def test_delegation_docs_use_placeholders_when_needed() -> None:
         assert "{PROJECT_NAME}" in text, "Delegation docs mention project naming but do not use {PROJECT_NAME}"
 
 
+
+

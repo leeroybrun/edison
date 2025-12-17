@@ -7,6 +7,8 @@ All guards follow the FAIL-CLOSED principle:
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any, Mapping
 
 
@@ -42,19 +44,21 @@ def can_start_task(ctx: Mapping[str, Any]) -> bool:
 
 
 def can_finish_task(ctx: Mapping[str, Any]) -> bool:
-    """Task can finish only if implementation report exists.
+    """Task can finish only when Context7 + evidence requirements are satisfied.
     
     FAIL-CLOSED: Returns False if evidence is missing.
     
     Prerequisites:
     - Task ID must be in context (via 'task.id' or 'entity_id')
-    - Implementation report JSON must exist in evidence directory
+    - Context7 markers must exist for any detected packages (react, zod, etc.)
+    - Implementation report must exist for the latest round
+    - If evidence enforcement is enabled, required evidence files must exist
     
     Args:
         ctx: Context with task ID (via 'task' dict or 'entity_id') and optionally 'project_root'
         
     Returns:
-        True if implementation report exists for latest round
+        True if requirements are satisfied
     """
     # Try to get task_id from various context patterns
     task_id = None
@@ -73,19 +77,68 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
     
     # Get project_root from context if available (for isolated test environments)
     project_root = ctx.get("project_root")
+    project_root_path: Path | None = None
+    if isinstance(project_root, (str, Path)):
+        try:
+            project_root_path = Path(project_root).resolve()
+        except Exception:
+            project_root_path = None
+
+    # Context7 enforcement (must surface a useful error message).
+    try:
+        session = ctx.get("session")
+        session_dict = session if isinstance(session, Mapping) else None
+
+        from edison.core.qa.context import detect_packages, missing_packages
+        from edison.core.task.repository import TaskRepository
+
+        task_repo = TaskRepository(project_root=project_root_path)
+        task_path = task_repo._find_entity_path(str(task_id))  # type: ignore[attr-defined]
+        if task_path:
+            packages = detect_packages(Path(task_path), session_dict)  # type: ignore[arg-type]
+            missing = missing_packages(str(task_id), packages)
+            if missing:
+                raise ValueError(f"Context7 evidence required: {', '.join(missing)}")
+    except ValueError:
+        raise
+    except Exception as e:
+        # FAIL-CLOSED: if Context7 validation can't run reliably, block completion,
+        # but do so with a clear, actionable error.
+        raise ValueError(f"Context7 validation failed: {e}") from e
     
     # Check implementation report exists
     try:
         from edison.core.qa.evidence import EvidenceService
-        ev_svc = EvidenceService(str(task_id), project_root=project_root)
+
+        ev_svc = EvidenceService(str(task_id), project_root=project_root_path)
         latest = ev_svc.get_current_round()
-        if latest is not None:
-            report = ev_svc.read_implementation_report(latest)
-            return bool(report)
+        if latest is None:
+            raise ValueError("Implementation report Markdown is required per round (no round-* evidence directory found).")
+        report = ev_svc.read_implementation_report(latest)
+        if not report:
+            raise ValueError("Implementation report Markdown is required per round.")
+
+        enforce = bool(ctx.get("enforce_evidence")) or bool(os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE"))
+        if enforce:
+            from edison.core.config.domains.qa import QAConfig
+            from edison.core.qa.evidence.analysis import list_evidence_files
+
+            required = QAConfig(repo_root=project_root_path).get_required_evidence_files()
+            round_dir = ev_svc.get_round_dir(latest)
+            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
+
+            missing_files: list[str] = []
+            for pattern in required:
+                if not any(Path(name).match(pattern) for name in files):
+                    missing_files.append(str(pattern))
+            if missing_files:
+                raise ValueError(f"Missing evidence files in round-{latest}: {', '.join(missing_files)}")
+
+        return True
     except Exception:
-        pass
-    
-    return False  # FAIL-CLOSED: no evidence found
+        raise
+
+    return False  # pragma: no cover
 
 
 def has_implementation_report(ctx: Mapping[str, Any]) -> bool:

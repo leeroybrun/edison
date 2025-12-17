@@ -322,13 +322,23 @@ class QARepository(
         if not qa:
             raise PersistenceError(f"QA record not found: {qa_id}")
 
-        # Increment round number (append semantics).
-        qa.round += 1
-
         # Create corresponding evidence directory for the new round.
+        #
+        # IMPORTANT: Evidence directories may be created out-of-band (e.g. by other
+        # processes/worktrees). When we append a round we must:
+        # - never "go backwards" relative to existing evidence rounds
+        # - ensure we create the next round directory deterministically
         if create_evidence_dir:
             ev_svc = EvidenceService(qa.task_id, project_root=self.project_root)
-            ev_svc.create_next_round()
+            ev_current = int(ev_svc.get_current_round() or 0)
+            base = max(int(qa.round or 0), ev_current)
+            next_round = base + 1
+            ev_svc.ensure_round(base or 1)
+            ev_svc.ensure_round(next_round)
+            qa.round = int(next_round)
+        else:
+            # Increment round number (append semantics) when evidence is managed elsewhere.
+            qa.round += 1
 
         # Add round entry to history
         round_entry: Dict[str, Any] = {
@@ -415,7 +425,7 @@ class QARepository(
         """Render the QA body from the composed template."""
         tpl_path = self._config.qa_template_path()
         if not tpl_path.exists():
-            tpl_path = get_data_path("templates", "documents", "QA.md")
+            tpl_path = get_data_path("templates") / "documents" / "QA.md"
         raw = tpl_path.read_text(encoding="utf-8")
         body = strip_frontmatter_block(raw)
         return render_template_text(

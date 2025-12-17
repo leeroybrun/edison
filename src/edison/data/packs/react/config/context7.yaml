@@ -11,7 +11,7 @@ context7:
   packages:
     react:
       version: "19.2.0"
-      context7Id: "/facebook/react"
+      context7Id: "/reactjs/react.dev"
       criticalChanges:
         - "New use() hook"
         - "Server Components"
@@ -20,5 +20,4 @@ context7:
         - "hooks"
         - "server components"
         - "suspense"
-
 

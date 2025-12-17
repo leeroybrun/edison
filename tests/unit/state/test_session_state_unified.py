@@ -31,31 +31,33 @@ def session_state_config(tmp_path, monkeypatch):
 
     # Define session state machine using standard statemachine config
     state_machine = {
-        "statemachine": {
-            "session": {
-                "states": {
-                    "active": {
-                        "initial": True,
-                        "allowed_transitions": [
-                            {"to": "closing", "guard": "always_allow"},
-                            {"to": "active"},
-                        ],
+        "workflow": {
+            "statemachine": {
+                "session": {
+                    "states": {
+                        "active": {
+                            "initial": True,
+                            "allowed_transitions": [
+                                {"to": "closing", "guard": "always_allow"},
+                                {"to": "active"},
+                            ],
+                        },
+                        "closing": {
+                            "allowed_transitions": [
+                                {
+                                    "to": "closed",
+                                    "conditions": [
+                                        {"name": "ready_to_close", "error": "session not ready"}
+                                    ],
+                                    "actions": [{"name": "record_closed"}],
+                                }
+                            ],
+                        },
+                        "closed": {"final": True, "allowed_transitions": []},
                     },
-                    "closing": {
-                        "allowed_transitions": [
-                            {
-                                "to": "closed",
-                                "conditions": [
-                                    {"name": "ready_to_close", "error": "session not ready"}
-                                ],
-                                "actions": [{"name": "record_closed"}],
-                            }
-                        ],
-                    },
-                    "closed": {"final": True, "allowed_transitions": []},
-                },
+                }
             }
-        }
+        },
     }
     (config_dir / "state-machine.yml").write_text(yaml.dump(state_machine))
 

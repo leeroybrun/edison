@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -345,6 +346,193 @@ def _get_active_packs_fast(project_root: Path) -> List[str]:
         return []
 
 
+def _path_within(child: Path, parent: Path) -> bool:
+    try:
+        c = child.resolve()
+        p = parent.resolve()
+        return c == p or c.is_relative_to(p)
+    except Exception:
+        return False
+
+
+def _extract_session_id_from_args(args: argparse.Namespace) -> Optional[str]:
+    # Common patterns across commands:
+    # - positional `session_id`
+    # - optional `--session`
+    # - explicit `--id`/`--session-id` (stored as session_id)
+    for key in ("session_id", "session", "id", "sessionId"):
+        try:
+            val = getattr(args, key, None)
+        except Exception:
+            val = None
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return None
+
+
+def _is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
+    """Best-effort classification of whether a CLI invocation mutates project state.
+
+    This is used to make worktree enforcement safe-by-default:
+    - Read-only invocations should be allowed from the primary checkout.
+    - Mutating invocations should be blocked unless run inside the session worktree.
+    """
+    # Standard pattern: many commands expose a dry-run mode.
+    if bool(getattr(args, "dry_run", False)):
+        return False
+
+    # session status: read-only unless transitioning.
+    if command_name == "session status":
+        return bool(getattr(args, "status", None))
+
+    # task status: read-only unless transitioning.
+    if command_name == "task status":
+        return bool(getattr(args, "status", None))
+
+    # task split: read-only on dry-run, mutating otherwise.
+    if command_name == "task split":
+        return True
+
+    # qa validate: roster-only/dry-run are read-only. Execution/check-only writes evidence.
+    if command_name == "qa validate":
+        if bool(getattr(args, "check_only", False)):
+            return True
+        return bool(getattr(args, "execute", False))
+
+    # qa run: dry-run is read-only, execution writes evidence.
+    if command_name == "qa run":
+        return True
+
+    # qa promote: dry-run is read-only, execution transitions QA state.
+    if command_name == "qa promote":
+        return True
+
+    # session validate: currently read-only unless explicitly tracking scores.
+    if command_name == "session validate":
+        return bool(getattr(args, "track_scores", False))
+
+    # session track: only "active" is read-only; others write tracking artifacts.
+    if command_name == "session track":
+        sub = str(getattr(args, "subcommand", "") or "")
+        return sub in {"start", "heartbeat", "complete"}
+
+    # session next / verify are read-only by design.
+    if command_name in {"session next", "session verify"}:
+        return False
+
+    # Default for known-mutating commands (no dry-run).
+    if command_name in {
+        "session close",
+        "session complete",
+        "task claim",
+        "task mark-delegated",
+        "task link",
+        "qa bundle",
+    }:
+        return True
+
+    # Fallback: if a command exposes a `status` parameter and it is set, treat as mutating.
+    if getattr(args, "status", None):
+        return True
+
+    # Conservative default: treat unknown commands in the enforcement list as mutating.
+    return True
+
+
+def _maybe_enforce_session_worktree(
+    *,
+    project_root: Path,
+    command_name: str,
+    args: argparse.Namespace,
+    json_mode: bool,
+) -> Optional[int]:
+    """Return an exit code when enforcement blocks the command, else None."""
+    try:
+        from edison.core.config.domains.session import SessionConfig
+        from edison.core.session.core.id import detect_session_id, validate_session_id
+        from edison.core.session.persistence.repository import SessionRepository
+    except Exception:
+        return None
+
+    try:
+        wt_cfg = SessionConfig(repo_root=project_root).get_worktree_config()
+    except Exception:
+        return None
+
+    if not bool(wt_cfg.get("enabled", True)):
+        return None
+
+    enforcement = wt_cfg.get("enforcement") or {}
+    if not isinstance(enforcement, dict) or not bool(enforcement.get("enabled", False)):
+        return None
+
+    commands = enforcement.get("commands") or []
+    if not isinstance(commands, list) or not commands:
+        return None
+    if command_name not in commands and "*" not in commands:
+        return None
+
+    # Allow read-only invocations from the primary checkout.
+    if not _is_mutating_invocation(command_name, args):
+        return None
+
+    # Resolve the target session id (explicit arg wins; else env/worktree file).
+    target_raw = _extract_session_id_from_args(args) or detect_session_id(project_root=project_root)
+    if not target_raw:
+        return None
+    try:
+        session_id = validate_session_id(str(target_raw))
+    except Exception:
+        return None
+
+    try:
+        repo = SessionRepository(project_root=project_root)
+        entity = repo.get(session_id)
+        if not entity:
+            return None
+        session = entity.to_dict() if hasattr(entity, "to_dict") else (entity if isinstance(entity, dict) else {})
+        worktree_path = (session.get("git") or {}).get("worktreePath")
+        if not worktree_path:
+            return None
+        worktree_root = Path(str(worktree_path)).resolve()
+    except Exception:
+        return None
+
+    cwd = Path.cwd()
+    if _path_within(cwd, worktree_root) or _path_within(project_root, worktree_root):
+        return None
+
+    msg = (
+        "WORKTREE ENFORCEMENT: this command must run inside the session worktree.\n"
+        f"Command: {command_name}\n"
+        f"Session: {session_id}\n"
+        f"Worktree: {worktree_root}\n"
+        f"Run:\n"
+        f"  cd {worktree_root}\n"
+        f"  export AGENTS_SESSION={session_id}\n"
+        f"  export AGENTS_PROJECT_ROOT={worktree_root}\n"
+    )
+
+    if json_mode:
+        print(
+            json.dumps(
+                {
+                    "error": "worktree_enforcement",
+                    "command": command_name,
+                    "sessionId": session_id,
+                    "worktreePath": str(worktree_root),
+                    "message": "Command must run inside the session worktree.",
+                    "hint": f"cd {worktree_root}",
+                }
+            )
+        )
+    else:
+        print(msg, file=sys.stderr)
+
+    # Non-zero, distinct from normal command failures.
+    return 2
+
+
 def _get_cli_rules_to_display(
     *,
     project_root: Path,
@@ -446,13 +634,28 @@ def _format_rules_for_display(rules: List[Dict[str, Any]], timing: str) -> str:
 
 
 def _strip_profile_flag(argv: list[str]) -> tuple[list[str], bool]:
-    """Allow `--profile` anywhere in argv (before or after subcommands)."""
+    """Strip the global profiling flag only when it appears before the domain.
+
+    The top-level `--profile` flag enables internal CLI profiling spans and
+    takes no value. Subcommands may legitimately define their own `--profile`
+    options (e.g. orchestrator profile selection). To avoid collisions, we only
+    treat `--profile` as the global profiling flag when it appears before the
+    first non-flag token (the domain).
+    """
     if not argv:
         return argv, False
     enabled = False
     out: list[str] = []
-    for a in argv:
-        if a == "--profile":
+
+    # Identify the domain position: first argument that does not look like a flag.
+    domain_index: int | None = None
+    for i, a in enumerate(argv):
+        if not a.startswith("-"):
+            domain_index = i
+            break
+
+    for i, a in enumerate(argv):
+        if a == "--profile" and (domain_index is None or i < domain_index):
             enabled = True
             continue
         out.append(a)
@@ -667,7 +870,17 @@ def main(argv: list[str] | None = None) -> int:
                     rules_map = {}
 
             # Show BEFORE rules (guidance)
-            if project_root is not None:
+            json_mode = bool(getattr(args, "json", False))
+            if json_mode:
+                # JSON mode must remain machine-readable (stdout/stderr should not be polluted
+                # by logging warnings emitted via the stdlib "lastResort" handler).
+                try:
+                    import logging
+
+                    logging.disable(logging.WARNING)
+                except Exception:
+                    pass
+            if project_root is not None and not json_mode:
                 try:
                     with span("cli.rules.get", timing="before"):
                         before_rules = _get_cli_rules_to_display(
@@ -686,6 +899,15 @@ def main(argv: list[str] | None = None) -> int:
             result = 1
             if func:
                 try:
+                    if project_root is not None:
+                        blocked = _maybe_enforce_session_worktree(
+                            project_root=project_root,
+                            command_name=command_name,
+                            args=args,
+                            json_mode=json_mode,
+                        )
+                        if blocked is not None:
+                            return blocked
                     with span("cli.command.exec", command=command_name):
                         result = func(args)
                 except KeyboardInterrupt:
@@ -699,7 +921,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
             # Show AFTER rules (validation reminders) - only on success
-            if project_root is not None and result == 0:
+            if project_root is not None and result == 0 and not json_mode:
                 try:
                     with span("cli.rules.get", timing="after"):
                         after_rules = _get_cli_rules_to_display(

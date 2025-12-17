@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import os
+import hashlib
 
 if TYPE_CHECKING:
     from .manager import ConfigManager
@@ -49,7 +50,38 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
     """
     base = str(_normalize_repo_root(repo_root))
     suffix = ":packs" if include_packs else ":no_packs"
-    return base + suffix
+
+    # Cache correctness: include environment overrides and project config mtimes.
+    # - Tests and long-running processes may mutate EDISON_* env vars.
+    # - Project config YAML files may be written/updated after an initial load.
+    # Without these fingerprints, cache hits can return stale config.
+    env_items = sorted(
+        (k, os.environ.get(k, ""))
+        for k in os.environ.keys()
+        if k.startswith("EDISON_")
+    )
+    env_fp = hashlib.sha256(repr(env_items).encode("utf-8")).hexdigest()[:12]
+
+    try:
+        from edison.core.utils.paths import get_project_config_dir
+
+        project_root_dir = get_project_config_dir(Path(base), create=False)
+        cfg_dir = project_root_dir / "config"
+        files: list[tuple[str, int, int]] = []
+        if cfg_dir.exists():
+            yml_files = list(cfg_dir.glob("*.yml"))
+            yaml_files = list(cfg_dir.glob("*.yaml"))
+            for p in sorted([*yml_files, *yaml_files]):
+                try:
+                    st = p.stat()
+                    files.append((p.name, int(st.st_mtime_ns), int(st.st_size)))
+                except Exception:
+                    files.append((p.name, 0, 0))
+        cfg_fp = hashlib.sha256(repr(files).encode("utf-8")).hexdigest()[:12]
+    except Exception:
+        cfg_fp = "000000000000"
+
+    return f"{base}{suffix}:env={env_fp}:cfg={cfg_fp}"
 
 
 def get_cached_config(
@@ -71,7 +103,7 @@ def get_cached_config(
         Configuration dictionary (cached).
     """
     normalized_root = _normalize_repo_root(repo_root)
-    key = str(normalized_root) + (":packs" if include_packs else ":no_packs")
+    key = _cache_key(normalized_root, include_packs=include_packs)
 
     # Lazy import to avoid circular dependency
     from .manager import ConfigManager
@@ -162,7 +194,6 @@ __all__ = [
     "register_cache_clearer",
     "is_cached",
 ]
-
 
 
 

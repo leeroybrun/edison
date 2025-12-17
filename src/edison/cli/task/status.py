@@ -7,9 +7,18 @@ SUMMARY: Inspect or transition task/QA status with state-machine guards
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, detect_record_type, get_repository
+from edison.cli import (
+    add_json_flag,
+    add_repo_root_flag,
+    OutputFormatter,
+    get_repo_root,
+    detect_record_type,
+    get_repository,
+    resolve_session_id,
+)
 
 SUMMARY = "Inspect or transition task/QA status with state-machine guards"
 
@@ -42,6 +51,10 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--force",
         action="store_true",
         help="Force transition even when guards fail (bypasses validation/actions)",
+    )
+    parser.add_argument(
+        "--session",
+        help="Session context (enforces isolation when transitioning session-scoped records)",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -95,6 +108,21 @@ def main(args: argparse.Namespace) -> int:
         if not entity:
             raise ValueError(f"{record_type.title()} not found: {record_id}")
 
+        # Optional session scoping for security: prevent cross-session manipulation.
+        session_id = None
+        session_obj = None
+        if getattr(args, "session", None):
+            session_id = resolve_session_id(project_root=project_root, explicit=args.session, required=True)
+            if getattr(entity, "session_id", None) and str(entity.session_id) != str(session_id):
+                raise ValueError(f"Could not locate {record_type} {record_id} in session '{session_id}'")
+            try:
+                from edison.core.session.persistence.repository import SessionRepository
+
+                sess = SessionRepository(project_root=project_root).get(session_id)
+                session_obj = sess.to_dict() if sess else {"id": session_id}
+            except Exception:
+                session_obj = {"id": session_id}
+
         current_status = entity.state
 
         if args.status:
@@ -109,9 +137,15 @@ def main(args: argparse.Namespace) -> int:
                         "session_id": entity.session_id,
                     },
                     "task_id": entity.id,
+                    "project_root": project_root,
                     "entity_type": record_type or "task",
                     "entity_id": entity.id,
                 }
+                if session_obj is not None:
+                    context["session"] = session_obj
+                    context["session_id"] = session_id
+                if str(os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE", "")).strip():
+                    context["enforce_evidence"] = True
                 if getattr(args, "reason", None):
                     context["task"]["rollback_reason"] = args.reason
                     context["task"]["rollbackReason"] = args.reason
@@ -176,9 +210,15 @@ def main(args: argparse.Namespace) -> int:
                     "session_id": entity.session_id,
                 },
                 "task_id": entity.id,
+                "project_root": project_root,
                 "entity_type": record_type or "task",
                 "entity_id": entity.id,
             }
+            if session_obj is not None:
+                context["session"] = session_obj
+                context["session_id"] = session_id
+            if str(os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE", "")).strip():
+                context["enforce_evidence"] = True
             if getattr(args, "reason", None):
                 # Guards use snake_case and camelCase variants across call sites.
                 context["task"]["rollback_reason"] = args.reason
@@ -193,6 +233,45 @@ def main(args: argparse.Namespace) -> int:
                 reason=args.reason or "cli-status-command",
             )
 
+            # Best-effort: when a task reaches "done", the associated QA should become
+            # ready for validation (waiting -> todo).
+            if record_type != "qa":
+                try:
+                    from edison.core.config.domains.workflow import WorkflowConfig
+                    from edison.core.qa.workflow.repository import QARepository
+
+                    cfg = WorkflowConfig(repo_root=project_root)
+                    done_state = cfg.get_semantic_state("task", "done")
+                    if str(args.status) == str(done_state):
+                        qa_repo = QARepository(project_root=project_root)
+                        qa_id = f"{updated.id}-qa"
+                        qa = qa_repo.get(qa_id)
+                        if qa:
+                            waiting = cfg.get_semantic_state("qa", "waiting")
+                            todo = cfg.get_semantic_state("qa", "todo")
+                            if str(qa.state) == str(waiting):
+                                qa_repo.advance_state(
+                                    qa_id,
+                                    todo,
+                                    session_id=str(getattr(updated, "session_id", None) or session_id or ""),
+                                )
+                except Exception:
+                    pass
+
+            # Best-effort: keep session index up-to-date for task transitions.
+            if record_type != "qa" and getattr(updated, "session_id", None):
+                try:
+                    from edison.core.session.persistence.graph import register_task
+
+                    register_task(
+                        str(updated.session_id),
+                        str(updated.id),
+                        owner=(updated.metadata.created_by or "_unassigned_") if getattr(updated, "metadata", None) else "_unassigned_",
+                        status=str(updated.state),
+                    )
+                except Exception:
+                    pass
+
             formatter.json_output({
                 "status": "transitioned",
                 "forced": False,
@@ -200,7 +279,7 @@ def main(args: argparse.Namespace) -> int:
                 "from_status": current_status,
                 "to_status": args.status,
             }) if formatter.json_mode else formatter.text(
-                f"Transitioned {record_id}: {current_status} -> {args.status}"
+                f"Status transitioned {record_id}: {current_status} -> {args.status}"
             )
 
         else:

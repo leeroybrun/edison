@@ -254,6 +254,28 @@ def test_complete_task_advances_qa_state(repo_env):
     expected_path = repo_env / ".project" / "sessions" / "wip" / session_id / "qa" / qa_todo_state / f"{qa_id}.md"
     assert expected_path.exists()
 
+def test_ensure_qa_reconciles_waiting_to_todo_when_task_done(repo_env):
+    """QA should become todo when task is already done (even if QA existed in waiting)."""
+    task_id = "T-4B"
+    qa_id = f"{task_id}-qa"
+    session_id = "sess-ensure-qa"
+
+    done_state = WorkflowConfig().get_semantic_state("task", "done")
+    waiting_state = WorkflowConfig().get_semantic_state("qa", "waiting")
+    qa_todo_state = WorkflowConfig().get_semantic_state("qa", "todo")
+
+    create_task_file(repo_env, task_id, state=done_state, session_id=session_id)
+    create_qa_file(repo_env, qa_id, task_id, state=waiting_state, session_id=session_id)
+
+    workflow = TaskQAWorkflow(project_root=repo_env)
+    qa_repo = QARepository(project_root=repo_env)
+
+    qa = workflow.ensure_qa(task_id=task_id, session_id=session_id, validator_owner=None, title=None)
+    assert qa.state == qa_todo_state
+
+    expected_path = repo_env / ".project" / "sessions" / "wip" / session_id / "qa" / qa_todo_state / f"{qa_id}.md"
+    assert expected_path.exists()
+
 def test_claim_task_error_task_not_found(repo_env):
     """Test error when claiming non-existent task."""
     workflow = TaskQAWorkflow(project_root=repo_env)
@@ -436,4 +458,3 @@ def test_claim_task_from_wip_to_wip_with_new_session(repo_env):
     )
     assert not old_session_path.exists(), "Task should be removed from old session"
     assert claimed_task.session_id == new_session_id
-

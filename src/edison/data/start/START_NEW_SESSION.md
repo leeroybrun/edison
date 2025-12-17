@@ -2,6 +2,8 @@
 
 You are starting a fresh work session as an **ORCHESTRATOR**.
 
+{{include:start/includes/WORKTREE_CONFINEMENT.md}}
+
 ## Immediate Actions
 
 1. **Load Constitution**

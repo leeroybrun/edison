@@ -109,3 +109,14 @@ def test_default_owner_prefers_config_owner(monkeypatch, isolated_project_env: P
     # Pass the isolated project root to ensure config is loaded from the right location
     owner = ProjectConfig(repo_root=isolated_project_env).owner
     assert owner == "config-owner"
+
+
+def test_get_owner_or_user_prefers_git_user_name(isolated_project_env: Path) -> None:
+    """When project.owner is unset, use git user.name (stable) rather than process detection."""
+    from edison.core.config.cache import clear_all_caches
+    from edison.core.config.domains.project import ProjectConfig
+
+    clear_all_caches()
+
+    owner = ProjectConfig(repo_root=isolated_project_env).get_owner_or_user()
+    assert owner == "Test User"

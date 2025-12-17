@@ -106,11 +106,23 @@ def main(args: argparse.Namespace) -> int:
             )
 
         elif args.new:
-            # Create new evidence round directory using EvidenceService
-            round_path = ev_svc.create_next_round()
-            round_num = ev_svc.get_current_round()
+            status = args.status or "pending"
+            allowed = _allowed_round_statuses(repo_root=repo_root)
+            if status not in allowed:
+                raise ValueError(f"Invalid round status: {status}. Valid values: {', '.join(sorted(allowed))}")
 
-            # Update metadata using EvidenceService method
+            # Canonical behavior: create a new round in the QA record AND ensure the
+            # corresponding evidence directory exists.
+            updated_qa = qa_repo.append_round(
+                qa_id,
+                status=status,
+                notes=args.note,
+                create_evidence_dir=True,
+            )
+            round_num = updated_qa.round
+            round_path = ev_svc.ensure_round(round_num)
+
+            # Update metadata using EvidenceService method (best-effort)
             ev_svc.update_metadata(round_num)
 
             result = {
@@ -122,23 +134,46 @@ def main(args: argparse.Namespace) -> int:
             )
 
         elif args.list:
-            # List all rounds from QA record history
-            rounds = qa_repo.list_rounds(qa_id)
+            # Merge rounds from QA record history with evidence directories on disk.
+            history = qa_repo.list_rounds(qa_id)
+            by_round: dict[int, dict] = {}
+            for r in history:
+                try:
+                    n = int(r.get("round") or 0)
+                except Exception:
+                    continue
+                if n:
+                    by_round[n] = dict(r)
+
+            evidence_nums: list[int] = []
+            for p in ev_svc.list_rounds():
+                try:
+                    evidence_nums.append(int(str(p.name).replace("round-", "")))
+                except Exception:
+                    continue
+
+            combined_nums = sorted(set(evidence_nums) | set(by_round.keys()))
+            combined: list[dict] = []
+            for n in combined_nums:
+                row = dict(by_round.get(n) or {"round": n, "status": "unknown"})
+                row["round"] = n
+                combined.append(row)
 
             if formatter.json_mode:
-                formatter.json_output({"rounds": rounds})
+                formatter.json_output({"rounds": combined})
             else:
-                if rounds:
+                if combined:
                     formatter.text(f"Rounds for {args.task_id}:")
-                    for r in rounds:
+                    for r in combined:
                         status = r.get("status", "unknown")
                         date = r.get("date", "")
                         notes = r.get("notes", "")
-                        formatter.text(f"  - Round {r.get('round')}: {status} ({date})")
+                        suffix = f" ({date})" if date else ""
+                        formatter.text(f"  - Round {r.get('round')}: {status}{suffix}")
                         if notes:
                             formatter.text(f"      Notes: {notes}")
                 else:
-                    formatter.text(f"No round history found for {args.task_id}")
+                    formatter.text(f"No rounds found for {args.task_id}")
 
         else:
             # Default: show current round from QA record

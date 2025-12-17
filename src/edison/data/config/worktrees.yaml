@@ -3,11 +3,34 @@
 
 worktrees:
   enabled: true
-  baseBranch: "main"
+  baseBranchMode: "current"
+  baseBranch: null
   baseDirectory: "../{PROJECT_NAME}-worktrees"
   archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
   branchPrefix: "session/"
   pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  installDeps: false
+  enableDatabaseIsolation: false
+  autoCleanupOnMerge: false
+  enforcement:
+    enabled: true
+    commands:
+      - "session close"
+      - "session next"
+      - "session status"
+      - "session track"
+      - "session verify"
+      - "session complete"
+      - "session validate"
+      - "task claim"
+      - "task status"
+      - "task mark-delegated"
+      - "task split"
+      - "task link"
+      - "qa validate"
+      - "qa run"
+      - "qa bundle"
+      - "qa promote"
   cleanup:
     autoArchive: true
     archiveAfterDays: 30

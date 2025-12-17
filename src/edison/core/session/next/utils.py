@@ -5,10 +5,8 @@ No external dependencies on session state.
 """
 from __future__ import annotations
 
-import difflib
 import re
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List
 
 from edison.core.utils.paths import get_project_config_dir
 from edison.core.utils.git import get_repo_root
@@ -28,52 +26,6 @@ def slugify(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", s)
     s = re.sub(r"-+", "-", s).strip("-")
     return s or "follow-up"
-
-
-def stem_to_slug(stem: str) -> str:
-    """Extract slug from task stem.
-
-    Args:
-        stem: Task file stem (e.g., "201-wave2-my-feature" or "201.1-wave2-fix")
-
-    Returns:
-        The slug portion (e.g., "my-feature" or "fix")
-    """
-    parts = stem.split("-", 2)
-    if len(parts) >= 3:
-        return parts[2]
-    return stem
-
-
-def all_task_files() -> List[Path]:
-    """Get all task files across all states."""
-    from edison.core.config.domains.workflow import WorkflowConfig
-    
-    mgmt_paths = get_management_paths(get_root())
-    root = mgmt_paths.get_tasks_root()
-    files: List[Path] = []
-    for st in WorkflowConfig().get_states("task"):
-        d = root / st
-        if d.exists():
-            files.extend(sorted(d.glob("*.md")))
-    return files
-
-
-def similar_tasks(title: str, *, top: int = 3, threshold: float = 0.6) -> List[Dict[str, Any]]:
-    """Return up to 'top' similar existing tasks by slug similarity with scores."""
-    want = slugify(title)
-    candidates: List[Tuple[str, float]] = []
-    for f in all_task_files():
-        cand_id = f.stem
-        cand_slug = stem_to_slug(cand_id)
-        score = difflib.SequenceMatcher(None, want, cand_slug).ratio()
-        if score >= threshold:
-            candidates.append((cand_id, score))
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    out: List[Dict[str, Any]] = []
-    for cid, sc in candidates[:top]:
-        out.append({"taskId": cid, "score": round(sc, 2)})
-    return out
 
 
 def extract_wave_and_base_id(task_id: str) -> tuple[str, str]:

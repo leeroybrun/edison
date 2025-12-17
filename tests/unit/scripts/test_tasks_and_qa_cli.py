@@ -113,6 +113,17 @@ def test_qa_new_creates_file(tmp_path: Path):
     root = make_project_root(tmp_path)
     template = root / ".project" / "qa" / "TEMPLATE.md"
     template.write_text("""# PPP-waveN-slug-qa\n**Priority Slot:** PPP\n**Validator Owner:** _unassigned_\n**Status:** waiting | todo | wip | done | validated\n**Created:** YYYY-MM-DD\n**Evidence Directory:** `.project/qa/validation-evidence/task-XXXX/`\n**Continuation ID:** _none_\n""")
+    # qa new requires the task to exist.
+    (root / ".project" / "tasks" / "todo" / "150-wave1-demo.md").write_text(
+        """---
+id: "150-wave1-demo"
+title: "Demo Task"
+---
+
+# Demo Task
+""",
+        encoding="utf-8",
+    )
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
     result = run("qa", "new", ["150-wave1-demo", "--owner", "alice", "--json"], env)

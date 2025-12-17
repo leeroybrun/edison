@@ -26,7 +26,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--branch",
         type=str,
-        help="Base branch to branch from (default: main)",
+        help="Base ref to branch from (overrides config; default: current primary HEAD unless baseBranch is configured or baseBranchMode=fixed)",
     )
     parser.add_argument(
         "--path",
@@ -48,6 +48,11 @@ def main(args: argparse.Namespace) -> int:
 
 
     try:
+        cfg = worktree._config().get_worktree_config()
+        base_ref = worktree.resolve_worktree_base_ref(
+            repo_dir=worktree.get_repo_dir(), cfg=cfg, override=args.branch
+        )
+
         worktree_path, branch_name = worktree.create_worktree(
             session_id=args.session_id,
             base_branch=args.branch,
@@ -59,6 +64,8 @@ def main(args: argparse.Namespace) -> int:
             "session_id": args.session_id,
             "worktree_path": str(worktree_path) if worktree_path else None,
             "branch_name": branch_name,
+            "base_ref": base_ref,
+            "base_branch_mode": cfg.get("baseBranchMode"),
             "dry_run": args.dry_run,
         }
 
@@ -69,10 +76,12 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"Would create worktree:")
                 formatter.text(f"  Path: {worktree_path}")
                 formatter.text(f"  Branch: {branch_name}")
+                formatter.text(f"  Base: {base_ref} ({cfg.get('baseBranchMode') or 'current'})")
             else:
                 formatter.text(f"Created worktree for session: {args.session_id}")
                 formatter.text(f"  Path: {worktree_path}")
                 formatter.text(f"  Branch: {branch_name}")
+                formatter.text(f"  Base: {base_ref} ({cfg.get('baseBranchMode') or 'current'})")
 
         return 0
 

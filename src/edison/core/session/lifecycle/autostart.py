@@ -245,9 +245,12 @@ class SessionAutoStart:
 
         try:
             wt_cfg = self._session_config.get_worktree_config()
+            base_ref = worktree.resolve_worktree_base_ref(
+                repo_dir=self.session_manager.project_root, cfg=wt_cfg
+            )
             worktree_path, branch_name = worktree.create_worktree(
                 session_id,
-                base_branch=wt_cfg.get("baseBranch", "main"),
+                base_branch=base_ref,
                 dry_run=dry_run,
             )
         except Exception as exc:
@@ -263,10 +266,11 @@ class SessionAutoStart:
             # Use centralized helper to construct git metadata
             session = get_session(session_id)
             git_meta = worktree.prepare_session_git_metadata(
-                session_id, worktree_path, branch_name
+                session_id, worktree_path, branch_name, base_branch=base_ref
             )
             if isinstance(session, dict):
                 session.setdefault("git", {}).update(git_meta)
+                session["git"]["baseBranch"] = base_ref
                 save_session(session_id, session)
 
         return worktree_path, branch_name
@@ -323,6 +327,23 @@ class SessionAutoStart:
                 process_obj = launcher.launch(
                     profile, initial_prompt=prompt_text, log_path=log_path, detach=detach
                 )
+
+            # Fail closed if the orchestrator process immediately exits with an error.
+            # This prevents "successful" session creation when the orchestrator could not start.
+            if process_obj is not None:
+                # Use a short wait to reliably detect immediate failures without blocking
+                # long-running orchestrators.
+                try:
+                    import subprocess as _subprocess
+
+                    try:
+                        rc = process_obj.wait(timeout=0.75)
+                    except _subprocess.TimeoutExpired:
+                        rc = None
+                    if rc is not None and rc != 0:
+                        raise RuntimeError(f"Orchestrator exited immediately with code {rc}")
+                except Exception as exc:
+                    raise RuntimeError(f"Orchestrator failed to launch: {exc}") from exc
         else:
             # Record prompt even when not launching to aid audits
             if prompt_text is not None:
@@ -343,7 +364,7 @@ class SessionAutoStart:
         Returns:
             Result dictionary with session metadata and process info.
         """
-        pid: Optional[int] = None if (detach or not process_obj) else process_obj.pid
+        pid: Optional[int] = process_obj.pid if process_obj else None
 
         return {
             "status": "dry_run" if dry_run else "success",

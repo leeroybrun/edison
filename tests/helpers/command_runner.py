@@ -79,6 +79,12 @@ def run_script(
     if env:
         test_env.update(env)
 
+    # Ensure project name resolution is deterministic for subprocess CLIs.
+    # Many CLI behaviors (worktree base dirs, placeholders) route legacy PROJECT_NAME
+    # through config when no explicit EDISON_project__name override is present.
+    if not str(test_env.get("PROJECT_NAME", "")).strip():
+        test_env["PROJECT_NAME"] = "example-project"
+
     # Ensure the subprocess can import the in-repo `edison` package.
     #
     # In-process tests add `repo/src` to sys.path (see tests/conftest.py), but subprocesses

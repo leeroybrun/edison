@@ -145,6 +145,7 @@ def run_command(
     capture_output: bool = False,
     text: bool = True,
     check: bool = False,
+    input: Any = None,
 ) -> subprocess.CompletedProcess:
     """
     Thin wrapper around subprocess.run with safe defaults.
@@ -173,6 +174,7 @@ def run_command(
         capture_output=capture_output,
         text=text,
         check=check,
+        input=input,
     )
 
 
@@ -185,6 +187,7 @@ def run_git_command(
     capture_output: bool = False,
     text: bool = True,
     check: bool = False,
+    allow_branch_switch: bool = False,
 ) -> subprocess.CompletedProcess:
     """
     Run a git command using the config-driven timeout bucket.
@@ -201,6 +204,16 @@ def run_git_command(
     Returns:
         CompletedProcess from subprocess.run
     """
+    if not allow_branch_switch and cmd and cmd[0] == "git":
+        # Edison must never change branches via checkout/switch. All branch creation
+        # happens through `git worktree add -b ...` (session worktrees).
+        for token in cmd[1:]:
+            if token in {"checkout", "switch"}:
+                raise ValueError(
+                    "Forbidden git branch switch detected (checkout/switch). "
+                    "Edison must not change branches; use Edison worktree/session CLIs instead."
+                )
+
     timeout_config = TimeoutsConfig(repo_root=Path(cwd) if cwd else None)
     default_timeout = timeout_config.git_operations_seconds
 
@@ -264,6 +277,7 @@ def run_ci_command_from_string(
     capture_output: bool = False,
     text: bool = True,
     check: bool = False,
+    input: Any = None,
 ) -> subprocess.CompletedProcess:
     """
     Execute a CI command defined as a shell-style string plus extra args.
@@ -294,6 +308,7 @@ def run_ci_command_from_string(
         capture_output=capture_output,
         text=text,
         check=check,
+        input=input,
     )
 
 

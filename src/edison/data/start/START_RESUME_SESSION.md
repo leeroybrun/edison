@@ -1,5 +1,7 @@
 # Resume Session
 
+{{include:start/includes/WORKTREE_CONFINEMENT.md}}
+
 ## Session Recovery
 
 You are resuming session: `{{session_id}}`

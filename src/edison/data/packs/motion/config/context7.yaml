@@ -2,7 +2,7 @@ context7:
   packages:
     motion:
       version: "12.23.24"
-      context7Id: "/framer/motion"
+      context7Id: "/websites/motion-dev-docs"
       criticalChanges:
         - "API changes (formerly Framer Motion)"
         - "New animation syntax"
@@ -10,5 +10,4 @@ context7:
         - "animations"
         - "gestures"
         - "layout animations"
-
 

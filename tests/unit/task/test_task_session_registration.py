@@ -133,9 +133,37 @@ def test_claim_task_registers_in_session(isolated_project_env):
     assert loaded_task.session_id == session_id
 
 
+def test_claim_task_stamps_owner_when_missing(isolated_project_env):
+    """Claiming a global task should stamp an owner when requested."""
+    project_root = isolated_project_env
+    session_id = "test-session-003b"
+    task_id = "T-003b"
+
+    session_repo = SessionRepository(project_root)
+    session_repo.create(Session.create(session_id, state="wip"))
+
+    workflow = TaskQAWorkflow(project_root)
+    workflow.create_task(
+        task_id=task_id,
+        title="Test Task",
+        session_id=None,
+        owner=None,
+        create_qa=False,
+    )
+
+    workflow.claim_task(task_id, session_id, owner="claimed-user")
+
+    task_repo = TaskRepository(project_root=project_root)
+    loaded_task = task_repo.get(task_id)
+    assert loaded_task is not None
+    assert loaded_task.metadata.created_by == "claimed-user"
+
+
 def _create_implementation_report(project_root: Path, task_id: str) -> None:
     """Create minimal implementation report to satisfy can_finish_task guard."""
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.config.domains.qa import QAConfig
+
     ev_svc = EvidenceService(task_id, project_root=project_root)
     round_dir = ev_svc.get_evidence_root() / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
@@ -150,6 +178,12 @@ summary: "Test implementation"
 """,
         encoding="utf-8",
     )
+
+    # Create required command evidence files (defined in config; no hardcoding).
+    required = QAConfig(repo_root=project_root).get_required_evidence_files()
+    for filename in required:
+        p = round_dir / str(filename)
+        p.write_text("PASS\n", encoding="utf-8")
 
 
 def test_complete_task_updates_session(isolated_project_env):

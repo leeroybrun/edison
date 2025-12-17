@@ -45,6 +45,10 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 
 {{include-section:guidelines/includes/CONFIGURATION.md#principles}}
 
+---
+
+{{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#git-safety}}
+
 {{include-section:guidelines/includes/EPHEMERAL_SUMMARIES.md#principles}}
 
 ---

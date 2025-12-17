@@ -393,7 +393,7 @@ class TaskRepository(
         """Render the task body from the composed template."""
         tpl_path = self._config.template_path()
         if not tpl_path.exists():
-            tpl_path = get_data_path("templates", "documents", "TASK.md")
+            tpl_path = get_data_path("templates") / "documents" / "TASK.md"
         raw = tpl_path.read_text(encoding="utf-8")
         body = strip_frontmatter_block(raw)
         return render_template_text(

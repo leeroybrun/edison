@@ -239,6 +239,9 @@ def test_autostart_config_driven_not_hardcoded(session_git_repo_path):
     # baseBranch should come from config, not hardcoded "main"
     from edison.core.session._config import get_config
     cfg = get_config(session_git_repo_path)
-    expected_base = cfg.get_worktree_config().get("baseBranch", "main")
+    from edison.core.session import worktree as session_worktree
+    expected_base = session_worktree.resolve_worktree_base_ref(
+        repo_dir=session_git_repo_path, cfg=cfg.get_worktree_config()
+    )
 
     assert git_meta["baseBranch"] == expected_base

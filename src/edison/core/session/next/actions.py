@@ -210,7 +210,11 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
                 if not isinstance(v, dict):
                     continue
                 if v.get("context7Required") and isinstance(v.get("context7Packages"), list):
-                    required_pkgs |= {str(p) for p in v.get("context7Packages") if p}
+                    required_pkgs |= {
+                        str(p).strip()
+                        for p in v.get("context7Packages")
+                        if p and str(p).strip() and str(p).strip() != "+"
+                    }
 
             if required_pkgs:
                 ev_svc_ctx7 = EvidenceService(task_id)

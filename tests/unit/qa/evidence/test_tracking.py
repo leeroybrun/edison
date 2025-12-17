@@ -27,9 +27,17 @@ def test_tracking_complete_marks_implementation_complete(isolated_project_env: P
     from edison.core.qa.evidence import EvidenceService
 
     tracking.start_implementation("T-TRACK-2", project_root=isolated_project_env, model="codex")
+
+    # Simulate completion from a different process (CLI invocations are separate processes).
+    ev = EvidenceService("T-TRACK-2", project_root=isolated_project_env)
+    data = ev.read_implementation_report(round_num=1)
+    assert isinstance(data, dict)
+    assert isinstance(data.get("tracking"), dict)
+    data["tracking"]["processId"] = os.getpid() + 1
+    ev.write_implementation_report(data, round_num=1)
+
     tracking.complete("T-TRACK-2", project_root=isolated_project_env)
 
-    ev = EvidenceService("T-TRACK-2", project_root=isolated_project_env)
     data = ev.read_implementation_report(round_num=1)
     assert data["completionStatus"] == "complete"
     assert data["tracking"]["completedAt"]

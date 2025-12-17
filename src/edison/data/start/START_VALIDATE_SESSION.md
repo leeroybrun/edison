@@ -1,5 +1,7 @@
 # Validation Session
 
+{{include:start/includes/WORKTREE_CONFINEMENT.md}}
+
 ## Purpose
 
 This session is for running validators only, not implementation.

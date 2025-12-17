@@ -21,3 +21,5 @@ overlay_type: extend
 {{include-section:packs/better-auth/guidelines/includes/better-auth/security-best-practices.md#patterns}}
 
 <!-- /extend -->
+
+

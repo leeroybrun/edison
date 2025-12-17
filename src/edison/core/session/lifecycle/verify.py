@@ -162,6 +162,10 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     if plan.get("blockers") or plan.get("reportsMissing"):
         failures.append("Unresolved blockers or missing reports remain; resolve automation/evidence before closing.")
         health["categories"]["blockersOrReportsMissing"] = True
+        for blocker in plan.get("blockers") or []:
+            health["details"].append({"kind": "blocker", "blocker": blocker})
+        for report in plan.get("reportsMissing") or []:
+            health["details"].append({"kind": "reportsMissing", "report": report})
 
     if failures:
         health["ok"] = False

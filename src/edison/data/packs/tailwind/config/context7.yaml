@@ -2,7 +2,7 @@ context7:
   packages:
     tailwindcss:
       version: "4.0.0"
-      context7Id: "/tailwindlabs/tailwindcss"
+      context7Id: "/tailwindlabs/tailwindcss.com"
       criticalChanges:
         - "Major syntax differences from earlier versions"
         - "CSS-first configuration"
@@ -10,5 +10,4 @@ context7:
         - "v4 syntax"
         - "configuration"
         - "utilities"
-
 
