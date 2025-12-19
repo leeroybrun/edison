@@ -24,7 +24,7 @@ For agent-specific workflow integration (tracking, evidence directories, and con
 - Deprecation warnings
 
 <!-- section: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
-**Context7 evidence:** Create `context7-<package>.txt` markers for every Context7‑detected package; guards block `wip→done` if missing.
+**Context7 evidence:** Create `context7-<package>.txt` markers for every Context7‑detected package; guards block `{{fn:semantic_state("task","wip")}}→{{fn:semantic_state("task","done")}}` if missing.
 <!-- /section: RULE.CONTEXT7.EVIDENCE_REQUIRED.SHORT -->
 
 <!-- section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
@@ -33,7 +33,7 @@ For agent-specific workflow integration (tracking, evidence directories, and con
   - `{{fn:evidence_root}}/<task-id>/round-<N>/context7-<package>.txt`
   - Briefly list topics queried and the doc version/date.
 - To inspect the merged Context7 configuration: `edison config show context7 --format yaml`
-- Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.
+- Guards treat missing markers as a blocker for `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}` on tasks that touch these packages.
 - Notes in task files (e.g., "Context7 (<library>)") are NOT accepted as evidence.
 - When HMAC stamping is enabled in config, include the stamped digest inside each marker.
 <!-- /section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->

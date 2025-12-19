@@ -8,10 +8,10 @@ Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-re
 
 - Evidence root: `{{fn:evidence_root}}/<task-id>/`
 - Round directory: `round-<N>/` (append-only; never overwrite old rounds)
-- Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `implementation-report.md`)
+- Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `{{config.validation.artifactPaths.implementationReportFile}}`)
 
 Example path:
-- `{{fn:evidence_root}}/<task-id>/round-1/implementation-report.md`
+- `{{fn:evidence_root}}/<task-id>/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
 
 ## Schema (single source of truth)
 

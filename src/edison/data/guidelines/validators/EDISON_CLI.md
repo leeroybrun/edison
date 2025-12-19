@@ -20,7 +20,7 @@ edison qa validate <task-id> [--round <N>] [--session <session-id>] [--execute]
 ```
 
 **Purpose**: Validate validator reports for a task or bundle
-**When to use**: After implementation is complete and task is in `done` state
+**When to use**: After implementation is complete and task is in `{{fn:semantic_state("task","done")}}` state
 
 **Options:**
 - `--round`: Round number (defaults to latest)
@@ -156,7 +156,7 @@ Validator report format is defined in:
 # 1. Check task is ready for validation
 edison task status TASK-123
 
-# Task should be in 'done' state with implementation-report.md
+# Task should be in '{{fn:semantic_state("task","done")}}' state with {{config.validation.artifactPaths.implementationReportFile}}
 
 # 2. Inspect validation bundle
 edison qa bundle TASK-123
@@ -216,9 +216,9 @@ edison qa validate TASK-123 --round 2
 
 ## Output Locations
 
-**Validator reports**: `{{fn:evidence_root}}/<task-id>/round-N/<validator>.json`
+**Validator reports**: `{{fn:evidence_root}}/<task-id>/round-N/validator-<id>-report.md`
 **Bundle summary**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.bundleSummaryFile}}`
-**Implementation report**: `{{fn:evidence_root}}/<task-id>/round-N/implementation-report.md`
+**Implementation report**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.implementationReportFile}}`
 
 ---
 
@@ -269,7 +269,7 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active 
 3. **Use correct severities**: Reserve `blocking` for critical issues
 4. **Write clear summaries**: Help developers understand findings
 5. **Track continuations**: Use `continuationId` for multi-round validation
-6. **Check all evidence**: Review implementation-report.md first
+6. **Check all evidence**: Review `{{config.validation.artifactPaths.implementationReportFile}}` first
 7. **Validate bundles holistically**: Check integration, not just individual tasks
 
 ---

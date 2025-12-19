@@ -9,12 +9,6 @@ validation:
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
 
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
-
   execution:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators when mode=parallel
@@ -94,7 +88,7 @@ validation:
       wave: critical
       always_run: true
       blocking: true
-      timeout: 300
+      timeout: 600
       context7_required: true
       context7_packages: []
       triggers: ["*"]

@@ -3,7 +3,7 @@
 > Purpose: step-by-step guide for orchestrators to launch validators, read results, and drive rejection/escalation loops without hardcoded rosters. The active validator list, models, and trigger patterns are always in the dynamic roster at `AVAILABLE_VALIDATORS.md` (generated under `{{PROJECT_EDISON_DIR}}/_generated/`).
 
 ## 0. Preconditions
-- Task is in `tasks/done/`; QA brief is in `qa/wip/` with the latest implementation evidence.
+- Task is in `{{fn:task_state_dir("done")}}/`; QA brief is in `{{fn:qa_state_dir("wip")}}/` with the latest implementation evidence.
 - Open the current roster: `AVAILABLE_VALIDATORS.md` (never assume counts or names).
 - Work from the correct session worktree and log actions in the session Activity Log.
 
@@ -25,13 +25,13 @@
 - Evidence lives in `{{fn:evidence_root}}/<task-id>/round-<N>/`.
 - Per-validator reports include `status` and `blocksOnFail`; treat any blocking failure as a hard reject.
 - `{{config.validation.artifactPaths.bundleSummaryFile}}` is the canonical summary:
-  - `approved=true` → QA may move toward `done/validated`.
-  - `approved=false` or missing → remain in `wip` and start a new round.
+  - `approved=true` → QA may move toward `{{fn:semantic_states("qa","done,validated","pipe")}}`.
+  - `approved=false` or missing → remain in `{{fn:semantic_state("qa","wip")}}` and start a new round.
 - Record outcomes in the QA brief (round, validators run, decision, links to reports) before changing task/QA states.
 
 ## 3. Handle rejection cycles
 - When any blocking validator rejects:
-  - Task stays/returns to `tasks/wip/`; QA back to `qa/waiting/`.
+  - Task stays/returns to `{{fn:task_state_dir("wip")}}/`; QA back to `{{fn:qa_state_dir("waiting")}}/`.
   - Create follow-up tasks for every blocking issue; link them in QA and the session log.
   - Maintain round history: each re-run uses a new `round-<N>` directory; never overwrite prior evidence.
 - Non-blocking issues still require follow-up tasks before promotion; keep them unlinked if policy forbids linking optional issues.

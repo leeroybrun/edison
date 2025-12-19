@@ -35,6 +35,7 @@ class WaveResult:
     blocking_passed: bool = True
     blocking_failed: list[str] = field(default_factory=list)
     delegated: list[str] = field(default_factory=list)
+    delegated_blocking: list[str] = field(default_factory=list)
 
     @property
     def all_passed(self) -> bool:
@@ -253,7 +254,7 @@ class ValidationExecutor:
                 result.blocking_failed.extend(wave_result.blocking_failed)
 
             # Track delegated validators
-            result.delegated_validators.extend(wave_result.delegated)
+            result.delegated_validators.extend(wave_result.delegated_blocking)
 
             # Stop on blocking failure if needed
             if not wave_result.blocking_passed:
@@ -440,6 +441,7 @@ class ValidationExecutor:
         wave_result = WaveResult(
             wave=wave,
             delegated=[d.id for d in delegated],
+            delegated_blocking=[d.id for d in delegated if d.blocking],
         )
         wave_result.validators.extend(existing_results)
 

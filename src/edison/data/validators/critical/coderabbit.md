@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/validators.md}}
+Open and follow: `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md`
 
 ---
 

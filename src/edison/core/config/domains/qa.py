@@ -95,19 +95,52 @@ class QAConfig(BaseDomainConfig):
             List of required evidence filenames.
 
         Raises:
-            RuntimeError: If validation.requiredEvidenceFiles is not configured.
+            RuntimeError: If required evidence files are not configured.
         """
-        files = self.validation_config.get("requiredEvidenceFiles")
+        evidence = self.validation_config.get("evidence", {}) or {}
+        files = None
+        if isinstance(evidence, dict):
+            files = evidence.get("requiredFiles")
+
+        # Backward compatibility (legacy location).
         if not files:
+            files = self.validation_config.get("requiredEvidenceFiles")
+
+        if not files:
+            # Fail closed: evidence requirements must be explicitly configured.
             raise RuntimeError(
-                "validation.requiredEvidenceFiles missing in configuration; "
-                "define it in qa.yaml or <project-config-dir>/config/qa.yaml"
+                "Required evidence files missing in configuration; "
+                "define validation.evidence.requiredFiles in qa.yaml "
+                "(or override in <project-config-dir>/config/qa.yaml)"
             )
         if not isinstance(files, list):
             raise RuntimeError(
-                f"validation.requiredEvidenceFiles must be a list, got {type(files).__name__}"
+                f"validation.evidence.requiredFiles must be a list, got {type(files).__name__}"
             )
-        return files
+
+        normalized = [str(f).strip() for f in files if f]
+        if normalized:
+            return normalized
+
+        # Final fallback: derive from evidence.files mapping (if present).
+        files_by_name = evidence.get("files") if isinstance(evidence, dict) else None
+        if isinstance(files_by_name, dict) and files_by_name:
+            preferred_order = ["type-check", "lint", "test", "build"]
+            derived: list[str] = []
+            for key in preferred_order:
+                v = files_by_name.get(key)
+                if v:
+                    derived.append(str(v).strip())
+            if not derived:
+                derived = [str(v).strip() for v in files_by_name.values() if v]
+            derived = [d for d in derived if d]
+            if derived:
+                return derived
+
+        raise RuntimeError(
+            "Required evidence files resolved to an empty list; "
+            "set validation.evidence.requiredFiles in qa.yaml"
+        )
 
     def get_max_concurrent_validators(self) -> int:
         """Return the global validator concurrency cap from configuration.

@@ -1,8 +1,6 @@
 # QA and Validation Configuration
 # Configuration for quality assurance, evidence tracking, and validation workflows
 
-version: "1.0.0"
-
 validation:
   # File context settings (used for validator triggering and rules routing).
   # These patterns exclude Edison-managed metadata/runtime artifacts so that
@@ -17,13 +15,16 @@ validation:
   # are not tied to a specific development session
   defaultSessionId: "validation-session"
 
-  # Required evidence filenames are defined canonically in `config/validators.yaml`
-  # under `validation.requiredEvidenceFiles` to avoid duplication.
-
   # Evidence collection settings
   evidence:
-    # Minimum files required for validation to proceed
-    minRequiredFiles: 4
+    # Canonical list of required evidence files (used by guards + prompts).
+    # Templates should prefer {{fn:required_evidence_files}} / {{fn:evidence_file("<name>")}}
+    # over hardcoded filenames.
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
 
     # File patterns that should be collected as evidence
     patterns:

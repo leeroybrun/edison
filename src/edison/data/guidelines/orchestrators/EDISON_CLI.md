@@ -53,7 +53,7 @@ edison session next sess-001
 edison session create [--session-id <id>]
 ```
 
-**Purpose**: Create a session record in `sessions/wip/`
+**Purpose**: Create a session record in `{{fn:session_state_dir("active")}}/`
 **When to use**: Starting a new work session
 
 **Example:**
@@ -136,8 +136,8 @@ edison task ready
 
 **Example output:**
 ```
-TASK-123  [todo]   Implement user authentication
-TASK-124  [todo]   Add email validation
+TASK-123  [{{fn:semantic_state("task","todo")}}]   Implement user authentication
+TASK-124  [{{fn:semantic_state("task","todo")}}]   Add email validation
 ```
 
 ---
@@ -148,7 +148,7 @@ TASK-124  [todo]   Add email validation
 edison task claim <task-id> [--session <session-id>]
 ```
 
-**Purpose**: Claim a task from `todo → wip` and bind to session
+**Purpose**: Claim a task from `{{fn:semantic_state("task","todo")}} → {{fn:semantic_state("task","wip")}}` and bind to session
 **When to use**: Starting work on a new task
 
 **Example:**
@@ -157,7 +157,7 @@ edison task claim TASK-123 --session sess-001
 ```
 
 **Effects:**
-- Moves task to session scope: `sessions/wip/sess-001/tasks/wip/TASK-123.md`
+- Moves task to session scope: `{{fn:session_state_dir("active")}}/sess-001/tasks/{{fn:semantic_state("task","wip")}}/TASK-123.md`
 - Stamps ownership and timestamps
 - Updates session graph
 
@@ -185,7 +185,7 @@ edison task status TASK-123 --json
 edison task ready <task-id> [--session <session-id>]
 ```
 
-**Purpose**: Move task from `wip → done` with evidence checks
+**Purpose**: Move task from `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}` with evidence checks
 **When to use**: After implementation is complete, before validation
 
 **Checks:**
@@ -200,8 +200,8 @@ edison task ready TASK-123 --session sess-001
 ```
 
 **Effects:**
-- Task moves to `done`
-- Associated QA brief moves from `waiting → todo`
+- Task moves to `{{fn:semantic_state("task","done")}}`
+- Associated QA brief moves from `{{fn:semantic_state("qa","waiting")}} → {{fn:semantic_state("qa","todo")}}`
 
 ---
 
@@ -221,19 +221,19 @@ edison qa promote <task-id> --status <state>
 **Example:**
 ```bash
 # Start validation
-edison qa promote TASK-123 --status todo
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","todo")}}
 
 # Mark validation in progress
-edison qa promote TASK-123 --status wip
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","wip")}}
 
 # Mark validation complete
-edison qa promote TASK-123 --status done
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","done")}}
 
 # Finalize after bundle approval
-edison qa promote TASK-123 --status validated
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","validated")}}
 ```
 
-**Requirements for `done → validated`:**
+**Requirements for `{{fn:semantic_state("qa","done")}} → {{fn:semantic_state("qa","validated")}}`:**
 - `{{config.validation.artifactPaths.bundleSummaryFile}}` exists
 - All required validator reports present
 - No blocking failures
@@ -251,7 +251,7 @@ edison qa validate <task-id> --execute
 ```
 
 **Purpose**: View and execute validators for a task
-**When to use**: After task is in `done` state, to run validation
+**When to use**: After task is in `{{fn:semantic_state("task","done")}}` state, to run validation
 
 **How validators are selected:**
 1. **Always-run validators**: `always_run: true` in config (critical wave)
@@ -413,7 +413,7 @@ edison rules show-for-context <category> <context>
 edison rules show-for-context guidance delegation
 
 # State transition rules
-edison rules show-for-context transition "wip→done"
+edison rules show-for-context transition "wip->done"
 
 # Context budget rules
 edison rules show-for-context context budget
@@ -452,13 +452,13 @@ edison task status TASK-123
 edison task ready TASK-123 --session sess-001
 
 # 3. Start validation
-edison qa promote TASK-123 --status todo
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","todo")}}
 
 # 4. Delegate to validator
 # (use Task tool to delegate to code-reviewer)
 
 # 5. After validation passes, promote QA
-edison qa promote TASK-123 --status validated
+edison qa promote TASK-123 --status {{fn:semantic_state("qa","validated")}}
 
 # 6. Check session state
 edison session next sess-001
@@ -500,7 +500,7 @@ edison session next sess-001
 3. **Delegate 80%+ of work**: Orchestrators coordinate, agents implement
 4. **Keep context minimal**: Use snippets, not full files (<50K tokens)
 5. **Parallelize when possible**: Launch concurrent work for independent tasks
-6. **Validate before promoting**: Ensure validation passes before moving to `validated`
+6. **Validate before promoting**: Ensure validation passes before moving to `{{fn:semantic_state("qa","validated")}}`
 7. **Monitor session state**: Use `session status` to track progress
 
 ---

@@ -24,7 +24,7 @@ echo "Exit code: $?" >> {{fn:evidence_file("type-check")}}
 
 ## Checks (blocking)
 
-- `strict` mode enabled and `npm run typecheck` passes.
+- `strict` mode enabled and `{{fn:ci_command("type-check")}}` passes.
 - No `any` unless justified with a comment and covered by tests.
 - No `@ts-ignore` / `@ts-expect-error` without a narrow scope and a tracked reason.
 - Public APIs have stable, explicit types (prefer return types on exported functions).

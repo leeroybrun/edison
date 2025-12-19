@@ -39,7 +39,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 #### Phase 2: Produce the Implementation Report (required)
 
 Create or update the implementation report for the current round:
-- **Path**: `{{fn:evidence_root}}/<task-id>/round-<N>/implementation-report.md` (filename is config-driven; default is `implementation-report.md`).
+- **Path**: `{{fn:evidence_root}}/<task-id>/round-<N>/{{config.validation.artifactPaths.implementationReportFile}}` (filename is config-driven; default is `{{config.validation.artifactPaths.implementationReportFile}}`).
 - **Schema (LLM reference)**: `{{fn:project_config_dir}}/_generated/schemas/reports/implementation-report.schema.yaml`
 - Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
@@ -74,7 +74,7 @@ edison session track complete --task <task-id>
 
 ## Evidence Required (minimum)
 
-- Implementation report (`implementation-report.md`) exists for the latest round.
+- Implementation report (`{{config.validation.artifactPaths.implementationReportFile}}`) exists for the latest round.
 - Automation evidence files exist per project config (required: {{fn:required_evidence_files("inline")}}).
 - Context7 markers exist for any required packages (if applicable).
 

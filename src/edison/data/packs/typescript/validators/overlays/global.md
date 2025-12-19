@@ -15,6 +15,6 @@
 - For public APIs, use interfaces/types with clear generics.
 
 ### Linting & Type-Checking
-- `npm run typecheck` must pass with zero errors.
+- `{{fn:ci_command("type-check")}}` must pass with zero errors.
 - No `@ts-ignore` or `@ts-expect-error` without issue link and scope.
 <!-- /extend -->

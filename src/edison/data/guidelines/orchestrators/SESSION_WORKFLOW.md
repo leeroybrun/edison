@@ -30,7 +30,7 @@ Sessions transition through three states:
 - **closing** (located in `{{fn:session_state_dir("closing")}}/`)
 - **validated** (located in `{{fn:session_state_dir("validated")}}/`)
 
-Directory Naming: The directory names (`wip/`, `done/`) reflect legacy nomenclature but state metadata is canonical. Always use state names (active/closing/validated) in code and configuration.
+Directory naming: on-disk directories may reflect legacy nomenclature, but state metadata is canonical. Always use logical state names (active/closing/validated) in code and configuration.
 
 ## Session Isolation (new)
 
@@ -43,7 +43,7 @@ Session state names map to on-disk directories as follows:
 - <!-- section: RULE.SESSION.ISOLATION -->
 - Claiming a task into a session physically moves it under `{{fn:session_state_dir("active")}}/<session-id>/tasks/<status>/` (session state: active). Paired QA lives under `{{fn:session_state_dir("active")}}/<session-id>/qa/<status>/`.
 - While the session is active, operate on the session-scoped queues by passing `--session <id>` (or set your project’s session-owner environment variable so CLIs auto-detect).
-- Other agents must never touch items under another session’s `sessions/wip/<id>/` (active) tree. Global queues contain only unclaimed work.
+- Other agents must never touch items under another session’s `{{fn:session_state_dir("active")}}/<id>/` (active) tree. Global queues contain only unclaimed work.
 - Session completion restores all session-scoped files back to the global queues, preserving final status.
 - <!-- /section: RULE.SESSION.ISOLATION -->
 
@@ -53,7 +53,7 @@ Session state names map to on-disk directories as follows:
 - Stale detection cadence is configured via `session.stale_check_interval_hours` for schedulers.
 - When a session exceeds the timeout window (based on the most recent of `lastActive`, `claimedAt`, or `createdAt`):
   - `edison session cleanup-expired` detects and automatically cleans up expired sessions.
-  - Cleanup restores all session-scoped tasks/QA back to the global queues and moves the session JSON from `sessions/wip/` → `sessions/done/`.
+  - Cleanup restores all session-scoped tasks/QA back to the global queues and moves the session JSON from `{{fn:session_state_dir("active")}}/` → `{{fn:session_state_dir("closing")}}/`.
   - `meta.expiredAt` is stamped and an Activity Log entry is appended for auditability.
 - All claim paths fail-closed: `edison task claim` refuses operations into an expired session.
 - Clock skew handling: small positive skew (≤ 5 minutes) in timestamps is tolerated; otherwise the detector treats timestamps conservatively and never leaves sessions indefinitely active.
@@ -61,15 +61,15 @@ Session state names map to on-disk directories as follows:
 ## Quick checklist (fail-closed) - ORCHESTRATOR
 
 - [ ] Session record in `{{fn:session_state_dir("active")}}/` (active) is current (Owner, Last Active, Activity Log).
-- [ ] Every claimed task has a matching QA brief (in `qa/waiting|todo|wip|done`).
+- [ ] Every claimed task has a matching QA brief (state: {{fn:state_names("qa")}}).
 - [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
 - [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
 - [ ] Validators run in batched waves up to concurrency cap; verdicts recorded in QA docs.
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
-- [ ] Rejections keep tasks in `tasks/wip/` and QA in `qa/waiting/`. Follow-up tasks created immediately.
-- [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
+- [ ] Rejections keep tasks in `{{fn:task_state_dir("wip")}}/` and QA in `{{fn:qa_state_dir("waiting")}}/`. Follow-up tasks created immediately.
+- [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `{{fn:semantic_state("task","validated")}}`. Child tasks can be `{{fn:semantic_states("task","done,validated","pipe")}}`. Parent QA must be `{{fn:semantic_states("qa","done,validated","pipe")}}`. Child QA should be `{{fn:semantic_state("qa","done")}}` when approved in the parent bundle (or `{{fn:semantic_states("qa","waiting,todo","pipe")}}` only if intentionally deferred outside the bundle).
 - [ ] State transitions follow `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
 - [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
@@ -94,14 +94,14 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 | Task State | Required QA State | What to do | Scripts & Notes |
 |------------|------------------|------------|-----------------|
-| `tasks/todo/` (new follow-ups created during the session) | `qa/waiting/` | Decide whether to claim now. If claimed, move task → `wip/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison task status <id> --status wip`<br/>`edison qa new <id> --session <session-id>` |
-| `tasks/wip/` | `qa/waiting/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
-| `tasks/wip/` (ready for validation) | `qa/todo/` | Move QA to `todo/` when implementation is in `done/`. Do **not** move the task to `done/` until QA is ready. | `edison qa promote <task-id> --status todo` |
-| `tasks/done/` | `qa/wip/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote <task-id> --status wip` to begin validation. |
-| `tasks/wip/` (after rejection) | `qa/waiting/` | Task returns/stays in `wip/` until fixes are validated. QA re-enters `waiting/` with a “Round N” section summarizing findings. | Spawn follow-ups in `tasks/todo/` + `qa/waiting/` immediately; link them in both task + QA documents. |
-| `tasks/validated/` | `qa/validated/` or `qa/done/` | Only promote when **all** blocking validators approve and evidence is linked. Then update the session Activity Log and remove the task from the scope list. | `edison session verify --phase closing` transitions the session to closing, then `edison session close <session-id>` moves the session to `sessions/validated/`. |
+| `{{fn:task_state_dir("todo")}}/` (new follow-ups created during the session) | `{{fn:qa_state_dir("waiting")}}/` | Decide whether to claim now. If claimed, move task → `{{fn:semantic_state("task","wip")}}/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison task status <id> --status {{fn:semantic_state("task","wip")}}`<br/>`edison qa new <id> --session <session-id>` |
+| `{{fn:task_state_dir("wip")}}/` | `{{fn:qa_state_dir("waiting")}}/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
+| `{{fn:task_state_dir("wip")}}/` (ready for validation) | `{{fn:qa_state_dir("todo")}}/` | Move QA to `{{fn:semantic_state("qa","todo")}}/` when implementation is in `{{fn:semantic_state("task","done")}}/`. Do **not** move the task to `{{fn:semantic_state("task","done")}}/` until QA is ready. | `edison qa promote <task-id> --status {{fn:semantic_state("qa","todo")}}` |
+| `{{fn:task_state_dir("done")}}/` | `{{fn:qa_state_dir("wip")}}/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote <task-id> --status {{fn:semantic_state("qa","wip")}}` to begin validation. |
+| `{{fn:task_state_dir("wip")}}/` (after rejection) | `{{fn:qa_state_dir("waiting")}}/` | Task returns/stays in `{{fn:semantic_state("task","wip")}}/` until fixes are validated. QA re-enters `{{fn:semantic_state("qa","waiting")}}/` with a “Round N” section summarizing findings. | Spawn follow-ups in `{{fn:task_state_dir("todo")}}/` + `{{fn:qa_state_dir("waiting")}}/` immediately; link them in both task + QA documents. |
+| `{{fn:task_state_dir("validated")}}/` | `{{fn:qa_state_dir("validated")}}/` or `{{fn:qa_state_dir("done")}}/` | Only promote when **all** blocking validators approve and evidence is linked. Then update the session Activity Log and remove the task from the scope list. | `edison session verify --phase closing` transitions the session to closing, then `edison session close <session-id>` moves the session to `{{fn:session_state_dir("validated")}}/`. |
 
-> 💡 The board is bidirectional: any time a file is in the wrong combination (e.g., task in `done/` but QA still in `waiting/`), fix the mismatch before proceeding.
+> 💡 The board is bidirectional: any time a file is in the wrong combination (e.g., task in `{{fn:semantic_state("task","done")}}/` but QA still in `{{fn:semantic_state("qa","waiting")}}/`), fix the mismatch before proceeding.
 
 ### Hierarchy & State Machine
 
@@ -109,7 +109,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 <!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
-- Before promoting a task to `done/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
+- Before promoting a task to `{{fn:semantic_state("task","done")}}/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `{{fn:semantic_states("task","done,validated","pipe")}}`).
 - Before invoking validators, run `edison qa bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
 - Use `edison session status` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
@@ -122,15 +122,15 @@ All task/QA moves MUST go through guarded CLIs (`edison task status`, `edison qa
 <!-- /section: RULE.GUARDS.NO_MANUAL_MOVES -->
 
 <!-- section: RULE.QA.PAIR_ON_WIP -->
-Create and pair a QA brief (`qa/waiting/`) as soon as a task enters `tasks/wip/`. Do not defer QA creation to later phases.
+Create and pair a QA brief (`{{fn:qa_state_dir("waiting")}}/`) as soon as a task enters `{{fn:task_state_dir("wip")}}/`. Do not defer QA creation to later phases.
 <!-- /section: RULE.QA.PAIR_ON_WIP -->
 
 <!-- section: RULE.STATE.NO_SKIP -->
-State transitions must be adjacent per the state machine; skipping states (e.g., `todo → validated`) is not allowed.
+State transitions must be adjacent per the state machine; skipping states (e.g., `{{fn:semantic_state("task","todo")}} → {{fn:semantic_state("task","validated")}}`) is not allowed.
 <!-- /section: RULE.STATE.NO_SKIP -->
 
 <!-- section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
-Close a session only when all scoped tasks are `validated`, paired QA are `done|validated`, and no unresolved blockers or report/schema errors remain.
+Close a session only when all scoped tasks are `{{fn:semantic_state("task","validated")}}`, paired QA are `{{fn:semantic_states("qa","done,validated","pipe")}}`, and no unresolved blockers or report/schema errors remain.
 <!-- /section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
 
 ## 1. Keep the session record alive
@@ -182,7 +182,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
    ```
 
 4. **When sub-agent reports back:**
-   - Review their implementation report at `{{fn:evidence_root}}/<task-id>/round-1/implementation-report.md`
+   - Review their implementation report at `{{fn:evidence_root}}/<task-id>/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
    - Check for blockers, follow-ups, completion status
    - Store `continuation_id` in task file and session record
 
@@ -204,16 +204,16 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 1. **Review implementation report** for blockers and follow-ups.
 
 2. **Spawn follow-up tasks** (if any discovered):
-   - Create in `tasks/todo/` with paired QA in `qa/waiting/`
+   - Create in `{{fn:task_state_dir("todo")}}/` with paired QA in `{{fn:qa_state_dir("waiting")}}/`
    - Link to parent via `edison task link`
-   - Decide if they belong in current session (claim now) or future session (leave in todo/)
+   - Decide if they belong in current session (claim now) or future session (leave in `{{fn:semantic_state("task","todo")}}/`)
 
 3. **Update session Activity Log** with implementation milestone.
 
 4. **When ALL related work is done** (task + all follow-ups):
    - Run `edison qa bundle <root-task-id>` to generate validation manifest
    - Paste manifest into root task's QA brief
-   - Move QA from `waiting/` → `todo/` to signal ready for validation
+   - Move QA from `{{fn:semantic_state("qa","waiting")}}/` → `{{fn:semantic_state("qa","todo")}}/` to signal ready for validation
 
 ### 2.4. Verification Before Validation
 
@@ -223,13 +223,13 @@ edison task ready <task-id> --session <session-id>
 ```
 
 This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
-- ✅ The latest round contains a non-empty implementation report (`implementation-report.md` by default; config-driven)
+- ✅ The latest round contains a non-empty implementation report (`{{config.validation.artifactPaths.implementationReportFile}}`; config-driven)
 - ✅ Automation evidence files exist per project config (required: {{fn:required_evidence_files("inline")}})
 - ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
-- ✅ QA brief is ready to move `waiting → todo` once the task is `done`
+- ✅ QA brief is ready to move `{{fn:semantic_state("qa","waiting")}} → {{fn:semantic_state("qa","todo")}}` once the task is `{{fn:semantic_state("task","done")}}`
 
 <!-- section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
-Parent tasks MUST NOT move to `done/` until every child task in the session scope is `done|validated`.
+Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every child task in the session scope is `{{fn:semantic_states("task","done,validated","pipe")}}`.
 <!-- /section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 
 **If guard fails:** Fix issues before proceeding. Guard errors are explicit about what's missing.
@@ -271,14 +271,14 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 ### 3.2. Prepare for Validation
 
 1. **Verify task is ready:**
-   - Task in `tasks/done/`
-   - QA in `qa/todo/`
+   - Task in `{{fn:task_state_dir("done")}}/`
+   - QA in `{{fn:qa_state_dir("todo")}}/`
    - Implementation report complete with tracking stamps
    - Automation evidence files present
 
 2. **Move QA to wip:**
    ```bash
-   edison qa promote <task-id> --status wip
+   edison qa promote <task-id> --status {{fn:semantic_state("qa","wip")}}
    ```
    This signals validation has started.
 
@@ -296,20 +296,20 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ```bash
 # Global Validator (Model 1)
-<validator-cli> --model <model-1> --role validator-<model-1>-global --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
+<validator-cli> --model <model-1> --role validator-<model-1>-global --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 
 # Global Validator (Model 2)
-<validator-cli> --model <model-2> --role validator-<model-2>-global --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
+<validator-cli> --model <model-2> --role validator-<model-2>-global --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 ```
 
 #### Wave 2: Critical Validators (MANDATORY, BLOCKING)
 
 ```bash
 # Security
-<validator-cli> --model <model> --role validator-security --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-security --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 
 # Performance
-<validator-cli> --model <model> --role validator-performance --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-performance --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 ```
 
 #### Wave 3: Specialized Validators (TRIGGERED, BLOCKING IF `blocksOnFail=true`)
@@ -318,7 +318,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ```bash
 # Specialized Validators (triggered by configured file patterns)
-<validator-cli> --model <model> --role validator-<type> --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-<type> --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 
 # Check orchestrator manifest for active pack validators and their trigger patterns
 ```
@@ -424,22 +424,22 @@ edison session verify <session-id>
 
 #### If ALL Blocking Validators Approve:
 
-1. **Move task:** `tasks/done/` → `tasks/validated/`
-2. **Move QA:** `qa/wip/` → `qa/done/`
+1. **Move task:** `{{fn:task_state_dir("done")}}/` → `{{fn:task_state_dir("validated")}}/`
+2. **Move QA:** `{{fn:qa_state_dir("wip")}}/` → `{{fn:qa_state_dir("done")}}/`
 3. **Update session Activity Log** with validation milestone
 4. **Update QA brief** with final "Validator Findings & Verdicts" section summarizing all reports
 
 #### If ANY Blocking Validator Rejects:
 
-1. **Keep task in:** `tasks/wip/` (or return from `done/` to `wip/`)
-2. **Move QA:** `qa/wip/` → `qa/waiting/`
+1. **Keep task in:** `{{fn:task_state_dir("wip")}}/` (or return from `{{fn:semantic_state("task","done")}}` to `{{fn:semantic_state("task","wip")}}`)
+2. **Move QA:** `{{fn:qa_state_dir("wip")}}/` → `{{fn:qa_state_dir("waiting")}}/`
 3. **Add "Round N" section to QA brief** with:
    - Date/time
    - Status: REJECTED
    - Validator findings (blocking issues)
    - Follow-up task IDs
 4. **Spawn follow-up tasks:**
-   - Create in `tasks/todo/` with paired QA in `qa/waiting/`
+   - Create in `{{fn:task_state_dir("todo")}}/` with paired QA in `{{fn:qa_state_dir("waiting")}}/`
    - Link to parent
    - Decide if current session or future session
 5. **Update session Activity Log** with rejection and follow-ups
@@ -487,26 +487,26 @@ edison session verify <session-id>
 > - `edison session track heartbeat` - Not typically needed (validators should complete quickly)
 
 ## 4. Handling rejections & follow-ups
-1. Rejected tasks **stay** in `{{fn:tasks_root}}/wip/`. Never move them back to `todo/`—they are still active work.
-2. Move the QA file to `qa/waiting/` and add a “Round N” section capturing:
+1. Rejected tasks **stay** in `{{fn:task_state_dir("wip")}}/`. Never move them back to `{{fn:semantic_state("task","todo")}}/`—they are still active work.
+2. Move the QA file to `{{fn:qa_state_dir("waiting")}}/` and add a “Round N” section capturing:
    - Date/time
    - Status (`REJECTED`)
    - Validator findings
    - Follow-up task IDs
 3. Create follow-up tasks with numbering gaps (≥50). Each follow-up gets:
-   - Task file in `tasks/todo/`
-   - QA brief in `qa/waiting/`
+   - Task file in `{{fn:task_state_dir("todo")}}/`
+   - QA brief in `{{fn:qa_state_dir("waiting")}}/`
    - References back to the originating QA and session file
 4. Decide whether the follow-up belongs in the current session:
    - If yes, claim it immediately (intake-style) and add it to the session scope.
-   - If no, leave it in `tasks/todo/` for a future session but document the handoff.
-5. After fixes are implemented, move the parent task to `done/`, QA to `todo/`, and re-run the validator waves (Round 2, Round 3, etc.).
+   - If no, leave it in `{{fn:task_state_dir("todo")}}/` for a future session but document the handoff.
+5. After fixes are implemented, move the parent task to `{{fn:semantic_state("task","done")}}/`, QA to `{{fn:semantic_state("qa","todo")}}/`, and re-run the validator waves (Round 2, Round 3, etc.).
 
 <!-- section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 ### Linking semantics for follow-ups (fail-closed)
-- Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done` or `validated`.
+- Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `{{fn:semantic_states("task","done,validated","pipe")}}`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
-- The readiness gate runs `edison task ensure_followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
+- The readiness gate runs `edison task ensure_followups --source implementation --enforce` and then enforces `childIds` readiness before `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}`.
 <!-- /section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 
 <!-- section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
@@ -516,21 +516,21 @@ edison session verify <session-id>
 <!-- /section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
 
 ### Parent Requeue (auto‑suggested)
-- When a parent task is set to `blocked` and all its child follow‑ups are `done` or `validated`, the Active Session "next" plan will suggest:
-  - `task.unblock.wip` → `edison task status <parent> --status wip`
+- When a parent task is set to `{{fn:semantic_state("task","blocked")}}` and all its child follow‑ups are `{{fn:semantic_states("task","done,validated","pipe")}}`, the Active Session "next" plan will suggest:
+  - `task.unblock.wip` → `edison task status <parent> --status {{fn:semantic_state("task","wip")}}`
   - If automation evidence is present for the parent (type/lint/test/build + implementation‑report), it will also suggest:
-    - `task.promote.done` → `edison task status <parent> --status done`
-    - Followed by the usual QA `waiting → todo` then validator waves.
+    - `task.promote.done` → `edison task status <parent> --status {{fn:semantic_state("task","done")}}`
+    - Followed by the usual QA `{{fn:semantic_state("qa","waiting")}} → {{fn:semantic_state("qa","todo")}}` then validator waves.
 - Rationale: this keeps the parent on rails without manual bookkeeping once dependent work finishes.
 
 ## 5. Session close-out
-1. When every scoped task + QA is in `validated/`, update the session Activity Log with a completion note.
+1. When every scoped task is `{{fn:semantic_state("task","validated")}}` and every scoped QA is `{{fn:semantic_state("qa","validated")}}`, update the session Activity Log with a completion note.
 2. Run `edison session complete <session-id>`:
-   - Confirms every listed task lives in `tasks/validated/`.
-   - Confirms every listed QA lives in `qa/validated/` (or `qa/done/` if your policy treats it as final).
+   - Confirms every listed task lives in `{{fn:task_state_dir("validated")}}/`.
+   - Confirms every listed QA lives in `{{fn:qa_state_dir("validated")}}/` (or `{{fn:qa_state_dir("done")}}/` if your policy treats it as final).
    - Verifies each task has a populated evidence directory.
 3. If the script reports discrepancies, resolve them immediately (do not archive the session until it passes).
-4. On success, the script moves the session file from `sessions/done/` (closing) → `sessions/validated/`. Push commits only after this promotion, ensuring all documentation aligns.
+4. On success, the script moves the session file from `{{fn:session_state_dir("closing")}}/` (closing) → `{{fn:session_state_dir("validated")}}/`. Push commits only after this promotion, ensuring all documentation aligns.
 
 ## 6. Crash recovery / continuation
 - Session interruped? Run `edison session status <session-id>` to regenerate the scope snapshot, reopen each listed task/QA, and continue from the recorded Activity Log.

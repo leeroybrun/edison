@@ -8,8 +8,8 @@
 - Track progress in tasks/QA and git history (do not create parallel documents):
   - Task directories ({{fn:state_names("task")}}) – implementation status + delegation logs.
   - QA directories ({{fn:state_names("qa")}}) – validator assignments, findings, verdicts, evidence links.
-    - `qa/waiting/` = QA created, waiting for task to reach `done/`
-    - `qa/todo/` = Ready to validate NOW (task is in `done/`)
+    - `{{fn:qa_state_dir("waiting")}}/` = QA created, waiting for task to reach `{{fn:semantic_state("task","done")}}/`
+    - `{{fn:qa_state_dir("todo")}}/` = Ready to validate NOW (task is in `{{fn:semantic_state("task","done")}}/`)
   - Git history – commits tied to task IDs (mention ID in commit body when useful).
 - Validation artefacts belong under `{{fn:evidence_root}}/<task-id>/round-<N>/` and must be referenced from the QA document.
 - Archive/analysis files go under `docs/archive/` only when explicitly requested.

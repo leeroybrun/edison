@@ -91,8 +91,26 @@ class CLIEngine:
         try:
             from edison.core.config.domains.qa import QAConfig
 
-            allow = QAConfig(repo_root=self.project_root).orchestration_config.get("allowCliEngines", False)
-            if not bool(allow):
+            allow = QAConfig(repo_root=self.project_root).orchestration_config.get(
+                "allowCliEngines", False
+            )
+            # Supported values:
+            # - false: disable all CLI engines
+            # - true: allow all CLI engines
+            # - string[]: allow only these engine IDs (preferred)
+            if allow is True:
+                pass
+            elif allow is False or allow is None:
+                return False
+            elif isinstance(allow, str):
+                if allow.strip() != self.config.id:
+                    return False
+            elif isinstance(allow, list):
+                allow_set = {str(v).strip() for v in allow if str(v).strip()}
+                if self.config.id not in allow_set:
+                    return False
+            else:
+                # Unknown type: fail closed.
                 return False
         except Exception:
             return False

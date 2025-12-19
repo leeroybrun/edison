@@ -58,3 +58,19 @@ def session_state_dir(ctx: TransformContext, state: str) -> str:
         return sessions_root(ctx)
     mapped = _config_str(ctx, f"session.states.{logical}", logical)
     return f"{sessions_root(ctx)}/{mapped}"
+
+
+def task_state_dir(ctx: TransformContext, state: str) -> str:
+    """Tasks directory for a semantic state (e.g. todo/wip/done/validated)."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+
+    resolved = WorkflowConfig().get_semantic_state("task", str(state).strip().lower())
+    return f"{tasks_root(ctx)}/{resolved}"
+
+
+def qa_state_dir(ctx: TransformContext, state: str) -> str:
+    """QA directory for a semantic state (e.g. waiting/todo/wip/done/validated)."""
+    from edison.core.config.domains.workflow import WorkflowConfig
+
+    resolved = WorkflowConfig().get_semantic_state("qa", str(state).strip().lower())
+    return f"{qa_root(ctx)}/{resolved}"

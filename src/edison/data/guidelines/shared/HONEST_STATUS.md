@@ -3,11 +3,11 @@
 ## Honesty Checklist
 - [ ] Status entries are factual, timestamped, and live inside the task/QA files.
 - [ ] Failures and blockers are logged immediately (include new task IDs when spawning follow-ups).
-- [ ] Clear distinction between `todo`, `wip`, `done`, and `validated` directories—files only move forward when criteria are truly met.
+- [ ] Clear distinction between task state directories ({{fn:state_names("task")}})—files only move forward when criteria are truly met.
 
 ## Rules
-- Default state for every task file is **NOT complete**. Treat everything in `todo`, `wip`, or `done` as unfinished until validators sign off.
-- Only mark a task `validated` after: implementation complete, automated checks passed, QA brief approved by all blocking validators, and evidence links exist.
+- Default state for every task file is **NOT complete**. Treat everything in `{{fn:semantic_states("task","todo,wip,done","inline")}}` as unfinished until validators sign off.
+- Only mark a task `{{fn:semantic_state("task","validated")}}` after: implementation complete, automated checks passed, QA brief approved by all blocking validators, and evidence links exist.
 
 ## Reporting
 - Use the `Status Updates` + `Findings` sections in the task file for implementation progress.

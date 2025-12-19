@@ -39,7 +39,6 @@ If the change touches any configured post-training package, refresh docs via Con
 
 <!-- section: orchestrator -->
 ### Knowledge Refresh Enforcement
-If a task touches configured post-training packages, ensure the assigned agent refreshes Context7 docs and produces the required evidence markers before `wip → done`.
+If a task touches configured post-training packages, ensure the assigned agent refreshes Context7 docs and produces the required evidence markers before `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}`.
 <!-- /section: orchestrator -->
-
 

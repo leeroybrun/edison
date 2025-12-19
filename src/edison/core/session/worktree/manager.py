@@ -328,18 +328,83 @@ def create_worktree(
 
     install_flag = config.get("installDeps", False) if install_deps is None else bool(install_deps)
     if install_flag:
-        try:
-            run_with_timeout(["pnpm", "install"], cwd=worktree_path, check=False, capture_output=True, text=True, timeout=t_install)
-        except Exception:
-            pass
+        def _resolve_install_cmd(cwd: Path) -> list[str]:
+            """Pick an install command that avoids mutating lockfiles.
+
+            Session worktrees are meant to isolate code changes. A plain
+            package-manager install can normalize or rewrite lockfiles, creating
+            noisy diffs and triggering unrelated security/audit validation.
+            """
+            if (cwd / "pnpm-lock.yaml").exists():
+                return ["pnpm", "install", "--frozen-lockfile"]
+            if (cwd / "package-lock.json").exists():
+                return ["npm", "ci"]
+            if (cwd / "yarn.lock").exists():
+                return ["yarn", "install", "--immutable"]
+            if (cwd / "bun.lockb").exists() or (cwd / "bun.lock").exists():
+                return ["bun", "install", "--frozen-lockfile"]
+            # Best-effort fallback: keep previous behavior.
+            return ["pnpm", "install"]
+
+        def _resolve_fallback_install_cmd(cwd: Path) -> list[str] | None:
+            """Fallback install command when immutable install is insufficient.
+
+            Used when post-install commands fail due to missing binaries/build artefacts.
+            """
+            if (cwd / "pnpm-lock.yaml").exists():
+                return ["pnpm", "install"]
+            if (cwd / "package-lock.json").exists():
+                return ["npm", "install"]
+            if (cwd / "yarn.lock").exists():
+                return ["yarn", "install"]
+            if (cwd / "bun.lockb").exists() or (cwd / "bun.lock").exists():
+                return ["bun", "install"]
+            return None
+
+        def _run_install(cmd: list[str]) -> subprocess.CompletedProcess[str] | None:
+            try:
+                return run_with_timeout(
+                    cmd,
+                    cwd=worktree_path,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=t_install,
+                )
+            except Exception:
+                return None
+
+        install_cmd = _resolve_install_cmd(worktree_path)
+        fallback_cmd = _resolve_fallback_install_cmd(worktree_path)
+        used_fallback = False
+
+        result = _run_install(install_cmd)
+        if fallback_cmd and (result is None or getattr(result, "returncode", 1) != 0):
+            used_fallback = True
+            _run_install(fallback_cmd)
 
         post_install = config.get("postInstallCommands", []) or []
         if isinstance(post_install, list) and post_install:
-            _run_post_install_commands(
-                worktree_path=worktree_path,
-                commands=[str(c) for c in post_install if str(c).strip()],
-                timeout=t_install,
-            )
+            commands = [str(c) for c in post_install if str(c).strip()]
+            try:
+                _run_post_install_commands(
+                    worktree_path=worktree_path,
+                    commands=commands,
+                    timeout=t_install,
+                )
+            except Exception:
+                # If immutable install didn't materialize enough for post-install steps,
+                # retry once with a best-effort install command.
+                if fallback_cmd and not used_fallback and fallback_cmd != install_cmd:
+                    used_fallback = True
+                    _run_install(fallback_cmd)
+                    _run_post_install_commands(
+                        worktree_path=worktree_path,
+                        commands=commands,
+                        timeout=t_install,
+                    )
+                else:
+                    raise
 
     try:
         hc1 = run_with_timeout(["git", "rev-parse", "--is-inside-work-tree"], cwd=worktree_path, capture_output=True, text=True, check=True, timeout=t_health)

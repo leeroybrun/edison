@@ -75,7 +75,7 @@ edison session track complete --task <task-id>
 edison session track complete --task TASK-123
 ```
 
-**This writes**: `{{fn:evidence_root}}/TASK-123/round-1/implementation-report.md`
+**This writes**: `{{fn:evidence_root}}/TASK-123/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
 
 ---
 
@@ -181,7 +181,7 @@ edison task status TASK-123 --json
 
 ## Output Locations
 
-**Implementation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/implementation-report.md`
+**Implementation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.implementationReportFile}}`
 
 **Contents:**
 - Changes made

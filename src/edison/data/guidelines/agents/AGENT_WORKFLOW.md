@@ -7,4 +7,4 @@
 5. **Automation** – Run the project automation suite (type-check, lint, test, build or equivalents). Capture outputs in evidence files.
 6. **Document** – Update task file `Status Updates` + `Findings`. Link evidence paths. Note blockers and follow-ups.
 7. **Implementation Report** – Fill out the report (see OUTPUT_FORMAT) with commands, Context7 packages, tests, and any follow-ups/delegations.
-8. **Ready for validation** – Move QA to `todo/` when implementation is complete, automation is green, and the report + evidence are present. Do not self-validate if you implemented the work.
+8. **Ready for validation** – Move QA to `{{fn:semantic_state("qa","todo")}}/` when implementation is complete, automation is green, and the report + evidence are present. Do not self-validate if you implemented the work.

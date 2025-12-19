@@ -49,6 +49,38 @@ def state_names(domain: str = "task", fmt: str = "inline") -> str:
         return ", ".join(f"`{n}`" for n in names)
     raise ValueError(f"Unknown fmt: {fmt}")
 
+def semantic_state(domain: str, key: str) -> str:
+    """Return the configured state name for a semantic key.
+
+    Semantic keys are stable concepts like "todo", "wip", "done", "validated",
+    "waiting" that projects may map to different concrete state names.
+    """
+    from edison.core.config.domains.workflow import WorkflowConfig
+
+    return WorkflowConfig().get_semantic_state(domain, key)
+
+
+def semantic_states(domain: str, keys: str, fmt: str = "inline") -> str:
+    """Return multiple semantic states formatted for markdown.
+
+    Args:
+        domain: 'task', 'qa', or 'session'
+        keys: comma-separated semantic keys (e.g. "waiting,todo,wip")
+        fmt: 'inline' (default), 'plain', 'pipe', or 'brace'
+    """
+    normalized = [k.strip() for k in str(keys).split(",") if k.strip()]
+    resolved = [semantic_state(domain, k) for k in normalized]
+
+    if fmt == "plain":
+        return ", ".join(resolved)
+    if fmt == "inline":
+        return ", ".join(f"`{s}`" for s in resolved)
+    if fmt == "pipe":
+        return "|".join(resolved)
+    if fmt == "brace":
+        return "{" + "|".join(resolved) + "}"
+    raise ValueError(f"Unknown fmt: {fmt}")
+
 
 def task_states() -> str:
     """Return task states from config as markdown list.
@@ -192,7 +224,6 @@ def all_states_overview() -> str:
     result.append(session_states())
 
     return "\n".join(result)
-
 
 
 

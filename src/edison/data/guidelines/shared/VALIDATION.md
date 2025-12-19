@@ -1,16 +1,16 @@
 # Validation (Core)
 
 
-Run after implementation is complete and before a task can advance beyond `done/`. QA briefs are the canonical validation record.
+Run after implementation is complete and before a task can advance beyond `{{fn:semantic_state("task","done")}}/`. QA briefs are the canonical validation record.
 
 ## Validation Checklist (fail-closed)
 - Build the triggered validator roster from the merged `validation.validators` config (core → packs → project) and the task/session file context (git diff + primary files).
 - Automation passing for the round (type-check, lint, test, build or project equivalent).
-- QA brief exists in `qa/{waiting|todo|wip}` with roster, commands, expected results, and evidence links; never duplicate QA files.
+- QA brief exists in `qa/{{fn:semantic_states("qa","waiting,todo,wip","brace")}}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).
 - Context7 refreshed for every Context7-detected package; add `context7-<pkg>.txt` markers per package in the round evidence directory.
 - Required validators launched in waves up to the concurrency cap; record the model used.
-- If any blocking validator rejects → task stays in `wip`, QA returns to `waiting`, follow-ups created.
+- If any blocking validator rejects → task stays in `{{fn:semantic_state("task","wip")}}`, QA returns to `{{fn:semantic_state("qa","waiting")}}`, follow-ups created.
 - If any validator is blocked or missing, halt and resolve before proceeding.
 
 ## Validator Roster & Waves
@@ -78,7 +78,7 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 
 ### Bundle approval marker
 - Generate bundle manifest with `edison qa bundle <root-task>`; paste into QA before any validator runs.
-- After all blocking validators approve, produce `{{config.validation.artifactPaths.bundleSummaryFile}}` in the round evidence directory (guards enforce its presence). Promotion `qa wip→done` and `task done→validated` is blocked until `approved=true` in this file.
+- After all blocking validators approve, produce `{{config.validation.artifactPaths.bundleSummaryFile}}` in the round evidence directory (guards enforce its presence). Promotion `qa {{fn:semantic_state("qa","wip")}}→{{fn:semantic_state("qa","done")}}` and `task {{fn:semantic_state("task","done")}}→{{fn:semantic_state("task","validated")}}` is blocked until `approved=true` in this file.
 - QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `{{config.validation.artifactPaths.bundleSummaryFile}}` existence.
 
 ## Sequence (strict order)
@@ -88,10 +88,10 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.
 5) Run validators in waves (respect models and concurrency cap). Summarize each report in QA.
 6) Store raw artefacts under `{{fn:evidence_root}}/<task-id>/round-<N>/` and reference them in QA.
-7) Move QA/task only after ALL blocking validators approve and the bundle-approved marker exists.
+7) Move QA/task only after ALL blocking validators approve and `approved=true` is recorded in `{{config.validation.artifactPaths.bundleSummaryFile}}`.
 
 ## Failure & Re-runs
-- Blocking validator reject → task stays/returns to `wip`; QA → `waiting`; spawn follow-ups in `{{fn:tasks_root}}/todo/`; add "Round N" entry to QA.
+- Blocking validator reject → task stays/returns to `{{fn:semantic_state("task","wip")}}`; QA → `{{fn:semantic_state("qa","waiting")}}`; spawn follow-ups in `{{fn:tasks_root}}/{{fn:semantic_state("task","todo")}}/`; add "Round N" entry to QA.
 - Validator blocked/missing → stop; fix cause; rerun affected validators.
 - Each revalidation uses a new `round-<N>` directory; never overwrite prior evidence.
 
@@ -102,7 +102,7 @@ When validation fails:
 ```
 Round 1: Initial Validation
     ↓ (REJECT)
-Task returns to WIP
+Task returns to {{fn:semantic_state("task","wip")}}
     ↓
 Fix issues identified
     ↓
@@ -143,12 +143,12 @@ Bundle validation (cluster): Validators MUST review the entire cluster - the par
 
 Child tasks (owned by implementers) produce their own implementation evidence and can have their QA promoted to `done` when their blocking validators approve. Validators may mark some children approved and others not; the bundle captures per-task approvals. The parent cannot complete until every child in the bundle is approved.
 
-Session completion enforces: parent is `tasks/validated/` with QA in `qa/done|validated`; children are `tasks/validated` (preferred) or `done` if explicitly staged for a follow-up round; child QA is `qa/done|validated` (preferred). Use bundle validation to converge children to validated where possible.
+Session completion enforces: parent is `{{fn:task_state_dir("validated")}}/` with QA in `{{fn:semantic_states("qa","done,validated","pipe")}}`; children are `{{fn:semantic_state("task","validated")}}` (preferred) or `{{fn:semantic_state("task","done")}}` if explicitly staged for a follow-up round; child QA is `{{fn:semantic_states("qa","done,validated","pipe")}}` (preferred). Use bundle validation to converge children to validated where possible.
 
 ## Validator Follow-ups
 
 ### Non-blocking follow-ups - create but do not link
-- For non-blocking follow-ups reported by validators, tasks MUST be created in `tasks/todo/` before QA can move `wip -> done`, but MUST NOT be linked as children of the parent (to avoid gating the parent's promotion).
+- For non-blocking follow-ups reported by validators, tasks MUST be created in `{{fn:task_state_dir("todo")}}/` before QA can move `{{fn:semantic_state("qa","wip")}} -> {{fn:semantic_state("qa","done")}}`, but MUST NOT be linked as children of the parent (to avoid gating the parent's promotion).
 - The guard `edison qa promote` enforces this by calling `edison task ensure_followups --source validator --enforce`.
 
 ### When to create follow-up tasks
@@ -174,5 +174,5 @@ edison qa run <validator-id> <task-id> --session <session-id> --round <N>
 ```
 
 ## Promotion rules
-- QA may move `waiting→todo` only when the task is in `tasks/done/`.
-- Tasks/QAs move to `validated` only when bundle-approved is true and all blocking validators approved; otherwise remain in `wip/done` with QA in `waiting/todo`.
+- QA may move `{{fn:semantic_state("qa","waiting")}}→{{fn:semantic_state("qa","todo")}}` only when the task is in `{{fn:task_state_dir("done")}}/`.
+- Tasks/QAs move to `{{fn:semantic_state("task","validated")}}` / `{{fn:semantic_state("qa","validated")}}` only when all blocking validators approved and `{{config.validation.artifactPaths.bundleSummaryFile}}` records `approved=true`; otherwise remain in `{{fn:semantic_states("task","wip,done","pipe")}}` with QA in `{{fn:semantic_states("qa","waiting,todo","pipe")}}`.

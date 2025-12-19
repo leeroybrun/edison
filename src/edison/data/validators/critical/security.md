@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/validators.md}}
+Open and follow: `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md`
 
 ---
 
@@ -72,8 +72,15 @@ git diff
 - ✅ Security headers set
 
 ### 6. Vulnerable Components
-- ✅ No high/critical vulnerabilities in dependencies
 - ✅ Lock files present and committed
+- ✅ **Change-aware policy (CRITICAL)**:
+  - If `package.json` / lockfiles changed, you MUST assess dependency risk for the **delta introduced by this task**.
+    - Run a dependency audit, then inspect the dependency diff (lockfile/package.json) to determine whether any **vulnerable package versions** changed due to this task.
+    - **REJECT** only if this task **introduces** a new high/critical vulnerability or **changes versions** such that risk increases (e.g., upgrades into a vulnerable range).
+    - If lockfiles changed but vulnerable package versions did **not** change (normalization/reordering), do **not** reject solely on baseline audit findings; create follow-up tasks instead.
+  - If dependency files did **not** change in this task, do **not** block solely because the repo has pre-existing audit findings.
+    - Treat pre-existing findings as **follow-up tasks** unless the code change directly depends on / expands exposure to the vulnerable component.
+    - Still review the code diff for typical security risks (auth, input validation, access control, injection, secrets).
 
 ### 7. Authentication Failures
 - ✅ Strong password requirements
@@ -137,7 +144,7 @@ The validator should load and **merge core + pack security rules** using the con
    - **Fix**: [remediation]
 
 ## Evidence
-- {{fn:ci_command("dependency-audit")}}: [results]
+- If dependency files changed: {{fn:ci_command("dependency-audit")}}: [results]
 - Auth library: ✅ VERIFIED | ❌ NOT FOUND
 - Schema validation coverage: X%
 

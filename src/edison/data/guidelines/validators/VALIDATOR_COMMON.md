@@ -185,7 +185,7 @@ Every validator MUST perform these universal checks:
 
 ### 5. TDD Compliance
 
-**Goal**: Test-Driven Development, 100% tested
+**Goal**: Test-Driven Development; coverage meets config targets (overall ≥ {{config.quality.coverage.overall}}%, changed/new ≥ {{config.quality.coverage.changed}}%)
 
 **Check**:
 - ✅ Tests written BEFORE implementation (verify via git history)

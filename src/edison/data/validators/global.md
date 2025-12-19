@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/validators.md}}
+Open and follow: `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md`
 
 ---
 
@@ -182,5 +182,3 @@ git diff           # Unstaged changes
 - Production quality is the goal
 
 **Your validation ensures zero defects reach production.**
-
-

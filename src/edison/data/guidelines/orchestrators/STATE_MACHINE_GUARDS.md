@@ -31,7 +31,7 @@ The authoritative definition lives in `{{fn:project_config_dir}}/_generated/STAT
 
 ## Examples
 
-- Allowed: `task todo → wip`, `qa waiting → todo`, `task done → validated` (with approvals).
-- Blocked: `task todo → validated`, `qa todo → validated`, non-adjacent skips.
+- Allowed: `task {{fn:semantic_state("task","todo")}} → {{fn:semantic_state("task","wip")}}`, `qa {{fn:semantic_state("qa","waiting")}} → {{fn:semantic_state("qa","todo")}}`, `task {{fn:semantic_state("task","done")}} → {{fn:semantic_state("task","validated")}}` (with approvals).
+- Blocked: `task {{fn:semantic_state("task","todo")}} → {{fn:semantic_state("task","validated")}}`, `qa {{fn:semantic_state("qa","todo")}} → {{fn:semantic_state("qa","validated")}}`, non-adjacent skips.
 
 See tests under `tests/unit/framework/test_state_machine_guards.py` covering valid/invalid paths and edge cases.

@@ -71,11 +71,11 @@
 - Evidence paths are recorded in the task/QA docs, not just on disk.
 
 ## Task Completion Criteria
-A task moves to `tasks/validated/` only when:
+A task moves to `{{fn:task_state_dir("validated")}}/` only when:
 1) Implementation is complete and documented in the task file.
 2) Tests for new/changed code are present and passing.
 3) Automation (type-check, lint, test, build or project equivalent) succeeds.
-4) All blocking validators approve and QA sits in `qa/validated/` (or project-equivalent state).
+4) All blocking validators approve and QA sits in `{{fn:qa_state_dir("validated")}}/` (or project-equivalent state).
 5) Task and QA documents are up to date with status, findings, and evidence links.
 
 ## Verification Command

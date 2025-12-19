@@ -31,8 +31,9 @@ def _as_list(value: Any) -> List[str]:
 def required_evidence_files(ctx: TransformContext, fmt: str = "inline") -> str:
     """Render required evidence files from config.
 
-    Reads ``validation.requiredEvidenceFiles``. Falls back to core defaults when
-    missing to avoid unresolved template markers in downstream guides.
+    Reads ``validation.evidence.requiredFiles`` (preferred) or falls back to the
+    legacy location ``validation.requiredEvidenceFiles``. If missing, falls back
+    to core defaults to avoid unresolved template markers in downstream guides.
 
     Args:
         fmt: One of:
@@ -40,7 +41,9 @@ def required_evidence_files(ctx: TransformContext, fmt: str = "inline") -> str:
           - "bullets": markdown bullets, each backticked
           - "plain": comma-separated without backticks
     """
-    configured = _as_list(ctx.get_config("validation.requiredEvidenceFiles"))
+    configured = _as_list(ctx.get_config("validation.evidence.requiredFiles")) or _as_list(
+        ctx.get_config("validation.requiredEvidenceFiles")
+    )
     files = configured or list(_DEFAULT_REQUIRED_EVIDENCE_FILES)
 
     if fmt == "bullets":
