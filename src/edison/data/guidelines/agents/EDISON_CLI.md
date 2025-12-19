@@ -75,7 +75,7 @@ edison session track complete --task <task-id>
 edison session track complete --task TASK-123
 ```
 
-**This writes**: `.project/qa/validation-evidence/TASK-123/round-1/implementation-report.md`
+**This writes**: `{{fn:evidence_root}}/TASK-123/round-1/implementation-report.md`
 
 ---
 
@@ -181,7 +181,7 @@ edison task status TASK-123 --json
 
 ## Output Locations
 
-**Implementation evidence**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.md`
+**Implementation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/implementation-report.md`
 
 **Contents:**
 - Changes made
@@ -205,9 +205,9 @@ edison task status TASK-123 --json
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md` - Full agent workflow
-- `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md` - Output format requirements
-- `.edison/_generated/constitutions/AGENTS.md` - TDD requirements (embedded)
+- `{{fn:project_config_dir}}/_generated/guidelines/agents/AGENT_WORKFLOW.md` - Full agent workflow
+- `{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` - Output format requirements
+- `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` - TDD requirements (embedded)
 
 ---
 

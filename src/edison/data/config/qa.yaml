@@ -33,6 +33,10 @@ validation:
       - "context7-*.txt"
       - "validator-*-report.md"
 
+  # Policy cap for QA re-validation loops. Tools may use this to guide UX and
+  # enforce limits in future guardrails.
+  maxRounds: 3
+
   # Transaction settings
   transaction:
     # Maximum age of validation transactions before cleanup (hours)

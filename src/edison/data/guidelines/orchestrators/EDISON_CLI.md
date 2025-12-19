@@ -485,11 +485,11 @@ edison session next sess-001
 
 ## Output Locations
 
-**Session records**: `sessions/wip/<session-id>/session.json`
-**Task files**: `sessions/wip/<session-id>/tasks/{wip,done}/`
-**QA briefs**: `sessions/wip/<session-id>/qa/{waiting,todo,wip,done,validated}/`
-**Validation evidence**: `.project/qa/validation-evidence/<task-id>/round-N/`
-**Bundle summaries**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.md`
+**Session records**: `{{fn:session_state_dir("active")}}/<session-id>/session.json`
+**Task files**: `{{fn:session_state_dir("active")}}/<session-id>/tasks/<task-state>/`
+**QA briefs**: `{{fn:session_state_dir("active")}}/<session-id>/qa/<qa-state>/`
+**Validation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/`
+**Bundle summaries**: `{{fn:evidence_root}}/<task-id>/round-N/bundle-approved.md`
 
 ---
 
@@ -507,9 +507,9 @@ edison session next sess-001
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` - Full session workflow
-- `.edison/_generated/guidelines/shared/DELEGATION.md` - Delegation priority chain
-- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
+- `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` - Full session workflow
+- `{{fn:project_config_dir}}/_generated/guidelines/shared/DELEGATION.md` - Delegation priority chain
+- `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
 
 ---
 

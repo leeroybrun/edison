@@ -30,7 +30,7 @@ All Edison development (Orchestrators, Agents, Validators) must follow the **16 
 For complete details, examples, and enforcement guidelines:
 
 1. **Primary**: `CLAUDE.md` (project root)
-2. **Detailed**: `.edison/guidelines/edison/CRITICAL_PRINCIPLES.md`
+2. **Detailed**: `{{fn:project_config_dir}}/guidelines/edison/CRITICAL_PRINCIPLES.md`
 
 ## Token Efficiency
 

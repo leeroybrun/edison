@@ -8,8 +8,8 @@
 ---
 
 ## Mandatory Reads
-- `.edison/_generated/constitutions/VALIDATORS.md` - Cross-role rules (TDD, Context7, configuration-first)
-- `.edison/_generated/guidelines/validators/COMMON.md` - Validator baseline
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md` - Cross-role rules (TDD, Context7, configuration-first)
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/validators/COMMON.md` - Validator baseline
 
 ---
 

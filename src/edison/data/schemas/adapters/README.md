@@ -19,5 +19,5 @@ Adapter schemas define the interface between Edison and specific platform adapte
 ## Related Code
 
 - `edison.core.adapters` - unified adapter stack (components + platforms, PlatformAdapter base)
-- `.edison/_generated/agents/` - Generated agent definitions
+- `{{PROJECT_EDISON_DIR}}/_generated/agents/` - Generated agent definitions
 - Client-specific implementations (Cursor, Claude Code, etc.)

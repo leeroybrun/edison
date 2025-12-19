@@ -1,11 +1,11 @@
 # Delegation Models (Orchestrators)
 
-> Canonical path: `.edison/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
+> Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
 
 <!-- section: rules -->
 ## Delegation Criteria
 
-- Load the delegation roster first: `.edison/_generated/AVAILABLE_AGENTS.md` (fail-closed if missing).
+- Load the delegation roster first: `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` (fail-closed if missing).
 - Source of truth lives in YAML overlays (core → packs → project), but orchestrators should rely on the generated roster + `edison session next` suggestions rather than hardcoding config paths in prompts.
 - Delegate by default; orchestrators implement only when criteria say **Handle Directly**.
 - Enforce the priority chain (user instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers). Stop if ambiguous.
@@ -24,7 +24,7 @@
 ## Agent Selection Guidance
 
 - Resolve candidates from the generated roster + rules output (no hardcoded names). Use:
-  - `.edison/_generated/AVAILABLE_AGENTS.md`
+  - `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md`
   - `edison session next <session-id>`
 - Choose the **first deterministic match** from the priority chain; do not shop for a better model after selection.
 - Keep independence: separate implementer vs validator roles/models; never assign both to one agent.

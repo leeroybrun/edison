@@ -14,7 +14,7 @@
 - **Canonical**: Embedded in role constitutions (`constitutions/AGENTS.md`, `constitutions/VALIDATORS.md`, `constitutions/ORCHESTRATOR.md`)
 - **Purpose**: RED→GREEN→REFACTOR workflow
 - **When to Read**: Before implementing any feature
-- **Key Topics**: Test-first development, coverage targets (≥90% overall, 100% on new files), no mocks
+- **Key Topics**: Test-first development, coverage targets (≥{{config.quality.coverage.overall}}% overall, {{config.quality.coverage.changed}}% on changed/new files), no mocks
 
 ### Context7 Requirements
 - **Path**: `guidelines/shared/CONTEXT7.md`
@@ -116,7 +116,7 @@
 - **Key Topics**: No NOTES.md, no SUMMARY.md, canonical evidence only
 
 ### Pack-Specific Patterns
-- **Path**: `packs/<pack>/guidelines/**` (composed into `.edison/_generated/guidelines/**` when active)
+- **Path**: `packs/<pack>/guidelines/**` (composed into `{{fn:project_config_dir}}/_generated/guidelines/**` when active)
 - **Purpose**: Technology-specific patterns provided by active packs
 - **When to Read**: When implementing features covered by an active pack
 - **Key Topics**: Pack-specific best practices, constraints, and checklists
@@ -150,4 +150,4 @@ guidelines/
 └── python/          # Python pack guidelines (in packs/python/)
 ```
 
-Note: Python guidelines are stored in `src/edison/data/packs/python/guidelines/python/` and composed into `.edison/_generated/guidelines/python/` during build.
+Note: Python guidelines are stored in `src/edison/data/packs/python/guidelines/python/` and composed into `{{fn:project_config_dir}}/_generated/guidelines/python/` during build.

@@ -50,7 +50,7 @@ Performance review must be **pack-aware**:
 - Active packs may contribute additional **pack performance rules** (framework/library-specific).
 
 **Where pack rules live**:
-- Project pack registry: `.edison/packs/<pack>/rules/registry.yml`
+- Project pack registry: `{{fn:project_config_dir}}/packs/<pack>/rules/registry.yml`
 - Bundled pack registry: `src/edison/data/packs/<pack>/rules/registry.yml`
 
 **How rules are loaded/merged**:

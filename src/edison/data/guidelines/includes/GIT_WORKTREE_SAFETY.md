@@ -6,12 +6,12 @@
 ## Worktree Confinement (CRITICAL)
 - **All code changes must happen inside the session worktree directory** (never in the primary checkout).
 - After creating/resuming a session, run `edison session status --json`, read `git.worktreePath`, then `cd <worktreePath>` and stay there.
-- **Session runtime state is local-only.** Do not commit `.project/sessions/` or `.project/.session-id` (they should be gitignored).
+- **Session runtime state is local-only.** Do not commit `{{fn:sessions_root}}/` or `{{fn:project_management_dir}}/.session-id` (they should be gitignored).
 <!-- /section: worktree-confinement -->
 
 <!-- section: worktree-isolation -->
 ## Worktree Isolation (Sessions)
-- Default session worktrees live in `../{PROJECT}-worktrees/<session-id>/` (config: `worktrees.pathTemplate`).
+- Default session worktrees live at `{{config.worktrees.pathTemplate}}` (config: `worktrees.pathTemplate`).
 - Create/restore via `edison session create` / `edison orchestrator start` / `edison git worktree-*` (do not DIY worktrees).
 - Primary checkout safety is enforced: Edison must never switch the primary checkout branch during worktree operations.
 <!-- /section: worktree-isolation -->

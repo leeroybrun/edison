@@ -27,5 +27,5 @@ Reports are written as **Markdown with YAML frontmatter**:
 ## Related Code
 
 - `edison qa validate` - Validator execution
-- `.project/qa/validation-evidence/` - Validation output storage
+- `{{fn:evidence_root}}/` - Validation output storage
 - Agent delegation workflows

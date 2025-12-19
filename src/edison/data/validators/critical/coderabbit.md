@@ -46,7 +46,7 @@ You are a **CodeRabbit output analyzer** responsible for transforming raw CodeRa
 
 ```bash
 # Evidence directory path
-.project/qa/validation-evidence/<task-id>/round-<N>/coderabbit-output.json
+{{fn:evidence_root}}/<task-id>/round-<N>/coderabbit-output.json
 ```
 
 ### Step 2: Parse and Categorize Findings

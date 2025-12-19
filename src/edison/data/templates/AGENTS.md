@@ -10,23 +10,23 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `.edison/_generated/constitutions/ORCHESTRATOR.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
+1. **Mandatory preload** – Load `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
 
-2. **Correct intake prompt** – Start every session via `.edison/_generated/constitutions/ORCHESTRATOR.md`. That checklist handles QA sweeps + task selection.
+2. **Correct intake prompt** – Start every session via `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`. That checklist handles QA sweeps + task selection.
 
-3. **Session record alive** – Every session has a JSON file under `.project/sessions/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
+3. **Session record alive** – Every session has a JSON file under `{{config.session.paths.root}}/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
 
-4. **Work from task files** – Operate exclusively inside `.project/tasks/*` + `.project/qa/*`; keep IDs spaced by ≥50 so follow-ups slot cleanly.
+4. **Work from task files** – Operate exclusively inside `{{config.tasks.paths.root}}/*` + `{{config.tasks.paths.qaRoot}}/*`; keep IDs spaced by ≥50 so follow-ups slot cleanly.
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `.edison/_generated/constitutions/ORCHESTRATOR.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
 7. **Context7 first** – Query Context7 before coding against any post-training package detected by `context7.triggers` / `context7.contentDetection`. Never guess about post-training APIs.
 
 8. **Automated checks first** – Build, type-check, lint, and test must be green before QA moves to `todo/`. No exceptions.
 
-9. **Validator waves** – Run required validators in batched waves up to the manifest cap; record verdicts + artifact links inside the QA brief. Rejected work stays in `tasks/wip/` with QA back in `qa/waiting/` until revalidated.
+9. **Validator waves** – Run required validators in batched waves up to the manifest cap; record verdicts + artifact links inside the QA brief. Rejected work stays in `{{config.tasks.paths.root}}/wip/` with QA back in `{{config.tasks.paths.qaRoot}}/waiting/` until revalidated.
 
 10. **Honest status** – Directory names describe truth: `todo` = unstarted, `wip` = active/rejected, `done` = awaiting validation, `validated` = all checks + evidence complete. No status lies in shadow documents.
 
@@ -46,27 +46,27 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 ### Framework Guidelines (Always)
 
-- `.edison/_generated/guidelines/SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `.edison/_generated/guidelines/HONEST_STATUS.md` - Status integrity rules
-- `.edison/_generated/guidelines/VALIDATION.md` - Validator requirements and waves
-- `.edison/_generated/guidelines/QUALITY.md` - Code quality standards
-- `.edison/_generated/guidelines/TDD.md` - Test-driven development enforcement
-- `.edison/_generated/guidelines/CONTEXT7.md` - Post-training package query rules
-- `.edison/_generated/guidelines/GIT_WORKFLOW.md` - Git commit and branch patterns
-- `.edison/_generated/guidelines/DELEGATION.md` - Delegation patterns and rules
-- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition guards
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` - Canonical session lifecycle
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/HONEST_STATUS.md` - Status integrity rules
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/VALIDATION.md` - Validator requirements and waves
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/QUALITY.md` - Code quality standards
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/TDD.md` - Test-driven development enforcement
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/CONTEXT7.md` - Post-training package query rules
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/GIT_WORKFLOW.md` - Git commit and branch patterns
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/DELEGATION.md` - Delegation patterns and rules
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition guards
 
 ### Project Configuration (Always)
 
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list (project-specific)
-- `.edison/_generated/AVAILABLE_VALIDATORS.md` - Validator roster and triggers (project-specific)
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Delegation model routing (project-specific)
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list (project-specific)
+- `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` - Validator roster and triggers (project-specific)
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Delegation model routing (project-specific)
 
 ### Project-Specific Client Rules (Conditional)
 
-Configured in `.edison/_generated/constitutions/ORCHESTRATOR.md` under `mandatory` array. May include:
-- Claude-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
-- Cursor-specific rules (`.edison/_generated/constitutions/AGENTS.md`)
+Configured in `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` under `mandatory` array. May include:
+- Claude-specific rules (`{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md`)
+- Cursor-specific rules (`{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md`)
 - Other client packs as needed
 
 **Proactive Loading Mechanism**:
@@ -85,14 +85,14 @@ Edison CLI injects rules automatically:
 ### Guidelines vs Guides (Know the Difference)
 
 **Guidelines** (Condensed, Mandatory)
-- Location: `.edison/_generated/guidelines/`
+- Location: `{{PROJECT_EDISON_DIR}}/_generated/guidelines/`
 - Purpose: Concise rules for active workflows
 - When: Always loaded at session start
 - Examples: SESSION_WORKFLOW, TDD, VALIDATION
 - Length: Optimized for AI context windows
 
 **Guides** (Deep Dives, On-Demand)
-- Location: `.edison/_generated/guidelines/` + `.edison/_generated/guidelines/`
+- Location: `{{PROJECT_EDISON_DIR}}/_generated/guidelines/`
 - Purpose: Extended patterns, examples, deep technical explanations
 - When: Load only when needed (preserves context budget)
 - Examples: TDD_GUIDE (extended), QUALITY_GUIDE (deep patterns)
@@ -108,7 +108,7 @@ Edison CLI injects rules automatically:
 
 ## Rule Registry
 
-Edison guidelines contain **anchored rule IDs** indexed in `.edison/_generated/AVAILABLE_VALIDATORS.md`.
+Edison guidelines contain **anchored rule IDs** indexed in `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`.
 
 **Discovery**:
 ```bash
@@ -131,7 +131,7 @@ edison rules require <RULE_ID>
 
 ## Session Workflow
 
-See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
+See `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
 
 **Key Phases**:
 1. **Session Intake** (via ORCHESTRATOR.md constitution checklist)
@@ -141,36 +141,22 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 5. **QA** (multi-round validation until approved)
 6. **Session Completion** (transactional restore to global queues)
 
-**Session Timeout**: Sessions expire after `session.timeout_hours` (default 8). Use `edison session track heartbeat --task <task-id>` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
+**Session Timeout**: Sessions expire after `session.timeout_hours`. Use `edison session track heartbeat --task <task-id>` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
 
 ---
 
 ## Task, QA, and Session Directory Structure
 
 ```plaintext
-.project/
-  tasks/
-    todo/       - Unclaimed tasks waiting for implementer
-    wip/        - Active implementation OR rejected work
-    done/       - Implementation complete, awaiting validation
-    validated/  - All required validators passed
-    
-  qa/
-    waiting/    - QA brief created, task not done yet
-    todo/       - Task done, ready for validator execution
-    wip/        - Validation in progress
-    done/       - All validators passed
-    validated/  - Final approval (matches task validated)
-    
-  sessions/
-    wip/        - Active sessions (semantic state: active)
-    done/       - Closing / post-timeout cleanup (semantic state: closing)
-    validated/  - Completed and archived sessions
+Tasks:    {{config.tasks.paths.root}}/<state>/
+QA:       {{config.tasks.paths.qaRoot}}/<state>/
+Sessions: {{config.session.paths.root}}/<state>/<session-id>/
+Evidence: {{fn:evidence_root}}/<task-id>/round-<N>/
 ```
 
 **Honest Status Principle**: Directory name = source of truth. No status lies in comments, summaries, or shadow tracking.
 
-**Session Isolation**: When task claimed into session, file physically moves to `.project/sessions/wip/<session-id>/tasks/`. Prevents cross-session interference.
+**Session Isolation**: When a task is claimed into a session, the file physically moves under `{{fn:session_state_dir("active")}}/<session-id>/tasks/`. Prevents cross-session interference.
 
 ---
 
@@ -187,7 +173,7 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 - Session-scoped queues prevent race conditions
 
 ### Delegation
-- Route complex work through `.edison/_generated/constitutions/ORCHESTRATOR.md`
+- Route complex work through `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
 - Match file patterns to model capabilities
 - Specialized implementers for frontend/backend/database/testing
 
@@ -210,21 +196,21 @@ See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecy
 ### Core Configuration
 
 **Framework Defaults**:
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Framework orchestration
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Framework orchestration
 
 **Project Overlay**:
 - `edison.yaml` - Project-specific configuration overrides
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Authoritative preload list
 
 **State Machine**:
-- `.edison/_generated/STATE_MACHINE.md` - State definitions and transitions
-- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - Guard enforcement rules
+- `{{PROJECT_EDISON_DIR}}/_generated/STATE_MACHINE.md` - State definitions and transitions
+- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - Guard enforcement rules
 
 ### Guidelines (Mandatory Reading)
 
-All in `.edison/_generated/guidelines/`:
+All in `{{PROJECT_EDISON_DIR}}/_generated/guidelines/`:
 - `SESSION_WORKFLOW.md` - Canonical session lifecycle
-- `DELEGATION.md` + `.edison/_generated/constitutions/ORCHESTRATOR.md` - Delegation routing
+- `DELEGATION.md` + `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Delegation routing
 - `TDD.md` - Test-driven development enforcement (RED→GREEN→REFACTOR)
 - `QUALITY.md` - Code quality standards and patterns
 - `HONEST_STATUS.md` - Status integrity and directory-name truth
@@ -236,12 +222,12 @@ All in `.edison/_generated/guidelines/`:
 ### Templates
 
 **Task/QA Structure**:
-- `.edison/_generated/documents/TASK.md` - Composed task document template (used by `edison task new`)
-- `.edison/_generated/documents/QA.md` - Composed QA document template (used by `edison qa new`)
+- `{{PROJECT_EDISON_DIR}}/_generated/documents/TASK.md` - Composed task document template (used by `edison task new`)
+- `{{PROJECT_EDISON_DIR}}/_generated/documents/QA.md` - Composed QA document template (used by `edison qa new`)
 
 **Session Templates**:
-- `.edison/_generated/STATE_MACHINE.md` - State machine definitions
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` - Session intake checklist
+- `{{PROJECT_EDISON_DIR}}/_generated/STATE_MACHINE.md` - State machine definitions
+- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` - Session intake checklist
 
 ### CLI Reference (Automation)
 
@@ -274,7 +260,7 @@ All in `.edison/_generated/guidelines/`:
 
 ## Session Isolation (Mandatory)
 
-**Core Principle**: When claiming a task into an active session, the file **physically moves** under `.project/sessions/wip/<session-id>/`.
+**Core Principle**: When claiming a task into an active session, the file **physically moves** under `{{fn:session_state_dir("active")}}/<session-id>/`.
 
 **Why Physical Movement**:
 - Prevents race conditions (two sessions can't claim same task)
@@ -284,7 +270,7 @@ All in `.edison/_generated/guidelines/`:
 
 **Session-Scoped Queues**:
 ```plaintext
-.project/sessions/wip/<session-id>/
+{{fn:session_state_dir("active")}}/<session-id>/
   tasks/
     wip/      - Tasks claimed by this session
     done/     - Tasks completed, awaiting validation
@@ -294,9 +280,8 @@ All in `.edison/_generated/guidelines/`:
 
 **Global Queues** (unclaimed work only):
 ```plaintext
-.project/
-  tasks/todo/     - Available for any session to claim
-  tasks/validated/ - Completed work (no longer session-scoped)
+{{config.tasks.paths.root}}/todo/       - Available for any session to claim
+{{config.tasks.paths.root}}/validated/  - Completed work (no longer session-scoped)
 ```
 
 **Rules**:
@@ -372,7 +357,7 @@ Once bundle validated, each implementer completes their session.
 - Follows full TDD + validation workflow
 - Evidence logged in own task file
 
-See `.edison/_generated/guidelines/SESSION_WORKFLOW.md` section "Parallel Sessions and Task Splitting" for detailed workflow.
+See `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` section "Parallel Sessions and Task Splitting" for detailed workflow.
 
 ---
 
@@ -382,10 +367,10 @@ This template provides the Edison framework orchestration hub. **Projects extend
 
 ### Example: Project Overlay
 
-`.edison/_generated/constitutions/AGENTS.md` structure:
+`{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md` structure:
 ```markdown
-\{\{include:.edison/_generated/constitutions/AGENTS.md\}\}
-{{include:.edison/_generated/constitutions/AGENTS.md}}
+\{\{include:{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md\}\}
+{{include:{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md}}
 ```
 
 Project overlay adds:
@@ -438,4 +423,4 @@ This orchestration hub ensures:
 - ✅ Delegation patterns (route complex work to specialists)
 - ✅ Post-training safety (Context7 queries mandatory)
 
-**Next Step**: Read `.edison/_generated/constitutions/ORCHESTRATOR.md` to begin a session correctly.
+**Next Step**: Read `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` to begin a session correctly.

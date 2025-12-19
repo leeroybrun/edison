@@ -7,7 +7,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `.edison/_generated/constitutions/ORCHESTRATOR.md`
+   Read: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
 
 2. **Find Ready Tasks**
    Run: `edison task ready --json`

@@ -1,19 +1,19 @@
 # Session Workflow (Active Session Playbook)
 
 <!-- section: workflow -->
-> **Canonical Location**: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
+> **Canonical Location**: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
 
-Canonical path: .edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md
+Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
 
-This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`.
+This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `{{fn:sessions_root}}/`.
 
-Session JSON stores **session metadata only** (state, owner, timestamps, git info, activity log). Tasks and QA briefs are the single source of truth and are discovered by scanning task/QA frontmatter (session_id) and by the session-scoped directories under `.project/sessions/<state>/<session-id>/`.
+Session JSON stores **session metadata only** (state, owner, timestamps, git info, activity log). Tasks and QA briefs are the single source of truth and are discovered by scanning task/QA frontmatter (session_id) and by the session-scoped directories under `{{fn:sessions_root}}/<state>/<session-id>/`.
 
 ## CLI naming (dispatcher + auto-start)
 - Orchestration is driven by the loop driver: `edison session next <session-id>`.
 - Session records are created with `edison session create [--session-id <id>]` (manual; ID auto-infers if omitted) or by launching an orchestrator process via `edison orchestrator start` (end-to-end).
 - Prompt templates for the current role/session are injected automatically by the launcher; do not hand-edit rendered prompts.
-- If your orchestration layer expects defaults, set the configured owner env var (from `.edison/config/project.yml`) {{if:config(project.owner_env_var)}}— e.g. `{{config.project.owner_env_var}}`{{/if}} and optionally a session env var.
+- If your orchestration layer expects defaults, set the configured owner env var (from `{{fn:project_config_dir}}/config/project.yml`) {{if:config(project.owner_env_var)}}— e.g. `{{config.project.owner_env_var}}`{{/if}} and optionally a session env var.
 
 {{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#worktree-confinement}}
 
@@ -26,9 +26,9 @@ Session JSON stores **session metadata only** (state, owner, timestamps, git inf
 ## Session States
 
 Sessions transition through three states:
-- **active** (located in `.project/sessions/wip/`)
-- **closing** (located in `.project/sessions/done/`)
-- **validated** (located in `.project/sessions/validated/`)
+- **active** (located in `{{fn:session_state_dir("active")}}/`)
+- **closing** (located in `{{fn:session_state_dir("closing")}}/`)
+- **validated** (located in `{{fn:session_state_dir("validated")}}/`)
 
 Directory Naming: The directory names (`wip/`, `done/`) reflect legacy nomenclature but state metadata is canonical. Always use state names (active/closing/validated) in code and configuration.
 
@@ -36,12 +36,12 @@ Directory Naming: The directory names (`wip/`, `done/`) reflect legacy nomenclat
 
 Session state names map to on-disk directories as follows:
 
-- `.project/sessions/wip/` (active)
-- `.project/sessions/done/` (closing)
-- `.project/sessions/validated/` (validated)
+- `{{fn:session_state_dir("active")}}/` (active)
+- `{{fn:session_state_dir("closing")}}/` (closing)
+- `{{fn:session_state_dir("validated")}}/` (validated)
 
 - <!-- section: RULE.SESSION.ISOLATION -->
-- Claiming a task into a session physically moves it under `.project/sessions/wip/<session-id>/tasks/<status>/` (session state: active). Paired QA lives under `.project/sessions/wip/<session-id>/qa/<status>/`.
+- Claiming a task into a session physically moves it under `{{fn:session_state_dir("active")}}/<session-id>/tasks/<status>/` (session state: active). Paired QA lives under `{{fn:session_state_dir("active")}}/<session-id>/qa/<status>/`.
 - While the session is active, operate on the session-scoped queues by passing `--session <id>` (or set your project’s session-owner environment variable so CLIs auto-detect).
 - Other agents must never touch items under another session’s `sessions/wip/<id>/` (active) tree. Global queues contain only unclaimed work.
 - Session completion restores all session-scoped files back to the global queues, preserving final status.
@@ -49,8 +49,8 @@ Session state names map to on-disk directories as follows:
 
 ## Session Timeouts (WP-002)
 
-- Default inactivity timeout is configured in `.edison/_generated/constitutions/ORCHESTRATOR.md` (`session.timeout_hours`, default: 8).
-- Stale detection cadence is `session.stale_check_interval_hours` (default: 1) for schedulers.
+- Default inactivity timeout is configured in `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md` (`session.timeout_hours`).
+- Stale detection cadence is configured via `session.stale_check_interval_hours` for schedulers.
 - When a session exceeds the timeout window (based on the most recent of `lastActive`, `claimedAt`, or `createdAt`):
   - `edison session cleanup-expired` detects and automatically cleans up expired sessions.
   - Cleanup restores all session-scoped tasks/QA back to the global queues and moves the session JSON from `sessions/wip/` → `sessions/done/`.
@@ -60,9 +60,9 @@ Session state names map to on-disk directories as follows:
 
 ## Quick checklist (fail-closed) - ORCHESTRATOR
 
-- [ ] Session record in `.project/sessions/wip/` (active) is current (Owner, Last Active, Activity Log).
+- [ ] Session record in `{{fn:session_state_dir("active")}}/` (active) is current (Owner, Last Active, Activity Log).
 - [ ] Every claimed task has a matching QA brief (in `qa/waiting|todo|wip|done`).
-- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
+- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
 - [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
@@ -70,7 +70,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `tasks/wip/` and QA in `qa/waiting/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow `.edison/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
+- [ ] State transitions follow `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
 - [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
@@ -105,7 +105,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 ### Hierarchy & State Machine
 
-- Session files now live in `.project/sessions/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the view for humans/LLMs.
+- Session files now live in `{{fn:sessions_root}}/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the view for humans/LLMs.
 <!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
@@ -145,7 +145,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.1. Setup and Planning
 
-1. **Confirm QA exists:** `find .project/qa -name "*<task-id>*-qa.md"`. If missing, create via `edison qa new <task-id> --session <session-id>`.
+1. **Confirm QA exists:** `find {{fn:qa_root}} -name "*<task-id>*-qa.md"`. If missing, create via `edison qa new <task-id> --session <session-id>`.
 
 2. **Decide approach:**
    - **Option A: Delegate to sub-agent** (recommended for complex/specialized work)
@@ -159,12 +159,12 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `.edison/_generated/constitutions/ORCHESTRATOR.md`:**
+**Delegate according to `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md`:**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
    # Example: Delegating implementation to a specialized agent role
-   <orchestrator-cli> --role <agent-name> --task <task-id> --prompt-source .edison/_generated/constitutions/AGENTS.md
+   <orchestrator-cli> --role <agent-name> --task <task-id> --prompt-source {{fn:project_config_dir}}/_generated/constitutions/AGENTS.md
    ```
 
 2. **Sub-agent will handle:**
@@ -182,7 +182,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
    ```
 
 4. **When sub-agent reports back:**
-   - Review their implementation report at `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.md`
+   - Review their implementation report at `{{fn:evidence_root}}/<task-id>/round-1/implementation-report.md`
    - Check for blockers, follow-ups, completion status
    - Store `continuation_id` in task file and session record
 
@@ -192,7 +192,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 **If you must implement yourself:**
 
-1. **YOU must follow `.edison/_generated/constitutions/AGENTS.md`:**
+1. **YOU must follow `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md`:**
    - Call `edison session track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
    - Call `edison session track complete`
@@ -237,7 +237,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 > **💡 CRITICAL WORKFLOW AID:** After every action (claim, delegate, status change), run `edison session next <session-id>` to see the next steps and stay "on rails." This enhanced orchestration helper:
 > - Shows ALL applicable rules BEFORE actions (proactive, not just at enforcement)
 > - Displays complete validator roster with model bindings (prevents forgetting validators or using wrong models)
-> - Shows delegation suggestions with detailed reasoning from `.edison/_generated/AVAILABLE_AGENTS.md`
+> - Shows delegation suggestions with detailed reasoning from `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md`
 > - Lists related tasks (parent/child/sibling) for context
 > - Provides decision points (concurrency cap, wave batching, optional validators)
 > - Returns precise commands with rule references so you never miss a step
@@ -290,26 +290,26 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ### 3.3. Launch Validators (DELEGATED)
 
-**Launch validators in parallel waves up to concurrency cap (default 5):**
+**Launch validators in parallel waves up to concurrency cap (`validation.execution.concurrency` = {{config.validation.execution.concurrency}}):**
 
 #### Wave 1: Global Validators (MANDATORY, BLOCKING)
 
 ```bash
 # Global Validator (Model 1)
-<validator-cli> --model <model-1> --role validator-<model-1>-global --task <task-id> --qa .project/qa/wip/<task-id>-qa.md
+<validator-cli> --model <model-1> --role validator-<model-1>-global --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
 
 # Global Validator (Model 2)
-<validator-cli> --model <model-2> --role validator-<model-2>-global --task <task-id> --qa .project/qa/wip/<task-id>-qa.md
+<validator-cli> --model <model-2> --role validator-<model-2>-global --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
 ```
 
 #### Wave 2: Critical Validators (MANDATORY, BLOCKING)
 
 ```bash
 # Security
-<validator-cli> --model <model> --role validator-security --task <task-id> --qa .project/qa/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-security --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
 
 # Performance
-<validator-cli> --model <model> --role validator-performance --task <task-id> --qa .project/qa/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-performance --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
 ```
 
 #### Wave 3: Specialized Validators (TRIGGERED, BLOCKING IF `blocksOnFail=true`)
@@ -318,7 +318,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ```bash
 # Specialized Validators (triggered by configured file patterns)
-<validator-cli> --model <model> --role validator-<type> --task <task-id> --qa .project/qa/wip/<task-id>-qa.md
+<validator-cli> --model <model> --role validator-<type> --task <task-id> --qa {{fn:qa_root}}/wip/<task-id>-qa.md
 
 # Check orchestrator manifest for active pack validators and their trigger patterns
 ```
@@ -408,7 +408,7 @@ edison session verify <session-id>
 **When all validators report back:**
 
 1. **Read each validator report:**
-   - `.project/qa/validation-evidence/<task-id>/round-1/validator-<id>-report.md`
+   - `{{fn:evidence_root}}/<task-id>/round-1/validator-<id>-report.md`
 
 2. **Check verdicts:**
    - ✅ `approve` - Validator passed the task
@@ -454,24 +454,24 @@ edison session verify <session-id>
 ## Validator Findings & Verdicts
 
 ### Global Validator 1 ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.md`
+- Report: `{{fn:evidence_root}}/<task-id>/round-1/validator-<name>-report.md`
 - Verdict: Approve
 - Summary: Excellent implementation quality...
 
 ### Global Validator 2 ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-<name>-report.md`
+- Report: `{{fn:evidence_root}}/<task-id>/round-1/validator-<name>-report.md`
 - Verdict: Approve
 - Summary: Strong TDD compliance...
 
 ### Security ❌ REJECTED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-security-report.md`
+- Report: `{{fn:evidence_root}}/<task-id>/round-1/validator-security-report.md`
 - Verdict: Reject
 - Summary: Critical issue found - missing rate limiting...
 - Blocking Issues: 2 (1 critical, 1 high)
 - Follow-Ups: Task <id> created for rate limiting
 
 ### Performance ✅ APPROVED
-- Report: `.project/qa/validation-evidence/<task-id>/round-1/validator-performance-report.md`
+- Report: `{{fn:evidence_root}}/<task-id>/round-1/validator-performance-report.md`
 - Verdict: Approve
 - Summary: No performance concerns...
 
@@ -487,7 +487,7 @@ edison session verify <session-id>
 > - `edison session track heartbeat` - Not typically needed (validators should complete quickly)
 
 ## 4. Handling rejections & follow-ups
-1. Rejected tasks **stay** in `.project/tasks/wip/`. Never move them back to `todo/`—they are still active work.
+1. Rejected tasks **stay** in `{{fn:tasks_root}}/wip/`. Never move them back to `todo/`—they are still active work.
 2. Move the QA file to `qa/waiting/` and add a “Round N” section capturing:
    - Date/time
    - Status (`REJECTED`)
@@ -542,9 +542,9 @@ edison session verify <session-id>
 ---
 
 **References**
-- `.edison/_generated/constitutions/AGENTS.md` – orchestration policies & delegation guardrails
-- `.edison/_generated/guidelines/shared/VALIDATION.md` – validator gate specifics
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` – TDD verification requirements (embedded)
-- `.edison/_generated/guidelines/shared/HONEST_STATUS.md` – directory semantics + reporting rules
-- `.edison/_generated/AVAILABLE_AGENTS.md` – agent roster and delegation patterns
-- `.edison/_generated/AVAILABLE_VALIDATORS.md` – validator triggers + block/allow list
+- `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` – orchestration policies & delegation guardrails
+- `{{fn:project_config_dir}}/_generated/guidelines/shared/VALIDATION.md` – validator gate specifics
+- `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md` – TDD verification requirements (embedded)
+- `{{fn:project_config_dir}}/_generated/guidelines/shared/HONEST_STATUS.md` – directory semantics + reporting rules
+- `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` – agent roster and delegation patterns
+- `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md` – validator triggers + block/allow list

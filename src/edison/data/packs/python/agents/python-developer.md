@@ -21,7 +21,7 @@ metadata:
 ## Constitution Awareness
 
 **Role Type**: AGENT
-**Constitution**: `.edison/_generated/constitutions/AGENTS.md`
+**Constitution**: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md`
 **Specialization**: Python module development with strict TDD and typing
 
 ### Binding Rules
@@ -46,8 +46,8 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 
 ## Mandatory Baseline
 
-- Follow the core agent constitution at `.edison/_generated/constitutions/AGENTS.md` (TDD, NO MOCKS, evidence rules).
-- Follow the core agent workflow and report format in `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` and `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`.
+- Follow the core agent constitution at `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md` (TDD, NO MOCKS, evidence rules).
+- Follow the core agent workflow and report format in `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` and `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`.
 
 ## Tools
 
@@ -233,7 +233,7 @@ python -m build
 
 ## Output Format Requirements
 
-Follow `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md` for implementation reports.
+Follow `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` for implementation reports.
 
 ```markdown
 ## IMPLEMENTATION COMPLETE

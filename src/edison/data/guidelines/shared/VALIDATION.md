@@ -22,7 +22,7 @@ edison qa validate <task-id> --session <session-id> --dry-run
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
 **Specialized (triggered, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
@@ -87,11 +87,11 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 3) Detect changed files → map to validator roster.
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.
 5) Run validators in waves (respect models and concurrency cap). Summarize each report in QA.
-6) Store raw artefacts under `.project/qa/validation-evidence/<task-id>/round-<N>/` and reference them in QA.
+6) Store raw artefacts under `{{fn:evidence_root}}/<task-id>/round-<N>/` and reference them in QA.
 7) Move QA/task only after ALL blocking validators approve and the bundle-approved marker exists.
 
 ## Failure & Re-runs
-- Blocking validator reject → task stays/returns to `wip`; QA → `waiting`; spawn follow-ups in `tasks/todo/`; add "Round N" entry to QA.
+- Blocking validator reject → task stays/returns to `wip`; QA → `waiting`; spawn follow-ups in `{{fn:tasks_root}}/todo/`; add "Round N" entry to QA.
 - Validator blocked/missing → stop; fix cause; rerun affected validators.
 - Each revalidation uses a new `round-<N>` directory; never overwrite prior evidence.
 
@@ -120,7 +120,7 @@ Repeat until APPROVE or escalate
 
 ### Maximum Rounds
 
-- Configurable via `validation.maxRounds` (default: 3)
+- Configurable via `validation.maxRounds` (default: {{config.validation.maxRounds}})
 - After max rounds, escalate to human review
 - Each round's feedback is cumulative
 

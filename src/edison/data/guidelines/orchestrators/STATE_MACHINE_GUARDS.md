@@ -16,13 +16,13 @@ State names: {{fn:state_names("qa")}}
 
 {{fn:state_diagram("qa")}}
 
-The authoritative definition lives in `.edison/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
+The authoritative definition lives in `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
 
 ## Enforcement Points
 
 - `tasks/status`: Calls `validate_state_transition` before any move and gates `… → done` via `tasks/ready`.
 - `tasks/ready`: Enforces completion requirements (implementation report, evidence files, validator config/TDD rules) and fails closed.
-- Pre-commit hook: `.git/hooks/pre-commit` invokes `edison git-hooks precommit-check` to block invalid staged renames under `.project/tasks/` and `.project/qa/`.
+- Pre-commit hook: `.git/hooks/pre-commit` invokes `edison git-hooks precommit-check` to block invalid staged renames under `{{fn:tasks_root}}/` and `{{fn:qa_root}}/`.
 
 ## Failure Mode (Fail-Closed)
 

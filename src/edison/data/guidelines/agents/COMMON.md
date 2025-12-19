@@ -1,18 +1,18 @@
 # Agent Common Guidelines (MANDATORY)
 
-Read this alongside your role constitution: `.edison/_generated/constitutions/AGENTS.md`.
+Read this alongside your role constitution: `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md`.
 
 ## Canonical Guideline Roster
 Use this roster instead of repeating the table in each agent file:
 
 | # | Guideline | Path | Purpose |
 |---|-----------|------|---------|
-| 1 | **Workflow** | `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Implement → evidence/report → handoff (no orchestration) |
-| 2 | **TDD (embedded)** | `.edison/_generated/constitutions/AGENTS.md` | TDD principles + execution requirements |
-| 3 | **Validation** | `.edison/_generated/guidelines/shared/VALIDATION.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
-| 4 | **Delegation** | `.edison/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
-| 5 | **Context7** | `.edison/_generated/guidelines/shared/CONTEXT7.md` | Post-training package docs |
-| 6 | **Rules** | `.edison/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
+| 1 | **Workflow** | `{{fn:project_config_dir}}/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Implement → evidence/report → handoff (no orchestration) |
+| 2 | **TDD (embedded)** | `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` | TDD principles + execution requirements |
+| 3 | **Validation** | `{{fn:project_config_dir}}/_generated/guidelines/shared/VALIDATION.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
+| 4 | **Delegation** | `{{fn:project_config_dir}}/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
+| 5 | **Context7** | `{{fn:project_config_dir}}/_generated/guidelines/shared/CONTEXT7.md` | Post-training package docs |
+| 6 | **Rules** | `{{fn:project_config_dir}}/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
 
 ## Edison CLI & Validation Tools
 

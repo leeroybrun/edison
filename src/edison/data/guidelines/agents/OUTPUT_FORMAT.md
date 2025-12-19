@@ -6,17 +6,17 @@ Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-re
 
 ## Where it lives
 
-- Evidence root: `.project/qa/validation-evidence/<task-id>/`
+- Evidence root: `{{fn:evidence_root}}/<task-id>/`
 - Round directory: `round-<N>/` (append-only; never overwrite old rounds)
 - Report filename: **config-driven** (`validation.artifactPaths.implementationReportFile`, default `implementation-report.md`)
 
 Example path:
-- `.project/qa/validation-evidence/<task-id>/round-1/implementation-report.md`
+- `{{fn:evidence_root}}/<task-id>/round-1/implementation-report.md`
 
 ## Schema (single source of truth)
 
 See the schema for the exact required fields:
-- `.edison/_generated/schemas/reports/implementation-report.schema.yaml`
+- `{{fn:project_config_dir}}/_generated/schemas/reports/implementation-report.schema.yaml`
 
 ## Required machine fields (YAML frontmatter)
 

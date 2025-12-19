@@ -18,7 +18,7 @@ edison session next {{session_id}}
 
 ## Recovery Checklist
 
-1. ✅ Re-read your constitution: `.edison/_generated/constitutions/ORCHESTRATOR.md`
+1. ✅ Re-read your constitution: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
 2. ✅ Check session state: `edison session status`
 3. ✅ Review in-progress tasks: `edison task list --status=wip`
 4. ✅ Check for blocked tasks: `edison task list --status=blocked`
@@ -51,4 +51,4 @@ edison session next
 
 ## Constitution Reference
 
-Re-read your full instructions at: `.edison/_generated/constitutions/ORCHESTRATOR.md`
+Re-read your full instructions at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`

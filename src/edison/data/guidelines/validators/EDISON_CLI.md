@@ -39,7 +39,7 @@ edison qa validate TASK-123 --round 2
 edison qa validate TASK-123 --session sess-001
 ```
 
-**Input location**: `.project/qa/validation-evidence/<task-id>/round-N/`
+**Input location**: `{{fn:evidence_root}}/<task-id>/round-N/`
 **Output**: `bundle-approved.md` or validation error report
 
 ---
@@ -108,7 +108,7 @@ edison qa round TASK-123 --status approve
 
 Validator report format is defined in:
 - `guidelines/validators/OUTPUT_FORMAT.md` (canonical human + JSON requirements)
-- `.edison/_generated/schemas/reports/validator-report.schema.yaml` (exact schema; YAML)
+- `{{fn:project_config_dir}}/_generated/schemas/reports/validator-report.schema.yaml` (exact schema; YAML)
 
 ---
 
@@ -216,9 +216,9 @@ edison qa validate TASK-123 --round 2
 
 ## Output Locations
 
-**Validator reports**: `.project/qa/validation-evidence/<task-id>/round-N/<validator>.json`
-**Bundle summary**: `.project/qa/validation-evidence/<task-id>/round-N/bundle-approved.md`
-**Implementation report**: `.project/qa/validation-evidence/<task-id>/round-N/implementation-report.md`
+**Validator reports**: `{{fn:evidence_root}}/<task-id>/round-N/<validator>.json`
+**Bundle summary**: `{{fn:evidence_root}}/<task-id>/round-N/bundle-approved.md`
+**Implementation report**: `{{fn:evidence_root}}/<task-id>/round-N/implementation-report.md`
 
 ---
 
@@ -295,11 +295,11 @@ Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active 
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/validators/VALIDATOR_GUIDELINES.md` - Full validator guidelines
-- `.edison/_generated/guidelines/validators/VALIDATOR_WORKFLOW.md` - Validation workflow
-- `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` - Report format requirements
-- `.edison/_generated/guidelines/validators/code-quality.md` - Code quality standards
-- `.edison/_generated/guidelines/validators/testing.md` - Testing requirements
+- `{{fn:project_config_dir}}/_generated/guidelines/validators/VALIDATOR_GUIDELINES.md` - Full validator guidelines
+- `{{fn:project_config_dir}}/_generated/guidelines/validators/VALIDATOR_WORKFLOW.md` - Validation workflow
+- `{{fn:project_config_dir}}/_generated/guidelines/validators/OUTPUT_FORMAT.md` - Report format requirements
+- `{{fn:project_config_dir}}/_generated/guidelines/validators/code-quality.md` - Code quality standards
+- `{{fn:project_config_dir}}/_generated/guidelines/validators/testing.md` - Testing requirements
 
 ---
 

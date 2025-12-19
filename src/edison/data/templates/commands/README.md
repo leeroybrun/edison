@@ -31,5 +31,6 @@ context = {
     "related_commands": ["edison-session-status"],
 }
 
-text = Template(Path(".edison/config/templates/commands/claude-command.md.template").read_text()).render(**context)
+project_config_dir = "<project-config-dir>"  # e.g. ".edison"
+text = Template(Path(f"{project_config_dir}/config/templates/commands/claude-command.md.template").read_text()).render(**context)
 ```

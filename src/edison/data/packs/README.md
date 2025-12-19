@@ -27,11 +27,11 @@ Layout
 
 Unified Naming Convention
 - Directory provides context - no suffixes needed
-- Core templates: `.edison/_generated/<type>/<name>.md`
+- Core templates: `{{PROJECT_EDISON_DIR}}/_generated/<type>/<name>.md`
 - Pack overlays: `.edison/packs/<pack>/<type>/overlays/<name>.md`
 - Project overlays: `.edison/<type>/overlays/<name>.md`
 
-pack.yml (schema: `.edison/_generated/schemas/config/pack.schema.yaml`)
+pack.yml (schema: `{{PROJECT_EDISON_DIR}}/_generated/schemas/config/pack.schema.yaml`)
 ```yaml
 pack:
   id: typescript

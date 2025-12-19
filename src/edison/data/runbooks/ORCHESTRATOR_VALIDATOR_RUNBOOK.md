@@ -22,7 +22,7 @@
    - The command resolves triggered validators based on the bundle + roster; captures round number in the evidence tree.
 
 ## 2. Interpret validation results
-- Evidence lives in `.project/qa/validation-evidence/<task-id>/round-<N>/`.
+- Evidence lives in `{{fn:evidence_root}}/<task-id>/round-<N>/`.
 - Per-validator reports include `status` and `blocksOnFail`; treat any blocking failure as a hard reject.
 - `bundle-approved.md` is the canonical summary:
   - `approved=true` → QA may move toward `done/validated`.
@@ -38,7 +38,7 @@
 - Re-run only after fixes are merged into the session worktree and the bundle is regenerated.
 
 ## 4. Escalate when max rounds are exceeded
-- The ceiling is configured via `validation.maxRounds` (default comes from YAML overlays; check `.edison/config/*.yml` and pack/project overrides). Do **not** hardcode a number.
+- The ceiling is configured via `validation.maxRounds` (default: {{config.validation.maxRounds}}; check `{{PROJECT_EDISON_DIR}}/config/*.yml` and pack/project overrides). Do **not** hardcode a number.
 - If the upcoming round would exceed `validation.maxRounds`:
   1. Pause automation; do not start another validator run.
   2. Mark the QA round status as `blocked` with rationale.

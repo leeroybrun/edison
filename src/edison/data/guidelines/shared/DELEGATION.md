@@ -47,7 +47,7 @@
 
 #### 4. Deliverables
 - **Code Changes**: Specific files expected
-- **Tests**: Test files and coverage requirements (≥90%)
+- **Tests**: Test files and coverage requirements (≥{{config.quality.coverage.overall}}% overall; {{config.quality.coverage.changed}}% on changed/new files)
 - **Evidence**: Commands to run and expected outputs
 - **Documentation**: Implementation report location and format
 
@@ -94,5 +94,4 @@
 - Evidence files recorded
 - Implementation report frontmatter (implementation-report.md)
 ```
-
 

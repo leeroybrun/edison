@@ -1,6 +1,6 @@
 # Validator Common Guidelines (MANDATORY)
 
-Read this alongside your role constitution: `.edison/_generated/constitutions/VALIDATORS.md`.
+Read this alongside your role constitution: `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md`.
 
 ---
 
@@ -40,7 +40,7 @@ Validators are **independent code reviewers** that ensure production-ready quali
 
 ### Step 1: Context7 Knowledge Refresh (MANDATORY)
 
-- Follow the **Context7 Knowledge Refresh** section in `.edison/_generated/constitutions/VALIDATORS.md` before validating any task that touches post-training packages.
+- Follow the **Context7 Knowledge Refresh** section in `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md` before validating any task that touches post-training packages.
 - Use the pack-provided `<!-- section: tech-stack -->
 <!-- /section: tech-stack -->` hints to target the correct libraries and topics.
 - **Why**: Your training data is stale for post-training packages. Using outdated patterns can cause complete feature failures, breaking API changes, and security vulnerabilities.
@@ -222,7 +222,7 @@ Every validator MUST perform these universal checks:
 ## Edison validation guards (current)
 
 - Validate only against bundles emitted by `edison qa bundle <root-task>`; return `BLOCKED` if the manifest or parent `bundle-approved.md` is missing.
-- Load roster, triggers, and blocking flags via ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`) instead of JSON.
+- Load roster, triggers, and blocking flags via ConfigManager overlays (`{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md`) instead of JSON.
 - `edison qa promote` enforces state machine rules plus bundle presence; ensure Markdown + JSON reports live in the round evidence directory referenced by the bundle.
 - Honor Context7 requirements: auto-detected post-training packages must have markers (HMAC when enabled) before issuing approval.
 
@@ -285,7 +285,7 @@ If a domain-specific validator encounters issues outside its domain:
 
 ## Output Requirements
 
-See `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` for detailed output format requirements.
+See `{{fn:project_config_dir}}/_generated/guidelines/validators/OUTPUT_FORMAT.md` for detailed output format requirements.
 
 **All validators must produce**:
 1. Human-readable Markdown report with status, findings, and evidence

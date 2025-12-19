@@ -30,7 +30,7 @@ For agent-specific workflow integration (tracking, evidence directories, and con
 <!-- section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 ## Evidence markers (required when used)
 - When a task uses any Context7-detected package (driven by `context7.triggers` and optional `context7.contentDetection`), include a marker file per package in the current round evidence directory, e.g.:
-  - `.project/qa/validation-evidence/<task-id>/round-<N>/context7-<package>.txt`
+  - `{{fn:evidence_root}}/<task-id>/round-<N>/context7-<package>.txt`
   - Briefly list topics queried and the doc version/date.
 - To inspect the merged Context7 configuration: `edison config show context7 --format yaml`
 - Guards treat missing markers as a blocker for `wip → done` on tasks that touch these packages.

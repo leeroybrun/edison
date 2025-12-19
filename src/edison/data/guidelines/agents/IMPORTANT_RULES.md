@@ -310,8 +310,8 @@ grep -r "<debug_log_pattern>" <source_directory>
 
 ## References
 
-- Quality standards: `.edison/_generated/guidelines/includes/QUALITY.md`
-- Honest status guide: `.edison/_generated/guidelines/shared/HONEST_STATUS.md`
+- Quality standards: `{{fn:project_config_dir}}/_generated/guidelines/includes/QUALITY.md`
+- Honest status guide: `{{fn:project_config_dir}}/_generated/guidelines/shared/HONEST_STATUS.md`
 
 ---
 

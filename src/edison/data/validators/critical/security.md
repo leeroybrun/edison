@@ -101,7 +101,7 @@ Security review must be **pack-aware**:
 - Active packs may contribute additional **pack-specific security rules** (framework/library-specific).
 
 Pack rule registries live in:
-- `.edison/packs/<pack>/rules/registry.yml`
+- `{{fn:project_config_dir}}/packs/<pack>/rules/registry.yml`
 - `src/edison/data/packs/<pack>/rules/registry.yml`
 
 The validator should load and **merge core + pack security rules** using the configured rules loader (RulesRegistry).
