@@ -70,6 +70,9 @@ npx playwright test e2e/login.spec.ts
 
 # Trace viewer (for traces collected by the suite)
 npx playwright show-trace playwright-report/trace.zip
+
+# HTML report (when configured)
+npx playwright show-report
 ```
 <!-- /section: tools -->
 
@@ -110,4 +113,3 @@ npx playwright show-trace playwright-report/trace.zip
 - New/updated Playwright specs covering the acceptance criteria and edge cases
 - Evidence that the test fails first and then passes (command output / trace)
 - Flake analysis if any changes touch waiting, selectors, or concurrency
-

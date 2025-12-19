@@ -79,6 +79,7 @@ Expected tool family (names may vary by client; adapt to the tools available):
 - `mcp__playwright__browser_wait_for`
 
 If these tools are unavailable, flag it as a **blocking setup issue** for UI changes.
+Prefer accessibility/tree snapshots over screenshot-only validation when available.
 
 ### Step 5: Adversarial Test Matrix (Must Attempt)
 
@@ -125,4 +126,3 @@ If these tools are unavailable, flag it as a **blocking setup issue** for UI cha
 
 <!-- section: composed-additions -->
 <!-- /section: composed-additions -->
-

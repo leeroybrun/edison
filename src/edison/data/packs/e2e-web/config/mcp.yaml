@@ -5,6 +5,7 @@ mcp:
       args:
         - "-y"
         - "@playwright/mcp@latest"
+        - "--isolated"
       env: {}
       setup:
         require:
@@ -14,4 +15,7 @@ mcp:
           Install Node.js so `npx` is available.
           Ensure Playwright browsers are installed for your project:
             - npx playwright install --with-deps
-
+          
+          Notes:
+            - This server is configured with `--isolated` to avoid state leakage across validation runs.
+            - If you need a pre-authenticated session, prefer providing a `storageState` in your Playwright test harness.
