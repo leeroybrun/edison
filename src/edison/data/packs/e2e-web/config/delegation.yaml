@@ -1,0 +1,41 @@
+delegation:
+  filePatternRules:
+    "playwright.config.*":
+      preferredModel: codex
+      reason: "Playwright config + environment correctness, determinism, and CI ergonomics"
+      subAgentType: e2e-tests-engineer
+      preferredZenRole: e2e-tests-engineer
+      confidence: high
+
+    "e2e/**/*":
+      preferredModel: codex
+      reason: "Playwright E2E engineering: real behavior, flake reduction, trace-driven debugging"
+      subAgentType: e2e-tests-engineer
+      preferredZenRole: e2e-tests-engineer
+      confidence: very-high
+
+    "tests/e2e/**/*":
+      preferredModel: codex
+      reason: "Playwright E2E engineering: real behavior, flake reduction, trace-driven debugging"
+      subAgentType: e2e-tests-engineer
+      preferredZenRole: e2e-tests-engineer
+      confidence: very-high
+
+    "**/*.e2e.*":
+      preferredModel: codex
+      reason: "End-to-end tests should be authored and stabilized by an E2E specialist"
+      subAgentType: e2e-tests-engineer
+      preferredZenRole: e2e-tests-engineer
+      confidence: high
+
+  taskTypeRules:
+    e2e-tests:
+      preferredModel: codex
+      subAgentType: e2e-tests-engineer
+      delegation: required
+      preferredZenRole: e2e-tests-engineer
+      reason: "E2E testing requires tight control of determinism, selectors, and real system setup"
+      examples:
+        - "Task Type: e2e-tests"
+        - "Write Playwright tests for checkout flow"
+

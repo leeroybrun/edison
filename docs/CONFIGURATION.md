@@ -1293,6 +1293,7 @@ Edison includes the following bundled packs:
 - `prisma` - Prisma ORM and database
 - `tailwind` - Tailwind CSS styling
 - `vitest` - Vitest testing framework
+- `e2e-web` - Playwright-first web E2E testing + browser UI validation
 - `fastify` - Fastify API framework
 
 ### Pack Structure

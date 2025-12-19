@@ -1,0 +1,24 @@
+name: e2e-web
+version: 1.0.0
+description: Web end-to-end testing pack (Playwright-first) with real, unmocked behavior and UI validation
+category: testing
+tags: [e2e, web, playwright, qa, browser, ui, testing]
+
+triggers:
+  filePatterns:
+    - "playwright.config.*"
+    - "**/playwright.config.*"
+    - "e2e/**/*"
+    - "tests/e2e/**/*"
+    - "**/*.e2e.*"
+
+dependencies: []
+
+validators:
+  - browser-e2e.md
+
+agents:
+  - e2e-tests-engineer.md
+
+examples: []
+

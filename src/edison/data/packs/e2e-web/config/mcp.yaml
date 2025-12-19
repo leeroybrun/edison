@@ -1,0 +1,17 @@
+mcp:
+  servers:
+    playwright:
+      command: "npx"
+      args:
+        - "-y"
+        - "@playwright/mcp@latest"
+      env: {}
+      setup:
+        require:
+          commands:
+            - "npx"
+        instructions: |
+          Install Node.js so `npx` is available.
+          Ensure Playwright browsers are installed for your project:
+            - npx playwright install --with-deps
+
