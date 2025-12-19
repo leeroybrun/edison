@@ -83,7 +83,7 @@ hooks:
       config:
         require_tests_pass: true
         require_coverage: true
-        coverage_threshold: 90
+        # Default coverage threshold comes from config.quality.coverage.overall.
 
     prevent-prod-edits:
       type: PreToolUse
@@ -146,7 +146,6 @@ hooks:
       template: "session-cleanup.sh.template"
       config:
         save_logs: true
-        log_directory: ".edison/logs"
 
     # ===== Context Compaction Hooks (PreCompact) =====
 
@@ -161,10 +160,6 @@ hooks:
         default_role: "agents"
         message_template: "⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
         notify: true
-        log:
-          enabled: true
-          path: ".edison/logs/compaction.log"
-          entry_template: "{timestamp} role={role} source={source} message={message}"
 
     # ===== Stop Hooks =====
 

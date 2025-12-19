@@ -55,7 +55,7 @@
 
 ```bash
 # If styles don't apply, clear cache and restart
-rm -rf <framework-cache-dir> && <dev-command>
+  rm -rf <framework-cache-dir> && {{function:ci_command("dev")}}
 ```
 
 ### Rule 5: PostCSS plugin (v4 syntax)
@@ -151,7 +151,6 @@ export function MetricCard({
 }
 ```
 <!-- /section: TailwindV4Patterns -->
-
 
 
 

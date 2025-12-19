@@ -59,6 +59,7 @@ from .process import ProcessConfig
 from .cli import CLIConfig
 from .json_io import JSONIOConfig
 from .context7 import Context7Config
+from .logging import LoggingConfig
 
 __all__: list[str] = [
     "PacksConfig",
@@ -78,4 +79,5 @@ __all__: list[str] = [
     "CLIConfig",
     "JSONIOConfig",
     "Context7Config",
+    "LoggingConfig",
 ]

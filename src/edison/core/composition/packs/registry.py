@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
 
 from edison.core.utils.paths import PathResolver
+from edison.core.packs.paths import iter_pack_dirs
 from .metadata import PackMetadata
 from .validation import validate_pack
 
@@ -41,25 +42,26 @@ def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     """Discover all valid packs using composition path resolution."""
     root = root or PathResolver.resolve_project_root()
 
-    # Use composition path resolver for consistent path resolution
-    from ..core import CompositionPathResolver
+    # NOTE: Pack discovery must include BOTH bundled packs (edison.data/packs)
+    # and project packs (.edison/packs) so custom packs are first-class.
+    by_name: Dict[str, PackInfo] = {}
 
-    base = CompositionPathResolver(root).bundled_packs_dir
+    for pack_name, pack_dir, kind in iter_pack_dirs(root):
+        if not (pack_dir / "pack.yml").exists():
+            continue
+        v = validate_pack(pack_dir)
+        if not (v.ok and v.normalized):
+            continue
 
-    results: List[PackInfo] = []
-    if not base.exists():
-        return results
-    for child in sorted(base.iterdir()):
-        if not child.is_dir():
-            continue
-        if child.name.startswith("_"):
-            continue  # not a real pack
-        if not (child / "pack.yml").exists():
-            continue
-        v = validate_pack(child)
-        if v.ok and v.normalized:
-            results.append(PackInfo(v.normalized.name, child, v.normalized))
-    return results
+        info = PackInfo(v.normalized.name, pack_dir, v.normalized)
+
+        # If a project pack shadows a bundled pack, prefer the project pack.
+        if kind == "project":
+            by_name[info.name] = info
+        else:
+            by_name.setdefault(info.name, info)
+
+    return sorted(by_name.values(), key=lambda p: p.name)
 
 
 def resolve_dependencies(packs: Dict[str, PackInfo]) -> DependencyResult:

@@ -17,7 +17,23 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
 {% set cfg = config if config is defined else {} %}
 {% set require_tests = cfg.get("require_tests_pass", False) %}
 {% set require_coverage = cfg.get("require_coverage", False) %}
-{% set coverage_threshold = cfg.get("coverage_threshold", 80) %}
+{% set global_quality = (global_config.get("quality", {}) if global_config is defined else {}) %}
+{% set global_cov = (global_quality.get("coverage", {}) if global_quality is defined else {}) %}
+{% set coverage_threshold = cfg.get("coverage_threshold") if cfg.get("coverage_threshold") is not none else global_cov.get("overall", 80) %}
+
+SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "hook_type={{ type }}" \
+    "$@" 2>/dev/null || true
+}
 
 # Only for git commit
 if [[ "$TOOL_NAME" != "Bash" ]]; then
@@ -30,16 +46,18 @@ if [[ "$COMMAND" != *"git commit"* ]]; then
 fi
 
 echo "🔍 Edison Commit Guard: Checking tests..."
+_edison_audit_event "hook.commit-guard.start" --field "tool=$TOOL_NAME" --field "command=$COMMAND"
 
 {% if require_tests %}
 # Run tests
-if ! edison ci test 2>&1 | tee /tmp/edison-commit-guard.log; then
+if ! edison ci test 2>&1; then
   echo ""
   echo "❌ Commit blocked: Tests are failing"
   echo ""
   echo "Fix failing tests before committing."
   echo "Run: edison ci test"
   echo ""
+  _edison_audit_event "hook.commit-guard.blocked" --field "reason=tests_failed"
   exit 1  # BLOCK
 fi
 {% endif %}
@@ -55,9 +73,11 @@ if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
   echo ""
   echo "Increase test coverage before committing."
   echo ""
+  _edison_audit_event "hook.commit-guard.blocked" --field "reason=coverage_low" --field "coverage=$COVERAGE" --field "threshold=$THRESHOLD"
   exit 1  # BLOCK
 fi
 {% endif %}
 
 echo "✅ Commit guard passed"
+_edison_audit_event "hook.commit-guard.passed"
 exit 0

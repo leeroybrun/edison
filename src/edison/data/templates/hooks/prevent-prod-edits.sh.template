@@ -17,6 +17,20 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // empty' 2>/dev/null || echo
 {% set cfg = config if config is defined else {} %}
 {% set protected_patterns = cfg.get("protected_patterns", []) %}
 
+SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "hook_type={{ type }}" \
+    "$@" 2>/dev/null || true
+}
+
 if [[ -z "$FILE_PATH" ]]; then
   exit 0
 fi
@@ -38,6 +52,7 @@ if [[ "$IS_PROTECTED" == "true" ]]; then
   echo "Protected files cannot be edited directly."
   echo "If you need to modify this file, use: edison override-protection"
   echo ""
+  _edison_audit_event "hook.prevent-prod-edits.blocked" --field "file_path=$FILE_PATH" --field "pattern=$PATTERN"
   exit 1  # BLOCK
 fi
 

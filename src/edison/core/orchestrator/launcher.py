@@ -17,9 +17,11 @@ import string
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from edison.core.config.domains import OrchestratorConfig
+from edison.core.config.domains.logging import LoggingConfig
+from edison.core.audit.logger import audit_event, truncate_text
 from edison.core.session.core.context import SessionContext
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
@@ -82,23 +84,76 @@ class OrchestratorLauncher:
 
         tokens = self._build_tokens()
         log_file = None
+        tmp_audit_ctx_set = False
+        log_prompt_text = False
+
+        # If there is no active audit context, attach a lightweight one using the
+        # session id from tokens so session-scoped logs can be written.
+        try:
+            from edison.core.audit.context import get_audit_context, set_audit_context, AuditContext
+
+            log_cfg = LoggingConfig(repo_root=self._project_root)
+            if (
+                log_cfg.enabled
+                and log_cfg.audit_enabled
+                and get_audit_context() is None
+                and tokens.get("session_id")
+            ):
+                set_audit_context(
+                    AuditContext(
+                        invocation_id=log_cfg.new_invocation_id(),
+                        argv=[],
+                        command_name="orchestrator.launch",
+                        session_id=str(tokens.get("session_id")),
+                    )
+                )
+                tmp_audit_ctx_set = True
+        except Exception:
+            tmp_audit_ctx_set = False
+
+        # Prompt text is sensitive; only write it to log files when explicitly enabled.
+        try:
+            log_cfg2 = LoggingConfig(repo_root=self._project_root)
+            log_prompt_text = bool(log_cfg2.enabled and log_cfg2.orchestrator_capture_prompt)
+        except Exception:
+            log_prompt_text = False
+
+        try:
+            audit_event(
+                "orchestrator.launch.start",
+                repo_root=self._project_root,
+                profile=profile_name,
+                detach=bool(detach),
+                log_path=str(log_path) if log_path else None,
+                initial_prompt_present=initial_prompt is not None,
+                initial_prompt_chars=len(initial_prompt) if initial_prompt is not None else 0,
+            )
+        except Exception:
+            pass
+
         # If a log_path is provided, always ensure it exists and write launch metadata.
         # In detached mode, we additionally stream stdout/stderr to this file.
         if log_path:
             ensure_directory(log_path.parent)
             if detach:
                 log_file = log_path.open("a", encoding="utf-8")
-                log_file.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
+                log_file.write(f"[launch] {utc_timestamp(repo_root=self._project_root)} profile={profile_name}\n")
                 if initial_prompt is not None:
-                    log_file.write("[prompt]\n")
-                    log_file.write(f"{initial_prompt}\n")
+                    if log_prompt_text:
+                        log_file.write("[prompt]\n")
+                        log_file.write(f"{initial_prompt}\n")
+                    else:
+                        log_file.write("[prompt elided]\n")
                 log_file.flush()
             else:
                 with log_path.open("a", encoding="utf-8") as lf:
-                    lf.write(f"[launch] {utc_timestamp()} profile={profile_name}\n")
+                    lf.write(f"[launch] {utc_timestamp(repo_root=self._project_root)} profile={profile_name}\n")
                     if initial_prompt is not None:
-                        lf.write("[prompt]\n")
-                        lf.write(f"{initial_prompt}\n")
+                        if log_prompt_text:
+                            lf.write("[prompt]\n")
+                            lf.write(f"{initial_prompt}\n")
+                        else:
+                            lf.write("[prompt elided]\n")
                     lf.flush()
 
         try:
@@ -106,6 +161,15 @@ class OrchestratorLauncher:
                 profile_name, context=tokens, expand=True
             )
         except Exception as exc:  # pragma: no cover - defensive
+            try:
+                audit_event(
+                    "orchestrator.launch.error",
+                    repo_root=self._project_root,
+                    profile=profile_name,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             raise OrchestratorConfigError(str(exc)) from exc
 
         command = profile.get("command")
@@ -162,6 +226,28 @@ class OrchestratorLauncher:
             stdin_pipe = subprocess.PIPE
 
         try:
+            # Audit prompt metadata (and optionally content).
+            try:
+                log_cfg = LoggingConfig(repo_root=self._project_root)
+                if (
+                    log_cfg.enabled
+                    and log_cfg.audit_enabled
+                    and log_cfg.orchestrator_enabled
+                    and prompt_text is not None
+                ):
+                    payload: Dict[str, Any] = {
+                        "profile": profile_name,
+                        "prompt_method": str(prompt_method),
+                        "prompt_chars": len(prompt_text),
+                    }
+                    if log_cfg.orchestrator_capture_prompt:
+                        payload["prompt"] = truncate_text(
+                            prompt_text, max_bytes=log_cfg.orchestrator_max_prompt_bytes
+                        )
+                    audit_event("orchestrator.launch.prompt", repo_root=self._project_root, **payload)
+            except Exception:
+                pass
+
             if prompt_text is not None:
                 if prompt_method == "file":
                     prompt_file = self._deliver_prompt_file(prompt_text)
@@ -210,6 +296,19 @@ class OrchestratorLauncher:
                 stderr=stderr_target,
                 text=True,
             )
+            try:
+                audit_event(
+                    "orchestrator.launch.spawned",
+                    repo_root=self._project_root,
+                    profile=profile_name,
+                    pid=getattr(process, "pid", None),
+                    argv=[resolved_command, *args_list],
+                    cwd=str(cwd_path) if cwd_path else None,
+                    detached=bool(detach),
+                    stdio_redirected=bool(detach),
+                )
+            except Exception:
+                pass
 
             if prompt_text is not None and prompt_method == "stdin":
                 self._deliver_prompt_stdin(process, prompt_text)
@@ -224,6 +323,15 @@ class OrchestratorLauncher:
         except OrchestratorError:
             raise
         except Exception as exc:  # pragma: no cover - defensive
+            try:
+                audit_event(
+                    "orchestrator.launch.error",
+                    repo_root=self._project_root,
+                    profile=profile_name,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             try:
                 if "process" in locals() and process and process.poll() is None:
                     process.terminate()
@@ -245,6 +353,21 @@ class OrchestratorLauncher:
                 try:
                     log_file.flush()
                     log_file.close()
+                except Exception:
+                    pass
+            try:
+                audit_event(
+                    "orchestrator.launch.end",
+                    repo_root=self._project_root,
+                    profile=profile_name,
+                )
+            except Exception:
+                pass
+            if tmp_audit_ctx_set:
+                try:
+                    from edison.core.audit.context import clear_audit_context
+
+                    clear_audit_context()
                 except Exception:
                     pass
 
@@ -269,7 +392,7 @@ class OrchestratorLauncher:
             "project_root": str(self._project_root),
             "session_worktree": str(worktree) if worktree else None,
             "session_id": str(session_id) if session_id else None,
-            "timestamp": utc_timestamp(),
+            "timestamp": utc_timestamp(repo_root=self._project_root),
             "shortid": self._generate_shortid(),
         }
         return {k: v for k, v in tokens.items() if v is not None}

@@ -13,13 +13,26 @@ Test-Driven Development is NON-NEGOTIABLE for all implementation work.
 - **REFACTOR**: Improve the code with all tests green, then rerun the full suite
 - Repeat the cycle for every feature/change
 
+### The Iron Law (Stop-the-Line)
+**No production code without a failing test first.**
+
+If implementation exists before the test:
+- Revert/stash the implementation, write the test first, then implement from the test.
+- If you genuinely must proceed without strict test-first ordering, get explicit approval and document the rationale + follow-up task in the implementation report (do not silently skip).
+
 ### Core Rules
 - Fail first; do not skip the RED step
 - Minimal green code; avoid speculative features
 - Refactor with a full test run before proceeding
-- Coverage targets from project config (typically ≥90% overall; 100% on new/changed files)
+- Coverage targets from config: overall >= {{config.quality.coverage.overall}}%, changed/new >= {{config.quality.coverage.changed}}%
 - Update tests only to reflect agreed spec/format changes, never just to "make green"
 - Keep output clean—no console noise
+
+### Good Tests (Heuristics)
+- One behavior per test (if the test name contains "and", split it).
+- Test names describe behavior + expected outcome (avoid `test1`, `works`).
+- Assert on observable outcomes (return values, state changes, HTTP responses), not internal call sequences.
+- Tests should be deterministic and isolated (no shared global state, no ordering reliance).
 
 ### Guardrails
 - No `.skip` / `.todo` / `.only` (or equivalents) committed
@@ -43,22 +56,24 @@ Write tests BEFORE any implementation code. Tests MUST fail initially.
 
 **Verify RED Phase**:
 ```bash
-<run test command from active test framework>
-# Expected: Test FAILS (implementation not written yet)
+{{function:ci_command("test", "<run test command from active test framework>")}}
+# Expected: Test FAILS for the right reason (feature/behavior missing)
 ```
 
 **RED Phase Checklist**:
 - [ ] Test written BEFORE implementation
-- [ ] Test fails when run
-- [ ] Test failure message is clear
+- [ ] Test fails when run (not skipped)
+- [ ] Failure is an assertion/expectation failure (not a syntax/runtime error)
+- [ ] Failure message is clear and points to missing behavior (not test bugs)
 - [ ] Test covers the specific functionality
+- [ ] If the test passes immediately, stop: tighten/adjust the test until it fails correctly (otherwise it may not be testing what you think)
 
 #### 2. GREEN Phase: Minimal Implementation
 Write the MINIMUM code needed to make the test pass.
 
 **Verify GREEN Phase**:
 ```bash
-<run test command from active test framework>
+{{function:ci_command("test", "<run test command from active test framework>")}}
 # Expected: Test PASSES
 ```
 
@@ -66,13 +81,14 @@ Write the MINIMUM code needed to make the test pass.
 - [ ] Implementation makes test pass
 - [ ] No extra code beyond what's needed
 - [ ] Test passes consistently
+- [ ] Other relevant tests still pass (no regressions introduced)
 
 #### 3. REFACTOR Phase: Clean Up
 Improve code quality while keeping tests passing.
 
 **Verify REFACTOR Phase**:
 ```bash
-<run test command from active test framework>
+{{function:ci_command("test", "<run test command from active test framework>")}}
 # Expected: ALL tests still PASS
 ```
 
@@ -81,6 +97,22 @@ Improve code quality while keeping tests passing.
 - [ ] Error handling added
 - [ ] Validation added
 - [ ] ALL tests still pass
+
+### Common Testing Anti-Patterns (Avoid)
+- Testing mock/spies/call counts as "proof" instead of asserting outcomes.
+- Adding test-only methods/flags to production code to make tests easier.
+- Mocking/stubbing without understanding what real side effects the test depends on.
+- Boundary mocks that don't match the real schema/shape (partial mocks that silently diverge).
+
+### Gate Checks (Before You Proceed)
+**Before adding any production method to "help tests":**
+- Is it used by production code (not just tests)? If not, put it in test utilities/fixtures instead.
+- Does this class actually own the resource lifecycle being "cleaned up"? If not, it's the wrong place.
+
+**Before adding any mock/double (even at boundaries):**
+- What side effects does the real dependency have, and does the test rely on them?
+- Can you run once with the real implementation to observe what's actually needed?
+- If mocking a boundary response, mirror the full response shape/schema (not just fields the test touches).
 
 ### Evidence Requirements
 - Test file created/committed BEFORE implementation file (verify via git history)
@@ -138,6 +170,8 @@ Improve code quality while keeping tests passing.
 - Tests written AFTER implementation (check git history)
 - Tests that always pass (no assertions)
 - Mocked everything (no real behavior tested)
+- Test-only production methods/flags added solely to enable tests
+- Tests primarily assert on call counts/spies instead of observable behavior
 - Coverage below threshold with no justification
 - Tests removed to make suite pass
 
@@ -146,6 +180,7 @@ Improve code quality while keeping tests passing.
 - Complex tests that are hard to understand
 - Tests coupled to implementation details
 - Missing edge case coverage
+- Boundary mocks/fixtures that appear incomplete or drift from real schemas
 <!-- /section: validator-check -->
 
 <!-- section: orchestrator-verify -->
@@ -162,6 +197,7 @@ Improve code quality while keeping tests passing.
 - [ ] Sub-agent showed tests failing initially
 - [ ] Failure messages indicate tests were actually testing something
 - [ ] No "test.skip" or commented-out tests
+- [ ] No "test passes immediately" cases without a clear explanation/fix
 
 #### 3. Green Phase Evidence
 - [ ] All tests now passing
@@ -229,5 +265,3 @@ Return:
 `)
 ```
 <!-- /section: orchestrator-verify -->
-
-

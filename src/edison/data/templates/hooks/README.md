@@ -9,12 +9,12 @@ Templates for Claude Code hook scripts. Each template is Bash rendered via Jinja
 - `commit-guard.sh.template` (PreToolUse): gate git commits run via Bash tool; can enforce passing tests and coverage thresholds and block with exit 1.
 - `auto-format.sh.template` (PostToolUse): auto-runs configured formatters for matching Write/Edit file paths.
 - `session-init.sh.template` (SessionStart): announces session start and echoes session id.
-- `session-cleanup.sh.template` (SessionEnd): session teardown; can persist a timestamped log when enabled.
-- `compaction-reminder.sh.template` (PreCompact): reminds agent to re-read its constitution after context compaction; optionally logs compaction events.
+- `session-cleanup.sh.template` (SessionEnd): session teardown.
+- `compaction-reminder.sh.template` (PreCompact): reminds agent to re-read its constitution after context compaction.
 
 ## Config knobs
 - Booleans and lists are all optional and default to safe no-ops.
-- Common keys used across templates: `config.include_*`, `config.file_patterns`, `config.rules_by_state`, `config.only_for_states`, `config.skip_test_files`, `config.require_tests_pass`, `config.require_coverage`, `config.coverage_threshold`, `config.tools`, `config.save_logs`, `config.log.enabled`, `config.log.path`.
+- Common keys used across templates: `config.include_*`, `config.file_patterns`, `config.rules_by_state`, `config.only_for_states`, `config.skip_test_files`, `config.require_tests_pass`, `config.require_coverage`, `config.coverage_threshold`, `config.tools`, `config.save_logs`.
 
 ## Testing
-Run `<test-command>` (repo equivalent) to ensure templates render with/without config, produce valid shell, and respect blocking behavior hints.
+Run `{{function:ci_command("test")}}` (repo equivalent) to ensure templates render with/without config, produce valid shell, and respect blocking behavior hints.

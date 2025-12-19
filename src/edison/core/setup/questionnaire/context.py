@@ -47,6 +47,7 @@ def build_context_with_defaults(
 
 def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
     """Build a YAML-friendly config dictionary from context."""
+    coverage_threshold = context.get("coverage_threshold", 0) or 0
     return {
         "paths": {
             "config_dir": DEFAULT_PROJECT_CONFIG_PRIMARY,
@@ -70,7 +71,15 @@ def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
         },
         "tdd": {
             "enforcement": context.get("tdd_enforcement", "warn"),
-            "coverage_threshold": context.get("coverage_threshold", 0),
+            # Backward-compatible: historical location for coverage threshold.
+            "coverage_threshold": coverage_threshold,
+        },
+        # Canonical quality coverage settings (preferred by docs/guidelines).
+        "quality": {
+            "coverage": {
+                "overall": coverage_threshold,
+                "changed": 100,
+            }
         },
         "ci": {
             "commands": {

@@ -58,7 +58,7 @@
 Before marking any task as ready, run:
 ```bash
 # Verify all automation passes
-<type-check-command> && <lint-command> && <test-command> && <build-command>
+{{function:ci_command("type-check")}} && {{function:ci_command("lint")}} && {{function:ci_command("test")}} && {{function:ci_command("build")}}
 ```
 All must pass with zero warnings.
 <!-- /section: agent-checklist -->

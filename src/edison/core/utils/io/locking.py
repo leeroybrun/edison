@@ -39,6 +39,7 @@ def acquire_file_lock(
     *,
     fail_open: Optional[bool] = None,
     poll_interval: Optional[float] = None,
+    repo_root: Optional[Path] = None,
 ) -> Iterator[Optional[object]]:
     """Acquire an exclusive lock on ``file_path`` with a timeout.
 
@@ -61,7 +62,7 @@ def acquire_file_lock(
     Yields:
         The opened file object kept locked for the duration of the context.
     """
-    cfg = get_file_locking_config()
+    cfg = get_file_locking_config(repo_root=repo_root)
     effective_timeout = timeout if timeout is not None else cfg["timeout_seconds"]
     effective_poll_interval = (
         poll_interval if poll_interval is not None else cfg["poll_interval_seconds"]
@@ -126,12 +127,17 @@ def _validate_positive(name: str, value: float) -> None:
         raise ValueError(f"{name} must be positive (got {value})")
 
 
-def get_file_locking_config() -> Dict[str, Any]:
-    """Return the resolved file locking configuration for the current project root."""
+def get_file_locking_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
+    """Return the resolved file locking configuration.
+
+    When ``repo_root`` is omitted, this uses the current working directory as the
+    repo_root for config loading (core defaults + any local overrides), avoiding
+    project-root auto-detection which can recurse into subprocess helpers.
+    """
     # Lazy import to avoid circular dependency
     from edison.core.config import ConfigManager
 
-    mgr = ConfigManager()
+    mgr = ConfigManager(repo_root=(Path.cwd().resolve() if repo_root is None else Path(repo_root).resolve()))
     repo_key = str(mgr.repo_root)
 
     with _FILE_LOCK_CONFIG_MUTEX:
@@ -274,6 +280,5 @@ def write_text_locked(path: Path, content: str) -> None:
         f.write(content)
 
     atomic_write(target, _writer, lock_cm=file_lock(target))
-
 
 

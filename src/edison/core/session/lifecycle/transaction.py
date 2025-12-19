@@ -20,6 +20,7 @@ from edison.core.utils.io import (
     read_json as io_read_json,
     ensure_directory,
 )
+from edison.core.audit.jsonl import append_jsonl
 from ...utils.time import utc_timestamp as io_utc_timestamp
 from ...exceptions import SessionError
 from ..core.id import validate_session_id
@@ -66,12 +67,7 @@ def _append_tx_log(session_id: str, tx_id: str, action: str, message: str = "", 
         "message": message,
     }
     try:
-        with acquire_file_lock(log_path):
-            ensure_directory(log_path.parent)
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(payload) + "\n")
-                f.flush()
-                os.fsync(f.fileno())
+        append_jsonl(path=log_path, payload=payload)
     except SystemExit:
         raise
 

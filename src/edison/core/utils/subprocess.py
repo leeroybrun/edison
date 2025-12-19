@@ -10,8 +10,11 @@ This module provides safe subprocess execution with:
 """
 
 import shlex
+import os
+import signal
 import subprocess
 from pathlib import Path
+from time import perf_counter
 from typing import Any, List, MutableMapping, Optional, Sequence
 
 from edison.core.config.domains.timeouts import TimeoutsConfig
@@ -40,6 +43,101 @@ def _infer_timeout_type(cmd: Any) -> str:
     if any(p.lower() in {"pnpm", "npm", "yarn"} and "build" in joined for p in parts):
         return "build_operations"
     return "default"
+
+
+def _popen_process_group_kwargs() -> dict[str, Any]:
+    if os.name == "posix":
+        return {"start_new_session": True}
+    if os.name == "nt":
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", None)
+        if isinstance(creationflags, int):
+            return {"creationflags": creationflags}
+    return {}
+
+
+def _terminate_process_group(proc: subprocess.Popen[Any]) -> None:
+    if proc.poll() is not None:
+        return
+    if os.name == "posix":
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except Exception:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        try:
+            proc.wait(timeout=0.2)
+        except Exception:
+            pass
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        try:
+            proc.wait(timeout=0.2)
+        except Exception:
+            pass
+        return
+
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=0.2)
+    except Exception:
+        pass
+
+
+def _run_capture_output_nohang(cmd: Any, *, timeout: float, **kwargs: Any) -> subprocess.CompletedProcess:
+    argv = list(_flatten_cmd(cmd))
+    input_value = kwargs.pop("input", None)
+    cwd = kwargs.pop("cwd", None)
+    env = kwargs.pop("env", None)
+    text = bool(kwargs.pop("text", True))
+    check = bool(kwargs.pop("check", False))
+    kwargs.pop("capture_output", None)
+
+    proc = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=env,
+        stdin=subprocess.PIPE if input_value is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=text,
+        **_popen_process_group_kwargs(),
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input_value, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        _terminate_process_group(proc)
+        try:
+            stdout, stderr = proc.communicate(timeout=0.2)
+        except Exception:
+            stdout = getattr(exc, "output", None)
+            stderr = getattr(exc, "stderr", None)
+        raise subprocess.TimeoutExpired(argv, timeout, output=stdout, stderr=stderr) from None
+
+    completed = subprocess.CompletedProcess(
+        argv,
+        proc.returncode if proc.returncode is not None else 0,
+        stdout=stdout,
+        stderr=stderr,
+    )
+    if check and completed.returncode != 0:
+        raise subprocess.CalledProcessError(
+            completed.returncode,
+            argv,
+            output=stdout,
+            stderr=stderr,
+        )
+    return completed
 
 
 def configured_timeout(cmd: Any, timeout_type: str | None = None, cwd: Path | str | None = None) -> float:
@@ -111,7 +209,147 @@ def run_with_timeout(cmd, timeout_type: str | None = None, **kwargs):
         cmd, timeout_type=timeout_type, cwd=kwargs.get("cwd")
     )
 
-    return subprocess.run(cmd, timeout=timeout, **kwargs)
+    # Best-effort structured audit logging (fail-open).
+    start = perf_counter()
+    repo_root: Path | None = None
+    try:
+        from edison.core.utils.paths import PathResolver
+
+        repo_root = PathResolver.resolve_project_root()
+    except Exception:
+        repo_root = None
+
+    # Emit start/end events only when enabled.
+    max_out_bytes = 0
+    subprocess_audit_enabled = False
+    if repo_root is not None:
+        try:
+            from edison.core.config.domains.logging import LoggingConfig
+
+            log_cfg = LoggingConfig(repo_root=repo_root)
+            subprocess_audit_enabled = bool(
+                log_cfg.enabled and log_cfg.audit_enabled and log_cfg.subprocess_enabled
+            )
+            max_out_bytes = int(log_cfg.subprocess_max_output_bytes)
+        except Exception:
+            subprocess_audit_enabled = False
+
+    if subprocess_audit_enabled:
+        try:
+            from edison.core.audit.logger import audit_event
+
+            audit_event(
+                "subprocess.start",
+                repo_root=repo_root,
+                argv=_flatten_cmd(cmd),
+                cwd=kwargs.get("cwd"),
+                timeout=timeout,
+                capture_output=bool(kwargs.get("capture_output", False)),
+                check=bool(kwargs.get("check", False)),
+            )
+        except Exception:
+            pass
+
+    try:
+        capture_output = bool(kwargs.get("capture_output", False))
+        if capture_output and timeout is not None and "stdout" not in kwargs and "stderr" not in kwargs:
+            result = _run_capture_output_nohang(cmd, timeout=float(timeout), **kwargs)
+        else:
+            result = subprocess.run(cmd, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired as exc:
+        if subprocess_audit_enabled:
+            try:
+                from edison.core.audit.logger import audit_event, truncate_text
+
+                stdout = getattr(exc, "output", None)
+                stderr = getattr(exc, "stderr", None)
+                stdout_s = stdout if isinstance(stdout, str) else ""
+                stderr_s = stderr if isinstance(stderr, str) else ""
+
+                audit_event(
+                    "subprocess.timeout",
+                    repo_root=repo_root,
+                    argv=_flatten_cmd(cmd),
+                    cwd=kwargs.get("cwd"),
+                    timeout=timeout,
+                    duration_ms=(perf_counter() - start) * 1000.0,
+                    error=str(exc),
+                    stdout=truncate_text(stdout_s, max_bytes=max_out_bytes),
+                    stderr=truncate_text(stderr_s, max_bytes=max_out_bytes),
+                )
+            except Exception:
+                pass
+        raise
+    except subprocess.CalledProcessError as exc:
+        if subprocess_audit_enabled:
+            try:
+                from edison.core.audit.logger import audit_event, truncate_text
+
+                stdout = getattr(exc, "stdout", None) or getattr(exc, "output", None)
+                stderr = getattr(exc, "stderr", None)
+                stdout_s = stdout if isinstance(stdout, str) else ""
+                stderr_s = stderr if isinstance(stderr, str) else ""
+
+                audit_event(
+                    "subprocess.end",
+                    repo_root=repo_root,
+                    argv=_flatten_cmd(cmd),
+                    cwd=kwargs.get("cwd"),
+                    timeout=timeout,
+                    duration_ms=(perf_counter() - start) * 1000.0,
+                    returncode=getattr(exc, "returncode", None),
+                    ok=False,
+                    check=True,
+                    stdout=truncate_text(stdout_s, max_bytes=max_out_bytes),
+                    stderr=truncate_text(stderr_s, max_bytes=max_out_bytes),
+                )
+            except Exception:
+                pass
+        raise
+    except Exception as exc:
+        if subprocess_audit_enabled:
+            try:
+                from edison.core.audit.logger import audit_event
+
+                audit_event(
+                    "subprocess.error",
+                    repo_root=repo_root,
+                    argv=_flatten_cmd(cmd),
+                    cwd=kwargs.get("cwd"),
+                    timeout=timeout,
+                    duration_ms=(perf_counter() - start) * 1000.0,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
+        raise
+
+    if subprocess_audit_enabled:
+        try:
+            from edison.core.audit.logger import audit_event, truncate_text
+
+            stdout = getattr(result, "stdout", None)
+            stderr = getattr(result, "stderr", None)
+            stdout_s = stdout if isinstance(stdout, str) else ""
+            stderr_s = stderr if isinstance(stderr, str) else ""
+
+            audit_event(
+                "subprocess.end",
+                repo_root=repo_root,
+                argv=_flatten_cmd(cmd),
+                cwd=kwargs.get("cwd"),
+                timeout=timeout,
+                duration_ms=(perf_counter() - start) * 1000.0,
+                returncode=getattr(result, "returncode", None),
+                ok=(getattr(result, "returncode", 1) == 0),
+                check=bool(kwargs.get("check", False)),
+                stdout=truncate_text(stdout_s, max_bytes=max_out_bytes),
+                stderr=truncate_text(stderr_s, max_bytes=max_out_bytes),
+            )
+        except Exception:
+            pass
+
+    return result
 
 
 def check_output_with_timeout(cmd, timeout_type: str | None = None, **kwargs):

@@ -220,17 +220,27 @@ class TaskRepository(
     # ---------- Query Implementation ----------
 
     def _do_list_by_state(self, state: str) -> List[Task]:
-        """List tasks in a given state."""
-        state_dir = self._get_state_dir(state)
-        if not state_dir.exists():
-            return []
-        
+        """List tasks in a given state (global + session directories)."""
         tasks: List[Task] = []
-        for path in state_dir.glob(f"*{self.file_extension}"):
-            task = self._load_task_from_file(path)
-            if task:
-                tasks.append(task)
-        
+
+        # 1) Global task directory
+        state_dir = self._get_state_dir(state)
+        if state_dir.exists():
+            for path in state_dir.glob(f"*{self.file_extension}"):
+                task = self._load_task_from_file(path)
+                if task:
+                    tasks.append(task)
+
+        # 2) Session task directories
+        for base in self._get_session_bases():
+            session_state_dir = base / "tasks" / state
+            if not session_state_dir.exists():
+                continue
+            for path in session_state_dir.glob(f"*{self.file_extension}"):
+                task = self._load_task_from_file(path)
+                if task:
+                    tasks.append(task)
+
         return tasks
     
     def _do_list_all(self) -> List[Task]:

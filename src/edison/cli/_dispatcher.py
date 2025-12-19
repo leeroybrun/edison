@@ -836,104 +836,170 @@ def main(argv: list[str] | None = None) -> int:
             if getattr(args, "command", None):
                 command_name = f"{command_name} {args.command}"
 
-            # Rules commands manage rules themselves; avoid double-initializing the rules engine
-            # (dispatcher guidance + rules CLI) which is expensive and redundant.
-            engine = None
-            project_root = None
-            if args.domain != "rules":
-                try:
-                    from edison.core.utils.paths import PathResolver
+            audit_repo_root = None
+            try:
+                # Prefer explicit `--repo-root` when present; fall back to auto-detection.
+                from edison.cli._utils import get_repo_root
 
-                    project_root = PathResolver.resolve_project_root()
-                except Exception:
-                    project_root = None
+                audit_repo_root = get_repo_root(args)
+            except Exception:
+                audit_repo_root = None
 
-            # Compose rules once per CLI invocation (core + packs + project) for CLI display.
-            # This avoids loading full config and avoids composing twice for before/after.
-            rules_map: Dict[str, Dict[str, Any]] = {}
-            if project_root is not None:
-                try:
-                    from edison.core.rules.registry import RulesRegistry
+            from contextlib import nullcontext
 
-                    packs = _get_active_packs_fast(project_root)
-                    registry = RulesRegistry(project_root=project_root)
-                    with span("cli.rules.compose", packs=len(packs)):
-                        composed = registry.compose_cli_rules_for_command(
-                            packs=packs,
-                            command_name=command_name,
-                            resolve_sources=False,
-                        )
-                    rules_map = composed.get("rules", {}) if isinstance(composed, dict) else {}
-                    if not isinstance(rules_map, dict):
-                        rules_map = {}
-                except Exception:
-                    rules_map = {}
-
-            # Show BEFORE rules (guidance)
-            json_mode = bool(getattr(args, "json", False))
-            if json_mode:
-                # JSON mode must remain machine-readable (stdout/stderr should not be polluted
-                # by logging warnings emitted via the stdlib "lastResort" handler).
-                try:
-                    import logging
-
-                    logging.disable(logging.WARNING)
-                except Exception:
-                    pass
-            if project_root is not None and not json_mode:
-                try:
-                    with span("cli.rules.get", timing="before"):
-                        before_rules = _get_cli_rules_to_display(
-                            project_root=project_root,
-                            rules_map=rules_map,
-                            command_name=command_name,
-                            timing="before",
-                        )
-                    if before_rules:
-                        print(_format_rules_for_display(before_rules, "before"), file=sys.stderr)
-                except Exception:
-                    pass  # Fail silently - rules display is optional
-
-            # Execute the command
-            func: Callable[[argparse.Namespace], int] | None = getattr(args, "_func", None)
             result = 1
-            if func:
+            session_id = _extract_session_id_from_args(args)
+            if session_id is None and audit_repo_root is not None:
                 try:
-                    if project_root is not None:
-                        blocked = _maybe_enforce_session_worktree(
-                            project_root=project_root,
-                            command_name=command_name,
-                            args=args,
-                            json_mode=json_mode,
-                        )
-                        if blocked is not None:
-                            return blocked
-                    with span("cli.command.exec", command=command_name):
-                        result = func(args)
-                except KeyboardInterrupt:
-                    print("\nInterrupted.", file=sys.stderr)
-                    return 130
-                except Exception as e:
-                    print(f"Error: {e}", file=sys.stderr)
-                    return 1
-            else:
-                parser.print_help()
-                return 1
+                    from edison.core.session.core.id import detect_session_id
 
-            # Show AFTER rules (validation reminders) - only on success
-            if project_root is not None and result == 0 and not json_mode:
-                try:
-                    with span("cli.rules.get", timing="after"):
-                        after_rules = _get_cli_rules_to_display(
-                            project_root=project_root,
-                            rules_map=rules_map,
-                            command_name=command_name,
-                            timing="after",
-                        )
-                    if after_rules:
-                        print(_format_rules_for_display(after_rules, "after"), file=sys.stderr)
+                    session_id = detect_session_id(project_root=audit_repo_root)
                 except Exception:
-                    pass  # Fail silently - rules display is optional
+                    session_id = None
+            if audit_repo_root is not None:
+                try:
+                    from edison.core.audit import audit_invocation, InvocationAudit
+
+                    inv_cm = audit_invocation(
+                        argv=list(argv),
+                        command_name=command_name,
+                        repo_root=audit_repo_root,
+                        session_id=session_id,
+                    )
+                except Exception:
+                    inv_cm = nullcontext()
+            else:
+                inv_cm = nullcontext()
+
+            with inv_cm as inv:
+                # Rules commands manage rules themselves; avoid double-initializing the rules engine
+                # (dispatcher guidance + rules CLI) which is expensive and redundant.
+                engine = None
+                project_root = None
+                if args.domain != "rules":
+                    try:
+                        from edison.core.utils.paths import PathResolver
+
+                        project_root = PathResolver.resolve_project_root()
+                    except Exception:
+                        project_root = None
+
+                # Compose rules once per CLI invocation (core + packs + project) for CLI display.
+                # This avoids loading full config and avoids composing twice for before/after.
+                rules_map: Dict[str, Dict[str, Any]] = {}
+                if project_root is not None:
+                    try:
+                        from edison.core.rules.registry import RulesRegistry
+
+                        packs = _get_active_packs_fast(project_root)
+                        registry = RulesRegistry(project_root=project_root)
+                        with span("cli.rules.compose", packs=len(packs)):
+                            composed = registry.compose_cli_rules_for_command(
+                                packs=packs,
+                                command_name=command_name,
+                                resolve_sources=False,
+                            )
+                        rules_map = composed.get("rules", {}) if isinstance(composed, dict) else {}
+                        if not isinstance(rules_map, dict):
+                            rules_map = {}
+                    except Exception:
+                        rules_map = {}
+
+                # Show BEFORE rules (guidance)
+                json_mode = bool(getattr(args, "json", False))
+                if json_mode:
+                    # JSON mode must remain machine-readable (stdout/stderr should not be polluted
+                    # by logging warnings emitted via the stdlib "lastResort" handler).
+                    try:
+                        import logging
+
+                        logging.disable(logging.WARNING)
+                    except Exception:
+                        pass
+                if project_root is not None and not json_mode:
+                    try:
+                        with span("cli.rules.get", timing="before"):
+                            before_rules = _get_cli_rules_to_display(
+                                project_root=project_root,
+                                rules_map=rules_map,
+                                command_name=command_name,
+                                timing="before",
+                            )
+                        if before_rules:
+                            print(_format_rules_for_display(before_rules, "before"), file=sys.stderr)
+                    except Exception:
+                        pass  # Fail silently - rules display is optional
+
+                # Execute the command
+                func: Callable[[argparse.Namespace], int] | None = getattr(args, "_func", None)
+                if func:
+                    try:
+                        if project_root is not None:
+                            blocked = _maybe_enforce_session_worktree(
+                                project_root=project_root,
+                                command_name=command_name,
+                                args=args,
+                                json_mode=json_mode,
+                            )
+                            if blocked is not None:
+                                result = blocked
+                                if inv is not None:
+                                    try:
+                                        inv.set_exit_code(result)
+                                    except Exception:
+                                        pass
+                                return result
+                        with span("cli.command.exec", command=command_name):
+                            result = func(args)
+                    except KeyboardInterrupt:
+                        print("\nInterrupted.", file=sys.stderr)
+                        result = 130
+                        if inv is not None:
+                            try:
+                                inv.set_exit_code(result)
+                            except Exception:
+                                pass
+                        return result
+                    except Exception as e:
+                        print(f"Error: {e}", file=sys.stderr)
+                        result = 1
+                        if inv is not None:
+                            try:
+                                inv.set_exit_code(result)
+                            except Exception:
+                                pass
+                        return result
+                else:
+                    parser.print_help()
+                    result = 1
+                    if inv is not None:
+                        try:
+                            inv.set_exit_code(result)
+                        except Exception:
+                            pass
+                    return result
+
+                # Show AFTER rules (validation reminders) - only on success
+                if project_root is not None and result == 0 and not json_mode:
+                    try:
+                        with span("cli.rules.get", timing="after"):
+                            after_rules = _get_cli_rules_to_display(
+                                project_root=project_root,
+                                rules_map=rules_map,
+                                command_name=command_name,
+                                timing="after",
+                            )
+                        if after_rules:
+                            print(_format_rules_for_display(after_rules, "after"), file=sys.stderr)
+                    except Exception:
+                        pass  # Fail silently - rules display is optional
+
+                if inv is not None:
+                    try:
+                        inv.set_exit_code(result)
+                    except Exception:
+                        pass
+                return result
 
     if profiler is not None:
         totals = profiler.summary_ms()

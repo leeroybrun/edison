@@ -13,10 +13,26 @@ echo "👋 Edison Session Ending..."
 
 # Cleanup operations
 {% set cfg = config if config is defined else {} %}
+SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "hook_type={{ type }}" \
+    "$@" 2>/dev/null || true
+}
+
+_edison_audit_event "hook.session-cleanup.start"
+
 {% if cfg.get("save_logs", False) %}
-LOG_FILE=".edison/logs/session-$(date +%Y%m%d-%H%M%S).log"
-mkdir -p .edison/logs 2>/dev/null || true
-echo "Session ended at $(date)" > "$LOG_FILE" 2>/dev/null || true
+_edison_audit_event "hook.session-cleanup.save-logs.requested"
 {% endif %}
+
+_edison_audit_event "hook.session-cleanup.end" --field "save_logs={{ cfg.get('save_logs', False) }}"
 
 exit 0

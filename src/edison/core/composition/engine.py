@@ -12,7 +12,7 @@ Transformation Pipeline (10 steps):
 2. SECTION EXTRACT - {{include-section:path#name}}
 3. CONDITIONALS    - {{include-if:COND:path}}, {{if:COND}}...{{/if}}
 4. LOOPS           - {{#each collection}}...{{/each}} (uses context_vars)
-5. FUNCTIONS       - {{fn:name(args)}}
+5. FUNCTIONS       - {{fn:name arg1 arg2}} or {{function:name("arg")}}
 6. CONFIG VARS     - {{config.path.to.value}}, {{project.path}}
 7. CONTEXT VARS    - {{source_layers}}, {{timestamp}}, and custom context_vars
 8. PATH VARS       - {{PROJECT_EDISON_DIR}}

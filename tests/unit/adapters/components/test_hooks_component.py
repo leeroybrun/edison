@@ -87,3 +87,32 @@ hooks:
     assert results
     found = any(path.read_text(encoding="utf-8").find("sample") != -1 for path in results.values())
     assert found
+
+
+def test_core_hook_templates_emit_audit_events(tmp_path: Path) -> None:
+    """Bundled core hooks should emit structured audit events (when enabled).
+
+    This validates we don't rely on ad-hoc per-hook log files (e.g. `.edison/logs/*`)
+    and instead funnel hook execution into the unified audit log pipeline.
+    """
+    ctx = _build_context(
+        tmp_path,
+        config={"hooks": {"enabled": True, "platforms": ["claude"]}},
+    )
+
+    composer = HookComposer(ctx)
+    scripts = composer.compose_hooks()
+
+    # A few high-signal hooks should always include the audit event helper.
+    expected = {
+        "compaction-reminder": "hook.compaction-reminder",
+        "session-cleanup": "hook.session-cleanup",
+        "session-init": "hook.session-init",
+        "commit-guard": "hook.commit-guard",
+    }
+
+    for hook_id, event_prefix in expected.items():
+        assert hook_id in scripts
+        content = scripts[hook_id].read_text(encoding="utf-8")
+        assert "edison audit event" in content
+        assert event_prefix in content

@@ -67,7 +67,8 @@ Behavior:
    - Inline conditionals: `{{#if this.prop}}...{{else}}...{{/if}}`
    - Last item check: `{{#unless @last}}...{{/unless}}`
 5. Functions
-   - `{{fn:name arg1 arg2}}`
+   - `{{fn:name arg1 arg2}}` (recommended shorthand)
+   - `{{function:name("arg")}}` (legacy/explicit form)
 6. Variables
    - Config vars: `{{config.key}}`, `{{project.key}}`
    - Context vars: `{{source_layers}}`, `{{timestamp}}`, `{{version}}`, and any custom context vars

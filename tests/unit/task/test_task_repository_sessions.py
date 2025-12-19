@@ -146,3 +146,24 @@ def test_find_by_session_filters_correctly(repo_env):
     assert "T-G1" not in found_ids
     assert "T-S2" not in found_ids
     assert len(tasks) == 2
+
+
+def test_list_by_state_includes_session_tasks(repo_env):
+    """TaskRepository.list_by_state() must include session-scoped tasks.
+
+    The CLI `edison task list --status <state> --session <sid>` relies on
+    list_by_state and then filters by session_id. If list_by_state only scans
+    `.project/tasks/<state>/`, session tasks in `.project/sessions/**/tasks/<state>/`
+    become invisible to the CLI.
+    """
+    session_id = "sess-list-state"
+    task_id = "T-SESS-TODO"
+
+    session_task_path = (
+        repo_env / ".project" / "sessions" / "wip" / session_id / "tasks" / "todo" / f"{task_id}.md"
+    )
+    create_markdown_task(session_task_path, task_id, "Session Todo Task", session_id=session_id)
+
+    repo = TaskRepository(project_root=repo_env)
+    tasks = repo.list_by_state("todo")
+    assert {t.id for t in tasks} == {task_id}

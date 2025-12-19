@@ -46,7 +46,7 @@ def _tracking_payload(
     last_active: str | None = None,
 ) -> Dict[str, Any]:
     now = utc_timestamp()
-    return {
+    payload: Dict[str, Any] = {
         "processId": _pid(),
         "hostname": socket.gethostname(),
         "startedAt": started_at or now,
@@ -54,8 +54,10 @@ def _tracking_payload(
         # Schemas currently require completedAt, so initialize it at start and
         # update it again on `complete`.
         "completedAt": completed_at or now,
-        "continuationId": continuation_id,
     }
+    if continuation_id:
+        payload["continuationId"] = continuation_id
+    return payload
 
 
 def _round_for_new_implementation(ev: EvidenceService) -> int:

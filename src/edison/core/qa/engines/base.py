@@ -32,6 +32,7 @@ class EngineConfig:
     id: str
     type: str  # "cli" | "delegated"
     command: str = ""
+    pre_flags: list[str] = field(default_factory=list)
     subcommand: str = ""
     output_flags: list[str] = field(default_factory=list)
     read_only_flags: list[str] = field(default_factory=list)
@@ -47,11 +48,15 @@ class EngineConfig:
         prompt_mode = data.get("prompt_mode", data.get("promptMode", "file"))
         prompt_flag = data.get("prompt_flag", data.get("promptFlag", ""))
         stdin_prompt_arg = data.get("stdin_prompt_arg", data.get("stdinPromptArg", "-"))
+        pre_flags = data.get("pre_flags", data.get("preFlags", []))
+        if not isinstance(pre_flags, list):
+            pre_flags = []
 
         return cls(
             id=engine_id,
             type=data.get("type", "cli"),
             command=data.get("command", ""),
+            pre_flags=pre_flags,
             subcommand=data.get("subcommand", ""),
             output_flags=data.get("output_flags", []),
             read_only_flags=data.get("read_only_flags", []),

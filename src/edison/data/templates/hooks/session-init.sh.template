@@ -15,9 +15,22 @@ if [[ -z "$SESSION_ID" ]]; then
   SESSION_ID=$(edison session status --json 2>/dev/null | jq -r '.id // empty' 2>/dev/null || echo "")
 fi
 
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "hook_type={{ type }}" \
+    "$@" 2>/dev/null || true
+}
+
 # Only output if we have a valid session
 if [[ -n "$SESSION_ID" ]]; then
   echo "Edison Session: $SESSION_ID"
+  _edison_audit_event "hook.session-init" --field "session_id=$SESSION_ID"
 fi
 
 exit 0

@@ -35,6 +35,7 @@ from .domains import (
     TimeoutsConfig,
     WorkflowConfig,
     DatabaseConfig,
+    LoggingConfig,
 )
 
 __all__ = [
@@ -55,4 +56,5 @@ __all__ = [
     "TimeoutsConfig",
     "WorkflowConfig",
     "DatabaseConfig",
+    "LoggingConfig",
 ]

@@ -73,7 +73,7 @@ class ConfigWriter:
         "worktrees": "worktrees.yml",
         "workflow": "workflow.yml",
         "tdd": "tdd.yml",
-        "ci": "commands.yml",
+        "ci": "ci.yml",
         "commands": "commands.yml",
         "hooks": "hooks.yml",
         "context7": "context7.yml",

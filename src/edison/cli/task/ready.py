@@ -73,8 +73,15 @@ def main(args: argparse.Namespace) -> int:
         else:
             # List all ready tasks (tasks in todo status)
             repo = TaskRepository(project_root=project_root)
-            todo_state = WorkflowConfig().get_semantic_state("task", "todo")
+            session_id = resolve_session_id(
+                project_root=project_root,
+                explicit=args.session,
+                required=False,
+            )
+            todo_state = WorkflowConfig(repo_root=project_root).get_semantic_state("task", "todo")
             tasks = repo.list_by_state(todo_state)
+            if session_id:
+                tasks = [t for t in tasks if t.session_id == session_id]
 
             ready_tasks = [
                 {
@@ -86,13 +93,20 @@ def main(args: argparse.Namespace) -> int:
             ]
 
             if ready_tasks:
+                limit = 25
+                shown = ready_tasks[:limit]
                 list_text = f"Ready tasks ({len(ready_tasks)}):\n" + "\n".join(
-                    f"  - {t['id']}: {t['title']}" for t in ready_tasks
+                    f"  - {t['id']}: {t['title']}" for t in shown
                 )
+                if len(ready_tasks) > limit:
+                    list_text += f"\n  ... and {len(ready_tasks) - limit} more (use --json for full list)"
             else:
                 list_text = "No tasks ready to claim."
 
-            formatter.json_output({"tasks": ready_tasks}) if formatter.json_mode else formatter.text(list_text)
+            if formatter.json_mode:
+                formatter.json_output({"tasks": ready_tasks, "count": len(ready_tasks), "session_id": session_id})
+            else:
+                formatter.text(list_text)
 
             return 0
 

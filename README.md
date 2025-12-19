@@ -466,6 +466,58 @@ statemachine:
             guard: can_start_task
 ```
 
+### Audit Logging
+
+Edison can emit structured, project-scoped audit logs (JSONL) for:
+- `edison ...` CLI invocations (including captured stdout/stderr when enabled)
+- Subprocess commands Edison runs (argv, cwd, exit code, stdout/stderr when available)
+- State-machine guard evaluations (passed/blocked/error)
+- Orchestrator launches (start/end + metadata; optional prompt capture)
+- Claude Code hooks (as `hook.*` events via `edison audit event` helper)
+
+Enable by creating `.edison/config/logging.yaml`:
+
+```yaml
+logging:
+  enabled: true
+  audit:
+    enabled: true
+    sinks:
+      jsonl:
+        enabled: true
+        paths:
+          project: ".project/logs/edison/audit-project.jsonl"
+          session: ".project/logs/edison/audit-session-{session_id}.jsonl"
+          invocation_dir: ".project/logs/edison/invocations"
+          invocation: ".project/logs/edison/invocations/{invocation_id}.jsonl"
+  stdio:
+    capture:
+      enabled: true
+      paths:
+        stdout: ".project/logs/edison/invocations/{invocation_id}.stdout.log"
+        stderr: ".project/logs/edison/invocations/{invocation_id}.stderr.log"
+
+  # Optional: capture Python stdlib logging to a per-invocation file (no stderr handler).
+  stdlib:
+    enabled: true
+    level: "INFO"
+    path: ".project/logs/edison/invocations/{invocation_id}.python.log"
+
+  # Optional: redact secrets from audit JSONL + captured stdio files.
+  redaction:
+    enabled: false
+    replacement: "[REDACTED]"
+    patterns: []
+
+  # Optional: selectively disable categories.
+  guards:
+    enabled: true
+  hooks:
+    enabled: true
+```
+
+Default location (when enabled): `.project/logs/edison/`.
+
 ### Validation
 
 ```bash

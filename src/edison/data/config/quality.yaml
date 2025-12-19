@@ -3,7 +3,7 @@
 
 quality:
   coverage:
-    overall: 80
+    overall: 90
     changed: 100
   allowSkip: false
   blockOnFailingTests: true

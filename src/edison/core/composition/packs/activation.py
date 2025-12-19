@@ -6,6 +6,7 @@ from typing import Iterable, List, Optional, Set
 from edison.core.utils.io import read_yaml
 from edison.core.utils.patterns import matches_any_pattern
 from edison.core.utils.paths import PathResolver
+from edison.core.packs.paths import iter_pack_dirs
 
 try:  # PyYAML is required for pack-trigger discovery
     import yaml  # type: ignore
@@ -43,20 +44,6 @@ def auto_activate_packs(
     if not rel_paths:
         return set()
 
-    if pack_root is not None:
-        base = pack_root
-    elif root is not None:
-        # Use composition path resolver for consistent path resolution
-        from ..core import CompositionPathResolver
-
-        path_resolver = CompositionPathResolver(root)
-        base = path_resolver.bundled_packs_dir
-    else:
-        base = None
-
-    if base is None or not base.exists():
-        return set()
-
     allowed: Optional[Set[str]] = None
     if available_packs is not None:
         allowed = {str(name).strip() for name in available_packs if str(name).strip()}
@@ -66,12 +53,30 @@ def auto_activate_packs(
 
     activated: Set[str] = set()
 
-    for pack_dir in sorted(base.iterdir()):
-        if not pack_dir.is_dir():
-            continue
-        if pack_dir.name.startswith("_"):
-            continue  # template or internal pack
-        if allowed is not None and pack_dir.name not in allowed:
+    def _iter_candidate_packs() -> Iterable[tuple[str, Path]]:
+        """Iterate pack candidates in the correct layering order.
+
+        - If pack_root is provided, only scan that directory.
+        - Otherwise scan bundled + project pack roots via the unified iterator.
+        """
+        if pack_root is not None:
+            if not pack_root.exists():
+                return []
+            pairs: list[tuple[str, Path]] = []
+            for child in sorted(pack_root.iterdir()):
+                if not child.is_dir():
+                    continue
+                if child.name.startswith("_"):
+                    continue
+                pairs.append((child.name, child))
+            return pairs
+
+        if root is None:
+            return []
+        return ((name, p) for name, p, _kind in iter_pack_dirs(root))
+
+    for pack_name, pack_dir in _iter_candidate_packs():
+        if allowed is not None and pack_name not in allowed:
             continue
 
         pack_yml = pack_dir / "pack.yml"
@@ -90,14 +95,16 @@ def auto_activate_packs(
             raw_patterns = []
 
         patterns = [
-            str(pat).strip() for pat in raw_patterns if isinstance(pat, str) and str(pat).strip()
+            str(pat).strip()
+            for pat in raw_patterns
+            if isinstance(pat, str) and str(pat).strip()
         ]
         if not patterns:
             continue
 
         for rel in rel_paths:
             if matches_any_pattern(rel, patterns):
-                activated.add(pack_dir.name)
+                activated.add(pack_name)
                 break
 
     return activated

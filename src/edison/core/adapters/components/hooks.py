@@ -253,6 +253,7 @@ class HookComposer(AdapterComponent):
             "id": hook_def.id,
             "hook": hook_def,
             "config": hook_def.config,
+            "global_config": self.config,
             "description": hook_def.description,
             "type": hook_def.type,
             "hook_type": hook_def.hook_type,

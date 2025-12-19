@@ -252,6 +252,9 @@ class CLIEngine:
         """
         cmd: list[str] = [self.command]
 
+        # Some CLIs (e.g., Codex) require global flags before the subcommand.
+        cmd.extend(self.config.pre_flags)
+
         # Add subcommand if configured
         if self.config.subcommand:
             cmd.append(self.config.subcommand)

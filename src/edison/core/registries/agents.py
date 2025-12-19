@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 
 from edison.core.entity.base import EntityId
 from edison.core.composition.core.paths import CompositionPathResolver
+from edison.core.config.domains.packs import PacksConfig
+from edison.core.packs.paths import iter_pack_dirs
 from edison.core.utils.text import parse_frontmatter
 
 from ._base import BaseRegistry
@@ -69,6 +71,28 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
             for path in core_dir.glob("*.md"):
                 if path.name != "README.md":
                     agents[path.stem] = path
+
+        # Pack-provided agents (bundled packs + project packs) for active packs only.
+        #
+        # Note: overlays live under agents/overlays/ and are not registrable entities.
+        try:
+            active_packs = PacksConfig(repo_root=self.project_root).active_packs
+        except Exception:
+            active_packs = []
+
+        for _pack_name, pack_dir, _kind in iter_pack_dirs(self.project_root, packs=active_packs):
+            pack_agents_dir = pack_dir / "agents"
+            if not pack_agents_dir.exists():
+                continue
+            for path in pack_agents_dir.glob("*.md"):
+                # New pack-defined agents must not shadow core agents.
+                agents.setdefault(path.stem, path)
+
+        # Project-defined agents (rare; most projects use overlays). Must not shadow existing.
+        project_agents_dir = self._resolver.project_dir / "agents"
+        if project_agents_dir.exists():
+            for path in project_agents_dir.glob("*.md"):
+                agents.setdefault(path.stem, path)
         
         return agents
     

@@ -388,11 +388,42 @@ class ConfigManager:
                 self._apply_database_env_aliases(cfg)
                 self.apply_env_overrides(cfg, strict=validate)
 
+            # Cross-key compatibility and canonicalization (kept minimal).
+            self._apply_compat_shims(cfg)
+
             if validate:
                 with span("config.load_config.validate"):
                     self.validate_schema(cfg, "config/config.schema.yaml")
 
             return cfg
+
+    def _apply_compat_shims(self, cfg: Dict[str, Any]) -> None:
+        """Apply small compatibility shims after merging config layers.
+
+        Goal: keep a single canonical source of truth while maintaining backward
+        compatibility with older key paths used by templates and scripts.
+        """
+        # Coverage thresholds: canonical is quality.coverage.overall/changed.
+        # Backward-compatible alias: tdd.coverage_threshold.
+        tdd = cfg.get("tdd") if isinstance(cfg.get("tdd"), dict) else {}
+        quality = cfg.get("quality") if isinstance(cfg.get("quality"), dict) else {}
+        coverage = quality.get("coverage") if isinstance(quality.get("coverage"), dict) else {}
+
+        tdd_threshold = tdd.get("coverage_threshold")
+        q_overall = coverage.get("overall")
+
+        if q_overall is None and tdd_threshold is not None:
+            coverage["overall"] = tdd_threshold
+        if tdd_threshold is None and q_overall is not None:
+            tdd["coverage_threshold"] = q_overall
+
+        # Ensure changed/new coverage target exists (core default is 100).
+        if coverage.get("changed") is None:
+            coverage["changed"] = 100
+
+        quality["coverage"] = coverage
+        cfg["quality"] = quality
+        cfg["tdd"] = tdd
 
     def load_config(
         self, validate: bool = True, include_packs: bool = True
@@ -545,7 +576,7 @@ class ConfigManager:
             "workflow": "workflow.yml",
             "statemachine": "workflow.yml",
             "tdd": "tdd.yml",
-            "ci": "commands.yml",
+            "ci": "ci.yml",
             "commands": "commands.yml",
             "hooks": "hooks.yml",
             "context7": "context7.yml",

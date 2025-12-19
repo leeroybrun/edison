@@ -195,7 +195,12 @@ class SectionExtractor(ContentTransformer):
     """
 
     # Pattern for section includes: {{include-section:path#name}}
-    INCLUDE_SECTION_PATTERN = re.compile(r"\{\{include-section:([^#]+)#([^}]+)\}\}")
+    # IMPORTANT: Do not allow the path or section name to span newlines.
+    #
+    # This prevents accidental "multi-line" matches when a document contains
+    # literal text like `{{include-section:}}` (e.g., include-only warning comments)
+    # and later includes markdown headings (`#`) or other braces.
+    INCLUDE_SECTION_PATTERN = re.compile(r"\{\{include-section:([^#\n]+)#([^}\n]+)\}\}")
 
     def __init__(self) -> None:
         """Initialize with section parser."""

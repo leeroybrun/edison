@@ -82,7 +82,7 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 - QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `bundle-approved.md` existence.
 
 ## Sequence (strict order)
-1) Automation evidence captured (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`, etc.).
+1) Automation evidence captured (required: {{function:required_evidence_files("inline")}}).
 2) Context7 refreshes for all Context7-detected packages; save `context7-<pkg>.txt` markers.
 3) Detect changed files → map to validator roster.
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.

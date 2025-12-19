@@ -229,8 +229,11 @@ def test_multiselect_enforces_discovered_options(isolated_project_env: Path) -> 
     repo = isolated_project_env
     _write_setup(repo)
     packs_dir = repo / ".edison" / "packs"
-    write_yaml(packs_dir / "alpha" / "config.yml", {"name": "alpha"})
-    write_yaml(packs_dir / "beta" / "config.yml", {"name": "beta"})
+    # Packs are discoverable only when they have a pack.yml manifest.
+    write_yaml(packs_dir / "alpha" / "pack.yml", {"name": "alpha", "version": "0.0.0", "description": "alpha"})
+    write_yaml(packs_dir / "beta" / "pack.yml", {"name": "beta", "version": "0.0.0", "description": "beta"})
+    # Enable the pack so ConfigManager includes its config overlays during discovery.
+    write_yaml(repo / ".edison" / "config" / "packs.yml", {"packs": {"active": ["alpha"]}})
     write_yaml(repo / ".edison" / "config" / "validators.yaml", {"validation": {"roster": {"global": [{"id": "core-val"}]}}})
     write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml", {"validation": {"roster": {"global": [{"id": "pack-val"}]}}})
 

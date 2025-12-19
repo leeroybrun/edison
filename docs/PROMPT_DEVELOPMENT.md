@@ -815,4 +815,3 @@ After composition, verify:
 
 _This document is the canonical source for Edison prompt development principles._
 _Last updated: 2025-12-04_
-

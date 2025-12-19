@@ -30,6 +30,7 @@ validation:
     codex-cli:
       type: cli
       command: "codex"
+      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write"]
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: []

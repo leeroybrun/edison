@@ -100,7 +100,7 @@ model Record {
 - ✅ Avoids long locks where possible
 
 **Evidence you should request/provide**:
-- Migration SQL preview (`<prisma-migrate-command> --create-only` or repo-equivalent)
+- Migration SQL preview (`{{function:ci_command("prisma-migrate")}} --create-only` or repo-equivalent)
 - Clear explanation of rollout/backfill strategy
 
 ---
@@ -179,7 +179,7 @@ model Record {
 
 **Migration Preview**:
 ```
-[<prisma-migrate-command> output / migration SQL excerpt]
+[{{function:ci_command("prisma-migrate")}} output / migration SQL excerpt]
 ```
 ```
 

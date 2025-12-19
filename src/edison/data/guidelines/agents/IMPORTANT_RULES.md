@@ -296,16 +296,16 @@ grep -r "TODO\|FIXME" <source_directory>
 grep -r "<debug_log_pattern>" <source_directory>
 
 # Type check (command varies by language/framework)
-<type_check_command>
+{{function:ci_command("type-check")}}
 
 # Lint (command varies by language/framework)
-<lint_command>
+{{function:ci_command("lint")}}
 
 # Run all tests
-<test_command>
+{{function:ci_command("test")}}
 
 # Build (catches many issues)
-<build_command>
+{{function:ci_command("build")}}
 ```
 
 ## References

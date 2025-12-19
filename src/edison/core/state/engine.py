@@ -78,8 +78,49 @@ class RichStateMachine:
         guard_name = transition.get("guard")
         if not guard_name:
             return
-        result = self.guards.check(str(guard_name), ctx)
+        try:
+            result = self.guards.check(str(guard_name), ctx)
+            try:
+                from edison.core.audit.logger import audit_event
+
+                audit_event(
+                    "guard.check",
+                    domain=self.name,
+                    guard=str(guard_name),
+                    to=transition.get("to"),
+                    result=bool(result),
+                )
+            except Exception:
+                pass
+        except Exception as exc:
+            try:
+                from edison.core.audit.logger import audit_event
+
+                audit_event(
+                    "guard.error",
+                    domain=self.name,
+                    guard=str(guard_name),
+                    to=transition.get("to"),
+                    error=str(exc),
+                )
+            except Exception:
+                pass
+            raise StateTransitionError(
+                str(exc),
+                context={"domain": self.name, "guard": guard_name},
+            ) from exc
         if not result:
+            try:
+                from edison.core.audit.logger import audit_event
+
+                audit_event(
+                    "guard.blocked",
+                    domain=self.name,
+                    guard=str(guard_name),
+                    to=transition.get("to"),
+                )
+            except Exception:
+                pass
             raise StateTransitionError(
                 f"Guard '{guard_name}' blocked transition",
                 context={"domain": self.name, "guard": guard_name},

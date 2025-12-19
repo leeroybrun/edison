@@ -65,3 +65,26 @@ def test_tracking_start_validation_creates_validator_report(isolated_project_env
     assert report["validatorId"] == "security"
     assert report["verdict"] == "pending"
     assert int(report["tracking"]["processId"]) == os.getpid()
+
+
+def test_tracking_start_validation_report_is_schema_valid(isolated_project_env: Path) -> None:
+    """start_validation must write schema-valid YAML frontmatter.
+
+    In particular, optional fields in tracking (like continuationId) must be omitted
+    when not present; serializing as null violates the schema (string-only).
+    """
+    from edison.core.qa.evidence import tracking
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.schemas.validation import validate_payload
+
+    tracking.start_validation(
+        "T-TRACK-4",
+        project_root=isolated_project_env,
+        validator_id="security",
+        model="codex",
+        round_num=1,
+    )
+
+    ev = EvidenceService("T-TRACK-4", project_root=isolated_project_env)
+    report = ev.read_validator_report("security", round_num=1)
+    validate_payload(report, "reports/validator-report.schema.yaml", repo_root=isolated_project_env)

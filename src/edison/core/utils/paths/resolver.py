@@ -105,19 +105,19 @@ def resolve_project_root() -> Path:
         # fall through to git-based detection.
         _PROJECT_ROOT_CACHE = None
 
-    # Priority 2: Use git to discover the repository root
+    # Priority 2: Use git to discover the repository root.
+    #
+    # IMPORTANT: This must not depend on Edison config (timeouts, packs, etc.),
+    # because config loading itself can require a resolved project root.
     cwd = Path.cwd().resolve()
     try:
-        # Local import to avoid circular dependency
-        from edison.core.utils.subprocess import run_with_timeout
-
-        result = run_with_timeout(
+        result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             cwd=str(cwd),
             text=True,
             capture_output=True,
             check=True,
-            timeout_type="git_operations",
+            timeout=5,
         )
     except FileNotFoundError as exc:
         raise EdisonPathError(
@@ -245,7 +245,6 @@ __all__ = [
     "get_project_path",
     "_PROJECT_ROOT_CACHE",
 ]
-
 
 
 

@@ -224,7 +224,7 @@ edison task ready <task-id> --session <session-id>
 
 This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
 - ✅ The latest round contains a non-empty implementation report (`implementation-report.md` by default; config-driven)
-- ✅ Automation evidence files exist per project config (`command-type-check.txt`, `command-lint.txt`, `command-test.txt`, `command-build.txt`)
+- ✅ Automation evidence files exist per project config (required: {{function:required_evidence_files("inline")}})
 - ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
 - ✅ QA brief is ready to move `waiting → todo` once the task is `done`
 

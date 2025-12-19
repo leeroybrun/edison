@@ -137,7 +137,7 @@ The validator should load and **merge core + pack security rules** using the con
    - **Fix**: [remediation]
 
 ## Evidence
-- <dependency-audit-command>: [results]
+- {{function:ci_command("dependency-audit")}}: [results]
 - Auth library: ✅ VERIFIED | ❌ NOT FOUND
 - Schema validation coverage: X%
 

@@ -46,7 +46,7 @@ function process_user(user):
 
 ### Type Checking Command
 ```bash
-<type-check-command>
+{{function:ci_command("type-check")}}
 ```
 <!-- /section: agent-implementation -->
 

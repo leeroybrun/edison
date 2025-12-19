@@ -7,10 +7,11 @@ hardcoded defaults.
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict
 
 
-def _cfg() -> Dict[str, Any]:
+def _cfg(repo_root: Path | None = None) -> Dict[str, Any]:
     """Return time configuration from YAML without fallbacks.
 
     Raises:
@@ -20,32 +21,33 @@ def _cfg() -> Dict[str, Any]:
     from .config import load_validated_section
     return load_validated_section(
         ["time", "iso8601"],
-        required_fields=["timespec", "use_z_suffix", "strip_microseconds"]
+        required_fields=["timespec", "use_z_suffix", "strip_microseconds"],
+        repo_root=repo_root,
     )
 
 
-def utc_now() -> datetime:
+def utc_now(*, repo_root: Path | None = None) -> datetime:
     """Return timezone-aware UTC datetime using config-driven precision."""
-    cfg = _cfg()
+    cfg = _cfg(repo_root)
     now = datetime.now(timezone.utc)
     if cfg["strip_microseconds"]:
         now = now.replace(microsecond=0)
     return now
 
 
-def utc_timestamp() -> str:
+def utc_timestamp(*, repo_root: Path | None = None) -> str:
     """Return ISO 8601 UTC timestamp according to YAML configuration."""
-    cfg = _cfg()
-    dt = utc_now()
+    cfg = _cfg(repo_root)
+    dt = utc_now(repo_root=repo_root)
     ts = dt.isoformat(timespec=cfg["timespec"]) if cfg["timespec"] else dt.isoformat()
     if cfg["use_z_suffix"]:
         ts = ts.replace("+00:00", "Z")
     return ts
 
 
-def parse_iso8601(timestamp_str: str) -> datetime:
+def parse_iso8601(timestamp_str: str, *, repo_root: Path | None = None) -> datetime:
     """Parse an ISO 8601 timestamp string into a UTC datetime."""
-    cfg = _cfg()
+    cfg = _cfg(repo_root)
     ts = timestamp_str.strip()
     if ts.endswith("Z"):
         ts = ts[:-1] + "+00:00"

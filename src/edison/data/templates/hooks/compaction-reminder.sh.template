@@ -13,14 +13,26 @@ if [[ ! -f "$SESSION_FILE" ]]; then
 fi
 
 {% set cfg = config if config is defined else {} %}
-{% set log_cfg = cfg.get("log", {}) %}
+
+# Get session ID (best-effort)
+SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "hook_type={{ type }}" \
+    "$@" 2>/dev/null || true
+}
 
 # Configuration from hooks.yaml
 ROLE="{{ cfg.get('default_role', 'agents') }}"
 MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution at: .edison/_generated/constitutions/{ROLE}.md') }}"
 NOTIFY="{{ cfg.get('notify', True) }}"
-LOG_ENABLED="{{ log_cfg.get('enabled', False) }}"
-LOG_PATH="{{ log_cfg.get('path', '.edison/logs/compaction.log') }}"
 
 # Expand {ROLE} placeholder in message template
 MESSAGE="${MESSAGE_TEMPLATE//\{ROLE\}/$ROLE}"
@@ -30,13 +42,10 @@ if [ "$NOTIFY" = "true" ] || [ "$NOTIFY" = "True" ]; then
     echo "$MESSAGE"
 fi
 
-# Log compaction event if enabled
-{% if log_cfg.get('enabled', False) %}
-if [ "$LOG_ENABLED" = "true" ] || [ "$LOG_ENABLED" = "True" ]; then
-    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    mkdir -p "$(dirname "$LOG_PATH")" 2>/dev/null || true
-    echo "$TIMESTAMP role=$ROLE source=precompact message=$MESSAGE" >> "$LOG_PATH" 2>/dev/null || true
-fi
-{% endif %}
+_edison_audit_event "hook.compaction-reminder" \
+  --field "role=$ROLE" \
+  --field "source=precompact" \
+  --field "notify=$NOTIFY" \
+  --field "message=$MESSAGE"
 
 exit 0

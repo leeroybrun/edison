@@ -1,0 +1,60 @@
+# Logging / Audit Configuration
+#
+# Edison logging is designed for project-scoped and session-scoped auditing.
+# Default is OFF to avoid producing logs in repositories that haven't opted in.
+
+logging:
+  enabled: false
+
+  audit:
+    enabled: true
+    sinks:
+      jsonl:
+        enabled: true
+        paths:
+          # Project-scoped JSONL audit log (append-only).
+          project: ".project/logs/edison/audit-project.jsonl"
+
+          # Session-scoped JSONL audit log (append-only). When session_id is unknown, this is skipped.
+          session: ".project/logs/edison/audit-session-{session_id}.jsonl"
+
+          # Directory for per-invocation artifacts (stdio captures, etc.).
+          invocation_dir: ".project/logs/edison/invocations"
+          # Per-invocation JSONL audit log (append-only). When invocation_id is unknown, this is skipped.
+          invocation: ".project/logs/edison/invocations/{invocation_id}.jsonl"
+
+  stdio:
+    capture:
+      enabled: false
+      paths:
+        # These templates are expanded with runtime tokens (invocation_id, pid, timestamp).
+        stdout: ".project/logs/edison/invocations/{invocation_id}.stdout.log"
+        stderr: ".project/logs/edison/invocations/{invocation_id}.stderr.log"
+
+  subprocess:
+    enabled: true
+    # Max bytes of stdout/stderr stored inline in audit events (truncate beyond this).
+    max_output_bytes: 100000
+
+  stdlib:
+    enabled: true
+    level: "INFO"
+    # When enabled, Edison configures the Python stdlib `logging` module to write
+    # to a per-invocation file (no stderr handler, so JSON output stays pure).
+    path: ".project/logs/edison/invocations/{invocation_id}.python.log"
+
+  redaction:
+    enabled: false
+    replacement: "[REDACTED]"
+    patterns: []
+
+  orchestrator:
+    enabled: true
+    capture_prompt: false
+    max_prompt_bytes: 10000
+
+  guards:
+    enabled: true
+
+  hooks:
+    enabled: true

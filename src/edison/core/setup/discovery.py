@@ -19,6 +19,7 @@ from typing import Dict, List, Any, Set
 
 from edison.data import get_data_path
 from edison.core.utils.paths import get_project_config_dir
+from edison.core.packs.paths import iter_pack_dirs
 
 
 class SetupDiscovery:
@@ -50,26 +51,16 @@ class SetupDiscovery:
 
     # ---------- Public API ----------
     def discover_packs(self) -> List[str]:
-        """Discover available packs from bundled + project packs."""
+        """Discover available packs from bundled + project packs (v2).
+
+        Packs are first-class only when they have a `pack.yml` manifest.
+        """
         names: Set[str] = set()
-        
-        # Discover from bundled packs
-        if self.bundled_packs_dir.exists():
-            for pack_dir in self.bundled_packs_dir.iterdir():
-                if pack_dir.is_dir() and not pack_dir.name.startswith("_"):
-                    # Check for config.yml or any content
-                    config_file = pack_dir / "config.yml"
-                    if config_file.exists() or any(pack_dir.rglob("*.md")):
-                        names.add(pack_dir.name)
-        
-        # Discover from project packs
-        if self.project_packs_dir.exists():
-            for pack_dir in self.project_packs_dir.iterdir():
-                if pack_dir.is_dir() and not pack_dir.name.startswith("_"):
-                    config_file = pack_dir / "config.yml"
-                    if config_file.exists() or any(pack_dir.rglob("*.md")):
-                        names.add(pack_dir.name)
-        
+
+        for pack_name, pack_dir, _kind in iter_pack_dirs(self.repo_root):
+            if (pack_dir / "pack.yml").exists():
+                names.add(pack_name)
+
         return sorted(names)
 
     def discover_orchestrators(self) -> List[str]:
@@ -123,6 +114,16 @@ class SetupDiscovery:
         project_agents_dir = get_project_config_dir(self.repo_root, create=False) / "agents"
         if project_agents_dir.exists():
             for agent_file in project_agents_dir.glob("*.md"):
+                agent_id = agent_file.stem
+                if agent_id not in ids:
+                    ids.append(agent_id)
+
+        # Discover from pack agent directories (bundled + project) for the selected packs.
+        for _pack_name, pack_dir, _kind in iter_pack_dirs(self.repo_root, packs=packs):
+            pack_agents_dir = pack_dir / "agents"
+            if not pack_agents_dir.exists():
+                continue
+            for agent_file in pack_agents_dir.glob("*.md"):
                 agent_id = agent_file.stem
                 if agent_id not in ids:
                     ids.append(agent_id)

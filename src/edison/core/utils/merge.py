@@ -69,8 +69,10 @@ def merge_arrays(base: List[Any], override: List[Any]) -> List[Any]:
         >>> merge_arrays([1, 2], ["=", 3, 4])
         [3, 4]
     """
-    if not override:
-        return base
+    # An explicitly empty override list means "replace with empty".
+    # Absence of the key (not present in override dict) is what preserves the base.
+    if len(override) == 0:
+        return []
     first = override[0]
     if isinstance(first, str):
         if first.startswith("+"):
@@ -84,6 +86,5 @@ def merge_arrays(base: List[Any], override: List[Any]) -> List[Any]:
 
 
 __all__ = ["deep_merge", "merge_arrays"]
-
 
 
