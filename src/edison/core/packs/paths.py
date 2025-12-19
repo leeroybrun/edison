@@ -4,7 +4,7 @@ Keep this module dependency-lite to avoid circular imports.
 
 Pack layering model:
 1. Bundled packs live under the Edison distribution (edison.data/packs)
-2. Project packs live under the project config directory (.edison/packs)
+2. Project packs live under the project config directory (<project-config-dir>/packs)
 """
 
 from __future__ import annotations
@@ -65,4 +65,3 @@ def iter_pack_dirs(
 
 
 __all__ = ["PackRoot", "get_pack_roots", "iter_pack_dirs"]
-

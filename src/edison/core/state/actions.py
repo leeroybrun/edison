@@ -21,8 +21,8 @@ class ActionRegistry(ActionRegistryBase):
     Actions are loaded with layered composition:
     - Core (builtin): core/state/builtin/actions/
     - Bundled packs: data/packs/<pack>/actions/
-    - Project packs: .edison/packs/<pack>/actions/
-    - Project: .edison/actions/
+    - Project packs: <project-config-dir>/packs/<pack>/actions/
+    - Project: <project-config-dir>/actions/
     
     Later layers override earlier ones.
     """

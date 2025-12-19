@@ -200,7 +200,7 @@ validation:
 
   # Artifact paths for evidence storage
   artifactPaths:
-    bundleSummaryFile: "bundle-approved.md"
+    bundleSummaryFile: "bundle-summary.md"
     implementationReportFile: "implementation-report.md"
 
   # Approval criteria (documentation only; logic uses `blocking` and the roster)

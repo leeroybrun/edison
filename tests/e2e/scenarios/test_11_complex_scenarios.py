@@ -54,7 +54,7 @@ def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int =
         format_frontmatter({"taskId": task_id, "round": round_num, "completionStatus": "complete"}) + "\n",
         encoding="utf-8",
     )
-    (rd / "bundle-approved.md").write_text(
+    (rd / "bundle-summary.md").write_text(
         format_frontmatter({"taskId": task_id, "round": round_num, "approved": True}) + "\n",
         encoding="utf-8",
     )
@@ -695,13 +695,13 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     # Should succeed (all validators approved)
     assert_command_success(validate_result)
 
-    # Verify bundle-approved.md exists ONLY under parent evidence directory
-    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-approved.md"
+    # Verify bundle-summary.md exists ONLY under parent evidence directory
+    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-summary.md"
     assert_file_exists(parent_bundle)
 
-    # Verify children do NOT have individual bundle-approved.md
-    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-approved.md"
-    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-approved.md"
+    # Verify children do NOT have individual bundle-summary.md
+    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-summary.md"
+    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-summary.md"
     assert not child1_bundle.exists()
     assert not child2_bundle.exists()
 

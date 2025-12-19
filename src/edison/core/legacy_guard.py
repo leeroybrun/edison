@@ -6,7 +6,7 @@ such as ``project-pre-edison``.
 
 The intent is to fail fast with a clear error message whenever the
 resolved project root points at a legacy tree, enforcing the policy
-defined in ``.project/qa/EDISON_NO_LEGACY_POLICY.md``.
+defined in ``<project-management-dir>/qa/EDISON_NO_LEGACY_POLICY.md``.
 """
 from __future__ import annotations
 

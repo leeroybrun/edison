@@ -3,8 +3,8 @@
 Loads Python callables from layered folders:
 - Core:            core/state/builtin/guards|actions|conditions/
 - Bundled packs:   data/packs/<pack>/guards|actions|conditions/
-- Project packs:   .edison/packs/<pack>/guards|actions|conditions/
-- Project:         .edison/guards|actions|conditions/
+- Project packs:   <project-config-dir>/packs/<pack>/guards|actions|conditions/
+- Project:         <project-config-dir>/guards|actions|conditions/
 
 Handlers are registered into their respective registries and become
 available to the state machine for transition validation and execution.

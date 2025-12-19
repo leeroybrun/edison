@@ -8,9 +8,9 @@ Uses ConfigManager for pack-aware config loading (core > packs > project).
 
 Architecture:
 - Core content: ALWAYS from bundled edison.data
-- Project overrides: .edison/config/*.yaml merged on top of bundled
-- Packs: bundled (edison.data/packs/) + project (.edison/packs/)
-- NO .edison/core/ - that is legacy
+- Project overrides: <project-config-dir>/config/*.yaml merged on top of bundled
+- Packs: bundled (edison.data/packs/) + project (<project-config-dir>/packs/)
+- NO <project-config-dir>/core/ - that is legacy
 """
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ class SetupDiscovery:
         ConfigManager handles the full layering:
         1. Core config (bundled validators.yaml)
         2. Pack configs (bundled + project packs)
-        3. Project config (.edison/config/validators.yaml)
+        3. Project config (<project-config-dir>/config/validators.yaml)
         """
         config = self._cfg_mgr.load_config(validate=False, include_packs=True)
 

@@ -24,8 +24,8 @@ class ConditionRegistry(ConditionRegistryBase):
     Conditions are loaded with layered composition:
     - Core (builtin): core/state/builtin/conditions/
     - Bundled packs: data/packs/<pack>/conditions/
-    - Project packs: .edison/packs/<pack>/conditions/
-    - Project: .edison/conditions/
+    - Project packs: <project-config-dir>/packs/<pack>/conditions/
+    - Project: <project-config-dir>/conditions/
     
     Later layers override earlier ones.
     """

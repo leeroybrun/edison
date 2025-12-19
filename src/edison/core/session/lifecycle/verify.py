@@ -119,7 +119,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             failures.append(msg)
             health["categories"]["unexpectedStates"].append({"type": "qa", "qaId": qa_id, "state": status})
 
-    # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle-approved.md approved=true
+    # New guard: every task in tasks/done MUST have QA in qa/done|validated and bundle approval marker approved=true
     # Get state names from config
     task_done = WorkflowConfig().get_semantic_state("task", "done")
     qa_done = WorkflowConfig().get_semantic_state("qa", "done")

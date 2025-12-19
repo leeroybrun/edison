@@ -59,7 +59,7 @@ def build_tokens(repo_root: Path, cfg: Mapping[str, Any] | None = None) -> dict[
     project_mgmt_path = (repo_root / project_mgmt_dir_name).resolve()
 
     bundle_file = _get_nested(config, "validation.artifactPaths.bundleSummaryFile")
-    bundle_filename = str(bundle_file).strip() if bundle_file else "bundle-approved.md"
+    bundle_filename = str(bundle_file).strip() if bundle_file else "bundle-summary.md"
 
     return {
         "PROJECT_ROOT": str(repo_root),

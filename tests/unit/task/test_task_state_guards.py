@@ -126,11 +126,11 @@ def test_status_never_synthesizes_approval(project: TestProjectDir):
         env=_create_env(),
     )
 
-    # Assert: must fail (no synthetic approval), and no bundle-approved.md is created
+    # Assert: must fail (no synthetic approval), and no bundle-summary.md is created
     assert_command_failure(res_validate)
     evidence_dir = project.project_root / "qa" / "validation-evidence" / task_id
     # No evidence rounds should exist as a side effect
-    assert not any(evidence_dir.glob("round-*/bundle-approved.md"))
+    assert not any(evidence_dir.glob("round-*/bundle-summary.md"))
     # Task must not be in validated
     assert project.get_task_state(task_id) != "validated"
 

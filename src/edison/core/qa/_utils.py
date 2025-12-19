@@ -19,7 +19,7 @@ def get_qa_root_path(project_root: Optional[Path] = None) -> Path:
         project_root: Optional project root path. If None, resolves automatically.
 
     Returns:
-        Path to QA root directory (.project/qa or equivalent)
+        Path to QA root directory (<project-management-dir>/qa or equivalent)
     """
     from edison.core.utils.paths import PathResolver, get_management_paths
 
@@ -45,7 +45,7 @@ def get_evidence_base_path(project_root: Optional[Path] = None) -> Path:
         project_root: Optional project root path. If None, resolves automatically.
 
     Returns:
-        Path to evidence base directory (e.g., .project/qa/validation-evidence)
+        Path to evidence base directory (e.g., <project-management-dir>/qa/<evidence-subdir>)
 
     Example:
         >>> base = get_evidence_base_path()

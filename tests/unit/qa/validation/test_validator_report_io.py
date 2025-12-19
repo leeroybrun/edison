@@ -100,7 +100,7 @@ class TestValidatorReports:
         (round_dir / "validator-database-report.md").touch()
 
         # Create non-validator files (should be excluded)
-        (round_dir / "bundle-approved.md").touch()
+        (round_dir / "bundle-summary.md").touch()
         (round_dir / "implementation-report.md").touch()
 
         result = reports.list_validator_reports(round_dir)
@@ -112,7 +112,7 @@ class TestValidatorReports:
         assert "validator-database-report.md" in names
 
         # Non-validator files should NOT be included
-        assert "bundle-approved.md" not in names
+        assert "bundle-summary.md" not in names
         assert "implementation-report.md" not in names
 
     def test_list_validator_reports_sorted(self, round_dir: Path):

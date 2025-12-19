@@ -38,7 +38,7 @@ def load_impl_followups(task_id: str) -> List[Dict[str, Any]]:
 
 
 def load_bundle_followups(task_id: str) -> List[Dict[str, Any]]:
-    """Load non-blocking follow-ups from bundle-approved.md for latest round.
+    """Load non-blocking follow-ups from the bundle summary for latest round.
 
     Uses EvidenceService.read_bundle() for I/O.
     """

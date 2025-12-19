@@ -10,7 +10,7 @@ def test_should_revalidate_bundle_fresh(tmp_path: Path):
     # Create fake evidence structure
     evidence = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1" / "round-1"
     evidence.mkdir(parents=True)
-    summary = evidence / "bundle-approved.md"
+    summary = evidence / "bundle-summary.md"
     summary.write_text("---\napproved: true\n---\n")
     report = evidence / "validator-security-report.md"
     report.write_text("---\nvalidatorId: security\nverdict: approve\n---\n")
@@ -31,7 +31,7 @@ def test_should_revalidate_bundle_fresh(tmp_path: Path):
 def test_should_revalidate_bundle_stale_by_report(tmp_path: Path):
     evidence = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1" / "round-1"
     evidence.mkdir(parents=True)
-    summary = evidence / "bundle-approved.md"
+    summary = evidence / "bundle-summary.md"
     summary.write_text("---\napproved: true\n---\n")
     report = evidence / "validator-security-report.md"
     report.write_text("---\nvalidatorId: security\nverdict: approve\n---\n")
@@ -46,7 +46,7 @@ def test_should_revalidate_bundle_stale_by_report(tmp_path: Path):
 def test_should_revalidate_bundle_stale_by_task_file(tmp_path: Path):
     evidence = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1" / "round-1"
     evidence.mkdir(parents=True)
-    summary = evidence / "bundle-approved.md"
+    summary = evidence / "bundle-summary.md"
     summary.write_text("---\napproved: true\n---\n")
     report = evidence / "validator-security-report.md"
     report.write_text("---\nvalidatorId: security\nverdict: approve\n---\n")

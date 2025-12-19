@@ -40,11 +40,11 @@ class QARepository(
     """File-based repository for QA record entities.
 
     QA records are stored as Markdown files in state-based directories:
-    - .project/qa/waiting/
-    - .project/qa/todo/
-    - .project/qa/wip/
-    - .project/qa/done/
-    - .project/qa/validated/
+    - <project-management-dir>/qa/waiting/
+    - <project-management-dir>/qa/todo/
+    - <project-management-dir>/qa/wip/
+    - <project-management-dir>/qa/done/
+    - <project-management-dir>/qa/validated/
 
     Supports session-scoped storage via SessionScopedMixin.
     """

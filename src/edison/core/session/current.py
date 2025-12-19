@@ -3,12 +3,12 @@
 Session ID resolution is delegated to the canonical resolver
 `edison.core.session.core.id.detect_session_id`, which uses this priority:
 1. `AGENTS_SESSION` environment variable (must exist)
-2. Worktree `.project/.session-id` file (must exist)
+2. Worktree `<project-management-dir>/.session-id` file (must exist)
 3. Process-derived `{process}-pid-{pid}` lookup (must exist)
 4. Owner-based active session lookup (best-effort)
 
 Persistence:
-- Only persists in worktree mode via `.project/.session-id`
+- Only persists in worktree mode via `<project-management-dir>/.session-id`
 - Non-worktree mode: no file storage (safe for concurrent sessions)
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ def _is_in_worktree() -> bool:
 def _get_session_id_file() -> Optional[Path]:
     """Get path to .session-id file if in worktree.
 
-    The file is stored in .project/.session-id within the worktree root.
+    The file is stored in <project-management-dir>/.session-id within the worktree root.
 
     Returns:
         Path to the session ID file, or None if not in worktree.
@@ -111,7 +111,7 @@ def get_current_session() -> Optional[str]:
     
     Resolution priority:
     1. AGENTS_SESSION environment variable (canonical)
-    2. Worktree `.project/.session-id` file (if exists and valid)
+    2. Worktree `<project-management-dir>/.session-id` file (if exists and valid)
     3. Process-derived `{process}-pid-{pid}` lookup (if exists)
     
     In worktree mode, the file enables crash recovery and session resume.
@@ -141,7 +141,7 @@ def get_current_session() -> Optional[str]:
 def set_current_session(session_id: str) -> None:
     """Set current session ID (worktree mode only).
     
-    In worktree mode, persists the session ID to .project/.session-id file.
+    In worktree mode, persists the session ID to <project-management-dir>/.session-id file.
     This enables session resume after process crashes or restarts.
     
     In non-worktree mode, raises an error because file storage would be
@@ -204,7 +204,7 @@ def set_current_session(session_id: str) -> None:
 def clear_current_session() -> None:
     """Clear current session ID (worktree mode only).
     
-    Removes the .project/.session-id file in worktree mode.
+    Removes the <project-management-dir>/.session-id file in worktree mode.
     In non-worktree mode, this is a no-op (nothing to clear).
     
     Example:

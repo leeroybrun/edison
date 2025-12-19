@@ -93,7 +93,7 @@ class FileContextService:
         """Return glob patterns to ignore for file-context detection.
 
         This is primarily used to prevent Edison-managed metadata/runtime artifacts
-        (e.g., `.project/**`) from polluting validation "modifiedFiles" and triggering
+        (e.g., `<project-management-dir>/**`) from polluting validation "modifiedFiles" and triggering
         irrelevant validators.
         """
         if self._ignore_patterns is not None:

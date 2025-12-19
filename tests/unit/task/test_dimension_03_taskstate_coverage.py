@@ -433,7 +433,7 @@ def test_guards_prevent_done_without_evidence(project: TestProjectDir):
     # Verify no synthetic approval created
     evidence_dir = project.project_root / "qa" / "validation-evidence" / task_id
     if evidence_dir.exists():
-        assert not any(evidence_dir.glob("round-*/bundle-approved.md")), "Should not create synthetic approval"
+        assert not any(evidence_dir.glob("round-*/bundle-summary.md")), "Should not create synthetic approval"
 
 
 # ============================================================================

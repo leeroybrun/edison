@@ -59,7 +59,7 @@ class EvidenceService:
             paths = {}
 
         return {
-            "bundle": paths.get("bundleSummaryFile", "bundle-approved.md"),
+            "bundle": paths.get("bundleSummaryFile", "bundle-summary.md"),
             "implementation": paths.get("implementationReportFile", "implementation-report.md"),
         }
 
@@ -133,6 +133,10 @@ class EvidenceService:
         """
         round_dir = self.ensure_round(round_num)
         bundle_path = round_dir / self.bundle_filename
+        if not bundle_path.exists() and self.bundle_filename != "bundle-approved.md":
+            legacy = round_dir / "bundle-approved.md"
+            if legacy.exists():
+                bundle_path = legacy
 
         return read_structured_report(bundle_path)
 

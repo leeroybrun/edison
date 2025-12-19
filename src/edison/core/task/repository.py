@@ -40,10 +40,10 @@ class TaskRepository(
     """File-based repository for task entities.
 
     Tasks are stored as Markdown files in state-based directories:
-    - .project/tasks/todo/
-    - .project/tasks/wip/
-    - .project/tasks/done/
-    - .project/tasks/validated/
+    - <project-management-dir>/tasks/todo/
+    - <project-management-dir>/tasks/wip/
+    - <project-management-dir>/tasks/done/
+    - <project-management-dir>/tasks/validated/
 
     Supports session-scoped storage via SessionScopedMixin.
     """
@@ -155,9 +155,10 @@ class TaskRepository(
         # surface an actionable error instead of pretending the task doesn't exist.
         content = path.read_text(encoding="utf-8", errors="strict")
         if not has_frontmatter(content):
+            template_path = self._config.template_path()
             raise PersistenceError(
                 f"Task file at {path} is missing YAML frontmatter. "
-                "Restore the file from the composed template (.edison/_generated/documents/TASK.md) "
+                f"Restore the file from the composed template ({template_path}) "
                 "or recreate the task via `edison task new`."
             )
 

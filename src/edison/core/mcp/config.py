@@ -127,7 +127,7 @@ def _load_mcp_config(project_root: Path, packs: Sequence[str] | None = None) -> 
     ConfigManager handles the full layering:
     1. Core config (bundled mcp.yaml)
     2. Pack configs (bundled + project packs)
-    3. Project config (.edison/config/mcp.yaml)
+    3. Project config (<project-config-dir>/config/mcp.yaml)
 
     Args:
         project_root: Project root path

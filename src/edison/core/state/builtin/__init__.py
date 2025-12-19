@@ -10,6 +10,6 @@ the registry base classes).
 Handler loading order:
 1. Core handlers (this package)
 2. Bundled pack handlers (data/packs/<pack>/)
-3. Project pack handlers (.edison/packs/<pack>/)
-4. Project handlers (.edison/)
+3. Project pack handlers (<project-config-dir>/packs/<pack>/)
+4. Project handlers (<project-config-dir>/)
 """

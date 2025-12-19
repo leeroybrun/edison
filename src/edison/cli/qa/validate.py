@@ -553,7 +553,19 @@ def _execute_with_executor(
         formatter.text("")
         formatter.text("Delegation instructions saved to evidence folder.")
         formatter.text("The orchestrator/LLM must:")
-        formatter.text("  1. Read delegation instructions from: .project/qa/validation-evidence/<task>/round-N/delegation-*.md")
+        try:
+            from edison.core.utils.paths import PathResolver
+
+            project_root = PathResolver.resolve_project_root()
+            delegation_glob = ev.get_round_dir(round_num) / "delegation-*.md"
+            try:
+                display = str(delegation_glob.relative_to(project_root))
+            except Exception:
+                display = str(delegation_glob)
+        except Exception:
+            display = "<evidence-root>/<task-id>/round-N/delegation-*.md"
+
+        formatter.text(f"  1. Read delegation instructions from: {display}")
         formatter.text("  2. Execute validation manually using the specified zenRole")
         formatter.text("  3. Save results to: validator-<id>-report.md")
         formatter.text("")

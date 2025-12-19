@@ -35,7 +35,7 @@ class ConfigManager:
 
     Configuration sources (highest to lowest priority):
     1. Environment variables: EDISON_*
-    2. Project config: .edison/config/*.yaml (alphabetical order)
+    2. Project config: <project-config-dir>/config/*.yaml (alphabetical order)
     3. Pack configs: bundled_packs/*/config/*.yaml + project_packs/*/config/*.yaml
     4. Bundled defaults: edison.data/config/*.yaml (alphabetical order)
 
@@ -279,7 +279,7 @@ class ConfigManager:
 
         Pack configs are loaded in order:
         1. Bundled packs (edison.data/packs/{pack}/config/*.yaml)
-        2. Project packs (.edison/packs/{pack}/config/*.yaml)
+        2. Project packs (<project-config-dir>/packs/{pack}/config/*.yaml)
 
         Args:
             cfg: Base configuration to merge into
@@ -350,7 +350,7 @@ class ConfigManager:
         Phase 2 (Full merge):
             1. Core config: edison.data/config/*.yaml (alphabetical order)
             2. Pack configs: bundled_packs/*/config/*.yaml + project_packs/*/config/*.yaml
-            3. Project config: .edison/config/*.yaml (alphabetical order)
+            3. Project config: <project-config-dir>/config/*.yaml (alphabetical order)
             4. Environment variable overrides (EDISON_*)
 
         Args:

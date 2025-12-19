@@ -16,10 +16,10 @@ import re as _re
 
 
 def _ensure_shared_sessions_dir(*, worktree_path: Path, repo_dir: Path) -> None:
-    """Ensure `.project/sessions` is shared across git worktrees.
+    """Ensure `<project-management-dir>/sessions` is shared across git worktrees.
 
     Git worktrees do not share untracked files. Edison stores session runtime state
-    under `.project/sessions`, so we create a symlink in the worktree that points
+    under `<project-management-dir>/sessions`, so we create a symlink in the worktree that points
     to the primary checkout's sessions directory.
     """
     try:
@@ -73,7 +73,7 @@ def _ensure_shared_sessions_dir(*, worktree_path: Path, repo_dir: Path) -> None:
 
 
 def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) -> None:
-    """Ensure `.project/.session-id` exists inside the worktree.
+    """Ensure `<project-management-dir>/.session-id` exists inside the worktree.
 
     This enables worktree-local session auto-resolution (e.g. `edison session status`
     without passing `--session` or setting env vars) by allowing the canonical resolver

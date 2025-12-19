@@ -424,11 +424,11 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     # Prepare minimal bundle summary to attempt wip → done (should be rejected; must re-run validators)
     ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
-    (ev / "bundle-approved.md").write_text(
+    (ev / "bundle-summary.md").write_text(
         format_frontmatter({"taskId": task_id, "round": 1, "approved": True, "validators": []}) + "\n",
         encoding="utf-8",
     )
-    # Manual bundle-approved.md must not be trusted
+    # Manual bundle-summary.md must not be trusted
     res_manual = run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path)
     assert res_manual.returncode != 0
     # Now generate a real bundle via validators/validate and try again (must fail due to missing blocking approvals)

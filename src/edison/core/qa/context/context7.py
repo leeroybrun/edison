@@ -74,7 +74,7 @@ def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[s
     candidates: List[str] = []
     candidates.extend(_parse_primary_files(task_path))
 
-    # If the task exists in .project/tasks across states, inspect those copies too.
+    # If the task exists in <project-management-dir>/tasks across states, inspect those copies too.
     try:
         from edison.core.config.domains.workflow import WorkflowConfig
         

@@ -7,8 +7,8 @@ include resolution.
 
 Architecture:
     - Bundled rules: edison.data/rules/registry.yml (ALWAYS used for core)
-    - Pack rules: .edison/packs/<pack>/rules/registry.yml
-    - Project rules: .edison/rules/registry.yml (overrides)
+    - Pack rules: <project-config-dir>/packs/<pack>/rules/registry.yml
+    - Project rules: <project-config-dir>/rules/registry.yml (overrides)
 
 Uses ConfigManager for pack directory resolution to maintain consistency
 with the unified configuration system.
@@ -40,8 +40,8 @@ class RulesRegistry:
 
     Registry locations:
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
-      - Packs: .edison/packs/<pack>/rules/registry.yml (bundled + project)
-      - Project: .edison/rules/registry.yml (overrides)
+      - Packs: <project-config-dir>/packs/<pack>/rules/registry.yml (bundled + project)
+      - Project: <project-config-dir>/rules/registry.yml (overrides)
 
     This class is read-only; it does not mutate project state.
     """
@@ -59,7 +59,7 @@ class RulesRegistry:
 
         cfg_mgr = ConfigManager(repo_root=self.project_root)
 
-        # Project config directory (e.g. .edison, configurable)
+        # Project config directory (e.g. <project-config-dir>, configurable)
         self.project_dir = cfg_mgr.project_config_dir.parent
 
         # Pack directories from ConfigManager (unified source of truth)
@@ -175,7 +175,7 @@ class RulesRegistry:
         return result
     
     def discover_project(self) -> Dict[str, Dict[str, Any]]:
-        """Discover project-level rule overrides at .edison/rules/."""
+        """Discover project-level rule overrides at <project-config-dir>/rules/."""
         path = self.project_dir / "rules" / "registry.yml"
         registry = self._load_yaml(path, required=False)
         rules = registry.get("rules", [])
@@ -227,7 +227,7 @@ class RulesRegistry:
 
         Architecture:
         - Bundled pack rules: edison.data/packs/<pack>/rules/registry.yml (base)
-        - Project pack rules: .edison/packs/<pack>/rules/registry.yml (extends/overrides)
+        - Project pack rules: <project-config-dir>/packs/<pack>/rules/registry.yml (extends/overrides)
         - Merge strategy: project rules are appended to bundled rules
         """
         # Load bundled pack registry (base layer)

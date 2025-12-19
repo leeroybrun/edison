@@ -1,8 +1,8 @@
 """Tests for validator-approval rule enforcement on task validation state transition.
 
 These tests verify that:
-1. Tasks cannot transition to 'validated' state without a bundle-approved.md file
-2. Tasks CAN transition to 'validated' state when bundle-approved.md exists with approved=true
+1. Tasks cannot transition to 'validated' state without a bundle-summary.md file
+2. Tasks CAN transition to 'validated' state when bundle-summary.md exists with approved=true
 
 Uses the new repository pattern and RulesEngine API (replacing legacy task.transition_task).
 """
@@ -48,7 +48,7 @@ def test_transition_task_blocks_without_validator_approval(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should block when no bundle-approved.md exists."""
+    """Task transition to validated should block when no bundle-summary.md exists."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -75,7 +75,7 @@ def test_transition_task_blocks_without_validator_approval(
     # Convert task to dict for rule checking (as done in real workflows)
     task_dict = {"id": task_id}
 
-    # Rule check should fail because no bundle-approved.md exists
+    # Rule check should fail because no bundle-summary.md exists
     with pytest.raises(RuleViolationError) as exc_info:
         engine.check_state_transition(task_dict, "done", "validated")
 
@@ -89,7 +89,7 @@ def test_transition_task_allows_when_bundle_approved(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should succeed when bundle-approved.md has approved=true."""
+    """Task transition to validated should succeed when bundle-summary.md has approved=true."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -128,8 +128,8 @@ summary: "Test implementation"
         encoding="utf-8",
     )
     
-    # Create bundle-approved.md (required by validator-approval rule)
-    bundle_path = round_dir / "bundle-approved.md"
+    # Create bundle-summary.md (required by validator-approval rule)
+    bundle_path = round_dir / "bundle-summary.md"
     bundle_path.write_text(
         f"""---
 taskId: "{task_id}"

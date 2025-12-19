@@ -331,10 +331,14 @@ def _get_active_packs_fast(project_root: Path) -> List[str]:
     """
     try:
         from edison.core.utils.io import read_yaml
+        from edison.core.utils.paths import get_project_config_dir
 
-        cfg_path = project_root / ".edison" / "config" / "packs.yml"
+        cfg_root = get_project_config_dir(project_root, create=False)
+        cfg_dir = cfg_root / "config"
+
+        cfg_path = cfg_dir / "packs.yml"
         if not cfg_path.exists():
-            cfg_path = project_root / ".edison" / "config" / "packs.yaml"
+            cfg_path = cfg_dir / "packs.yaml"
         if not cfg_path.exists():
             return []
         data = read_yaml(cfg_path, default={}) or {}

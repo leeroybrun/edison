@@ -60,7 +60,7 @@ def get_sessions_root(project_root: Optional[Path] = None) -> Path:
     Example:
         >>> sessions_root = get_sessions_root()
         >>> print(sessions_root)
-        /path/to/project/.project/sessions
+        /path/to/project/<project-management-dir>/sessions
     """
     repo_dir = get_repo_dir(project_root)
     cfg = get_config(repo_root=repo_dir)

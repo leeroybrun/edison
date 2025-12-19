@@ -29,9 +29,9 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
     """File-based repository for session entities.
 
     Sessions are stored as JSON files in state-based directories using NESTED layout:
-    - .project/sessions/wip/{session_id}/session.json
-    - .project/sessions/done/{session_id}/session.json
-    - .project/sessions/validated/{session_id}/session.json
+    - <project-management-dir>/sessions/wip/{session_id}/session.json
+    - <project-management-dir>/sessions/done/{session_id}/session.json
+    - <project-management-dir>/sessions/validated/{session_id}/session.json
 
     Each session has its own directory containing session.json and related files (tasks, qa, etc).
     """
@@ -149,8 +149,8 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
         # Check if state changed (need to move directory)
         if current_path != target_path:
             # With nested layout, we need to move the entire session directory
-            # current_path: .project/sessions/wip/session-id/session.json
-            # target_path: .project/sessions/done/session-id/session.json
+            # current_path: <project-management-dir>/sessions/wip/session-id/session.json
+            # target_path: <project-management-dir>/sessions/done/session-id/session.json
             current_session_dir = current_path.parent
             target_session_dir = target_path.parent
 
@@ -290,4 +290,3 @@ class SessionRepository(BaseRepository[Session], FileRepositoryMixin[Session]):
 __all__ = [
     "SessionRepository",
 ]
-

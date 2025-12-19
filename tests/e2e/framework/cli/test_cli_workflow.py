@@ -223,7 +223,7 @@ class TestScriptWorkflow:
             }
             (ev_round / f"validator-{vid}-report.md").write_text(format_frontmatter(report) + "\n", encoding="utf-8")
 
-        # Generate bundle-approved.md from existing evidence (no validator execution)
+        # Generate bundle-summary.md from existing evidence (no validator execution)
         run_cli(cli_workflow_env, ["qa", "validate", task_id, "--session", session_id, "--check-only"], extra_env=env_vars)
 
         # Promote QA wip → done and mark task validated

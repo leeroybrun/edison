@@ -41,7 +41,7 @@ def main(args: argparse.Namespace) -> int:
     try:
         repo_root = get_repo_root(args)
 
-        # Get project config directory (.edison/)
+        # Get project config directory (<project-config-dir>/)
         config_dir = get_project_config_dir(repo_root, create=False)
         validation_result = {
             "valid": True,
@@ -61,7 +61,7 @@ def main(args: argparse.Namespace) -> int:
             validation_result["valid"] = False
             validation_result["issues"].append(f"Cannot access bundled edison.data: {e}")
 
-        # Check for project config directory (.edison/)
+        # Check for project config directory (<project-config-dir>/)
         # Note: This is optional - projects can run with just bundled defaults
         if not config_dir.exists():
             validation_result["issues"].append({
@@ -70,7 +70,7 @@ def main(args: argparse.Namespace) -> int:
                 "file": str(config_dir),
             })
 
-        # Check for project config subdirectory (.edison/config/)
+        # Check for project config subdirectory (<project-config-dir>/config/)
         project_config = config_dir / "config"
         if config_dir.exists() and not project_config.exists():
             validation_result["issues"].append({

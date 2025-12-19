@@ -43,13 +43,13 @@ def test_bundler_path_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     cfg: Dict[str, object] = {
         "validation": {
             "artifactPaths": {
-                "bundleSummaryFile": "bundle-approved.md",
+                "bundleSummaryFile": "bundle-summary.md",
             }
         }
     }
 
     path = bundler.bundle_summary_path("t-2", 1, config=cfg)
-    assert path == tmp_path / ".project" / "qa" / "validation-evidence" / "t-2" / "round-1" / "bundle-approved.md"
+    assert path == tmp_path / ".project" / "qa" / "validation-evidence" / "t-2" / "round-1" / "bundle-summary.md"
 
 
 def test_evidence_service_bundle_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

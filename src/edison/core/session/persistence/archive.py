@@ -23,7 +23,7 @@ def _archive_path_for_session(session_id: str) -> Path:
     return _archive_root_dir() / stamp / f"{session_id}.tar.gz"
 
 def archive_session(session_id: str) -> Path:
-    """Archive the session directory into ``.tar.gz`` under ``.project/archive/YYYY-MM/``.
+    """Archive the session directory into ``.tar.gz`` under ``<project-management-dir>/archive/YYYY-MM/``.
 
     Preserves internal directory structure. Returns the archive path.
     """

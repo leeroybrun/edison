@@ -93,7 +93,7 @@ class TestStatusJsonPurity(unittest.TestCase):
         # Evidence bundle approved
         ev = self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
         ev.mkdir(parents=True, exist_ok=True)
-        (ev / "bundle-approved.md").write_text("---\napproved: true\n---\n")
+        (ev / "bundle-summary.md").write_text("---\napproved: true\n---\n")
 
         # Session with git metadata and worktree path to trigger archival hook
         worktree = self.tmp / "_worktree" / sid

@@ -90,7 +90,7 @@ def test_validators_validate_emits_summary_path_on_stdout_and_logs_to_stderr(tmp
     assert payload.get("task_id") == task_id
     summary_path = REPO_ROOT / str(payload.get("bundle_file"))
     assert summary_path.exists()
-    assert summary_path.name == "bundle-approved.md"
+    assert summary_path.name == "bundle-summary.md"
     assert payload.get("approved") is False
 
 

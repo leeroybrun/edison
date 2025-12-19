@@ -22,8 +22,8 @@ class SetupQuestionnaire:
     Architecture:
     - edison_core: ALWAYS bundled edison.data directory
     - config_path: ALWAYS bundled edison.data/config/setup.yaml
-    - project_dir: .edison/ for project overrides
-    - NO .edison/core/ - that is legacy
+    - project_dir: <project-config-dir>/ for project overrides
+    - NO <project-config-dir>/core/ - that is legacy
     """
 
     def __init__(
@@ -119,7 +119,7 @@ class SetupQuestionnaire:
         return defaults
 
     def render_modular_configs(self, answers: Dict[str, Any]) -> Dict[str, str]:
-        """Render modular config files following .edison/config/*.yml pattern.
+        """Render modular config files following <project-config-dir>/config/*.yml pattern.
 
         Returns a dict mapping filename to YAML content:
             {

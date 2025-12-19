@@ -21,8 +21,8 @@ class GuardRegistry(GuardRegistryBase):
     Guards are loaded with layered composition:
     - Core (builtin): core/state/builtin/guards/
     - Bundled packs: data/packs/<pack>/guards/
-    - Project packs: .edison/packs/<pack>/guards/
-    - Project: .edison/guards/
+    - Project packs: <project-config-dir>/packs/<pack>/guards/
+    - Project: <project-config-dir>/guards/
     
     Later layers override earlier ones.
     """

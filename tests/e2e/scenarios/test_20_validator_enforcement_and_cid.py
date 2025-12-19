@@ -66,7 +66,7 @@ def test_run_wave_plumbs_continuation_id(project_dir: TestProjectDir):
     """run-wave passes --continuation-id to track and validators/validate.
 
     - tracking.continuationId appears in a validator report started by run-wave
-    - bundle-approved.md contains continuationId when run-wave invokes validate
+    - bundle-summary.md contains continuationId when run-wave invokes validate
     """
     session_id = "sid-wave-cid"
     task_num, wave, slug = "210", "wave1", "cid-wave"
@@ -95,8 +95,8 @@ def test_run_wave_plumbs_continuation_id(project_dir: TestProjectDir):
     tracking = data.get("tracking", {}) if isinstance(data.get("tracking"), dict) else {}
     assert tracking.get("continuationId") == cid, "tracking.continuationId not plumbed into report"
 
-    # bundle-approved.md should exist and include continuationId from validate call
-    bundle = ev / "bundle-approved.md"
-    assert bundle.exists(), "bundle-approved.md not created by validators/validate"
+    # bundle-summary.md should exist and include continuationId from validate call
+    bundle = ev / "bundle-summary.md"
+    assert bundle.exists(), "bundle-summary.md not created by validators/validate"
     summary = parse_frontmatter(bundle.read_text()).frontmatter
-    assert summary.get("continuationId") == cid, "bundle-approved.md missing continuationId"
+    assert summary.get("continuationId") == cid, "bundle-summary.md missing continuationId"

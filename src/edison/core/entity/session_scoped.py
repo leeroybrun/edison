@@ -90,8 +90,8 @@ class SessionScopedMixin(Generic[T]):
         """Find entity path, checking both global and session directories.
 
         This method searches for an entity file in:
-        1. Global state directories (e.g., .project/tasks/todo/)
-        2. Session directories (e.g., .project/sessions/wip/sess-123/tasks/todo/)
+        1. Global state directories (e.g., <project-management-dir>/tasks/todo/)
+        2. Session directories (e.g., <project-management-dir>/sessions/wip/sess-123/tasks/todo/)
 
         Args:
             entity_id: Entity identifier

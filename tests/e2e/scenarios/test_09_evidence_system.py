@@ -450,10 +450,10 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
 
     validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
     assert_command_success(validate_result)
-    assert_output_contains(validate_result, "bundle-approved.md was written", in_stderr=False)
+    assert_output_contains(validate_result, "bundle-summary.md was written", in_stderr=False)
 
-    # Verify bundle-approved.md was created
-    bundle_file = rd / "bundle-approved.md"
+    # Verify bundle-summary.md was created
+    bundle_file = rd / "bundle-summary.md"
     assert_file_exists(bundle_file)
 
     # Verify bundle structure matches REAL CLI output
@@ -526,8 +526,8 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     assert_command_failure(validate_result)  # Should fail because security rejected
     assert_output_contains(validate_result, "Bundle NOT approved", in_stderr=False)
 
-    # Verify bundle-approved.md shows approved: false
-    bundle_file = rd / "bundle-approved.md"
+    # Verify bundle-summary.md shows approved: false
+    bundle_file = rd / "bundle-summary.md"
     assert_file_exists(bundle_file)
     bundle_data = parse_frontmatter(bundle_file.read_text()).frontmatter
     assert bundle_data["taskId"] == task_id

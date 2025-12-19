@@ -26,8 +26,8 @@ def _init_handlers() -> None:
     Called automatically on module import to load handlers from:
     1. Core: data/guards/, data/actions/, data/conditions/
     2. Bundled packs: data/packs/<pack>/...
-    3. Project packs: .edison/packs/<pack>/...
-    4. Project: .edison/guards|actions|conditions/
+    3. Project packs: <project-config-dir>/packs/<pack>/...
+    4. Project: <project-config-dir>/guards|actions|conditions/
     """
     try:
         load_handlers()

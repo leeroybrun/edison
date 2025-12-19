@@ -168,7 +168,7 @@ class CommandComposer(AdapterComponent):
         ConfigManager handles the full layering:
         1. Core config (bundled commands.yaml)
         2. Pack configs (bundled + project packs)
-        3. Project config (.edison/config/commands.yaml)
+        3. Project config (<project-config-dir>/config/commands.yaml)
 
         Note: Command definitions are merged by ID - if multiple sources define
         the same command ID, later sources override earlier ones.

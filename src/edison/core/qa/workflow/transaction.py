@@ -32,8 +32,8 @@ class ValidationTransaction:
     and surfaces the underlying transaction journal path.
 
     The underlying implementation is responsible for:
-    - Creating a staging root under `.project/sessions/_tx/<sid>/validation/<txId>/staging`
-    - Atomically copying staged files into `.project/qa/validation-evidence/...`
+    - Creating a staging root under `<project-management-dir>/sessions/_tx/<sid>/validation/<txId>/staging`
+    - Atomically copying staged files into `<project-management-dir>/qa/<evidence-subdir>/...`
     - Maintaining `meta.json` with lifecycle timestamps.
     """
 
@@ -41,7 +41,7 @@ class ValidationTransaction:
         self.task_id = str(task_id)
         self.round_num = int(round_num)
         # Canonical session id detection:
-        # AGENTS_SESSION → .project/.session-id → process-derived lookup.
+        # AGENTS_SESSION → <project-management-dir>/.session-id → process-derived lookup.
         # For validation runs outside a real session, fall back to the configured
         # validation session identifier.
         from edison.core.session.core.id import detect_session_id
@@ -119,7 +119,7 @@ class ValidationTransaction:
             raise RuntimeError("ValidationTransaction has not been started")
         # Delegate to core transaction implementation; it will:
         # - pre-check disk space and permissions
-        # - copy+replace staged files into `.project/qa/validation-evidence/...`
+        # - copy+replace staged files into `<project-management-dir>/qa/<evidence-subdir>/...`
         # - update meta.json finalizedAt and clean up staging/snapshot
         self._tx.commit()
 

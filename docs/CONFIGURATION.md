@@ -445,9 +445,9 @@ validation:
     gemini-cli:
       type: cli
       command: "gemini"
-      subcommand: "-p"
       output_flags: ["--output-format", "json"]
       response_parser: gemini
+      prompt_mode: arg
 
     auggie-cli:
       type: cli

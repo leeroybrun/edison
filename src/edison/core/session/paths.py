@@ -139,7 +139,7 @@ def resolve_session_record_path(
             state="waiting",
             record_type="qa"
         )
-        # Returns: .project/sessions/wip/sess-123/qa/waiting/T-001-qa.md
+        # Returns: <project-management-dir>/sessions/wip/sess-123/qa/waiting/T-001-qa.md
 
         # Resolve task record path
         path = resolve_session_record_path(
@@ -148,7 +148,7 @@ def resolve_session_record_path(
             state="todo",
             record_type="task"
         )
-        # Returns: .project/sessions/wip/sess-123/tasks/todo/T-001.md
+        # Returns: <project-management-dir>/sessions/wip/sess-123/tasks/todo/T-001.md
     """
     # Lazy import to avoid circular dependency
     from edison.core.task.paths import get_session_dirs

@@ -41,7 +41,7 @@ class BaseEntityManager(Generic[T], ABC):
     Attributes:
         entity_type: String identifier for the entity type (e.g., "task", "agent")
         project_root: Root path of the project
-        project_dir: Project configuration directory (.edison or similar)
+        project_dir: Project configuration directory (<project-config-dir> or similar)
     """
     
     # Entity type identifier - subclasses should override

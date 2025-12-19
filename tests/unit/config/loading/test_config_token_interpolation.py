@@ -36,4 +36,4 @@ def test_load_config_interpolates_config_derived_tokens(tmp_path: Path) -> None:
     validated_transition = next(t for t in qa_done["allowed_transitions"] if t["to"] == "validated")
     has_bundle = next(c for c in validated_transition["conditions"] if c["name"] == "has_bundle_approval")
 
-    assert "bundle-approved.md" in has_bundle["error"]
+    assert "bundle-summary.md" in has_bundle["error"]

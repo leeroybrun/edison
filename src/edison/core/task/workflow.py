@@ -363,8 +363,8 @@ class TaskQAWorkflow:
     ) -> "QARecord":
         """Ensure the associated QA record exists (create if missing).
 
-        Canonical QA records live under `.project/qa/<state>/<task-id>-qa.md`.
-        Evidence lives under `.project/qa/validation-evidence/<task-id>/round-N/`.
+        Canonical QA records live under `<project-management-dir>/qa/<state>/<task-id>-qa.md`.
+        Evidence lives under `<project-management-dir>/qa/<evidence-subdir>/<task-id>/round-N/`.
         """
         from edison.core.qa.models import QARecord
         from edison.core.config.domains.workflow import WorkflowConfig

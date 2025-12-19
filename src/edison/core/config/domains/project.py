@@ -14,7 +14,7 @@ from ..base import BaseDomainConfig
 from edison.core.utils.paths import get_project_config_dir
 
 # Default audit terms are intentionally empty.
-# Projects should declare `project.audit_terms` in `.edison/config/project.yaml` when needed.
+# Projects should declare `project.audit_terms` in `<project-config-dir>/config/project.yaml` when needed.
 DEFAULT_PROJECT_TERMS: List[str] = []
 
 
@@ -169,5 +169,4 @@ __all__ = [
     "ProjectConfig",
     "DEFAULT_PROJECT_TERMS",
 ]
-
 

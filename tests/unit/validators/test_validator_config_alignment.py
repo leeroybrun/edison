@@ -42,7 +42,7 @@ project:
   name: test-project
 validation:
   artifactPaths:
-    bundleSummaryFile: bundle-approved.md
+    bundleSummaryFile: bundle-summary.md
 """
             (agents_dst / "config.yml").write_text(minimal_config)
 

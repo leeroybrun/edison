@@ -3,7 +3,7 @@
 Start prompts are Markdown templates intended to bootstrap an LLM session.
 
 Resolution order (fail-closed):
-1. Project-composed prompts: `<project>/.edison/_generated/start/START_*.md`
+1. Project-composed prompts: `<project>/<project-config-dir>/_generated/start/START_*.md`
 2. Bundled core prompts: `edison.data/start/START_*.md`
 """
 
