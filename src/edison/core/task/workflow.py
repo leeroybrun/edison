@@ -106,6 +106,31 @@ class TaskQAWorkflow:
         # Determine initial state
         todo_state = WorkflowConfig().get_semantic_state("task", "todo")
 
+        resolved_parent_id: Optional[str] = None
+        if parent_id:
+            raw_parent = str(parent_id).strip()
+            if not raw_parent:
+                resolved_parent_id = None
+            else:
+                # Prefer exact match; otherwise treat as numeric/prefix shorthand (e.g. "123")
+                # and resolve to a unique "123-*" task id when possible.
+                parent = self.task_repo.get(raw_parent)
+                if parent:
+                    resolved_parent_id = parent.id
+                else:
+                    prefix = f"{raw_parent}-"
+                    matches = [t.id for t in self.task_repo.find_all() if t.id.startswith(prefix)]
+                    if len(matches) == 1:
+                        resolved_parent_id = matches[0]
+                    elif len(matches) > 1:
+                        raise PersistenceError(
+                            f"Ambiguous parent_id '{raw_parent}' (matches {len(matches)} tasks). "
+                            "Use the full parent task ID."
+                        )
+                    else:
+                        # Parent doesn't exist yet; keep original value for forward-linking.
+                        resolved_parent_id = raw_parent
+
         # Create task entity
         task = Task.create(
             task_id=task_id,
@@ -114,7 +139,7 @@ class TaskQAWorkflow:
             session_id=session_id,
             owner=owner,
             state=todo_state,
-            parent_id=parent_id,
+            parent_id=resolved_parent_id,
             continuation_id=continuation_id,
         )
 
@@ -125,10 +150,10 @@ class TaskQAWorkflow:
         # When parent_id is provided but the parent does not exist yet, we still
         # record parent_id on the child (so follow-up linking is retained) and
         # skip updating the parent file.
-        if parent_id:
-            if str(parent_id).strip() == str(task_id).strip():
+        if resolved_parent_id:
+            if str(resolved_parent_id).strip() == str(task_id).strip():
                 raise PersistenceError("Cannot set a task as its own parent")
-            parent = self.task_repo.get(parent_id)
+            parent = self.task_repo.get(resolved_parent_id)
             if parent:
                 if task_id not in parent.child_ids:
                     parent.child_ids.append(task_id)

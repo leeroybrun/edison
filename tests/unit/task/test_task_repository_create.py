@@ -302,3 +302,18 @@ def test_create_task_qa_title_includes_task_title(repo_env):
     assert qa is not None
     # QA title should include task info
     assert "T-011" in qa.title or "Feature X" in qa.title
+
+
+def test_create_task_resolves_numeric_parent_id_prefix_and_updates_backlink(repo_env: Path) -> None:
+    """Numeric parent_id should resolve to unique full parent id and back-link."""
+    workflow = TaskQAWorkflow(project_root=repo_env)
+    task_repo = TaskRepository(repo_env)
+
+    parent = workflow.create_task("123-wave1-parent", "Parent Task", create_qa=False)
+    child = workflow.create_task("124-wave1-child", "Child Task", parent_id="123", create_qa=False)
+
+    assert child.parent_id == parent.id
+
+    updated_parent = task_repo.get(parent.id)
+    assert updated_parent is not None
+    assert child.id in updated_parent.child_ids
