@@ -76,21 +76,24 @@ def start_implementation(
     *,
     project_root: Optional[Path] = None,
     model: Optional[str] = None,
+    round_num: Optional[int] = None,
     implementation_approach: str = "orchestrator-direct",
     continuation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Start (or resume) tracking for an implementation round."""
     ev = EvidenceService(task_id, project_root=project_root)
-    round_num = _round_for_new_implementation(ev)
-    round_dir = ev.ensure_round(round_num)
-    ev.update_metadata(round_num=round_num)
+    resolved_round = int(round_num) if round_num is not None else _round_for_new_implementation(ev)
+    if resolved_round < 1:
+        raise ValueError("round_num must be >= 1")
+    round_dir = ev.ensure_round(resolved_round)
+    ev.update_metadata(round_num=resolved_round)
 
     report_path = round_dir / ev.implementation_filename
-    existing = ev.read_implementation_report(round_num=round_num)
+    existing = ev.read_implementation_report(round_num=resolved_round)
     report: Dict[str, Any] = existing if isinstance(existing, dict) else {}
 
     report.setdefault("taskId", task_id)
-    report.setdefault("round", int(round_num))
+    report.setdefault("round", int(resolved_round))
     report.setdefault("implementationApproach", implementation_approach)
     report.setdefault("primaryModel", model or "unknown")
     report.setdefault("completionStatus", "partial")
@@ -105,12 +108,12 @@ def start_implementation(
         last_active=None,
     )
 
-    ev.write_implementation_report(report, round_num=round_num)
+    ev.write_implementation_report(report, round_num=resolved_round)
 
     return {
         "taskId": task_id,
         "type": "implementation",
-        "round": int(round_num),
+        "round": int(resolved_round),
         "path": str(report_path),
     }
 

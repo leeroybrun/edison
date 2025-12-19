@@ -88,3 +88,18 @@ def test_tracking_start_validation_report_is_schema_valid(isolated_project_env: 
     ev = EvidenceService("T-TRACK-4", project_root=isolated_project_env)
     report = ev.read_validator_report("security", round_num=1)
     validate_payload(report, "reports/validator-report.schema.yaml", repo_root=isolated_project_env)
+
+
+def test_tracking_start_implementation_respects_explicit_round(isolated_project_env: Path) -> None:
+    from edison.core.qa.evidence import tracking
+    from edison.core.qa.evidence import EvidenceService
+
+    tracking.start_implementation("T-TRACK-5", project_root=isolated_project_env, model="codex")
+    tracking.complete("T-TRACK-5", project_root=isolated_project_env)
+
+    info = tracking.start_implementation("T-TRACK-5", project_root=isolated_project_env, model="codex", round_num=2)
+    assert info["round"] == 2
+
+    ev = EvidenceService("T-TRACK-5", project_root=isolated_project_env)
+    data = ev.read_implementation_report(round_num=2)
+    assert data["round"] == 2

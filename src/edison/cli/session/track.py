@@ -70,6 +70,7 @@ def main(args: argparse.Namespace) -> int:
                     str(args.task),
                     project_root=repo_root,
                     model=getattr(args, "model", None),
+                    round_num=getattr(args, "round", None),
                 )
             else:
                 if not getattr(args, "validator", None):
