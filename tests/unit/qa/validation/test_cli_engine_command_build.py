@@ -36,3 +36,26 @@ def test_cli_engine_build_command_includes_pre_flags_before_subcommand() -> None
         "--json",
     ]
 
+
+def test_cli_engine_places_prompt_arg_immediately_after_dash_subcommand() -> None:
+    """Some CLIs use a flag-like 'subcommand' (e.g. -p) that requires an argument.
+
+    In that case, the prompt must come immediately after the dash-subcommand and
+    before any output flags.
+    """
+    cfg = EngineConfig.from_dict(
+        "gemini-cli",
+        {
+            "type": "cli",
+            "command": "gemini",
+            "subcommand": "-p",
+            "output_flags": ["--output-format", "json"],
+            "prompt_mode": "arg",
+            "response_parser": "gemini",
+        },
+    )
+    engine = CLIEngine(cfg)
+    validator = ValidatorMetadata(id="global-gemini", name="Gemini", engine="gemini-cli", wave="critical")
+
+    cmd = engine._build_command(validator, Path("/tmp"), prompt_args=["PROMPT"])
+    assert cmd[:5] == ["gemini", "-p", "PROMPT", "--output-format", "json"]

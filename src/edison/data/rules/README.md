@@ -6,7 +6,7 @@ Core rule files governing Edison behaviors, gates, and policy checks.
 
 Helper scripts (run from project root):
 
-- `edison rules migrate` – repair legacy `.edison/*` source paths and verify all rule files exist.
+- `edison rules migrate` – repair legacy `<project-config-dir>/*` source paths (e.g. `.edison/*`) and verify all rule files exist.
 - `edison rules verify-anchors` – verify that all fragment anchors in `registry.yml` exist in guideline files.
 
 CLI entrypoint:

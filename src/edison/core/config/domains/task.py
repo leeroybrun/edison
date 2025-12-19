@@ -73,7 +73,10 @@ class TaskConfig(BaseDomainConfig):
         """Resolve a relative path to absolute, raising if missing."""
         if not rel:
             raise ValueError(f"Missing configuration: {key}")
-        return (self.repo_root / str(rel)).resolve()
+        path = Path(str(rel)).expanduser()
+        if not path.is_absolute():
+            path = self.repo_root / path
+        return path.resolve()
 
     # ------------------------------------------------------------------
     # State machine access (delegates to WorkflowConfig for single source of truth)

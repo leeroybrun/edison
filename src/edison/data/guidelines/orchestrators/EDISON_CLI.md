@@ -234,7 +234,7 @@ edison qa promote TASK-123 --status validated
 ```
 
 **Requirements for `done → validated`:**
-- `bundle-approved.md` exists
+- `{{config.validation.artifactPaths.bundleSummaryFile}}` exists
 - All required validator reports present
 - No blocking failures
 
@@ -489,7 +489,7 @@ edison session next sess-001
 **Task files**: `{{fn:session_state_dir("active")}}/<session-id>/tasks/<task-state>/`
 **QA briefs**: `{{fn:session_state_dir("active")}}/<session-id>/qa/<qa-state>/`
 **Validation evidence**: `{{fn:evidence_root}}/<task-id>/round-N/`
-**Bundle summaries**: `{{fn:evidence_root}}/<task-id>/round-N/bundle-approved.md`
+**Bundle summaries**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.bundleSummaryFile}}`
 
 ---
 

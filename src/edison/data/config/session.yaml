@@ -1,8 +1,8 @@
 session:
   paths:
-    root: ".project/sessions"
-    archive: ".project/archive"
-    tx: ".project/sessions/_tx"
+    root: "{PROJECT_MANAGEMENT_DIR}/sessions"
+    archive: "{PROJECT_MANAGEMENT_DIR}/archive"
+    tx: "{PROJECT_MANAGEMENT_DIR}/sessions/_tx"
     templates:
       primary: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
       repo: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"

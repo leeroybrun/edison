@@ -159,6 +159,93 @@ Validation scope
     assert "approve" in content
 
 
+def test_qa_round_does_not_create_evidence_dir_without_new_flag(tmp_path: Path) -> None:
+    """`edison qa round` should only append QA record history by default.
+
+    Evidence directories must be created explicitly via `edison qa round --new`
+    or by running validation commands that manage evidence.
+    """
+    root = make_project_root(tmp_path)
+    task_id = "151-wave1-no-evidence"
+    qa_file = root / ".project" / "qa" / "waiting" / f"{task_id}-qa.md"
+    qa_file.write_text(
+        f"""---
+id: "{task_id}-qa"
+task_id: "{task_id}"
+title: "QA for {task_id}"
+state: "waiting"
+round: 1
+---
+
+# QA for {task_id}
+""",
+        encoding="utf-8",
+    )
+
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+    result = run("qa", "round", [task_id, "--status", "approve", "--json"], env)
+    payload = json.loads(result.stdout.strip())
+    assert payload["round"] == 2
+
+    evidence_root = root / ".project" / "qa" / "validation-evidence" / task_id
+    assert not evidence_root.exists(), "qa round created evidence dirs without --new"
+
+
+def test_task_new_parent_sets_frontmatter_and_updates_parent(tmp_path: Path) -> None:
+    """`edison task new --parent` must persist parent/child links in frontmatter."""
+    root = make_project_root(tmp_path)
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+
+    # Create parent
+    parent_id = "200-wave1-parent"
+    parent_proc = run("task", "new", ["--id", "200", "--wave", "wave1", "--slug", "parent", "--json"], env)
+    parent_payload = json.loads(parent_proc.stdout.strip())
+    assert parent_payload["task_id"] == parent_id
+
+    # Create child with --parent
+    child_id = "200.1-wave1-child"
+    child_proc = run(
+        "task",
+        "new",
+        ["--id", "200.1", "--wave", "wave1", "--slug", "child", "--parent", parent_id, "--json"],
+        env,
+    )
+    child_payload = json.loads(child_proc.stdout.strip())
+    assert child_payload["task_id"] == child_id
+
+    from edison.core.utils.text import parse_frontmatter
+
+    child_path = root / str(child_payload["path"])
+    parent_path = root / str(parent_payload["path"])
+    assert child_path.exists()
+    assert parent_path.exists()
+
+    child_fm = parse_frontmatter(child_path.read_text(encoding="utf-8")).frontmatter
+    assert child_fm.get("parent_id") == parent_id
+
+    parent_fm = parse_frontmatter(parent_path.read_text(encoding="utf-8")).frontmatter
+    assert child_id in (parent_fm.get("child_ids") or [])
+
+
+def test_task_split_accepts_children_alias(tmp_path: Path) -> None:
+    """Docs/guidelines use `--children`; CLI must accept it as an alias for `--count`."""
+    root = make_project_root(tmp_path)
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+
+    parent_id = "300-wave1-parent"
+    run("task", "new", ["--id", "300", "--wave", "wave1", "--slug", "parent", "--json"], env)
+
+    proc = run("task", "split", [parent_id, "--children", "3", "--dry-run", "--json"], env)
+    payload = json.loads(proc.stdout.strip())
+    assert payload["dry_run"] is True
+    assert payload["parent_id"] == parent_id
+    assert payload["count"] == 3
+    assert len(payload["child_ids"]) == 3
+
+
 def test_tasks_link_updates_session_graph(tmp_path: Path):
     root = make_project_root(tmp_path)
     parent = root / ".project" / "tasks" / "todo" / "200-wave1-demo.md"

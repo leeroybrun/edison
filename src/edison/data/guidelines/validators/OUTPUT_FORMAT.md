@@ -62,10 +62,10 @@ After the frontmatter, include a short Markdown body for humans. For example:
 ## Evidence
 | Check | Command | Status |
 |-------|---------|--------|
-| Type Check | {{function:ci_command("type-check")}} | ✅ PASS / ❌ FAIL |
-| Lint | {{function:ci_command("lint")}} | ✅ PASS / ❌ FAIL |
-| Tests | {{function:ci_command("test")}} | ✅ PASS / ❌ FAIL |
-| Build | {{function:ci_command("build")}} | ✅ PASS / ❌ FAIL / N/A |
+| Type Check | {{fn:ci_command("type-check")}} | ✅ PASS / ❌ FAIL |
+| Lint | {{fn:ci_command("lint")}} | ✅ PASS / ❌ FAIL |
+| Tests | {{fn:ci_command("test")}} | ✅ PASS / ❌ FAIL |
+| Build | {{fn:ci_command("build")}} | ✅ PASS / ❌ FAIL / N/A |
 
 Reference the round evidence files (command-*.txt, context7-*.txt, validator-*-report.md, etc).
 
@@ -115,7 +115,7 @@ Markdown table with validation tool results:
 - **Command**: Exact command executed
 - **Status**: ✅ PASS, ❌ FAIL, or N/A
 
-Reference evidence files: {{function:required_evidence_files("inline")}}.
+Reference evidence files: {{fn:required_evidence_files("inline")}}.
 
 ### 4. Validation Results
 Numbered checks with status indicators (✅ PASS | ⚠️ WARNING | ❌ FAIL)

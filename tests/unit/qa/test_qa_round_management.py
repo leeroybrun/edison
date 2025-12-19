@@ -171,6 +171,35 @@ class TestQARoundManagement:
         # Verify history
         assert len(qa.round_history) == 3  # 3 appended rounds
 
+    def test_append_round_with_evidence_dir_recovers_from_missing_evidence(self, repo_env):
+        """Creating an evidence-backed round must not fail when evidence is missing.
+
+        Scenario:
+        - QA round history advances (no evidence dirs created)
+        - Later, a user requests `--new` (create_evidence_dir=True)
+        - Evidence dirs must be created sequentially without skipping
+        """
+        qa_id = "T-7-qa"
+        task_id = "T-7"
+        create_qa_file(repo_env, qa_id, task_id, state="wip")
+
+        repo = QARepository(project_root=repo_env)
+        assert repo.get(qa_id).round == 1
+
+        # Advance QA rounds without creating evidence dirs.
+        repo.append_round(qa_id, status="reject")
+        assert repo.get(qa_id).round == 2
+
+        evidence_root = repo_env / ".project" / "qa" / "validation-evidence" / task_id
+        assert not evidence_root.exists()
+
+        # Now request an evidence-backed round; this must create round-1..round-3 dirs.
+        updated = repo.append_round(qa_id, status="pending", create_evidence_dir=True)
+        assert updated.round == 3
+        assert (evidence_root / "round-1").exists()
+        assert (evidence_root / "round-2").exists()
+        assert (evidence_root / "round-3").exists()
+
     def test_append_round_raises_for_nonexistent_qa(self, repo_env):
         """Test append_round raises error for non-existent QA."""
         repo = QARepository(project_root=repo_env)

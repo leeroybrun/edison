@@ -46,6 +46,7 @@ class TaskManager:
         description: str = "",
         session_id: Optional[str] = None,
         owner: Optional[str] = None,
+        parent_id: Optional[str] = None,
         continuation_id: Optional[str] = None,
         create_qa: bool = True,
     ) -> Task:
@@ -69,6 +70,7 @@ class TaskManager:
             description=description,
             session_id=session_id,
             owner=owner,
+            parent_id=parent_id,
             continuation_id=continuation_id,
             create_qa=create_qa,
         )

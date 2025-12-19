@@ -258,6 +258,15 @@ class CLIEngine:
         # Add subcommand if configured
         if self.config.subcommand:
             cmd.append(self.config.subcommand)
+            # Some CLIs use a flag-like "subcommand" (e.g. `-p`) that requires a
+            # positional argument immediately after it. When prompt args are
+            # available, place them directly after the dash-subcommand so we don't
+            # interleave output flags between the flag and its value.
+            if prompt_args is not None and str(self.config.subcommand).startswith("-"):
+                cmd.extend(prompt_args)
+                # Mark prompt as consumed so we don't fall back to treating
+                # `validator.prompt` as a positional file argument later.
+                prompt_args = []
 
         # Add output format flags
         cmd.extend(self.config.output_flags)
@@ -381,7 +390,9 @@ class CLIEngine:
 
         # Try relative to project root
         if self.project_root:
-            project_path = self.project_root / ".edison" / prompt
+            from edison.core.utils.paths import get_project_config_dir
+
+            project_path = get_project_config_dir(self.project_root, create=False) / prompt
             if project_path.exists():
                 return project_path
 

@@ -14,9 +14,9 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 2. **Correct intake prompt** – Start every session via `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`. That checklist handles QA sweeps + task selection.
 
-3. **Session record alive** – Every session has a JSON file under `{{config.session.paths.root}}/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
+3. **Session record alive** – Every session has a JSON file under `{{fn:sessions_root}}/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
 
-4. **Work from task files** – Operate exclusively inside `{{config.tasks.paths.root}}/*` + `{{config.tasks.paths.qaRoot}}/*`; keep IDs spaced by ≥50 so follow-ups slot cleanly.
+4. **Work from task files** – Operate exclusively inside `{{fn:tasks_root}}/*` + `{{fn:qa_root}}/*`; keep IDs spaced by ≥50 so follow-ups slot cleanly.
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
@@ -26,7 +26,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 8. **Automated checks first** – Build, type-check, lint, and test must be green before QA moves to `todo/`. No exceptions.
 
-9. **Validator waves** – Run required validators in batched waves up to the manifest cap; record verdicts + artifact links inside the QA brief. Rejected work stays in `{{config.tasks.paths.root}}/wip/` with QA back in `{{config.tasks.paths.qaRoot}}/waiting/` until revalidated.
+9. **Validator waves** – Run required validators in batched waves up to the manifest cap; record verdicts + artifact links inside the QA brief. Rejected work stays in `{{fn:tasks_root}}/wip/` with QA back in `{{fn:qa_root}}/waiting/` until revalidated.
 
 10. **Honest status** – Directory names describe truth: `todo` = unstarted, `wip` = active/rejected, `done` = awaiting validation, `validated` = all checks + evidence complete. No status lies in shadow documents.
 
@@ -141,16 +141,16 @@ See `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` for the c
 5. **QA** (multi-round validation until approved)
 6. **Session Completion** (transactional restore to global queues)
 
-**Session Timeout**: Sessions expire after `session.timeout_hours`. Use `edison session track heartbeat --task <task-id>` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
+**Session Timeout**: Sessions expire after `session.recovery.timeoutHours` ({{config.session.recovery.timeoutHours}} hours). Use `edison session track heartbeat --task <task-id>` to update activity timestamp. Expired sessions cannot claim new tasks (fail-closed).
 
 ---
 
 ## Task, QA, and Session Directory Structure
 
 ```plaintext
-Tasks:    {{config.tasks.paths.root}}/<state>/
-QA:       {{config.tasks.paths.qaRoot}}/<state>/
-Sessions: {{config.session.paths.root}}/<state>/<session-id>/
+Tasks:    {{fn:tasks_root}}/<state>/
+QA:       {{fn:qa_root}}/<state>/
+Sessions: {{fn:sessions_root}}/<state>/<session-id>/
 Evidence: {{fn:evidence_root}}/<task-id>/round-<N>/
 ```
 
@@ -280,8 +280,8 @@ All in `{{PROJECT_EDISON_DIR}}/_generated/guidelines/`:
 
 **Global Queues** (unclaimed work only):
 ```plaintext
-{{config.tasks.paths.root}}/todo/       - Available for any session to claim
-{{config.tasks.paths.root}}/validated/  - Completed work (no longer session-scoped)
+{{fn:tasks_root}}/todo/       - Available for any session to claim
+{{fn:tasks_root}}/validated/  - Completed work (no longer session-scoped)
 ```
 
 **Rules**:

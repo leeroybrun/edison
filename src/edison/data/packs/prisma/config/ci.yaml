@@ -1,0 +1,8 @@
+# Prisma pack CI command defaults
+#
+# Pack-level defaults are provided to keep core technology-agnostic.
+# Projects may override any command via `<project-config-dir>/config/ci.yaml`.
+
+ci:
+  commands:
+    prisma-migrate: "<prisma-migrate-command>"

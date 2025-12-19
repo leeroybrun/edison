@@ -56,7 +56,7 @@ Write tests BEFORE any implementation code. Tests MUST fail initially.
 
 **Verify RED Phase**:
 ```bash
-{{function:ci_command("test", "<run test command from active test framework>")}}
+{{fn:ci_command("test")}}
 # Expected: Test FAILS for the right reason (feature/behavior missing)
 ```
 
@@ -73,7 +73,7 @@ Write the MINIMUM code needed to make the test pass.
 
 **Verify GREEN Phase**:
 ```bash
-{{function:ci_command("test", "<run test command from active test framework>")}}
+{{fn:ci_command("test")}}
 # Expected: Test PASSES
 ```
 
@@ -88,7 +88,7 @@ Improve code quality while keeping tests passing.
 
 **Verify REFACTOR Phase**:
 ```bash
-{{function:ci_command("test", "<run test command from active test framework>")}}
+{{fn:ci_command("test")}}
 # Expected: ALL tests still PASS
 ```
 
@@ -120,7 +120,7 @@ Improve code quality while keeping tests passing.
 - RED failure documented → GREEN pass documented → REFACTOR documented
 - Attach test output showing the failing run and the passing run
 - Include a coverage report for the round
-- Store evidence in the task round evidence directory using the **config-driven filenames** (e.g. `{{function:evidence_file("test")}}`, `coverage-*.txt` when configured)
+- Store evidence in the task round evidence directory using the **config-driven filenames** (e.g. `{{fn:evidence_file("test")}}`, `coverage-*.txt` when configured)
 - If TDD must be skipped, record the rationale in the implementation report + QA brief and create a follow-up task to add the missing tests; do not silently skip
 
 ### What NOT To Do

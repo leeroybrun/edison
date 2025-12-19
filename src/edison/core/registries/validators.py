@@ -151,12 +151,20 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         """
         validator_id = entry.get("id", "")
 
+        triggers_raw = entry.get("triggers", [])
+        triggers: list[str] = []
+        if isinstance(triggers_raw, list):
+            for p in triggers_raw:
+                s = str(p).strip()
+                if s:
+                    triggers.append(s)
+
         return ValidatorMetadata(
             id=validator_id,
             name=entry.get("name", validator_id.replace("-", " ").title()),
             engine=entry.get("engine", ""),
             wave=entry.get("wave", ""),
-            triggers=entry.get("triggers", []),
+            triggers=triggers,
             blocking=entry.get("blocking", True),
             always_run=entry.get("always_run", False),
             fallback_engine=entry.get("fallback_engine", ""),

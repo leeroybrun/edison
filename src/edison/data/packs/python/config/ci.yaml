@@ -1,7 +1,7 @@
 # Python pack CI command defaults
 #
 # These defaults are intended to be broadly useful for modern Python projects.
-# Projects may override any command via `.edison/config/ci.yaml`.
+# Projects may override any command via `<project-config-dir>/config/ci.yaml`.
 
 ci:
   commands:
@@ -12,4 +12,3 @@ ci:
     test: "pytest tests/ -v --tb=short"
     test-coverage: "pytest tests/ --cov=src --cov-report=term-missing"
     build: "python -m build"
-

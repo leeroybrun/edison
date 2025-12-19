@@ -30,7 +30,10 @@ def _packs_dir_from_cfg(cfg: Dict[str, Any]) -> Path:
 
     # If config specifies a directory, use it
     if base.get("directory"):
-        return root / str(base["directory"])
+        configured = Path(str(base["directory"])).expanduser()
+        if not configured.is_absolute():
+            configured = root / configured
+        return configured.resolve()
 
     # Otherwise use composition path resolver
     from ..core import CompositionPathResolver

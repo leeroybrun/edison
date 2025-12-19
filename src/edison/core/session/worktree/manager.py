@@ -23,10 +23,13 @@ def _ensure_shared_sessions_dir(*, worktree_path: Path, repo_dir: Path) -> None:
     to the primary checkout's sessions directory.
     """
     try:
-        shared = (repo_dir / ".project" / "sessions").resolve()
+        from edison.core.utils.paths import get_management_paths
+
+        mgmt_dir_name = get_management_paths(repo_dir).get_management_root().name
+        shared = (repo_dir / mgmt_dir_name / "sessions").resolve()
         ensure_directory(shared)
 
-        project_dir = worktree_path / ".project"
+        project_dir = worktree_path / mgmt_dir_name
         ensure_directory(project_dir)
 
         link = project_dir / "sessions"
@@ -77,7 +80,11 @@ def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) ->
     to read the session id from the worktree's management root.
     """
     try:
-        project_dir = worktree_path / ".project"
+        from edison.core.utils.paths import PathResolver, get_management_paths
+
+        repo_root = PathResolver.resolve_project_root()
+        mgmt_dir_name = get_management_paths(repo_root).get_management_root().name
+        project_dir = worktree_path / mgmt_dir_name
         ensure_directory(project_dir)
         target = project_dir / ".session-id"
         try:
@@ -326,6 +333,14 @@ def create_worktree(
         except Exception:
             pass
 
+        post_install = config.get("postInstallCommands", []) or []
+        if isinstance(post_install, list) and post_install:
+            _run_post_install_commands(
+                worktree_path=worktree_path,
+                commands=[str(c) for c in post_install if str(c).strip()],
+                timeout=t_install,
+            )
+
     try:
         hc1 = run_with_timeout(["git", "rev-parse", "--is-inside-work-tree"], cwd=worktree_path, capture_output=True, text=True, check=True, timeout=t_health)
         hc2 = run_with_timeout(["git", "branch", "--show-current"], cwd=worktree_path, capture_output=True, text=True, check=True, timeout=t_health)
@@ -360,6 +375,34 @@ def create_worktree(
         )
 
     return (worktree_path, branch_name)
+
+
+def _run_post_install_commands(*, worktree_path: Path, commands: list[str], timeout: int) -> None:
+    """Run project-configured post-install commands inside the worktree.
+
+    This is a project-specific extension point (e.g., Prisma generation) that must
+    be configuration-driven to keep Edison core generic.
+    """
+    for cmd in commands:
+        result = run_with_timeout(
+            ["bash", "-lc", cmd],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            tail_out = "\n".join((result.stdout or "").splitlines()[-25:])
+            tail_err = "\n".join((result.stderr or "").splitlines()[-25:])
+            raise RuntimeError(
+                "Post-install command failed in worktree:\n"
+                f"  cwd: {worktree_path}\n"
+                f"  cmd: {cmd}\n"
+                f"  exit: {result.returncode}\n"
+                f"  stdout (tail):\n{tail_out}\n"
+                f"  stderr (tail):\n{tail_err}"
+            )
 
 
 def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_run: bool = False) -> Path:

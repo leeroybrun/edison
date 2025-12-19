@@ -78,10 +78,13 @@ def main(args: argparse.Namespace) -> int:
         description = ""
         if args.owner:
             description += f"Owner: {args.owner}\n"
-        if args.parent:
-            description += f"Parent: {args.parent}\n"
         if args.session:
             description += f"Session: {args.session}\n"
+
+        parent_id = None
+        if args.parent:
+            from edison.core.task import normalize_record_id
+            parent_id = normalize_record_id("task", args.parent)
 
         # Create task using TaskManager (uses TaskRepository.create_task)
         repo_root = get_repo_root(args)
@@ -92,6 +95,7 @@ def main(args: argparse.Namespace) -> int:
             description=description.strip(),
             session_id=args.session,
             owner=args.owner,
+            parent_id=parent_id,
             continuation_id=args.continuation_id,
         )
 

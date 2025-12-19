@@ -53,8 +53,8 @@ npx tailwindcss -i ./src/styles/globals.css -o /tmp/tw-validate.css --minify --c
 
 ### Step 4: Run UI Safety Nets (TDD alignment)
 
-- `{{function:ci_command("lint")}}` (repo equivalent) for class-name lint rules (`eslint-plugin-tailwindcss` if present).
-- `{{function:ci_command("test")}}` for visual/state regressions where snapshots contain Tailwind classes.
+- `{{fn:ci_command("lint")}}` (repo equivalent) for class-name lint rules (`eslint-plugin-tailwindcss` if present).
+- `{{fn:ci_command("test")}}` for visual/state regressions where snapshots contain Tailwind classes.
 - If smoke build or lint is skipped, record that in warnings.
 
 ### Step 5: Apply Tailwind Checklist (sections below)

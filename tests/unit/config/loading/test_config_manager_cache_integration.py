@@ -10,7 +10,7 @@ from edison.core.config.cache import clear_all_caches
 def test_config_manager_load_config_is_centrally_cached(tmp_path: Path) -> None:
     """
     ConfigManager.load_config() should return the centrally cached config so repeated
-    calls do not re-read YAML from disk unless caches are cleared.
+    calls do not re-read YAML from disk unless config inputs change.
     """
     clear_all_caches()
     try:
@@ -23,16 +23,20 @@ def test_config_manager_load_config_is_centrally_cached(tmp_path: Path) -> None:
         mgr = ConfigManager(tmp_path)
         cfg1 = mgr.load_config(validate=False)
 
-        # Mutate on disk; cached config should not change until caches cleared.
-        cfg_file.write_text("project:\n  name: second\n", encoding="utf-8")
         cfg2 = mgr.load_config(validate=False)
 
-        assert cfg1 is cfg2, "Cached config should return the same dict instance"
+        assert cfg1 is cfg2, "Cached config should return the same dict instance when inputs are unchanged"
         assert cfg2.get("project", {}).get("name") == "first"
 
-        clear_all_caches()
+        # Mutate on disk; cache should auto-invalidate via config fingerprinting.
+        cfg_file.write_text("project:\n  name: second\n", encoding="utf-8")
         cfg3 = mgr.load_config(validate=False)
+        assert cfg3 is not cfg1
         assert cfg3.get("project", {}).get("name") == "second"
+
+        clear_all_caches()
+        cfg4 = mgr.load_config(validate=False)
+        assert cfg4.get("project", {}).get("name") == "second"
     finally:
         clear_all_caches()
 
@@ -75,4 +79,3 @@ def test_get_cached_config_default_repo_root_key_tracks_resolved_project_root(tm
             os.environ.pop("AGENTS_PROJECT_ROOT", None)
         else:
             os.environ["AGENTS_PROJECT_ROOT"] = old_env
-

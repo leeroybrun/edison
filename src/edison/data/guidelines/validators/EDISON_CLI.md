@@ -40,7 +40,7 @@ edison qa validate TASK-123 --session sess-001
 ```
 
 **Input location**: `{{fn:evidence_root}}/<task-id>/round-N/`
-**Output**: `bundle-approved.md` or validation error report
+**Output**: `{{config.validation.artifactPaths.bundleSummaryFile}}` or validation error report
 
 ---
 
@@ -194,7 +194,7 @@ edison qa validate TASK-123 --session sess-001
 
 # Validates parent + all children
 
-# 3. Output: bundle-approved.md
+# 3. Output: {{config.validation.artifactPaths.bundleSummaryFile}}
 # Contains aggregated validation status for all tasks
 ```
 
@@ -217,7 +217,7 @@ edison qa validate TASK-123 --round 2
 ## Output Locations
 
 **Validator reports**: `{{fn:evidence_root}}/<task-id>/round-N/<validator>.json`
-**Bundle summary**: `{{fn:evidence_root}}/<task-id>/round-N/bundle-approved.md`
+**Bundle summary**: `{{fn:evidence_root}}/<task-id>/round-N/{{config.validation.artifactPaths.bundleSummaryFile}}`
 **Implementation report**: `{{fn:evidence_root}}/<task-id>/round-N/implementation-report.md`
 
 ---

@@ -42,7 +42,7 @@ git diff -- '**/*.test.ts' '**/*.spec.ts'
 
 ### Step 3: Run Relevant Tests
 
-- Use the repository’s configured command (example: `{{function:ci_command("test")}}`).
+- Use the repository’s configured command (example: `{{fn:ci_command("test")}}`).
 - Prefer running the narrowest scope that proves the change.
 
 ---
@@ -113,7 +113,7 @@ git diff -- '**/*.test.ts' '**/*.spec.ts'
 
 ## Evidence
 
-- Ran: `{{function:ci_command("test")}}`
+- Ran: `{{fn:ci_command("test")}}`
 - Result: [pass/fail]
 ```
 

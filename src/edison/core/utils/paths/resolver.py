@@ -54,6 +54,19 @@ def resolve_project_root() -> Path:
     """
     global _PROJECT_ROOT_CACHE
 
+    # Best-effort marker names for lightweight root validation without config loads.
+    # These can be overridden via env vars (same paths as ConfigManager supports).
+    project_config_dir_name = (
+        os.environ.get("EDISON_paths__project_config_dir")
+        or os.environ.get("EDISON_paths__config_dir")
+        or ".edison"
+    )
+    project_management_dir_name = (
+        os.environ.get("EDISON_project_management_dir")
+        or os.environ.get("EDISON_paths__management_dir")
+        or ".project"
+    )
+
     # Priority 1: environment overrides. Always honour them, even when a
     # cache is already populated from previous calls inside the same
     # process (common in test suites).
@@ -73,7 +86,7 @@ def resolve_project_root() -> Path:
             raise EdisonPathError(
                 f"{env_var_used} points at missing path: {env_path}"
             )
-        if env_path.name == ".edison":
+        if env_path.name in {".edison", project_config_dir_name}:
             raise EdisonPathError(
                 f"{env_var_used} points to .edison directory: {env_path}. "
                 "This is invalid - must point to project root."
@@ -85,8 +98,8 @@ def resolve_project_root() -> Path:
     # Local project root shortcut: honor a .project directory in CWD
     cwd = Path.cwd().resolve()
 
-    if (cwd / ".project").exists():
-        if cwd.name == ".edison":
+    if (cwd / project_management_dir_name).exists():
+        if cwd.name in {".edison", project_config_dir_name}:
             raise EdisonPathError(
                 "Refusing to use .edison as project root even though .project exists"
             )
@@ -97,8 +110,8 @@ def resolve_project_root() -> Path:
     # With no environment override, reuse cached value only when it still
     # looks like a valid project root (contains .project or .edison).
     if _PROJECT_ROOT_CACHE is not None:
-        if (_PROJECT_ROOT_CACHE / ".project").exists() or (
-            _PROJECT_ROOT_CACHE / ".edison"
+        if (_PROJECT_ROOT_CACHE / project_management_dir_name).exists() or (
+            _PROJECT_ROOT_CACHE / project_config_dir_name
         ).exists():
             return _PROJECT_ROOT_CACHE
         # Stale cache from a temp env-root without markers; discard and
@@ -148,7 +161,7 @@ def resolve_project_root() -> Path:
     # inside a larger project repository. In that case, treat the owning
     # project repository (the one that contains .edison/) as the canonical
     # project root instead of .edison itself.
-    if path.name == ".edison":
+    if path.name in {".edison", project_config_dir_name}:
         # Lazy import to avoid circular dependency
         from edison.core.utils.git import get_git_root
 
@@ -245,6 +258,5 @@ __all__ = [
     "get_project_path",
     "_PROJECT_ROOT_CACHE",
 ]
-
 
 

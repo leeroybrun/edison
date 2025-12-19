@@ -70,6 +70,7 @@ class TaskQAWorkflow:
         description: str = "",
         session_id: Optional[str] = None,
         owner: Optional[str] = None,
+        parent_id: Optional[str] = None,
         continuation_id: Optional[str] = None,
         create_qa: bool = True,
     ) -> Task:
@@ -113,11 +114,25 @@ class TaskQAWorkflow:
             session_id=session_id,
             owner=owner,
             state=todo_state,
+            parent_id=parent_id,
             continuation_id=continuation_id,
         )
 
         # Persist task
         self.task_repo.save(task)
+
+        # Persist parent/child links in task frontmatter (single source of truth).
+        # When parent_id is provided but the parent does not exist yet, we still
+        # record parent_id on the child (so follow-up linking is retained) and
+        # skip updating the parent file.
+        if parent_id:
+            if str(parent_id).strip() == str(task_id).strip():
+                raise PersistenceError("Cannot set a task as its own parent")
+            parent = self.task_repo.get(parent_id)
+            if parent:
+                if task_id not in parent.child_ids:
+                    parent.child_ids.append(task_id)
+                self.task_repo.save(parent)
 
         # Register task in session if session_id provided
         if session_id:

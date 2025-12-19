@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, ClassVar, Dict, List, Optional
 
 from edison.core.utils.io import dump_yaml_string, parse_yaml_string, read_yaml
+from edison.core.utils.paths import get_project_config_dir
 
 from ._base import ComposableRegistry
 
@@ -90,7 +91,8 @@ class SchemaRegistry(ComposableRegistry[str]):
             pass
 
         # Project pack schemas
-        project_pack_schemas = self.project_root / ".edison" / "packs" / pack_name / "schemas"
+        project_dir = get_project_config_dir(self.project_root, create=False)
+        project_pack_schemas = project_dir / "packs" / pack_name / "schemas"
         if project_pack_schemas.exists():
             for schema_file in project_pack_schemas.rglob("*.y*ml"):
                 rel = schema_file.relative_to(project_pack_schemas)
@@ -105,7 +107,8 @@ class SchemaRegistry(ComposableRegistry[str]):
 
     def _discover_project_schemas(self) -> Dict[str, Any]:
         schemas: Dict[str, Any] = {}
-        project_schemas = self.project_root / ".edison" / "schemas"
+        project_dir = get_project_config_dir(self.project_root, create=False)
+        project_schemas = project_dir / "schemas"
 
         if project_schemas.exists():
             for schema_file in project_schemas.rglob("*.y*ml"):
@@ -187,4 +190,3 @@ class SchemaRegistry(ComposableRegistry[str]):
 
 
 __all__ = ["SchemaRegistry"]
-

@@ -55,13 +55,18 @@ class TestGlobalValidatorsAlwaysRun(unittest.TestCase):
         return cp
 
     def test_global_validators_have_always_run_true(self) -> None:
-        """Verify all global validators have alwaysRun: true in config (repo canonical)."""
+        """Verify all global validators have always_run: true in config (repo canonical)."""
         cfg_path = REPO_ROOT / "src" / "edison" / "data" / "config" / "validators.yaml"
         cfg = yaml.safe_load(cfg_path.read_text())
-        globals_cfg = (cfg.get("validation", {}) or {}).get("roster", {}).get("global", [])
-        self.assertTrue(globals_cfg, "Config must define validators.global")
-        offenders = [v["id"] for v in globals_cfg if not v.get("alwaysRun", False)]
-        self.assertEqual(offenders, [], f"Global validators missing alwaysRun: true → {offenders}")
+        validators_cfg = (cfg.get("validation", {}) or {}).get("validators", {}) or {}
+        self.assertTrue(validators_cfg, "Config must define validation.validators")
+        globals_cfg = {vid: v for vid, v in validators_cfg.items() if str(vid).startswith("global-")}
+        self.assertTrue(globals_cfg, "Config must define at least one global-* validator")
+        offenders = [
+            vid for vid, v in globals_cfg.items()
+            if not (isinstance(v, dict) and v.get("always_run", False))
+        ]
+        self.assertEqual(offenders, [], f"Global validators missing always_run: true → {offenders}")
 
     @unittest.skipUnless(
         (SCRIPTS_DIR / "validators" / "run-wave").exists(),

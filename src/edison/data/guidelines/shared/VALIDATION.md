@@ -82,7 +82,7 @@ Before any validator wave, run the guarded bundle helper (`edison qa bundle <roo
 - QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `{{config.validation.artifactPaths.bundleSummaryFile}}` existence.
 
 ## Sequence (strict order)
-1) Automation evidence captured (required: {{function:required_evidence_files("inline")}}).
+1) Automation evidence captured (required: {{fn:required_evidence_files("inline")}}).
 2) Context7 refreshes for all Context7-detected packages; save `context7-<pkg>.txt` markers.
 3) Detect changed files → map to validator roster.
 4) Update QA with validator list, commands, expected results, evidence links, and bundle manifest.
@@ -126,7 +126,7 @@ Repeat until APPROVE or escalate
 
 ## QA Ownership & Evidence
 - Assign a single QA owner; multiple validators may run, but one owner curates the QA brief.
-- Name evidence clearly (e.g., `validator-<id>-report.md`, {{function:required_evidence_files("inline")}}, `{{config.validation.artifactPaths.bundleSummaryFile}}`).
+- Name evidence clearly (e.g., `validator-<id>-report.md`, {{fn:required_evidence_files("inline")}}, `{{config.validation.artifactPaths.bundleSummaryFile}}`).
 - Validator reports must record the model used and it must match the config.
 
 ## Parent vs Child Tasks (Parallel Implementation)

@@ -27,19 +27,19 @@ Run validation commands and collect output:
 
 ```bash
 # Type checking (MANDATORY)
-{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
-echo "Exit code: $?" >> {{function:evidence_file("type-check")}}
+{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
+echo "Exit code: $?" >> {{fn:evidence_file("type-check")}}
 
 # Linting (MANDATORY)
-{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
-echo "Exit code: $?" >> {{function:evidence_file("lint")}}
+{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
+echo "Exit code: $?" >> {{fn:evidence_file("lint")}}
 
 # Testing (MANDATORY)
-{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
-echo "Exit code: $?" >> {{function:evidence_file("test")}}
+{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
+echo "Exit code: $?" >> {{fn:evidence_file("test")}}
 
 # Build check (if applicable)
-{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1 || echo "No build configured"
+{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1 || echo "No build configured"
 ```
 
 ### Step 2: Review Git Diff
@@ -66,7 +66,7 @@ git diff           # Unstaged changes
 - `from __future__ import annotations` used for forward refs
 - mypy --strict passes with 0 errors
 
-**Evidence Required**: `{{function:evidence_file("type-check")}}`
+**Evidence Required**: `{{fn:evidence_file("type-check")}}`
 
 **Output**:
 ```
@@ -89,7 +89,7 @@ FAIL: mypy --strict: [N] errors
 - Edge cases covered via parametrize
 - Fixtures use real files/data (tmp_path, etc.)
 
-**Evidence Required**: `{{function:evidence_file("test")}}`
+**Evidence Required**: `{{fn:evidence_file("test")}}`
 
 **Output**:
 ```
@@ -114,7 +114,7 @@ FAIL: Mock usage detected (violates NO MOCKS rule)
 - Docstrings on public APIs
 - Consistent naming conventions (snake_case)
 
-**Evidence Required**: `{{function:evidence_file("lint")}}`
+**Evidence Required**: `{{fn:evidence_file("lint")}}`
 
 **Output**:
 ```

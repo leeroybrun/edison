@@ -29,12 +29,14 @@ def project_management_dir(ctx: TransformContext) -> str:
 
 def tasks_root(ctx: TransformContext) -> str:
     """Tasks root directory (default: .project/tasks)."""
-    return _config_str(ctx, "tasks.paths.root", f"{project_management_dir(ctx)}/tasks")
+    raw = _config_str(ctx, "tasks.paths.root", f"{project_management_dir(ctx)}/tasks")
+    return raw
 
 
 def qa_root(ctx: TransformContext) -> str:
     """QA root directory (default: .project/qa)."""
-    return _config_str(ctx, "tasks.paths.qaRoot", f"{project_management_dir(ctx)}/qa")
+    raw = _config_str(ctx, "tasks.paths.qaRoot", f"{project_management_dir(ctx)}/qa")
+    return raw
 
 
 def evidence_root(ctx: TransformContext) -> str:
@@ -45,7 +47,8 @@ def evidence_root(ctx: TransformContext) -> str:
 
 def sessions_root(ctx: TransformContext) -> str:
     """Sessions root directory (default: .project/sessions)."""
-    return _config_str(ctx, "session.paths.root", f"{project_management_dir(ctx)}/sessions")
+    raw = _config_str(ctx, "session.paths.root", f"{project_management_dir(ctx)}/sessions")
+    return raw
 
 
 def session_state_dir(ctx: TransformContext, state: str) -> str:
@@ -55,4 +58,3 @@ def session_state_dir(ctx: TransformContext, state: str) -> str:
         return sessions_root(ctx)
     mapped = _config_str(ctx, f"session.states.{logical}", logical)
     return f"{sessions_root(ctx)}/{mapped}"
-

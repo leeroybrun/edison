@@ -220,6 +220,12 @@ properties:
       installDeps:
         type: boolean
         default: false
+      postInstallCommands:
+        type: array
+        description: Optional commands to run after dependency installation in the session worktree (executed via `bash -lc` in the worktree directory).
+        items:
+          type: string
+        default: []
       enableDatabaseIsolation:
         type: boolean
         default: false

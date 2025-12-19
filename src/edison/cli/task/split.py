@@ -23,13 +23,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--count",
+        "--children",
         type=int,
         default=2,
         help="Number of subtasks to create (default: 2)",
     )
     parser.add_argument(
         "--prefix",
-        help="Prefix for child task IDs",
+        help="Label for child task IDs (appended after '<parent>.<n>-')",
     )
     parser.add_argument(
         "--dry-run",
@@ -59,10 +60,17 @@ def main(args: argparse.Namespace) -> int:
             raise ValueError(f"Task not found: {task_id}")
 
         # Generate child IDs
+        next_child_id = task_repo.get_next_child_id(task_id)
+        try:
+            next_child_num = int(next_child_id.split(".", 1)[1])
+        except Exception:
+            raise ValueError(f"Invalid next child id format returned by repository: {next_child_id}")
+
         child_ids = []
-        for i in range(args.count):
-            suffix = args.prefix if args.prefix else f"part{i+1}"
-            child_id = f"{task_id}.{i+1}-{suffix}"
+        for offset in range(args.count):
+            child_num = next_child_num + offset
+            suffix = args.prefix if args.prefix else f"part{child_num}"
+            child_id = f"{task_id}.{child_num}-{suffix}"
             child_ids.append(child_id)
 
         if args.dry_run:
@@ -85,7 +93,7 @@ def main(args: argparse.Namespace) -> int:
             description = f"Subtask {i+1} of {args.count}\nParent: {task_id}"
             workflow.create_task(
                 task_id=child_id,
-                title=f"Part {i+1}",
+                title=f"Part {child_id.split('.', 1)[1].split('-', 1)[0]}",
                 description=description,
                 session_id=task_entity.session_id,
                 create_qa=True,

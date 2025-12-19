@@ -10,16 +10,16 @@ overlay_type: extend
 
 ```bash
 # Type checking (MANDATORY)
-{{function:ci_command("type-check")}}
+{{fn:ci_command("type-check")}}
 
 # Linting
-{{function:ci_command("lint")}}
+{{fn:ci_command("lint")}}
 
 # Formatting
-{{function:ci_command("format")}}
+{{fn:ci_command("format")}}
 
 # Testing with coverage
-{{function:ci_command("test-coverage")}}
+{{fn:ci_command("test-coverage")}}
 
 # Run specific test file
 pytest tests/unit/test_module.py -v
@@ -31,7 +31,7 @@ pytest -k "test_feature" -v
 pip install -e ".[dev]"
 
 # Build package
-{{function:ci_command("build")}}
+{{fn:ci_command("build")}}
 ```
 
 <!-- /extend -->

@@ -11,7 +11,7 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "arg"  # Use positional argument (claude accepts prompt as argument)
-        path: ".edison/_generated/start/START_NEW_SESSION.md"
+        path: "{PROJECT_CONFIG_DIR}/_generated/start/START_NEW_SESSION.md"
 
     codex:
       command: "codex"
@@ -20,7 +20,7 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "arg"  # Use positional argument
-        path: ".edison/_generated/start/START_NEW_SESSION.md"
+        path: "{PROJECT_CONFIG_DIR}/_generated/start/START_NEW_SESSION.md"
 
     gemini:
       command: "gemini"
@@ -38,7 +38,7 @@ orchestrators:
       initial_prompt:
         enabled: true
         method: "stdin"
-        path: ".edison/_generated/start/START_NEW_SESSION.md"
+        path: "{PROJECT_CONFIG_DIR}/_generated/start/START_NEW_SESSION.md"
 
     mock:
       command: "echo"

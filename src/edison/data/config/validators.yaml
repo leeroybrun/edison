@@ -50,7 +50,6 @@ validation:
     gemini-cli:
       type: cli
       command: "gemini"
-      subcommand: "-p"
       output_flags: ["--output-format", "json"]
       read_only_flags: []
       response_parser: gemini

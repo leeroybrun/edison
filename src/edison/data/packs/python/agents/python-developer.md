@@ -58,22 +58,22 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 
 ```bash
 # Type checking (strict mode)
-{{function:ci_command("type-check")}}
+{{fn:ci_command("type-check")}}
 
 # Linting
-{{function:ci_command("lint")}}
+{{fn:ci_command("lint")}}
 
 # Formatting check
-{{function:ci_command("format-check")}}
+{{fn:ci_command("format-check")}}
 
 # Testing with coverage
-{{function:ci_command("test-coverage")}}
+{{fn:ci_command("test-coverage")}}
 
 # Run specific test
 pytest tests/unit/test_module.py -v
 
 # Build package
-{{function:ci_command("build")}}
+{{fn:ci_command("build")}}
 
 # Install in development mode
 pip install -e ".[dev]"
@@ -219,16 +219,16 @@ pytest tests/unit/test_new_feature.py -v
 ### Step 5: Verify Full Suite
 ```bash
 # Run all tests
-{{function:ci_command("test")}}
+{{fn:ci_command("test")}}
 
 # Type check everything
-{{function:ci_command("type-check")}}
+{{fn:ci_command("type-check")}}
 
 # Lint everything
-{{function:ci_command("lint")}}
+{{fn:ci_command("lint")}}
 
 # Build (if applicable)
-{{function:ci_command("build")}}
+{{fn:ci_command("build")}}
 ```
 
 ## Output Format Requirements
@@ -255,9 +255,9 @@ Follow `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` fo
 - ruff check: 0 errors
 
 ### Evidence
-- {{function:evidence_file("test")}}: test output
-- {{function:evidence_file("type-check")}}: type-check output
-- {{function:evidence_file("lint")}}: lint output
+- {{fn:evidence_file("test")}}: test output
+- {{fn:evidence_file("type-check")}}: type-check output
+- {{fn:evidence_file("lint")}}: lint output
 ```
 
 ## Constraints

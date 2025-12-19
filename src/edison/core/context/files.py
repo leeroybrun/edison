@@ -102,8 +102,9 @@ class FileContextService:
         patterns: list[str] = []
         try:
             from edison.core.config.domains.qa import QAConfig
+            qa_cfg = QAConfig(repo_root=self.project_root)
 
-            validation_cfg = QAConfig(repo_root=self.project_root).get_validation_config()
+            validation_cfg = qa_cfg.get_validation_config()
             file_ctx_cfg = validation_cfg.get("fileContext", {}) or {}
             if isinstance(file_ctx_cfg, dict):
                 raw = (

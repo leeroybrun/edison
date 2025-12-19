@@ -10,19 +10,19 @@ overlay_type: extend
 
 ```bash
 # Type checking
-{{function:ci_command("type-check")}}
+{{fn:ci_command("type-check")}}
 
 # Linting
-{{function:ci_command("lint")}}
+{{fn:ci_command("lint")}}
 
 # Format check
-{{function:ci_command("format-check")}}
+{{fn:ci_command("format-check")}}
 
 # Run tests
-{{function:ci_command("test")}}
+{{fn:ci_command("test")}}
 
 # Check coverage
-{{function:ci_command("test-coverage")}}
+{{fn:ci_command("test-coverage")}}
 
 # Security scan (if bandit installed)
 bandit -r src/

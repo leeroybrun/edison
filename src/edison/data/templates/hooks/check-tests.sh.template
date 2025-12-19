@@ -14,6 +14,9 @@ fi
 # Parse input JSON (with timeout to prevent hanging)
 INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
 FILE_PATH=$(echo "$INPUT" | jq -r '.args.file_path // empty' 2>/dev/null || echo "")
+if [[ -z "$FILE_PATH" ]]; then
+  exit 0
+fi
 
 {% set cfg = config if config is defined else {} %}
 {% set skip_test_files = cfg.get("skip_test_files", False) %}
@@ -27,8 +30,18 @@ fi
 {% endif %}
 
 {% if warn_if_missing %}
+# Best-effort heuristic: if a corresponding test file already exists, stay silent.
+# This is intentionally technology-agnostic and only checks common naming patterns.
+DIR_PATH=$(dirname "$FILE_PATH")
+BASE_NAME=$(basename "$FILE_PATH")
+STEM="${BASE_NAME%.*}"
+if compgen -G "$DIR_PATH/${STEM}_test.*" >/dev/null; then exit 0; fi
+if compgen -G "$DIR_PATH/test_${STEM}.*" >/dev/null; then exit 0; fi
+if compgen -G "$DIR_PATH/${STEM}.test.*" >/dev/null; then exit 0; fi
+if compgen -G "$DIR_PATH/${STEM}.spec.*" >/dev/null; then exit 0; fi
+
 echo ""
-echo "⚠️  Test reminder for: $FILE_PATH"
+echo "No test file found for: $FILE_PATH"
 echo "   Ensure the change is covered by appropriate tests per your project's conventions."
 echo "   Follow TDD: write failing test (RED) → minimal fix (GREEN) → cleanup (REFACTOR)."
 echo ""

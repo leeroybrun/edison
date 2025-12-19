@@ -68,16 +68,16 @@ Validators should run domain-specific verification commands and save output to e
 
 ```bash
 # Type checking
-{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
+{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
 
 # Linting
-{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
+{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
 
 # Testing
-{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
+{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
 
 # Build
-{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1
+{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1
 ```
 
 **All evidence files must be created BEFORE validation begins.**
@@ -221,7 +221,7 @@ Every validator MUST perform these universal checks:
 
 ## Edison validation guards (current)
 
-- Validate only against bundles emitted by `edison qa bundle <root-task>`; return `BLOCKED` if the manifest or parent `bundle-approved.md` is missing.
+- Validate only against bundles emitted by `edison qa bundle <root-task>`; return `BLOCKED` if the manifest or parent `{{config.validation.artifactPaths.bundleSummaryFile}}` is missing.
 - Load roster, triggers, and blocking flags via ConfigManager overlays (`{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md`) instead of JSON.
 - `edison qa promote` enforces state machine rules plus bundle presence; ensure Markdown + JSON reports live in the round evidence directory referenced by the bundle.
 - Honor Context7 requirements: auto-detected post-training packages must have markers (HMAC when enabled) before issuing approval.

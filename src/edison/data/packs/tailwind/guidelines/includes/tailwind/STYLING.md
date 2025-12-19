@@ -31,7 +31,7 @@
 
 4. **Clear `.next` cache** after CSS changes:
    ```bash
-   rm -rf <framework-cache-dir> && {{function:ci_command("dev")}}
+   rm -rf <framework-cache-dir> && {{fn:ci_command("dev")}}
    ```
 
 5. **PostCSS plugin** (v4 syntax):

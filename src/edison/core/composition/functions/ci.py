@@ -25,8 +25,13 @@ def ci_command(ctx: TransformContext, name: str, fallback: Optional[str] = None)
     """Return the configured CI command for ``name`` (e.g. lint/test/build).
 
     Reads ``ci.commands.<name>`` from merged config. If the value is missing or
-    blank, returns ``fallback``; if fallback is not provided, uses a reasonable
-    placeholder string.
+    blank, falls back to ``project.commands.<name>`` (legacy/general shortcut).
+    If still missing, returns ``fallback``; if fallback is not provided, uses a
+    reasonable placeholder string.
     """
     fallback_value = fallback if fallback is not None else f"<{name}-command>"
-    return _config_or(ctx, f"ci.commands.{name}", fallback_value)
+    primary = _config_or(ctx, f"ci.commands.{name}", "")
+    if primary:
+        return primary
+    secondary = _config_or(ctx, f"project.commands.{name}", "")
+    return secondary if secondary else fallback_value

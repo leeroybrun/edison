@@ -68,8 +68,8 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
     """Check if task has a valid, recent validator bundle approval.
 
     Semantics (fail-closed, EvidenceManager-backed):
-      - Locate bundle-approved.md for the latest evidence round:
-          <management_dir>/qa/validation-evidence/<task-id>/round-N/bundle-approved.md
+      - Locate the bundle summary file for the latest evidence round:
+          <management_dir>/qa/validation-evidence/<task-id>/round-N/<bundleSummaryFile>
         using EvidenceService (honours AGENTS_PROJECT_ROOT and git root detection).
       - Require the bundle file to exist (requireReport=True) and be fresh
         based on maxAgeDays.
@@ -152,7 +152,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
         if require_report:
             _raise(
                 f"Validation bundle summary missing for task {task_id}: {bundle_path} "
-                "(bundle-approved.md not found)"
+                f"({bundle_path.name} not found)"
             )
         return False
 
@@ -169,13 +169,13 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
             f"(older than {max_age_days} days)"
         )
 
-    # Content check: bundle-approved.md must contain approved: true (YAML frontmatter)
+    # Content check: bundle summary must contain approved: true (YAML frontmatter)
     from edison.core.qa.evidence.report_io import read_structured_report
     data = read_structured_report(bundle_path)
     if not data:
         if require_report:
             _raise(
-                f"Invalid or empty bundle-approved.md for task {task_id}: "
+                f"Invalid or empty {bundle_path.name} for task {task_id}: "
                 f"{bundle_path}"
             )
         return False
@@ -212,7 +212,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
 
         _raise(
             f"Validation bundle not approved for task {task_id}: "
-            f"bundle-approved.md approved=false{details}"
+            f"{bundle_path.name} approved=false{details}"
         )
 
     return True

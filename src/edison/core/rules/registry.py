@@ -59,8 +59,8 @@ class RulesRegistry:
 
         cfg_mgr = ConfigManager(repo_root=self.project_root)
 
-        # Project .edison directory
-        self.project_dir = self.project_root / ".edison"
+        # Project config directory (e.g. .edison, configurable)
+        self.project_dir = cfg_mgr.project_config_dir.parent
 
         # Pack directories from ConfigManager (unified source of truth)
         self.bundled_packs_dir = cfg_mgr.bundled_packs_dir
@@ -276,19 +276,29 @@ class RulesRegistry:
         # Resolve file path - prefer _generated (final composed) over bundled (source)
         source_path: Optional[Path] = None
         
-        # Project-relative paths starting with .edison/
-        if file_part.startswith(".edison/"):
-            project_path = (self.project_root / file_part).resolve()
+        # Project-relative paths starting with project config dir (preferred).
+        project_prefix = f"{self.project_dir.name}/"
+        legacy_prefix = ".edison/"
+
+        if file_part.startswith(project_prefix) or file_part.startswith(legacy_prefix):
+            # Normalize legacy ".edison/..." references to the configured project dir.
+            if file_part.startswith(legacy_prefix) and self.project_dir.name != ".edison":
+                normalized_rel = file_part[len(legacy_prefix) :]
+                project_path = (self.project_dir / normalized_rel).resolve()
+            else:
+                project_path = (self.project_root / file_part).resolve()
             if project_path.exists():
                 source_path = project_path
             else:
                 # Fall back to bundled data if project file doesn't exist
-                # Convert .edison/_generated/X to X for bundled lookup
+                # Convert <project_dir>/_generated/X to X for bundled lookup
                 bundled_ref = file_part
                 if "/_generated/" in bundled_ref:
                     bundled_ref = bundled_ref.split("/_generated/", 1)[1]
-                elif bundled_ref.startswith(".edison/"):
-                    bundled_ref = bundled_ref[len(".edison/"):]
+                elif bundled_ref.startswith(project_prefix):
+                    bundled_ref = bundled_ref[len(project_prefix) :]
+                elif bundled_ref.startswith(legacy_prefix):
+                    bundled_ref = bundled_ref[len(legacy_prefix) :]
                 bundled_path = (self.bundled_data_dir / bundled_ref).resolve()
                 if bundled_path.exists():
                     source_path = bundled_path
@@ -302,7 +312,7 @@ class RulesRegistry:
             # Relative paths: resolve to _generated first (final composed content),
             # then fall back to bundled data (source templates)
             # This ensures agents read the final composed guidelines, not source templates
-            generated_path = (self.project_root / ".edison" / "_generated" / file_part).resolve()
+            generated_path = (self.project_dir / "_generated" / file_part).resolve()
             if generated_path.exists():
                 source_path = generated_path
             else:
@@ -801,6 +811,7 @@ class RulesRegistry:
             "title": rule.get("title", ""),
             "category": rule.get("category", ""),
             "blocking": rule.get("blocking", False),
+            "applies_to": rule.get("applies_to", []) or [],
             "sourcePath": source_path_str,
             "startAnchor": f"<!-- ANCHOR: {anchor_part} -->" if anchor_part else "",
             "endAnchor": f"<!-- END ANCHOR: {anchor_part} -->" if anchor_part else "",
@@ -827,6 +838,7 @@ class RulesRegistry:
                 "title": rule.get("title", ""),
                 "category": rule.get("category", ""),
                 "blocking": rule.get("blocking", False),
+                "applies_to": rule.get("applies_to", []) or [],
                 "sourcePath": source_path_str,
                 "content": rule.get("body", ""),
                 "guidance": str(rule.get("guidance") or "").strip(),

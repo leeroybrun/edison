@@ -59,17 +59,17 @@ properties:
         type: string
         description: RED phase output path
         examples:
-        - .project/qa/validation-evidence/w2-g4/RED-output.txt
+        - <project-management-dir>/qa/<evidence-subdir>/w2-g4/RED-output.txt
       green:
         type: string
         description: GREEN phase output path
         examples:
-        - .project/qa/validation-evidence/w2-g4/GREEN-output.txt
+        - <project-management-dir>/qa/<evidence-subdir>/w2-g4/GREEN-output.txt
       refactor:
         type: string
         description: REFACTOR phase notes/output
         examples:
-        - .project/qa/validation-evidence/w2-g4/REFACTOR-output.txt
+        - <project-management-dir>/qa/<evidence-subdir>/w2-g4/REFACTOR-output.txt
     additionalProperties: false
   acceptanceCriteria:
     type: array

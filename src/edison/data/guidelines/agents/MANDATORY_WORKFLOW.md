@@ -34,7 +34,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 2. Read requirements and locate existing patterns in the codebase.
 3. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
 4. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
-5. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (required: {{function:required_evidence_files("inline")}}).
+5. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (required: {{fn:required_evidence_files("inline")}}).
 
 #### Phase 2: Produce the Implementation Report (required)
 
@@ -75,7 +75,7 @@ edison session track complete --task <task-id>
 ## Evidence Required (minimum)
 
 - Implementation report (`implementation-report.md`) exists for the latest round.
-- Automation evidence files exist per project config (required: {{function:required_evidence_files("inline")}}).
+- Automation evidence files exist per project config (required: {{fn:required_evidence_files("inline")}}).
 - Context7 markers exist for any required packages (if applicable).
 
 ## Critical Rules

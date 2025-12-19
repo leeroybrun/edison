@@ -102,7 +102,7 @@ def resolve_session_id(
 ) -> Optional[str]:
     """Resolve a session id using the canonical core resolution order.
 
-    Resolution (core): explicit → AGENTS_SESSION → `.project/.session-id` → process-derived lookup.
+    Resolution (core): explicit → AGENTS_SESSION → `<project-management-dir>/.session-id` → process-derived lookup.
 
     Semantics:
     - If `explicit` is provided, it is treated as authoritative and MUST exist (fail-closed).

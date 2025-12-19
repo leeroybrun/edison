@@ -63,7 +63,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--check-only",
         action="store_true",
-        help="Do not execute validators; compute approval from existing evidence and emit bundle-approved.md",
+        help="Do not execute validators; compute approval from existing evidence and emit the bundle summary file",
     )
     parser.add_argument(
         "--sequential",
@@ -193,7 +193,9 @@ def main(args: argparse.Namespace) -> int:
                 )
             else:
                 if overall_approved:
-                    formatter.text("All blocking validator reports approved and bundle-approved.md was written.")
+                    formatter.text(
+                        f"All blocking validator reports approved and {ev.bundle_filename} was written."
+                    )
                 else:
                     formatter.text("Bundle NOT approved (missing or failing blocking reports).")
                     for tid, missing in (cluster_missing or {}).items():
@@ -361,7 +363,7 @@ def _compute_bundle_summary(
 ) -> tuple[dict[str, Any], bool, dict[str, list[str]]]:
     """Compute bundle-approved payload from existing evidence reports.
 
-    This is the single source of truth for the bundle-approved.md schema payload.
+    This is the single source of truth for the bundle summary schema payload.
     """
     from edison.core.qa.bundler import build_validation_manifest
     from edison.core.qa.evidence import EvidenceService
@@ -513,7 +515,7 @@ def _execute_with_executor(
         execution_result=result,
     )
 
-    # Always emit/refresh bundle-approved.md for the root task when we have a round.
+    # Always emit/refresh the bundle summary for the root task when we have a round.
     if round_num:
         ev.write_bundle(bundle_data, round_num=round_num)
 
@@ -566,7 +568,7 @@ def _execute_with_executor(
         formatter.text(f"  edison qa round {args.task_id} --status reject")
     elif overall_approved:
         formatter.text("")
-        formatter.text("All blocking validators approved and bundle-approved.md was written. Next steps:")
+        formatter.text(f"All blocking validators approved and {ev.bundle_filename} was written. Next steps:")
         formatter.text(f"  edison qa promote {args.task_id} --status done")
     elif result.delegated_validators or cluster_missing:
         formatter.text("")

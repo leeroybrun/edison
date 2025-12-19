@@ -144,14 +144,15 @@ class EngineRegistry:
                 "subcommand": "-p",
                 "output_flags": ["--output-format", "json"],
                 "read_only_flags": ["--permission-mode", "plan"],
+                "prompt_mode": "arg",
                 "response_parser": "claude",
             },
             "gemini-cli": {
                 "type": "cli",
                 "command": "gemini",
-                "subcommand": "-p",
                 "output_flags": ["--output-format", "json"],
                 "read_only_flags": [],
+                "prompt_mode": "arg",
                 "response_parser": "gemini",
             },
             "auggie-cli": {
@@ -286,4 +287,3 @@ class EngineRegistry:
 
 
 __all__ = ["EngineRegistry"]
-

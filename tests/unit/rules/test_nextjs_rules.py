@@ -39,7 +39,7 @@ class TestNextjsT079Rules:
         assert rule["category"] == "implementation"
         assert rule["blocking"] is False
         assert set(rule["applies_to"]) == {"agent", "validator"}
-        assert rule["sourcePath"] == "packs/nextjs/guidelines/metadata.md"
+        assert rule["sourcePath"] == "packs/nextjs/guidelines/includes/nextjs/metadata.md"
         assert "metadata" in rule["guidance"].lower(), "Guidance should mention metadata"
         assert "generateMetadata" in rule["guidance"], "Guidance should mention generateMetadata"
 
@@ -66,7 +66,7 @@ class TestNextjsT079Rules:
         assert rule["category"] == "performance"
         assert rule["blocking"] is False
         assert set(rule["applies_to"]) == {"agent", "validator"}
-        assert rule["sourcePath"] == "packs/nextjs/guidelines/caching.md"
+        assert rule["sourcePath"] == "packs/nextjs/guidelines/includes/nextjs/caching.md"
         
         guidance = rule["guidance"].lower()
         assert "revalidate" in guidance, "Guidance should mention revalidate"

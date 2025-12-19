@@ -10,6 +10,7 @@ worktrees:
   branchPrefix: "session/"
   pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
   installDeps: false
+  postInstallCommands: []
   enableDatabaseIsolation: false
   autoCleanupOnMerge: false
   enforcement:

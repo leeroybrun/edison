@@ -107,37 +107,20 @@ class SessionConfig(BaseDomainConfig):
 
     def get_template_path(self, key: str) -> str:
         """Get expanded path to a template (e.g. 'primary', 'repo')."""
-        from edison.core.utils.paths import PathResolver
-        from edison.core.utils.paths import get_project_config_dir
-
-        root = PathResolver.resolve_project_root()
-        project_dir = get_project_config_dir(root)
+        root = self.repo_root
         raw = self.section.get("paths", {}).get("templates", {}).get(key, "")
 
         if raw:
-            return str(self._expand_path(raw, root=root, project_dir=project_dir))
+            path = Path(str(raw)).expanduser()
+            if not path.is_absolute():
+                path = root / path
+            return str(path.resolve())
 
         # Fallback: default to project config sessions template
-        return str((project_dir / "sessions" / "TEMPLATE.json").resolve())
+        from edison.core.utils.paths import get_project_config_dir
 
-    def _expand_path(self, raw: str, *, root: Path, project_dir: Path) -> Path:
-        """Expand template tokens in session path strings."""
-        tokens: Dict[str, str] = {
-            "PROJECT_ROOT": str(root),
-            "PROJECT_DIR": str(project_dir),
-            "PROJECT_CONFIG_DIR": str(project_dir),
-            "PROJECT_CONFIG_BASENAME": project_dir.name,
-        }
-
-        try:
-            expanded = raw.format(**tokens)
-        except Exception:
-            expanded = raw
-
-        path = Path(expanded)
-        if not path.is_absolute():
-            path = (root / path).resolve()
-        return path
+        cfg_dir = get_project_config_dir(root, create=False)
+        return str((cfg_dir / "sessions" / "TEMPLATE.json").resolve())
 
     def get_id_regex(self) -> str:
         """Get regex for session ID validation."""

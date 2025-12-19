@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.data import get_data_path
-from edison.core.utils.paths import PathResolver, EdisonPathError
+from edison.core.utils.paths import PathResolver, EdisonPathError, get_project_config_dir
 from edison.core.utils.io import read_yaml
 
 
@@ -37,8 +37,8 @@ class FilePatternRegistry:
             # Fall back to cwd when path resolution fails (defensive guard for tests)
             self.project_root = Path.cwd()
 
-        # Project .edison directory
-        self.project_dir = self.project_root / ".edison"
+        # Project config directory (e.g. .edison, configurable)
+        self.project_dir = get_project_config_dir(self.project_root, create=False)
         
         # Bundled packs directory
         self.bundled_packs_dir = get_data_path("packs")

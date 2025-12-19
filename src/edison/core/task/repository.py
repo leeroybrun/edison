@@ -247,20 +247,10 @@ class TaskRepository(
         """List all tasks from global and session directories."""
         tasks: List[Task] = []
         
-        # 1. Global tasks
+        # _do_list_by_state() already scans both global and session directories.
+        # Avoid double-scanning session paths here (which causes duplicate results).
         for state in self._get_states_to_search():
             tasks.extend(self._do_list_by_state(state))
-            
-        # 2. Session tasks
-        for base in self._get_session_bases():
-            for state in self._get_states_to_search():
-                # Session structure: {base}/tasks/{state}/
-                state_dir = base / "tasks" / state
-                if state_dir.exists():
-                    for path in state_dir.glob(f"*{self.file_extension}"):
-                        task = self._load_task_from_file(path)
-                        if task:
-                            tasks.append(task)
                             
         return tasks
     
@@ -283,19 +273,8 @@ class TaskRepository(
         Returns:
             List of tasks in the given state
         """
-        # Search global state directory
-        tasks = self._do_list_by_state(state)
-
-        # Search session directories
-        for base in self._get_session_bases():
-            state_dir = base / "tasks" / state
-            if state_dir.exists():
-                for path in state_dir.glob(f"*{self.file_extension}"):
-                    task = self._load_task_from_file(path)
-                    if task:
-                        tasks.append(task)
-
-        return tasks
+        # _do_list_by_state() already scans both global and session directories.
+        return self._do_list_by_state(state)
 
     def find_all(self) -> List[Task]:
         """Find all tasks across all states.

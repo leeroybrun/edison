@@ -13,6 +13,11 @@ from tests.helpers import create_report_markdown
 
 
 class TestEvidenceService:
+    def test_bundle_filename_default(self, isolated_project_env: Path) -> None:
+        """Default bundle summary filename should be neutral (not 'approved')."""
+        svc = EvidenceService("task-1", project_root=isolated_project_env)
+        assert svc.bundle_filename == "bundle-summary.md"
+
     def test_get_current_round(self, isolated_project_env: Path) -> None:
         """Service resolves latest evidence round or returns None."""
         task_id = "task-100"
@@ -40,7 +45,7 @@ class TestEvidenceService:
         assert latest_dir.parent == evidence_base
 
     def test_read_bundle_summary(self, isolated_project_env: Path) -> None:
-        """Service reads bundle-approved.md from latest round."""
+        """Service reads bundle summary file from latest round."""
         task_id = "task-200"
         svc = EvidenceService(task_id, project_root=isolated_project_env)
 
@@ -58,7 +63,7 @@ class TestEvidenceService:
         round_dir.mkdir(parents=True, exist_ok=True)
 
         payload = {"approved": True, "taskId": task_id}
-        bundle_path = round_dir / "bundle-approved.md"
+        bundle_path = round_dir / svc.bundle_filename
         create_report_markdown(bundle_path, payload, body="\n# Bundle Approval\n")
 
         data = svc.read_bundle()

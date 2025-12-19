@@ -186,14 +186,11 @@ def build_mcp_servers(
         if not isinstance(env_raw, dict):
             raise ValueError(f"env for MCP server '{server_id}' must be a mapping")
 
-        resolved_env = {
-            k: str(v).replace("{PROJECT_ROOT}", str(project_root))
-            for k, v in env_raw.items()
-        }
+        resolved_env = {k: str(v) for k, v in env_raw.items()}
 
         servers[server_id] = McpServerConfig(
-            command=str(cmd_source.get("command")).replace("{PROJECT_ROOT}", str(project_root)),
-            args=[str(a).replace("{PROJECT_ROOT}", str(project_root)) for a in args_raw],
+            command=str(cmd_source.get("command")),
+            args=[str(a) for a in args_raw],
             env=resolved_env,
         )
         setup[server_id] = dict(raw.get("setup") or {})

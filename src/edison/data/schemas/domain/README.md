@@ -22,5 +22,5 @@ These schemas define the structure of Edison's core domain objects:
 
 - `edison.core.session` - Session management
 - `edison.core.task` - Task lifecycle
-- `{{config.session.paths.root}}/` - Session files in project directories
-- `{{config.tasks.paths.root}}/` - Task files in project directories
+- `{{fn:sessions_root}}/` - Session files in project directories
+- `{{fn:tasks_root}}/` - Task files in project directories

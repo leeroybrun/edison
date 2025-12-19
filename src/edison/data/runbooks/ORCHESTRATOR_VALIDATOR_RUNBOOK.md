@@ -24,7 +24,7 @@
 ## 2. Interpret validation results
 - Evidence lives in `{{fn:evidence_root}}/<task-id>/round-<N>/`.
 - Per-validator reports include `status` and `blocksOnFail`; treat any blocking failure as a hard reject.
-- `bundle-approved.md` is the canonical summary:
+- `{{config.validation.artifactPaths.bundleSummaryFile}}` is the canonical summary:
   - `approved=true` → QA may move toward `done/validated`.
   - `approved=false` or missing → remain in `wip` and start a new round.
 - Record outcomes in the QA brief (round, validators run, decision, links to reports) before changing task/QA states.
@@ -55,4 +55,4 @@
 
 ## 6. Common patterns and anti-patterns
 - **Patterns:** run in waves (global → critical → specialized), attach the bundle to QA, keep per-round directories immutable, and log every validator decision in the session Activity Log.
-- **Anti-patterns:** hardcoding validator counts/names, skipping the bundle step, rerunning in the same round and overwriting evidence, promoting QA without `bundle-approved.md`, or ignoring specialized validators that triggers require.
+- **Anti-patterns:** hardcoding validator counts/names, skipping the bundle step, rerunning in the same round and overwriting evidence, promoting QA without `{{config.validation.artifactPaths.bundleSummaryFile}}`, or ignoring specialized validators that triggers require.

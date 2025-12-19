@@ -52,9 +52,16 @@ def test_delegation_yaml_routes_prisma_and_nextjs():
     data = _load_yaml("core/config/delegation.yaml")
     file_rules = data["delegation"]["filePatternRules"]
 
-    assert "schema.prisma" in file_rules
-    assert "prisma/migrations/**/*" in file_rules
+    # Core is technology-agnostic: packs provide file-pattern routing rules.
+    assert file_rules == {}
 
+    prisma = _load_yaml("src/edison/data/packs/prisma/config/delegation.yaml")
+    prisma_rules = prisma["delegation"]["filePatternRules"]
+    assert "schema.prisma" in prisma_rules
+    assert "prisma/migrations/**/*" in prisma_rules
+
+    nextjs = _load_yaml("src/edison/data/packs/nextjs/config/delegation.yaml")
+    nextjs_rules = nextjs["delegation"]["filePatternRules"]
     # App Router files should use nextjs-specific agent
     for key in ("**/layout.tsx", "**/page.tsx", "**/loading.tsx", "**/error.tsx"):
-        assert file_rules[key]["subAgentType"].startswith("component-builder-nextjs")
+        assert nextjs_rules[key]["subAgentType"].startswith("component-builder")

@@ -18,11 +18,7 @@ from typing import Any, Dict, Mapping, Optional
 
 from ..base import BaseDomainConfig
 from edison.core.utils.time import utc_timestamp
-
-
-class _SafeDict(dict):
-    def __missing__(self, key: str) -> str:  # pragma: no cover
-        return "{" + key + "}"
+from edison.core.config.templating import SafeDict
 
 
 @dataclass(frozen=True)
@@ -203,29 +199,39 @@ class LoggingConfig(BaseDomainConfig):
             "pid": os.getpid(),
             "timestamp": utc_timestamp(repo_root=effective_root),
         }
-        return {k: str(v) for k, v in tokens.items() if v is not None}
+        out = {k: str(v) for k, v in tokens.items() if v is not None}
+        return out
 
     def expand(self, template: str, tokens: Mapping[str, str]) -> str:
-        return str(template).format_map(_SafeDict(tokens))
+        return str(template).format_map(SafeDict(tokens))
 
     def resolve_project_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
         if not self.paths.project_audit_jsonl:
             return None
-        return (self.repo_root / self.expand(self.paths.project_audit_jsonl, tokens)).resolve()
+        expanded = Path(self.expand(self.paths.project_audit_jsonl, tokens)).expanduser()
+        if not expanded.is_absolute():
+            expanded = self.repo_root / expanded
+        return expanded.resolve()
 
     def resolve_session_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
         if not self.paths.session_audit_jsonl:
             return None
         if not tokens.get("session_id"):
             return None
-        return (self.repo_root / self.expand(self.paths.session_audit_jsonl, tokens)).resolve()
+        expanded = Path(self.expand(self.paths.session_audit_jsonl, tokens)).expanduser()
+        if not expanded.is_absolute():
+            expanded = self.repo_root / expanded
+        return expanded.resolve()
 
     def resolve_invocation_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
         if not self.paths.invocation_audit_jsonl:
             return None
         if not tokens.get("invocation_id"):
             return None
-        return (self.repo_root / self.expand(self.paths.invocation_audit_jsonl, tokens)).resolve()
+        expanded = Path(self.expand(self.paths.invocation_audit_jsonl, tokens)).expanduser()
+        if not expanded.is_absolute():
+            expanded = self.repo_root / expanded
+        return expanded.resolve()
 
     def resolve_stdio_paths(self, *, tokens: Mapping[str, str]) -> tuple[Optional[Path], Optional[Path]]:
         if not self.stdio_capture_enabled:
@@ -234,9 +240,13 @@ class LoggingConfig(BaseDomainConfig):
         err_t = self.paths.stderr_template
         if not out_t or not err_t:
             return (None, None)
-        stdout_path = (self.repo_root / self.expand(out_t, tokens)).resolve()
-        stderr_path = (self.repo_root / self.expand(err_t, tokens)).resolve()
-        return (stdout_path, stderr_path)
+        stdout_path = Path(self.expand(out_t, tokens)).expanduser()
+        if not stdout_path.is_absolute():
+            stdout_path = self.repo_root / stdout_path
+        stderr_path = Path(self.expand(err_t, tokens)).expanduser()
+        if not stderr_path.is_absolute():
+            stderr_path = self.repo_root / stderr_path
+        return (stdout_path.resolve(), stderr_path.resolve())
 
     def resolve_stdlib_log_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
         if not self.stdlib_enabled:
@@ -245,7 +255,10 @@ class LoggingConfig(BaseDomainConfig):
             return None
         if not tokens.get("invocation_id"):
             return None
-        return (self.repo_root / self.expand(self.stdlib_path_template, tokens)).resolve()
+        expanded = Path(self.expand(self.stdlib_path_template, tokens)).expanduser()
+        if not expanded.is_absolute():
+            expanded = self.repo_root / expanded
+        return expanded.resolve()
 
 
 __all__ = ["LoggingConfig", "LoggingPaths"]

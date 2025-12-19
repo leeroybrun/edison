@@ -94,6 +94,7 @@ def main(args: argparse.Namespace) -> int:
                 qa_id,
                 status=status,
                 notes=args.note,
+                create_evidence_dir=False,
             )
 
             result = {

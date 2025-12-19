@@ -1,6 +1,6 @@
 packs:
   enabled: true
-  directory: ".edison/packs"
+  directory: "{PROJECT_CONFIG_DIR}/packs"
   composition:
     # How Edison combines multiple packs' config
     strategy: deep-merge

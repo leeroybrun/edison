@@ -12,7 +12,7 @@ overlay_type: extend
 
 ```bash
 # Run type check (MANDATORY)
-{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
+{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
 ```
 
 **Validation Points:**
@@ -26,7 +26,7 @@ overlay_type: extend
 
 ```bash
 # Run linter (MANDATORY)
-{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
+{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
 ```
 
 **Validation Points:**
@@ -39,7 +39,7 @@ overlay_type: extend
 
 ```bash
 # Run tests (MANDATORY)
-{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
+{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
 ```
 
 **Validation Points:**
@@ -52,7 +52,7 @@ overlay_type: extend
 
 ```bash
 # Build check (if applicable)
-{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1 || echo "No build configured"
+{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1 || echo "No build configured"
 ```
 
 <!-- /extend -->
@@ -65,7 +65,7 @@ overlay_type: extend
 
 **Commands:**
 ```bash
-{{function:ci_command("type-check")}}
+{{fn:ci_command("type-check")}}
 ```
 
 **Must Pass:**
@@ -85,7 +85,7 @@ overlay_type: extend
 
 **Commands:**
 ```bash
-{{function:ci_command("test")}}
+{{fn:ci_command("test")}}
 ```
 
 **Must Pass:**
@@ -103,8 +103,8 @@ overlay_type: extend
 
 **Commands:**
 ```bash
-{{function:ci_command("lint")}}
-{{function:ci_command("format-check")}}
+{{fn:ci_command("lint")}}
+{{fn:ci_command("format-check")}}
 ```
 
 **Must Pass:**

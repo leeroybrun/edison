@@ -2,4 +2,6 @@
 # Settings for multi-agent orchestration
 
 orchestration:
-  maxConcurrentAgents: 4
+  # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
+  # Default is false for safety and determinism; projects may override.
+  allowCliEngines: false

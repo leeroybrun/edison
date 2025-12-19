@@ -83,7 +83,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _ensure_structure(project_root: Path) -> Path:
-    """Create base .edison structure and return config root."""
+    """Create base `<project-config-dir>/` structure and return config root."""
     config_root = get_project_config_dir(project_root)
 
     for rel in ["config", "guidelines", "_generated", "constitutions", "scripts/zen"]:
@@ -100,7 +100,7 @@ def _ensure_structure(project_root: Path) -> Path:
 
 
 def _copy_mcp_scripts(config_root: Path) -> None:
-    """Place bundled MCP helper scripts under .edison/scripts/zen for shell mode."""
+    """Place bundled MCP helper scripts under `<project-config-dir>/scripts/zen` for shell mode."""
     dest_dir = config_root / "scripts" / "zen"
     src_dir_candidates = [
         Path(__file__).resolve().parents[4] / "scripts" / "zen",

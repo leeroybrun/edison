@@ -2,11 +2,11 @@ Edison Packs (v2)
 
 Purpose
 - Encapsulate tech‑stack knowledge (validators, guidelines, examples)
-- Keep Edison core generic; project rules live in `.edison/`
+- Keep Edison core generic; project rules live in `<project-config-dir>/`
 
 Layout
 ```
-.edison/packs/
+<project-config-dir>/packs/
   _template/
     pack.yml                 # required manifest
     validators/
@@ -28,8 +28,8 @@ Layout
 Unified Naming Convention
 - Directory provides context - no suffixes needed
 - Core templates: `{{PROJECT_EDISON_DIR}}/_generated/<type>/<name>.md`
-- Pack overlays: `.edison/packs/<pack>/<type>/overlays/<name>.md`
-- Project overlays: `.edison/<type>/overlays/<name>.md`
+- Pack overlays: `<project-config-dir>/packs/<pack>/<type>/overlays/<name>.md`
+- Project overlays: `<project-config-dir>/<type>/overlays/<name>.md`
 
 pack.yml (schema: `{{PROJECT_EDISON_DIR}}/_generated/schemas/config/pack.schema.yaml`)
 ```yaml

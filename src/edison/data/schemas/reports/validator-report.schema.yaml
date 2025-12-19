@@ -20,7 +20,7 @@ properties:
     description: Validation round number (starts at 1, increments on revalidation)
   validatorId:
     type: string
-    description: Validator identifier from .edison/config/validators.yaml (e.g., 'codex-global',
+    description: Validator identifier from <project-config-dir>/config/validators.yaml (e.g., 'codex-global',
       'security', 'ui')
   model:
     type: string

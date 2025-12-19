@@ -638,7 +638,8 @@ def clear_session_locks(session_id: str) -> List[str]:
         logger.warning("Failed to resolve project root: %s", e)
         return []
 
-    lock_dir = root / ".project" / "locks"
+    from edison.core.utils.paths import get_management_paths
+    lock_dir = get_management_paths(root).get_management_root() / "locks"
     if not lock_dir.exists():
         return []
 
@@ -673,7 +674,8 @@ def clear_all_locks(force: bool = False, stale_threshold_hours: float = 1.0) -> 
         logger.warning("Failed to resolve project root: %s", e)
         return []
 
-    lock_dir = root / ".project" / "locks"
+    from edison.core.utils.paths import get_management_paths
+    lock_dir = get_management_paths(root).get_management_root() / "locks"
     if not lock_dir.exists():
         return []
 

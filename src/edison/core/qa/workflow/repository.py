@@ -293,7 +293,7 @@ class QARepository(
         qa_id: str,
         status: str,
         notes: Optional[str] = None,
-        create_evidence_dir: bool = True,
+        create_evidence_dir: bool = False,
     ) -> QARecord:
         """Append a new round to a QA record.
 
@@ -333,8 +333,12 @@ class QARepository(
             ev_current = int(ev_svc.get_current_round() or 0)
             base = max(int(qa.round or 0), ev_current)
             next_round = base + 1
-            ev_svc.ensure_round(base or 1)
-            ev_svc.ensure_round(next_round)
+            # Ensure evidence directories exist sequentially. We may have QA round history
+            # without evidence (e.g., `edison qa round` appends rounds without `--new`).
+            # EvidenceService does not allow skipping (cannot create round-2 without round-1),
+            # so we backfill the missing directories up to the next round.
+            for rn in range(1, next_round + 1):
+                ev_svc.ensure_round(rn)
             qa.round = int(next_round)
         else:
             # Increment round number (append semantics) when evidence is managed elsewhere.

@@ -391,6 +391,11 @@ class ConfigManager:
             # Cross-key compatibility and canonicalization (kept minimal).
             self._apply_compat_shims(cfg)
 
+            # Expand runtime config tokens (single-brace `{PROJECT_*}` only).
+            # This must run after all layering and compatibility shims so tokens
+            # can reference canonicalized config values.
+            self._apply_token_interpolation(cfg)
+
             if validate:
                 with span("config.load_config.validate"):
                     self.validate_schema(cfg, "config/config.schema.yaml")
@@ -490,6 +495,18 @@ class ConfigManager:
         cfg["quality"] = quality
         cfg["tdd"] = tdd
 
+    def _apply_token_interpolation(self, cfg: Dict[str, Any]) -> None:
+        """Expand runtime config `{TOKEN}` placeholders throughout merged config.
+
+        Edison composition templates use `{{...}}` and MUST NOT be mutated by
+        config interpolation. The interpolation implementation only expands
+        single-brace tokens via `edison.core.config.tokens`.
+        """
+        from edison.core.config.tokens import build_tokens, interpolate
+
+        tokens = build_tokens(self.repo_root, cfg)
+        interpolate(cfg, tokens)
+
     def load_config(
         self, validate: bool = True, include_packs: bool = True
     ) -> Dict[str, Any]:
@@ -502,7 +519,33 @@ class ConfigManager:
         - `validate=True` will validate the (cached) config before returning.
         - Returned dict should be treated as immutable.
         """
-        cfg = get_cached_config(repo_root=self.repo_root, validate=False, include_packs=include_packs)
+        # When callers monkeypatch ConfigManager's directory attributes (common in
+        # tests), the global cache cannot safely be reused because it would ignore
+        # those overrides (cache loads via a fresh ConfigManager instance).
+        #
+        # Default behaviour remains centrally cached for production.
+        try:
+            from edison.data import get_data_path
+            from edison.core.utils.paths import get_project_config_dir
+
+            project_root_dir = get_project_config_dir(self.repo_root, create=False)
+            defaults = {
+                "core_config_dir": get_data_path("config"),
+                "bundled_packs_dir": get_data_path("packs"),
+                "schemas_dir": get_data_path("schemas"),
+                "project_config_dir": project_root_dir / "config",
+                "project_packs_dir": project_root_dir / "packs",
+            }
+            overridden = any(
+                getattr(self, key) != val for key, val in defaults.items()  # type: ignore[arg-type]
+            )
+        except Exception:
+            overridden = False
+
+        if overridden:
+            cfg = self._load_config_uncached(validate=False, include_packs=include_packs)
+        else:
+            cfg = get_cached_config(repo_root=self.repo_root, validate=False, include_packs=include_packs)
         if validate:
             # Fail-closed: strict parsing of env override paths when validate=True,
             # even if the base config dict came from cache.

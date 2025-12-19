@@ -13,16 +13,10 @@ from jsonschema import ValidationError
 
 from ..base import BaseDomainConfig
 from edison.core.utils.time import utc_timestamp
+from edison.core.config.templating import SafeDict
 
 if TYPE_CHECKING:
     from ..manager import ConfigManager
-
-
-class _SafeDict(dict):
-    """dict that preserves unknown placeholders instead of raising."""
-
-    def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
-        return "{" + key + "}"
 
 
 class OrchestratorConfig(BaseDomainConfig):
@@ -116,12 +110,22 @@ class OrchestratorConfig(BaseDomainConfig):
 
     # --- Internal helpers -----------------------------------------------
     def _build_tokens(self, context: Mapping[str, Any]) -> Dict[str, str]:
+        from edison.core.config.tokens import build_tokens
+
+        std = build_tokens(self.repo_root, self._config)
         tokens: Dict[str, Any] = {
             "project_root": context.get("project_root") or str(self.repo_root),
             "session_worktree": context.get("session_worktree"),
             "session_id": context.get("session_id"),
             "timestamp": context.get("timestamp"),
             "shortid": context.get("shortid"),
+            # Uppercase aliases for config-driven paths
+            **std,
+            # Lowercase aliases for convenience in orchestrator configs
+            "project_config_dir": std.get("PROJECT_CONFIG_DIR"),
+            "project_management_dir": std.get("PROJECT_MANAGEMENT_DIR"),
+            "project_config_path": std.get("PROJECT_CONFIG_PATH"),
+            "project_management_path": std.get("PROJECT_MANAGEMENT_PATH"),
         }
 
         if not tokens.get("timestamp"):
@@ -135,7 +139,7 @@ class OrchestratorConfig(BaseDomainConfig):
 
     def _expand(self, value: Any, tokens: Mapping[str, str]) -> Any:
         if isinstance(value, str):
-            return value.format_map(_SafeDict(tokens))
+            return value.format_map(SafeDict(tokens))
         if isinstance(value, list):
             return [self._expand(v, tokens) for v in value]
         if isinstance(value, dict):
@@ -148,5 +152,3 @@ class OrchestratorConfig(BaseDomainConfig):
 
 
 __all__ = ["OrchestratorConfig"]
-
-

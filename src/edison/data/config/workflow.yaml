@@ -183,7 +183,7 @@ workflow:
               guard: can_validate_qa
               conditions:
                 - name: has_bundle_approval
-                  error: "Bundle approval required (bundle-approved.md)"
+                  error: "Bundle approval required ({BUNDLE_SUMMARY_FILE})"
                 - name: has_all_waves_passed
                   error: "All validator waves must pass in order"
               rules: [RULE.VALIDATION.BUNDLE_APPROVED_MARKER]

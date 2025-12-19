@@ -12,8 +12,7 @@ behaviour aligned with that script whenever changes are made here.
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 try:  # Optional dependency
     import psutil  # type: ignore
@@ -22,65 +21,42 @@ try:  # Optional dependency
 except ImportError:  # pragma: no cover - handled at runtime
     HAS_PSUTIL = False
 
-DEFAULT_LLM_NAMES = ["claude", "codex", "gemini", "cursor", "aider", "happy"]
-DEFAULT_EDISON_NAMES = ["edison", "python"]  # python when running Edison scripts
-DEFAULT_EDISON_MARKERS = [
-    "edison",
-    ".edison",
-]
-
-_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "process.yaml"
-
-
-def _load_config() -> Dict[str, object]:
-    """Load process inspection config from YAML if present.
-
-    Returns an empty dict if the file is missing or unreadable. YAML parsing
-    failures are swallowed to keep process inference best-effort.
-    """
-    if not _CONFIG_PATH.exists():
-        return {}
-
-    try:
-        from edison.core.utils.io import read_yaml
-
-        data = read_yaml(_CONFIG_PATH, default={})
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
-
-
 def _load_llm_process_names() -> List[str]:
     """Load LLM process names from configuration with safe defaults."""
-    cfg = _load_config()
-    names = (
-        cfg.get("llm_processes")
-        if isinstance(cfg.get("llm_processes"), list)
-        else DEFAULT_LLM_NAMES
-    )
-    return [str(n).lower() for n in names if str(n).strip()]
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_processes()
+    except Exception:
+        return ["claude", "codex", "gemini", "cursor", "aider", "happy"]
 
 
 def _load_edison_process_names() -> List[str]:
     """Load Edison process names from configuration with safe defaults."""
-    cfg = _load_config()
-    names = (
-        cfg.get("edison_processes")
-        if isinstance(cfg.get("edison_processes"), list)
-        else DEFAULT_EDISON_NAMES
-    )
-    return [str(n).lower() for n in names if str(n).strip()]
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_edison_processes()
+    except Exception:
+        return ["edison", "python"]
 
 
 def _load_edison_script_markers() -> List[str]:
     """Load command-line markers that indicate Edison scripts."""
-    cfg = _load_config()
-    markers = (
-        cfg.get("edison_script_markers")
-        if isinstance(cfg.get("edison_script_markers"), list)
-        else DEFAULT_EDISON_MARKERS
-    )
-    return [str(m).lower() for m in markers if str(m).strip()]
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_edison_script_markers()
+    except Exception:
+        try:
+            from edison.core.utils.paths import PathResolver, get_project_config_dir
+
+            return ["edison", get_project_config_dir(PathResolver.resolve_project_root(), create=False).name.lower()]
+        except Exception:
+            return ["edison", ".edison"]
 
 
 def _is_edison_script(cmdline: List[str]) -> bool:
@@ -222,7 +198,5 @@ __all__ = [
     "infer_session_id",
     "get_current_owner",
 ]
-
-
 
 

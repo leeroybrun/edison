@@ -36,8 +36,18 @@ def _resolve_project_root_lightweight() -> Path | None:
     cwd = Path.cwd()
     
     # Look for project management directories as markers
+    project_config_dir_name = (
+        os.environ.get("EDISON_paths__project_config_dir")
+        or os.environ.get("EDISON_paths__config_dir")
+        or ".edison"
+    )
+    project_management_dir_name = (
+        os.environ.get("EDISON_project_management_dir")
+        or os.environ.get("EDISON_paths__management_dir")
+        or ".project"
+    )
     for parent in [cwd, *cwd.parents]:
-        if (parent / ".edison").exists() or (parent / ".project").exists():
+        if (parent / project_config_dir_name).exists() or (parent / project_management_dir_name).exists():
             return parent
     
     return None
