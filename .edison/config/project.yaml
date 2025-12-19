@@ -1,0 +1,10 @@
+# Edison Project Configuration (Project Metadata)
+
+project:
+  name: edison
+  description: "AI-automated project management and software development framework"
+  language: python
+  pythonVersion: "3.12"
+  sourceDir: "src/edison"
+  testsDir: "tests"
+

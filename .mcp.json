@@ -9,11 +9,7 @@
       "env": {}
     },
     "edison-zen": {
-      "args": [
-        "--from",
-        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
-        "zen-mcp-server"
-      ],
+      "args": [],
       "command": "./scripts/zen/run-server.sh",
       "env": {
         "ZEN_WORKING_DIR": "/Users/leeroy/Documents/Development/edison"

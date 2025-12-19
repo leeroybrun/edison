@@ -2,18 +2,8 @@
 # Overrides for validators when developing Edison itself
 
 validation:
-  # Python-specific evidence files (override TypeScript defaults)
-  requiredEvidenceFiles:
-    - command-type-check.txt    # mypy output
-    - command-lint.txt          # ruff output
-    - command-test.txt          # pytest output
-    - command-build.txt         # python -m build output
-
-  # Validation execution settings
   execution:
-    mode: parallel
-    concurrency: 4
-    timeout: 600  # Longer timeout for full test suite
+    timeout: 600  # 10 minutes for full test suite
 
   # Edison-specific validator roster additions
   roster:
@@ -45,7 +35,7 @@ validation:
         specFile: specialized/edison.md
         triggers:
           - "src/edison/**/*.py"
-          - ".edison/**/*"
+          - "{PROJECT_CONFIG_DIR}/**/*"
           - "src/edison/data/config/*.yaml"
         alwaysRun: true
         priority: 3

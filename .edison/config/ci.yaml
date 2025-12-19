@@ -1,0 +1,12 @@
+# Edison Project CI Commands (used by templates via {{function:ci_command(...)}})
+
+ci:
+  commands:
+    type-check: "mypy --strict src/"
+    lint: "ruff check src/ tests/"
+    format: "ruff format src/ tests/"
+    format-check: "ruff format --check src/ tests/"
+    test: "pytest tests/ -v --tb=short"
+    test-coverage: "pytest tests/ --cov=src --cov-report=term-missing"
+    build: "python -m build"
+
