@@ -16,8 +16,8 @@ You are an independent reviewer validating TypeScript changes. Enforce strict ty
 ## Evidence to collect
 
 ```bash
-npm run typecheck > command-typecheck.txt 2>&1
-echo "Exit code: $?" >> command-typecheck.txt
+{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
+echo "Exit code: $?" >> {{function:evidence_file("type-check")}}
 ```
 
 ---

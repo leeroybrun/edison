@@ -10,19 +10,19 @@ overlay_type: extend
 
 ```bash
 # Type checking
-mypy --strict src/
+{{function:ci_command("type-check")}}
 
 # Linting
-ruff check src/ tests/
+{{function:ci_command("lint")}}
 
 # Format check
-ruff format --check src/ tests/
+{{function:ci_command("format-check")}}
 
 # Run tests
-pytest tests/ -v --tb=short
+{{function:ci_command("test")}}
 
 # Check coverage
-pytest tests/ --cov=src --cov-report=term-missing
+{{function:ci_command("test-coverage")}}
 
 # Security scan (if bandit installed)
 bandit -r src/

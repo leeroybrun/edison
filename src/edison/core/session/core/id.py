@@ -131,7 +131,10 @@ def detect_session_id(
 
     # Priority 3: Worktree session file (exists+valid+points to existing session)
     try:
-        session_file = (root / ".project" / ".session-id").resolve()
+        from edison.core.utils.paths import get_management_paths
+
+        mgmt = get_management_paths(root)
+        session_file = (mgmt.get_management_root() / ".session-id").resolve()
         if session_file.exists():
             raw = session_file.read_text(encoding="utf-8").strip()
             if raw:

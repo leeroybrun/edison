@@ -5,8 +5,9 @@
 # Blocking: NO (always exit 0)
 
 # Fast check: Skip if no Edison session file exists
-# Edison creates .project/.session-id when a session is active
-SESSION_FILE=".project/.session-id"
+# Edison creates {project_management_dir}/.session-id when a session is active
+{% set mgmt_dir = global_config.get("project_management_dir") %}
+SESSION_FILE="{{ mgmt_dir }}/.session-id"
 if [[ ! -f "$SESSION_FILE" ]]; then
   exit 0  # No Edison session, skip hook
 fi

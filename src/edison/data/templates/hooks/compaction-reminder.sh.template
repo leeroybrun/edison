@@ -7,7 +7,8 @@
 # It reminds the agent to re-read its constitution after compaction completes.
 
 # Fast check: Skip if no Edison session file exists
-SESSION_FILE=".project/.session-id"
+{% set mgmt_dir = global_config.get("project_management_dir") %}
+SESSION_FILE="{{ mgmt_dir }}/.session-id"
 if [[ ! -f "$SESSION_FILE" ]]; then
   exit 0  # No Edison session, skip hook
 fi
@@ -31,7 +32,8 @@ _edison_audit_event() {
 
 # Configuration from hooks.yaml
 ROLE="{{ cfg.get('default_role', 'agents') }}"
-MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution at: .edison/_generated/constitutions/{ROLE}.md') }}"
+{% set project_cfg_dir = global_config.get("paths", {}).get("project_config_dir", ".edison") %}
+MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution at: ' ~ project_cfg_dir ~ '/_generated/constitutions/{ROLE}.md') }}"
 NOTIFY="{{ cfg.get('notify', True) }}"
 
 # Expand {ROLE} placeholder in message template

@@ -120,7 +120,7 @@ Improve code quality while keeping tests passing.
 - RED failure documented → GREEN pass documented → REFACTOR documented
 - Attach test output showing the failing run and the passing run
 - Include a coverage report for the round
-- Store evidence in the task round evidence directory using the **config-driven filenames** (e.g. `command-test.txt`, `coverage-*.txt` when configured)
+- Store evidence in the task round evidence directory using the **config-driven filenames** (e.g. `{{function:evidence_file("test")}}`, `coverage-*.txt` when configured)
 - If TDD must be skipped, record the rationale in the implementation report + QA brief and create a follow-up task to add the missing tests; do not silently skip
 
 ### What NOT To Do

@@ -68,16 +68,16 @@ Validators should run domain-specific verification commands and save output to e
 
 ```bash
 # Type checking
-{{function:ci_command("type-check")}} > command-type-check.txt 2>&1
+{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
 
 # Linting
-{{function:ci_command("lint")}} > command-lint.txt 2>&1
+{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
 
 # Testing
-{{function:ci_command("test")}} > command-test.txt 2>&1
+{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
 
 # Build
-{{function:ci_command("build")}} > command-build.txt 2>&1
+{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1
 ```
 
 **All evidence files must be created BEFORE validation begins.**

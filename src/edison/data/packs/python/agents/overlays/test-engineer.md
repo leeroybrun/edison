@@ -10,10 +10,10 @@ overlay_type: extend
 
 ```bash
 # Run all tests
-pytest tests/ -v --tb=short
+{{function:ci_command("test")}}
 
 # Run with coverage
-pytest tests/ --cov=src --cov-report=term-missing
+{{function:ci_command("test-coverage")}}
 
 # Run specific test file
 pytest tests/unit/test_module.py -v

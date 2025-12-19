@@ -427,6 +427,47 @@ class ConfigManager:
             packs["active"] = [str(p) for p in packs_enabled if p]
         cfg["packs"] = packs
 
+        # Validation execution defaults: keep `validation.execution.*` consistent with
+        # `orchestration.*` settings used by runtime QA workflows.
+        #
+        # Canonical runtime keys:
+        # - orchestration.maxConcurrentAgents
+        # - orchestration.validatorTimeout
+        # - orchestration.executionMode
+        #
+        # Canonical documentation/config keys (historical):
+        # - validation.execution.concurrency
+        # - validation.execution.timeout
+        # - validation.execution.mode
+        orchestration = cfg.get("orchestration") if isinstance(cfg.get("orchestration"), dict) else {}
+        validation = cfg.get("validation") if isinstance(cfg.get("validation"), dict) else {}
+        execution = validation.get("execution") if isinstance(validation.get("execution"), dict) else {}
+
+        orch_concurrency = orchestration.get("maxConcurrentAgents")
+        exec_concurrency = execution.get("concurrency")
+        if orch_concurrency is not None:
+            execution["concurrency"] = int(orch_concurrency)
+        elif exec_concurrency is not None:
+            orchestration["maxConcurrentAgents"] = int(exec_concurrency)
+
+        orch_timeout = orchestration.get("validatorTimeout")
+        exec_timeout = execution.get("timeout")
+        if orch_timeout is not None:
+            execution["timeout"] = int(orch_timeout)
+        elif exec_timeout is not None:
+            orchestration["validatorTimeout"] = int(exec_timeout)
+
+        orch_mode = orchestration.get("executionMode")
+        exec_mode = execution.get("mode")
+        if orch_mode is not None:
+            execution["mode"] = str(orch_mode)
+        elif exec_mode is not None:
+            orchestration["executionMode"] = str(exec_mode)
+
+        validation["execution"] = execution
+        cfg["validation"] = validation
+        cfg["orchestration"] = orchestration
+
         # Coverage thresholds: canonical is quality.coverage.overall/changed.
         # Backward-compatible alias: tdd.coverage_threshold.
         tdd = cfg.get("tdd") if isinstance(cfg.get("tdd"), dict) else {}

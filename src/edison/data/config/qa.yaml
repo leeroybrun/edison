@@ -32,6 +32,13 @@ validation:
       - "context7-*.md"
       - "context7-*.txt"
       - "validator-*-report.md"
+    # Canonical mapping for evidence filenames referenced in prompts/guides.
+    # Templates should prefer {{function:evidence_file("<name>")}} over literals.
+    files:
+      type-check: "command-type-check.txt"
+      lint: "command-lint.txt"
+      test: "command-test.txt"
+      build: "command-build.txt"
 
   # Policy cap for QA re-validation loops. Tools may use this to guide UX and
   # enforce limits in future guardrails.
@@ -47,8 +54,6 @@ validation:
 
 orchestration:
   # Maximum concurrent validator agents
-  maxConcurrentAgents: 4
-
   # Per-validator timeout (seconds)
   validatorTimeout: 300
 

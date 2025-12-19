@@ -62,6 +62,33 @@ def test_detect_session_id_uses_session_id_file_when_present(
     assert PathResolver.detect_session_id(owner="nonexistent") == "sess-file-001"
 
 
+def test_detect_session_id_uses_configured_management_dir_for_session_file(
+    isolated_project_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Session file lookup must follow configured management_dir, not hardcoded .project."""
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.utils.paths.resolver import PathResolver
+
+    # Ensure env doesn't mask file lookup.
+    monkeypatch.delenv("AGENTS_SESSION", raising=False)
+
+    repo = SessionRepository(project_root=isolated_project_env)
+    repo.create(Session.create("sess-file-003", owner="tester", state="active"))
+
+    # Configure a custom management dir.
+    edison_dir = isolated_project_env / ".edison"
+    edison_dir.mkdir(exist_ok=True)
+    (edison_dir / "config.yml").write_text("management_dir: .custom_mgmt\n", encoding="utf-8")
+
+    session_id_file = isolated_project_env / ".custom_mgmt" / ".session-id"
+    session_id_file.parent.mkdir(parents=True, exist_ok=True)
+    session_id_file.write_text("sess-file-003\n", encoding="utf-8")
+
+    assert PathResolver.detect_session_id(owner="nonexistent") == "sess-file-003"
+
+
 def test_detect_session_id_prefers_env_over_session_id_file(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,

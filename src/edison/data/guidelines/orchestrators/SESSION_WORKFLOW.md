@@ -290,7 +290,7 @@ Parent tasks MUST NOT move to `done/` until every child task in the session scop
 
 ### 3.3. Launch Validators (DELEGATED)
 
-**Launch validators in parallel waves up to concurrency cap (`validation.execution.concurrency` = {{config.validation.execution.concurrency}}):**
+**Launch validators in parallel waves up to concurrency cap (`orchestration.maxConcurrentAgents` = {{config.orchestration.maxConcurrentAgents}}):**
 
 #### Wave 1: Global Validators (MANDATORY, BLOCKING)
 

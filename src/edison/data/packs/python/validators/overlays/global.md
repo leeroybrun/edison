@@ -12,7 +12,7 @@ overlay_type: extend
 
 ```bash
 # Run type check (MANDATORY)
-mypy --strict src/ > command-type-check.txt 2>&1
+{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
 ```
 
 **Validation Points:**
@@ -26,7 +26,7 @@ mypy --strict src/ > command-type-check.txt 2>&1
 
 ```bash
 # Run linter (MANDATORY)
-ruff check src/ tests/ > command-lint.txt 2>&1
+{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
 ```
 
 **Validation Points:**
@@ -39,7 +39,7 @@ ruff check src/ tests/ > command-lint.txt 2>&1
 
 ```bash
 # Run tests (MANDATORY)
-pytest tests/ -v --tb=short > command-test.txt 2>&1
+{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
 ```
 
 **Validation Points:**
@@ -52,7 +52,7 @@ pytest tests/ -v --tb=short > command-test.txt 2>&1
 
 ```bash
 # Build check (if applicable)
-python -m build > command-build.txt 2>&1 || echo "No build configured"
+{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1 || echo "No build configured"
 ```
 
 <!-- /extend -->
@@ -65,7 +65,7 @@ python -m build > command-build.txt 2>&1 || echo "No build configured"
 
 **Commands:**
 ```bash
-mypy --strict src/
+{{function:ci_command("type-check")}}
 ```
 
 **Must Pass:**
@@ -85,7 +85,7 @@ mypy --strict src/
 
 **Commands:**
 ```bash
-pytest tests/ -v
+{{function:ci_command("test")}}
 ```
 
 **Must Pass:**
@@ -103,8 +103,8 @@ pytest tests/ -v
 
 **Commands:**
 ```bash
-ruff check src/ tests/
-ruff format --check src/ tests/
+{{function:ci_command("lint")}}
+{{function:ci_command("format-check")}}
 ```
 
 **Must Pass:**

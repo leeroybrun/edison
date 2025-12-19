@@ -6,7 +6,10 @@ ci:
   commands:
     type-check: "<type-check-command>"
     lint: "<lint-command>"
+    format: "<format-command>"
+    format-check: "<format-check-command>"
     test: "<test-command>"
+    test-coverage: "<test-coverage-command>"
     build: "<build-command>"
     dev: "<dev-command>"
     dependency-audit: "<dependency-audit-command>"

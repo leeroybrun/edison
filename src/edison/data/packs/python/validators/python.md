@@ -27,19 +27,19 @@ Run validation commands and collect output:
 
 ```bash
 # Type checking (MANDATORY)
-mypy --strict src/ > command-type-check.txt 2>&1
-echo "Exit code: $?" >> command-type-check.txt
+{{function:ci_command("type-check")}} > {{function:evidence_file("type-check")}} 2>&1
+echo "Exit code: $?" >> {{function:evidence_file("type-check")}}
 
 # Linting (MANDATORY)
-ruff check src/ tests/ > command-lint.txt 2>&1
-echo "Exit code: $?" >> command-lint.txt
+{{function:ci_command("lint")}} > {{function:evidence_file("lint")}} 2>&1
+echo "Exit code: $?" >> {{function:evidence_file("lint")}}
 
 # Testing (MANDATORY)
-pytest tests/ -v --tb=short > command-test.txt 2>&1
-echo "Exit code: $?" >> command-test.txt
+{{function:ci_command("test")}} > {{function:evidence_file("test")}} 2>&1
+echo "Exit code: $?" >> {{function:evidence_file("test")}}
 
 # Build check (if applicable)
-python -m build > command-build.txt 2>&1 || echo "No build configured"
+{{function:ci_command("build")}} > {{function:evidence_file("build")}} 2>&1 || echo "No build configured"
 ```
 
 ### Step 2: Review Git Diff
@@ -66,7 +66,7 @@ git diff           # Unstaged changes
 - `from __future__ import annotations` used for forward refs
 - mypy --strict passes with 0 errors
 
-**Evidence Required**: `command-type-check.txt`
+**Evidence Required**: `{{function:evidence_file("type-check")}}`
 
 **Output**:
 ```
@@ -89,7 +89,7 @@ FAIL: mypy --strict: [N] errors
 - Edge cases covered via parametrize
 - Fixtures use real files/data (tmp_path, etc.)
 
-**Evidence Required**: `command-test.txt`
+**Evidence Required**: `{{function:evidence_file("test")}}`
 
 **Output**:
 ```
@@ -114,7 +114,7 @@ FAIL: Mock usage detected (violates NO MOCKS rule)
 - Docstrings on public APIs
 - Consistent naming conventions (snake_case)
 
-**Evidence Required**: `command-lint.txt`
+**Evidence Required**: `{{function:evidence_file("lint")}}`
 
 **Output**:
 ```

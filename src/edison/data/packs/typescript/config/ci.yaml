@@ -1,0 +1,11 @@
+# TypeScript pack CI command defaults
+#
+# Projects may override any command via `.edison/config/ci.yaml`.
+
+ci:
+  commands:
+    type-check: "npm run typecheck"
+    lint: "npm run lint"
+    test: "npm test"
+    build: "npm run build"
+

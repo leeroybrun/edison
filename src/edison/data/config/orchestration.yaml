@@ -2,4 +2,4 @@
 # Settings for multi-agent orchestration
 
 orchestration:
-  maxConcurrentAgents: 5
+  maxConcurrentAgents: 4

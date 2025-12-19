@@ -44,8 +44,8 @@ blockers:
     owner: "user"
 tddCompliance:
   followed: true
-  redEvidence: "command-test.txt"
-  greenEvidence: "command-test.txt"
+  redEvidence: "{{function:evidence_file(\"test\")}}"
+  greenEvidence: "{{function:evidence_file(\"test\")}}"
   notes: ""
 tracking:
   processId: 12345

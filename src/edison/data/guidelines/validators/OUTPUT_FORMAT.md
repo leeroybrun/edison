@@ -115,7 +115,7 @@ Markdown table with validation tool results:
 - **Command**: Exact command executed
 - **Status**: ✅ PASS, ❌ FAIL, or N/A
 
-Reference evidence files: command-test.txt, command-lint.txt, etc.
+Reference evidence files: {{function:required_evidence_files("inline")}}.
 
 ### 4. Validation Results
 Numbered checks with status indicators (✅ PASS | ⚠️ WARNING | ❌ FAIL)

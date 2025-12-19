@@ -15,6 +15,8 @@ from edison.data import get_data_path
 def render_hook(template_name: str, **context) -> str:
     template_path = get_data_path("templates", f"hooks/{template_name}")
     template = Template(template_path.read_text())
+    # Hook templates expect HookComposer-style context, including global_config.
+    context.setdefault("global_config", {"project_management_dir": ".project"})
     return template.render(**context)
 
 
