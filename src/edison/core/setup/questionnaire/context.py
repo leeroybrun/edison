@@ -50,14 +50,18 @@ def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
     coverage_threshold = context.get("coverage_threshold", 0) or 0
     return {
         "paths": {
-            "config_dir": DEFAULT_PROJECT_CONFIG_PRIMARY,
-            "management_dir": context.get("project_management_dir", ".project"),
+            # Canonical key used by config loader bootstrap.
+            "project_config_dir": context.get("project_config_dir", DEFAULT_PROJECT_CONFIG_PRIMARY),
         },
+        # Management root is resolved by ProjectManagementPaths (supports legacy aliases).
+        "project_management_dir": context.get("project_management_dir", ".project"),
         "project": {
             "name": context.get("project_name", ""),
             "type": context.get("project_type", ""),
             "tech_stack": context.get("tech_stack") or [],
-            "packs": context.get("packs") or [],
+        },
+        "packs": {
+            "active": context.get("packs") or [],
         },
         "database": context.get("database", ""),
         "auth": {"provider": context.get("auth_provider", "")},

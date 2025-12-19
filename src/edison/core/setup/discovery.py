@@ -88,6 +88,10 @@ class SetupDiscovery:
         ids: List[str] = []
         ids.extend(self._extract_ids_from_data(config.get("validation", {})))
 
+        # Discovery should list ALL available IDs across sources, not only the
+        # final merged value (project overrides may replace lists from packs).
+        ids.extend(self._extract_validator_ids_from_pack_configs(packs))
+
         return self._dedupe(ids)
 
     def discover_agents(self, packs: List[str]) -> List[str]:
@@ -101,6 +105,10 @@ class SetupDiscovery:
         # Extract IDs from merged config
         config = self._cfg_mgr.load_config(validate=False, include_packs=True)
         ids.extend(self._extract_ids_from_data(config.get("agents", {})))
+
+        # Include pack-defined agent IDs even when project config overrides the
+        # same key with replace semantics.
+        ids.extend(self._extract_agent_ids_from_pack_configs(packs))
 
         # Discover from bundled agents directory
         bundled_agents_dir = Path(get_data_path("agents"))
@@ -209,6 +217,33 @@ class SetupDiscovery:
                     walk(item)
 
         walk(data)
+        return ids
+
+    def _iter_pack_overlay_configs(self, packs: List[str], filenames: List[str]) -> List[Path]:
+        """Return candidate config overlay paths for selected packs (bundled + project)."""
+        paths: List[Path] = []
+        for pack in packs or []:
+            for base in (self.bundled_packs_dir, self.project_packs_dir):
+                for name in filenames:
+                    p = base / pack / "config" / name
+                    if p.exists():
+                        paths.append(p)
+        return paths
+
+    def _extract_validator_ids_from_pack_configs(self, packs: List[str]) -> List[str]:
+        """Extract validator roster IDs from selected pack config overlays."""
+        ids: List[str] = []
+        for path in self._iter_pack_overlay_configs(packs, ["validators.yml", "validators.yaml"]):
+            data = self._load_yaml(path)
+            ids.extend(self._extract_ids_from_data(data.get("validation", {})))
+        return ids
+
+    def _extract_agent_ids_from_pack_configs(self, packs: List[str]) -> List[str]:
+        """Extract agent IDs from selected pack config overlays."""
+        ids: List[str] = []
+        for path in self._iter_pack_overlay_configs(packs, ["agents.yml", "agents.yaml"]):
+            data = self._load_yaml(path)
+            ids.extend(self._extract_ids_from_data(data.get("agents", {})))
         return ids
 
     def _dedupe(self, items: List[str]) -> List[str]:

@@ -46,7 +46,17 @@ properties:
         type: string
         description: Preferred project configuration directory name (e.g., .edison).
         default: .edison
+      config_dir:
+        type: string
+        description: Legacy alias for paths.project_config_dir.
+      management_dir:
+        type: string
+        description: Legacy alias for project_management_dir (project management root, e.g. .project).
     additionalProperties: false
+  project_management_dir:
+    type: string
+    description: Project management root directory (e.g., .project).
+    default: .project
   project:
     type: object
     required:
@@ -101,7 +111,16 @@ properties:
         type: object
         additionalProperties:
           type: string
-    additionalProperties: false
+      type:
+        type: string
+        description: Optional project category (used for discovery/templating).
+      tech_stack:
+        type: array
+        description: Optional human-readable list of key technologies in this project.
+        items:
+          type: string
+        default: []
+    additionalProperties: true
   session:
     type: object
     properties:

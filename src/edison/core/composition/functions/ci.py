@@ -28,16 +28,5 @@ def ci_command(ctx: TransformContext, name: str, fallback: Optional[str] = None)
     blank, returns ``fallback``; if fallback is not provided, uses a reasonable
     placeholder string.
     """
-    default_fallbacks = {
-        "type-check": "<type-check-command>",
-        "lint": "<lint-command>",
-        "test": "<test-command>",
-        "build": "<build-command>",
-        "dev": "<dev-command>",
-        "dependency-audit": "<dependency-audit-command>",
-        "prisma-migrate": "<prisma-migrate-command>",
-    }
-    fallback_value = fallback if fallback is not None else default_fallbacks.get(
-        name, f"<{name}-command>"
-    )
+    fallback_value = fallback if fallback is not None else f"<{name}-command>"
     return _config_or(ctx, f"ci.commands.{name}", fallback_value)

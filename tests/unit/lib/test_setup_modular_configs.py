@@ -76,7 +76,7 @@ setup:
         # Verify packs.yml contains packs config
         packs = yaml.safe_load(configs["packs.yml"])
         assert "packs" in packs
-        assert "typescript" in packs["packs"]["enabled"]
+        assert "typescript" in packs["packs"]["active"]
 
         # Verify validators.yml contains validators
         validators = yaml.safe_load(configs["validators.yml"])
@@ -135,7 +135,7 @@ setup:
         # Empty sections should still be included (for users to fill in later)
         # but should have empty lists
         packs = yaml.safe_load(configs["packs.yml"])
-        assert packs["packs"]["enabled"] == []
+        assert packs["packs"]["active"] == []
 
         print("✓ Empty sections test passed")
 

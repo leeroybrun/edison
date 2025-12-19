@@ -91,7 +91,7 @@ def test_discover_validators_merges_core_and_packs(isolated_project_env: Path) -
     pack_path = repo / ".edison" / "packs" / "alpha" / "config" / "validators.yml"
     write_yaml(pack_path, pack_cfg)
     # Enable the pack so ConfigManager includes its config overlays.
-    write_yaml(repo / ".edison" / "config" / "packs.yml", {"packs": {"enabled": ["alpha"]}})
+    write_yaml(repo / ".edison" / "config" / "packs.yml", {"packs": {"active": ["alpha"]}})
     (repo / ".edison" / "packs" / "alpha").mkdir(parents=True, exist_ok=True)
     (repo / ".edison" / "packs" / "alpha" / "pack.yml").write_text(
         "name: alpha\nversion: 0.0.0\ndescription: alpha\n", encoding="utf-8"
@@ -110,6 +110,8 @@ def test_discover_agents_combines_sources(isolated_project_env: Path) -> None:
 
     pack_cfg = {"agents": [{"id": "pack-agent"}, {"id": "core-agent"}]}
     write_yaml(repo / ".edison" / "packs" / "alpha" / "config" / "agents.yml", pack_cfg)
+    # Enable the pack so ConfigManager includes its config overlays (for id extraction).
+    write_yaml(repo / ".edison" / "config" / "packs.yml", {"packs": {"active": ["alpha"]}})
     (repo / ".edison" / "packs" / "alpha").mkdir(parents=True, exist_ok=True)
     (repo / ".edison" / "packs" / "alpha" / "pack.yml").write_text(
         "name: alpha\nversion: 0.0.0\ndescription: alpha\n", encoding="utf-8"
@@ -138,4 +140,4 @@ def test_detect_project_type_uses_heuristics(isolated_project_env: Path) -> None
     (repo / "package.json").unlink()
     (repo / "Cargo.toml").write_text("[package]\nname='rusty'\n", encoding="utf-8")
     discovery = SetupDiscovery(repo / ".edison" / "config", repo)
-    assert discovery.detect_project_type() == "Rust Project"
+    assert discovery.detect_project_type() == "Other"

@@ -6,8 +6,8 @@
 - Do **not** create ad-hoc summary/report/status files.
 - Task + QA files under `.project/tasks/` and `.project/qa/` are the only approved tracking artifacts.
 - Track progress in tasks/QA and git history (do not create parallel documents):
-  - Task directories (`todo`, `wip`, `blocked`, `done`, `validated`) – implementation status + delegation logs.
-  - QA directories (`waiting`, `todo`, `wip`, `done`, `validated`) – validator assignments, findings, verdicts, evidence links.
+  - Task directories ({{fn:state_names("task")}}) – implementation status + delegation logs.
+  - QA directories ({{fn:state_names("qa")}}) – validator assignments, findings, verdicts, evidence links.
     - `qa/waiting/` = QA created, waiting for task to reach `done/`
     - `qa/todo/` = Ready to validate NOW (task is in `done/`)
   - Git history – commits tied to task IDs (mention ID in commit body when useful).

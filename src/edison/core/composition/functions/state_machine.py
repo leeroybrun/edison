@@ -21,6 +21,34 @@ def _get_domain_config(domain: str) -> dict[str, Any]:
     statemachine = wf_cfg._statemachine
     return statemachine.get(domain, {})
 
+def state_names(domain: str = "task", fmt: str = "inline") -> str:
+    """Return state names for a domain.
+
+    Args:
+        domain: One of 'task', 'qa', or 'session'
+        fmt: 'inline' (default), 'plain', or 'bullets'
+
+    Returns:
+        State names formatted for markdown.
+    """
+    domain_config = _get_domain_config(domain)
+    states_config = domain_config.get("states", {})
+
+    if isinstance(states_config, dict):
+        names = [str(k) for k in states_config.keys() if k]
+    elif isinstance(states_config, list):
+        names = [str(s) for s in states_config if s]
+    else:
+        names = []
+
+    if fmt == "plain":
+        return ", ".join(names)
+    if fmt == "bullets":
+        return "\n".join(f"- `{n}`" for n in names)
+    if fmt == "inline":
+        return ", ".join(f"`{n}`" for n in names)
+    raise ValueError(f"Unknown fmt: {fmt}")
+
 
 def task_states() -> str:
     """Return task states from config as markdown list.
@@ -164,7 +192,6 @@ def all_states_overview() -> str:
     result.append(session_states())
 
     return "\n".join(result)
-
 
 
 

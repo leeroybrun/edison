@@ -40,16 +40,18 @@ def render_modular_configs(
         "paths": config_dict.get("paths", {}),
         "project": config_dict.get("project", {}),
     }
+    if config_dict.get("project_management_dir"):
+        defaults_config["project_management_dir"] = config_dict["project_management_dir"]
     if config_dict.get("database"):
         defaults_config["database"] = config_dict["database"]
     if config_dict.get("auth"):
         defaults_config["auth"] = config_dict["auth"]
     configs["defaults.yml"] = dump_yaml_string(defaults_config, sort_keys=False)
 
-    # packs.yml - enabled packs and pack-specific config
+    # packs.yml - active packs and pack-specific config
     packs_config = {
         "packs": {
-            "enabled": config_dict.get("project", {}).get("packs", [])
+            "active": (config_dict.get("packs") or {}).get("active", [])
         }
     }
     if pack_configs:

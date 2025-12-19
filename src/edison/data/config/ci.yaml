@@ -1,0 +1,13 @@
+# CI Command Defaults (Technology-Agnostic)
+#
+# Projects should override these placeholders in `.edison/config/ci.yml` with
+# real commands for the active stack (or via pack overlays).
+ci:
+  commands:
+    type-check: "<type-check-command>"
+    lint: "<lint-command>"
+    test: "<test-command>"
+    build: "<build-command>"
+    dev: "<dev-command>"
+    dependency-audit: "<dependency-audit-command>"
+    prisma-migrate: "<prisma-migrate-command>"

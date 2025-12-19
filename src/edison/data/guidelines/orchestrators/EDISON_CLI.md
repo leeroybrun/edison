@@ -216,7 +216,7 @@ edison qa promote <task-id> --status <state>
 **Purpose**: Advance QA brief through validation states
 **When to use**: After validation passes, to promote QA state
 
-**States**: `waiting → todo → wip → done → validated`
+**States**: {{fn:state_names("qa")}}
 
 **Example:**
 ```bash

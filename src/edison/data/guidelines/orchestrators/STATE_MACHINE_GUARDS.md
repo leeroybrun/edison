@@ -4,8 +4,17 @@ This document defines the canonical task and QA state machines and how guards ar
 
 ## Domains and States
 
-- Task: `todo → wip ↔ blocked → done → validated` (reopen: `done → wip`, `wip → todo` allowed)
-- QA: `waiting → todo → wip → done → validated` (reopen: `done → wip`)
+### Task
+
+State names: {{fn:state_names("task")}}
+
+{{fn:state_diagram("task")}}
+
+### QA
+
+State names: {{fn:state_names("qa")}}
+
+{{fn:state_diagram("qa")}}
 
 The authoritative definition lives in `.edison/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
 
@@ -26,4 +35,3 @@ The authoritative definition lives in `.edison/_generated/STATE_MACHINE.md` and 
 - Blocked: `task todo → validated`, `qa todo → validated`, non-adjacent skips.
 
 See tests under `tests/unit/framework/test_state_machine_guards.py` covering valid/invalid paths and edge cases.
-

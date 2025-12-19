@@ -39,7 +39,7 @@ def _load_project_dir_from_yaml(path: Path) -> str | None:
 
     paths_section = data.get("paths")
     if isinstance(paths_section, dict):
-        value = paths_section.get("project_config_dir")
+        value = paths_section.get("project_config_dir") or paths_section.get("config_dir")
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
@@ -118,7 +118,6 @@ __all__ = [
     "DEFAULT_PROJECT_CONFIG_PRIMARY",
     "get_project_config_dir",
 ]
-
 
 
 

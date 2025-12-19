@@ -403,6 +403,30 @@ class ConfigManager:
         Goal: keep a single canonical source of truth while maintaining backward
         compatibility with older key paths used by templates and scripts.
         """
+        # Paths: canonical is paths.project_config_dir (bootstrap key for config root).
+        # Backward-compatible aliases: paths.config_dir, paths.management_dir, management_dir.
+        paths = cfg.get("paths") if isinstance(cfg.get("paths"), dict) else {}
+        if paths.get("project_config_dir") in (None, "") and isinstance(paths.get("config_dir"), str):
+            val = str(paths.get("config_dir")).strip()
+            if val:
+                paths["project_config_dir"] = val
+
+        if cfg.get("project_management_dir") in (None, ""):
+            mgmt = cfg.get("management_dir") or paths.get("management_dir")
+            if isinstance(mgmt, str) and mgmt.strip():
+                cfg["project_management_dir"] = mgmt.strip()
+
+        cfg["paths"] = paths
+
+        # Packs: canonical is packs.active (v2 object form). Compatibility shim for
+        # older modular configs that wrote packs.enabled as a list of pack names.
+        packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
+        packs_active = packs.get("active")
+        packs_enabled = packs.get("enabled")
+        if isinstance(packs_enabled, list) and not isinstance(packs_active, list):
+            packs["active"] = [str(p) for p in packs_enabled if p]
+        cfg["packs"] = packs
+
         # Coverage thresholds: canonical is quality.coverage.overall/changed.
         # Backward-compatible alias: tdd.coverage_threshold.
         tdd = cfg.get("tdd") if isinstance(cfg.get("tdd"), dict) else {}
