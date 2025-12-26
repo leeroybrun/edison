@@ -17,12 +17,20 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
 
     # Create worktrees directory path - use absolute path
     worktrees_dir = session_git_repo_path / "worktrees"
+    meta_dir = worktrees_dir / "_meta"
 
     session_data = {
         "worktrees": {
             "enabled": True,
             "baseDirectory": str(worktrees_dir),
             "branchPrefix": "session/",
+            "sharedState": {
+                "mode": "meta",
+                "metaBranch": "edison-meta",
+                "metaPathTemplate": str(meta_dir),
+                "managementSubdirs": ["sessions", "tasks", "qa", "logs", "archive"],
+                "shareGenerated": True,
+            },
             "timeouts": {
                 "health_check": 2,
                 "fetch": 5,
@@ -296,8 +304,9 @@ def test_worktree_sessions_directory_is_shared_symlink(session_git_repo_path):
     if sys.platform.startswith("win"):
         pytest.skip("Symlink semantics differ on Windows")
 
-    # Ensure primary sessions directory exists (shared target)
-    shared = session_git_repo_path / ".project" / "sessions"
+    # Ensure meta worktree exists, then seed shared target.
+    meta = worktree.ensure_meta_worktree()
+    shared = Path(meta["meta_path"]) / ".project" / "sessions"
     (shared / "wip").mkdir(parents=True, exist_ok=True)
 
     sid = "shared-sessions"
@@ -308,6 +317,249 @@ def test_worktree_sessions_directory_is_shared_symlink(session_git_repo_path):
     assert link.exists()
     assert link.is_symlink()
     assert link.resolve() == shared.resolve()
+
+
+def test_worktree_management_dirs_are_shared_symlinks(session_git_repo_path):
+    """Project management state must be shared across git worktrees.
+
+    Git worktrees do not share untracked files. Edison stores project management state under
+    `.project/*` (tasks, QA, logs, archive, sessions). Worktrees must see the same directories
+    via symlinks so that task/QA commands work identically from inside the worktree.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    meta = worktree.ensure_meta_worktree()
+    shared_root = Path(meta["meta_path"]) / ".project"
+    shared_tasks = shared_root / "tasks"
+    shared_qa = shared_root / "qa"
+    shared_logs = shared_root / "logs"
+    shared_archive = shared_root / "archive"
+    shared_sessions = shared_root / "sessions"
+
+    (shared_tasks / "todo").mkdir(parents=True, exist_ok=True)
+    (shared_qa / "waiting").mkdir(parents=True, exist_ok=True)
+    (shared_logs / "edison").mkdir(parents=True, exist_ok=True)
+    shared_archive.mkdir(parents=True, exist_ok=True)
+    (shared_sessions / "wip").mkdir(parents=True, exist_ok=True)
+
+    sid = "shared-mgmt-dirs"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    for rel, shared in [
+        ("tasks", shared_tasks),
+        ("qa", shared_qa),
+        ("logs", shared_logs),
+        ("archive", shared_archive),
+        ("sessions", shared_sessions),
+    ]:
+        link = wt_path / ".project" / rel
+        assert link.exists()
+        assert link.is_symlink()
+        assert link.resolve() == shared.resolve()
+
+
+def test_worktree_project_generated_dir_is_shared_symlink(session_git_repo_path):
+    """Composed project artifacts must be visible inside a session worktree.
+
+    Edison-generated project artifacts live under `<project-config-dir>/_generated` and are
+    referenced by start prompts and constitutions. Git worktrees do not share untracked files,
+    so the worktree must link to the primary checkout's generated directory.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    from edison.core.utils.paths.project import get_project_config_dir
+
+    project_cfg_dir = get_project_config_dir(session_git_repo_path, create=True)
+    shared = (project_cfg_dir / "_generated").resolve()
+    shared.mkdir(parents=True, exist_ok=True)
+
+    sid = "shared-generated"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    link = (wt_path / project_cfg_dir.name / "_generated")
+    assert link.exists()
+    assert link.is_symlink()
+    assert link.resolve() == shared.resolve()
+
+
+def test_worktree_retargets_existing_symlinks_when_shared_root_changes(session_git_repo_path):
+    """Existing symlinks should be retargeted to the configured shared root.
+
+    Projects may migrate from primary-shared to meta-shared state. Worktrees that already
+    have `.project/*` symlinks must be corrected when `create_worktree()` runs again.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    sid = "retarget-links"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    # Force a wrong target (primary repo .project) for a shared subdir symlink.
+    wrong_shared = (session_git_repo_path / ".project" / "tasks").resolve()
+    wrong_shared.mkdir(parents=True, exist_ok=True)
+
+    link = wt_path / ".project" / "tasks"
+    if link.exists() or link.is_symlink():
+        try:
+            link.unlink()
+        except Exception:
+            pass
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(wrong_shared, target_is_directory=True)
+
+    # Re-run create_worktree (idempotent) - should fix the link to point at meta.
+    wt2, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt2 is not None
+
+    expected = (session_git_repo_path / "worktrees" / "_meta" / ".project" / "tasks").resolve()
+    assert (wt2 / ".project" / "tasks").resolve() == expected
+
+
+def test_worktree_config_deep_merges_shared_state_defaults(session_git_repo_path):
+    """Overriding `worktrees.sharedState` must not discard nested defaults.
+
+    Project configs commonly override only `sharedState.mode`/paths. Edison must keep
+    defaults like `gitExcludes` and `commitGuard` unless explicitly overridden.
+    """
+    from edison.core.config.domains.session import SessionConfig
+
+    cfg = SessionConfig(repo_root=session_git_repo_path).get_worktree_config()
+    ss = cfg.get("sharedState") or {}
+
+    assert "gitExcludes" in ss
+    assert "commitGuard" in ss
+    assert ss["gitExcludes"]["session"] == [".project/", ".edison/_generated/"]
+
+
+def test_create_worktree_applies_worktree_local_git_excludes(session_git_repo_path):
+    """Session worktrees should write worktree-local excludes for shared state.
+
+    Shared `.project/*` symlinks are visible inside the session worktree but must not
+    show up as untracked noise; Edison should use worktree-local excludes (info/exclude).
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Git worktree exclude paths differ on Windows")
+
+    sid = "git-excludes"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    cp = run_with_timeout(
+        ["git", "rev-parse", "--git-dir"],
+        cwd=wt_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    raw_git_dir = (cp.stdout or "").strip()
+    assert raw_git_dir
+    git_dir = Path(raw_git_dir)
+    if not git_dir.is_absolute():
+        git_dir = (wt_path / git_dir).resolve()
+
+    exclude_file = git_dir / "info" / "exclude"
+    assert exclude_file.exists()
+    contents = exclude_file.read_text(encoding="utf-8")
+    assert ".project/" in contents.splitlines()
+
+
+def test_ensure_meta_worktree_installs_commit_guard_hook(session_git_repo_path):
+    """Meta worktree should install a pre-commit hook to keep meta branch clean."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+    assert meta_path.exists()
+
+    hooks_path_cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    hook_path = Path((hooks_path_cp.stdout or "").strip())
+    if not hook_path.is_absolute():
+        hook_path = (meta_path / hook_path).resolve()
+    assert hook_path.exists()
+
+    hook_text = hook_path.read_text(encoding="utf-8")
+    assert "EDISON_META_COMMIT_GUARD" in hook_text
+    assert ".project/tasks/" in hook_text
+    assert ".project/qa/" in hook_text
+
+    # The guard should block commits outside the allow list (e.g., README.md)
+    (meta_path / "README.md").write_text("# Modified\n", encoding="utf-8")
+    run_with_timeout(["git", "add", "README.md"], cwd=meta_path, check=True, capture_output=True, text=True)
+    commit = run_with_timeout(
+        ["git", "commit", "-m", "should be blocked"],
+        cwd=meta_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert commit.returncode != 0
+
+
+def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_git_repo_path):
+    """Meta init should make the primary checkout share `.project/*` via symlinks + excludes."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    # Seed primary checkout with local management state that should become shared.
+    primary_seed = session_git_repo_path / ".project" / "tasks" / "todo" / "seed.txt"
+    primary_seed.parent.mkdir(parents=True, exist_ok=True)
+    primary_seed.write_text("seed\n", encoding="utf-8")
+
+    init = worktree.initialize_meta_shared_state()
+    meta_path = Path(init["meta_path"])
+
+    link = session_git_repo_path / ".project" / "tasks"
+    assert link.exists()
+    assert link.is_symlink()
+    assert link.resolve() == (meta_path / ".project" / "tasks").resolve()
+
+    # Ensure the seeded file is now visible from the shared target.
+    assert (meta_path / ".project" / "tasks" / "todo" / "seed.txt").exists()
+
+    # Primary checkout should have worktree-local excludes to avoid untracked noise.
+    cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-dir"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    git_dir = Path((cp.stdout or "").strip()).resolve()
+    exclude_file = git_dir / "info" / "exclude"
+    assert exclude_file.exists()
+    assert ".project/" in exclude_file.read_text(encoding="utf-8").splitlines()
+
+
+def test_create_worktree_links_primary_management_dirs_in_meta_mode(session_git_repo_path):
+    """Creating a session worktree in meta mode should also align primary `.project/*`."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    primary_seed = session_git_repo_path / ".project" / "tasks" / "todo" / "seed2.txt"
+    primary_seed.parent.mkdir(parents=True, exist_ok=True)
+    primary_seed.write_text("seed2\n", encoding="utf-8")
+
+    sid = "links-primary"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+
+    meta_path = session_git_repo_path / "worktrees" / "_meta"
+    link = session_git_repo_path / ".project" / "tasks"
+    assert link.is_symlink()
+    assert link.resolve() == (meta_path / ".project" / "tasks").resolve()
+    assert (meta_path / ".project" / "tasks" / "todo" / "seed2.txt").exists()
 
 
 def test_worktree_writes_session_id_file_for_auto_resolution(session_git_repo_path):

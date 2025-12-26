@@ -365,6 +365,43 @@ class CursorAdapter(PlatformAdapter):
         merged = current.rstrip() + "\n\n" + generated_content.lstrip()
         return merged
 
+    def detect_cursor_overrides(self) -> Dict[str, Any]:
+        """Detect manual edits to `.cursorrules` since the last sync.
+
+        Compares the current `.cursorrules` to the last snapshot captured by
+        `sync_to_cursorrules()` and returns a diff report.
+        """
+        report: Dict[str, Any] = {
+            "fileExists": self.cursorrules_path.exists(),
+            "snapshotExists": self.snapshot_path.exists(),
+            "metaExists": self.snapshot_meta_path.exists(),
+            "has_overrides": False,
+            "diff": [],
+        }
+
+        if not report["fileExists"] or not report["snapshotExists"]:
+            return report
+
+        current = self.cursorrules_path.read_text(encoding="utf-8")
+        snapshot = self.snapshot_path.read_text(encoding="utf-8")
+
+        if current == snapshot:
+            return report
+
+        diff = list(
+            difflib.unified_diff(
+                snapshot.splitlines(),
+                current.splitlines(),
+                fromfile=str(self.snapshot_path),
+                tofile=str(self.cursorrules_path),
+                lineterm="",
+            )
+        )
+
+        report["has_overrides"] = True
+        report["diff"] = diff
+        return report
+
     # =========================================================================
     # Sync Methods
     # =========================================================================
@@ -439,7 +476,11 @@ class CursorAdapter(PlatformAdapter):
 
         has_sources = src_dir.exists() and any(src_dir.glob("*.md"))
         if not has_sources and auto_compose:
-            # Auto-composition would go here if needed
+            from edison.core.composition.registries._types_manager import ComposableTypesManager
+
+            packs = self.get_active_packs()
+            types_manager = ComposableTypesManager(project_root=self.project_root)
+            types_manager.write_type("agents", packs)
             has_sources = src_dir.exists() and any(src_dir.glob("*.md"))
 
         if not has_sources:
@@ -484,7 +525,8 @@ class CursorAdapter(PlatformAdapter):
 
         result["rules"] = self.sync_structured_rules()
         result["agents"] = self.sync_agents_to_cursor(auto_compose=True)
-        commands = self.commands.compose_all().get("cursor", {})
+        definitions = self.commands.compose()
+        commands = self.commands.compose_for_platform("cursor", definitions)
         result["commands"] = list(commands.values())
 
         return result

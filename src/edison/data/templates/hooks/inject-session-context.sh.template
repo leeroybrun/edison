@@ -4,53 +4,17 @@
 # Description: {{ description }}
 # Blocking: NO (always exit 0)
 
-# Fast check: Skip if no Edison session file exists
-# Edison creates {project_management_dir}/.session-id when a session is active
-{% set mgmt_dir = global_config.get("project_management_dir") %}
-SESSION_FILE="{{ mgmt_dir }}/.session-id"
-if [[ ! -f "$SESSION_FILE" ]]; then
-  exit 0  # No Edison session, skip hook
-fi
+# This hook is intentionally tiny and deterministic.
+# Delegate all context building to `edison session context` so:
+# - SessionStart/PreCompact/UserPromptSubmit can share the same payload
+# - Hooks remain safe without jq/other external deps
 
-# Resolve config flags with safe defaults
-{% set cfg = config if config is defined else {} %}
-{% set include_worktree = cfg.get("include_worktree", False) %}
-{% set include_task_state = cfg.get("include_task_state", False) %}
-{% set include_pack_list = cfg.get("include_pack_list", False) %}
+# Consume hook payload from stdin (Claude Code sends JSON); ignore it.
+cat >/dev/null 2>&1 || true
 
-# Build context summary
-CONTEXT=""
+command -v edison >/dev/null 2>&1 || exit 0
 
-{% if include_worktree %}
-WORKTREE=$(edison session status --json 2>/dev/null | jq -r '.worktree // empty' 2>/dev/null)
-if [[ -n "$WORKTREE" && "$WORKTREE" != "null" ]]; then
-  CONTEXT+="Worktree: $WORKTREE"$'\n'
-fi
-{% endif %}
-
-{% if include_task_state %}
-TASK_JSON=$(edison task status --current --json 2>/dev/null || echo '{}')
-TASK_STATE=$(echo "$TASK_JSON" | jq -r '.state // empty' 2>/dev/null)
-TASK_ID=$(echo "$TASK_JSON" | jq -r '.id // empty' 2>/dev/null)
-if [[ -n "$TASK_STATE" && -n "$TASK_ID" ]]; then
-  CONTEXT+="Current Task: $TASK_ID (state: $TASK_STATE)"$'\n'
-fi
-{% endif %}
-
-{% if include_pack_list %}
-PACKS=$(edison config get packs.active --json 2>/dev/null | jq -r '.[]' 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
-if [[ -n "$PACKS" ]]; then
-  CONTEXT+="Active Packs: $PACKS"$'\n'
-fi
-{% endif %}
-
-# Inject context if not empty
-if [[ -n "$CONTEXT" ]]; then
-  echo ""
-  echo "## Edison Session Context"
-  echo ""
-  echo "$CONTEXT"
-  echo ""
-fi
+# Fail-open: hooks must never break the host toolchain.
+edison session context 2>/dev/null || true
 
 exit 0

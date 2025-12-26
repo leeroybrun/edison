@@ -6,29 +6,10 @@
 # This hook is triggered automatically by Claude Code BEFORE context compaction.
 # It reminds the agent to re-read its constitution after compaction completes.
 
-# Fast check: Skip if no Edison session file exists
-{% set mgmt_dir = global_config.get("project_management_dir") %}
-SESSION_FILE="{{ mgmt_dir }}/.session-id"
-if [[ ! -f "$SESSION_FILE" ]]; then
-  exit 0  # No Edison session, skip hook
-fi
+# Emit a minimal, deterministic context refresher.
+command -v edison >/dev/null 2>&1 && edison session context 2>/dev/null || true
 
 {% set cfg = config if config is defined else {} %}
-
-# Get session ID (best-effort)
-SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
-
-_edison_audit_event() {
-  # Fail-open: audit must never break hooks.
-  local event="$1"
-  shift || true
-  edison audit event "$event" \
-    --repo-root "$PWD" \
-    --session "$SESSION_ID" \
-    --field "hook_id={{ id }}" \
-    --field "hook_type={{ type }}" \
-    "$@" 2>/dev/null || true
-}
 
 # Configuration from hooks.yaml
 ROLE="{{ cfg.get('default_role', 'agents') }}"
@@ -43,11 +24,5 @@ MESSAGE="${MESSAGE_TEMPLATE//\{ROLE\}/$ROLE}"
 if [ "$NOTIFY" = "true" ] || [ "$NOTIFY" = "True" ]; then
     echo "$MESSAGE"
 fi
-
-_edison_audit_event "hook.compaction-reminder" \
-  --field "role=$ROLE" \
-  --field "source=precompact" \
-  --field "notify=$NOTIFY" \
-  --field "message=$MESSAGE"
 
 exit 0

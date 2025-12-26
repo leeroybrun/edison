@@ -70,10 +70,7 @@ class HookComposer(AdapterComponent):
         This is a thin wrapper around ``compose_hooks`` to satisfy the
         AdapterComponent contract.
         """
-        # Override output directory for this sync call
-        hooks_cfg = self._hooks_cfg()
-        hooks_cfg["output_dir_override"] = str(output_dir)
-        written = self.compose_hooks()
+        written = self.compose_hooks(output_dir_override=output_dir)
         return list(written.values())
 
     def load_definitions(self) -> Dict[str, HookDefinition]:
@@ -100,9 +97,17 @@ class HookComposer(AdapterComponent):
         template_path = self._resolve_template(hook_def.template)
         return self._render_template(template_path, hook_def, hooks_cfg)
 
-    def compose_hooks(self) -> Dict[str, Path]:
-        """Render and write enabled hooks for Claude Code."""
+    def compose_hooks(self, *, output_dir_override: Optional[Path] = None) -> Dict[str, Path]:
+        """Render and write enabled hooks for Claude Code.
+
+        Args:
+            output_dir_override: Optional directory override for this run.
+                When provided, hooks are written under this directory and any
+                generated settings.json hook paths should reference it.
+        """
         hooks_cfg = self._hooks_cfg()
+        if output_dir_override is not None:
+            hooks_cfg["output_dir_override"] = str(output_dir_override)
         # Default to enabled; only skip when explicitly disabled.
         if hooks_cfg.get("enabled") is False:
             return {}
@@ -131,7 +136,9 @@ class HookComposer(AdapterComponent):
 
         return results
 
-    def generate_settings_json_hooks_section(self) -> Dict[str, List[Dict[str, Any]]]:
+    def generate_settings_json_hooks_section(
+        self, *, output_dir_override: Optional[Path] = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Summarize hooks for inclusion in settings.json.
 
         Returns the hooks grouped by lifecycle event type (e.g., PreToolUse, PostToolUse).
@@ -147,7 +154,7 @@ class HookComposer(AdapterComponent):
         # Events that don't use tool matchers
         NON_TOOL_EVENTS = {"UserPromptSubmit", "SessionStart", "SessionEnd", "Stop", "SubagentStop", "PreCompact"}
 
-        scripts = self.compose_hooks()
+        scripts = self.compose_hooks(output_dir_override=output_dir_override)
         definitions = self.load_definitions()
 
         grouped: Dict[str, List[Dict[str, Any]]] = {}
@@ -315,8 +322,26 @@ def compose_hooks(
     config: Optional[Dict[str, Any]] = None,
     repo_root: Optional[Path] = None,
 ) -> Dict[str, Path]:
-    """Module-level convenience wrapper to compose hooks."""
-    return HookComposer(config=config, repo_root=repo_root).compose_hooks()
+    """Module-level convenience wrapper to compose hooks.
+
+    Prefer constructing HookComposer from a PlatformAdapter.context in new code.
+    """
+    from edison.core.adapters.base import PlatformAdapter
+
+    class _ComposeHooksAdapter(PlatformAdapter):
+        @property
+        def platform_name(self) -> str:
+            return "compose-hooks"
+
+        def sync_all(self) -> Dict[str, Any]:
+            return {}
+
+    root = (repo_root or Path.cwd()).resolve()
+    adapter = _ComposeHooksAdapter(project_root=root)
+    if config:
+        adapter.config = adapter.cfg_mgr.deep_merge(adapter.config, config)
+    composer = HookComposer(adapter.context)
+    return composer.compose_hooks()
 
 
 __all__ = ["HookComposer", "HookDefinition", "compose_hooks", "ALLOWED_TYPES"]

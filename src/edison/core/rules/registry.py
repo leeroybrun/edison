@@ -548,6 +548,76 @@ class RulesRegistry:
                 # Body resolution status
                 entry["_body_resolved"] = bool(entry.get("_body_resolved")) and bool(resolve_sources)
 
+        # Project overlays (highest precedence) merge by rule id
+        with span("rules.compose.project"):
+            project_registry = self._load_yaml(self.project_dir / "rules" / "registry.yml", required=False)
+
+        for raw_rule in project_registry.get("rules", []) or []:
+            if not isinstance(raw_rule, dict):
+                continue
+            rid = str(raw_rule.get("id") or "").strip()
+            if not rid:
+                continue
+
+            with span("rules.compose.rule", origin="project", id=rid):
+                body, deps = self._compose_rule_body(
+                    raw_rule,
+                    origin="project",
+                    packs=packs,
+                    resolve_sources=resolve_sources,
+                )
+
+            source_obj: Dict[str, Any] = raw_rule.get("source") or {}
+            if not source_obj and raw_rule.get("sourcePath"):
+                source_obj = {"file": raw_rule.get("sourcePath")}
+
+            if rid not in rules_index:
+                rules_index[rid] = {
+                    "id": rid,
+                    "title": raw_rule.get("title") or rid,
+                    "category": raw_rule.get("category") or "",
+                    "blocking": bool(raw_rule.get("blocking", False)),
+                    "contexts": raw_rule.get("contexts") or [],
+                    "applies_to": raw_rule.get("applies_to") or [],
+                    "source": source_obj,
+                    "guidance": raw_rule.get("guidance"),
+                    "body": body,
+                    "origins": ["project"],
+                    "dependencies": [str(p) for p in deps],
+                    "_body_resolved": bool(resolve_sources),
+                }
+                continue
+
+            entry = rules_index[rid]
+            if raw_rule.get("title"):
+                entry["title"] = raw_rule["title"]
+            if raw_rule.get("category"):
+                entry["category"] = raw_rule["category"]
+            if raw_rule.get("blocking", False):
+                entry["blocking"] = True
+            if raw_rule.get("contexts"):
+                entry["contexts"] = (entry.get("contexts") or []) + raw_rule["contexts"]  # type: ignore[index]
+            if raw_rule.get("applies_to"):
+                existing_roles = set(entry.get("applies_to") or [])
+                for role in raw_rule["applies_to"]:
+                    if role:
+                        existing_roles.add(role)
+                entry["applies_to"] = sorted(existing_roles)
+            if raw_rule.get("source") or raw_rule.get("sourcePath"):
+                entry["source"] = source_obj
+
+            # Project is authoritative: if it provides guidance/body, override composed body.
+            if raw_rule.get("guidance") or raw_rule.get("source") or raw_rule.get("sourcePath"):
+                entry["body"] = body
+                entry["guidance"] = raw_rule.get("guidance")
+
+            entry.setdefault("origins", []).append("project")
+            existing = set(entry.get("dependencies") or [])
+            for p in deps:
+                existing.add(str(p))
+            entry["dependencies"] = sorted(existing)
+            entry["_body_resolved"] = bool(entry.get("_body_resolved")) and bool(resolve_sources)
+
         return {
             "version": core.get("version") or "1.0.0",
             "packs": packs,

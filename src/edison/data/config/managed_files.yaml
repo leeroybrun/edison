@@ -1,0 +1,16 @@
+# Managed files configuration
+#
+# These files are updated during `edison compose all` via the managed-files adapter.
+# The update strategy is append-only + idempotent: Edison only adds missing lines.
+
+managed_files:
+  files:
+    - path: ".gitignore"
+      ensure_blank_line_before: true
+      ensure_trailing_newline: true
+      create: true
+      ensure_lines:
+        - ".edison/_generated/"
+        - ".project/sessions/"
+        - ".project/logs/"
+        - ".project/archive/"

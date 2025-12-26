@@ -47,6 +47,27 @@ composition:
       -->
 
   # ===========================================================================
+  # WRITE POLICIES
+  # ===========================================================================
+  # Controls how Edison writes generated files:
+  # - replace: overwrite whole file
+  # - markers: manage only a marker-delimited block (preserve manual edits outside)
+  #
+  # These defaults ensure shared instruction stubs (AGENTS.md / CLAUDE.md) can be
+  # partially managed while allowing teams to keep additional manual context.
+  write_policies:
+    - id: instruction-files-managed-block
+      globs:
+        - "AGENTS.md"
+        - "CLAUDE.md"
+        - ".claude/CLAUDE.md"
+      policy:
+        mode: markers
+        begin_marker: "<!-- EDISON:START -->"
+        end_marker: "<!-- EDISON:END -->"
+        on_missing: prepend
+
+  # ===========================================================================
   # CONTENT TYPES
   # ===========================================================================
   # Every piece of composed content is defined here.
@@ -244,6 +265,15 @@ composition:
 
   adapters:
     # -------------------------------------------------------------------------
+    # REPO (Repository hygiene: gitignore, etc.)
+    # -------------------------------------------------------------------------
+    managed-files:
+      enabled: true
+      adapter_class: edison.core.adapters.platforms.managed_files.ManagedFilesAdapter
+      description: "Managed files (append-only edits to repo files)"
+      output_path: "."
+
+    # -------------------------------------------------------------------------
     # CLAUDE (Claude Code / Claude Desktop)
     # -------------------------------------------------------------------------
     claude:
@@ -276,10 +306,17 @@ composition:
       description: "Zen MCP / Cline integration"
       output_path: ".zen/conf"
       sync:
-        prompts:
+        agents:
           enabled: true
           source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
-          destination: ".zen/conf/systemprompts/clink"
+          destination: ".zen/conf/systemprompts/clink/project"
+          filename_pattern: "{name}.txt"
+        validators:
+          enabled: true
+          source: "{{PROJECT_EDISON_DIR}}/_generated/validators"
+          destination: ".zen/conf/systemprompts/clink/project"
+          source_glob: "*.md"
+          recursive: true
           filename_pattern: "{name}.txt"
 
     # -------------------------------------------------------------------------

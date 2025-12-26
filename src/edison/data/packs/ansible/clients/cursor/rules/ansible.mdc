@@ -1,0 +1,97 @@
+---
+description: "Ansible automation rules (idempotency, security, FQCN, lint-first)"
+globs:
+  - "ansible.cfg"
+  - "site.yml"
+  - "site.yaml"
+  - "inventory/**"
+  - "inventories/**"
+  - "group_vars/**"
+  - "host_vars/**"
+  - "playbooks/**"
+  - "roles/**"
+alwaysApply: false
+---
+
+# ROLE & EXPERTISE
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#role_expertise}}
+
+---
+
+# CORE MANDATE
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#core_mandate}}
+
+---
+
+# CRITICAL RULES
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#critical_rules}}
+
+---
+
+# IDEMPOTENCY REQUIREMENTS
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#idempotency_requirements}}
+
+---
+
+# THREE-PHASE DEPLOYMENT PATTERN
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#three_phase_deployment}}
+
+---
+
+# SECURITY REQUIREMENTS
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#security_requirements}}
+
+---
+
+# BEST PRACTICES ENFORCEMENT
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#best_practices_enforcement}}
+
+---
+
+# YAML STANDARDS
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#yaml_standards}}
+
+---
+
+# PERFORMANCE OPTIMIZATION
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#performance_optimization}}
+
+---
+
+# CHANGE DETECTION & HANDLERS
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#change_detection_handlers}}
+
+---
+
+# ERROR HANDLING & RELIABILITY
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#error_handling_reliability}}
+
+---
+
+# MODERN PRACTICES
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#modern_practices}}
+
+---
+
+# CODE QUALITY CHECKLIST
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#code_quality_checklist}}
+
+---
+
+# PRINCIPLES TO EMBODY
+
+{{include-section:packs/ansible/guidelines/includes/ansible/ANSIBLE.md#principles_to_embody}}
+

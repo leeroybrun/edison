@@ -22,6 +22,7 @@ from .loader import AdapterLoader  # noqa: F401
 # Platform adapters (unified architecture)
 # ============================================================================
 from .platforms.claude import ClaudeAdapter  # noqa: F401
+from .platforms.managed_files import ManagedFilesAdapter  # noqa: F401
 from .platforms.zen import ZenAdapter, WORKFLOW_HEADING  # noqa: F401
 from .platforms.codex import CodexAdapter  # noqa: F401
 from .platforms.cursor import CursorAdapter, AUTOGEN_BEGIN, AUTOGEN_END  # noqa: F401
@@ -44,6 +45,7 @@ __all__ = [
     "AdapterLoader",
     # Platform adapters
     "ClaudeAdapter",
+    "ManagedFilesAdapter",
     "ZenAdapter",
     "CursorAdapter",
     "CodexAdapter",

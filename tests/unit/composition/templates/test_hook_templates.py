@@ -45,6 +45,10 @@ def stub_env(tmpdir: Path, overrides=None) -> dict:
         """#!/usr/bin/env bash
 case "$1" in
   session)
+    if [[ "$2" == "context" ]]; then
+      echo "${STUB_SESSION_CONTEXT:-## Edison Context\\n\\n- Project: `/repo`\\n- Session: `sess-1`\\n- Worktree: `/repo`\\n- Active Packs: `pack-a`, `pack-b`\\n}"
+      exit 0
+    fi
     echo "${STUB_SESSION_JSON:-{\"active\":true,\"worktree\":\"/repo\",\"id\":\"sess-1\"}}"
     ;;
   task)
@@ -104,6 +108,10 @@ exit 0
         {
             "STUB_SESSION_JSON": overrides.get(
                 "session_json", '{"active":true,"worktree":"/repo","id":"sess-1"}'
+            ),
+            "STUB_SESSION_CONTEXT": overrides.get(
+                "session_context",
+                "## Edison Context\n\n- Project: `/repo`\n- Session: `sess-1`\n- Worktree: `/repo`\n- Active Packs: `pack-a`, `pack-b`\n",
             ),
             "STUB_TASK_JSON": overrides.get(
                 "task_json", '{"state":"doing","id":"TASK-1"}'),
@@ -165,11 +173,7 @@ def test_session_context_injects_sections():
         id="ctx",
         type="UserPromptSubmit",
         description="inject context",
-        config={
-            "include_worktree": True,
-            "include_task_state": True,
-            "include_pack_list": True,
-        },
+        config={},
     )
     with tempfile.TemporaryDirectory() as td:
         tmpdir = Path(td)
@@ -178,10 +182,9 @@ def test_session_context_injects_sections():
         result = subprocess.run([str(script)], input=b"{}", env=env, cwd=tmpdir, capture_output=True)
         output = result.stdout.decode()
         assert result.returncode == 0
-        assert "Edison Session Context" in output
-        assert "Worktree: /repo" in output
-        assert "Current Task" in output
-        assert "Active Packs" in output
+        assert "## Edison Context" in output
+        assert "Session:" in output
+        assert "Worktree:" in output
 
 
 def test_task_rules_injection_for_matching_file():

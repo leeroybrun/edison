@@ -101,6 +101,23 @@ edison session status sess-001 --json
 
 ---
 
+### Session Context (Hook-Safe Refresher)
+
+```bash
+edison session context [<session-id>] [--json]
+```
+
+**Purpose**: Print a compact, deterministic context refresher suitable for Claude Code hooks (SessionStart, PreCompact).
+
+**Includes:**
+- Project + session basics
+- Constitution pointers (Agent/Orchestrator/Validator)
+- Loop driver reminder (`edison session next <session-id>`)
+
+**Optional**: When `memory.contextInjection.enabled=true`, appends “Memory Hits” from configured long-term memory providers.
+
+---
+
 ### Close Session
 
 ```bash
@@ -131,14 +148,28 @@ edison session complete <session-id>
 edison task ready
 ```
 
-**Purpose**: Show tasks ready to be claimed
+**Purpose**: Show tasks ready to be claimed (**derived from the task graph**, not just “todo”)
 **When to use**: Finding next task to work on
+
+**Readiness rule (default)**: A task is “ready” when it’s in `{{fn:semantic_state("task","todo")}}` and all `depends_on` tasks are in `{{fn:semantic_states("task","done,validated","pipe")}}`.
+
+Use `edison task blocked` to see why a todo task is not ready.
 
 **Example output:**
 ```
 TASK-123  [{{fn:semantic_state("task","todo")}}]   Implement user authentication
 TASK-124  [{{fn:semantic_state("task","todo")}}]   Add email validation
 ```
+
+---
+
+### List Blocked Todo Tasks (Why Not Ready?)
+
+```bash
+edison task blocked [<task-id>] [--json]
+```
+
+**Purpose**: Explain todo tasks blocked by unmet `depends_on` dependencies (and show the “why”).
 
 ---
 

@@ -21,3 +21,8 @@ def test_task_list_register_args_does_not_load_config(isolated_project_env: Path
 
 
 
+
+
+
+
+

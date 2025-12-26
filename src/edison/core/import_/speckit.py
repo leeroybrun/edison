@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+from edison.core.import_.sync import SyncResult, sync_items_to_tasks
 from edison.core.task.models import Task
 from edison.core.task.repository import TaskRepository
 from edison.core.entity import EntityMetadata
@@ -73,25 +74,6 @@ class SpecKitFeature:
     has_plan: bool = False
     has_data_model: bool = False
     has_contracts: bool = False
-
-
-@dataclass
-class SyncResult:
-    """Result of import/sync operation.
-
-    Attributes:
-        created: List of new task IDs created
-        updated: List of existing task IDs updated
-        flagged: List of task IDs flagged as removed from spec
-        skipped: List of task IDs skipped (already in progress/done)
-        errors: List of error messages encountered
-    """
-
-    created: List[str] = field(default_factory=list)
-    updated: List[str] = field(default_factory=list)
-    flagged: List[str] = field(default_factory=list)
-    skipped: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -390,57 +372,26 @@ def sync_speckit_feature(
     Returns:
         SyncResult with created, updated, flagged, skipped task IDs
     """
-    result = SyncResult()
     prefix = prefix or feature.name
 
     # Initialize repository
     task_repo = TaskRepository(project_root)
 
-    # Build map of SpecKit task IDs in this feature
-    speckit_ids = {task.id for task in feature.tasks}
-
-    # Find existing Edison tasks for this prefix
-    existing_tasks = _find_tasks_with_prefix(task_repo, prefix)
-    existing_map = {_extract_speckit_id(t.id, prefix): t for t in existing_tasks}
-
-    # Process each SpecKit task
-    for speckit_task in feature.tasks:
-        edison_id = f"{prefix}-{speckit_task.id}"
-
-        if speckit_task.id in existing_map:
-            # Task already exists - check if needs update
-            existing = existing_map[speckit_task.id]
-
-            # Preserve state for tasks in progress
-            if existing.state not in ("todo",):
-                result.skipped.append(edison_id)
-                continue
-
-            # Update the task
-            if not dry_run:
-                _update_edison_task(task_repo, existing, speckit_task, feature)
-            result.updated.append(edison_id)
-        else:
-            # New task - create it
-            if not dry_run:
-                task = generate_edison_task(speckit_task, feature, prefix)
-                task_repo.save(task)
-
-                # Create QA record if enabled
-                if create_qa:
-                    _create_qa_record(task.id, project_root)
-
-            result.created.append(edison_id)
-
-    # Check for removed tasks (in Edison but not in SpecKit)
-    for speckit_id, existing in existing_map.items():
-        if speckit_id not in speckit_ids:
-            edison_id = existing.id
-            if not dry_run:
-                _flag_task_as_removed(task_repo, existing)
-            result.flagged.append(edison_id)
-
-    return result
+    return sync_items_to_tasks(
+        feature.tasks,
+        task_repo=task_repo,
+        item_key=lambda t: t.id,
+        build_task=lambda t: generate_edison_task(t, feature, prefix),
+        update_task=lambda task, t: _update_edison_task(task, t, feature),
+        is_managed_task=lambda t: t.id.startswith(f"{prefix}-T"),
+        task_key=lambda t: _extract_speckit_id(t.id, prefix),
+        removed_tag="removed-from-spec",
+        create_qa=create_qa,
+        qa_created_by="speckit-import",
+        dry_run=dry_run,
+        project_root=project_root,
+        updatable_states={"todo"},
+    )
 
 
 # =============================================================================
@@ -513,13 +464,6 @@ def _extract_file_path(description: str) -> Optional[str]:
         return match.group(1)
     return None
 
-
-def _find_tasks_with_prefix(repo: TaskRepository, prefix: str) -> List[Task]:
-    """Find all Edison tasks with the given prefix."""
-    all_tasks = repo.find_all()
-    return [t for t in all_tasks if t.id.startswith(f"{prefix}-T")]
-
-
 def _extract_speckit_id(edison_id: str, prefix: str) -> str:
     """Extract SpecKit task ID from Edison task ID.
 
@@ -527,14 +471,11 @@ def _extract_speckit_id(edison_id: str, prefix: str) -> str:
     """
     return edison_id[len(prefix) + 1:]  # Skip "prefix-"
 
+def _update_edison_task(task: Task, speckit_task: SpecKitTask, feature: SpecKitFeature) -> None:
+    """Update an existing Edison task with new SpecKit data.
 
-def _update_edison_task(
-    repo: TaskRepository,
-    task: Task,
-    speckit_task: SpecKitTask,
-    feature: SpecKitFeature,
-) -> None:
-    """Update an existing Edison task with new SpecKit data."""
+    Mutates the task in-place; caller is responsible for saving.
+    """
     # Update title and description
     task.title = speckit_task.description
     task.description = generate_task_description(speckit_task, feature)
@@ -542,32 +483,6 @@ def _update_edison_task(
     # Update tags
     if "speckit" not in task.tags:
         task.tags.append("speckit")
-
-    repo.save(task)
-
-
-def _flag_task_as_removed(repo: TaskRepository, task: Task) -> None:
-    """Flag a task as removed from spec."""
-    if "removed-from-spec" not in task.tags:
-        task.tags.append("removed-from-spec")
-        repo.save(task)
-
-
-def _create_qa_record(task_id: str, project_root: Optional[Path]) -> None:
-    """Create a QA record for a task."""
-    from edison.core.qa.workflow.repository import QARepository
-    from edison.core.qa.models import QARecord
-    from edison.core.entity import EntityMetadata
-
-    qa_repo = QARepository(project_root)
-    qa = QARecord(
-        id=f"{task_id}-qa",
-        task_id=task_id,
-        state="waiting",
-        title=f"QA {task_id}",
-        metadata=EntityMetadata.create(created_by="speckit-import"),
-    )
-    qa_repo.save(qa)
 
 
 __all__ = [

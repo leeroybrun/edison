@@ -19,12 +19,9 @@ hooks:
       type: UserPromptSubmit
       hook_type: prompt
       enabled: true
-      description: "Inject current session context before prompt"
+      description: "Inject `edison session context` output before prompt"
       template: "inject-session-context.sh.template"
       config:
-        include_worktree: true
-        include_task_state: true
-        include_pack_list: true
         max_length: 500
 
     inject-task-rules:

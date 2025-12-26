@@ -13,6 +13,7 @@ from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 from edison.core.adapters.components.hooks import HookComposer
+from edison.cli.compose._context import build_compose_context
 from edison.core.utils.io import read_json, write_json_atomic, ensure_directory
 
 SUMMARY = "Compose Claude Code hooks from configuration"
@@ -54,14 +55,14 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"[dry-run] Would compose hooks from {repo_root}")
             return 0
 
-        # Build config with output_dir if specified
-        config = {}
-        if args.output:
-            config["hooks"] = {"output_dir": args.output}
+        ctx = build_compose_context(repo_root=repo_root)
+        hook_composer = HookComposer(ctx)
 
-        # Compose hooks using HookComposer
-        hook_composer = HookComposer(config=config, repo_root=repo_root)
-        hook_files = hook_composer.compose_hooks()
+        output_dir_override: Path | None = None
+        if args.output:
+            output_dir_override = Path(str(args.output)).expanduser()
+
+        hook_files = hook_composer.compose_hooks(output_dir_override=output_dir_override)
 
         # Update settings.json with hooks section (unless --no-settings)
         settings_updated = False
@@ -73,7 +74,9 @@ def main(args: argparse.Namespace) -> int:
             existing_settings = read_json(settings_path, default={}) if settings_path.exists() else {}
 
             # Generate hooks section for settings.json
-            hooks_section = hook_composer.generate_settings_json_hooks_section()
+            hooks_section = hook_composer.generate_settings_json_hooks_section(
+                output_dir_override=output_dir_override
+            )
             if hooks_section:
                 existing_settings["hooks"] = hooks_section
                 write_json_atomic(settings_path, existing_settings, indent=2)

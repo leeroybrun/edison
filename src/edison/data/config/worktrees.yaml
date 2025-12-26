@@ -9,6 +9,46 @@ worktrees:
   archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
   branchPrefix: "session/"
   pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  sharedState:
+    # Controls how `.project/*` and `.edison/_generated` are shared across session worktrees.
+    # Git worktrees do not share untracked/ignored files, so a shared root keeps tasks/QA/session
+    # metadata consistent regardless of the current session worktree.
+    #
+    # Modes:
+    # - meta: Use a dedicated git worktree (default) at `metaPathTemplate` on `metaBranch`.
+    # - primary: Use the primary checkout as the shared root.
+    # - external: Use an explicit filesystem path (`externalPath`) as the shared root.
+    mode: "meta"
+    metaBranch: "edison-meta"
+    metaPathTemplate: "../{PROJECT_NAME}-worktrees/_meta"
+    # Subdirectories under `.project/` to share via symlink from each session worktree.
+    # Tracking policy (what is committed) is intentionally separate from sharing.
+    managementSubdirs: ["sessions", "tasks", "qa", "logs", "archive"]
+    # Whether to share composed project artifacts under `<project-config-dir>/_generated`.
+    shareGenerated: true
+    # Where the shared symlink for `<project-config-dir>/_generated` should point:
+    # - primary: always the primary checkout (keeps "compose" outputs centralized)
+    # - shared: the same shared root as `.project/*` (meta/external/primary)
+    generatedSource: "primary"
+    # Worktree-local git excludes to avoid cross-branch status noise. These are written to
+    # each checkout's gitdir `info/exclude` (worktree-specific), not repo `.gitignore`.
+    gitExcludes:
+      primary:
+        - ".project/"
+      session:
+        - ".project/"
+        - ".edison/_generated/"
+      meta:
+        - ".project/sessions/"
+        - ".project/logs/"
+        - ".project/archive/"
+        - ".edison/_generated/"
+    # Guard against accidental commits of code changes on the meta branch.
+    commitGuard:
+      enabled: true
+      allowPrefixes:
+        - ".project/tasks/"
+        - ".project/qa/"
   installDeps: false
   postInstallCommands: []
   enableDatabaseIsolation: false

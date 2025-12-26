@@ -22,11 +22,28 @@ class ZenSyncMixin:
 
     def _workflow_template(self: ZenAdapter) -> Optional[str]:
         """Get workflow loop template text."""
-        from edison.core.config.domains import AdaptersConfig
-        adapters_cfg = AdaptersConfig(repo_root=self.project_root)
-        template_path = adapters_cfg.get_template_path("zen", "workflow-loop.txt")
-        if template_path and template_path.exists():
-            return template_path.read_text(encoding="utf-8")
+        zen_cfg = self.config.get("zen") or {}
+        template_cfg = (zen_cfg.get("templates") or {}) if isinstance(zen_cfg, dict) else {}
+        configured = None
+        if isinstance(template_cfg, dict):
+            configured = template_cfg.get("workflow_loop")
+
+        candidates: List[Path] = []
+        if isinstance(configured, str) and configured.strip():
+            raw_path = Path(configured.strip())
+            if raw_path.is_absolute():
+                candidates.append(raw_path)
+            else:
+                # Allow project overrides (relative to repo root) and core-bundled templates.
+                candidates.append(self.project_root / raw_path)
+                candidates.append(self.core_dir / raw_path)
+
+        # Core default (kept as a file, not a hardcoded string).
+        candidates.append(self.core_dir / "templates" / "zen" / "workflow-loop.txt")
+
+        for path in candidates:
+            if path.exists():
+                return path.read_text(encoding="utf-8")
         return None
 
     @staticmethod
@@ -60,17 +77,13 @@ class ZenSyncMixin:
 
     def _zen_prompts_dir(self: ZenAdapter) -> Path:
         """Get Zen prompts directory path."""
-        from edison.core.config.domains import AdaptersConfig
-        adapters_cfg = AdaptersConfig(repo_root=self.project_root)
-        sync_path = adapters_cfg.get_sync_path("zen", "prompts_path")
-        if not sync_path:
-            raise ValueError(
-                "Zen prompts_path not configured in composition.yaml outputs.sync.zen. "
-                "This path is required for Zen prompt sync."
-            )
-        out_dir = sync_path / "project"
-        ensure_directory(out_dir)
-        return out_dir
+        # Prefer the configured sync destination (agents/prompts) so all Zen prompt
+        # artifacts land in a single coherent directory.
+        dest = self.get_sync_destination("agents") or self.get_sync_destination("prompts")
+        if dest is None:
+            dest = self.get_output_path() / "systemprompts" / "clink" / "project"
+        ensure_directory(dest)
+        return dest
 
     def sync_role_prompts(self: ZenAdapter, model: str, roles: List[str]) -> Dict[str, Path]:
         """Sync composed prompts for a model across one or more logical roles.
@@ -152,7 +165,7 @@ class ZenSyncMixin:
         if zen_adapter is None:
             return {"ok": True, "models": [], "roles": [], "missing": [], "missingWorkflow": []}
 
-        zen_conf_dir = (self.project_root / zen_adapter.output_path).resolve()
+        zen_conf_dir = comp_cfg.resolve_output_path(zen_adapter.output_path)
         cli_dir = zen_conf_dir / "cli_clients"
         report: Dict[str, Any] = {
             "ok": True,

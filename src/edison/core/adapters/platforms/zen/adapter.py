@@ -170,10 +170,38 @@ class ZenAdapter(ZenDiscoveryMixin, ZenComposerMixin, ZenSyncMixin, PlatformAdap
             "prompts": [],
         }
 
-        # Sync prompts if configured
-        if self.is_sync_enabled("prompts"):
-            synced = self.sync_from_config("prompts")
-            result["prompts"] = [str(p) for p in synced]
+        prompts: List[Path] = []
+
+        # Sync agents + validators (if configured)
+        for sync_name in ("agents", "validators", "prompts"):
+            if self.is_sync_enabled(sync_name):
+                prompts.extend(self.sync_from_config(sync_name))
+
+        # Also produce generic model-level prompts (codex/claude/gemini) used by Zen CLI clients.
+        zen_cfg = self.config.get("zen") or {}
+        models = []
+        if isinstance(zen_cfg, dict):
+            raw_models = zen_cfg.get("prompt_models")
+            if isinstance(raw_models, list):
+                models = [str(m).strip() for m in raw_models if str(m).strip()]
+        if not models:
+            models = ["codex", "claude", "gemini"]
+
+        for model in models:
+            # Include all generic roles in the single `<model>.txt` file.
+            out = self.sync_role_prompts(model=model, roles=["default", "codereviewer", "planner"])
+            prompts.extend(sorted(set(out.values())))
+
+        if prompts:
+            # De-dupe and keep stable ordering for CLI output
+            seen: set[Path] = set()
+            unique: List[str] = []
+            for p in prompts:
+                if p in seen:
+                    continue
+                seen.add(p)
+                unique.append(str(p))
+            result["prompts"] = unique
 
         return result
 

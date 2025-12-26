@@ -15,11 +15,39 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set
 
 from ..base import BaseDomainConfig
 from edison.data import get_data_path
 from edison.core.utils.profiling import span
+
+
+WritePolicyMode = Literal["replace", "markers"]
+WritePolicyOnMissing = Literal["prepend", "append", "error"]
+
+
+@dataclass(frozen=True)
+class WritePolicy:
+    """Write policy for a generated file.
+
+    - replace: overwrite full file content.
+    - markers: replace or insert content between begin/end markers, preserving
+      manual edits outside the managed block.
+    """
+
+    mode: WritePolicyMode = "replace"
+    begin_marker: Optional[str] = None
+    end_marker: Optional[str] = None
+    on_missing: WritePolicyOnMissing = "prepend"
+
+
+@dataclass(frozen=True)
+class WritePolicyRule:
+    """Global write policy rule matched by glob(s)."""
+
+    id: str
+    globs: List[str]
+    policy: WritePolicy
 
 
 @dataclass
@@ -49,6 +77,7 @@ class ContentTypeConfig:
     exclude_globs: List[str] = field(default_factory=list)
     output_mapping: Dict[str, str] = field(default_factory=dict)
     known_sections: List[SectionSchema] = field(default_factory=list)
+    write_policy: Optional[WritePolicy] = None
     
     def get_known_section_names(self) -> Set[str]:
         """Return set of known section names."""
@@ -69,7 +98,9 @@ class AdapterSyncConfig:
     enabled: bool
     source: str
     destination: str
-    filename_pattern: str
+    filename_pattern: str = "{name}.md"
+    source_glob: str = "*.md"
+    recursive: bool = False
 
 
 @dataclass
@@ -82,6 +113,7 @@ class AdapterConfig:
     output_path: str
     filename: Optional[str]
     sync: Dict[str, AdapterSyncConfig] = field(default_factory=dict)
+    write_policy: Optional[WritePolicy] = None
 
 
 class CompositionConfig(BaseDomainConfig):
@@ -206,6 +238,7 @@ class CompositionConfig(BaseDomainConfig):
                 cli_flag=cfg.get("cli_flag", name.replace("_", "-")),
                 output_mapping=cfg.get("output_mapping", {}),
                 known_sections=known_sections,
+                write_policy=self._parse_write_policy_ref(cfg.get("write_policy")),
             )
         return result
     
@@ -241,6 +274,8 @@ class CompositionConfig(BaseDomainConfig):
                     enabled=sync_cfg.get("enabled", True),
                     source=sync_cfg.get("source", ""),
                     destination=sync_cfg.get("destination", ""),
+                    source_glob=sync_cfg.get("source_glob", "*.md") or "*.md",
+                    recursive=bool(sync_cfg.get("recursive", False)),
                     filename_pattern=sync_cfg.get("filename_pattern", "{name}.md"),
                 )
             result[name] = AdapterConfig(
@@ -251,8 +286,123 @@ class CompositionConfig(BaseDomainConfig):
                 output_path=cfg.get("output_path", ""),
                 filename=cfg.get("filename"),
                 sync=sync_configs,
+                write_policy=self._parse_write_policy_ref(cfg.get("write_policy")),
             )
         return result
+
+    # =========================================================================
+    # WRITE POLICIES
+    # =========================================================================
+
+    @cached_property
+    def write_policy_rules(self) -> List[WritePolicyRule]:
+        """Get global write policy rules (ordered)."""
+        raw = self._composition_yaml.get("write_policies", []) or []
+        rules: List[WritePolicyRule] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            rid = str(item.get("id") or "").strip()
+            globs_raw = item.get("globs") or []
+            if isinstance(globs_raw, str):
+                globs = [globs_raw]
+            elif isinstance(globs_raw, list):
+                globs = [str(g) for g in globs_raw if str(g).strip()]
+            else:
+                globs = []
+            if not rid or not globs:
+                continue
+            policy_raw = item.get("policy")
+            if isinstance(policy_raw, dict):
+                policy = self._parse_write_policy(policy_raw)
+            else:
+                policy = self._parse_write_policy(item)
+            rules.append(WritePolicyRule(id=rid, globs=globs, policy=policy))
+        return rules
+
+    @cached_property
+    def write_policies_by_id(self) -> Dict[str, WritePolicyRule]:
+        return {r.id: r for r in self.write_policy_rules}
+
+    def resolve_write_policy(
+        self,
+        *,
+        path: Path,
+        content_type: Optional[str] = None,
+        adapter: Optional[str] = None,
+    ) -> WritePolicy:
+        """Resolve the effective write policy for a file.
+
+        Precedence:
+        1) First matching global write_policies glob rule
+        2) content_types[<type>].write_policy OR adapters[<name>].write_policy (context default)
+        3) replace (fallback)
+        """
+        from pathlib import PurePosixPath
+
+        default_policy: Optional[WritePolicy] = None
+        if content_type:
+            ct = self.get_content_type(content_type)
+            default_policy = ct.write_policy if ct else None
+        if adapter and default_policy is None:
+            ad = self.get_adapter(adapter)
+            default_policy = ad.write_policy if ad else None
+
+        rel_str = self._repo_relative_posix(path)
+        rel = PurePosixPath(rel_str)
+        for rule in self.write_policy_rules:
+            for g in rule.globs:
+                if rel.match(g):
+                    return rule.policy
+
+        return default_policy or WritePolicy(mode="replace")
+
+    def _repo_relative_posix(self, path: Path) -> str:
+        resolved = Path(path).expanduser().resolve()
+        root = self.repo_root.expanduser().resolve()
+        try:
+            rel = resolved.relative_to(root)
+            return rel.as_posix()
+        except Exception:
+            return resolved.as_posix()
+
+    def _parse_write_policy_ref(self, value: Any) -> Optional[WritePolicy]:
+        """Parse an inline write_policy or resolve a policy id."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            key = value.strip()
+            if not key:
+                return None
+            rule = self.write_policies_by_id.get(key)
+            if not rule:
+                raise ValueError(f"Unknown write policy id: {key}")
+            return rule.policy
+        if isinstance(value, dict):
+            return self._parse_write_policy(value)
+        raise ValueError("write_policy must be a string id or mapping")
+
+    def _parse_write_policy(self, data: Dict[str, Any]) -> WritePolicy:
+        mode = str(data.get("mode") or "replace").strip()
+        if mode not in ("replace", "markers"):
+            raise ValueError(f"Unsupported write policy mode: {mode}")
+        begin = data.get("begin_marker")
+        end = data.get("end_marker")
+        on_missing = str(data.get("on_missing") or "prepend").strip()
+        if on_missing not in ("prepend", "append", "error"):
+            raise ValueError(f"Unsupported on_missing: {on_missing}")
+        if mode == "markers":
+            if not isinstance(begin, str) or not begin.strip():
+                raise ValueError("markers mode requires begin_marker")
+            if not isinstance(end, str) or not end.strip():
+                raise ValueError("markers mode requires end_marker")
+            return WritePolicy(
+                mode="markers",
+                begin_marker=begin,
+                end_marker=end,
+                on_missing=on_missing,  # type: ignore[arg-type]
+            )
+        return WritePolicy(mode="replace")
     
     def get_adapter(self, name: str) -> Optional[AdapterConfig]:
         """Get a specific adapter configuration."""
@@ -313,4 +463,6 @@ __all__ = [
     "SectionSchema",
     "AdapterConfig",
     "AdapterSyncConfig",
+    "WritePolicy",
+    "WritePolicyRule",
 ]

@@ -1,0 +1,33 @@
+name: ansible
+version: 1.0.0
+description: Ansible pack for playbooks/roles with ansible-lint-first, FQCN, idempotency, vault hygiene, and reliability patterns
+category: devops
+tags: [ansible, ansible-core, ansible-lint, molecule, yaml, jinja2, idempotency, security, gitops]
+
+triggers:
+  filePatterns:
+    - "ansible.cfg"
+    - "requirements.yml"
+    - "requirements.yaml"
+    - "collections/requirements.yml"
+    - "collections/requirements.yaml"
+    - "inventory/**"
+    - "inventories/**"
+    - "group_vars/**"
+    - "host_vars/**"
+    - "playbooks/**"
+    - "roles/**"
+    - "site.yml"
+    - "site.yaml"
+
+dependencies: []
+
+validators:
+  - ansible.md
+
+agents:
+  - ansible-agent.md
+
+examples:
+  - playbook-example.yml
+

@@ -52,7 +52,7 @@ edison <domain> <command> [options]
 | `rules` | Rule management and checking |
 | `mcp` | MCP server configuration |
 | `orchestrator` | Orchestrator session management |
-| `import` | Import tasks from external systems (SpecKit) |
+| `import` | Import tasks from external systems (SpecKit, OpenSpec) |
 
 ---
 
@@ -2650,6 +2650,66 @@ Created (2 tasks):
 For detailed documentation, see [SPECKIT_INTEGRATION.md](SPECKIT_INTEGRATION.md).
 
 ---
+
+### import openspec - Import OpenSpec Changes
+
+Import or sync OpenSpec change folders (by change-id) into Edison.
+
+```bash
+edison import openspec <source> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `source` | Path to repo root (contains `openspec/`), `openspec/`, or `openspec/changes/` |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--prefix` | Task ID prefix (default: `openspec`) |
+| `--include-archived` | Include `openspec/changes/archive/*` |
+| `--dry-run` | Preview changes without writing files |
+| `--no-qa` | Skip creating QA records for imported tasks |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Tracking OpenSpec proposals as Edison tasks
+- Keeping Edison in sync with `openspec/changes/`
+
+**Examples:**
+
+```bash
+# Import changes from a repo with openspec/
+edison import openspec .
+
+# Import from an explicit changes directory
+edison import openspec openspec/changes
+
+# Include archived changes
+edison import openspec . --include-archived
+
+# Use a custom task prefix
+edison import openspec . --prefix spec
+
+# Preview changes
+edison import openspec . --dry-run
+```
+
+**Sync Behavior:**
+
+| Scenario | Action |
+|----------|--------|
+| New change-id | Create Edison task |
+| Existing change-id changed | Update title/description/tags (only in `todo`) |
+| Task in wip/done | Preserve Edison state |
+| Change-id removed | Flag with `removed-from-openspec` tag |
+
+For detailed documentation, see [OPENSPEC_INTEGRATION.md](OPENSPEC_INTEGRATION.md).
 
 ## Typical Workflows
 

@@ -1,5 +1,11 @@
 ---
+description: "{{ short_desc | replace('\"', '\\\"') }}"
+{% if args %}
+argument-hint: "{% for arg in args %}{{ arg.name }}{% if not loop.last %} {% endif %}{% endfor %}"
+{% endif %}
+{% if platform_config.allow_bash %}
 allowed-tools: [bash]
+{% endif %}
 ---
 
 # {{ name }}
@@ -7,7 +13,7 @@ allowed-tools: [bash]
 {{ full_desc }}
 
 ```bash
-!{{ cli }}
+{% if platform_config.allow_bash %}!{% endif %}{{ cli }}
 ```
 
 {% if args %}

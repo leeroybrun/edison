@@ -25,3 +25,11 @@ tasks:
     shingleSize: 3
     titleWeight: 0.7
     bodyWeight: 0.3
+
+  # Derived readiness/blocked semantics computed from the graph.
+  # NOTE: Values are semantic state keys, resolved via WorkflowConfig.get_semantic_state().
+  readiness:
+    # A todo task is "ready" when all dependencies are in one of these satisfied states.
+    dependencySatisfiedStates: ["done", "validated"]
+    # If a dependency id cannot be found in the task graph, treat it as blocking.
+    treatMissingDependencyAsBlocked: true

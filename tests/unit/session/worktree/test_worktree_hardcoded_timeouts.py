@@ -68,6 +68,11 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
             "enabled": True,
             "baseDirectory": str(worktrees_dir),
             "branchPrefix": "session/",
+            "sharedState": {
+                "mode": "meta",
+                "metaBranch": "edison-meta",
+                "metaPathTemplate": str(worktrees_dir / "_meta"),
+            },
         }
     }
     (config_dir / "session.yaml").write_text(yaml.dump(session_data))

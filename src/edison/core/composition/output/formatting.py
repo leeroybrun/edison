@@ -77,10 +77,21 @@ def compose_for_role(
         cfg = config or {}
         packs = active_packs or []
     else:
-        # It's an adapter/engine object
-        repo_root = adapter_or_repo_root.repo_root
-        cfg = getattr(adapter_or_repo_root, 'config', {}) or {}
-        packs = adapter_or_repo_root.get_active_packs() if hasattr(adapter_or_repo_root, 'get_active_packs') else []
+        # It's an adapter/engine object. Prefer modern `project_root` naming.
+        repo_root = getattr(adapter_or_repo_root, "project_root", None) or getattr(
+            adapter_or_repo_root, "repo_root", None
+        )
+        if repo_root is None:
+            raise AttributeError(
+                "compose_for_role() requires adapter_or_repo_root to have `project_root` (preferred) "
+                "or legacy `repo_root`."
+            )
+        cfg = getattr(adapter_or_repo_root, "config", {}) or {}
+        packs = (
+            adapter_or_repo_root.get_active_packs()
+            if hasattr(adapter_or_repo_root, "get_active_packs")
+            else []
+        )
     
     parts: List[str] = []
     
@@ -153,7 +164,6 @@ __all__ = [
     "format_rules_context",
     "compose_for_role",
 ]
-
 
 
 

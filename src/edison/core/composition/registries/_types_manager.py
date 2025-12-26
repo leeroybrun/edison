@@ -227,7 +227,11 @@ class ComposableTypesManager(CompositionBase):
                     file_path = self._resolve_file_path(type_cfg, name, output_path)
                     target_path = path_mapper(file_path) if path_mapper else file_path
                     # Unified output writer (single source of truth for file writes)
-                    self.writer.write_text(target_path, content)
+                    policy = self._comp_config.resolve_write_policy(
+                        path=target_path,
+                        content_type=type_name,
+                    )
+                    self.writer.write_text_with_policy(target_path, content, policy=policy)
                     written.append(target_path)
 
             # Prune stale generated files for this type.

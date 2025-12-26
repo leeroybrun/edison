@@ -33,6 +33,11 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
             "baseDirectory": str(worktrees_dir),
             "branchPrefix": "session/",
             "baseBranch": "main",
+            "sharedState": {
+                "mode": "meta",
+                "metaBranch": "edison-meta",
+                "metaPathTemplate": str(worktrees_dir / "_meta"),
+            },
             "timeouts": {
                 "health_check": 2,
                 "fetch": 5,

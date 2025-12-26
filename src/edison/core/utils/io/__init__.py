@@ -15,6 +15,7 @@ from .core import (
     ensure_parent_dir,
     read_text,
     write_text,
+    ensure_lines_present,
 )
 from .json import (
     read_json,
@@ -46,6 +47,7 @@ __all__ = [
     "atomic_write",
     "read_text",
     "write_text",
+    "ensure_lines_present",
     # json
     "read_json",
     "write_json_atomic",

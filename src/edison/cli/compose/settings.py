@@ -12,7 +12,7 @@ from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 from edison.core.adapters.components.settings import SettingsComposer
-from edison.core.config import ConfigManager
+from edison.cli.compose._context import build_compose_context
 
 SUMMARY = "Compose IDE settings files from configuration"
 
@@ -46,10 +46,8 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
-        config_mgr = ConfigManager(repo_root=repo_root)
-        config = config_mgr.load_config()
-
-        composer = SettingsComposer(config=config, repo_root=repo_root)
+        ctx = build_compose_context(repo_root=repo_root)
+        composer = SettingsComposer(ctx)
 
         if args.dry_run:
             if args.json:
@@ -60,16 +58,25 @@ def main(args: argparse.Namespace) -> int:
 
         # Determine which settings to compose
         targets = []
+        if args.cursor and not args.claude:
+            raise ValueError(
+                "Cursor settings are not supported by this command. "
+                "Use `edison compose cursor-rules` or `edison compose all --cursor`."
+            )
+
         if args.claude or (not args.claude and not args.cursor):
             targets.append("claude")
-        if args.cursor or (not args.claude and not args.cursor):
-            targets.append("cursor")
 
         # Write the settings file(s)
         written_files = []
         if "claude" in targets:
-            settings_path = composer.write_settings_file()
-            written_files.append(str(settings_path))
+            if args.output:
+                output_dir = Path(str(args.output)).expanduser()
+                written = composer.sync(output_dir)
+                written_files.extend(str(p) for p in written)
+            else:
+                settings_path = composer.write_settings_file()
+                written_files.append(str(settings_path))
 
         if args.json:
             formatter.json_output({

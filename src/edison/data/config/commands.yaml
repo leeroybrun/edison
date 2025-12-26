@@ -3,7 +3,9 @@
 
 commands:
   enabled: true
-  platforms: [claude, cursor, codex]
+  # Default to repo-local platforms. Codex prompts are user-global by default
+  # (`~/.codex/prompts`) and should be opt-in at the project layer.
+  platforms: [claude, cursor]
 
   # Selection strategy
   selection:
@@ -13,6 +15,7 @@ commands:
       - task
       - qa
       - rules
+      - memory
     exclude:
       - setup
       - internal
@@ -26,7 +29,9 @@ commands:
       prefix: "edison-"
       max_short_desc: 80
       template: "claude-command.md.template"
-      allow_bash: true
+      # Default to workflow guidance prompts (no implicit execution).
+      # Projects can re-enable if they want executable `!` snippets.
+      allow_bash: false
 
     cursor:
       enabled: true
@@ -52,83 +57,355 @@ commands:
       command: next
       short_desc: "Show next session steps"
       full_desc: |
-        Shows recommended next actions for the current Edison session based on
-        task states, validation status, and workflow rules.
-        
-        Analyzes the session state machine and provides actionable next steps.
+        Workflow: compute next steps for the current session.
+
+        Use this whenever you are unsure what Edison expects next. It reads
+        session/task/QA state and returns the recommended next actions.
       cli: "edison session next"
       args: []
       when_to_use: |
-        - After completing a task to see what's next
-        - When unsure about current workflow step
-        - To check if session is ready for validation
+        - You just finished a step and want the next step
+        - You're resuming work after a break
+        - You suspect you're blocked by a guard/state mismatch
       related_commands:
-        - edison-session-status
-        - edison-task-status
+        - session-status
+        - task-status
 
     - id: session-status
       domain: session
       command: status
       short_desc: "Show current session state"
       full_desc: |
-        Displays comprehensive status of the current Edison session including
-        active tasks, worktree info, and validation state.
+        Workflow: inspect current session state (tasks, worktree, validation state).
       cli: "edison session status"
       args: []
       when_to_use: "Anytime you need to check current session state"
       related_commands:
-        - edison-session-next
-        - edison-task-status
+        - session-next
+        - task-status
+
+    - id: session-context
+      domain: session
+      command: context
+      short_desc: "Print hook-safe session context"
+      full_desc: |
+        Prints a small, deterministic context refresher intended for:
+        - Claude Code hooks (SessionStart/PreCompact/UserPromptSubmit)
+        - Quick in-chat refresh without running full `session next`
+      cli: "edison session context"
+      args: []
+      when_to_use: |
+        - After context compaction
+        - When you want a quick refresh without full orchestration output
+      related_commands:
+        - session-next
+        - session-status
+
+    - id: session-prompts
+      domain: session
+      command: prompts
+      short_desc: "List available START_* prompts"
+      full_desc: |
+        Workflow: discover which START_* prompts exist for this repo (project-composed
+        prompts take precedence over bundled prompts).
+      cli: "edison session prompts"
+      args: []
+      when_to_use: |
+        - You don't know which start prompt to use
+        - You want to see all available START_* ids
+      related_commands:
+        - start-new-session
+        - start-resume-session
+        - start-auto-next
+
+    # Session start prompts (bootstrap LLM sessions)
+    - id: start-new-session
+      domain: session
+      command: start-new-session
+      short_desc: "Print START_NEW_SESSION prompt"
+      full_desc: |
+        Prints the Edison START_NEW_SESSION prompt used to bootstrap a fresh session.
+        This is a prompt document meant for the LLM; it does not mutate task/session state.
+      cli: "edison compose start && cat .edison/_generated/start/START_NEW_SESSION.md"
+      args: []
+      when_to_use: |
+        - Starting a brand new Edison session
+        - You want the canonical start prompt text in-chat
+      related_commands:
+        - session-next
+        - session-status
+
+    - id: start-resume-session
+      domain: session
+      command: start-resume-session
+      short_desc: "Print START_RESUME_SESSION prompt"
+      full_desc: |
+        Prints the Edison START_RESUME_SESSION prompt used to resume work in an existing session.
+      cli: "edison compose start && cat .edison/_generated/start/START_RESUME_SESSION.md"
+      args: []
+      when_to_use: |
+        - Resuming an existing session after a break
+        - Re-establishing worktree confinement and current state
+      related_commands:
+        - session-next
+        - session-status
+
+    - id: start-auto-next
+      domain: session
+      command: start-auto-next
+      short_desc: "Print START_AUTO_NEXT prompt"
+      full_desc: |
+        Prints the Edison START_AUTO_NEXT prompt used to automatically determine next actions.
+      cli: "edison compose start && cat .edison/_generated/start/START_AUTO_NEXT.md"
+      args: []
+      when_to_use: |
+        - You want Edison to recommend next steps based on current state
+        - You are unsure what to do next and want the canonical prompt
+      related_commands:
+        - session-next
+
+    - id: start-validate-session
+      domain: session
+      command: start-validate-session
+      short_desc: "Print START_VALIDATE_SESSION prompt"
+      full_desc: |
+        Prints the Edison START_VALIDATE_SESSION prompt used to validate a session's readiness.
+      cli: "edison compose start && cat .edison/_generated/start/START_VALIDATE_SESSION.md"
+      args: []
+      when_to_use: |
+        - Before closing a session
+        - When preparing for QA / validation workflow
+      related_commands:
+        - validate-now
+        - session-next
+
+    - id: start-continue-stale
+      domain: session
+      command: start-continue-stale
+      short_desc: "Print START_CONTINUE_STALE prompt"
+      full_desc: |
+        Prints the Edison START_CONTINUE_STALE prompt for continuing a stale/timed-out session.
+      cli: "edison compose start && cat .edison/_generated/start/START_CONTINUE_STALE.md"
+      args: []
+      when_to_use: |
+        - Recovering from a stale session state
+        - You need canonical recovery instructions in-chat
+      related_commands:
+        - session-status
+
+    - id: start-cleanup
+      domain: session
+      command: start-cleanup
+      short_desc: "Print START_CLEANUP prompt"
+      full_desc: |
+        Prints the Edison START_CLEANUP prompt used for cleanup and hygiene workflows.
+      cli: "edison compose start && cat .edison/_generated/start/START_CLEANUP.md"
+      args: []
+      when_to_use: |
+        - End-of-session cleanup
+        - Cleaning up worktrees or stale artifacts
+      related_commands:
+        - session-status
 
     # Task management
+    - id: task-new
+      domain: task
+      command: new
+      short_desc: "Create a new task (playbook)"
+      full_desc: |
+        Workflow: create a new task with a stable ID and clear scope.
+
+        Recommended:
+        - Keep the task small enough to validate in one round.
+        - Put acceptance criteria into the task description.
+      cli: |
+        edison task new --id <id> --slug <slug> --description "<desc>"
+      args:
+        - name: id
+          description: "Numeric id (e.g., 100)"
+          required: true
+        - name: slug
+          description: "Short slug (e.g., implement-auth)"
+          required: true
+        - name: desc
+          description: "Human description / acceptance criteria"
+          required: true
+      when_to_use: |
+        - You're about to start a new unit of work
+        - You want a canonical task record for Edison workflows
+      related_commands:
+        - task-claim
+        - task-status
+
     - id: task-claim
       domain: task
       command: claim
       short_desc: "Claim and move task to wip"
       full_desc: |
-        Claims a task from the todo queue and moves it to wip (work in progress).
-        Updates task ownership and session linkage.
+        Workflow: move a task from `todo` → `wip` and associate it with the active session.
+
+        After claiming:
+        - Follow your agent constitution + mandatory workflow (TDD, no mocks, config-first).
+        - Work only inside the session worktree (no git checkout/switch in primary).
       cli: "edison task claim $1"
       args:
         - name: task_id
           description: "Task identifier (e.g., TASK-123, 150-implement-feature)"
           required: true
-      when_to_use: "When ready to start working on a new task"
+      when_to_use: |
+        - You are ready to start implementation on a specific task
+        - You want Edison to lock/track ownership to prevent parallel edits
       related_commands:
-        - edison-task-status
-        - edison-session-next
+        - task-status
+        - session-next
 
     - id: task-status
       domain: task
       command: status
       short_desc: "Show current task state"
       full_desc: |
-        Shows status of the current task or a specific task by ID.
-        Includes state, owner, session linkage, and recent activity.
+        Workflow: inspect a task's current state, owner, session linkage, and recent activity.
       cli: "edison task status --current"
       args: []
       when_to_use: "To check current task progress and state"
       related_commands:
-        - edison-task-claim
-        - edison-session-status
+        - task-claim
+        - session-status
+
+    - id: task-ready
+      domain: task
+      command: ready
+      short_desc: "Mark task ready for QA (wip→done)"
+      full_desc: |
+        Workflow: mark the task ready for validation (typically `wip` → `done`).
+
+        Use this only when:
+        - Tests are green
+        - The implementation is complete (no TODO/FIXME placeholders)
+        - Any required evidence generation has been run
+      cli: "edison task ready $1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+      when_to_use: |
+        - Implementation is complete and ready to validate
+      related_commands:
+        - qa-new
+        - validate-now
+
+    - id: task-blocked
+      domain: task
+      command: blocked
+      short_desc: "Explain why a todo task is blocked"
+      full_desc: |
+        Lists todo tasks that are blocked by unmet `depends_on` prerequisites,
+        and explains which dependency is blocking and its current state.
+      cli: "edison task blocked"
+      args: []
+      when_to_use: |
+        - You expected a task to show up in `task ready` but it doesn't
+        - You want an explanation for dependency blocking
+      related_commands:
+        - task-ready
+        - task-status
 
     # QA and validation
+    - id: qa-new
+      domain: qa
+      command: new
+      short_desc: "Create QA brief for a task"
+      full_desc: |
+        Workflow: create (or ensure) the QA brief/record for a completed task.
+
+        Notes:
+        - QA briefs track rounds, evidence, and validator results.
+        - Create it when a task is moving toward validation.
+      cli: "edison qa new $1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+      when_to_use: |
+        - The task is ready (or nearly ready) for validation
+        - You want to start tracking validation rounds
+      related_commands:
+        - qa-validate
+        - qa-audit
+
     - id: validate-now
       domain: qa
       command: validate
-      short_desc: "Run validators on current work"
+      short_desc: "Validate current work (playbook)"
       full_desc: |
-        Triggers Edison QA validation on the current session's work.
-        Runs all configured validators and generates reports.
+        Workflow: run the configured validators on the current context and record evidence.
+
+        Use this to get fast feedback before marking a task as `done`, or as a
+        final check before promotion.
       cli: "edison qa validate --current"
       args: []
       when_to_use: |
-        - After completing implementation
-        - Before marking task as done
-        - To get feedback on current work
+        - You want feedback while still implementing
+        - You want a pre-flight validation run before task-ready
       related_commands:
-        - edison-session-next
-        - edison-task-status
+        - session-next
+        - task-status
+
+    - id: qa-validate
+      domain: qa
+      command: validate
+      short_desc: "Validate a specific task (playbook)"
+      full_desc: |
+        Workflow: run QA validation for a specific task (creates a validation round).
+      cli: "edison qa validate $1 --round 1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+      when_to_use: |
+        - The task is `done` and ready for validation
+        - You need a deterministic round number
+      related_commands:
+        - qa-audit
+        - qa-promote
+
+    - id: qa-audit
+      domain: qa
+      command: audit
+      short_desc: "Summarize QA status and findings"
+      full_desc: |
+        Workflow: audit the QA record to see current state, rounds, and outstanding blockers.
+      cli: "edison qa audit $1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+      when_to_use: |
+        - You want to see what is blocking promotion
+        - You want to confirm whether validators agree
+      related_commands:
+        - qa-validate
+
+    - id: qa-promote
+      domain: qa
+      command: promote
+      short_desc: "Promote QA/task to validated"
+      full_desc: |
+        Workflow: promote a task/QA record to `validated` after successful validation.
+
+        Only use when:
+        - Required validators are green
+        - Evidence is present for the round(s)
+        - There are no open blocking findings
+      cli: "edison qa promote $1"
+      args:
+        - name: task_id
+          description: "Task identifier"
+          required: true
+      when_to_use: |
+        - All validations passed and you want to finalize
+      related_commands:
+        - qa-audit
 
     # Rules and guidelines
     - id: rules-current
@@ -145,7 +422,7 @@ commands:
         - When unsure about constraints
         - To refresh on current guidelines
       related_commands:
-        - edison-task-status
+        - task-status
 
     - id: rules-tdd
       domain: rules
@@ -158,7 +435,23 @@ commands:
       args: []
       when_to_use: "When implementing new features to follow TDD workflow"
       related_commands:
-        - edison-rules-current
+        - rules-current
+
+    # Memory (optional)
+    - id: memory-search
+      domain: memory
+      command: search
+      short_desc: "Search long-term memory providers"
+      full_desc: |
+        Searches configured long-term memory providers (optional).
+        By default, memory is disabled; enable providers in config to use.
+      cli: "edison memory search <query>"
+      args: []
+      when_to_use: |
+        - You want to recall why something was done
+        - You want relevant historical context across sessions
+      related_commands:
+        - session-context
 
     # Helper commands
     - id: help

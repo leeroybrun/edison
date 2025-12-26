@@ -132,6 +132,13 @@ def test_fast_command_resolution_supports_import_domain_alias() -> None:
     assert spec["domain"] == "import_"
     assert spec["command"] == "speckit"
 
+def test_fast_command_resolution_supports_import_openspec() -> None:
+    spec = _resolve_fast_command_module(["import", "openspec"])
+    assert spec is not None
+    assert spec["module"].endswith(".import_.openspec")
+    assert spec["domain"] == "import_"
+    assert spec["command"] == "openspec"
+
 
 def test_build_parser_accepts_import_domain_alias() -> None:
     from edison.cli.import_.speckit import main as import_speckit_main

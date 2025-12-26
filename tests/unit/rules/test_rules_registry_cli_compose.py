@@ -21,3 +21,8 @@ def test_rules_registry_compose_cli_rules_includes_core_cli_rules(isolated_proje
 
 
 
+
+
+
+
+

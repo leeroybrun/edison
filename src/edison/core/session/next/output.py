@@ -19,6 +19,16 @@ def format_human_readable(payload: dict[str, Any]) -> str:
     lines = []
     lines.append(f"═══ Session {payload['sessionId']} – Next Steps ═══\n")
 
+    # Show compact session context (hook-safe payload).
+    ctx = payload.get("context") or {}
+    try:
+        from edison.core.session.context_payload import format_session_context_for_next
+
+        lines.extend(format_session_context_for_next(ctx if isinstance(ctx, dict) else {}))
+    except Exception:
+        # Fail-open: session-next should not crash due to context formatting drift.
+        pass
+
     # Show applicable rules FIRST (proactive, not just at enforcement)
     if payload.get("rulesEngine"):
         lines.append("📋 APPLICABLE RULES (read FIRST):")

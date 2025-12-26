@@ -641,6 +641,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             a["guard"] = guard_obj
 
     return {
+        "context": _build_context_payload(session_id),
         "sessionId": session_id,
         "summary": "Next actions computed",
         "actions": actions,
@@ -657,6 +658,19 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             "Context7 enforcement cross-checks task metadata + git diff for accuracy",
         ],
     }
+
+
+def _build_context_payload(session_id: str) -> dict[str, Any]:
+    """Build the hook-safe session context payload for session-next output."""
+    try:
+        from edison.core.session.context_payload import build_session_context_payload
+        from edison.core.utils.paths import PathResolver
+
+        project_root = PathResolver.resolve_project_root()
+        return build_session_context_payload(project_root=project_root, session_id=session_id).to_dict()
+    except Exception:
+        # Fail-open: session-next must remain usable even if context building fails.
+        return {"isEdisonProject": True, "sessionId": session_id}
 
 
 def main() -> None:  # CLI facade for direct execution

@@ -16,8 +16,7 @@ from edison.cli import (
     get_repo_root,
     resolve_session_id,
 )
-from edison.core.task import TaskQAWorkflow, TaskRepository, normalize_record_id
-from edison.core.config.domains.workflow import WorkflowConfig
+from edison.core.task import TaskQAWorkflow, normalize_record_id
 
 SUMMARY = "List tasks ready to be claimed or mark task as ready (complete)"
 
@@ -71,26 +70,19 @@ def main(args: argparse.Namespace) -> int:
             return 0
 
         else:
-            # List all ready tasks (tasks in todo status)
-            repo = TaskRepository(project_root=project_root)
-            session_id = resolve_session_id(
-                project_root=project_root,
-                explicit=args.session,
-                required=False,
-            )
-            todo_state = WorkflowConfig(repo_root=project_root).get_semantic_state("task", "todo")
-            tasks = repo.list_by_state(todo_state)
-            if session_id:
-                tasks = [t for t in tasks if t.session_id == session_id]
+            # List all ready tasks (derived from dependency graph, not just todo state).
+            from edison.core.task.readiness import TaskReadinessEvaluator
 
-            ready_tasks = [
-                {
-                    "id": t.id,
-                    "title": t.title,
-                    "state": t.state,
-                }
-                for t in tasks
-            ]
+            # Listing is global by default. Only filter to a specific session when the user
+            # explicitly requests it via --session.
+            session_id = (
+                resolve_session_id(project_root=project_root, explicit=args.session, required=False)
+                if args.session
+                else None
+            )
+
+            evaluator = TaskReadinessEvaluator(project_root=project_root)
+            ready_tasks = [r.to_ready_list_dict() for r in evaluator.list_ready_tasks(session_id=session_id)]
 
             if ready_tasks:
                 limit = 25

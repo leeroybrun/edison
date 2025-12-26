@@ -1,0 +1,22 @@
+memory:
+  # Long-term "episodic" memory is optional and provider-driven.
+  # By default, Edison is purely project-state driven (tasks/qa/sessions).
+  enabled: false
+
+  defaults:
+    maxHits: 5
+
+  # Optional: append memory hits to `edison session context` output (hooks-friendly).
+  # This is disabled by default because it can incur external calls.
+  contextInjection:
+    enabled: false
+    # 0 = use memory.defaults.maxHits (or provider defaults).
+    limit: 0
+    # Available placeholders: {session_id}, {current_task_id}, {current_task_state}, {project_root}
+    queryTemplate: "{current_task_id} {session_id}"
+    heading: "## Memory Hits"
+    maxCharsPerHit: 800
+
+  # Providers are opt-in at the project layer.
+  # Recommended first provider: episodic-memory (external tool / MCP server).
+  providers: {}

@@ -1,22 +1,29 @@
 """Compose IDE slash commands for multiple platforms from unified definitions.
 
-This module provides platform-agnostic command composition that works with
-Claude Code, Cursor, and Codex.
+This component generates per-platform "slash commands" using unified YAML
+definitions (core → packs → project) plus per-platform render configuration.
+
+Design goals (see docs/CONFIGURATION.md, docs/ARCHITECTURE.md):
+- One canonical command definition list (commands.yaml)
+- Per-platform formatting via Jinja templates
+- Per-platform output dirs, prefixes, and truncation limits
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+try:  # Optional dependency; fall back to basic rendering when absent
+    from jinja2 import Template  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    Template = None  # type: ignore[assignment]
 
 from edison.core.composition.utils.paths import resolve_project_dir_placeholders
 from edison.core.utils.io import ensure_directory
+from edison.data import get_data_path
 from .base import AdapterComponent, AdapterContext
-
-# Defaults
-DEFAULT_SHORT_DESC_MAX = 80
-DEFAULT_PLATFORMS = ["claude", "cursor", "codex"]
 
 
 # ---------- Data classes ----------
@@ -44,32 +51,35 @@ class CommandDefinition:
     related_commands: List[str]
 
 
-# ---------- Platform adapters ----------
+# ---------------------------------------------------------------------------
+# Legacy per-platform adapters (kept for backwards compatibility)
+# ---------------------------------------------------------------------------
+
 class PlatformCommandAdapter(ABC):
-    """Interface for per-platform command rendering."""
+    """Legacy interface for per-platform command rendering.
+
+    Modern Edison uses per-platform Jinja templates via CommandComposer.
+    These adapters remain for older call sites and skipped legacy tests.
+    """
 
     name: str = "base"
 
     @abstractmethod
     def render_command(self, cmd: CommandDefinition, config: Dict[str, Any]) -> str:
-        """Render a command for this platform."""
         raise NotImplementedError
 
     @abstractmethod
     def get_output_path(self, cmd_id: str, output_dir: Path) -> Path:
-        """Get output path for a command."""
         raise NotImplementedError
 
 
 def _render_markdown(cmd: CommandDefinition, platform_label: str) -> str:
-    """Shared Markdown renderer for command definitions."""
-    arg_lines = []
+    arg_lines: List[str] = []
     for arg in cmd.args:
         flag = "required" if arg.required else "optional"
         arg_lines.append(f"- {arg.name} ({flag}): {arg.description}")
 
     related = ", ".join(cmd.related_commands) if cmd.related_commands else "None"
-
     sections = [
         f"# {cmd.command} [{platform_label}]",
         cmd.short_desc,
@@ -93,8 +103,6 @@ def _render_markdown(cmd: CommandDefinition, platform_label: str) -> str:
 
 
 class ClaudeCommandAdapter(PlatformCommandAdapter):
-    """Claude Code platform renderer."""
-
     name = "claude"
 
     def render_command(self, cmd: CommandDefinition, config: Dict[str, Any]) -> str:
@@ -105,8 +113,6 @@ class ClaudeCommandAdapter(PlatformCommandAdapter):
 
 
 class CursorCommandAdapter(PlatformCommandAdapter):
-    """Cursor editor platform renderer."""
-
     name = "cursor"
 
     def render_command(self, cmd: CommandDefinition, config: Dict[str, Any]) -> str:
@@ -117,8 +123,6 @@ class CursorCommandAdapter(PlatformCommandAdapter):
 
 
 class CodexCommandAdapter(PlatformCommandAdapter):
-    """Codex CLI platform renderer."""
-
     name = "codex"
 
     def render_command(self, cmd: CommandDefinition, config: Dict[str, Any]) -> str:
@@ -129,9 +133,6 @@ class CodexCommandAdapter(PlatformCommandAdapter):
 
 
 # ---------- Composer ----------
-from .base import AdapterComponent
-
-
 class CommandComposer(AdapterComponent):
     """Compose slash commands for IDE platforms."""
 
@@ -140,25 +141,28 @@ class CommandComposer(AdapterComponent):
         context: AdapterContext,
     ) -> None:
         super().__init__(context)
-
-        self.short_desc_max = self._short_desc_max()
-        self.adapters: Dict[str, PlatformCommandAdapter] = {
-            "claude": ClaudeCommandAdapter(),
-            "cursor": CursorCommandAdapter(),
-            "codex": CodexCommandAdapter(),
-        }
+        self._templates_dir = Path(get_data_path("templates", "commands"))
 
     # ----- Public API -----
     def compose(self) -> List[CommandDefinition]:
         """Compose definitions (core → packs → project) and apply filtering."""
+        if not self._enabled():
+            return []
         return self.filter_definitions(self.load_definitions())
 
     def sync(self, output_dir: Path) -> List[Path]:
-        """Sync commands for all configured platforms into a base output dir."""
+        """Sync commands into a caller-provided base dir.
+
+        Writes commands under `<output_dir>/<platform>/...` for each platform.
+        """
         written: List[Path] = []
         definitions = self.compose()
         for platform in self._platforms():
-            platform_results = self.compose_for_platform(platform, definitions)
+            platform_results = self.compose_for_platform(
+                platform,
+                definitions,
+                output_dir_override=Path(output_dir) / platform,
+            )
             written.extend(platform_results.values())
         return written
 
@@ -196,31 +200,74 @@ class CommandComposer(AdapterComponent):
 
     def filter_definitions(self, defs: List[CommandDefinition]) -> List[CommandDefinition]:
         """Apply selection strategy defined in configuration."""
-        selection = ((self.config or {}).get("commands") or {}).get("selection", {})
+        selection = (self._commands_cfg().get("selection") or {}) if self.config else {}
         mode = (selection or {}).get("mode", "all")
+        excluded_domains = set(selection.get("exclude") or [])
+
         if mode == "domains":
             allowed = set(selection.get("domains") or [])
-            return [d for d in defs if d.domain in allowed]
+            return [d for d in defs if d.domain in allowed and d.domain not in excluded_domains]
         if mode == "explicit":
             ids = set(selection.get("ids") or selection.get("commands") or [])
-            return [d for d in defs if d.id in ids]
-        return defs
+            return [d for d in defs if d.id in ids and d.domain not in excluded_domains]
+        return [d for d in defs if d.domain not in excluded_domains]
 
     def compose_for_platform(
-        self, platform: str, defs: List[CommandDefinition]
+        self,
+        platform: str,
+        defs: List[CommandDefinition],
+        *,
+        output_dir_override: Optional[Path] = None,
     ) -> Dict[str, Path]:
         """Render and write commands for a single platform."""
         key = platform.lower()
-        if key not in self.adapters:
+        if key not in {"claude", "cursor", "codex"}:
             raise ValueError(f"Unsupported platform: {platform}")
 
-        adapter = self.adapters[key]
-        output_dir = ensure_directory(self._output_dir_for(key))
+        if not self._enabled():
+            return {}
+
+        platform_cfg = self._platform_cfg(key)
+        if platform_cfg.get("enabled") is False:
+            return {}
+
+        output_dir = ensure_directory(self._output_dir_for(key, override=output_dir_override))
+        prefix = str(platform_cfg.get("prefix") or "")
+        template_name = str(platform_cfg.get("template") or self._default_template_name(key))
+        max_short_desc = self._max_short_desc_for(key)
+
+        template_path = self._resolve_template(template_name)
+        template_text = template_path.read_text(encoding="utf-8")
+        template = Template(template_text) if Template is not None else None
 
         results: Dict[str, Path] = {}
         for cmd in defs:
-            rendered = adapter.render_command(cmd, self.config.get("commands", {}))
-            out_path = adapter.get_output_path(cmd.id, output_dir)
+            display_name = f"{prefix}{cmd.id}"
+
+            related = self._normalize_related_commands(cmd.related_commands, prefix=prefix)
+            short_desc = self._truncate(str(cmd.short_desc or ""), max_short_desc)
+
+            context: Dict[str, Any] = {
+                "name": display_name,
+                "short_desc": short_desc,
+                "full_desc": str(cmd.full_desc or ""),
+                "cli": str(cmd.cli or ""),
+                "args": cmd.args,
+                "when_to_use": str(cmd.when_to_use or ""),
+                "related_commands": related,
+                "platform": key,
+                "platform_config": platform_cfg,
+                "global_config": self.config,
+                "command": cmd,
+            }
+
+            if template is not None:
+                rendered = template.render(**context).rstrip() + "\n"
+            else:
+                # Minimal fallback when Jinja2 is unavailable.
+                rendered = f"# {display_name}\n\n{cmd.full_desc}\n"
+
+            out_path = output_dir / f"{display_name}.md"
             ensure_directory(out_path.parent)
             rendered = resolve_project_dir_placeholders(
                 rendered,
@@ -247,7 +294,6 @@ class CommandComposer(AdapterComponent):
         """Convert merged dicts to dataclass instances."""
         defs: List[CommandDefinition] = []
         for cmd_id, raw in merged.items():
-            short_desc = self._truncate_short_desc(str(raw.get("short_desc", "")))
             args_raw = raw.get("args") or []
             args: List[CommandArg] = []
             for arg in args_raw:
@@ -265,7 +311,7 @@ class CommandComposer(AdapterComponent):
                     id=str(cmd_id),
                     domain=str(raw.get("domain", "")),
                     command=str(raw.get("command", "")),
-                    short_desc=short_desc,
+                    short_desc=str(raw.get("short_desc", "")),
                     full_desc=str(raw.get("full_desc", "")),
                     cli=str(raw.get("cli", "")),
                     args=args,
@@ -275,13 +321,16 @@ class CommandComposer(AdapterComponent):
             )
         return sorted(defs, key=lambda d: d.id)
 
-    def _output_dir_for(self, platform: str) -> Path:
-        commands_cfg = (self.config.get("commands") or {}) if self.config else {}
-        out_cfg = commands_cfg.get("output_dirs") or {}
-        override = out_cfg.get(platform)
-        if override:
-            return Path(str(Path(override).expanduser()))
+    def _output_dir_for(self, platform: str, *, override: Optional[Path] = None) -> Path:
+        if override is not None:
+            return Path(override)
 
+        platform_cfg = self._platform_cfg(platform)
+        out = platform_cfg.get("output_dir")
+        if out:
+            return Path(str(Path(str(out)).expanduser()))
+
+        # Conservative defaults (repo-local) when no config is available.
         if platform == "claude":
             return self.project_root / ".claude" / "commands"
         if platform == "cursor":
@@ -291,28 +340,92 @@ class CommandComposer(AdapterComponent):
         return self.project_root / "_commands" / platform
 
     def _platforms(self) -> List[str]:
-        commands_cfg = (self.config.get("commands") or {}) if self.config else {}
+        if not self._enabled():
+            return []
+
+        commands_cfg = self._commands_cfg()
         platforms = commands_cfg.get("platforms")
         if isinstance(platforms, list) and platforms:
-            return [str(p).lower() for p in platforms]
-        return list(DEFAULT_PLATFORMS)
+            raw = [str(p).lower() for p in platforms]
+        else:
+            raw = ["claude", "cursor", "codex"]
 
-    def _short_desc_max(self) -> int:
-        commands_cfg = (self.config.get("commands") or {}) if self.config else {}
-        raw = (
-            commands_cfg.get("short_desc_max")
-            or commands_cfg.get("shortDescMax")
-            or DEFAULT_SHORT_DESC_MAX
-        )
+        # Filter out explicitly disabled platform configs
+        out: List[str] = []
+        for p in raw:
+            if self._platform_cfg(p).get("enabled") is False:
+                continue
+            out.append(p)
+        return out
+
+    def _enabled(self) -> bool:
+        commands_cfg = self._commands_cfg()
+        return commands_cfg.get("enabled") is not False
+
+    def _commands_cfg(self) -> Dict[str, Any]:
+        return (self.config or {}).get("commands", {}) or {}
+
+    def _platform_cfg(self, platform: str) -> Dict[str, Any]:
+        return (self._commands_cfg().get("platform_config", {}) or {}).get(platform, {}) or {}
+
+    def _default_template_name(self, platform: str) -> str:
+        if platform == "claude":
+            return "claude-command.md.template"
+        if platform == "cursor":
+            return "cursor-command.md.template"
+        return "codex-prompt.md.template"
+
+    def _max_short_desc_for(self, platform: str) -> int:
+        raw = self._platform_cfg(platform).get("max_short_desc")
         try:
-            return int(raw)
+            return int(raw) if raw is not None else 80
         except Exception:
-            return DEFAULT_SHORT_DESC_MAX
+            return 80
 
-    def _truncate_short_desc(self, text: str) -> str:
-        if len(text) <= self.short_desc_max:
+    @staticmethod
+    def _truncate(text: str, limit: int) -> str:
+        if limit <= 0:
+            return ""
+        if len(text) <= limit:
             return text
-        return text[: self.short_desc_max - 3].rstrip() + "..."
+        if limit <= 3:
+            return text[:limit]
+        return text[: limit - 3].rstrip() + "..."
+
+    @staticmethod
+    def _normalize_related_commands(related: List[str], *, prefix: str) -> List[str]:
+        out: List[str] = []
+        for item in related or []:
+            s = str(item or "").strip()
+            if not s:
+                continue
+            # If already prefixed, keep it; otherwise apply platform prefix.
+            if prefix and not s.startswith(prefix):
+                out.append(prefix + s)
+            else:
+                out.append(s)
+        return out
+
+    def _resolve_template(self, name: str) -> Path:
+        if not name:
+            raise ValueError("Command template name is required")
+
+        # Priority: project templates > pack templates > bundled Edison templates
+        candidates: List[Path] = [
+            self.project_dir / "templates" / "commands" / name,
+        ]
+
+        # Pack templates in reverse order (later packs override earlier ones)
+        for pack in reversed(self.active_packs):
+            candidates.append(self.bundled_packs_dir / pack / "templates" / "commands" / name)
+            candidates.append(self.project_packs_dir / pack / "templates" / "commands" / name)
+
+        candidates.append(self._templates_dir / name)
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        raise FileNotFoundError(f"Command template not found: {name}")
 
 
 def compose_commands(
@@ -328,7 +441,23 @@ def compose_commands(
             configured platform list or the default set.
         repo_root: Repository root for resolution; when omitted, auto-detected.
     """
-    composer = CommandComposer(config=config, repo_root=repo_root)
+    # Build a minimal component context so CommandComposer can read config.
+    # This helper is primarily for legacy call sites; prefer the adapter-driven
+    # interface (PlatformAdapter.context + CommandComposer) in new code.
+    from edison.core.adapters.base import PlatformAdapter
+
+    class _ComposeCommandsAdapter(PlatformAdapter):
+        @property
+        def platform_name(self) -> str:
+            return "compose-commands"
+
+        def sync_all(self) -> Dict[str, Any]:
+            return {}
+
+    root = (repo_root or Path.cwd()).resolve()
+    adapter = _ComposeCommandsAdapter(project_root=root)
+    adapter.config = adapter.cfg_mgr.deep_merge(adapter.config, config)
+    composer = CommandComposer(adapter.context)
     definitions = composer.filter_definitions(composer.load_definitions())
 
     target_platforms: List[str]

@@ -74,6 +74,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Run all enabled platform adapters after composing",
     )
+    parser.add_argument(
+        "--no-adapters",
+        action="store_true",
+        help="Do not run any platform adapters (overrides the default full-compose behavior)",
+    )
 
     # Output hygiene: prevent stale `_generated/**` files by rebuilding atomically.
     parser.add_argument(
@@ -226,7 +231,24 @@ def main(args: argparse.Namespace) -> int:
 
                 # Platform adapters
                 adapters_to_run: List[str] = []
-                if bool(getattr(args, "all_adapters", False)):
+                explicit_all = bool(getattr(args, "all_adapters", False))
+                no_adapters = bool(getattr(args, "no_adapters", False))
+                explicit_any = False
+                for adapter_name in adapter_loader.get_all_adapter_names():
+                    if getattr(args, adapter_name, False):
+                        explicit_any = True
+                        break
+
+                if no_adapters and (explicit_all or explicit_any):
+                    raise ValueError("--no-adapters cannot be combined with adapter selection flags.")
+
+                # Full compose defaults to also running enabled adapters unless explicitly suppressed
+                # by selecting specific types or requesting specific adapters.
+                if no_adapters:
+                    adapters_to_run = []
+                elif compose_all and not explicit_all and not explicit_any:
+                    adapters_to_run = adapter_loader.get_enabled_adapter_names()
+                elif explicit_all:
                     adapters_to_run = adapter_loader.get_enabled_adapter_names()
                 else:
                     for adapter_name in adapter_loader.get_all_adapter_names():

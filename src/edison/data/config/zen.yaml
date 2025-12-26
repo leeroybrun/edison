@@ -9,3 +9,13 @@ zen:
   secret_rotation:
     enabled: false
     check_interval_hours: 24
+
+  # Models for which Edison should generate generic Zen system prompts
+  # (written to `.zen/conf/systemprompts/clink/project/{model}.txt`).
+  prompt_models: ["codex", "claude", "gemini"]
+
+  # Template sources used by the Zen adapter.
+  templates:
+    # Workflow loop section appended to generic + project role prompts.
+    # Relative paths are resolved against project root first, then core templates.
+    workflow_loop: "templates/zen/workflow-loop.txt"

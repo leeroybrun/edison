@@ -1,0 +1,12 @@
+ci:
+  commands:
+    # Linting (MANDATORY for Ansible changes)
+    lint: ansible-lint
+
+    # Optional supplemental linters (use when configured in repo)
+    yaml-lint: yamllint .
+
+    # "Tests" for Ansible are typically Molecule (roles) or a check-mode run (playbooks)
+    molecule: molecule test
+    check: ansible-playbook --check --diff <playbook.yml>
+

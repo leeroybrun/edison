@@ -56,6 +56,11 @@ def test_base_branch_mode_current_uses_primary_head_and_does_not_switch_primary_
                 "baseDirectory": str(tmp_path / "worktrees"),
                 "archiveDirectory": str(tmp_path / "worktrees" / "_archived"),
                 "branchPrefix": "session/",
+                "sharedState": {
+                    "mode": "meta",
+                    "metaBranch": "edison-meta",
+                    "metaPathTemplate": str(tmp_path / "worktrees" / "_meta"),
+                },
             }
         },
     )
@@ -98,6 +103,11 @@ def test_base_branch_mode_fixed_uses_configured_branch_even_when_primary_on_feat
                 "baseDirectory": str(tmp_path / "worktrees2"),
                 "archiveDirectory": str(tmp_path / "worktrees2" / "_archived"),
                 "branchPrefix": "session/",
+                "sharedState": {
+                    "mode": "meta",
+                    "metaBranch": "edison-meta",
+                    "metaPathTemplate": str(tmp_path / "worktrees2" / "_meta"),
+                },
             }
         },
     )

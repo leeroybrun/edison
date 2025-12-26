@@ -129,6 +129,10 @@ class ClaudeAdapter(PlatformAdapter):
 
         return self.claude_dir
 
+    def validate_structure(self, *, create_missing: bool = True) -> Path:
+        """Back-compat alias for `ensure_structure` used by older tests/callers."""
+        return self.ensure_structure(create_missing=create_missing)
+
     # =========================================================================
     # Sync Methods
     # =========================================================================
@@ -159,7 +163,7 @@ class ClaudeAdapter(PlatformAdapter):
 
             filename = self.agents_filename_pattern.format(name=agent_name)
             target = self.claude_agents_dir / filename
-            self.writer.write_text(target, rendered)
+            self.write_text_managed(target, rendered)
             written.append(target)
 
         return written
@@ -180,7 +184,8 @@ class ClaudeAdapter(PlatformAdapter):
         result["agents"] = self.sync_agents()
 
         # Commands
-        commands = self.commands.compose_all().get("claude", {})
+        definitions = self.commands.compose()
+        commands = self.commands.compose_for_platform("claude", definitions)
         result["commands"] = list(commands.values())
 
         # Hooks

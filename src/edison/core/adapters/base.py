@@ -304,7 +304,7 @@ class PlatformAdapter(CompositionBase, ABC):
             # Write to target with configured filename pattern
             filename = filename_pattern.format(name=agent_name)
             target_file = target_dir / filename
-            self.writer.write_text(target_file, content)
+            self.write_text_managed(target_file, content)
             result.append(target_file)
 
         return result
@@ -332,17 +332,34 @@ class PlatformAdapter(CompositionBase, ABC):
         
         self.validate_structure(dest_dir)
         
+        pattern = getattr(sync_cfg, "source_glob", "*.md") or "*.md"
+        recursive = bool(getattr(sync_cfg, "recursive", False))
+
+        candidates = source_dir.rglob(pattern) if recursive else source_dir.glob(pattern)
+
         result: List[Path] = []
-        for source_file in sorted(source_dir.glob("*.md")):
+        for source_file in sorted([p for p in candidates if p.is_file()]):
             name = source_file.stem
             content = source_file.read_text(encoding="utf-8")
-            
+
             filename = sync_cfg.filename_pattern.format(name=name)
             target_file = dest_dir / filename
-            self.writer.write_text(target_file, content)
+            self.write_text_managed(target_file, content)
             result.append(target_file)
         
         return result
+
+    # =========================================================================
+    # Managed Writes
+    # =========================================================================
+
+    def write_text_managed(self, path: Path, content: str) -> Path:
+        """Write a file applying any configured write policies for this adapter."""
+        policy = self.composition_config.resolve_write_policy(
+            path=path,
+            adapter=self.platform_name,
+        )
+        return self.writer.write_text_with_policy(path, content, policy=policy)
 
     # =========================================================================
     # Factory Methods

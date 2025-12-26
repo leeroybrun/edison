@@ -6,6 +6,46 @@ session:
     templates:
       primary: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
       repo: "{PROJECT_CONFIG_DIR}/sessions/TEMPLATE.json"
+  # Hook-safe, deterministic session context refresher used by:
+  # - `edison session context`
+  # - `edison session next` (payload + human output)
+  # - Claude Code hooks via templates/hooks/*
+  context:
+    payload:
+      # Keys included in JSON payloads (both `session context --json` and `session next`).
+      fields:
+        - isEdisonProject
+        - projectRoot
+        - sessionId
+        - sessionState
+        - worktreePath
+        - currentTaskId
+        - currentTaskState
+        - activePacks
+        - constitutions
+    render:
+      markdown:
+        enabled: true
+        heading: "## Edison Context"
+        fields:
+          - projectRoot
+          - constitutions
+          - session
+          - loopDriver
+          - worktreePath
+          - currentTask
+          - activePacks
+      next:
+        enabled: true
+        heading: "Edison Context:"
+        fields:
+          - projectRoot
+          - constitutions
+          - session
+          - loopDriver
+          - worktreePath
+          - currentTask
+          - activePacks
   recovery:
     timeoutHours: 8
     staleCheckIntervalHours: 1

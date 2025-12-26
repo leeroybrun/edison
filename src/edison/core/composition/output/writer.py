@@ -77,6 +77,47 @@ class CompositionFileWriter:
         resolved.write_text(content, encoding=encoding or self.encoding)
         return resolved
 
+    def write_text_with_policy(
+        self,
+        path: Union[str, Path],
+        content: str,
+        *,
+        policy: Optional["WritePolicy"] = None,  # type: ignore[name-defined]
+        encoding: Optional[str] = None,
+    ) -> Path:
+        """Write content applying an optional write policy."""
+        if policy is None or getattr(policy, "mode", "replace") == "replace":
+            return self.write_text(path, content, encoding=encoding)
+
+        mode = getattr(policy, "mode", "replace")
+        if mode != "markers":
+            return self.write_text(path, content, encoding=encoding)
+
+        begin = getattr(policy, "begin_marker", None)
+        end = getattr(policy, "end_marker", None)
+        on_missing = getattr(policy, "on_missing", "prepend")
+        if not isinstance(begin, str) or not begin.strip():
+            raise ValueError("markers write_policy requires begin_marker")
+        if not isinstance(end, str) or not end.strip():
+            raise ValueError("markers write_policy requires end_marker")
+
+        from edison.core.composition.output.managed_blocks import apply_managed_block
+
+        resolved = self._resolve_path(path)
+        existing = ""
+        if resolved.exists():
+            existing = resolved.read_text(encoding=encoding or self.encoding)
+
+        updated = apply_managed_block(
+            existing_text=existing,
+            begin_marker=begin,
+            end_marker=end,
+            new_body=content,
+            on_missing=on_missing,
+        ).updated_text
+
+        return self.write_text(resolved, updated, encoding=encoding)
+
     def write_json(
         self,
         path: Union[str, Path],

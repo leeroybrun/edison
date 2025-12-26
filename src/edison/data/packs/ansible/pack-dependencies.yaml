@@ -1,0 +1,12 @@
+# Ansible pack has no pack dependencies.
+
+requiredPacks: []
+
+# Common tooling (for reference; install via your project tooling):
+recommendedTools:
+  - ansible-core
+  - ansible-lint
+  - yamllint
+  - molecule
+  - molecule-plugins[docker]
+

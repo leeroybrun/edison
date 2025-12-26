@@ -12,7 +12,7 @@ from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
 from edison.core.adapters.components.commands import CommandComposer
-from edison.core.config import ConfigManager
+from edison.cli.compose._context import build_compose_context
 
 SUMMARY = "Compose CLI commands from configuration"
 
@@ -46,10 +46,8 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
-        config_mgr = ConfigManager(repo_root=repo_root)
-        config = config_mgr.load_config()
-
-        composer = CommandComposer(config=config, repo_root=repo_root)
+        ctx = build_compose_context(repo_root=repo_root)
+        composer = CommandComposer(ctx)
 
         # Handle --list flag
         if args.list:
@@ -81,7 +79,17 @@ def main(args: argparse.Namespace) -> int:
 
         all_results = {}
         for platform in platforms:
-            results = composer.compose_for_platform(platform, definitions)
+            output_dir_override: Path | None = None
+            if args.output:
+                base = Path(str(args.output)).expanduser()
+                if args.platform:
+                    output_dir_override = base
+                else:
+                    output_dir_override = base / str(platform).lower()
+
+            results = composer.compose_for_platform(
+                platform, definitions, output_dir_override=output_dir_override
+            )
             all_results[platform] = {cmd_id: str(path) for cmd_id, path in results.items()}
 
         if args.json:

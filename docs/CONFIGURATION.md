@@ -780,6 +780,41 @@ composition:
       output_path: "{{PROJECT_EDISON_DIR}}/custom/agents"  # Custom path
 ```
 
+#### Write Policies (Managed Blocks)
+
+By default, Edison overwrites generated files entirely (`replace`). For shared instruction files like `AGENTS.md` / `CLAUDE.md`, you may want to preserve manual edits and let Edison manage only a marker-delimited block (`markers`).
+
+You can configure:
+
+- Global glob rules (`composition.write_policies`) for specific files/paths
+- Default write policy per content type (`composition.content_types.<type>.write_policy`)
+- Default write policy per adapter (`composition.adapters.<name>.write_policy`)
+
+Precedence is: first matching `write_policies` glob rule → content-type/adapter default → `replace`.
+
+```yaml
+composition:
+  write_policies:
+    - id: agents-managed-block
+      globs:
+        - "AGENTS.md"
+        - ".claude/CLAUDE.md"
+      policy:
+        mode: markers
+        begin_marker: "<!-- EDISON:START -->"
+        end_marker: "<!-- EDISON:END -->"
+        on_missing: prepend  # or: append | error
+
+  content_types:
+    roots:
+      # Can be a policy id (references write_policies[].id) or an inline mapping.
+      write_policy: agents-managed-block
+
+  adapters:
+    claude:
+      write_policy: agents-managed-block
+```
+
 ### Configuration Access Architecture
 
 All composition configuration is accessed through `CompositionConfig`:

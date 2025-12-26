@@ -1,17 +1,36 @@
-import pytest
+from __future__ import annotations
+
 from pathlib import Path
+import os
+
+from edison.core.utils.subprocess import run_with_timeout
 
 
 class TestZenWorkflowLoop:
-    def test_all_generic_prompts_have_workflow_loop(self):
+    def test_all_generic_prompts_have_workflow_loop(self, isolated_project_env: Path):
         """Test that all generic role prompts include workflow loop instructions."""
-        repo_root = Path.cwd()
+        repo_root = isolated_project_env
+
+        env = os.environ.copy()
+        env["AGENTS_PROJECT_ROOT"] = str(repo_root)
+
+        result = run_with_timeout(
+            ["uv", "run", "edison", "compose", "all"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        assert result.returncode == 0, (
+            f"compose failed with exit code {result.returncode}\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
         zen_prompts_dir = (
             repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
         )
-
-        if not zen_prompts_dir.exists():
-            pytest.skip("Zen prompts directory not found")
+        assert zen_prompts_dir.exists(), "Zen prompts directory not found after compose"
 
         prompts = [
             "codex.txt",
@@ -22,8 +41,7 @@ class TestZenWorkflowLoop:
         for prompt_file in prompts:
             prompt_path = zen_prompts_dir / prompt_file
 
-            if not prompt_path.exists():
-                pytest.fail(f"Missing prompt file: {prompt_file}")
+            assert prompt_path.exists(), f"Missing prompt file: {prompt_file}"
 
             content = prompt_path.read_text()
 
@@ -52,20 +70,35 @@ class TestZenWorkflowLoop:
                 f"{prompt_file} missing emphasis on reading rules first"
             )
 
-    def test_workflow_loop_emphasizes_rules_first(self):
+    def test_workflow_loop_emphasizes_rules_first(self, isolated_project_env: Path):
         """Test that workflow loop emphasizes reading rules BEFORE actions."""
-        repo_root = Path.cwd()
+        repo_root = isolated_project_env
+
+        env = os.environ.copy()
+        env["AGENTS_PROJECT_ROOT"] = str(repo_root)
+
+        result = run_with_timeout(
+            ["uv", "run", "edison", "compose", "all"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        assert result.returncode == 0, (
+            f"compose failed with exit code {result.returncode}\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
         zen_prompts_dir = (
             repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
         )
 
-        if not zen_prompts_dir.exists():
-            pytest.skip("Zen prompts directory not found")
+        assert zen_prompts_dir.exists(), "Zen prompts directory not found after compose"
 
         codex_prompt = zen_prompts_dir / "codex.txt"
 
-        if not codex_prompt.exists():
-            pytest.skip("codex.txt not found")
+        assert codex_prompt.exists(), "codex.txt not found after compose"
 
         content = codex_prompt.read_text()
 

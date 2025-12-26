@@ -184,7 +184,8 @@ class TestCursorAdapterAgentSync:
         _write_minimal_config(project_root)
 
         # Agent template but no pre-generated agents
-        agents_dir = project_root / ".edison" / "agents"
+        # `api-builder` exists in core; project customizations must live under overlays/.
+        agents_dir = project_root / ".edison" / "agents" / "overlays"
         agents_dir.mkdir(parents=True, exist_ok=True)
         agent_template = agents_dir / "api-builder.md"
         agent_template.write_text(
@@ -272,3 +273,36 @@ class TestCursorAdapterStructuredRules:
         assert "id: RULE.CONTEXT.ONE" in context_text
         assert "category: context" in context_text
         assert "Context rule body." in context_text
+
+
+class TestCursorAdapterCommands:
+    def test_sync_all_writes_only_cursor_commands(self, isolated_project_env: Path) -> None:
+        project_root = isolated_project_env
+        _write_minimal_config(project_root)
+
+        # Force-enable codex + claude in platforms and point codex output inside the project
+        # so we can detect accidental cross-platform writes.
+        write_yaml(
+            project_root / ".edison" / "config" / "commands.yaml",
+            {
+                "commands": {
+                    "platforms": ["claude", "cursor", "codex"],
+                    "platform_config": {
+                        "codex": {"enabled": True, "output_dir": str(project_root / ".codex" / "prompts")},
+                        "claude": {"enabled": True, "output_dir": str(project_root / ".claude" / "commands")},
+                        "cursor": {"enabled": True, "output_dir": str(project_root / ".cursor" / "commands")},
+                    },
+                }
+            },
+        )
+
+        adapter = CursorAdapter(project_root=project_root)
+        result = adapter.sync_all()
+
+        # Cursor commands should be written
+        assert any((project_root / ".cursor" / "commands").glob("*.md"))
+        assert result.get("commands")
+
+        # Other platform command dirs must NOT be written by cursor adapter.
+        assert not (project_root / ".claude" / "commands").exists()
+        assert not (project_root / ".codex" / "prompts").exists()

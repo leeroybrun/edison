@@ -25,6 +25,11 @@ def setup_worktree_config(session_git_repo_path: Path, monkeypatch: pytest.Monke
             "enabled": True,
             "baseDirectory": str(worktrees_dir),
             "branchPrefix": "session/",
+            "sharedState": {
+                "mode": "meta",
+                "metaBranch": "edison-meta",
+                "metaPathTemplate": str(worktrees_dir / "_meta"),
+            },
             "timeouts": {
                 "health_check": 2,
                 "fetch": 5,
@@ -110,4 +115,3 @@ def test_post_install_failure_retries_with_non_immutable_install(
         assert (wt_path / ".edison-test-install-ok").exists()
     finally:
         worktree.cleanup_worktree(sid, wt_path, branch, delete_branch=True)
-

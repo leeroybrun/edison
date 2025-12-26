@@ -191,6 +191,28 @@ class SessionConfig(BaseDomainConfig):
             "baseDirectory": ".worktrees",
             "archiveDirectory": ".worktrees/_archived",
             "pathTemplate": "../{PROJECT_NAME}-worktrees/{sessionId}",
+            "sharedState": {
+                "mode": "meta",
+                "metaBranch": "edison-meta",
+                "metaPathTemplate": "../{PROJECT_NAME}-worktrees/_meta",
+                "managementSubdirs": ["sessions", "tasks", "qa", "logs", "archive"],
+                "shareGenerated": True,
+                "generatedSource": "primary",
+                "gitExcludes": {
+                    "primary": [".project/"],
+                    "session": [".project/", ".edison/_generated/"],
+                    "meta": [
+                        ".project/sessions/",
+                        ".project/logs/",
+                        ".project/archive/",
+                        ".edison/_generated/",
+                    ],
+                },
+                "commitGuard": {
+                    "enabled": True,
+                    "allowPrefixes": [".project/tasks/", ".project/qa/"],
+                },
+            },
             "cleanup": {
                 "autoArchive": True,
                 "archiveAfterDays": 30,

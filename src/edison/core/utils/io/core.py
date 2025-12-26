@@ -157,6 +157,64 @@ def write_text(path: PathLike, content: str) -> None:
     atomic_write(target, _writer)
 
 
+def ensure_lines_present(
+    path: PathLike,
+    required_lines: list[str],
+    *,
+    create: bool = True,
+    ensure_blank_line_before: bool = True,
+    ensure_trailing_newline: bool = True,
+) -> bool:
+    """Ensure a text file contains each required line (append-only, idempotent).
+
+    - Creates the file if it does not exist (when create=True)
+    - Appends only the missing lines (no duplicates)
+    - Preserves existing file content verbatim
+
+    Args:
+        path: Target file path.
+        required_lines: Lines to ensure are present (without trailing newline).
+        create: Create the file if missing. If False, missing file raises FileNotFoundError.
+        ensure_blank_line_before: If appending to a non-empty file, insert a blank line before
+            the first newly appended line when the file does not already end with a blank line.
+        ensure_trailing_newline: Ensure the final file ends with a newline.
+
+    Returns:
+        True if the file was created or changed, False if already satisfied.
+    """
+    target = Path(path)
+    normalized_required = [str(l).rstrip("\r\n") for l in required_lines if str(l).strip() != ""]
+    if not normalized_required and not target.exists():
+        return False
+
+    if not target.exists():
+        if not create:
+            raise FileNotFoundError(f"Text file not found: {target}")
+        existing_lines: list[str] = []
+    else:
+        raw = target.read_text(encoding="utf-8")
+        existing_lines = raw.splitlines()
+
+    existing_norm = {line.rstrip() for line in existing_lines}
+    missing = [line for line in normalized_required if line.rstrip() not in existing_norm]
+
+    if not missing:
+        return False
+
+    out_lines = list(existing_lines)
+    if out_lines:
+        if ensure_blank_line_before and (out_lines[-1].strip() != ""):
+            out_lines.append("")
+    out_lines.extend(missing)
+
+    content = "\n".join(out_lines)
+    if ensure_trailing_newline and not content.endswith("\n"):
+        content += "\n"
+
+    write_text(target, content)
+    return True
+
+
 __all__ = [
     "PathLike",
     "ensure_parent_dir",
@@ -164,8 +222,8 @@ __all__ = [
     "atomic_write",
     "read_text",
     "write_text",
+    "ensure_lines_present",
 ]
-
 
 
 

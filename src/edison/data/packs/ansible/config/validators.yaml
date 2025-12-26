@@ -1,0 +1,35 @@
+validation:
+  validators:
+    ansible:
+      name: "Ansible Validator"
+      engine: codex-cli
+      fallback_engine: zen-mcp
+      prompt: "_generated/validators/ansible.md"
+      wave: comprehensive
+      always_run: false
+      blocking: true
+      timeout: 600
+      context7_required: false
+      context7_packages: []
+      triggers:
+        - "ansible.cfg"
+        - "requirements.yml"
+        - "requirements.yaml"
+        - "collections/requirements.yml"
+        - "collections/requirements.yaml"
+        - "inventory/**"
+        - "inventories/**"
+        - "group_vars/**"
+        - "host_vars/**"
+        - "playbooks/**"
+        - "roles/**"
+        - "site.yml"
+        - "site.yaml"
+      focus:
+        - idempotency
+        - secrets
+        - privilege-escalation
+        - handlers
+        - fqcn
+        - lint
+
