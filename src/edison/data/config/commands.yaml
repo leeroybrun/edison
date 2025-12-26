@@ -453,6 +453,37 @@ commands:
       related_commands:
         - session-context
 
+    - id: memory-save
+      domain: memory
+      command: save
+      short_desc: "Save a memory summary"
+      full_desc: |
+        Saves a session summary string to configured memory providers (optional).
+        Use this for ad-hoc notes; for structured session summaries use `memory run`.
+      cli: "edison memory save <summary>"
+      args: []
+      when_to_use: |
+        - You want to record a brief decision or gotcha
+      related_commands:
+        - memory-search
+        - session-context
+
+    - id: memory-run
+      domain: memory
+      command: run
+      short_desc: "Run memory pipelines"
+      full_desc: |
+        Runs configured memory pipelines for an event (e.g. session-end).
+        This is typically used to persist structured session insights and/or index episodic memory.
+      cli: "edison memory run --event session-end --session <session-id>"
+      args: []
+      when_to_use: |
+        - You want to persist structured session insights
+        - You want to trigger provider indexing (episodic sync/index)
+      related_commands:
+        - memory-search
+        - session-next
+
     # Helper commands
     - id: help
       domain: help

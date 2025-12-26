@@ -143,6 +143,9 @@ hooks:
       template: "session-cleanup.sh.template"
       config:
         save_logs: true
+        run_memory_pipeline: false
+        memory_pipeline_event: "session-end"
+        memory_best_effort: true
 
     # ===== Context Compaction Hooks (PreCompact) =====
 

@@ -28,7 +28,7 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
         from edison.core.memory import MemoryManager
 
-        mgr = MemoryManager(project_root=project_root)
+        mgr = MemoryManager(project_root=project_root, validate_config=True)
         limit = None if int(getattr(args, "limit", 0) or 0) == 0 else int(args.limit)
         hits = mgr.search(str(args.query), limit=limit)
         payload = {"hits": [h.to_dict() for h in hits], "count": len(hits)}
@@ -46,4 +46,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

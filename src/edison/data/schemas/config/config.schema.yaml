@@ -38,6 +38,18 @@ properties:
             minimum: 1
             maximum: 90
         additionalProperties: false
+      prompt_models:
+        type: array
+        description: Models for which Edison generates Zen system prompts.
+        items:
+          type: string
+      templates:
+        type: object
+        description: Template sources used by the Zen adapter.
+        properties:
+          workflow_loop:
+            type: string
+        additionalProperties: false
     additionalProperties: false
   paths:
     type: object
@@ -57,6 +69,63 @@ properties:
     type: string
     description: Project management root directory (e.g., .project).
     default: .project
+  memory:
+    type: object
+    description: Optional provider-driven long-term memory configuration.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      defaults:
+        type: object
+        properties:
+          maxHits:
+            type: integer
+            minimum: 0
+            default: 5
+        additionalProperties: false
+      paths:
+        type: object
+        properties:
+          root:
+            type: string
+          codebaseMapFile:
+            type: string
+          patternsFile:
+            type: string
+          gotchasFile:
+            type: string
+          sessionInsightsDir:
+            type: string
+        additionalProperties: false
+      contextInjection:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          limit:
+            type: integer
+            minimum: 0
+            default: 0
+          queryTemplate:
+            type: string
+          heading:
+            type: string
+          maxCharsPerHit:
+            type: integer
+            minimum: 0
+            default: 800
+        additionalProperties: false
+      providers:
+        type: object
+        additionalProperties:
+          $ref: '#/$defs/memory_provider'
+      pipelines:
+        type: object
+        additionalProperties:
+          $ref: '#/$defs/memory_pipeline'
+    additionalProperties: false
   project:
     type: object
     required:
@@ -177,6 +246,40 @@ properties:
         minimum: 1
         maximum: 10080
         default: 60
+      context:
+        type: object
+        properties:
+          payload:
+            type: object
+            properties:
+              fields:
+                type: array
+                items:
+                  type: string
+            additionalProperties: false
+          render:
+            type: object
+        additionalProperties: true
+      next:
+        type: object
+        properties:
+          output:
+            type: object
+            properties:
+              headerTemplate:
+                type: string
+              footerTemplate:
+                type: string
+              sections:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  additionalProperties: false
+            additionalProperties: false
+        additionalProperties: true
     additionalProperties: true
   worktrees:
     type: object
@@ -217,6 +320,75 @@ properties:
         type: string
         description: Optional path template for worktree location.
         default: ../{PROJECT_NAME}-worktrees/{sessionId}
+      sharedState:
+        type: object
+        description: Configuration for sharing `.project/*` and generated artifacts across session worktrees.
+        properties:
+          mode:
+            type: string
+            enum:
+            - meta
+            - primary
+            - external
+            default: meta
+          metaBranch:
+            type: string
+            default: edison-meta
+          metaPathTemplate:
+            type: string
+            default: ../{PROJECT_NAME}-worktrees/_meta
+          externalPath:
+            description: Used when sharedState.mode is "external".
+            type:
+            - string
+            - 'null'
+            default: null
+          managementSubdirs:
+            type: array
+            items:
+              type: string
+            default: []
+          shareGenerated:
+            type: boolean
+            default: true
+          generatedSource:
+            type: string
+            enum:
+            - primary
+            - shared
+            default: primary
+          gitExcludes:
+            type: object
+            properties:
+              primary:
+                type: array
+                items:
+                  type: string
+                default: []
+              session:
+                type: array
+                items:
+                  type: string
+                default: []
+              meta:
+                type: array
+                items:
+                  type: string
+                default: []
+            additionalProperties: false
+          commitGuard:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+                default: true
+              allowPrefixes:
+                type: array
+                items:
+                  type: string
+                default: []
+            additionalProperties: false
+        additionalProperties: false
       installDeps:
         type: boolean
         default: false
@@ -389,4 +561,126 @@ $defs:
             type: string
         additionalProperties: false
     additionalProperties: true
+  memory_provider:
+    description: Provider configuration entry under memory.providers.<id>.
+    oneOf:
+    - type: object
+      required: [kind, command, searchArgs]
+      properties:
+        kind: { const: external-cli }
+        enabled: { type: boolean, default: true }
+        command: { type: string }
+        searchArgs:
+          type: array
+          items: { type: string }
+        saveArgs:
+          type: array
+          items: { type: string }
+          default: []
+        indexArgs:
+          type: array
+          items: { type: string }
+          default: []
+        timeoutSeconds:
+          type: integer
+          minimum: 1
+          default: 10
+      additionalProperties: false
+    - type: object
+      required: [kind, command, searchArgs]
+      properties:
+        kind: { const: external-cli-text }
+        enabled: { type: boolean, default: true }
+        command: { type: string }
+        searchArgs:
+          type: array
+          items: { type: string }
+        saveArgs:
+          type: array
+          items: { type: string }
+          default: []
+        indexArgs:
+          type: array
+          items: { type: string }
+          default: []
+        timeoutSeconds:
+          type: integer
+          minimum: 1
+          default: 10
+      additionalProperties: false
+    - type: object
+      required: [kind, specDir]
+      properties:
+        kind: { const: graphiti-python }
+        enabled: { type: boolean, default: true }
+        module: { type: string, default: graphiti_memory }
+        class: { type: string, default: GraphitiMemory }
+        specDir: { type: string }
+        groupIdMode: { type: string, default: project }
+        includeProjectContext: { type: boolean, default: true }
+        includeSessionHistory: { type: boolean, default: false }
+        sessionHistoryLimit: { type: integer, minimum: 0, default: 3 }
+        saveMethod: { type: string, default: save_pattern }
+        saveStructuredMethod: { type: string, default: save_structured_insights }
+        saveTemplate: { type: string, default: "{summary}" }
+      additionalProperties: false
+    - type: object
+      required: [kind, serverId, searchTool]
+      properties:
+        kind: { const: mcp-tools }
+        enabled: { type: boolean, default: true }
+        serverId: { type: string }
+        searchTool: { type: string }
+        readTool:
+          type:
+          - string
+          - 'null'
+          default: null
+        responseFormat: { type: string, default: json }
+        timeoutSeconds: { type: integer, minimum: 1, default: 10 }
+        searchArguments:
+          type:
+          - object
+          - 'null'
+          default: null
+      additionalProperties: false
+    - type: object
+      required: [kind]
+      properties:
+        kind: { const: file-store }
+        enabled: { type: boolean, default: true }
+      additionalProperties: false
+  memory_pipeline:
+    description: Pipeline configuration entry under memory.pipelines.<event>.
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      steps:
+        type: array
+        items:
+          $ref: '#/$defs/memory_pipeline_step'
+        default: []
+    additionalProperties: false
+  memory_pipeline_step:
+    type: object
+    required: [kind]
+    properties:
+      id:
+        type: string
+      kind:
+        type: string
+        enum:
+        - session-insights-v1
+        - provider-save-structured
+        - provider-save-text
+        - provider-index
+      provider:
+        type: string
+      inputVar:
+        type: string
+      outputVar:
+        type: string
+    additionalProperties: false
 additionalProperties: true

@@ -33,7 +33,7 @@ def main(args: argparse.Namespace) -> int:
         )
         from edison.core.memory import MemoryManager
 
-        mgr = MemoryManager(project_root=project_root)
+        mgr = MemoryManager(project_root=project_root, validate_config=True)
         mgr.save(str(args.summary), session_id=session_id)
         payload = {"saved": True, "sessionId": session_id}
         formatter.json_output(payload) if formatter.json_mode else formatter.text("Saved.")
@@ -48,4 +48,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

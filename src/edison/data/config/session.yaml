@@ -46,6 +46,19 @@ session:
           - worktreePath
           - currentTask
           - activePacks
+  # Human-readable `edison session next` output configuration.
+  next:
+    output:
+      headerTemplate: "═══ Session {sessionId} – Next Steps ═══"
+      footerTemplate: "═══ End of Next Steps ═══"
+      sections:
+        context: { enabled: true }
+        rules: { enabled: true }
+        actions: { enabled: true }
+        blockers: { enabled: true }
+        reportsMissing: { enabled: true }
+        recommendations: { enabled: true }
+        followUpsPlan: { enabled: true }
   recovery:
     timeoutHours: 8
     staleCheckIntervalHours: 1

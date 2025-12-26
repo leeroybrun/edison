@@ -30,6 +30,20 @@ class MemoryProvider(Protocol):
         ...
 
 
+class StructuredMemoryProvider(Protocol):
+    id: str
+
+    def save_structured(self, record: dict[str, Any], *, session_id: Optional[str] = None) -> None:
+        ...
+
+
+class IndexableMemoryProvider(Protocol):
+    id: str
+
+    def index(self, *, event: str, session_id: Optional[str] = None) -> None:
+        ...
+
+
 @dataclass(frozen=True)
 class ExternalCliMemoryProvider:
     """Provider backed by an external CLI that returns JSON on stdout.
@@ -42,6 +56,7 @@ class ExternalCliMemoryProvider:
     command: str
     search_args: tuple[str, ...]
     save_args: tuple[str, ...]
+    index_args: tuple[str, ...] = ()
     timeout_seconds: int = 10
 
     def _run(self, argv: list[str], *, stdin_text: Optional[str] = None) -> subprocess.CompletedProcess[str]:
@@ -120,6 +135,19 @@ class ExternalCliMemoryProvider:
         if proc.returncode != 0:
             return
 
+    def index(self, *, event: str, session_id: Optional[str] = None) -> None:
+        if not self._is_available() or not self.index_args:
+            return
+        argv = [self.command] + [
+            a.format(event=event, session_id=session_id or "") if "{" in a else a for a in self.index_args
+        ]
+        try:
+            proc = self._run(argv)
+        except Exception:
+            return
+        if proc.returncode != 0:
+            return
+
 
 @dataclass(frozen=True)
 class ExternalCliTextMemoryProvider:
@@ -132,6 +160,7 @@ class ExternalCliTextMemoryProvider:
     command: str
     search_args: tuple[str, ...]
     save_args: tuple[str, ...] = ()
+    index_args: tuple[str, ...] = ()
     timeout_seconds: int = 10
 
     def _run(self, argv: list[str], *, stdin_text: Optional[str] = None) -> subprocess.CompletedProcess[str]:
@@ -188,6 +217,19 @@ class ExternalCliTextMemoryProvider:
         if proc.returncode != 0:
             return
 
+    def index(self, *, event: str, session_id: Optional[str] = None) -> None:
+        if not self._is_available() or not self.index_args:
+            return
+        argv = [self.command] + [
+            a.format(event=event, session_id=session_id or "") if "{" in a else a for a in self.index_args
+        ]
+        try:
+            proc = self._run(argv)
+        except Exception:
+            return
+        if proc.returncode != 0:
+            return
+
 
 def _run_awaitable(value: Any) -> Any:
     if not inspect.isawaitable(value):
@@ -204,8 +246,7 @@ def _run_awaitable(value: Any) -> Any:
 class GraphitiPythonMemoryProvider:
     """Provider backed by a Python GraphitiMemory class (async API).
 
-    This mirrors the integration style used by Auto-Claude: a best-effort
-    optional import with fail-open behavior.
+    Best-effort optional import with fail-open behavior.
     """
 
     id: str
@@ -218,6 +259,7 @@ class GraphitiPythonMemoryProvider:
     include_session_history: bool = False
     session_history_limit: int = 3
     save_method: str = "save_pattern"
+    save_structured_method: str = "save_structured_insights"
     save_template: str = "{summary}"
 
     def _load_class(self) -> Any:
@@ -319,10 +361,247 @@ class GraphitiPythonMemoryProvider:
             except Exception:
                 pass
 
+    def save_structured(self, record: dict[str, Any], *, session_id: Optional[str] = None) -> None:
+        if not self.module or not self.class_name:
+            return
+
+        try:
+            memory = self._instantiate()
+        except Exception:
+            return
+
+        try:
+            fn = getattr(memory, self.save_structured_method, None)
+            if fn is None:
+                return
+            payload = dict(record)
+            if session_id and not payload.get("sessionId"):
+                payload["sessionId"] = session_id
+            _run_awaitable(fn(payload))
+        except Exception:
+            return
+        finally:
+            try:
+                _run_awaitable(getattr(memory, "close")())  # type: ignore[misc]
+            except Exception:
+                pass
+
+
+@dataclass(frozen=True)
+class McpToolsMemoryProvider:
+    """Provider backed by MCP tools.
+
+    Intended for episodic memory servers that expose a search tool.
+    """
+
+    id: str
+    project_root: Path
+    server_id: str
+    search_tool: str
+    read_tool: str | None = None
+    response_format: str = "json"
+    timeout_seconds: int = 10
+    search_arguments: dict[str, Any] | None = None
+
+    def _build_search_args(self, query: str, limit: int) -> dict[str, Any]:
+        base: dict[str, Any] = {"query": query, "limit": max(0, int(limit))}
+        if not self.search_arguments:
+            return base
+
+        args: dict[str, Any] = {}
+        for k, v in self.search_arguments.items():
+            if isinstance(v, str) and "{" in v:
+                try:
+                    args[str(k)] = v.format(query=query, limit=max(0, int(limit)))
+                except Exception:
+                    args[str(k)] = v
+            else:
+                args[str(k)] = v
+        if "query" not in args:
+            args["query"] = query
+        if "limit" not in args:
+            args["limit"] = max(0, int(limit))
+        return args
+
+    def search(self, query: str, *, limit: int) -> list[MemoryHit]:
+        try:
+            from edison.core.memory.mcp_client import call_tool
+
+            result = call_tool(
+                project_root=self.project_root,
+                server_id=self.server_id,
+                tool_name=self.search_tool,
+                arguments=self._build_search_args(query, limit),
+                timeout_seconds=self.timeout_seconds,
+            )
+        except Exception:
+            return []
+
+        if result is None:
+            return []
+
+        texts: list[str] = []
+        for item in result.content:
+            if item.get("type") == "text" and isinstance(item.get("text"), str):
+                texts.append(item["text"])
+
+        hits: list[MemoryHit] = []
+        for t in texts:
+            if str(self.response_format).lower() != "json":
+                if t.strip():
+                    hits.append(MemoryHit(provider_id=self.id, text=t.strip(), score=None, meta=None))
+                continue
+
+            try:
+                obj = json.loads(t)
+            except Exception:
+                continue
+
+            results = obj.get("results") if isinstance(obj, dict) else None
+            if not isinstance(results, list):
+                continue
+
+            for r in results:
+                if not isinstance(r, dict):
+                    continue
+                snippet = r.get("snippet") or r.get("text") or r.get("content")
+                if not isinstance(snippet, str) or not snippet.strip():
+                    continue
+                score_raw = r.get("similarity") or r.get("score")
+                score: Optional[float]
+                try:
+                    score = float(score_raw) if score_raw is not None else None
+                except Exception:
+                    score = None
+                meta = {k: v for k, v in r.items() if k not in {"snippet", "text", "content", "similarity", "score"}}
+                hits.append(MemoryHit(provider_id=self.id, text=snippet.strip(), score=score, meta=meta or None))
+
+        hits.sort(key=lambda h: (h.score is not None, h.score or 0.0), reverse=True)
+        return hits[: max(0, int(limit))]
+
+    def save(self, session_summary: str, *, session_id: Optional[str] = None) -> None:
+        # No generic write tool standard; keep fail-open.
+        return
+
+
+@dataclass(frozen=True)
+class FileStoreMemoryProvider:
+    """File-based structured memory fallback provider.
+
+    Persists memory artifacts under a project-managed directory so memory survives
+    even when external providers are unavailable.
+    """
+
+    id: str
+    memory_root: Path
+    codebase_map_path: Path
+    patterns_path: Path
+    gotchas_path: Path
+    session_insights_dir: Path
+
+    def search(self, query: str, *, limit: int) -> list[MemoryHit]:
+        return []
+
+    def save(self, session_summary: str, *, session_id: Optional[str] = None) -> None:
+        return
+
+    def _ensure_dirs(self) -> None:
+        self.memory_root.mkdir(parents=True, exist_ok=True)
+        self.session_insights_dir.mkdir(parents=True, exist_ok=True)
+
+    def _read_lines_set(self, path: Path) -> set[str]:
+        try:
+            if not path.exists():
+                return set()
+            return {ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()}
+        except Exception:
+            return set()
+
+    def _append_deduped_bullets(self, path: Path, items: list[str]) -> None:
+        try:
+            existing = self._read_lines_set(path)
+            to_add: list[str] = []
+            for it in items:
+                s = str(it).strip()
+                if not s:
+                    continue
+                line = f"- {s}"
+                if line in existing:
+                    continue
+                to_add.append(line)
+                existing.add(line)
+            if not to_add:
+                return
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as f:
+                if path.stat().st_size == 0:
+                    f.write("")  # no-op (keeps file present)
+                for ln in to_add:
+                    f.write(ln + "\n")
+        except Exception:
+            return
+
+    def _merge_codebase_map(self, updates: dict[str, str]) -> None:
+        try:
+            self.codebase_map_path.parent.mkdir(parents=True, exist_ok=True)
+            base: dict[str, Any] = {}
+            if self.codebase_map_path.exists():
+                try:
+                    base_raw = json.loads(self.codebase_map_path.read_text(encoding="utf-8") or "{}")
+                    if isinstance(base_raw, dict):
+                        base = base_raw
+                except Exception:
+                    base = {}
+
+            for k, v in updates.items():
+                ks = str(k).strip()
+                vs = str(v).strip()
+                if not ks or not vs:
+                    continue
+                base[ks] = vs
+
+            self.codebase_map_path.write_text(
+                json.dumps(base, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            return
+
+    def save_structured(self, record: dict[str, Any], *, session_id: Optional[str] = None) -> None:
+        self._ensure_dirs()
+        sid = str(session_id or record.get("sessionId") or "").strip()
+        if not sid:
+            return
+        out_path = self.session_insights_dir / f"{sid}.json"
+        try:
+            out_path.write_text(
+                json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            return
+
+        discoveries = record.get("discoveries") if isinstance(record.get("discoveries"), dict) else {}
+        patterns = discoveries.get("patterns_found", []) if isinstance(discoveries, dict) else []
+        gotchas = discoveries.get("gotchas_encountered", []) if isinstance(discoveries, dict) else []
+        files_understood = discoveries.get("files_understood", {}) if isinstance(discoveries, dict) else {}
+
+        if isinstance(patterns, list):
+            self._append_deduped_bullets(self.patterns_path, [p for p in patterns if isinstance(p, str)])
+        if isinstance(gotchas, list):
+            self._append_deduped_bullets(self.gotchas_path, [g for g in gotchas if isinstance(g, str)])
+        if isinstance(files_understood, dict):
+            updates = {str(k): str(v) for k, v in files_understood.items() if isinstance(k, str)}
+            self._merge_codebase_map(updates)
+
 
 __all__ = [
     "MemoryProvider",
+    "StructuredMemoryProvider",
+    "IndexableMemoryProvider",
     "ExternalCliMemoryProvider",
     "ExternalCliTextMemoryProvider",
     "GraphitiPythonMemoryProvider",
+    "McpToolsMemoryProvider",
+    "FileStoreMemoryProvider",
 ]

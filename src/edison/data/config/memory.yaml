@@ -6,6 +6,15 @@ memory:
   defaults:
     maxHits: 5
 
+  # File-based fallback memory artifacts (used by the `file-store` provider).
+  # Paths support core placeholders like {PROJECT_MANAGEMENT_DIR}.
+  paths:
+    root: "{PROJECT_MANAGEMENT_DIR}/memory"
+    codebaseMapFile: "codebase_map.json"
+    patternsFile: "patterns.md"
+    gotchasFile: "gotchas.md"
+    sessionInsightsDir: "session_insights"
+
   # Optional: append memory hits to `edison session context` output (hooks-friendly).
   # This is disabled by default because it can incur external calls.
   contextInjection:
@@ -20,3 +29,7 @@ memory:
   # Providers are opt-in at the project layer.
   # Recommended first provider: episodic-memory (external tool / MCP server).
   providers: {}
+
+  # Optional event-driven pipelines (run via `edison memory run --event <id>`).
+  # Projects typically enable `session-end` and have the SessionEnd hook run it.
+  pipelines: {}

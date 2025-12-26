@@ -34,6 +34,19 @@ _edison_audit_event "hook.session-cleanup.start"
 _edison_audit_event "hook.session-cleanup.save-logs.requested"
 {% endif %}
 
+{% if cfg.get("run_memory_pipeline", False) %}
+_edison_audit_event "hook.session-cleanup.memory.run.requested" --field "event={{ cfg.get('memory_pipeline_event', 'session-end') }}"
+
+# Best-effort memory persistence (structured session insights, optional indexing).
+# Fail-open: hooks must never break normal workflows.
+MEM_EVENT="{{ cfg.get('memory_pipeline_event', 'session-end') }}"
+MEM_ARGS=(--event "$MEM_EVENT" --session "$SESSION_ID" --repo-root "$PWD")
+{% if cfg.get("memory_best_effort", True) %}
+MEM_ARGS+=(--best-effort)
+{% endif %}
+edison memory run "${MEM_ARGS[@]}" >/dev/null 2>&1 || true
+{% endif %}
+
 _edison_audit_event "hook.session-cleanup.end" --field "save_logs={{ cfg.get('save_logs', False) }}"
 
 exit 0
