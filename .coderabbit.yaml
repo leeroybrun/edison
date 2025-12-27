@@ -58,3 +58,27 @@ path_instructions:
     - Contributing guidelines
 
     '
+- path: '**/*.py'
+  instructions: 'Review Python code for:
+
+    - Style consistency and readability
+
+    - Type hints where applicable (project standards)
+
+    - Error handling and edge cases
+
+    - Security considerations (input handling, secrets)
+
+    '
+- path: '**/test_*.py'
+  instructions: 'Review Python tests for:
+
+    - Adequate coverage
+
+    - Clear assertions and failure messages
+
+    - Isolation (no cross-test coupling)
+
+    - Deterministic behavior (no flaky time/network deps)
+
+    '

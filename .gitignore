@@ -4,3 +4,9 @@ __pycache__/
 .pytest_cache/
 .mcp.json
 .ruff_cache/
+
+.edison/_generated/
+.project/sessions/
+.project/logs/
+.project/archive/
+.claude/settings.json.bak

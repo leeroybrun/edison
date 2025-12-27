@@ -66,7 +66,7 @@ Constitutions are embedded in prompts via `{{include:constitutions/*-base.md}}`.
 Single instruction: "Re-read your file on compact" = everything.
 
 ### Dynamic Content via Functions
-NEVER hardcode states/rosters/versions. Use `{{fn:function_name}}`.
+NEVER hardcode states/rosters/versions. Use `[ERROR: function 'function_name' not found]`.
 
 ## Anti-Patterns (FORBIDDEN)
 
@@ -90,7 +90,11 @@ mandatoryReads: [shared/TDD.md]
 Valid states: todo, wip, done
 
 # CORRECT
-Valid states: {{fn:task_states}}
+Valid states: - **todo** (initial): Task awaiting claim
+- **wip**: Task in progress
+- **blocked**: Waiting on external blockers
+- **done**: Implementation complete, awaiting validation
+- **validated** (final): Validated and complete
 ```
 
 ### Generic Content in Packs
