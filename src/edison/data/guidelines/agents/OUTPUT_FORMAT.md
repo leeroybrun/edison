@@ -50,7 +50,7 @@ tddCompliance:
 tracking:
   processId: 12345
   startedAt: "2025-12-02T10:30:45Z"
-  completedAt: "2025-12-02T10:31:12Z"
+  completedAt: "2025-12-02T10:31:12Z" # Optional until the round is completed
 ---
 ```
 

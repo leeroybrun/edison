@@ -127,7 +127,6 @@ properties:
     required:
     - processId
     - startedAt
-    - completedAt
     properties:
       processId:
         type: integer

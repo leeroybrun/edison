@@ -29,8 +29,11 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 #### Phase 1: Implement (TDD + Context7)
 
-1. **Start tracking (MANDATORY)**: `edison session track start --task <task-id> --type implementation`
-   - This prepares/locks the round evidence directory and establishes the canonical location for round artifacts.
+1. **Start tracking (MANDATORY)**:
+
+{{include-section:guidelines/includes/TRACKING.md#agent-tracking}}
+
+   - This establishes the canonical tracking metadata for the current round.
 2. Read requirements and locate existing patterns in the codebase.
 3. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
 4. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
@@ -64,10 +67,6 @@ Agents are generally **read-only** on task/session orchestration:
 ```bash
 # Read-only: inspect task state/details
 edison task status <task-id>
-
-# Tracking (mandatory for implementation rounds)
-edison session track start --task <task-id> --type implementation
-edison session track complete --task <task-id>
 ```
 
 > Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa promote`, `edison qa bundle`, `edison qa validate`.

@@ -9,4 +9,6 @@
 6. **Verdict** – Choose `approve` if all blocking issues are resolved, `reject` if blocking issues remain, or `blocked` if you could not complete validation. Never self-approve when evidence is missing.
 7. **Report** – Write the validator report (`validator-<id>-report.md`, see OUTPUT_FORMAT) and update the QA brief with findings, evidence links, and verdict. Include the model you used.
 8. **Handoff** – If rejected or blocked, ensure the QA returns to `{{fn:semantic_state("qa","waiting")}}/` and follow-ups are created. If approved, signal readiness for bundle approval.
+
+{{include-section:guidelines/includes/TRACKING.md#validator-tracking}}
 <!-- /section: workflow -->

@@ -30,13 +30,13 @@ findings: []
 tracking:
   processId: 12345
   startedAt: "2025-11-24T12:00:00Z"
-  completedAt: "2025-11-24T12:10:00Z"
+  completedAt: "2025-11-24T12:10:00Z" # Optional until the run is completed
 ---
 ```
 
 **Critical rules**
 - The `model` field is mandatory and MUST match the validator’s configured engine/model binding (see `validation.validators` in merged config).
-- The `tracking.*` fields are mandatory; start/complete tracking via the configured Edison tracking commands, do not fabricate timestamps.
+- The `tracking.processId` + `tracking.startedAt` fields are mandatory; `tracking.completedAt` is optional until completion. Start/complete tracking via the configured Edison tracking commands; do not fabricate timestamps.
 - On rejection, append a new round directory (`round-<N+1>/`) and a new “Round N” section in the QA brief; never overwrite previous round reports.
 
 ---

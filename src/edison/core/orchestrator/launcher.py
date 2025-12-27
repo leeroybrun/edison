@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.config.domains.logging import LoggingConfig
 from edison.core.audit.logger import audit_event, truncate_text
+from edison.core.tracking.process_events import append_process_event
 from edison.core.session.core.context import SessionContext
 from edison.core.utils.time import utc_timestamp
 from edison.core.utils.io import ensure_directory
@@ -296,6 +297,20 @@ class OrchestratorLauncher:
                 stderr=stderr_target,
                 text=True,
             )
+            # Process events are the source of truth for the live process index (fail-open).
+            try:
+                append_process_event(
+                    "process.started",
+                    repo_root=self._project_root,
+                    kind="orchestrator",
+                    sessionId=tokens.get("session_id"),
+                    model=str(profile_name),
+                    processId=getattr(process, "pid", None),
+                    startedAt=utc_timestamp(repo_root=self._project_root),
+                    lastActive=utc_timestamp(repo_root=self._project_root),
+                )
+            except Exception:
+                pass
             try:
                 audit_event(
                     "orchestrator.launch.spawned",

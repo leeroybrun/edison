@@ -73,6 +73,30 @@ properties:
     type: string
     description: Project management root directory (e.g., .project).
     default: .project
+  orchestration:
+    type: object
+    description: Multi-agent orchestration and process tracking configuration.
+    properties:
+      allowCliEngines:
+        description: Whether Edison may execute external CLI validator engines.
+        oneOf:
+        - type: boolean
+        - type: string
+        - type: array
+          items:
+            type: string
+      tracking:
+        type: object
+        properties:
+          activeStaleSeconds:
+            type: integer
+            minimum: 0
+            description: Staleness threshold (seconds since lastActive) for marking runs stale.
+          processEventsJsonl:
+            type: string
+            description: Append-only JSONL process events log path (relative to repo root).
+        additionalProperties: false
+    additionalProperties: false
   memory:
     type: object
     description: Optional provider-driven long-term memory configuration.

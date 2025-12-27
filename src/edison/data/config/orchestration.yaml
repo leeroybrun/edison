@@ -5,3 +5,11 @@ orchestration:
   # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
   # Default is false for safety and determinism; projects may override.
   allowCliEngines: false
+
+  tracking:
+    # Staleness threshold for "active" runs (seconds since lastActive heartbeat).
+    # Used by tracking/process listing to flag stale workers without requiring PID checks.
+    activeStaleSeconds: 120
+    # Append-only process events log (JSONL). This is the source of truth for the
+    # process index shown in the CLI and edison-ui.
+    processEventsJsonl: "{PROJECT_MANAGEMENT_DIR}/logs/edison/process-events.jsonl"

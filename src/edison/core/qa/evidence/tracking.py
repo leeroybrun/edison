@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import os
 import socket
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.time import utc_timestamp
+from edison.core.utils.time import parse_iso8601, utc_now, utc_timestamp
+from edison.core.tracking.process_events import append_process_event
+from edison.core.utils.config import load_validated_section
 
 from .service import EvidenceService
 from . import rounds
@@ -24,6 +27,52 @@ from . import rounds
 
 def _pid() -> int:
     return int(os.getpid())
+
+def _pid_is_running(*, process_id: Any, hostname: Any) -> bool | None:
+    """Best-effort liveness check for a PID on the current host."""
+    try:
+        pid = int(process_id)
+    except Exception:
+        return None
+
+    host = str(hostname or "").strip()
+    if host and host != socket.gethostname():
+        return None
+
+    if pid <= 0:
+        return False
+
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except Exception:
+        return None
+    return True
+
+
+def _active_stale_seconds(*, repo_root: Path | None) -> int:
+    cfg = load_validated_section(
+        ["orchestration", "tracking"],
+        required_fields=["activeStaleSeconds"],
+        repo_root=repo_root,
+    )
+    return int(cfg["activeStaleSeconds"])
+
+
+def _is_stale(*, repo_root: Path | None, last_active: Any) -> bool | None:
+    try:
+        ts = str(last_active or "").strip()
+        if not ts:
+            return None
+        last_dt = parse_iso8601(ts, repo_root=repo_root)
+        now_dt = utc_now(repo_root=repo_root)
+        age_seconds = (now_dt - last_dt).total_seconds()
+        return age_seconds > float(_active_stale_seconds(repo_root=repo_root))
+    except Exception:
+        return None
 
 
 _VALIDATOR_PREFIX = "validator-"
@@ -38,23 +87,40 @@ def _validator_id_from_path(path: Path) -> str:
         stem = stem[: -len(_VALIDATOR_REPORT_SUFFIX)]
     return stem
 
+
+def _run_id(existing: Any = None, *, requested: str | None = None) -> str:
+    """Return a stable run id for a tracking payload."""
+    rid = str(requested or "").strip()
+    if rid:
+        return rid
+    rid = str((existing or {}).get("runId") or "").strip() if isinstance(existing, dict) else ""
+    if rid:
+        return rid
+    return str(uuid.uuid4())
+
+
 def _tracking_payload(
     *,
+    run_id: str | None = None,
     started_at: str | None = None,
     completed_at: str | None = None,
     continuation_id: str | None = None,
     last_active: str | None = None,
+    process_id: int | None = None,
+    existing: dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     now = utc_timestamp()
+    rid = _run_id(existing, requested=run_id)
     payload: Dict[str, Any] = {
-        "processId": _pid(),
+        "runId": rid,
+        "processId": int(process_id) if process_id is not None else _pid(),
         "hostname": socket.gethostname(),
         "startedAt": started_at or now,
         "lastActive": last_active or now,
-        # Schemas currently require completedAt, so initialize it at start and
-        # update it again on `complete`.
-        "completedAt": completed_at or now,
     }
+    completed = str(completed_at or "").strip()
+    if completed:
+        payload["completedAt"] = completed
     if continuation_id:
         payload["continuationId"] = continuation_id
     return payload
@@ -79,6 +145,8 @@ def start_implementation(
     round_num: Optional[int] = None,
     implementation_approach: str = "orchestrator-direct",
     continuation_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    process_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Start (or resume) tracking for an implementation round."""
     ev = EvidenceService(task_id, project_root=project_root)
@@ -102,19 +170,38 @@ def start_implementation(
 
     tracking = report.get("tracking") if isinstance(report.get("tracking"), dict) else {}
     report["tracking"] = _tracking_payload(
+        run_id=run_id,
         started_at=str(tracking.get("startedAt") or "") or None,
-        completed_at=str(tracking.get("completedAt") or "") or None,
         continuation_id=continuation_id or (tracking.get("continuationId") if tracking else None),
         last_active=None,
+        process_id=process_id,
+        existing=tracking,
     )
 
     ev.write_implementation_report(report, round_num=resolved_round)
+
+    tr = report.get("tracking") if isinstance(report.get("tracking"), dict) else {}
+    append_process_event(
+        "process.started",
+        repo_root=project_root,
+        run_id=str(tr.get("runId") or "") or None,
+        kind="implementation",
+        taskId=task_id,
+        round=int(resolved_round),
+        model=report.get("primaryModel"),
+        processId=tr.get("processId"),
+        startedAt=tr.get("startedAt"),
+        lastActive=tr.get("lastActive"),
+        continuationId=tr.get("continuationId"),
+    )
 
     return {
         "taskId": task_id,
         "type": "implementation",
         "round": int(resolved_round),
         "path": str(report_path),
+        "runId": tr.get("runId"),
+        "processId": tr.get("processId"),
     }
 
 
@@ -127,6 +214,8 @@ def start_validation(
     round_num: Optional[int] = None,
     zen_role: Optional[str] = None,
     continuation_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    process_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Start tracking for a validator execution by writing a pending report."""
     ev = EvidenceService(task_id, project_root=project_root)
@@ -152,13 +241,31 @@ def start_validation(
 
     tracking = report.get("tracking") if isinstance(report.get("tracking"), dict) else {}
     report["tracking"] = _tracking_payload(
+        run_id=run_id,
         started_at=str(tracking.get("startedAt") or "") or None,
-        completed_at=str(tracking.get("completedAt") or "") or None,
         continuation_id=continuation_id or (tracking.get("continuationId") if tracking else None),
         last_active=None,
+        process_id=process_id,
+        existing=tracking,
     )
 
     ev.write_validator_report(validator_id, report, round_num=resolved_round)
+
+    tr = report.get("tracking") if isinstance(report.get("tracking"), dict) else {}
+    append_process_event(
+        "process.started",
+        repo_root=project_root,
+        run_id=str(tr.get("runId") or "") or None,
+        kind="validation",
+        taskId=task_id,
+        round=int(resolved_round),
+        validatorId=str(validator_id),
+        model=str(model),
+        processId=tr.get("processId"),
+        startedAt=tr.get("startedAt"),
+        lastActive=tr.get("lastActive"),
+        continuationId=tr.get("continuationId"),
+    )
 
     return {
         "taskId": task_id,
@@ -166,10 +273,19 @@ def start_validation(
         "round": int(resolved_round),
         "validatorId": str(validator_id),
         "path": str(report_path),
+        "runId": tr.get("runId"),
+        "processId": tr.get("processId"),
     }
 
-
-def heartbeat(task_id: str, *, project_root: Optional[Path] = None) -> Dict[str, Any]:
+def heartbeat(
+    task_id: str,
+    *,
+    project_root: Optional[Path] = None,
+    validator_id: str | None = None,
+    run_id: str | None = None,
+    round_num: int | None = None,
+    process_id: int | None = None,
+) -> Dict[str, Any]:
     """Update lastActive for tracking records in the current round.
 
     Note: CLI invocations are separate processes, so heartbeats must not require
@@ -177,43 +293,170 @@ def heartbeat(task_id: str, *, project_root: Optional[Path] = None) -> Dict[str,
     round and fail closed only when no tracking records exist at all.
     """
     ev = EvidenceService(task_id, project_root=project_root)
-    round_num = int(ev.get_current_round() or 1)
-    round_dir = ev.ensure_round(round_num)
+    resolved_round = int(round_num or ev.get_current_round() or 1)
+    round_dir = ev.ensure_round(resolved_round)
 
     updated: List[str] = []
+    updated_records: List[Dict[str, Any]] = []
     now = utc_timestamp()
 
+    requested_run = str(run_id or "").strip()
+    requested_validator = str(validator_id or "").strip()
+
     # Implementation report (if present)
-    impl = ev.read_implementation_report(round_num=round_num)
-    if isinstance(impl, dict):
-        tracking = impl.get("tracking")
-        if isinstance(tracking, dict):
-            tracking["lastActive"] = now
-            impl["tracking"] = tracking
-            ev.write_implementation_report(impl, round_num=round_num)
-            updated.append(str(round_dir / ev.implementation_filename))
+    if not requested_validator:
+        impl = ev.read_implementation_report(round_num=resolved_round)
+        if isinstance(impl, dict):
+            tracking = impl.get("tracking")
+            if isinstance(tracking, dict):
+                if requested_run and str(tracking.get("runId") or "").strip() != requested_run:
+                    pass
+                else:
+                    tracking["lastActive"] = now
+                    if process_id is not None:
+                        tracking["processId"] = int(process_id)
+                    impl["tracking"] = tracking
+                    ev.write_implementation_report(impl, round_num=resolved_round)
+                    updated.append(str(round_dir / ev.implementation_filename))
+                    updated_records.append(
+                        {
+                            "type": "implementation",
+                            "taskId": task_id,
+                            "round": int(resolved_round),
+                            "runId": tracking.get("runId"),
+                            "processId": tracking.get("processId"),
+                            "lastActive": tracking.get("lastActive"),
+                        }
+                    )
+                    append_process_event(
+                        "process.heartbeat",
+                        repo_root=project_root,
+                        run_id=str(tracking.get("runId") or "") or None,
+                        kind="implementation",
+                        taskId=task_id,
+                        round=int(resolved_round),
+                        model=impl.get("primaryModel"),
+                        processId=tracking.get("processId"),
+                        lastActive=tracking.get("lastActive"),
+                    )
 
     # Validator reports in this round (if present)
-    for p in ev.list_validator_reports(round_num=round_num):
+    for p in ev.list_validator_reports(round_num=resolved_round):
         try:
             vid = _validator_id_from_path(p)
-            data = ev.read_validator_report(vid, round_num=round_num)
+            if requested_validator and vid != requested_validator:
+                continue
+            data = ev.read_validator_report(vid, round_num=resolved_round)
         except Exception:
             continue
         if not isinstance(data, dict):
             continue
         tr = data.get("tracking")
         if isinstance(tr, dict):
+            if requested_run and str(tr.get("runId") or "").strip() != requested_run:
+                continue
             tr["lastActive"] = now
+            if process_id is not None:
+                tr["processId"] = int(process_id)
             data["tracking"] = tr
             # p.stem is "validator-<id>-report" but EvidenceService accepts either.
-            ev.write_validator_report(vid, data, round_num=round_num)
+            ev.write_validator_report(vid, data, round_num=resolved_round)
             updated.append(str(p))
+            updated_records.append(
+                {
+                    "type": "validation",
+                    "taskId": task_id,
+                    "round": int(resolved_round),
+                    "validatorId": data.get("validatorId"),
+                    "runId": tr.get("runId"),
+                    "processId": tr.get("processId"),
+                    "lastActive": tr.get("lastActive"),
+                }
+            )
+            append_process_event(
+                "process.heartbeat",
+                repo_root=project_root,
+                run_id=str(tr.get("runId") or "") or None,
+                kind="validation",
+                taskId=task_id,
+                round=int(resolved_round),
+                validatorId=data.get("validatorId"),
+                model=data.get("model"),
+                processId=tr.get("processId"),
+                lastActive=tr.get("lastActive"),
+            )
 
     if not updated:
         raise RuntimeError("No tracking records found for this process")
 
-    return {"taskId": task_id, "round": round_num, "updated": updated, "heartbeatAt": now}
+    return {
+        "taskId": task_id,
+        "round": int(resolved_round),
+        "updated": updated,
+        "heartbeatAt": now,
+        "updatedRecords": updated_records,
+    }
+
+
+def complete_validation(
+    task_id: str,
+    *,
+    project_root: Optional[Path] = None,
+    validator_id: str,
+    round_num: int | None = None,
+    run_id: str | None = None,
+    process_id: int | None = None,
+) -> Dict[str, Any]:
+    """Mark tracking complete for a single validator in a round."""
+    ev = EvidenceService(task_id, project_root=project_root)
+    resolved_round = int(round_num or ev.get_current_round() or 1)
+    round_dir = ev.ensure_round(resolved_round)
+
+    report_path = ev.get_validator_report_path(round_dir, validator_id)
+    data = ev.read_validator_report(validator_id, round_num=resolved_round)
+    if not isinstance(data, dict):
+        raise RuntimeError(f"No validator report found for '{validator_id}' in round {resolved_round}")
+
+    tr = data.get("tracking")
+    if not isinstance(tr, dict):
+        raise RuntimeError(f"No tracking payload found for '{validator_id}' in round {resolved_round}")
+
+    requested_run = str(run_id or "").strip()
+    if requested_run and str(tr.get("runId") or "").strip() != requested_run:
+        raise RuntimeError(f"runId mismatch for '{validator_id}' in round {resolved_round}")
+
+    now = utc_timestamp(repo_root=project_root)
+    tr["lastActive"] = now
+    tr["completedAt"] = now
+    if process_id is not None:
+        tr["processId"] = int(process_id)
+    data["tracking"] = tr
+    ev.write_validator_report(validator_id, data, round_num=resolved_round)
+
+    append_process_event(
+        "process.completed",
+        repo_root=project_root,
+        run_id=str(tr.get("runId") or "") or None,
+        kind="validation",
+        taskId=task_id,
+        round=int(resolved_round),
+        validatorId=data.get("validatorId"),
+        model=data.get("model"),
+        processId=tr.get("processId"),
+        completedAt=tr.get("completedAt"),
+        lastActive=tr.get("lastActive"),
+    )
+
+    return {
+        "taskId": task_id,
+        "type": "validation",
+        "validatorId": str(validator_id),
+        "round": int(resolved_round),
+        "path": str(report_path),
+        "runId": tr.get("runId"),
+        "processId": tr.get("processId"),
+        "completedAt": tr.get("completedAt"),
+    }
 
 
 def complete(
@@ -221,6 +464,8 @@ def complete(
     *,
     project_root: Optional[Path] = None,
     implementation_status: str = "complete",
+    run_id: str | None = None,
+    process_id: int | None = None,
 ) -> Dict[str, Any]:
     """Mark tracking complete for the current round.
 
@@ -239,26 +484,30 @@ def complete(
     if isinstance(impl, dict):
         tr = impl.get("tracking")
         if isinstance(tr, dict):
+            requested_run = str(run_id or "").strip()
+            if requested_run and str(tr.get("runId") or "").strip() != requested_run:
+                raise RuntimeError("runId mismatch for implementation tracking")
             tr["lastActive"] = now
             tr["completedAt"] = now
+            if process_id is not None:
+                tr["processId"] = int(process_id)
             impl["tracking"] = tr
             # Track completion also stamps completionStatus by default.
             impl["completionStatus"] = str(implementation_status)
             ev.write_implementation_report(impl, round_num=round_num)
             updated.append(str(round_dir / ev.implementation_filename))
-
-    for p in ev.list_validator_reports(round_num=round_num):
-        vid = _validator_id_from_path(p)
-        data = ev.read_validator_report(vid, round_num=round_num)
-        if not isinstance(data, dict):
-            continue
-        tr = data.get("tracking")
-        if isinstance(tr, dict):
-            tr["lastActive"] = now
-            tr["completedAt"] = now
-            data["tracking"] = tr
-            ev.write_validator_report(vid, data, round_num=round_num)
-            updated.append(str(p))
+            append_process_event(
+                "process.completed",
+                repo_root=project_root,
+                run_id=str(tr.get("runId") or "") or None,
+                kind="implementation",
+                taskId=task_id,
+                round=int(round_num),
+                model=impl.get("primaryModel"),
+                processId=tr.get("processId"),
+                completedAt=tr.get("completedAt"),
+                lastActive=tr.get("lastActive"),
+            )
 
     if not updated:
         raise RuntimeError("No tracking records found for this round")
@@ -290,17 +539,23 @@ def list_active(*, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
         impl = ev.read_implementation_report(round_num=round_num)
         if isinstance(impl, dict) and str(impl.get("completionStatus") or "").strip().lower() == "partial":
             tr = impl.get("tracking") if isinstance(impl.get("tracking"), dict) else {}
-            out.append(
-                {
-                    "taskId": task_dir.name,
-                    "type": "implementation",
-                    "round": int(round_num),
-                    "processId": tr.get("processId"),
-                    "startedAt": tr.get("startedAt"),
-                    "lastActive": tr.get("lastActive"),
-                    "path": str(latest / ev.implementation_filename),
-                }
-            )
+            item: Dict[str, Any] = {
+                "taskId": task_dir.name,
+                "type": "implementation",
+                "round": int(round_num),
+                "runId": tr.get("runId"),
+                "processId": tr.get("processId"),
+                "hostname": tr.get("hostname"),
+                "model": impl.get("primaryModel"),
+                "startedAt": tr.get("startedAt"),
+                "lastActive": tr.get("lastActive"),
+                "path": str(latest / ev.implementation_filename),
+            }
+            if tr.get("continuationId"):
+                item["continuationId"] = tr.get("continuationId")
+            item["isRunning"] = _pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
+            item["isStale"] = _is_stale(repo_root=project_root, last_active=item.get("lastActive"))
+            out.append(item)
 
         # Validator reports
         for p in ev.list_validator_reports(round_num=round_num):
@@ -311,18 +566,24 @@ def list_active(*, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
             if str(data.get("verdict") or "").strip().lower() != "pending":
                 continue
             tr = data.get("tracking") if isinstance(data.get("tracking"), dict) else {}
-            out.append(
-                {
-                    "taskId": task_dir.name,
-                    "type": "validation",
-                    "validatorId": data.get("validatorId"),
-                    "round": int(round_num),
-                    "processId": tr.get("processId"),
-                    "startedAt": tr.get("startedAt"),
-                    "lastActive": tr.get("lastActive"),
-                    "path": str(p),
-                }
-            )
+            item: Dict[str, Any] = {
+                "taskId": task_dir.name,
+                "type": "validation",
+                "validatorId": data.get("validatorId"),
+                "round": int(round_num),
+                "runId": tr.get("runId"),
+                "processId": tr.get("processId"),
+                "hostname": tr.get("hostname"),
+                "model": data.get("model"),
+                "startedAt": tr.get("startedAt"),
+                "lastActive": tr.get("lastActive"),
+                "path": str(p),
+            }
+            if tr.get("continuationId"):
+                item["continuationId"] = tr.get("continuationId")
+            item["isRunning"] = _pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
+            item["isStale"] = _is_stale(repo_root=project_root, last_active=item.get("lastActive"))
+            out.append(item)
 
     return out
 
@@ -331,6 +592,7 @@ __all__ = [
     "start_implementation",
     "start_validation",
     "heartbeat",
+    "complete_validation",
     "complete",
     "list_active",
 ]

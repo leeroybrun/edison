@@ -20,6 +20,10 @@ def test_tracking_start_creates_implementation_report(isolated_project_env: Path
     assert data["round"] == 1
     assert data["completionStatus"] == "partial"
     assert int(data["tracking"]["processId"]) == os.getpid()
+    assert "completedAt" not in data["tracking"]
+
+    events_path = isolated_project_env / ".project" / "logs" / "edison" / "process-events.jsonl"
+    assert events_path.exists()
 
 
 def test_tracking_complete_marks_implementation_complete(isolated_project_env: Path) -> None:
@@ -65,6 +69,7 @@ def test_tracking_start_validation_creates_validator_report(isolated_project_env
     assert report["validatorId"] == "security"
     assert report["verdict"] == "pending"
     assert int(report["tracking"]["processId"]) == os.getpid()
+    assert "completedAt" not in report["tracking"]
 
 
 def test_tracking_start_validation_report_is_schema_valid(isolated_project_env: Path) -> None:

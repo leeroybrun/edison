@@ -49,33 +49,7 @@ edison task status TASK-123 --json
 
 ### Implementation Tracking
 
-```bash
-edison session track start --task <task-id> --type implementation
-```
-
-**Purpose**: Prepare evidence directory for implementation work
-**When to use**: Before starting implementation work on a task round
-
-**Example:**
-```bash
-edison session track start --task TASK-123 --type implementation
-```
-
----
-
-```bash
-edison session track complete --task <task-id>
-```
-
-**Purpose**: Record completion of implementation work
-**When to use**: After completing implementation, before validation
-
-**Example:**
-```bash
-edison session track complete --task TASK-123
-```
-
-**This writes**: `{{fn:evidence_root}}/TASK-123/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
+{{include-section:guidelines/includes/TRACKING.md#agent-tracking}}
 
 ---
 

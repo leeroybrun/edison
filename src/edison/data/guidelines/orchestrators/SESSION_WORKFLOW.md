@@ -23,6 +23,8 @@ Session JSON stores **session metadata only** (state, owner, timestamps, git inf
 
 {{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#git-safety}}
 
+{{include-section:guidelines/includes/TRACKING.md#orchestrator-monitoring}}
+
 ## Session States
 
 Sessions transition through three states:
