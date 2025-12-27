@@ -1,0 +1,15 @@
+{
+  "taskId": "session-id-resolution",
+  "round": 2,
+  "implementationApproach": "orchestrator-direct",
+  "primaryModel": "gpt-5.2",
+  "completionStatus": "complete",
+  "followUpTasks": [],
+  "notesForValidator": "Follow-up unification: CLI-level resolve_session_id is now fail-closed for explicit values (explicit always requires an existing session). Migrated remaining session-sensitive CLIs (task claim/ready, session status, qa bundle) to use edison.cli.resolve_session_id so all CLI resolution routes through one helper -> core require/detect. Updated script-level CLI tests to create real session entities (session.json) since session scoping now requires existence.",
+  "tracking": {
+    "processId": 27643,
+    "hostname": "Mac",
+    "startedAt": "2025-12-15T08:51:01.902684+00:00",
+    "completedAt": "2025-12-15T08:51:01.902684+00:00"
+  }
+}

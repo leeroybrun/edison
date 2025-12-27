@@ -1,0 +1,17 @@
+{
+  "by_category": {
+    "core": 37,
+    "pack": 50,
+    "project": 5
+  },
+  "issues": [],
+  "purity": {
+    "by_category": {
+      "core_project_terms": 0,
+      "pack_project_terms": 0,
+      "project_pack_terms": 0
+    },
+    "violations_found": 0
+  },
+  "total_guidelines": 92
+}

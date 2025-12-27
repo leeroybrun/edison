@@ -1,0 +1,126 @@
+{
+  "cleanupPeriodDays": 120,
+  "enableAllProjectMcpServers": true,
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/auto-format.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/compaction-reminder.sh",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/remind-tdd.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/commit-guard.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash(git commit:*)"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/session-cleanup.sh",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/session-init.sh",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/inject-session-context.sh",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/leeroy/Documents/Development/edison/.claude/hooks/inject-task-rules.sh",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Edit(./**)",
+      "Write(./**)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "Bash(touch:*)",
+      "Bash(pwd:*)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(npm publish:*)",
+      "Bash(docker push:*)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Edit(./.env*)",
+      "Write(./.env*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(mkfs:*)",
+      "Bash(dd:*)"
+    ]
+  }
+}

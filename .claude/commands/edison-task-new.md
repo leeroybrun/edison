@@ -1,0 +1,45 @@
+---
+description: "Create a new task (playbook)"
+
+argument-hint: "id slug desc"
+
+
+---
+
+# edison-task-new
+
+Workflow: create a new task with a stable ID and clear scope.
+
+Recommended:
+- Keep the task small enough to validate in one round.
+- Put acceptance criteria into the task description.
+
+
+```bash
+edison task new --id <id> --slug <slug> --description "<desc>"
+
+```
+
+
+## Arguments
+
+- **id** (required): Numeric id (e.g., 100)
+
+- **slug** (required): Short slug (e.g., implement-auth)
+
+- **desc** (required): Human description / acceptance criteria
+
+
+
+## When to use
+
+- You're about to start a new unit of work
+- You want a canonical task record for Edison workflows
+
+
+
+## Related Commands
+
+- /edison-task-claim
+
+- /edison-task-status

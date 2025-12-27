@@ -1,0 +1,15 @@
+{
+  "taskId": "task-similarity",
+  "round": 1,
+  "implementationApproach": "orchestrator-direct",
+  "primaryModel": "gpt-5.2",
+  "completionStatus": "complete",
+  "followUpTasks": [],
+  "notesForValidator": "Extracted session-next similarity logic into edison.core.task.similarity (deterministic Jaccard + optional shingles, config-driven). Added `edison task similar` CLI for project-wide duplicate detection (global + session-scoped tasks). Session next now calls the shared index and still emits the same minimal `similar` shape. Added tasks.similarity config + TaskConfig accessors. Fixed incorrect get_data_path fallback usage in TaskRepository/QARepository. Updated/added tests and ran targeted e2e/session-next + CLI subprocess suites.",
+  "tracking": {
+    "processId": 13803,
+    "hostname": "Mac",
+    "startedAt": "2025-12-15T20:04:19.658081+00:00",
+    "completedAt": "2025-12-15T20:04:19.658081+00:00"
+  }
+}
