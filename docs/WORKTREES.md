@@ -78,6 +78,9 @@ Projects can:
 3) Create sessions normally:
    - `edison session create --id <sessionId>`
 
+If you're setting up a brand new project, `edison init` will guide you through these choices
+and can bootstrap the meta worktree automatically when you enable worktrees.
+
 ## Adding a new meta-managed folder
 
 1) Add an entry to `worktrees.sharedState.sharedPaths` for the repo-root path (dir or file).

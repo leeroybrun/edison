@@ -16,9 +16,10 @@ def build_context_with_defaults(
 ) -> Dict[str, Any]:
     """Merge provided answers with defaults and detected values."""
     context: Dict[str, Any] = {}
-    # Defaults from both modes
-    context.update(questionnaire.defaults_for_mode("basic"))
-    context.update(questionnaire.defaults_for_mode("advanced"))
+    # Defaults from both modes, respecting conditional questions based on provided answers.
+    # Use assume_yes=True so no prompting occurs.
+    context.update(questionnaire.run(mode="basic", provided_answers=answers or {}, assume_yes=True))
+    context.update(questionnaire.run(mode="advanced", provided_answers=answers or {}, assume_yes=True))
     # Provided answers override defaults
     context.update(answers or {})
 
@@ -48,6 +49,15 @@ def build_context_with_defaults(
 def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
     """Build a YAML-friendly config dictionary from context."""
     coverage_threshold = context.get("coverage_threshold", 0) or 0
+    worktrees_enabled = bool(context.get("enable_worktrees"))
+    shared_state_mode = str(context.get("worktrees_shared_state_mode") or "meta").strip().lower()
+
+    worktrees_cfg: Dict[str, Any] = {"enabled": worktrees_enabled}
+    if worktrees_enabled:
+        ss: Dict[str, Any] = {"mode": shared_state_mode}
+        if shared_state_mode == "external":
+            ss["externalPath"] = str(context.get("worktrees_external_path") or "").strip()
+        worktrees_cfg["sharedState"] = ss
     return {
         "paths": {
             # Canonical key used by config loader bootstrap.
@@ -68,7 +78,7 @@ def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
         "orchestrators": context.get("orchestrators") or [],
         "validators": {"enabled": context.get("validators") or []},
         "agents": {"enabled": context.get("agents") or []},
-        "worktrees": {"enabled": bool(context.get("enable_worktrees"))},
+        "worktrees": worktrees_cfg,
         "workflow": {
             "tasks": {"states": context.get("task_states") or []},
             "sessions": {"states": context.get("session_states") or []},

@@ -195,6 +195,10 @@ edison init --non-interactive --enable-worktrees
 edison init --skip-worktree-meta-init
 ```
 
+Worktrees note:
+- The setup wizard asks for the shared-state mode (`meta` / `primary` / `external`).
+- If you choose `external`, you will be asked for `worktrees.sharedState.externalPath`.
+
 
 ### init - Initialize Project
 

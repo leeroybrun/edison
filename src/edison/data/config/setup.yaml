@@ -77,6 +77,28 @@ setup:
       default: false
       help: "Use git worktrees for session isolation"
 
+    - id: worktrees_shared_state_mode
+      prompt: "Worktrees shared state mode"
+      type: choice
+      source: static
+      options: ["meta", "primary", "external"]
+      default: "meta"
+      help: "How shared state (.project, tool config) is shared across worktrees"
+      when:
+        id: enable_worktrees
+        equals: true
+
+    - id: worktrees_external_path
+      prompt: "Shared state external path (for mode=external)"
+      type: string
+      default: ""
+      required: true
+      help: "Absolute path used as shared root when shared state mode is external"
+      when:
+        all:
+          - {id: enable_worktrees, equals: true}
+          - {id: worktrees_shared_state_mode, equals: "external"}
+
     - id: ci_lint
       prompt: "Lint command"
       type: string

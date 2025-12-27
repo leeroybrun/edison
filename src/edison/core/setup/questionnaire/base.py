@@ -75,6 +75,63 @@ class SetupQuestionnaire:
         resolved: Dict[str, Any] = {}
         effective_assume_yes = self.assume_yes if assume_yes is None else assume_yes
 
+        def _should_ask(question: Dict[str, Any]) -> bool:
+            """Return True if a question should be asked given current answers.
+
+            Supports an optional `when:` clause in setup.yaml to avoid asking irrelevant
+            questions (e.g. sharedState details when worktrees are disabled).
+
+            Condition grammar (YAML):
+            - when:
+                id: <question_id>
+                equals: <value>         # default when missing: True
+              OR
+              when:
+                all:
+                  - {id: ..., equals: ...}
+                  - {id: ..., equals: ...}
+              OR
+              when:
+                any:
+                  - {id: ..., equals: ...}
+                  - {id: ..., equals: ...}
+            """
+            cond = question.get("when")
+            if not cond:
+                return True
+
+            # For gating, allow provided answers to influence visibility even if the
+            # question that sets them appears later in the file.
+            ctx: Dict[str, Any] = dict(resolved)
+            for k, v in provided.items():
+                if k not in ctx:
+                    ctx[k] = v
+
+            def _eval_one(c: Any) -> bool:
+                if not isinstance(c, dict):
+                    return bool(c)
+                if "all" in c:
+                    items = c.get("all") or []
+                    return all(_eval_one(x) for x in items)
+                if "any" in c:
+                    items = c.get("any") or []
+                    return any(_eval_one(x) for x in items)
+                qid = str(c.get("id") or "").strip()
+                if not qid:
+                    return True
+                actual = ctx.get(qid)
+                if "equals" in c:
+                    return actual == c.get("equals")
+                if "not_equals" in c:
+                    return actual != c.get("not_equals")
+                if "in" in c:
+                    items = c.get("in") or []
+                    return actual in items
+                # Default: treat presence as truthy check
+                return bool(actual)
+
+            return _eval_one(cond)
+
         def _process_question(question: Dict[str, Any]) -> None:
             qid = question.get("id")
             if not qid:
@@ -95,6 +152,8 @@ class SetupQuestionnaire:
             resolved[qid] = value
 
         for question in self._questions_for_mode(mode):
+            if not _should_ask(question):
+                continue
             _process_question(question)
 
             if question.get("id") == "packs":
@@ -104,6 +163,8 @@ class SetupQuestionnaire:
                 for pack_q in pack_questions:
                     pack_mode = pack_q.get("mode", "basic")
                     if pack_mode == mode or mode == "advanced":
+                        if not _should_ask(pack_q):
+                            continue
                         _process_question(pack_q)
 
         return resolved
