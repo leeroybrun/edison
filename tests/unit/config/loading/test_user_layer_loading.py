@@ -47,6 +47,34 @@ def test_load_pack_configs_user_pack_layer_between_bundled_and_project(tmp_path:
     assert cfg["custom"]["project_only"] is True
 
 
+def test_load_pack_configs_iterates_all_pack_roots(tmp_path: Path) -> None:
+    """_load_pack_configs() should iterate pack roots to support N roots without drift."""
+    bundled_pack = tmp_path / "bundled_packs" / "test-pack" / "config"
+    bundled_pack.mkdir(parents=True)
+    (bundled_pack / "custom.yaml").write_text("custom:\n  source: bundled\n", encoding="utf-8")
+
+    extra_pack = tmp_path / "extra_packs" / "test-pack" / "config"
+    extra_pack.mkdir(parents=True)
+    (extra_pack / "custom.yaml").write_text("custom:\n  extra_only: true\n", encoding="utf-8")
+
+    mgr = ConfigManager(tmp_path)
+    mgr.bundled_packs_dir = tmp_path / "bundled_packs"
+    mgr.user_packs_dir = tmp_path / "user_packs"  # type: ignore[attr-defined]
+    mgr.project_packs_dir = tmp_path / "project_packs"
+
+    from edison.core.packs.paths import PackRoot
+
+    mgr._pack_roots = (  # type: ignore[attr-defined]
+        PackRoot(kind="bundled", path=tmp_path / "bundled_packs"),
+        PackRoot(kind="extra", path=tmp_path / "extra_packs"),
+        PackRoot(kind="user", path=tmp_path / "user_packs"),
+        PackRoot(kind="project", path=tmp_path / "project_packs"),
+    )
+
+    cfg = mgr._load_pack_configs({}, ["test-pack"])
+    assert cfg["custom"]["extra_only"] is True
+
+
 def test_user_config_overrides_pack_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """User config layer loads after packs and can override pack settings."""
     # Point user config dir at an isolated location for this test.

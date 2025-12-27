@@ -282,12 +282,11 @@ class ConfigManager:
     def _load_pack_configs(
         self, cfg: Dict[str, Any], active_packs: List[str]
     ) -> Dict[str, Any]:
-        """Load config from active packs (bundled + project).
+        """Load config from active packs across pack roots.
 
-        Pack configs are loaded in order:
-        1. Bundled packs (edison.data/packs/{pack}/config/*.yaml)
-        2. User packs (~/<user-config-dir>/packs/{pack}/config/*.yaml)
-        3. Project packs (<project-config-dir>/packs/{pack}/config/*.yaml)
+        Pack configs are loaded in low→high precedence order across pack roots.
+        Default roots are bundled → user → project, but tests (and future layers)
+        can inject additional roots via `self._pack_roots`.
 
         Args:
             cfg: Base configuration to merge into
@@ -296,40 +295,23 @@ class ConfigManager:
         Returns:
             Configuration with pack overlays merged
         """
+        roots = self._iter_pack_roots()
+
         for pack_name in active_packs:
-            # Load bundled pack config
-            bundled_pack_config = self.bundled_packs_dir / pack_name / "config"
-            cfg = self._load_directory(bundled_pack_config, cfg)
-
-            # Load user pack config (overrides bundled)
-            user_pack_config = self.user_packs_dir / pack_name / "config"
-            cfg = self._load_directory(user_pack_config, cfg)
-
-            # Load project pack config (overrides bundled)
-            project_pack_config = self.project_packs_dir / pack_name / "config"
-            cfg = self._load_directory(project_pack_config, cfg)
+            for root in roots:
+                pack_config_dir = root.path / pack_name / "config"
+                cfg = self._load_directory(pack_config_dir, cfg)
 
         return cfg
 
     def _find_user_only_packs(self, active_packs: List[str]) -> List[str]:
         """Return packs that resolve only from the user packs directory."""
         user_only: List[str] = []
+        roots = self._iter_pack_roots()
 
         for pack_name in active_packs:
-            try:
-                bundled_exists = (Path(self.bundled_packs_dir) / pack_name).exists()
-            except Exception:
-                bundled_exists = False
-            try:
-                project_exists = (Path(self.project_packs_dir) / pack_name).exists()
-            except Exception:
-                project_exists = False
-            try:
-                user_exists = (Path(self.user_packs_dir) / pack_name).exists()
-            except Exception:
-                user_exists = False
-
-            if user_exists and not (bundled_exists or project_exists):
+            present = {r.kind for r in roots if (r.path / pack_name).exists()}
+            if present == {"user"}:
                 user_only.append(pack_name)
 
         return user_only
@@ -338,24 +320,31 @@ class ConfigManager:
         """Return packs that do not exist in any pack root (bundled/user/project)."""
         missing: List[str] = []
 
-        for pack_name in active_packs:
-            try:
-                bundled_exists = (Path(self.bundled_packs_dir) / pack_name).exists()
-            except Exception:
-                bundled_exists = False
-            try:
-                project_exists = (Path(self.project_packs_dir) / pack_name).exists()
-            except Exception:
-                project_exists = False
-            try:
-                user_exists = (Path(self.user_packs_dir) / pack_name).exists()
-            except Exception:
-                user_exists = False
+        roots = self._iter_pack_roots()
 
-            if not (bundled_exists or user_exists or project_exists):
+        for pack_name in active_packs:
+            if not any((r.path / pack_name).exists() for r in roots):
                 missing.append(pack_name)
 
         return missing
+
+    def _iter_pack_roots(self):
+        """Return pack roots in low→high precedence order.
+
+        Default roots are bundled → user → project. Tests (and future layers)
+        can inject additional roots via `self._pack_roots`.
+        """
+        from edison.core.packs.paths import PackRoot
+
+        roots = getattr(self, "_pack_roots", None)
+        if roots is not None:
+            return roots
+
+        return (
+            PackRoot(kind="bundled", path=Path(self.bundled_packs_dir)),
+            PackRoot(kind="user", path=Path(self.user_packs_dir)),
+            PackRoot(kind="project", path=Path(self.project_packs_dir)),
+        )
 
     def _packs_portability_user_only_mode(self, cfg: Dict[str, Any]) -> str:
         packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
