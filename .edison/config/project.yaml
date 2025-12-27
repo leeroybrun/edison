@@ -8,3 +8,58 @@ project:
   sourceDir: "src/edison"
   testsDir: "tests"
 
+worktrees:
+  sharedState:
+    sharedPaths:
+      - path: ".specify"
+        scopes: ["primary", "session"]
+      - path: "specs"
+        scopes: ["primary", "session"]
+      - path: ".openspec"
+        scopes: ["primary", "session"]
+      - path: ".claude"
+        scopes: ["primary", "session"]
+      - path: ".codex"
+        scopes: ["primary", "session"]
+      - path: ".augment"
+        scopes: ["primary", "session"]
+      - path: ".cursor"
+        scopes: ["primary", "session"]
+      - path: ".zen"
+        scopes: ["primary", "session"]
+
+      # `.edison/config/*` stays tracked as a bootstrap config source.
+      - path: ".edison/agents"
+        scopes: ["primary", "session"]
+      - path: ".edison/canonical"
+        scopes: ["primary", "session"]
+      - path: ".edison/clients"
+        scopes: ["primary", "session"]
+      - path: ".edison/constitutions"
+        scopes: ["primary", "session"]
+      - path: ".edison/guidelines"
+        scopes: ["primary", "session"]
+      - path: ".edison/scripts"
+        scopes: ["primary", "session"]
+      - path: ".edison/validators"
+        scopes: ["primary", "session"]
+
+    commitGuard:
+      allowPrefixes:
+        - ".project/tasks/"
+        - ".project/qa/"
+        - ".specify/"
+        - "specs/"
+        - ".openspec/"
+        - ".claude/"
+        - ".codex/"
+        - ".augment/"
+        - ".cursor/"
+        - ".zen/"
+        - ".edison/agents/"
+        - ".edison/canonical/"
+        - ".edison/clients/"
+        - ".edison/constitutions/"
+        - ".edison/guidelines/"
+        - ".edison/scripts/"
+        - ".edison/validators/"
