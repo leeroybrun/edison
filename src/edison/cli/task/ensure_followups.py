@@ -31,6 +31,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Preview follow-ups without creating them",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip pre-create duplicate checks (if configured)",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -112,6 +117,47 @@ def main(args: argparse.Namespace) -> int:
             # Generate child ID based on parent
             child_id = f"{task_id}.{i+1}-followup"
             description = f"{fu['reason']}\nParent: {task_id}"
+
+            duplicates = []
+            if not bool(getattr(args, "force", False)):
+                try:
+                    from edison.core.task.duplication import DuplicateTaskError, check_duplicates_or_raise
+
+                    duplicates = check_duplicates_or_raise(
+                        title=str(fu.get("title") or ""),
+                        description=str(description),
+                        project_root=project_root,
+                    )
+                except DuplicateTaskError as exc:
+                    if formatter.json_mode:
+                        formatter.json_output(
+                            {
+                                "error": "duplicate_task",
+                                "message": str(exc),
+                                "duplicates": [
+                                    {
+                                        "taskId": m.task_id,
+                                        "score": round(m.score, 2),
+                                        "title": m.title,
+                                        "state": m.state,
+                                    }
+                                    for m in exc.matches
+                                ],
+                                "proposedTaskId": child_id,
+                            }
+                        )
+                    else:
+                        formatter.error(exc, error_code="duplicate_task")
+                    return 1
+                except Exception:
+                    duplicates = []
+
+            if duplicates and not formatter.json_mode:
+                formatter.text(f"Possible duplicates for {child_id} ({len(duplicates)}):")
+                for m in duplicates:
+                    formatter.text(f"- {m.task_id}: {round(m.score, 2)} — {m.title}")
+                formatter.text("")
+
             workflow.create_task(
                 task_id=child_id,
                 title=fu["title"],
@@ -123,6 +169,21 @@ def main(args: argparse.Namespace) -> int:
                 "id": child_id,
                 "type": fu["type"],
                 "title": fu["title"],
+                **(
+                    {
+                        "duplicates": [
+                            {
+                                "taskId": m.task_id,
+                                "score": round(m.score, 2),
+                                "title": m.title,
+                                "state": m.state,
+                            }
+                            for m in duplicates
+                        ]
+                    }
+                    if duplicates
+                    else {}
+                ),
             })
 
         if created:

@@ -37,6 +37,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Preview split without creating tasks",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip pre-create duplicate checks (if configured)",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -91,6 +96,40 @@ def main(args: argparse.Namespace) -> int:
         for i, child_id in enumerate(child_ids):
             # Create task with parent reference
             description = f"Subtask {i+1} of {args.count}\nParent: {task_id}"
+
+            if not bool(getattr(args, "force", False)):
+                try:
+                    from edison.core.task.duplication import DuplicateTaskError, check_duplicates_or_raise
+
+                    _ = check_duplicates_or_raise(
+                        title=f"Part {child_id.split('.', 1)[1].split('-', 1)[0]}",
+                        description=description,
+                        project_root=project_root,
+                    )
+                except DuplicateTaskError as exc:
+                    if formatter.json_mode:
+                        formatter.json_output(
+                            {
+                                "error": "duplicate_task",
+                                "message": str(exc),
+                                "duplicates": [
+                                    {
+                                        "taskId": m.task_id,
+                                        "score": round(m.score, 2),
+                                        "title": m.title,
+                                        "state": m.state,
+                                    }
+                                    for m in exc.matches
+                                ],
+                                "proposedTaskId": child_id,
+                            }
+                        )
+                    else:
+                        formatter.error(exc, error_code="duplicate_task")
+                    return 1
+                except Exception:
+                    pass
+
             workflow.create_task(
                 task_id=child_id,
                 title=f"Part {child_id.split('.', 1)[1].split('-', 1)[0]}",

@@ -173,5 +173,75 @@ class TaskConfig(BaseDomainConfig):
     def similarity_body_weight(self) -> float:
         return float(self._similarity.get("bodyWeight", 0.3))
 
+    # ------------------------------------------------------------------
+    # Semantic-assisted similarity (optional; provider-driven via memory)
+    # ------------------------------------------------------------------
+    @cached_property
+    def _similarity_semantic(self) -> Dict[str, Any]:
+        raw = self._similarity.get("semantic")
+        return dict(raw) if isinstance(raw, dict) else {}
+
+    def similarity_semantic_enabled(self) -> bool:
+        return bool(self._similarity_semantic.get("enabled", False))
+
+    def similarity_semantic_providers(self) -> List[str]:
+        raw = self._similarity_semantic.get("providers", [])
+        if not isinstance(raw, list):
+            return []
+        return [str(p).strip() for p in raw if isinstance(p, (str, int)) and str(p).strip()]
+
+    def similarity_semantic_max_hits(self) -> int:
+        return int(self._similarity_semantic.get("maxHits", 5))
+
+    def similarity_semantic_query_template(self) -> str:
+        tmpl = self._similarity_semantic.get("queryTemplate")
+        return str(tmpl) if isinstance(tmpl, str) and tmpl.strip() else "{query}"
+
+    # ------------------------------------------------------------------
+    # Pre-create duplicate checks (CLI/user-facing; optional)
+    # ------------------------------------------------------------------
+    @cached_property
+    def _similarity_precreate(self) -> Dict[str, Any]:
+        raw = self._similarity.get("preCreate")
+        return dict(raw) if isinstance(raw, dict) else {}
+
+    def similarity_precreate_enabled(self) -> bool:
+        return bool(self._similarity_precreate.get("enabled", False))
+
+    def similarity_precreate_action(self) -> str:
+        action = str(self._similarity_precreate.get("action") or "warn").strip().lower()
+        return action if action in {"warn", "block", "none"} else "warn"
+
+    def similarity_precreate_threshold(self) -> float | None:
+        raw = self._similarity_precreate.get("threshold")
+        if raw is None:
+            return None
+        try:
+            return float(raw)
+        except Exception:
+            return None
+
+    def similarity_precreate_top_k(self) -> int | None:
+        raw = self._similarity_precreate.get("topK")
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except Exception:
+            return None
+
+    def similarity_precreate_states(self) -> List[str] | None:
+        raw = self._similarity_precreate.get("states")
+        if raw is None:
+            return None
+        if not isinstance(raw, list):
+            return None
+        out: List[str] = []
+        for s in raw:
+            st = str(s).strip()
+            if st:
+                out.append(st)
+        return out or None
+
 
 __all__ = ["TaskConfig"]

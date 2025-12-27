@@ -132,6 +132,36 @@ class TaskSimilarityIndex:
         exclude_task_ids: Optional[Iterable[str]] = None,
     ) -> List[SimilarTaskMatch]:
         cfg = TaskConfig(repo_root=self.project_root)
+        limit = int(cfg.similarity_top_k() if top_k is None else top_k)
+        primary = self._search_deterministic(
+            query,
+            threshold=threshold,
+            top_k=top_k,
+            exclude_task_ids=exclude_task_ids,
+        )
+
+        if not cfg.similarity_semantic_enabled():
+            return primary
+
+        augmented = _semantic_assisted_task_matches(
+            self,
+            query,
+            threshold=threshold,
+            top_k=top_k,
+            exclude_task_ids=exclude_task_ids,
+            cfg=cfg,
+        )
+        return _merge_matches(primary, augmented, limit=limit)
+
+    def _search_deterministic(
+        self,
+        query: str,
+        *,
+        threshold: Optional[float] = None,
+        top_k: Optional[int] = None,
+        exclude_task_ids: Optional[Iterable[str]] = None,
+    ) -> List[SimilarTaskMatch]:
+        cfg = TaskConfig(repo_root=self.project_root)
         min_score = float(cfg.similarity_threshold() if threshold is None else threshold)
         limit = int(cfg.similarity_top_k() if top_k is None else top_k)
         excludes = {str(tid) for tid in (exclude_task_ids or [])}
@@ -222,6 +252,71 @@ def find_similar_tasks_for_task(
         top_k=top_k,
         exclude_task_ids=[task.id],
     )
+
+
+def _merge_matches(
+    primary: list[SimilarTaskMatch],
+    secondary: list[SimilarTaskMatch],
+    *,
+    limit: int,
+) -> list[SimilarTaskMatch]:
+    by_id: dict[str, SimilarTaskMatch] = {m.task_id: m for m in primary}
+    for m in secondary:
+        cur = by_id.get(m.task_id)
+        if cur is None or m.score > cur.score:
+            by_id[m.task_id] = m
+    merged = list(by_id.values())
+    merged.sort(key=lambda m: (m.score, m.title_score, m.body_score), reverse=True)
+    return merged[: max(0, int(limit))]
+
+
+def _semantic_assisted_task_matches(
+    index: TaskSimilarityIndex,
+    query: str,
+    *,
+    threshold: Optional[float],
+    top_k: Optional[int],
+    exclude_task_ids: Optional[Iterable[str]],
+    cfg: TaskConfig,
+) -> list[SimilarTaskMatch]:
+    try:
+        from edison.core.memory import MemoryManager
+
+        mgr = MemoryManager(project_root=index.project_root, validate_config=False)
+    except Exception:
+        return []
+
+    if not mgr.enabled:
+        return []
+
+    provider_ids = set(cfg.similarity_semantic_providers())
+    providers = [p for p in mgr.providers if not provider_ids or getattr(p, "id", None) in provider_ids]
+    if not providers:
+        return []
+
+    tmpl = cfg.similarity_semantic_query_template()
+    try:
+        semantic_query = tmpl.format(query=query, project_root=str(index.project_root))
+    except Exception:
+        semantic_query = query
+
+    max_hits = max(0, int(cfg.similarity_semantic_max_hits()))
+    hits_text: list[str] = []
+    for p in providers:
+        try:
+            for h in p.search(semantic_query, limit=max_hits):
+                t = (h.text or "").strip()
+                if t:
+                    hits_text.append(t)
+        except Exception:
+            continue
+
+    # Use memory hits as "query expansions": run the same deterministic index against them.
+    # This keeps Edison search grounded in the actual task corpus while improving recall.
+    out: list[SimilarTaskMatch] = []
+    for t in hits_text:
+        out.extend(index._search_deterministic(t, threshold=threshold, top_k=top_k, exclude_task_ids=exclude_task_ids))
+    return out
 
 
 __all__ = [

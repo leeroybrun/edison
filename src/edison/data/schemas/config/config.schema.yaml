@@ -154,6 +154,53 @@ properties:
         additionalProperties:
           $ref: '#/$defs/memory_pipeline'
     additionalProperties: false
+      similarity:
+        type: object
+        properties:
+          topK: { type: integer, minimum: 0 }
+          threshold: { type: number, minimum: 0 }
+          useShingles: { type: boolean }
+          shingleSize: { type: integer, minimum: 1 }
+          titleWeight: { type: number, minimum: 0 }
+          bodyWeight: { type: number, minimum: 0 }
+          semantic:
+            type: object
+            properties:
+              enabled: { type: boolean, default: false }
+              providers:
+                type: array
+                items: { type: string }
+                default: []
+              maxHits: { type: integer, minimum: 0, default: 5 }
+              queryTemplate: { type: string, default: "{query}" }
+            additionalProperties: false
+          preCreate:
+            type: object
+            properties:
+              enabled: { type: boolean, default: false }
+              action:
+                type: string
+                enum: [warn, block, none]
+                default: warn
+              threshold:
+                type:
+                - number
+                - 'null'
+                default: null
+              topK:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+                default: null
+              states:
+                type:
+                - array
+                - 'null'
+                items: { type: string }
+                default: null
+            additionalProperties: false
+        additionalProperties: false
   project:
     type: object
     required:

@@ -25,6 +25,27 @@ tasks:
     shingleSize: 3
     titleWeight: 0.7
     bodyWeight: 0.3
+    # Optional semantic-assisted similarity. When enabled, Edison uses configured
+    # memory providers as query expansions, but still maps candidates back onto
+    # real tasks using the deterministic TaskSimilarityIndex.
+    semantic:
+      enabled: false
+      # Optional: restrict to specific memory provider IDs (memory.providers.<id>).
+      providers: []
+      maxHits: 5
+      # Available placeholders: {query}, {project_root}
+      queryTemplate: "{query}"
+    # Optional pre-create duplicate checks (CLI-only). When enabled, commands that
+    # create tasks (including follow-ups) will warn or block if duplicates exist.
+    preCreate:
+      enabled: false
+      # warn | block | none
+      action: warn
+      # Optional overrides; when null, tasks.similarity.threshold/topK are used.
+      threshold: null
+      topK: null
+      # Optional states filter; when null, all states are considered.
+      states: null
 
   # Derived readiness/blocked semantics computed from the graph.
   # NOTE: Values are semantic state keys, resolved via WorkflowConfig.get_semantic_state().

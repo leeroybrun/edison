@@ -53,6 +53,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--continuation-id",
         help="Continuation ID for downstream tools",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip pre-create duplicate checks (if configured)",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -88,6 +93,42 @@ def main(args: argparse.Namespace) -> int:
 
         # Create task using TaskManager (uses TaskRepository.create_task)
         repo_root = get_repo_root(args)
+
+        duplicates = []
+        if not bool(getattr(args, "force", False)):
+            try:
+                from edison.core.task.duplication import DuplicateTaskError, check_duplicates_or_raise
+
+                # Use the same title/description that would be created.
+                duplicates = check_duplicates_or_raise(
+                    title=title,
+                    description=description.strip(),
+                    project_root=repo_root,
+                )
+            except DuplicateTaskError as exc:
+                if formatter.json_mode:
+                    formatter.json_output(
+                        {
+                            "error": "duplicate_task",
+                            "message": str(exc),
+                            "duplicates": [
+                                {
+                                    "taskId": m.task_id,
+                                    "score": round(m.score, 2),
+                                    "title": m.title,
+                                    "state": m.state,
+                                }
+                                for m in exc.matches
+                            ],
+                        }
+                    )
+                else:
+                    formatter.error(exc, error_code="duplicate_task")
+                return 1
+            except Exception:
+                # Fail-open: duplicate checks must not break task creation.
+                duplicates = []
+
         manager = TaskManager(project_root=repo_root)
         task_entity = manager.create_task(
             task_id=task_id,
@@ -103,15 +144,29 @@ def main(args: argparse.Namespace) -> int:
         task_path = manager._repo.get_path(task_entity.id)
         rel_path = task_path.relative_to(repo_root) if task_path.is_relative_to(repo_root) else task_path
 
-        formatter.json_output({
+        result = {
             "status": "created",
             "task_id": task_entity.id,
             "state": task_entity.state,
             "title": task_entity.title,
             "path": str(rel_path),
-        }) if formatter.json_mode else formatter.text(
-            f"Created task: {task_entity.id} ({task_entity.state})\n  @{rel_path}"
-        )
+        }
+
+        if duplicates:
+            result["duplicates"] = [
+                {"taskId": m.task_id, "score": round(m.score, 2), "title": m.title, "state": m.state}
+                for m in duplicates
+            ]
+
+        if formatter.json_mode:
+            formatter.json_output(result)
+        else:
+            if duplicates:
+                formatter.text(f"Possible duplicates ({len(duplicates)}):")
+                for m in duplicates:
+                    formatter.text(f"- {m.task_id}: {round(m.score, 2)} — {m.title}")
+                formatter.text("")
+            formatter.text(f"Created task: {task_entity.id} ({task_entity.state})\n  @{rel_path}")
 
         return 0
 

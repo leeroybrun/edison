@@ -200,3 +200,22 @@ hooks:
         memory_pipeline_event: session-end
         memory_best_effort: true
 ```
+
+## Semantic Task Duplicate Detection (Optional)
+
+Edison’s task duplicate detection is deterministic by default. You can optionally enable **memory-assisted** recall: Edison will query configured memory providers for related snippets and use them as query expansions, but still maps results back onto real tasks using the deterministic similarity index.
+
+Enable in `.edison/config/tasks.yaml`:
+
+```yaml
+tasks:
+  similarity:
+    semantic:
+      enabled: true
+      providers: ["episodic", "graphiti"] # optional; omit to use all enabled providers
+      maxHits: 5
+      queryTemplate: "{query}"
+    preCreate:
+      enabled: true
+      action: warn  # warn | block | none
+```
