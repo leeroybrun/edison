@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import random
 import shutil
+import socket
 import string
 import subprocess
 import tempfile
@@ -306,8 +307,12 @@ class OrchestratorLauncher:
                     sessionId=tokens.get("session_id"),
                     model=str(profile_name),
                     processId=getattr(process, "pid", None),
+                    processHostname=socket.gethostname(),
                     startedAt=utc_timestamp(repo_root=self._project_root),
                     lastActive=utc_timestamp(repo_root=self._project_root),
+                    launcherKind="edison-orchestrator-launcher",
+                    launcherPid=int(os.getpid()),
+                    parentPid=int(os.getppid()),
                 )
             except Exception:
                 pass

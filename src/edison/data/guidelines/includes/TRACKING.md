@@ -51,6 +51,9 @@ Orchestrators can monitor tracking runs:
 edison session track active
 edison session track active --json
 
+# Detect stopped processes and append stop events
+edison session track sweep --json
+
 # Process index (computed from append-only JSONL process events)
 edison session track processes --json
 ```

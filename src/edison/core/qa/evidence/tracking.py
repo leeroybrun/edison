@@ -17,9 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from edison.core.utils.time import parse_iso8601, utc_now, utc_timestamp
+from edison.core.tracking.liveness import is_stale, pid_is_running
+from edison.core.utils.time import utc_timestamp
 from edison.core.tracking.process_events import append_process_event
-from edison.core.utils.config import load_validated_section
 
 from .service import EvidenceService
 from . import rounds
@@ -28,51 +28,16 @@ from . import rounds
 def _pid() -> int:
     return int(os.getpid())
 
-def _pid_is_running(*, process_id: Any, hostname: Any) -> bool | None:
-    """Best-effort liveness check for a PID on the current host."""
-    try:
-        pid = int(process_id)
-    except Exception:
-        return None
-
-    host = str(hostname or "").strip()
-    if host and host != socket.gethostname():
-        return None
-
-    if pid <= 0:
-        return False
-
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except Exception:
-        return None
-    return True
-
-
-def _active_stale_seconds(*, repo_root: Path | None) -> int:
-    cfg = load_validated_section(
-        ["orchestration", "tracking"],
-        required_fields=["activeStaleSeconds"],
-        repo_root=repo_root,
-    )
-    return int(cfg["activeStaleSeconds"])
-
-
-def _is_stale(*, repo_root: Path | None, last_active: Any) -> bool | None:
-    try:
-        ts = str(last_active or "").strip()
-        if not ts:
-            return None
-        last_dt = parse_iso8601(ts, repo_root=repo_root)
-        now_dt = utc_now(repo_root=repo_root)
-        age_seconds = (now_dt - last_dt).total_seconds()
-        return age_seconds > float(_active_stale_seconds(repo_root=repo_root))
-    except Exception:
-        return None
+def _launcher_fields() -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "launcherKind": "edison-cli",
+        "launcherPid": int(os.getpid()),
+        "parentPid": int(os.getppid()),
+    }
+    sid = str(os.environ.get("AGENTS_SESSION") or "").strip()
+    if sid:
+        payload["sessionId"] = sid
+    return payload
 
 
 _VALIDATOR_PREFIX = "validator-"
@@ -190,9 +155,11 @@ def start_implementation(
         round=int(resolved_round),
         model=report.get("primaryModel"),
         processId=tr.get("processId"),
+        processHostname=tr.get("hostname"),
         startedAt=tr.get("startedAt"),
         lastActive=tr.get("lastActive"),
         continuationId=tr.get("continuationId"),
+        **_launcher_fields(),
     )
 
     return {
@@ -262,9 +229,12 @@ def start_validation(
         validatorId=str(validator_id),
         model=str(model),
         processId=tr.get("processId"),
+        processHostname=tr.get("hostname"),
         startedAt=tr.get("startedAt"),
         lastActive=tr.get("lastActive"),
         continuationId=tr.get("continuationId"),
+        zenRole=report.get("zenRole"),
+        **_launcher_fields(),
     )
 
     return {
@@ -337,7 +307,9 @@ def heartbeat(
                         round=int(resolved_round),
                         model=impl.get("primaryModel"),
                         processId=tracking.get("processId"),
+                        processHostname=tracking.get("hostname"),
                         lastActive=tracking.get("lastActive"),
+                        **_launcher_fields(),
                     )
 
     # Validator reports in this round (if present)
@@ -383,7 +355,10 @@ def heartbeat(
                 validatorId=data.get("validatorId"),
                 model=data.get("model"),
                 processId=tr.get("processId"),
+                processHostname=tr.get("hostname"),
                 lastActive=tr.get("lastActive"),
+                zenRole=data.get("zenRole"),
+                **_launcher_fields(),
             )
 
     if not updated:
@@ -443,8 +418,11 @@ def complete_validation(
         validatorId=data.get("validatorId"),
         model=data.get("model"),
         processId=tr.get("processId"),
+        processHostname=tr.get("hostname"),
         completedAt=tr.get("completedAt"),
         lastActive=tr.get("lastActive"),
+        zenRole=data.get("zenRole"),
+        **_launcher_fields(),
     )
 
     return {
@@ -505,8 +483,10 @@ def complete(
                 round=int(round_num),
                 model=impl.get("primaryModel"),
                 processId=tr.get("processId"),
+                processHostname=tr.get("hostname"),
                 completedAt=tr.get("completedAt"),
                 lastActive=tr.get("lastActive"),
+                **_launcher_fields(),
             )
 
     if not updated:
@@ -518,10 +498,21 @@ def complete(
 def list_active(*, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
     """List all active (in-progress) tracking records under the evidence tree."""
     from edison.core.qa._utils import get_evidence_base_path
+    from edison.core.tracking.process_events import list_processes as list_tracked_processes
 
     base = get_evidence_base_path(project_root)
     if not base.exists():
         return []
+
+    proc_index: Dict[str, Dict[str, Any]] = {}
+    try:
+        proc_index = {
+            str(p.get("runId") or ""): p
+            for p in list_tracked_processes(repo_root=project_root, active_only=False, update_stop_events=True)
+            if str(p.get("runId") or "").strip()
+        }
+    except Exception:
+        proc_index = {}
 
     out: List[Dict[str, Any]] = []
     for task_dir in sorted([p for p in base.iterdir() if p.is_dir()], key=lambda p: p.name):
@@ -553,8 +544,15 @@ def list_active(*, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
             }
             if tr.get("continuationId"):
                 item["continuationId"] = tr.get("continuationId")
-            item["isRunning"] = _pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
-            item["isStale"] = _is_stale(repo_root=project_root, last_active=item.get("lastActive"))
+            idx = proc_index.get(str(item.get("runId") or "").strip())
+            if isinstance(idx, dict):
+                item["isRunning"] = idx.get("isRunning")
+                item["isStale"] = idx.get("isStale")
+                item["state"] = idx.get("state")
+                item["processEvent"] = idx.get("event")
+            else:
+                item["isRunning"] = pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
+                item["isStale"] = is_stale(repo_root=project_root, last_active=item.get("lastActive"))
             out.append(item)
 
         # Validator reports
@@ -581,8 +579,15 @@ def list_active(*, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
             }
             if tr.get("continuationId"):
                 item["continuationId"] = tr.get("continuationId")
-            item["isRunning"] = _pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
-            item["isStale"] = _is_stale(repo_root=project_root, last_active=item.get("lastActive"))
+            idx = proc_index.get(str(item.get("runId") or "").strip())
+            if isinstance(idx, dict):
+                item["isRunning"] = idx.get("isRunning")
+                item["isStale"] = idx.get("isStale")
+                item["state"] = idx.get("state")
+                item["processEvent"] = idx.get("event")
+            else:
+                item["isRunning"] = pid_is_running(process_id=item.get("processId"), hostname=item.get("hostname"))
+                item["isStale"] = is_stale(repo_root=project_root, last_active=item.get("lastActive"))
             out.append(item)
 
     return out

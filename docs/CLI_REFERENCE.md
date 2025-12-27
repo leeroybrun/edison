@@ -719,6 +719,22 @@ edison session track active [options]
 edison session track active
 ```
 
+#### track sweep - Detect Stopped Processes
+
+Detect processes that are no longer running (best-effort, local host only) and append
+`process.detected_stopped` events to the append-only process events JSONL stream.
+
+```bash
+edison session track sweep [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
 #### track processes - List Tracked Processes
 
 List tracked processes computed from the append-only JSONL process events stream.

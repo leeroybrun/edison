@@ -100,6 +100,14 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     add_json_flag(active_parser)
     add_repo_root_flag(active_parser)
 
+    # sweep subcommand
+    sweep_parser = subparsers.add_parser(
+        "sweep",
+        help="Detect stopped processes and append stop events to the process log",
+    )
+    add_json_flag(sweep_parser)
+    add_repo_root_flag(sweep_parser)
+
     # processes subcommand
     processes_parser = subparsers.add_parser(
         "processes",
@@ -204,6 +212,14 @@ def main(args: argparse.Namespace) -> int:
                         task_id = it.get("taskId")
                         extra = f" ({it.get('validatorId')})" if it.get("validatorId") else ""
                         formatter.text(f"- {task_id}{extra}: {kind} (round {it.get('round')})")
+
+        elif args.subcommand == "sweep":
+            from edison.core.tracking import sweep_processes
+
+            result = sweep_processes(repo_root=repo_root)
+            formatter.json_output(result) if formatter.json_mode else formatter.text(
+                f"Recorded stop events for {result.get('stoppedRecorded')} process(es)"
+            )
 
         elif args.subcommand == "processes":
             from edison.core.tracking import list_processes
