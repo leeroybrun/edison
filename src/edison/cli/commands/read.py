@@ -24,7 +24,13 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--type",
         type=str,
         default="",
-        help="Generated subfolder (e.g., start, guidelines, agents). Empty means _generated root.",
+        help="Generated subfolder (e.g., start, guidelines/shared, agents). Empty means _generated root.",
+    )
+    parser.add_argument(
+        "--section",
+        type=str,
+        default="",
+        help="Optional SECTION marker name to extract (same semantics as {{include-section:...}}).",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -34,13 +40,18 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
     try:
         repo_root = get_repo_root(args)
-        from edison.core.generated.files import resolve_generated_file_path
+        from edison.core.generated.files import read_generated_file_content
 
-        path = resolve_generated_file_path(repo_root, type=str(args.type or ""), name=str(args.name))
-        content = path.read_text(encoding="utf-8", errors="strict")
+        section = str(getattr(args, "section", "") or "").strip() or None
+        path, content = read_generated_file_content(
+            repo_root,
+            type=str(args.type or ""),
+            name=str(args.name),
+            section=section,
+        )
 
         if formatter.json_mode:
-            formatter.json_output({"path": str(path), "content": content})
+            formatter.json_output({"path": str(path), "content": content, "section": section})
         else:
             formatter.text(content)
         return 0
@@ -54,4 +65,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

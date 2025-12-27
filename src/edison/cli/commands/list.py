@@ -19,7 +19,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--type",
         type=str,
         default="",
-        help="Generated subfolder to list (e.g., start, guidelines, agents). Empty means _generated root.",
+        help="Generated subfolder to list (e.g., start, guidelines/shared, agents). Empty means _generated root.",
     )
     parser.add_argument(
         "--recursive",
@@ -74,4 +74,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

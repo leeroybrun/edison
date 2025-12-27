@@ -149,3 +149,35 @@ def list_generated_files_payload(
         }
         for f in list_generated_files(project_root, type=type, recursive=recursive)
     ]
+
+
+def read_generated_file_content(
+    project_root: Path,
+    *,
+    type: Optional[str] = None,
+    name: str,
+    section: Optional[str] = None,
+) -> tuple[Path, str]:
+    """Read a composed artifact under `.edison/_generated/`.
+
+    Args:
+        project_root: Repo root.
+        type: Optional `_generated` subfolder (supports nested, e.g. guidelines/shared).
+        name: File name (without extension is OK; defaults to .md).
+        section: Optional SECTION marker to extract (same semantics as {{include-section:}}).
+
+    Returns:
+        (path, content) where content is either the full file or the extracted section.
+    """
+    path = resolve_generated_file_path(project_root, type=type, name=name)
+    content = path.read_text(encoding="utf-8", errors="strict")
+
+    if section:
+        from edison.core.composition.core.sections import SectionParser
+
+        extracted = SectionParser().extract_section(content, str(section).strip())
+        if extracted is None:
+            raise KeyError(f"Section '{section}' not found in {path}")
+        content = extracted
+
+    return path, content

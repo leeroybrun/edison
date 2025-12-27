@@ -96,3 +96,61 @@ def test_generated_list_rejects_type_traversal(tmp_path: Path) -> None:
         cwd=project,
     )
     assert proc.returncode != 0
+
+
+def test_generated_read_can_extract_a_section(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    path = project / ".edison" / "_generated" / "guidelines" / "shared" / "GIT_WORKFLOW.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "# GIT_WORKFLOW\n\n"
+        "<!-- section: agent -->\n"
+        "Agent rules.\n"
+        "<!-- /section: agent -->\n"
+        "\n"
+        "<!-- section: orchestrator -->\n"
+        "Orchestrator rules.\n"
+        "<!-- /section: orchestrator -->\n",
+        encoding="utf-8",
+    )
+
+    proc = run_edison(
+        [
+            "read",
+            "GIT_WORKFLOW",
+            "--type",
+            "guidelines/shared",
+            "--section",
+            "agent",
+            "--repo-root",
+            str(project),
+        ],
+        env=_base_env(project),
+        cwd=project,
+    )
+    assert proc.returncode == 0, f"Command failed:\n{proc.stdout}\n{proc.stderr}"
+    assert "Agent rules." in proc.stdout
+    assert "Orchestrator rules." not in proc.stdout
+
+
+def test_generated_read_section_missing_fails(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    path = project / ".edison" / "_generated" / "guidelines" / "shared" / "GIT_WORKFLOW.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("# GIT_WORKFLOW\n\nNo sections.\n", encoding="utf-8")
+
+    proc = run_edison(
+        [
+            "read",
+            "GIT_WORKFLOW",
+            "--type",
+            "guidelines/shared",
+            "--section",
+            "missing",
+            "--repo-root",
+            str(project),
+        ],
+        env=_base_env(project),
+        cwd=project,
+    )
+    assert proc.returncode != 0
