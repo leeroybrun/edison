@@ -76,6 +76,9 @@ _LEAK_PRONE_ENV_KEYS = [
     # Critical: overrides the location of `.edison/` itself. If this leaks, config loads
     # will silently ignore `.edison/config/*.yml` written by many tests.
     "EDISON_paths__project_config_dir",
+    # Critical: user-layer is enabled by default. Tests must never consult a real
+    # developer home directory (~/.edison) which would make tests non-deterministic.
+    "EDISON_paths__user_config_dir",
 ]
 
 # Baseline values for Edison leak-prone env vars at pytest session start.
@@ -86,11 +89,15 @@ _ENV_BASELINE = {k: os.environ.get(k) for k in _LEAK_PRONE_ENV_KEYS}
 # is set in a developer shell it will silently break many tests that create
 # `.edison/config/*.yaml`. Fail-closed by always clearing it for every test.
 _ENV_BASELINE["EDISON_paths__project_config_dir"] = None
+_ENV_BASELINE["EDISON_paths__user_config_dir"] = None
 
 
 @pytest.fixture(autouse=True)
-def _reset_global_project_root_cache() -> None:
+def _reset_global_project_root_cache(tmp_path: Path) -> None:
     """Ensure all global caches are fresh for each test."""
+    # Tests must never read a real ~/.edison user layer. Force an isolated
+    # per-test user config directory unless a test explicitly overrides it.
+    os.environ["EDISON_paths__user_config_dir"] = str(tmp_path / ".edison-user")
     reset_edison_caches()
     yield
     reset_edison_caches()

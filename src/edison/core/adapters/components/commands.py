@@ -410,15 +410,19 @@ class CommandComposer(AdapterComponent):
         if not name:
             raise ValueError("Command template name is required")
 
-        # Priority: project templates > pack templates > bundled Edison templates
+        # Priority: project templates > user templates > pack templates > bundled Edison templates
         candidates: List[Path] = [
             self.project_dir / "templates" / "commands" / name,
+            self.user_dir / "templates" / "commands" / name,
         ]
 
-        # Pack templates in reverse order (later packs override earlier ones)
+        # Pack templates in reverse order (later packs override earlier ones).
+        # Within a given pack name, precedence is:
+        # project-pack > user-pack > bundled-pack.
         for pack in reversed(self.active_packs):
-            candidates.append(self.bundled_packs_dir / pack / "templates" / "commands" / name)
             candidates.append(self.project_packs_dir / pack / "templates" / "commands" / name)
+            candidates.append(self.user_packs_dir / pack / "templates" / "commands" / name)
+            candidates.append(self.bundled_packs_dir / pack / "templates" / "commands" / name)
 
         candidates.append(self._templates_dir / name)
 

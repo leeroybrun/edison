@@ -35,26 +35,20 @@ def load_functions(project_root: Optional[Path], active_packs: List[str]) -> Non
     """
     resolver = CompositionPathResolver(project_root)
 
-    dirs_in_order = build_layer_dirs(
-        core_dir=_CORE_FUNCTIONS_DIR,
-        content_type="",  # Functions are directly in the functions/ directory
+    # Use the shared layered-loader helper so the function search path stays
+    # consistent with other extensibility surfaces (guards/actions/parsers/etc).
+    dirs = build_layer_dirs(
+        core_dir=_CORE_FUNCTIONS_DIR.parent,
+        content_type="functions",
         bundled_packs_dir=resolver.bundled_packs_dir,
         project_packs_dir=resolver.project_packs_dir,
         project_dir=resolver.project_dir,
         active_packs=active_packs,
+        user_packs_dir=resolver.user_packs_dir,
+        user_dir=resolver.user_dir,
     )
-    
-    # Adjust paths: for packs and project, add "functions" subdirectory
-    # The build_layer_dirs with content_type="" gives us the base dirs,
-    # but we need to append "functions" for all except core (which is already functions/)
-    adjusted_dirs: List[Path] = [_CORE_FUNCTIONS_DIR]
-    for pack in active_packs:
-        adjusted_dirs.append(resolver.bundled_packs_dir / pack / "functions")
-    for pack in active_packs:
-        adjusted_dirs.append(resolver.project_packs_dir / pack / "functions")
-    adjusted_dirs.append(resolver.project_dir / "functions")
 
-    for path in iter_python_files(adjusted_dirs):
+    for path in iter_python_files(dirs):
         module = load_module_from_path(path, "edison.functions")
         if module:
             register_callables_from_module(module, global_registry.add)

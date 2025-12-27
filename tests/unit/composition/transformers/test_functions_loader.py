@@ -65,9 +65,11 @@ def test_load_functions_core_pack_project(tmp_path: Path, monkeypatch: pytest.Mo
             self.repo_root = project_root
             self.project_root = project_root
             self.project_dir = project_dir
+            self.user_dir = project_root / ".edison-user"
             self.core_dir = core_dir
             self.packs_dir = packs_dir
             self.bundled_packs_dir = packs_dir
+            self.user_packs_dir = self.user_dir / "packs"
             self.project_packs_dir = project_dir / "packs"
 
     monkeypatch.setattr(paths_mod, "CompositionPathResolver", FakeResolver)

@@ -27,14 +27,18 @@ def build_layer_dirs(
     project_packs_dir: Path,
     project_dir: Path,
     active_packs: List[str],
+    user_packs_dir: Optional[Path] = None,
+    user_dir: Optional[Path] = None,
 ) -> List[Path]:
-    """Build layered directory list: core → bundled packs → project packs → project.
+    """Build layered directory list: core → packs → user → project.
 
     Args:
         core_dir: Base directory for core modules (e.g., core/state/handlers/)
         content_type: Subdirectory name (e.g., "actions", "guards", "functions")
         bundled_packs_dir: Bundled packs directory (data/packs/)
+        user_packs_dir: Optional user packs directory (~/<user-config-dir>/packs)
         project_packs_dir: Project packs directory (.edison/packs/)
+        user_dir: Optional user config directory (~/<user-config-dir>)
         project_dir: Project config directory (.edison/)
         active_packs: List of active pack names
 
@@ -44,7 +48,13 @@ def build_layer_dirs(
     return [
         core_dir / content_type,
         *(bundled_packs_dir / p / content_type for p in active_packs),
+        *(
+            (user_packs_dir / p / content_type)
+            for p in active_packs
+            if user_packs_dir is not None
+        ),
         *(project_packs_dir / p / content_type for p in active_packs),
+        *( [user_dir / content_type] if user_dir is not None else [] ),
         project_dir / content_type,
     ]
 
@@ -72,7 +82,9 @@ def build_layer_dirs_from_resolver(
         core_dir=core_dir,
         content_type=content_type,
         bundled_packs_dir=resolver.bundled_packs_dir,
+        user_packs_dir=getattr(resolver, "user_packs_dir", None),
         project_packs_dir=resolver.project_packs_dir,
+        user_dir=getattr(resolver, "user_dir", None),
         project_dir=resolver.project_dir,
         active_packs=active_packs,
     )
@@ -189,8 +201,6 @@ __all__ = [
     "register_callables_from_module",
     "load_and_register_modules",
 ]
-
-
 
 
 

@@ -122,8 +122,10 @@ class PlatformAdapter(CompositionBase, ABC):
             self._context = AdapterContext(
                 project_root=self.project_root,
                 project_dir=self.project_dir,
+                user_dir=self.user_dir,
                 core_dir=self.core_dir,
                 bundled_packs_dir=self.bundled_packs_dir,
+                user_packs_dir=self.user_packs_dir,
                 project_packs_dir=self.project_packs_dir,
                 cfg_mgr=self.cfg_mgr,
                 config=self.config,

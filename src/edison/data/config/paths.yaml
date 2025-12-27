@@ -3,6 +3,9 @@
 
 paths:
   project_config_dir: ".edison"
+  # User-level Edison configuration directory name under the home directory
+  # (e.g., ~/.edison). Override with EDISON_paths__user_config_dir.
+  user_config_dir: ".edison"
   # Project management root directory (tasks/qa/sessions live under this).
   # This is consumed via ConfigManager compat shims into `project_management_dir`.
   management_dir: ".project"

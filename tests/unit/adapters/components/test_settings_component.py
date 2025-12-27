@@ -20,14 +20,18 @@ class _AdapterStub:
 def _build_context(tmp_path: Path, config: dict) -> AdapterContext:
     project_root = tmp_path
     project_dir = project_root / ".edison"
+    user_dir = project_root / ".edison-user"
     core_dir = project_root / "core"
     bundled_packs_dir = project_root / "bundled_packs"
+    user_packs_dir = user_dir / "packs"
     project_packs_dir = project_dir / "packs"
 
     project_dir.mkdir(parents=True, exist_ok=True)
+    user_dir.mkdir(parents=True, exist_ok=True)
     core_dir.mkdir(parents=True, exist_ok=True)
     (core_dir / "config").mkdir(exist_ok=True)
     bundled_packs_dir.mkdir(exist_ok=True)
+    user_packs_dir.mkdir(parents=True, exist_ok=True)
     project_packs_dir.mkdir(parents=True, exist_ok=True)
     (project_dir / "config").mkdir(exist_ok=True)
 
@@ -38,8 +42,10 @@ def _build_context(tmp_path: Path, config: dict) -> AdapterContext:
     return AdapterContext(
         project_root=project_root,
         project_dir=project_dir,
+        user_dir=user_dir,
         core_dir=core_dir,
         bundled_packs_dir=bundled_packs_dir,
+        user_packs_dir=user_packs_dir,
         project_packs_dir=project_packs_dir,
         cfg_mgr=cfg_mgr,
         config=config,

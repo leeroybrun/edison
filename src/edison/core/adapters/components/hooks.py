@@ -232,15 +232,19 @@ class HookComposer(AdapterComponent):
         if not name:
             return None
 
-        # Priority: project templates > pack templates > bundled Edison templates
+        # Priority: project templates > user templates > pack templates > bundled Edison templates
         candidates = [
             self.project_dir / "templates" / "hooks" / name,
+            self.user_dir / "templates" / "hooks" / name,
         ]
 
-        # Add pack templates in reverse order (later packs override earlier ones)
+        # Add pack templates in reverse order (later packs override earlier ones).
+        # Within a given pack name, precedence is:
+        # project-pack > user-pack > bundled-pack.
         for pack in reversed(self.active_packs):
-            candidates.append(self.bundled_packs_dir / pack / "templates" / "hooks" / name)
             candidates.append(self.project_packs_dir / pack / "templates" / "hooks" / name)
+            candidates.append(self.user_packs_dir / pack / "templates" / "hooks" / name)
+            candidates.append(self.bundled_packs_dir / pack / "templates" / "hooks" / name)
 
         # Finally, bundled Edison core templates
         candidates.append(self.templates_dir / name)

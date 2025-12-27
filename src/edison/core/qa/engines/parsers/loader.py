@@ -3,8 +3,10 @@
 Loads parsers from multiple layers following Edison's extensible handler pattern:
 1. Core parsers: core/qa/engines/parsers/ (built-in with Edison)
 2. Bundled pack parsers: data/packs/<pack>/parsers/
-3. Project pack parsers: .edison/packs/<pack>/parsers/
-4. Project parsers: .edison/parsers/
+3. User pack parsers: ~/<user-config-dir>/packs/<pack>/parsers/
+4. Project pack parsers: <project-config-dir>/packs/<pack>/parsers/
+5. User parsers: ~/<user-config-dir>/parsers/
+6. Project parsers: <project-config-dir>/parsers/
 
 Later layers override earlier ones, allowing customization at any level.
 """
@@ -97,12 +99,20 @@ def load_parsers(project_root: Path | None = None, active_packs: list[str] | Non
             pack_dir = resolver.bundled_packs_dir / pack / "parsers"
             dirs.append(pack_dir)
 
-        # 3. Project pack parsers
+        # 3. User pack parsers
+        for pack in active_packs:
+            pack_dir = resolver.user_packs_dir / pack / "parsers"
+            dirs.append(pack_dir)
+
+        # 4. Project pack parsers
         for pack in active_packs:
             pack_dir = resolver.project_packs_dir / pack / "parsers"
             dirs.append(pack_dir)
 
-        # 4. Project parsers
+        # 5. User parsers
+        dirs.append(resolver.user_dir / "parsers")
+
+        # 6. Project parsers
         project_parsers = resolver.project_dir / "parsers"
         dirs.append(project_parsers)
 

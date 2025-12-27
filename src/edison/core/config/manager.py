@@ -8,11 +8,15 @@ from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 import os
 import json
 import re
+import logging
 
 from edison.core.utils.merge import deep_merge as _deep_merge, merge_arrays
 from edison.data import get_data_path
 from edison.core.utils.profiling import span
 from edison.core.config.cache import get_cached_config
+
+# Module logger (warnings are user-visible via CLI log config).
+logger = logging.getLogger(__name__)
 
 # Lazy imports to avoid circular dependencies
 # These are imported at runtime inside methods that need them
@@ -35,13 +39,15 @@ class ConfigManager:
 
     Configuration sources (highest to lowest priority):
     1. Environment variables: EDISON_*
-    2. Project config: <project-config-dir>/config/*.yaml (alphabetical order)
-    3. Pack configs: bundled_packs/*/config/*.yaml + project_packs/*/config/*.yaml
+    2. Project-local config: <project-config-dir>/config.local/*.yaml (alphabetical order, uncommitted)
+    3. Project config: <project-config-dir>/config/*.yaml (alphabetical order)
+    4. User config: <user-config-dir>/config/*.yaml (alphabetical order)
+    5. Pack configs: bundled_packs/*/config/*.yaml + user_packs/*/config/*.yaml + project_packs/*/config/*.yaml
     4. Bundled defaults: edison.data/config/*.yaml (alphabetical order)
 
     Pack-aware loading uses two phases:
-    - Phase 1 (Bootstrap): core > project to determine packs.active
-    - Phase 2 (Full): core > bundled_packs > project_packs > project
+    - Phase 1 (Bootstrap): core > user > project > project-local to determine packs.active
+    - Phase 2 (Full): core > packs > user > project > project-local
 
     All YAML files are loaded and merged - no special handling for defaults.yaml.
     """
@@ -52,15 +58,23 @@ class ConfigManager:
         # Lazy import to avoid circular dependencies
         from edison.core.utils.paths import get_project_config_dir
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
+        from edison.core.utils.paths import get_user_config_dir
+        user_root_dir = get_user_config_dir(create=False)
 
         # Bundled defaults from edison.data package (always available)
         self.core_config_dir = get_data_path("config")
 
+        # User-specific config overlays (e.g. ~/.edison/config)
+        self.user_config_dir = user_root_dir / "config"
+
         # Project-specific config overrides
         self.project_config_dir = project_root_dir / "config"
+        # Project-local config overrides (uncommitted; per-user per-project)
+        self.project_local_config_dir = project_root_dir / "config.local"
 
         # Pack directories
         self.bundled_packs_dir = get_data_path("packs")
+        self.user_packs_dir = user_root_dir / "packs"
         self.project_packs_dir = project_root_dir / "packs"
 
         # Schemas from bundled data
@@ -279,7 +293,8 @@ class ConfigManager:
 
         Pack configs are loaded in order:
         1. Bundled packs (edison.data/packs/{pack}/config/*.yaml)
-        2. Project packs (<project-config-dir>/packs/{pack}/config/*.yaml)
+        2. User packs (~/<user-config-dir>/packs/{pack}/config/*.yaml)
+        3. Project packs (<project-config-dir>/packs/{pack}/config/*.yaml)
 
         Args:
             cfg: Base configuration to merge into
@@ -289,9 +304,35 @@ class ConfigManager:
             Configuration with pack overlays merged
         """
         for pack_name in active_packs:
+            # Portability warning: pack exists only in user packs dir.
+            try:
+                bundled_exists = (Path(self.bundled_packs_dir) / pack_name).exists()
+            except Exception:
+                bundled_exists = False
+            try:
+                project_exists = (Path(self.project_packs_dir) / pack_name).exists()
+            except Exception:
+                project_exists = False
+            try:
+                user_exists = (Path(self.user_packs_dir) / pack_name).exists()
+            except Exception:
+                user_exists = False
+
+            if user_exists and not (bundled_exists or project_exists):
+                logger.warning(
+                    "Active pack '%s' is resolved only from the user packs directory (%s). "
+                    "This project may not be reproducible for other users/CI unless they install the pack.",
+                    pack_name,
+                    str(Path(self.user_packs_dir) / pack_name),
+                )
+
             # Load bundled pack config
             bundled_pack_config = self.bundled_packs_dir / pack_name / "config"
             cfg = self._load_directory(bundled_pack_config, cfg)
+
+            # Load user pack config (overrides bundled)
+            user_pack_config = self.user_packs_dir / pack_name / "config"
+            cfg = self._load_directory(user_pack_config, cfg)
 
             # Load project pack config (overrides bundled)
             project_pack_config = self.project_packs_dir / pack_name / "config"
@@ -370,7 +411,10 @@ class ConfigManager:
             # Phase 1 bootstrap: Get active packs from core + project (without pack configs)
             if include_packs:
                 with span("config.load_config.bootstrap"):
-                    bootstrap_cfg = self._load_directory(self.project_config_dir, dict(cfg))
+                    bootstrap_cfg = dict(cfg)
+                    bootstrap_cfg = self._load_directory(self.user_config_dir, bootstrap_cfg)
+                    bootstrap_cfg = self._load_directory(self.project_config_dir, bootstrap_cfg)
+                    bootstrap_cfg = self._load_directory(self.project_local_config_dir, bootstrap_cfg)
                     active_packs = self._get_bootstrap_packs(bootstrap_cfg)
 
                 # Layer 2: Pack configs (bundled + project packs)
@@ -378,11 +422,19 @@ class ConfigManager:
                     with span("config.load_config.packs", count=len(active_packs)):
                         cfg = self._load_pack_configs(cfg, active_packs)
 
-            # Layer 3: Project config (always wins over packs)
+            # Layer 3: User config (wins over packs)
+            with span("config.load_config.user"):
+                cfg = self._load_directory(self.user_config_dir, cfg)
+
+            # Layer 4: Project config (wins over user)
             with span("config.load_config.project"):
                 cfg = self._load_directory(self.project_config_dir, cfg)
 
-            # Layer 4: Environment overrides
+            # Layer 5: Project-local config (wins over committed project config)
+            with span("config.load_config.project_local"):
+                cfg = self._load_directory(self.project_local_config_dir, cfg)
+
+            # Layer 6: Environment overrides
             with span("config.load_config.env"):
                 self._apply_project_env_aliases(cfg)
                 self._apply_database_env_aliases(cfg)

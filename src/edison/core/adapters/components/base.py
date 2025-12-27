@@ -28,8 +28,10 @@ class AdapterContext:
 
     project_root: Path
     project_dir: Path
+    user_dir: Path
     core_dir: Path
     bundled_packs_dir: Path
+    user_packs_dir: Path
     project_packs_dir: Path
     cfg_mgr: Any
     config: Dict[str, Any]
@@ -146,8 +148,16 @@ class AdapterComponent(ABC):
         return self.context.bundled_packs_dir
 
     @property
+    def user_packs_dir(self) -> Path:
+        return self.context.user_packs_dir
+
+    @property
     def project_packs_dir(self) -> Path:
         return self.context.project_packs_dir
+
+    @property
+    def user_dir(self) -> Path:
+        return self.context.user_dir
 
     @property
     def project_dir(self) -> Path:

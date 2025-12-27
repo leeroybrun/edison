@@ -30,6 +30,8 @@ class CompositionBase(ABC):
     # Declare attributes for type checking
     core_dir: Path
     bundled_packs_dir: Path
+    user_dir: Path
+    user_packs_dir: Path
     project_packs_dir: Path
 
     def __init__(
@@ -49,6 +51,8 @@ class CompositionBase(ABC):
         self.project_dir = resolver.project_dir
         self.core_dir = resolver.core_dir
         self.bundled_packs_dir = resolver.bundled_packs_dir
+        self.user_dir = resolver.user_dir
+        self.user_packs_dir = resolver.user_packs_dir
         self.project_packs_dir = resolver.project_packs_dir
 
         # Config - UNIFIED

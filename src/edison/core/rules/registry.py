@@ -7,7 +7,8 @@ include resolution.
 
 Architecture:
     - Bundled rules: edison.data/rules/registry.yml (ALWAYS used for core)
-    - Pack rules: <project-config-dir>/packs/<pack>/rules/registry.yml
+    - Pack rules: <packs-root>/<pack>/rules/registry.yml (bundled + user + project)
+    - User rules: <user-config-dir>/rules/registry.yml (overrides)
     - Project rules: <project-config-dir>/rules/registry.yml (overrides)
 
 Uses ConfigManager for pack directory resolution to maintain consistency
@@ -40,7 +41,8 @@ class RulesRegistry:
 
     Registry locations:
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
-      - Packs: <project-config-dir>/packs/<pack>/rules/registry.yml (bundled + project)
+      - Packs: <packs-root>/<pack>/rules/registry.yml (bundled + user + project)
+      - User: <user-config-dir>/rules/registry.yml (overrides)
       - Project: <project-config-dir>/rules/registry.yml (overrides)
 
     This class is read-only; it does not mutate project state.
@@ -64,7 +66,15 @@ class RulesRegistry:
 
         # Pack directories from ConfigManager (unified source of truth)
         self.bundled_packs_dir = cfg_mgr.bundled_packs_dir
+        self.user_packs_dir = cfg_mgr.user_packs_dir
         self.project_packs_dir = cfg_mgr.project_packs_dir
+        # User config directory root (~/<user-config-dir>)
+        try:
+            from edison.core.utils.paths import get_user_config_dir
+
+            self.user_dir = get_user_config_dir(create=False)
+        except Exception:
+            self.user_dir = Path.home() / ".edison"
 
         # Core registry is ALWAYS from bundled data
         self.core_registry_path = get_data_path("rules", "registry.yml")
@@ -163,7 +173,7 @@ class RulesRegistry:
         return {rule.get("id", f"rule-{i}"): rule for i, rule in enumerate(rules) if isinstance(rule, dict)}
     
     def discover_packs(self, packs: List[str]) -> Dict[str, Dict[str, Any]]:
-        """Discover rules from active packs (bundled + project)."""
+        """Discover rules from active packs (bundled + user + project packs)."""
         result: Dict[str, Dict[str, Any]] = {}
         for pack in packs:
             registry = self.load_pack_registry(pack)
@@ -223,34 +233,36 @@ class RulesRegistry:
         return self._load_yaml(self.core_registry_path, required=True)
 
     def load_pack_registry(self, pack_name: str) -> Dict[str, Any]:
-        """Load pack-specific rules registry, merging bundled + project.
+        """Load pack-specific rules registry, merging bundled + user + project.
 
         Architecture:
         - Bundled pack rules: edison.data/packs/<pack>/rules/registry.yml (base)
+        - User pack rules: <user-config-dir>/packs/<pack>/rules/registry.yml (extends/overrides)
         - Project pack rules: <project-config-dir>/packs/<pack>/rules/registry.yml (extends/overrides)
-        - Merge strategy: project rules are appended to bundled rules
+        - Merge strategy: later roots are appended so later IDs can override earlier ones
         """
         # Load bundled pack registry (base layer)
         bundled_path = self.bundled_packs_dir / pack_name / "rules" / "registry.yml"
         bundled_registry = self._load_yaml(bundled_path, required=False)
 
+        # Load user pack registry (override layer)
+        user_path = self.user_packs_dir / pack_name / "rules" / "registry.yml"
+        user_registry = self._load_yaml(user_path, required=False)
+
         # Load project pack registry (override layer)
         project_path = self.project_packs_dir / pack_name / "rules" / "registry.yml"
         project_registry = self._load_yaml(project_path, required=False)
 
-        # If only one exists, return it
-        if not bundled_registry.get("rules"):
-            return project_registry
-        if not project_registry.get("rules"):
-            return bundled_registry
-
-        # Merge: combine rules from both registries
-        # Project rules are appended (they can override by having same ID)
-        merged_rules = list(bundled_registry.get("rules", []))
-        merged_rules.extend(project_registry.get("rules", []))
+        merged_rules: List[Any] = []
+        merged_rules.extend(list(bundled_registry.get("rules", [])))
+        merged_rules.extend(list(user_registry.get("rules", [])))
+        merged_rules.extend(list(project_registry.get("rules", [])))
 
         return {
-            "version": project_registry.get("version") or bundled_registry.get("version") or "1.0.0",
+            "version": project_registry.get("version")
+            or user_registry.get("version")
+            or bundled_registry.get("version")
+            or "1.0.0",
             "rules": merged_rules,
         }
 
@@ -547,6 +559,78 @@ class RulesRegistry:
                 entry["dependencies"] = sorted(existing)
                 # Body resolution status
                 entry["_body_resolved"] = bool(entry.get("_body_resolved")) and bool(resolve_sources)
+
+        # User overlays (after packs, before project) merge by rule id
+        with span("rules.compose.user"):
+            user_registry = self._load_yaml(self.user_dir / "rules" / "registry.yml", required=False)
+
+        for raw_rule in user_registry.get("rules", []) or []:
+            if not isinstance(raw_rule, dict):
+                continue
+            rid = str(raw_rule.get("id") or "").strip()
+            if not rid:
+                continue
+
+            with span("rules.compose.rule", origin="user", id=rid):
+                body, deps = self._compose_rule_body(
+                    raw_rule,
+                    origin="user",
+                    packs=packs,
+                    resolve_sources=resolve_sources,
+                )
+
+            source_obj: Dict[str, Any] = raw_rule.get("source") or {}
+            if not source_obj and raw_rule.get("sourcePath"):
+                source_obj = {"file": raw_rule.get("sourcePath")}
+
+            if rid not in rules_index:
+                rules_index[rid] = {
+                    "id": rid,
+                    "title": raw_rule.get("title") or rid,
+                    "category": raw_rule.get("category") or "",
+                    "blocking": bool(raw_rule.get("blocking", False)),
+                    "contexts": raw_rule.get("contexts") or [],
+                    "applies_to": raw_rule.get("applies_to") or [],
+                    "source": source_obj,
+                    "guidance": raw_rule.get("guidance"),
+                    "body": body,
+                    "origins": ["user"],
+                    "dependencies": [str(p) for p in deps],
+                    "_body_resolved": bool(resolve_sources),
+                }
+                continue
+
+            entry = rules_index[rid]
+            if raw_rule.get("title"):
+                entry["title"] = raw_rule["title"]
+            if raw_rule.get("category"):
+                entry["category"] = raw_rule["category"]
+            if raw_rule.get("blocking", False):
+                entry["blocking"] = True
+            if raw_rule.get("contexts"):
+                entry["contexts"] = (entry.get("contexts") or []) + raw_rule["contexts"]  # type: ignore[index]
+            if raw_rule.get("applies_to"):
+                existing_roles = set(entry.get("applies_to") or [])
+                for role in raw_rule["applies_to"]:
+                    if role:
+                        existing_roles.add(role)
+                entry["applies_to"] = sorted(existing_roles)
+            if raw_rule.get("source") or raw_rule.get("sourcePath"):
+                entry["source"] = source_obj
+
+            entry["body"] = (entry.get("body") or "") + (body or "")
+            if raw_rule.get("guidance"):
+                prior = (entry.get("guidance") or "")
+                if prior:
+                    entry["guidance"] = str(prior).rstrip() + "\n" + str(raw_rule["guidance"]).rstrip()
+                else:
+                    entry["guidance"] = raw_rule["guidance"]
+            entry.setdefault("origins", []).append("user")
+            existing_deps = set(entry.get("dependencies") or [])
+            for p in deps:
+                existing_deps.add(str(p))
+            entry["dependencies"] = sorted(existing_deps)
+            entry["_body_resolved"] = bool(entry.get("_body_resolved")) and bool(resolve_sources)
 
         # Project overlays (highest precedence) merge by rule id
         with span("rules.compose.project"):

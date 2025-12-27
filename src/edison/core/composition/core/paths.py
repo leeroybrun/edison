@@ -6,8 +6,9 @@ path resolution logic across the codebase.
 
 Architecture:
     - Core content: ALWAYS from bundled edison.data package
+    - User overrides: ~/.edison/<type>/, ~/.edison/config/, ~/.edison/packs/
     - Project overrides: .edison/guidelines/, .edison/validators/, etc.
-    - Project packs: .edison/packs/ (in addition to bundled packs)
+    - Project packs: .edison/packs/ (in addition to bundled + user packs)
     - NO .edison/core/ - that is legacy and not supported
 
 Usage:
@@ -34,12 +35,16 @@ class ResolvedPaths:
     Attributes:
         core_dir: Bundled core content directory (edison.data package)
         bundled_packs_dir: Bundled packs directory (edison.data/packs)
+        user_dir: User configuration directory (~/<user-config-dir>)
+        user_packs_dir: User-level packs directory (~/<user-config-dir>/packs)
         project_dir: Project configuration directory (.edison/)
         project_packs_dir: Project-level packs directory (.edison/packs/)
         repo_root: Repository root path
     """
     core_dir: Path
     bundled_packs_dir: Path
+    user_dir: Path
+    user_packs_dir: Path
     project_dir: Path
     project_packs_dir: Path
     repo_root: Path
@@ -56,6 +61,8 @@ class CompositionPathResolver:
     Architecture:
         - Core content (agents, validators, guidelines, rules, etc.) is ALWAYS
           loaded from the bundled edison.data package.
+        - User-level overrides/additions are at ~/<user-config-dir>/<type>/ directories
+          and user packs are at ~/<user-config-dir>/packs.
         - Project-level overrides/additions are at .edison/<type>/ directories:
           .edison/guidelines/, .edison/validators/, .edison/agents/, .edison/rules/
         - Project packs are at .edison/packs/
@@ -87,6 +94,8 @@ class CompositionPathResolver:
             return self._resolved
         
         project_dir = get_project_config_dir(self.repo_root, create=False)
+        from edison.core.utils.paths import get_user_config_dir
+        user_dir = get_user_config_dir(create=False)
         
         # Core content is ALWAYS from bundled edison.data package
         core_dir = Path(get_data_path(""))
@@ -94,10 +103,13 @@ class CompositionPathResolver:
         
         # Project-level packs directory
         project_packs_dir = project_dir / "packs"
+        user_packs_dir = user_dir / "packs"
         
         self._resolved = ResolvedPaths(
             core_dir=core_dir,
             bundled_packs_dir=bundled_packs_dir,
+            user_dir=user_dir,
+            user_packs_dir=user_packs_dir,
             project_dir=project_dir,
             project_packs_dir=project_packs_dir,
             repo_root=self.repo_root,
@@ -113,6 +125,16 @@ class CompositionPathResolver:
     def bundled_packs_dir(self) -> Path:
         """Bundled packs directory (edison.data/packs)."""
         return self._resolve().bundled_packs_dir
+
+    @property
+    def user_dir(self) -> Path:
+        """User configuration directory (~/<user-config-dir>)."""
+        return self._resolve().user_dir
+
+    @property
+    def user_packs_dir(self) -> Path:
+        """User packs directory (~/<user-config-dir>/packs)."""
+        return self._resolve().user_packs_dir
     
     @property
     def project_packs_dir(self) -> Path:

@@ -81,8 +81,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
     merge_same_name: ClassVar[bool] = False
 
     # Internal state
-    _bundled_discovery: Optional[LayerDiscovery] = None
-    _project_packs_discovery: Optional[LayerDiscovery] = None
+    _discovery: Optional[LayerDiscovery] = None
     _strategy: Optional[MarkdownCompositionStrategy] = None
     _comp_config_cache: Optional["CompositionConfig"] = None  # type: ignore[name-defined]
     _types_manager: Optional["ComposableTypesManager"] = None  # type: ignore[name-defined]
@@ -113,36 +112,25 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             )
 
     @property
-    def bundled_discovery(self) -> LayerDiscovery:
-        """Lazy-initialized LayerDiscovery for bundled packs."""
-        if self._bundled_discovery is None:
+    def discovery(self) -> LayerDiscovery:
+        """Lazy-initialized LayerDiscovery across core → packs → user → project."""
+        if self._discovery is None:
             type_cfg = self.comp_config.get_content_type(self.content_type)
             exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
-            self._bundled_discovery = LayerDiscovery(
+            self._discovery = LayerDiscovery(
                 content_type=self.content_type,
                 core_dir=self.core_dir,
-                packs_dir=self.bundled_packs_dir,
+                pack_roots=[
+                    ("bundled", self.bundled_packs_dir),
+                    ("user", self.user_packs_dir),
+                    ("project", self.project_packs_dir),
+                ],
+                user_dir=self.user_dir,
                 project_dir=self.project_dir,
                 file_pattern=self.file_pattern,
                 exclude_globs=exclude_globs,
             )
-        return self._bundled_discovery
-
-    @property
-    def project_packs_discovery(self) -> LayerDiscovery:
-        """Lazy-initialized LayerDiscovery for project packs."""
-        if self._project_packs_discovery is None:
-            type_cfg = self.comp_config.get_content_type(self.content_type)
-            exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
-            self._project_packs_discovery = LayerDiscovery(
-                content_type=self.content_type,
-                core_dir=self.core_dir,
-                packs_dir=self.project_packs_dir,
-                project_dir=self.project_dir,
-                file_pattern=self.file_pattern,
-                exclude_globs=exclude_globs,
-            )
-        return self._project_packs_discovery
+        return self._discovery
 
 
     @property
@@ -209,11 +197,11 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         Returns:
             Dict mapping entity names to file paths from core layer
         """
-        entities = self.bundled_discovery.discover_core()
+        entities = self.discovery.discover_core()
         return {name: source.path for name, source in entities.items()}
 
     def discover_packs(self, packs: List[str]) -> Dict[str, Path]:
-        """Discover content from active packs (bundled AND project).
+        """Discover content from active packs (bundled + user + project packs).
 
         Args:
             packs: List of active pack names
@@ -225,23 +213,9 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         existing = set(self.discover_core().keys())
 
         for pack in packs:
-            # Check bundled packs first
-            try:
-                pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
+            for _kind, pack_new, _pack_over in self.discovery.iter_pack_layers(pack, existing):
                 for name, source in pack_new.items():
                     result[name] = source.path
-                existing.update(pack_new.keys())
-            except Exception:
-                pass  # Bundled pack may not exist
-
-            # Then check project packs (can extend bundled or define new)
-            try:
-                pack_new = self.project_packs_discovery.discover_pack_new(pack, existing)
-                for name, source in pack_new.items():
-                    result[name] = source.path
-                existing.update(pack_new.keys())
-            except Exception:
-                pass  # Project pack may not exist
 
         return result
 
@@ -251,14 +225,17 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         Returns:
             Dict mapping entity names to file paths from project layer
         """
-        # Get all existing entities first
+        # Existing entities: core + packs + user
         existing = set(self.discover_core().keys())
         for pack in self.get_active_packs():
-            pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
-            existing.update(pack_new.keys())
+            # iter_pack_layers mutates `existing` to include new pack entities.
+            self.discovery.iter_pack_layers(pack, existing)
+
+        user_new = self.discovery.discover_user_new(existing)
+        existing.update(user_new.keys())
 
         # Discover project-new entities
-        project_new = self.bundled_discovery.discover_project_new(existing)
+        project_new = self.discovery.discover_project_new(existing)
         return {name: source.path for name, source in project_new.items()}
 
     def discover_all(self, packs: Optional[List[str]] = None) -> Dict[str, Path]:
@@ -276,41 +253,34 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         # Core layer
         result.update(self.discover_core())
 
-        # Pack layers (new + overlays, bundled and project packs)
+        # Pack layers (new + overlays, bundled + user + project pack roots)
         existing = set(result.keys())
         for pack in packs:
-            pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
-            for name, source in pack_new.items():
-                result[name] = source.path
-            existing.update(pack_new.keys())
+            for _kind, pack_new, pack_over in self.discovery.iter_pack_layers(pack, existing):
+                for name, source in pack_new.items():
+                    result[name] = source.path
+                for name, source in pack_over.items():
+                    result[name] = source.path
 
-            pack_over = self.bundled_discovery.discover_pack_overlays(pack, existing)
-            for name, source in pack_over.items():
-                result[name] = source.path
-            existing.update(pack_over.keys())
+        # User layer (new + overlays)
+        user_new = self.discovery.discover_user_new(existing)
+        for name, source in user_new.items():
+            result[name] = source.path
+        existing.update(user_new.keys())
 
-            pack_new = self.project_packs_discovery.discover_pack_new(pack, existing)
-            for name, source in pack_new.items():
-                result[name] = source.path
-            existing.update(pack_new.keys())
-
-            pack_over = self.project_packs_discovery.discover_pack_overlays(
-                pack, existing
-            )
-            for name, source in pack_over.items():
-                result[name] = source.path
-            existing.update(pack_over.keys())
+        user_over = self.discovery.discover_user_overlays(existing)
+        for name, source in user_over.items():
+            result[name] = source.path
 
         # Project layer (new + overlays)
-        project_new = self.bundled_discovery.discover_project_new(existing)
+        project_new = self.discovery.discover_project_new(existing)
         for name, source in project_new.items():
             result[name] = source.path
         existing.update(project_new.keys())
 
-        project_over = self.bundled_discovery.discover_project_overlays(existing)
+        project_over = self.discovery.discover_project_overlays(existing)
         for name, source in project_over.items():
             result[name] = source.path
-        existing.update(project_over.keys())
 
         return result
 
@@ -533,12 +503,12 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             packs: List of active pack names
 
         Returns:
-            List of LayerContent in order (core → packs → project)
+            List of LayerContent in order (core → packs → user → project)
         """
         layers: List[LayerContent] = []
 
         # Discover core entities
-        core_entities = self.bundled_discovery.discover_core()
+        core_entities = self.discovery.discover_core()
         existing = set(core_entities.keys())
 
         # Always include core if present
@@ -553,66 +523,45 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 content = source_path.read_text(encoding="utf-8")
                 layers.append(LayerContent(content=content, source=source_label, path=source_path))
 
-        # Packs (bundled + project)
+        # Packs (bundled + user + project pack roots)
         for pack in packs:
-            # bundled new
-            try:
-                pack_new = self.bundled_discovery.discover_pack_new(pack, existing)
+            for _kind, pack_new, pack_over in self.discovery.iter_pack_layers(pack, existing):
                 if name in pack_new and (self.merge_same_name or name not in core_entities):
                     _append(pack_new[name].path, f"pack:{pack}")
-                existing.update(pack_new.keys())
-            except Exception:
-                pass
-
-            # bundled overlays
-            try:
-                pack_over = self.bundled_discovery.discover_pack_overlays(pack, existing)
                 if name in pack_over:
                     _append(pack_over[name].path, f"pack:{pack}")
-            except Exception:
-                pass
 
-            # project pack new
-            try:
-                pack_new = self.project_packs_discovery.discover_pack_new(pack, existing)
-                if name in pack_new and (self.merge_same_name or name not in core_entities):
-                    _append(pack_new[name].path, f"pack:{pack}")
-                existing.update(pack_new.keys())
-            except Exception:
-                pass
+        # User layer (new + overlays)
+        user_new = self.discovery.discover_user_new(existing)
+        if name in user_new and (self.merge_same_name or name not in core_entities):
+            _append(user_new[name].path, "user")
+        existing.update(user_new.keys())
 
-            # project pack overlays
-            try:
-                pack_over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
-                if name in pack_over:
-                    _append(pack_over[name].path, f"pack:{pack}")
-            except Exception:
-                pass
+        user_over = self.discovery.discover_user_overlays(existing)
+        if name in user_over:
+            _append(user_over[name].path, "user")
 
         # Project layer (new + overlays)
-        try:
-            project_new = self.bundled_discovery.discover_project_new(existing)
-            if name in project_new and (self.merge_same_name or name not in core_entities):
-                _append(project_new[name].path, "project")
-            existing.update(project_new.keys())
-        except Exception:
-            pass
+        project_new = self.discovery.discover_project_new(existing)
+        if name in project_new and (self.merge_same_name or name not in core_entities):
+            _append(project_new[name].path, "project")
+        existing.update(project_new.keys())
 
-        try:
-            project_over = self.bundled_discovery.discover_project_overlays(existing)
-            # Overlays should ALWAYS be applied - they extend existing entities
-            if name in project_over:
-                _append(project_over[name].path, "project")
-        except Exception:
-            pass
+        project_over = self.discovery.discover_project_overlays(existing)
+        # Overlays should ALWAYS be applied - they extend existing entities
+        if name in project_over:
+            _append(project_over[name].path, "project")
 
         # When merge_same_name is enabled, allow project same-name file even if discover_project_new skipped it
         if self.merge_same_name:
-            project_root_dir = self.project_dir / self.content_type
-            if project_root_dir.exists():
-                for candidate in project_root_dir.rglob(f"{name}.md"):
-                    if candidate.is_file() and all(l.path != candidate for l in layers):
-                        _append(candidate, "project")
+            for base, label in (
+                (self.user_dir / self.content_type, "user"),
+                (self.project_dir / self.content_type, "project"),
+            ):
+                if base.exists():
+                    for candidate in base.rglob(f"{name}.md"):
+                        if candidate.is_file() and all(l.path != candidate for l in layers):
+                            _append(candidate, label)
 
         return layers
 
@@ -691,122 +640,73 @@ class ComposableRegistry(CompositionBase, Generic[T]):
 
     def core_path(self, name: str) -> Optional[Path]:
         """Return the bundled-core path for an entity, if present."""
-        core = self.bundled_discovery.discover_core()
+        core = self.discovery.discover_core()
         src = core.get(name)
         return src.path if src else None
 
     def pack_paths(self, name: str, packs: List[str]) -> List[Path]:
         """Return pack-layer paths that contribute to an entity."""
         paths: List[Path] = []
-        core = self.bundled_discovery.discover_core()
+        core = self.discovery.discover_core()
         existing = set(core.keys())
 
         for pack in packs:
-            # Bundled pack new + overlays
-            try:
-                new = self.bundled_discovery.discover_pack_new(pack, existing)
+            for _kind, new, over in self.discovery.iter_pack_layers(pack, existing):
                 if name in new:
                     paths.append(new[name].path)
-                existing.update(new.keys())
-            except Exception:
-                pass
-            try:
-                over = self.bundled_discovery.discover_pack_overlays(pack, existing)
                 if name in over:
                     paths.append(over[name].path)
-            except Exception:
-                pass
-
-            # Project pack new + overlays
-            try:
-                new = self.project_packs_discovery.discover_pack_new(pack, existing)
-                if name in new:
-                    paths.append(new[name].path)
-                existing.update(new.keys())
-            except Exception:
-                pass
-            try:
-                over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
-                if name in over:
-                    paths.append(over[name].path)
-            except Exception:
-                pass
 
         return paths
 
     def project_override_path(self, name: str) -> Optional[Path]:
         """Return project-layer path (new or overlay) for an entity, if present."""
         packs = self.get_active_packs()
-        core = self.bundled_discovery.discover_core()
+        core = self.discovery.discover_core()
         existing = set(core.keys())
 
-        # account for pack-new entities so project overlays validate correctly
+        # account for pack-new + user-new entities so project overlays validate correctly
         for pack in packs:
-            try:
-                existing.update(self.bundled_discovery.discover_pack_new(pack, existing).keys())
-            except Exception:
-                pass
-            try:
-                existing.update(self.project_packs_discovery.discover_pack_new(pack, existing).keys())
-            except Exception:
-                pass
+            self.discovery.iter_pack_layers(pack, existing)
 
-        try:
-            proj_new = self.bundled_discovery.discover_project_new(existing)
-            if name in proj_new:
-                return proj_new[name].path
-            existing.update(proj_new.keys())
-        except Exception:
-            pass
+        user_new = self.discovery.discover_user_new(existing)
+        existing.update(user_new.keys())
 
-        try:
-            proj_over = self.bundled_discovery.discover_project_overlays(existing)
-            if name in proj_over:
-                return proj_over[name].path
-        except Exception:
-            pass
+        proj_new = self.discovery.discover_project_new(existing)
+        if name in proj_new:
+            return proj_new[name].path
+        existing.update(proj_new.keys())
+
+        proj_over = self.discovery.discover_project_overlays(existing)
+        if name in proj_over:
+            return proj_over[name].path
 
         return None
 
     def _discover_without_project(self, packs: List[str]) -> Dict[str, Path]:
-        """Discover entities across core + packs only (no project layer)."""
+        """Discover entities across core + packs + user only (no project layer)."""
         result: Dict[str, Path] = {}
 
-        core = self.bundled_discovery.discover_core()
+        core = self.discovery.discover_core()
         for name, src in core.items():
             result[name] = src.path
 
         existing = set(result.keys())
         for pack in packs:
-            # Bundled packs
-            try:
-                new = self.bundled_discovery.discover_pack_new(pack, existing)
+            for _kind, new, over in self.discovery.iter_pack_layers(pack, existing):
                 for k, src in new.items():
                     result[k] = src.path
-                existing.update(new.keys())
-            except Exception:
-                pass
-            try:
-                over = self.bundled_discovery.discover_pack_overlays(pack, existing)
                 for k, src in over.items():
                     result[k] = src.path
-            except Exception:
-                pass
 
-            # Project packs
-            try:
-                new = self.project_packs_discovery.discover_pack_new(pack, existing)
-                for k, src in new.items():
-                    result[k] = src.path
-                existing.update(new.keys())
-            except Exception:
-                pass
-            try:
-                over = self.project_packs_discovery.discover_pack_overlays(pack, existing)
-                for k, src in over.items():
-                    result[k] = src.path
-            except Exception:
-                pass
+        user_new = self.discovery.discover_user_new(existing)
+        for k, src in user_new.items():
+            result[k] = src.path
+        existing.update(user_new.keys())
+
+        user_over = self.discovery.discover_user_overlays(existing)
+        for k, src in user_over.items():
+            result[k] = src.path
 
         return result
 

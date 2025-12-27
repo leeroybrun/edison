@@ -45,8 +45,10 @@ def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
     """Discover all valid packs using composition path resolution."""
     root = root or PathResolver.resolve_project_root()
 
-    # NOTE: Pack discovery must include BOTH bundled packs (edison.data/packs)
-    # and project packs (.edison/packs) so custom packs are first-class.
+    # NOTE: Pack discovery must include ALL pack roots:
+    # - bundled packs (edison.data/packs)
+    # - user packs (~/.edison/packs)
+    # - project packs (<project-config-dir>/packs)
     by_name: Dict[str, PackInfo] = {}
 
     for pack_name, pack_dir, kind in iter_pack_dirs(root):
@@ -58,11 +60,10 @@ def discover_packs(root: Optional[Path] = None) -> List[PackInfo]:
 
         info = PackInfo(v.normalized.name, pack_dir, v.normalized)
 
-        # If a project pack shadows a bundled pack, prefer the project pack.
-        if kind == "project":
-            by_name[info.name] = info
-        else:
-            by_name.setdefault(info.name, info)
+        # iter_pack_dirs yields roots in deterministic precedence order
+        # (low → high): bundled → user → project.
+        # Always assign so later (higher-precedence) packs shadow earlier ones.
+        by_name[info.name] = info
 
     return sorted(by_name.values(), key=lambda p: p.name)
 

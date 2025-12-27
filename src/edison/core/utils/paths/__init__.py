@@ -20,6 +20,10 @@ from .project import (
     DEFAULT_PROJECT_CONFIG_PRIMARY,
     get_project_config_dir,
 )
+from .user import (
+    DEFAULT_USER_CONFIG_PRIMARY,
+    get_user_config_dir,
+)
 from .resolver import (
     EdisonPathError,
     PathResolver,
@@ -41,11 +45,13 @@ __all__ = [
     # project
     "DEFAULT_PROJECT_CONFIG_PRIMARY",
     "get_project_config_dir",
+    # user
+    "DEFAULT_USER_CONFIG_PRIMARY",
+    "get_user_config_dir",
     # evidence
     "find_evidence_round",
     "list_evidence_rounds",
 ]
-
 
 
 

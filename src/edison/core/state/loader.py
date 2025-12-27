@@ -35,7 +35,9 @@ _CORE_HANDLERS_DIR = Path(__file__).parent / "builtin"
 def _get_layer_dirs(
     handler_type: str,
     bundled_packs_dir: Path,
+    user_packs_dir: Path,
     project_packs_dir: Path,
+    user_dir: Path,
     project_dir: Path,
     active_packs: List[str],
 ) -> List[Path]:
@@ -49,6 +51,8 @@ def _get_layer_dirs(
         content_type=handler_type,
         bundled_packs_dir=bundled_packs_dir,
         project_packs_dir=project_packs_dir,
+        user_packs_dir=user_packs_dir,
+        user_dir=user_dir,
         project_dir=project_dir,
         active_packs=active_packs,
     )
@@ -76,7 +80,9 @@ def load_guards(project_root: Optional[Path], active_packs: List[str]) -> int:
         dirs = _get_layer_dirs(
             "guards",
             resolver.bundled_packs_dir,
+            resolver.user_packs_dir,
             resolver.project_packs_dir,
+            resolver.user_dir,
             resolver.project_dir,
             active_packs,
         )
@@ -109,7 +115,9 @@ def load_actions(project_root: Optional[Path], active_packs: List[str]) -> int:
         dirs = _get_layer_dirs(
             "actions",
             resolver.bundled_packs_dir,
+            resolver.user_packs_dir,
             resolver.project_packs_dir,
+            resolver.user_dir,
             resolver.project_dir,
             active_packs,
         )
@@ -142,7 +150,9 @@ def load_conditions(project_root: Optional[Path], active_packs: List[str]) -> in
         dirs = _get_layer_dirs(
             "conditions",
             resolver.bundled_packs_dir,
+            resolver.user_packs_dir,
             resolver.project_packs_dir,
+            resolver.user_dir,
             resolver.project_dir,
             active_packs,
         )

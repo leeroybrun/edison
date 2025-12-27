@@ -58,6 +58,10 @@ properties:
         type: string
         description: Preferred project configuration directory name (e.g., .edison).
         default: .edison
+      user_config_dir:
+        type: string
+        description: Preferred user configuration directory name under the home directory (e.g., .edison).
+        default: .edison
       config_dir:
         type: string
         description: Legacy alias for paths.project_config_dir.

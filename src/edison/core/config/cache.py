@@ -63,21 +63,35 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
     env_fp = hashlib.sha256(repr(env_items).encode("utf-8")).hexdigest()[:12]
 
     try:
-        from edison.core.utils.paths import get_project_config_dir
+        from edison.core.utils.paths import get_project_config_dir, get_user_config_dir
 
-        project_root_dir = get_project_config_dir(Path(base), create=False)
-        cfg_dir = project_root_dir / "config"
-        files: list[tuple[str, int, int]] = []
-        if cfg_dir.exists():
-            yml_files = list(cfg_dir.glob("*.yml"))
-            yaml_files = list(cfg_dir.glob("*.yaml"))
+        def _fingerprint_dir(d: Path) -> list[tuple[str, int, int]]:
+            files: list[tuple[str, int, int]] = []
+            if not d.exists():
+                return files
+            yml_files = list(d.glob("*.yml"))
+            yaml_files = list(d.glob("*.yaml"))
             for p in sorted([*yml_files, *yaml_files]):
                 try:
                     st = p.stat()
                     files.append((p.name, int(st.st_mtime_ns), int(st.st_size)))
                 except Exception:
                     files.append((p.name, 0, 0))
-        cfg_fp = hashlib.sha256(repr(files).encode("utf-8")).hexdigest()[:12]
+            return files
+
+        project_root_dir = get_project_config_dir(Path(base), create=False)
+        project_cfg_dir = project_root_dir / "config"
+        project_local_cfg_dir = project_root_dir / "config.local"
+
+        user_root_dir = get_user_config_dir(create=False)
+        user_cfg_dir = user_root_dir / "config"
+
+        cfg_files = {
+            "project": _fingerprint_dir(project_cfg_dir),
+            "project_local": _fingerprint_dir(project_local_cfg_dir),
+            "user": _fingerprint_dir(user_cfg_dir),
+        }
+        cfg_fp = hashlib.sha256(repr(cfg_files).encode("utf-8")).hexdigest()[:12]
     except Exception:
         cfg_fp = "000000000000"
 
@@ -194,6 +208,5 @@ __all__ = [
     "register_cache_clearer",
     "is_cached",
 ]
-
 
 

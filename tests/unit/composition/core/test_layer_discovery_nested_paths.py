@@ -22,7 +22,8 @@ def test_layer_discovery_preserves_nested_relative_paths(tmp_path: Path) -> None
     ld = LayerDiscovery(
         content_type="guidelines",
         core_dir=core_dir,
-        packs_dir=packs_dir,
+        pack_roots=[("bundled", packs_dir)],
+        user_dir=tmp_path / "user",
         project_dir=project_dir,
         file_pattern="*.md",
     )
@@ -58,7 +59,8 @@ def test_layer_discovery_supports_nested_project_overlays(tmp_path: Path) -> Non
     ld = LayerDiscovery(
         content_type="guidelines",
         core_dir=core_dir,
-        packs_dir=packs_dir,
+        pack_roots=[("bundled", packs_dir)],
+        user_dir=tmp_path / "user",
         project_dir=project_dir,
         file_pattern="*.md",
     )
@@ -67,7 +69,6 @@ def test_layer_discovery_supports_nested_project_overlays(tmp_path: Path) -> Non
     overlays = ld.discover_project_overlays(existing)
 
     assert "orchestrators/SESSION_WORKFLOW" in overlays
-
 
 
 

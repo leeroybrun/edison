@@ -4,7 +4,8 @@ Keep this module dependency-lite to avoid circular imports.
 
 Pack layering model:
 1. Bundled packs live under the Edison distribution (edison.data/packs)
-2. Project packs live under the project config directory (<project-config-dir>/packs)
+2. User packs live under the user config directory (~/<user-config-dir>/packs)
+3. Project packs live under the project config directory (<project-config-dir>/packs)
 """
 
 from __future__ import annotations
@@ -14,23 +15,25 @@ from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 from edison.data import get_data_path
-from edison.core.utils.paths import get_project_config_dir
+from edison.core.utils.paths import get_project_config_dir, get_user_config_dir
 
 
 @dataclass(frozen=True)
 class PackRoot:
-    kind: str  # "bundled" | "project"
+    kind: str  # "bundled" | "user" | "project"
     path: Path
 
 
-def get_pack_roots(repo_root: Path) -> tuple[PackRoot, PackRoot]:
+def get_pack_roots(repo_root: Path) -> tuple[PackRoot, PackRoot, PackRoot]:
     """Return pack roots in deterministic precedence order.
 
-    Precedence (low → high) is bundled → project.
+    Precedence (low → high) is bundled → user → project.
     """
     project_dir = get_project_config_dir(repo_root, create=False)
+    user_dir = get_user_config_dir(create=False)
     return (
         PackRoot(kind="bundled", path=Path(get_data_path("packs"))),
+        PackRoot(kind="user", path=user_dir / "packs"),
         PackRoot(kind="project", path=project_dir / "packs"),
     )
 
