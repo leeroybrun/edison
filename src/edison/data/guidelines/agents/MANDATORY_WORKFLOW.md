@@ -43,7 +43,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 Create or update the implementation report for the current round:
 - **Path**: `{{fn:evidence_root}}/<task-id>/round-<N>/{{config.validation.artifactPaths.implementationReportFile}}` (filename is config-driven; default is `{{config.validation.artifactPaths.implementationReportFile}}`).
-- **Schema (LLM reference)**: `{{fn:project_config_dir}}/_generated/schemas/reports/implementation-report.schema.yaml`
+- **Schema (LLM reference)**: `edison read implementation-report.schema.yaml --type schemas/reports`
 - Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
 #### Phase 3: Handoff to orchestrator (do NOT self-validate)
@@ -88,9 +88,9 @@ edison task status <task-id>
 
 ## References
 
-- Extended workflow: `{{fn:project_config_dir}}/_generated/guidelines/agents/AGENT_WORKFLOW.md`
-- Output format: `{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`
-- Session workflow: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
+- Extended workflow: `edison read AGENT_WORKFLOW --type guidelines/agents`
+- Output format: `edison read OUTPUT_FORMAT --type guidelines/agents`
+- Session workflow: `edison read SESSION_WORKFLOW --type guidelines/orchestrators`
 
 ---
 

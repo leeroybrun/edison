@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
 ---
 
 **Validator**: API
-**Configuration**: ConfigManager overlays (`{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`)
+**Configuration**: ConfigManager overlays (see active roster: run `edison read AVAILABLE_VALIDATORS`).
 ```
 
 ---

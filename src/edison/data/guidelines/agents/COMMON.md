@@ -5,14 +5,14 @@ Read this alongside your role constitution: run `edison read AGENTS --type const
 ## Canonical Guideline Roster
 Use this roster instead of repeating the table in each agent file:
 
-| # | Guideline | Path | Purpose |
+| # | Guideline | Read | Purpose |
 |---|-----------|------|---------|
-| 1 | **Workflow** | `{{fn:project_config_dir}}/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Implement → evidence/report → handoff (no orchestration) |
-| 2 | **TDD (embedded)** | `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` | TDD principles + execution requirements |
-| 3 | **Validation** | `{{fn:project_config_dir}}/_generated/guidelines/shared/VALIDATION.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
-| 4 | **Delegation** | `{{fn:project_config_dir}}/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
-| 5 | **Context7** | `{{fn:project_config_dir}}/_generated/guidelines/shared/CONTEXT7.md` | Post-training package docs |
-| 6 | **Rules** | `{{fn:project_config_dir}}/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
+| 1 | **Workflow** | `edison read MANDATORY_WORKFLOW --type guidelines/agents` | Implement → evidence/report → handoff (no orchestration) |
+| 2 | **TDD (embedded)** | `edison read AGENTS --type constitutions` | TDD principles + execution requirements |
+| 3 | **Validation** | `edison read VALIDATION --type guidelines/shared` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` (`edison read AVAILABLE_VALIDATORS`) |
+| 4 | **Delegation** | `edison read DELEGATION_AWARENESS --type guidelines/agents` | Config-driven, no re-delegation |
+| 5 | **Context7** | `edison read CONTEXT7 --type guidelines/shared` | Post-training package docs |
+| 6 | **Rules** | `edison read IMPORTANT_RULES --type guidelines/agents` | Production-critical standards |
 
 ## Edison CLI & Validation Tools
 

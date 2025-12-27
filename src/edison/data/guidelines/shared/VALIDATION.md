@@ -22,7 +22,7 @@ edison qa validate <task-id> --session <session-id> --dry-run
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in the active validator roster (run `edison read AVAILABLE_VALIDATORS`); the active set is listed in `AVAILABLE_VALIDATORS.md`.
 **Specialized (triggered, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.

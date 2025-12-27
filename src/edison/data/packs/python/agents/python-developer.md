@@ -20,7 +20,7 @@ metadata:
 ## Constitution Awareness
 
 **Role Type**: AGENT
-**Constitution**: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md`
+**Constitution**: run `edison read AGENTS --type constitutions`
 **Specialization**: Python module development with strict TDD and typing
 
 ### Binding Rules

@@ -1004,10 +1004,10 @@ Edison generates IDE-specific configuration files for Claude, Cursor, and Pal.
 **Files Generated**:
 - `.claude/settings.json`: Claude-specific settings
 - `.claude/commands/`: Slash commands for Claude
-  - `claim-task.md`: Claim a task
-  - `ready-task.md`: Mark task ready
-  - `qa-run.md`: Run validators
-  - `session-next.md`: Compute next actions
+  - `edison.task-claim.md`: Claim a task
+  - `edison.task-ready.md`: Mark task ready
+  - `edison.qa-validate.md`: Validate a task
+  - `edison.session-next.md`: Compute next actions
 
 ### Cursor Integration
 

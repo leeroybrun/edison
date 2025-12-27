@@ -307,7 +307,7 @@ your-project/
 
 ```bash
 # 1. Create task
-edison task new --id 200 --slug user-profile --description "Add user profile page"
+edison task new --id 200 --slug user-profile
 
 # 2. Create session
 edison session create --session-id feature-profile
@@ -331,10 +331,10 @@ edison session close feature-profile
 edison qa new 200-user-profile
 
 # 8. Run validation
-edison qa validate 200-user-profile --round 1
+edison qa validate 200-user-profile --round 1 --execute
 
 # 9. Review validation results
-edison qa audit 200-user-profile
+edison qa round 200-user-profile --list
 
 # 10. If validation passes, promote to validated
 edison qa promote 200-user-profile

@@ -86,3 +86,26 @@ def test_command_composer_writes_platform_files(tmp_path: Path) -> None:
         assert out_path.exists(), f"Command file should exist: {out_path}"
         content = out_path.read_text(encoding="utf-8")
         assert len(content) > 0, f"Command file should have content: {cmd_id}"
+
+
+def test_command_composer_pack_definitions_do_not_replace_core(tmp_path: Path) -> None:
+    """Active packs may add commands, but must not replace core Edison commands.
+
+    Regression: typescript pack previously replaced `commands.definitions`, which removed
+    core session/task commands from the composed list.
+    """
+    import yaml
+
+    ctx = _build_context(tmp_path)
+
+    # Activate the bundled typescript pack.
+    config_dir = tmp_path / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "config.yml").write_text(yaml.dump({"packs": {"active": ["typescript"]}}), encoding="utf-8")
+
+    composer = CommandComposer(ctx)
+    defs = composer.load_definitions()
+    ids = {d.id for d in defs}
+
+    # Core command should remain present.
+    assert "session-next" in ids

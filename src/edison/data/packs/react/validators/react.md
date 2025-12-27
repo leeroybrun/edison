@@ -157,8 +157,8 @@ Human-readable report (required):
 ---
 
 **Validator**: React
-**Configuration**: ConfigManager overlays (`{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`)
-**Specification**: `{{PROJECT_EDISON_DIR}}/_generated/validators/react.md`
+**Configuration**: ConfigManager overlays (see active roster: run `edison read AVAILABLE_VALIDATORS`).
+**Specification**: run `edison read react --type validators`
 ```
 
 ---

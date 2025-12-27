@@ -168,6 +168,33 @@ Some commands have additional meanings:
 ---
 
 ## Root Commands
+### init
+
+Initialize Edison in a repository (setup wizard).
+
+Key behaviors:
+- Writes `.edison/` structure and config overrides under `.edison/config/`.
+- If worktrees are enabled (and sharedState mode is `meta`), it will run the equivalent of:
+  - `edison git worktree-meta-init`
+  before running initial composition. This ensures `.project/*`, `.edison/_generated`, and tool dirs are
+  symlinked to the meta worktree before any generation happens.
+
+Examples:
+
+```bash
+# Interactive wizard
+edison init
+
+# Non-interactive (no prompts): write recommended defaults and detected values
+edison init --non-interactive
+
+# Non-interactive + enable worktrees and meta init
+edison init --non-interactive --enable-worktrees
+
+# Skip meta init even if worktrees are enabled
+edison init --skip-worktree-meta-init
+```
+
 
 ### init - Initialize Project
 

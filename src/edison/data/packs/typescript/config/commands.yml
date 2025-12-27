@@ -4,23 +4,27 @@ commands:
     - id: typescript-check
       domain: typescript
       command: check
-      short_desc: "Run TypeScript compiler"
+      short_desc: "Typecheck with tsc (no emit)"
       full_desc: |
         Runs TypeScript compiler in check mode (no emit).
         Validates types across the project.
       cli: "tsc --noEmit"
       args: []
-      when_to_use: "Before committing to check for type errors"
+      when_to_use: |
+        - Before committing to check for type errors
+        - Before `edison qa validate` on TypeScript-heavy changes
       related_commands:
-        - edison-validate-now
+        - qa-validate
+        - task-ready
 
     - id: typescript-build
       domain: typescript
       command: build
       short_desc: "Build TypeScript project"
-      full_desc: "Compiles TypeScript project."
+      full_desc: "Compiles the TypeScript project."
       cli: "tsc"
       args: []
-      when_to_use: "To compile the project"
+      when_to_use: |
+        - When you need a full compile (emit) build
       related_commands:
-        - edison-typescript-check
+        - typescript-check

@@ -253,8 +253,8 @@ Human-readable report (required):
 ---
 
 **Validator**: Next.js
-**Configuration**: ConfigManager overlays (`{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`)
-**Specification**: `{{PROJECT_EDISON_DIR}}/_generated/validators/nextjs.md`
+**Configuration**: ConfigManager overlays (see active roster: run `edison read AVAILABLE_VALIDATORS`).
+**Specification**: run `edison read nextjs --type validators`
 ```
 
 Machine-readable JSON report (required):

@@ -538,9 +538,9 @@ edison session next sess-001
 
 ## Related Documentation
 
-- `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` - Full session workflow
-- `{{fn:project_config_dir}}/_generated/guidelines/shared/DELEGATION.md` - Delegation priority chain
-- `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
+- `edison read SESSION_WORKFLOW --type guidelines/orchestrators` - Full session workflow
+- `edison read DELEGATION --type guidelines/shared` - Delegation priority chain
+- `edison read STATE_MACHINE_GUARDS --type guidelines/orchestrators` - State transition rules
 
 ---
 

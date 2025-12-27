@@ -16,7 +16,7 @@ Example path:
 ## Schema (single source of truth)
 
 See the schema for the exact required fields:
-- `{{fn:project_config_dir}}/_generated/schemas/reports/implementation-report.schema.yaml`
+- `edison read implementation-report.schema.yaml --type schemas/reports`
 
 ## Required machine fields (YAML frontmatter)
 

@@ -8,8 +8,8 @@
 ---
 
 ## Mandatory Reads
-- `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md`
-- `{{PROJECT_EDISON_DIR}}/_generated/guidelines/validators/COMMON.md`
+- `edison read VALIDATORS --type constitutions`
+- `edison read VALIDATOR_COMMON --type guidelines/validators`
 
 ---
 
@@ -111,4 +111,3 @@ git diff
 - Syntax-check: {{fn:evidence_file("syntax-check")}}
 - Check-mode: {{fn:evidence_file("check")}}
 ```
-

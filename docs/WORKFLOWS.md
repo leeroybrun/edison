@@ -43,9 +43,9 @@ edison session create [--session-id <id>]
 
 The orchestrator reads the generated constitution to understand available agents and validators.
 
-**Constitution location:**
-```
-.edison/_generated/constitutions/ORCHESTRATOR.md
+**Constitution (canonical, composed):**
+```bash
+edison read ORCHESTRATOR --type constitutions
 ```
 
 **What it contains:**

@@ -10,7 +10,7 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Roster**: `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` (single source of truth for agent routing hints and model bindings presented to LLMs)
+**Delegation Roster**: run `edison read AVAILABLE_AGENTS` (single source of truth for agent routing hints and model bindings presented to LLMs)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
@@ -21,7 +21,7 @@ The orchestrator uses this configuration to assign tasks to the most appropriate
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` to understand the active roster and routing hints
+1. **READ** `edison read AVAILABLE_AGENTS` to understand the active roster and routing hints
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -81,7 +81,7 @@ Orchestrator → component-builder (UI work)
 
 ```pseudocode
 // Example: Reading the roster
-roster = read_markdown('{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md')
+roster = `edison read AVAILABLE_AGENTS`
 
 // Find your assigned agent entry and its scope hints (as rendered in the roster)
 // Then follow the orchestrator's instructions for your slice.
@@ -165,8 +165,8 @@ edison agents scope api-builder
 
 ## References
 
-- Delegation guide: `{{fn:project_config_dir}}/_generated/guidelines/shared/DELEGATION.md`
-- Schema: `{{fn:project_config_dir}}/_generated/schemas/config/delegation-config.schema.yaml`
+- Delegation guide: `edison read DELEGATION --type guidelines/shared`
+- Schema: `edison read delegation-config.schema.yaml --type schemas/config`
 
 ---
 

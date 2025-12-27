@@ -95,6 +95,25 @@ def test_compose_commands_writes_cursor_commands(tmp_path: Path) -> None:
     assert "edison session next <session_id>" in text
 
 
+def test_compose_commands_writes_codex_prompts_with_valid_frontmatter(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+
+    out_dir = project / ".codex" / "prompts"
+    args = ["--platform", "codex", "--output", str(out_dir), "--repo-root", str(project)]
+    result = run_compose_commands(args, env=_base_env(project), cwd=project)
+    assert result.returncode == 0, f"Command failed:\n{result.stdout}\n{result.stderr}"
+
+    cmd_file = out_dir / "edison.session-next.md"
+    assert cmd_file.exists(), f"Expected command file at {cmd_file}"
+    text = cmd_file.read_text(encoding="utf-8")
+
+    # Codex prompts are YAML-frontmatter + markdown. The YAML must be parseable.
+    assert text.startswith("---\n")
+    assert "\nargument-hint:" in text
+    assert "\n---\n\n# edison.session-next\n" in text
+
+
 def test_compose_commands_default_selection_excludes_optional_domains(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()

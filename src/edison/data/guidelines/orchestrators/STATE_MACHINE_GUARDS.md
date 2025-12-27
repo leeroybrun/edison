@@ -16,7 +16,7 @@ State names: {{fn:state_names("qa")}}
 
 {{fn:state_diagram("qa")}}
 
-The authoritative definition lives in `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
+The authoritative definition lives in the composed state machine (run `edison read STATE_MACHINE`) and is loaded by `lib/task.validate_state_transition`.
 
 ## Enforcement Points
 

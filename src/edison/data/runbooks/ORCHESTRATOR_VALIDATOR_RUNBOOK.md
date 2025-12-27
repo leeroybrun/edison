@@ -1,10 +1,10 @@
 # Orchestrator ⇄ Validator Runbook
 
-> Purpose: step-by-step guide for orchestrators to launch validators, read results, and drive rejection/escalation loops without hardcoded rosters. The active validator list, models, and trigger patterns are always in the dynamic roster at `AVAILABLE_VALIDATORS.md` (generated under `{{PROJECT_EDISON_DIR}}/_generated/`).
+> Purpose: step-by-step guide for orchestrators to launch validators, read results, and drive rejection/escalation loops without hardcoded rosters. The active validator list, models, and trigger patterns are always in the dynamic roster (run `edison read AVAILABLE_VALIDATORS`).
 
 ## 0. Preconditions
 - Task is in `{{fn:task_state_dir("done")}}/`; QA brief is in `{{fn:qa_state_dir("wip")}}/` with the latest implementation evidence.
-- Open the current roster: `AVAILABLE_VALIDATORS.md` (never assume counts or names).
+- Open the current roster: run `edison read AVAILABLE_VALIDATORS` (never assume counts or names).
 - Work from the correct session worktree and log actions in the session Activity Log.
 
 ## 1. Trigger validators
@@ -13,7 +13,7 @@
    edison qa bundle <task-id> [--session <session-id>]
    ```
    Paste the bundle snippet into the QA brief. Validators must reject if the bundle is missing or stale.
-2. Determine the wave/trigger set from `AVAILABLE_VALIDATORS.md`. Specialized validators are driven by the triggers listed there; do not guess.
+2. Determine the wave/trigger set from the roster (run `edison read AVAILABLE_VALIDATORS`). Specialized validators are driven by the triggers listed there; do not guess.
 3. Launch validation for the next round (defaults to the next integer if `--round` is omitted):
    ```bash
    edison qa validate <task-id> [--session <session-id>] [--validators <id>...] [--blocking-only]
@@ -46,7 +46,7 @@
   4. Open a blocker task (and link it) to capture the escalation decision and required changes.
 
 ## 5. Debug validator failures
-- Confirm the roster and triggers: re-open `AVAILABLE_VALIDATORS.md` and the validator spec files under `_generated/validators/`.
+- Confirm the roster and triggers: re-open `edison read AVAILABLE_VALIDATORS` and list validator specs via `edison list --type validators --format detail` (then `edison read <name> --type validators`).
 - Rebuild the bundle and ensure validators are reading the current manifest.
 - Check evidence paths for missing/partial reports; missing reports are treated as failures.
 - Rerun a specific validator with `--validators <id> --round <N>` to reproduce without resetting other evidence.

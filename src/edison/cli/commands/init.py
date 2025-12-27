@@ -37,7 +37,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--non-interactive",
         action="store_true",
-        help="Skip questionnaire, use bundled defaults (no config files written)",
+        help="Skip prompting; write recommended defaults and detected values (no interactive questions)",
     )
     parser.add_argument(
         "--advanced",
@@ -79,6 +79,23 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--skip-compose",
         action="store_true",
         help="Skip running initial composition",
+    )
+
+    # Worktree bootstrap
+    parser.add_argument(
+        "--enable-worktrees",
+        action="store_true",
+        help="Enable worktrees in generated config (useful with --non-interactive)",
+    )
+    parser.add_argument(
+        "--disable-worktrees",
+        action="store_true",
+        help="Disable worktrees in generated config (useful with --non-interactive)",
+    )
+    parser.add_argument(
+        "--skip-worktree-meta-init",
+        action="store_true",
+        help="Do not run `edison git worktree-meta-init` even if worktrees are enabled",
     )
 
 
@@ -175,6 +192,8 @@ def _run_questionnaire(
     formatter: OutputFormatter,
     force: bool = False,
     merge: bool = False,
+    interactive: bool = True,
+    provided_answers: Optional[dict] = None,
 ) -> bool:
     """Run the setup questionnaire and write config files.
     
@@ -201,8 +220,9 @@ def _run_questionnaire(
     # Run questionnaire with file writing enabled
     result = configure_project(
         repo_root=project_root,
-        interactive=True,
+        interactive=interactive,
         mode=mode,
+        provided_answers=provided_answers,
         write_files=True,
         write_mode=write_mode,
         overrides_only=True,  # Only write values that differ from defaults
@@ -311,27 +331,55 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text("   Or install Edison from a source checkout that includes scripts/pal.")
                 return 1
         
-        # Run questionnaire (interactive mode) or skip (non-interactive)
+        if getattr(args, "enable_worktrees", False) and getattr(args, "disable_worktrees", False):
+            formatter.text("❌ --enable-worktrees and --disable-worktrees are mutually exclusive.")
+            return 1
+
+        # Determine mode (basic / advanced)
+        mode = "advanced" if args.advanced else "basic"
+
+        provided_answers: dict = {}
+        if getattr(args, "enable_worktrees", False):
+            provided_answers["enable_worktrees"] = True
+        if getattr(args, "disable_worktrees", False):
+            provided_answers["enable_worktrees"] = False
+
         if args.non_interactive:
-            formatter.text("\n📋 Non-interactive mode: using bundled defaults")
-            formatter.text("   No project-specific config files written.")
-            formatter.text("   Run 'edison init --reconfigure' later to customize.")
+            formatter.text("\n📋 Non-interactive mode: writing recommended defaults (no prompts)")
         else:
-            # Determine mode
-            mode = "advanced" if args.advanced else "basic"
-            
             formatter.text(f"\n📋 Running setup questionnaire ({mode} mode)...")
             formatter.text("   Press Enter to accept defaults shown in [brackets]\n")
-            
-            success = _run_questionnaire(
-                project_root,
-                mode=mode,
-                formatter=formatter,
-                force=args.force,
-                merge=args.merge,
-            )
-            
-            if not success:
+
+        success = _run_questionnaire(
+            project_root,
+            mode=mode,
+            formatter=formatter,
+            force=args.force,
+            merge=args.merge,
+            interactive=not args.non_interactive,
+            provided_answers=provided_answers or None,
+        )
+        if not success:
+            return 1
+
+        # If worktrees are enabled and meta mode is active, bootstrap the meta worktree now
+        # (idempotent). This ensures sharedPaths symlinks + per-worktree excludes + meta commit
+        # guard are installed before we run composition, so generated artifacts land in the
+        # shared/meta root.
+        if not getattr(args, "skip_worktree_meta_init", False):
+            try:
+                from edison.core.config import ConfigManager
+                from edison.core.session import worktree as wt
+
+                cfg = ConfigManager(project_root).load_config(validate=False, include_packs=True) or {}
+                wt_cfg = cfg.get("worktrees") or {}
+                ss = wt_cfg.get("sharedState") or {}
+                if wt_cfg.get("enabled") and str(ss.get("mode") or "meta").strip().lower() == "meta":
+                    formatter.text("\n🌿 Initializing worktrees shared-state meta worktree...")
+                    wt.initialize_meta_shared_state(repo_dir=project_root, dry_run=False)
+            except Exception as exc:
+                formatter.text(f"❌ Worktree meta init failed: {exc}")
+                formatter.text("   You can re-run later via: edison git worktree-meta-init")
                 return 1
         
         # Configure MCP
@@ -340,8 +388,8 @@ def main(args: argparse.Namespace) -> int:
             _configure_mcp(project_root, use_script=args.mcp_script, formatter=formatter)
         else:
             formatter.text("\nℹ️  Skipped MCP setup (--skip-mcp)")
-        
-        # Run composition
+
+        # Run composition (after meta init so shared dirs exist + are symlinked)
         if not args.skip_compose:
             formatter.text("\n🔧 Running initial composition...")
             _run_initial_composition(project_root)

@@ -1,6 +1,6 @@
 # Delegation Models (Orchestrators)
 
-> Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
+> Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/DELEGATION.md` (read via `edison read DELEGATION --type guidelines/orchestrators`; composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
 
 <!-- section: rules -->
 ## Delegation Criteria

@@ -966,6 +966,17 @@ commands:
           required: true
 ```
 
+Notes:
+
+- `commands.selection` exists to keep the slash-command catalog small and relevant.
+  - `mode: domains` includes only the listed domains.
+  - Packs should put their commands under a distinct domain (e.g. `typescript`) and **projects opt in** by adding that domain.
+- **Safe extensibility merge semantics**:
+  - Lists of dicts with an `id` key (like `commands.definitions`) **merge-by-id by default** (later layers override by id, but do not replace the whole list).
+  - To explicitly replace the whole list: `definitions: ["=", {...}, {...}]`
+  - To clear the list: `definitions: []`
+  - To disable a specific command from a lower layer: `- {id: <id>, enabled: false}`
+
 **Override Example** (`.edison/config/commands.yaml`):
 
 ```yaml
@@ -1171,6 +1182,18 @@ worktrees:
   archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
   branchPrefix: "session/"
   pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  sharedState:
+    # Canonical list of meta-managed shared paths (single source of truth).
+    # Includes `.project/*` management state and `.edison/_generated` by default.
+    sharedPaths: ["+", {path: ".pal", scopes: ["primary", "session"]}]
+    # Meta commit guard: allows sharedPaths with commitAllowed=true + explicit extras.
+    commitGuard:
+      allowPrefixes: []
+    # Excludes are per-worktree via `core.excludesFile`.
+    gitExcludes:
+      primary: []
+      session: []
+      meta: []
   cleanup:
     autoArchive: true
     archiveAfterDays: 30

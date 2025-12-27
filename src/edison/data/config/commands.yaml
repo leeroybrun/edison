@@ -103,111 +103,74 @@ commands:
         - session-next
         - session-status
 
-    - id: session-prompts
+    - id: session-start
       domain: session
-      command: prompts
-      short_desc: "List available START_* prompts"
+      command: start
+      short_desc: "Start/resume: pick a START_* prompt (playbook)"
       full_desc: |
-        Workflow: discover which START_* prompts exist for this repo (project-composed
-        prompts take precedence over bundled prompts).
-      cli: "edison session prompts"
-      args: []
-      when_to_use: |
-        - You don't know which start prompt to use
-        - You want to see all available START_* ids
-      related_commands:
-        - start-new-session
-        - start-resume-session
-        - start-auto-next
+        Workflow: choose the correct START_* prompt based on what the user wants,
+        then print the selected prompt text in-chat.
 
-    # Session start prompts (bootstrap LLM sessions)
-    - id: start-new-session
-      domain: session
-      command: start-new-session
-      short_desc: "Print START_NEW_SESSION prompt"
-      full_desc: |
-        Prints the Edison START_NEW_SESSION prompt used to bootstrap a fresh session.
-        This is a prompt document meant for the LLM; it does not mutate task/session state.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_NEW_SESSION.md"
-      args: []
+        Important:
+        - Do NOT run `edison compose ...` from chat. Composition is a developer responsibility.
+        - Prefer a minimal catalog: treat START_* as composable/extensible and discover them dynamically.
+      cli: |
+        edison list --type start --format detail
+        edison read --type start START_<PROMPT_ID>
+      args:
+        - name: PROMPT_ID
+          description: "Prompt ID suffix (e.g., NEW_SESSION, RESUME_SESSION, AUTO_NEXT)"
+          required: true
       when_to_use: |
-        - Starting a brand new Edison session
-        - You want the canonical start prompt text in-chat
-      related_commands:
-        - session-next
-        - session-status
-
-    - id: start-resume-session
-      domain: session
-      command: start-resume-session
-      short_desc: "Print START_RESUME_SESSION prompt"
-      full_desc: |
-        Prints the Edison START_RESUME_SESSION prompt used to resume work in an existing session.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_RESUME_SESSION.md"
-      args: []
-      when_to_use: |
-        - Resuming an existing session after a break
-        - Re-establishing worktree confinement and current state
-      related_commands:
-        - session-next
-        - session-status
-
-    - id: start-auto-next
-      domain: session
-      command: start-auto-next
-      short_desc: "Print START_AUTO_NEXT prompt"
-      full_desc: |
-        Prints the Edison START_AUTO_NEXT prompt used to automatically determine next actions.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_AUTO_NEXT.md"
-      args: []
-      when_to_use: |
-        - You want Edison to recommend next steps based on current state
-        - You are unsure what to do next and want the canonical prompt
-      related_commands:
-        - session-next
-
-    - id: start-validate-session
-      domain: start
-      command: start-validate-session
-      short_desc: "Print START_VALIDATE_SESSION prompt"
-      full_desc: |
-        Prints the Edison START_VALIDATE_SESSION prompt used to validate a session's readiness.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_VALIDATE_SESSION.md"
-      args: []
-      when_to_use: |
-        - Before closing a session
-        - When preparing for QA / validation workflow
-      related_commands:
-        - qa-validate
-        - session-next
-
-    - id: start-continue-stale
-      domain: start
-      command: start-continue-stale
-      short_desc: "Print START_CONTINUE_STALE prompt"
-      full_desc: |
-        Prints the Edison START_CONTINUE_STALE prompt for continuing a stale/timed-out session.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_CONTINUE_STALE.md"
-      args: []
-      when_to_use: |
-        - Recovering from a stale session state
-        - You need canonical recovery instructions in-chat
+        - The user says “start a new session”, “resume”, “what next?”, “validate”, or “cleanup”
+        - You need the canonical bootstrap instructions before acting
       related_commands:
         - session-status
+        - session-context
+        - session-next
 
-    - id: start-cleanup
-      domain: start
-      command: start-cleanup
-      short_desc: "Print START_CLEANUP prompt"
+    - id: read
+      domain: rules
+      command: read
+      short_desc: "Read a composed artifact (playbook)"
       full_desc: |
-        Prints the Edison START_CLEANUP prompt used for cleanup and hygiene workflows.
-      cli: "edison compose all --start && cat .edison/_generated/start/START_CLEANUP.md"
-      args: []
+        Workflow: read the canonical, composed artifact from `.edison/_generated/`.
+
+        Notes:
+        - This is for reading developer-composed artifacts (agents, constitutions, guidelines, start prompts).
+        - Do NOT run `edison compose ...` from chat. If the file is missing, ask the developer to compose it.
+      cli: "edison read <name> --type <type>"
+      args:
+        - name: type
+          description: "Generated subfolder (e.g., constitutions, guidelines, agents, start). Empty means root."
+          required: false
+        - name: name
+          description: "File name without extension (defaults to .md), e.g. ORCHESTRATOR, AVAILABLE_AGENTS"
+          required: true
       when_to_use: |
-        - End-of-session cleanup
-        - Cleaning up worktrees or stale artifacts
+        - The workflow tells you to read from `.edison/_generated/...`
+        - You need the canonical, composed version (not a bundled template)
       related_commands:
-        - session-status
+        - rules-current
+
+    - id: list
+      domain: rules
+      command: list
+      short_desc: "List composed artifacts (playbook)"
+      full_desc: |
+        Workflow: list the canonical, composed artifacts under `.edison/_generated/`.
+
+        Use `--type start` to discover available `START_*.md` prompts.
+      cli: "edison list --type <type> --format detail"
+      args:
+        - name: type
+          description: "Generated subfolder (e.g., start, constitutions, guidelines, agents). Empty means root."
+          required: false
+      when_to_use: |
+        - You need to discover which composed files are available
+        - You need to pick an appropriate start prompt / guideline / constitution
+      related_commands:
+        - read
 
     # Task management
     - id: task-new

@@ -179,9 +179,9 @@ edison task status TASK-123 --json
 
 ## Related Documentation
 
-- `{{fn:project_config_dir}}/_generated/guidelines/agents/AGENT_WORKFLOW.md` - Full agent workflow
-- `{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` - Output format requirements
-- `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` - TDD requirements (embedded)
+- `edison read AGENT_WORKFLOW --type guidelines/agents` - Full agent workflow
+- `edison read OUTPUT_FORMAT --type guidelines/agents` - Output format requirements
+- `edison read AGENTS --type constitutions` - TDD requirements (embedded)
 
 ---
 

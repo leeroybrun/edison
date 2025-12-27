@@ -10,7 +10,7 @@ Edison uses **three distinct roles**, each with its own constitution, guidelines
 3. **Validator** - Reviews code, validates implementations, ensures quality
 
 Each role has:
-- A dedicated constitution file (`.edison/_generated/constitutions/<ROLE>.md`)
+- A dedicated constitution file (read via `edison read <ROLE> --type constitutions`)
 - Mandatory reading materials specific to their responsibilities
 - Restricted CLI command access (fail-closed by design)
 - Clear boundaries of what they can and cannot do
@@ -23,7 +23,7 @@ Each role has:
 Coordinate work, delegate tasks to specialized agents, manage session lifecycle, and orchestrate validation.
 
 ### Constitution
-`.edison/_generated/constitutions/ORCHESTRATOR.md`
+Run `edison read ORCHESTRATOR --type constitutions`.
 
 ### Mandatory Reads
 Orchestrators MUST read these files at session start:
@@ -141,7 +141,7 @@ edison compose <subcommand>    # Compose constitutions/guidelines
 Implement features, fix bugs, write code following TDD practices.
 
 ### Constitution
-`.edison/_generated/constitutions/AGENTS.md`
+Run `edison read AGENTS --type constitutions`.
 
 ### Mandatory Reads
 Agents MUST read these files before implementation:
@@ -240,7 +240,7 @@ mcp__context7__get-library-docs       # Fetch documentation
 Review code, validate implementations, ensure quality through independent assessment.
 
 ### Constitution
-`.edison/_generated/constitutions/VALIDATORS.md`
+Run `edison read VALIDATORS --type constitutions`.
 
 ### Mandatory Reads
 Validators MUST read these files before validation:
@@ -345,9 +345,9 @@ Defined in active packs, check `AVAILABLE_VALIDATORS.md` for current roster:
 
 1. **Determine context** - Are they starting a session, implementing a task, or validating?
 2. **Read appropriate constitution** - Based on context, load the correct constitution:
-   - Orchestrator: `.edison/_generated/constitutions/ORCHESTRATOR.md`
-   - Agent: `.edison/_generated/constitutions/AGENTS.md`
-   - Validator: `.edison/_generated/constitutions/VALIDATORS.md`
+   - Orchestrator: `edison read ORCHESTRATOR --type constitutions`
+   - Agent: `edison read AGENTS --type constitutions`
+   - Validator: `edison read VALIDATORS --type constitutions`
 3. **Load mandatory reads** - Each constitution lists required reading materials
 4. **Follow role-specific workflow** - Execute according to role responsibilities
 
@@ -363,7 +363,7 @@ edison compose --all    # Regenerate all constitutions
 2. Pack-specific additions
 3. Project-specific overrides
 
-**Output**: `.edison/_generated/constitutions/<ROLE>.md`
+**Output**: `edison read <ROLE> --type constitutions`
 
 ---
 

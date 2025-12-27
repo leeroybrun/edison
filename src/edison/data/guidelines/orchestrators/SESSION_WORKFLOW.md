@@ -1,9 +1,9 @@
 # Session Workflow (Active Session Playbook)
 
 <!-- section: workflow -->
-> **Canonical Location**: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
+> **Canonical Location**: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (read via `edison read SESSION_WORKFLOW --type guidelines/orchestrators`; bundled with the core guidelines).
 
-Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
+Canonical path: `{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (read via `edison read SESSION_WORKFLOW --type guidelines/orchestrators`)
 
 This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `{{fn:sessions_root}}/`.
 
