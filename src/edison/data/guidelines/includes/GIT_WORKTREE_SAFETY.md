@@ -31,6 +31,7 @@
 ## Git Safety (Non-Negotiable)
 - **Never switch branches in the primary checkout.** Edison/LLMs MUST NOT run `git checkout` / `git switch` in the primary worktree.
 - **Branch creation/deletion is restricted.** Only create/delete branches via Edison session/worktree commands unless the user explicitly asks otherwise.
+- **NEVER use `git reset`, `git restore`, `git clean`, `git checkout -- <file>`, or any other destructive commands without user approval.** If you see unrelated changes/work to what you expect, NEVER discard them without explicit user confirmation. Many agents/LLMs may be working on the same task concurrently, so "unrelated" changes is expected and you should NEVER discard them, except via explicit user instruction.
 <!-- /section: git-safety -->
 
 <!-- section: agent-git-safety -->
