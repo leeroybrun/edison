@@ -180,3 +180,37 @@ def test_compose_commands_prunes_stale_generated_files(tmp_path: Path) -> None:
     assert not stale_generated.exists(), "Expected Edison to prune stale generated command file"
     assert not stale_legacy_generated.exists(), "Expected Edison to prune stale legacy Edison command file"
     assert keep_user_file.exists(), "Expected Edison not to delete user-created command files"
+
+
+def test_compose_commands_prunes_legacy_prefix_files(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+
+    out_dir = project / ".claude" / "commands"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Legacy Edison used `edison-` as a filename prefix. When the configured
+    # prefix changes to `edison.`, the composer should still prune those old
+    # Edison-generated files so stale commands don't stick around.
+    stale_legacy_prefix = out_dir / "edison-stale-prefix.md"
+    stale_legacy_prefix.write_text(
+        "---\n"
+        "description: \"legacy-prefix\"\n"
+        "edison-generated: true\n"
+        "---\n"
+        "\n"
+        "# edison-stale-prefix\n",
+        encoding="utf-8",
+    )
+    assert stale_legacy_prefix.exists()
+
+    keep_user_legacy_prefix = out_dir / "edison-keep-user.md"
+    keep_user_legacy_prefix.write_text("# user file\n", encoding="utf-8")
+    assert keep_user_legacy_prefix.exists()
+
+    args = ["--platform", "claude", "--repo-root", str(project)]
+    result = run_compose_commands(args, env=_base_env(project), cwd=project)
+    assert result.returncode == 0, f"Command failed:\n{result.stdout}\n{result.stderr}"
+
+    assert not stale_legacy_prefix.exists(), "Expected Edison to prune legacy-prefix generated command file"
+    assert keep_user_legacy_prefix.exists(), "Expected Edison not to delete user-created legacy-prefix files"

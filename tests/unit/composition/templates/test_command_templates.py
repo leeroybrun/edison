@@ -13,17 +13,21 @@ def render_template(template_name: str, **context) -> str:
 
 
 def sample_context(overrides=None):
+    from types import SimpleNamespace
+
     base = {
-        "name": "edison-session-next",
+        "name": "edison.session-next",
         "short_desc": "Show next session steps",
         "full_desc": "Shows recommended next actions...",
         "cli": "edison session next",
+        # Templates reference `command.id` in frontmatter.
+        "command": SimpleNamespace(id="session-next"),
         "args": [
             {"name": "task", "description": "Task identifier", "required": True},
             {"name": "limit", "description": "Max items to show", "required": False},
         ],
         "when_to_use": "After completing a task",
-        "related_commands": ["edison-session-status"],
+        "related_commands": ["edison.session-status"],
     }
     return {**base, **(overrides or {})}
 
@@ -31,7 +35,7 @@ def sample_context(overrides=None):
 def test_claude_template_renders():
     result = render_template("claude-command.md.template", **sample_context())
 
-    assert "# edison-session-next" in result
+    assert "# edison.session-next" in result
     assert "!edison session next" in result
     assert "allowed-tools: [bash]" in result
     assert "**task** (required): Task identifier" in result
@@ -41,7 +45,7 @@ def test_claude_template_renders():
 def test_cursor_template_renders():
     result = render_template("cursor-command.md.template", **sample_context())
 
-    assert "# edison-session-next" in result
+    assert "# edison.session-next" in result
     assert "```bash\nedison session next\n```" in result
     assert "- task (required): Task identifier" in result
     assert "## Related" in result
@@ -52,7 +56,7 @@ def test_codex_template_renders():
 
     assert "description: Show next session steps" in result
     assert "argument-hint: task limit" in result
-    assert "# edison-session-next" in result
+    assert "# edison.session-next" in result
     assert "`task` (required): Task identifier" in result
     assert "global Edison command" in result
 

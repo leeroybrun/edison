@@ -25,7 +25,7 @@ commands:
     claude:
       enabled: true
       output_dir: ".claude/commands"
-      prefix: "edison-"
+      prefix: "edison."
       max_short_desc: 80
       template: "claude-command.md.template"
       # Default to workflow guidance prompts (no implicit execution).
@@ -35,7 +35,7 @@ commands:
     cursor:
       enabled: true
       output_dir: ".cursor/commands"
-      prefix: "edison-"
+      prefix: "edison."
       max_short_desc: 120
       template: "cursor-command.md.template"
       allow_bash: true
@@ -43,7 +43,7 @@ commands:
     codex:
       enabled: true
       output_dir: "~/.codex/prompts"  # User directory
-      prefix: "edison-"
+      prefix: "edison."
       max_short_desc: 100
       template: "codex-prompt.md.template"
       warn_user_scope: true

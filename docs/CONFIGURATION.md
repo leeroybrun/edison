@@ -927,7 +927,7 @@ commands:
     claude:
       enabled: true
       output_dir: ".claude/commands"
-      prefix: "edison-"
+      prefix: "edison."
       max_short_desc: 80
       template: "claude-command.md.template"
       # Default to workflow guidance prompts (no implicit execution).
@@ -936,7 +936,7 @@ commands:
     cursor:
       enabled: true
       output_dir: ".cursor/commands"
-      prefix: "edison-"
+      prefix: "edison."
       max_short_desc: 120
       template: "cursor-command.md.template"
       allow_bash: true
