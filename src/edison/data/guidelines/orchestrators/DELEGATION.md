@@ -6,7 +6,7 @@
 ## Delegation Criteria
 
 - Load the delegation roster first: `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` (fail-closed if missing).
-- Source of truth lives in YAML overlays (core → packs → project), but orchestrators should rely on the generated roster + `edison session next` suggestions rather than hardcoding config paths in prompts.
+- Source of truth lives in YAML overlays (core → packs → user → project), but orchestrators should rely on the generated roster + `edison session next` suggestions rather than hardcoding config paths in prompts.
 - Delegate by default; orchestrators implement only when criteria say **Handle Directly**.
 - Enforce the priority chain (user instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers). Stop if ambiguous.
 

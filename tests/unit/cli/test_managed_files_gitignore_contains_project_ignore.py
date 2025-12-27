@@ -56,4 +56,4 @@ def test_compose_all_managed_files_adds_project_gitignore(tmp_path: Path) -> Non
     content = gitignore.read_text(encoding="utf-8")
     assert ".project/" in content
     assert ".edison/_generated/" in content
-
+    assert ".edison/config.local/" in content

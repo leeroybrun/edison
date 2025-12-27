@@ -21,7 +21,7 @@ Complete reference for Edison's declarative state machine, guards, conditions, a
 Edison uses a declarative state machine to manage the lifecycle of tasks, QA briefs, and sessions. The system is:
 
 - **Configuration-driven**: All states, transitions, guards, conditions, and actions are defined in `workflow.yaml`
-- **Extensible**: Custom handlers can be added via layered composition (core → packs → project)
+- **Extensible**: Custom handlers can be added via layered composition (core → packs → user → project)
 - **Fail-safe**: Guards follow a fail-closed principle, returning `False` when context is missing
 - **Unified**: A single `WorkflowConfig` class provides access to all state machine configuration
 

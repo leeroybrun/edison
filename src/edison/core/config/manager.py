@@ -304,7 +304,25 @@ class ConfigManager:
             Configuration with pack overlays merged
         """
         for pack_name in active_packs:
-            # Portability warning: pack exists only in user packs dir.
+            # Load bundled pack config
+            bundled_pack_config = self.bundled_packs_dir / pack_name / "config"
+            cfg = self._load_directory(bundled_pack_config, cfg)
+
+            # Load user pack config (overrides bundled)
+            user_pack_config = self.user_packs_dir / pack_name / "config"
+            cfg = self._load_directory(user_pack_config, cfg)
+
+            # Load project pack config (overrides bundled)
+            project_pack_config = self.project_packs_dir / pack_name / "config"
+            cfg = self._load_directory(project_pack_config, cfg)
+
+        return cfg
+
+    def _find_user_only_packs(self, active_packs: List[str]) -> List[str]:
+        """Return packs that resolve only from the user packs directory."""
+        user_only: List[str] = []
+
+        for pack_name in active_packs:
             try:
                 bundled_exists = (Path(self.bundled_packs_dir) / pack_name).exists()
             except Exception:
@@ -319,26 +337,50 @@ class ConfigManager:
                 user_exists = False
 
             if user_exists and not (bundled_exists or project_exists):
-                logger.warning(
-                    "Active pack '%s' is resolved only from the user packs directory (%s). "
-                    "This project may not be reproducible for other users/CI unless they install the pack.",
-                    pack_name,
-                    str(Path(self.user_packs_dir) / pack_name),
-                )
+                user_only.append(pack_name)
 
-            # Load bundled pack config
-            bundled_pack_config = self.bundled_packs_dir / pack_name / "config"
-            cfg = self._load_directory(bundled_pack_config, cfg)
+        return user_only
 
-            # Load user pack config (overrides bundled)
-            user_pack_config = self.user_packs_dir / pack_name / "config"
-            cfg = self._load_directory(user_pack_config, cfg)
+    def _packs_portability_user_only_mode(self, cfg: Dict[str, Any]) -> str:
+        packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
+        portability = packs.get("portability") if isinstance(packs.get("portability"), dict) else {}
+        raw = portability.get("userOnly", portability.get("user_only", "warn"))
+        mode = str(raw).strip().lower() if raw is not None else "warn"
 
-            # Load project pack config (overrides bundled)
-            project_pack_config = self.project_packs_dir / pack_name / "config"
-            cfg = self._load_directory(project_pack_config, cfg)
+        if mode in {"warn", "warning"}:
+            return "warn"
+        if mode in {"error", "fail", "fatal"}:
+            return "error"
+        if mode in {"off", "none", "false", "0"}:
+            return "off"
+        return "warn"
 
-        return cfg
+    def _enforce_pack_portability(self, cfg: Dict[str, Any], *, active_packs: List[str]) -> None:
+        """Warn/error when active packs are resolved only from the user layer."""
+        user_only = self._find_user_only_packs(active_packs)
+        if not user_only:
+            return
+
+        mode = self._packs_portability_user_only_mode(cfg)
+        if mode == "off":
+            return
+
+        if mode == "error":
+            packs_list = ", ".join(sorted(user_only))
+            raise RuntimeError(
+                "Pack portability check failed: active pack(s) resolve only from the user packs directory: "
+                f"{packs_list}. "
+                "To make the project reproducible, vendor the pack into project packs, "
+                "or install the pack for all users/CI, or relax packs.portability.userOnly."
+            )
+
+        for pack_name in user_only:
+            logger.warning(
+                "Active pack '%s' is resolved only from the user packs directory (%s). "
+                "This project may not be reproducible for other users/CI unless they install the pack.",
+                pack_name,
+                str(Path(self.user_packs_dir) / pack_name),
+            )
 
     def _apply_project_env_aliases(self, cfg: Dict[str, Any]) -> None:
         """Route legacy project env vars through the config system."""
@@ -403,6 +445,7 @@ class ConfigManager:
         """
         with span("config.load_config.total", include_packs=include_packs, validate=validate):
             cfg: Dict[str, Any] = {}
+            active_packs: List[str] = []
 
             # Layer 1: Core config (bundled defaults)
             with span("config.load_config.core"):
@@ -447,6 +490,10 @@ class ConfigManager:
             # This must run after all layering and compatibility shims so tokens
             # can reference canonicalized config values.
             self._apply_token_interpolation(cfg)
+
+            # Post-merge checks that depend on the final config.
+            if include_packs and active_packs:
+                self._enforce_pack_portability(cfg, active_packs=active_packs)
 
             if validate:
                 with span("config.load_config.validate"):

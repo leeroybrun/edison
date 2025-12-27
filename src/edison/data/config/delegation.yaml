@@ -17,7 +17,7 @@ delegation:
   # defining file-pattern and task-type routing rules.
   #
   # Layering order:
-  #   core → packs/*/config/delegation.yaml → .edison/config/delegation.yml
+  #   core → packs/*/config/delegation.yaml → ~/.edison/config/delegation.yml → .edison/config/delegation.yml
   filePatternRules: {}
   taskTypeRules:
     delegationValues:

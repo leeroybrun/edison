@@ -1738,7 +1738,7 @@ edison compose hooks [options]
 
 ### compose coderabbit - Compose CodeRabbit Configuration
 
-Compose `.coderabbit.yaml` configuration from layered sources (Core → Packs → Project).
+Compose `.coderabbit.yaml` configuration from layered sources (Core → Packs → User → Project).
 
 ```bash
 edison compose coderabbit [options]

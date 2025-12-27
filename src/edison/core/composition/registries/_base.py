@@ -47,7 +47,7 @@ _FALLBACK_STRATEGY_CONFIG: Dict[str, Any] = {
 class ComposableRegistry(CompositionBase, Generic[T]):
     """Abstract base class for composable content registries.
 
-    Uses LayerDiscovery for file discovery across layers (Core → Packs → Project)
+    Uses LayerDiscovery for file discovery across layers (Core → Packs → User → Project)
     and MarkdownCompositionStrategy for content composition.
 
     Subclasses MUST define:
@@ -117,14 +117,15 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         if self._discovery is None:
             type_cfg = self.comp_config.get_content_type(self.content_type)
             exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
+            # Centralize pack-root ordering (bundled → user → project) to avoid drift
+            # between pack discovery and file-based composition registries.
+            from edison.core.packs.paths import get_pack_roots
+
+            pack_roots = [(r.kind, r.path) for r in get_pack_roots(self.project_root)]
             self._discovery = LayerDiscovery(
                 content_type=self.content_type,
                 core_dir=self.core_dir,
-                pack_roots=[
-                    ("bundled", self.bundled_packs_dir),
-                    ("user", self.user_packs_dir),
-                    ("project", self.project_packs_dir),
-                ],
+                pack_roots=pack_roots,
                 user_dir=self.user_dir,
                 project_dir=self.project_dir,
                 file_pattern=self.file_pattern,

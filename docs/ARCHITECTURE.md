@@ -457,7 +457,7 @@ Edison's composition system assembles content from multiple layers with intellig
 
 ### Layer Hierarchy
 
-**Core → Packs → Project** (later layers override earlier)
+**Core → Packs → User → Project** (later layers override earlier)
 
 1. **Core Layer**: Bundled defaults from `edison.data/`
    - Location: `edison.data/{type}/{name}.md`
@@ -470,11 +470,19 @@ Edison's composition system assembles content from multiple layers with intellig
    - Example: `edison.data/packs/nextjs/agents/overlays/api-builder.md`
    - Activated via project config
 
-3. **Project Layer**: Project-specific customization
+3. **User Layer**: Personal customization (not committed)
+   - Location: `~/.edison/{type}/{name}.md` (new entities)
+   - Location: `~/.edison/{type}/overlays/{name}.md` (overrides)
+   - Example: `~/.edison/agents/overlays/api-builder.md`
+
+4. **Project Layer**: Project-specific customization
    - Location: `.edison/{type}/{name}.md` (new entities)
    - Location: `.edison/{type}/overlays/{name}.md` (overrides)
    - Example: `.edison/agents/overlays/api-builder.md`
    - Highest priority
+
+**Config-only local overrides** (highest precedence for YAML config):
+- `.edison/config.local/*.yml|*.yaml` (uncommitted; intended for per-user per-project settings like enabling personal packs)
 
 ### Section-Based Composition
 
@@ -1291,7 +1299,7 @@ composition:
 ### Composition Principles
 
 - **Single strategy**: `MarkdownCompositionStrategy` for all markdown. YAML uses layered config loader.
-- **Layer order**: core → packs → project. Overlays go in `overlays/` subdirectory.
+- **Layer order**: core → packs → user → project. Overlays go in `overlays/` subdirectory.
 - **Templating pipeline**: sections/extend → includes → conditionals → loops → functions → variables → references → validation
 - **Zero hardcoding**: All content types, output paths, and adapters are defined in `composition.yaml`
 - **Functions extension**: Python files in `functions/` directories; call with `{{fn:name arg1}}`

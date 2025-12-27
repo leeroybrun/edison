@@ -14,12 +14,28 @@ Content types (all markdown unless noted):
 - clients (e.g., claude.md)
 - state machine docs (generated markdown)
 
-Layer order (always): **core → packs → project** (later wins). Subfolders are preserved in outputs when `preserve_structure` is enabled for that type.
+Layer order (always): **core → packs → user → project** (later wins). Subfolders are preserved in outputs when `preserve_structure` is enabled for that type.
 
 Source locations (markdown types):
 - Core: `edison.data/{type}/...`
-- Packs: `edison.data/packs/{pack}/{type}/...`
+- Packs: `edison.data/packs/{pack}/{type}/...` and `~/.edison/packs/{pack}/{type}/...` and `.edison/packs/{pack}/{type}/...`
+- User: `~/.edison/{type}/...`
 - Project: `.edison/{type}/...`
+
+User config directory:
+- Default is `~/.edison` (from bundled `paths.user_config_dir`)
+- Override with `EDISON_paths__user_config_dir` (absolute path or relative to home)
+
+Config layering (YAML):
+- Core defaults: `edison.data/config/*.yaml`
+- Pack config: `.../packs/{pack}/config/*.yaml` (bundled + user + project packs)
+- User config: `~/.edison/config/*.yaml`
+- Project config: `.edison/config/*.yaml`
+- Project-local config: `.edison/config.local/*.yaml` (uncommitted; per-user per-project)
+- Environment overrides: `EDISON_*`
+
+Pack portability:
+- `packs.portability.userOnly: warn|error|off` controls behavior when a project activates a pack that only exists in `~/.edison/packs/`.
 
 Overlays vs new files (non-guidelines):
 - New content: place at the root of the type directory (e.g., `.edison/agents/api.md`).
@@ -89,6 +105,9 @@ Where to place:
 Requirements:
 - Functions return `str`.
 - Args are passed as strings; parse internally if needed.
+
+Layering for Python functions (same precedence model):
+- Core → bundled packs → user packs → project packs → user → project (later wins)
 
 Example `functions/tasks.py`:
 ```python

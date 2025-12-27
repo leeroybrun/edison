@@ -3,7 +3,7 @@ Rules Engine for the Edison Rules system.
 
 This module provides the RulesEngine class for enforcing per-project rules
 based on task state and type. Rules are loaded from the composition system
-(core → packs → project) via RulesRegistry.
+(core → packs → user → project) via RulesRegistry.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class RulesEngine:
     """
     Enforces per-project rules based on task state and type.
 
-    Rules are loaded from the full composition system (core → packs → project)
+    Rules are loaded from the full composition system (core → packs → user → project)
     via RulesRegistry. The config only controls enforcement settings, not rule
     definitions.
 
@@ -45,7 +45,7 @@ class RulesEngine:
         self.rules_config = config.get("rules", {}) if isinstance(config, dict) else {}
         self.enforcement_enabled = self.rules_config.get("enforcement", True)
 
-        # Load composed rules from registry (core → packs → project)
+        # Load composed rules from registry (core → packs → user → project)
         from .registry import RulesRegistry
         with span("rules.engine.init.registry"):
             self._registry = RulesRegistry()
@@ -466,7 +466,7 @@ class RulesEngine:
         Check guard conditions for a state transition.
 
         Delegates to the unified state machine guard system. Guards are
-        loaded from data/guards/ with layered composition (core → packs → project).
+        loaded from data/guards/ with layered composition (core → packs → user → project).
 
         Args:
             from_state: Current state

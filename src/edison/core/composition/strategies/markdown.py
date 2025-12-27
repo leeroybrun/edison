@@ -74,7 +74,7 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         5. Process through TemplateEngine (if enabled)
 
         Args:
-            layers: List of layer content in order (core → packs → project)
+            layers: List of layer content in order (core → packs → user → project)
             context: Composition context with packs and config
 
         Returns:

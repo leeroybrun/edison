@@ -1,7 +1,7 @@
 """Compose IDE slash commands for multiple platforms from unified definitions.
 
 This component generates per-platform "slash commands" using unified YAML
-definitions (core → packs → project) plus per-platform render configuration.
+definitions (core → packs → user → project) plus per-platform render configuration.
 
 Design goals (see docs/CONFIGURATION.md, docs/ARCHITECTURE.md):
 - One canonical command definition list (commands.yaml)
@@ -145,7 +145,7 @@ class CommandComposer(AdapterComponent):
 
     # ----- Public API -----
     def compose(self) -> List[CommandDefinition]:
-        """Compose definitions (core → packs → project) and apply filtering."""
+        """Compose definitions (core → packs → user → project) and apply filtering."""
         if not self._enabled():
             return []
         return self.filter_definitions(self.load_definitions())

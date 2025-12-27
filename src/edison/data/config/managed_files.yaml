@@ -11,6 +11,7 @@ managed_files:
       create: true
       ensure_lines:
         - ".edison/_generated/"
+        - ".edison/config.local/"
         - ".project/sessions/"
         - ".project/logs/"
         - ".project/archive/"

@@ -577,6 +577,14 @@ properties:
             type: string
             pattern: ^[a-z][a-z0-9-]*$
           default: []
+        portability:
+          type: object
+          properties:
+            userOnly:
+              type: string
+              enum: [warn, error, off]
+              default: warn
+          additionalProperties: true
       additionalProperties: true
     - type: array
       items:

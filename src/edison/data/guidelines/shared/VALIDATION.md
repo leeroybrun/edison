@@ -4,7 +4,7 @@
 Run after implementation is complete and before a task can advance beyond `{{fn:semantic_state("task","done")}}/`. QA briefs are the canonical validation record.
 
 ## Validation Checklist (fail-closed)
-- Build the triggered validator roster from the merged `validation.validators` config (core → packs → project) and the task/session file context (git diff + primary files).
+- Build the triggered validator roster from the merged `validation.validators` config (core → packs → user → project) and the task/session file context (git diff + primary files).
 - Automation passing for the round (type-check, lint, test, build or project equivalent).
 - QA brief exists in `qa/{{fn:semantic_states("qa","waiting,todo,wip","brace")}}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).

@@ -1,6 +1,14 @@
 packs:
   enabled: true
   directory: "{PROJECT_CONFIG_DIR}/packs"
+  portability:
+    # Behavior when an active pack is resolved only from the user layer
+    # (~/<user-config-dir>/packs) and is not available from bundled or project packs.
+    #
+    # - warn:  allow but warn (default)
+    # - error: fail-closed (recommended for CI/reproducibility)
+    # - off:   disable portability checks
+    userOnly: warn
   composition:
     # How Edison combines multiple packs' config
     strategy: deep-merge

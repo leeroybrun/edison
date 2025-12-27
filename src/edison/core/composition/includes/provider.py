@@ -1,7 +1,7 @@
 """Composed include provider for TemplateEngine include resolution.
 
 Goal: Resolve {{include:*}} and {{include-section:*}} from the *composed* view of
-content (core → packs → project), not raw source files.
+content (core → packs → user → project), not raw source files.
 
 This enables include-only fragments (e.g. guidelines/includes/**) to be:
 - overlayable/extendable like any other entity
@@ -135,7 +135,6 @@ class ComposedIncludeProvider:
 
 
 __all__ = ["ComposedIncludeProvider", "merge_extends_preserve_sections"]
-
 
 
 

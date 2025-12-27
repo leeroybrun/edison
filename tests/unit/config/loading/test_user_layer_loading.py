@@ -126,3 +126,51 @@ def test_config_cache_includes_user_config_fingerprint(tmp_path: Path, monkeypat
     cfg2 = get_cached_config(tmp_path, validate=False, include_packs=False)
     assert cfg2.get("user_marker") is True
 
+
+def test_user_only_pack_portability_warns_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """When a pack is only available in the user packs dir, Edison warns by default."""
+    user_dir = tmp_path / ".edison-user"
+    monkeypatch.setenv("EDISON_paths__user_config_dir", str(user_dir))
+
+    # Create pack only in user packs directory.
+    (user_dir / "packs" / "private-pack" / "config").mkdir(parents=True)
+
+    # Activate pack in project config.
+    project_config = tmp_path / ".edison" / "config"
+    project_config.mkdir(parents=True)
+    (project_config / "packs.yaml").write_text("packs:\n  active:\n    - private-pack\n", encoding="utf-8")
+
+    caplog.set_level("WARNING")
+    mgr = ConfigManager(tmp_path)
+    mgr.load_config(validate=False, include_packs=True)
+
+    assert "private-pack" in caplog.text
+    assert "user packs directory" in caplog.text.lower()
+
+
+def test_user_only_pack_portability_can_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Projects can fail-closed when packs resolve only from the user layer."""
+    user_dir = tmp_path / ".edison-user"
+    monkeypatch.setenv("EDISON_paths__user_config_dir", str(user_dir))
+
+    # Create pack only in user packs directory.
+    (user_dir / "packs" / "private-pack" / "config").mkdir(parents=True)
+
+    # Activate pack + require portability enforcement.
+    project_config = tmp_path / ".edison" / "config"
+    project_config.mkdir(parents=True)
+    (project_config / "packs.yaml").write_text(
+        "packs:\n"
+        "  active:\n"
+        "    - private-pack\n"
+        "  portability:\n"
+        "    userOnly: error\n",
+        encoding="utf-8",
+    )
+
+    mgr = ConfigManager(tmp_path)
+    with pytest.raises(RuntimeError) as excinfo:
+        mgr.load_config(validate=False, include_packs=True)
+    assert "private-pack" in str(excinfo.value)

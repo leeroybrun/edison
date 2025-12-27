@@ -6,7 +6,7 @@
 Use Context7 to refresh your knowledge **before** implementing or validating when work touches any configured post-training package.
 
 - Project overrides live in `{{fn:project_config_dir}}/config/context7.yaml`.
-- To view the merged effective Context7 configuration (core → packs → project), run: `edison config show context7 --format yaml`.
+- To view the merged effective Context7 configuration (core → packs → user → project), run: `edison config show context7 --format yaml`.
 - If the task/change does not touch any configured package, do not spend context on Context7.
 - When required, record evidence using the project's configured evidence markers/locations (don’t invent new file names).
 <!-- /section: workflow -->
@@ -41,4 +41,3 @@ If the change touches any configured post-training package, refresh docs via Con
 ### Knowledge Refresh Enforcement
 If a task touches configured post-training packages, ensure the assigned agent refreshes Context7 docs and produces the required evidence markers before `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}`.
 <!-- /section: orchestrator -->
-

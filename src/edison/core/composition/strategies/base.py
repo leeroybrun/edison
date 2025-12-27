@@ -69,7 +69,7 @@ class CompositionStrategy(ABC):
         """Compose content from layers.
 
         Args:
-            layers: List of layer content in order (core → packs → project)
+            layers: List of layer content in order (core → packs → user → project)
             context: Composition context with packs and config
 
         Returns:

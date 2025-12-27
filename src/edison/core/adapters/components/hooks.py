@@ -1,7 +1,7 @@
 """Compose Claude Code hooks from Edison configuration.
 
 This module generates hook scripts for Claude Code based on merged
-configuration from core, packs, and project layers.
+configuration from core, packs, user, and project layers.
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ class HookComposer(AdapterComponent):
 
     # ----- Public API -----
     def compose(self) -> Dict[str, HookDefinition]:
-        """Return merged hook definitions (core → packs → project)."""
+        """Return merged hook definitions (core → packs → user → project)."""
         return self.load_definitions()
 
     def sync(self, output_dir: Path) -> List[Path]:
@@ -78,8 +78,10 @@ class HookComposer(AdapterComponent):
 
         ConfigManager handles the full layering:
         1. Core config (bundled hooks.yaml)
-        2. Pack configs (bundled + project packs)
-        3. Project config (.edison/config/hooks.yaml)
+        2. Pack configs (bundled + user + project packs)
+        3. User config (~/.edison/config/hooks.yaml)
+        4. Project config (.edison/config/hooks.yaml)
+        5. Project-local config (.edison/config.local/hooks.yaml)
         """
         from edison.core.config import ConfigManager
 

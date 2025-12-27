@@ -1,4 +1,4 @@
-"""Schema registry - composes schemas from core → packs → project.
+"""Schema registry - composes schemas from core → packs → user → project.
 
 Edison stores JSON Schema documents serialized as YAML for readability and for
 consistency with the rest of the configuration surface.
@@ -10,7 +10,7 @@ This registry discovers schema files across:
 - project overrides: ``.edison/schemas/**`` (optional)
 
 and composes them with ConfigManager.deep_merge() in the standard order:
-core → packs → project.
+core → packs → user → project.
 """
 
 from __future__ import annotations

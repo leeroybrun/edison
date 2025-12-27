@@ -147,14 +147,20 @@ Valid task states: todo, wip, done, validated  # <-- Hardcoded!
 
 ### 2.1 Composition Layer Order
 
-Content is composed in strict order: **core → packs → project** (later wins).
+Content is composed in strict order: **core → packs → user → project** (later wins).
 
 ```
 Layer Priority:
 1. Core (edison/data/*)           # Default/baseline
-2. Packs (packs/{pack}/*)         # Technology-specific
-3. Project (.edison/*)            # Project-specific overrides
+2. Packs (packs/{pack}/*)         # Technology-specific (bundled + user + project packs)
+3. User (~/.edison/*)             # Personal overrides/extensions (not committed)
+4. Project (.edison/*)            # Project-specific overrides (committed)
 ```
+
+Config-only local overrides (highest precedence for config):
+- `.edison/config.local/*.yml|*.yaml` (uncommitted; per-user per-project)
+
+Note: `edison compose all` ensures `.edison/config.local/` is gitignored by default.
 
 ### 2.2 Content Types
 

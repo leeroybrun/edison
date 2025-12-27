@@ -266,7 +266,7 @@ rules:
   sourcePath: guidelines/shared/VALIDATION.md
   guidance: |
     Validator model binding is strict:
-    - Validators must run with the exact model binding defined by merged config (core → packs → project).
+    - Validators must run with the exact model binding defined by merged config (core → packs → user → project).
     - If the configured model is unavailable, the run is “blocked” and must be recorded as such (do not silently substitute).
 
     Reference: `guidelines/shared/VALIDATION.md`
