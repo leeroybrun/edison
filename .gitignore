@@ -10,3 +10,5 @@ __pycache__/
 .project/logs/
 .project/archive/
 .claude/settings.json.bak
+
+.edison/config.local/
