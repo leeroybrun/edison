@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from edison.core.composition.core import CompositionPathResolver
 
 
-def format_for_zen(content: str) -> str:
+def format_for_pal(content: str) -> str:
     """Format composed content for Pal MCP consumption (plain text)."""
     txt = content.replace("```python", "").replace("```typescript", "").replace("```", "")
     txt = re.sub(r"^### (.+)$", r"**\1**", txt, flags=re.MULTILINE)
@@ -160,7 +160,7 @@ def compose_for_role(
 
 
 __all__ = [
-    "format_for_zen",
+    "format_for_pal",
     "format_rules_context",
     "compose_for_role",
 ]

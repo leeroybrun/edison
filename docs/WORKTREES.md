@@ -63,9 +63,18 @@ Important:
 
 ## Meta branch commit safety (commit guard)
 
-The meta worktree installs a pre-commit hook (“commit guard”) that only allows commits for configured prefixes (e.g. `.project/tasks/`, `.project/qa/`, and sharedPaths you explicitly allow).
+The meta worktree installs a pre-commit hook (“commit guard”) that only allows commits for:
+- the configured `worktrees.sharedState.commitGuard.allowPrefixes` (e.g. `.project/tasks/`, `.project/qa/`)
+- and any configured `worktrees.sharedState.sharedPaths` (dirs/files) whose `targetRoot` is `shared`
 
 This keeps the meta branch “meta-only” even though it is a normal git worktree checkout.
+
+## Recommended defaults + overriding sharedPaths
+
+Edison ships a **recommended default** `worktrees.sharedState.sharedPaths` list (tool folders and `.edison/*` overlays).
+Projects can:
+- append new items (deep-merge list append): `sharedPaths: ["+", {path: "foo", scopes: ["primary","session"]}]`
+- disable a default item by appending a matching path with `enabled: false`: `sharedPaths: ["+", {path: ".pal", enabled: false}]`
 
 ## Setup / initialization
 
@@ -84,6 +93,18 @@ This keeps the meta branch “meta-only” even though it is a normal git worktr
 2) Copy the desired content into the meta worktree and commit it on `edison-meta` (subject to commitGuard).
 3) Remove that content from code branches (so it is no longer tracked there).
 4) Re-run `edison git worktree-meta-init` so primary + sessions pick up the symlink.
+
+## Important: `edison compose all` does NOT update git hooks
+
+`edison compose all` regenerates composed artifacts under `.edison/_generated/` (constitutions, guidelines, etc).
+It does **not** write `.git/hooks/pre-commit` because git hooks are **local to your checkout** and are not tracked.
+
+To install/update the meta-branch commit guard hook after changing `sharedPaths` / `commitGuard` config, run:
+- `edison git worktree-meta-init`
+
+Safety notes:
+- Running `edison git worktree-meta-init` is **idempotent** (it re-applies symlinks/excludes and rewrites the meta hook only if its content differs).
+- Avoid `--recreate` unless you explicitly want a destructive rebuild of the meta branch/worktree.
 
 Safety note: Edison intentionally **skips symlinking** a sharedPath if that path is tracked in the checkout. This prevents “tracked directory replaced by symlink” surprises.
 

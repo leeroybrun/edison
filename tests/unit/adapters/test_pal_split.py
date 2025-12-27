@@ -1,19 +1,17 @@
 import pytest
 import types
 from pathlib import Path
-import edison.core.adapters.platforms.pal as zen_pkg
-from edison.core.adapters import PalAdapter, WORKFLOW_HEADING
+import edison.core.adapters.platforms.pal as pal_pkg
+from edison.core.adapters import PalAdapter
 
-def test_zen_is_package():
+def test_pal_is_package():
     """Verify that edison.core.adapters.platforms.pal is a package, not a single file."""
     # If it is a package, it must have a __path__ attribute.
     # A single .py module does NOT have __path__.
-    assert hasattr(zen_pkg, "__path__"), "edison.core.adapters.platforms.pal should be a package (directory)"
+    assert hasattr(pal_pkg, "__path__"), "edison.core.adapters.platforms.pal should be a package (directory)"
 
-def test_zensync_imports_and_structure():
+def test_palsync_imports_and_structure():
     """Verify that PalAdapter is importable and has expected methods."""
-    assert WORKFLOW_HEADING == "## Edison Workflow Loop"
-    
     # Instantiate PalAdapter (requires some mocking or dummy args usually, but __init__ creates objects)
     # We can pass None to repo_root and config as they are optional in __init__ signature
     # based on the source code: def __init__(self, repo_root: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> None:
@@ -31,7 +29,7 @@ def test_zensync_imports_and_structure():
     assert hasattr(PalAdapter, "sync_role_prompts")
     assert hasattr(PalAdapter, "verify_cli_prompts")
 
-def test_zensync_instantiation(tmp_path):
+def test_palsync_instantiation(tmp_path):
     """Verify basic instantiation works."""
     # We pass a tmp_path as repo_root to avoid it trying to find real project root
     # and to keep it isolated.

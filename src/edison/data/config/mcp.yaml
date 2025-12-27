@@ -22,6 +22,14 @@ mcp:
       env:
         PAL_WORKING_DIR: "{PROJECT_ROOT}"
         CLI_CLIENTS_CONFIG_PATH: "{PROJECT_ROOT}/.pal/conf/cli_clients"
+        # Pal MCP exposes many AI-powered tools by default; Edison only needs clink.
+        # Keep context bloat minimal by disabling everything except clink (+ essential listmodels/version).
+        DISABLED_TOOLS: "chat,thinkdeep,planner,consensus,codereview,precommit,debug,secaudit,docgen,analyze,refactor,tracer,testgen,challenge,apilookup"
+        # pal-mcp-server currently requires at least one provider configured at startup,
+        # even if we only use `clink`. Provide a safe local default (Ollama OpenAI-compatible)
+        # so the server can boot without embedding secrets in .mcp.json.
+        # If you don't use Ollama, this is still harmless unless you call provider-backed tools.
+        CUSTOM_API_URL: "http://127.0.0.1:11434/v1"
       setup:
         require:
           commands:

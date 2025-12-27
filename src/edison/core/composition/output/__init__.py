@@ -16,7 +16,7 @@ from .headers import (
     resolve_version,
 )
 from .formatting import (
-    format_for_zen,
+    format_for_pal,
     format_rules_context,
     compose_for_role,
 )
@@ -27,7 +27,7 @@ __all__ = [
     "load_header_template",
     "resolve_version",
     # Formatting
-    "format_for_zen",
+    "format_for_pal",
     "format_rules_context",
     "compose_for_role",
 ]

@@ -176,6 +176,13 @@ def main(args: argparse.Namespace) -> int:
                 project_dir = get_project_config_dir(repo_root, create=True)
                 generated_dir = project_dir / "_generated"
                 tmp_generated_dir: Path | None = None
+                # `_generated` may be a symlink in worktree setups (shared generated artifacts).
+                # Atomic rebuild must operate on the real target directory, not the symlink path,
+                # otherwise shutil.rmtree fails and we can accidentally replace the symlink.
+                try:
+                    generated_real = generated_dir.resolve() if generated_dir.is_symlink() else generated_dir
+                except Exception:
+                    generated_real = generated_dir
 
                 def _map_generated_path(p: Path) -> Path:
                     if tmp_generated_dir is None:
@@ -193,12 +200,12 @@ def main(args: argparse.Namespace) -> int:
 
                 if atomic_generated:
                     stamp = int(time.time() * 1000)
-                    tmp_generated_dir = project_dir / f"_generated.__tmp__{stamp}"
+                    tmp_generated_dir = generated_real.parent / f"_generated.__tmp__{stamp}"
                     if tmp_generated_dir.exists():
                         shutil.rmtree(tmp_generated_dir)
                     tmp_generated_dir.mkdir(parents=True, exist_ok=True)
-                elif clean_generated and generated_dir.exists():
-                    shutil.rmtree(generated_dir)
+                elif clean_generated and generated_real.exists():
+                    shutil.rmtree(generated_real)
 
                 results: Dict[str, Any] = {}
 
@@ -221,9 +228,9 @@ def main(args: argparse.Namespace) -> int:
                     # Swap `_generated` atomically only after successful writes
                     if atomic_generated and tmp_generated_dir is not None:
                         with span("compose.generated.swap"):
-                            if generated_dir.exists():
-                                shutil.rmtree(generated_dir)
-                            tmp_generated_dir.replace(generated_dir)
+                            if generated_real.exists():
+                                shutil.rmtree(generated_real)
+                            tmp_generated_dir.replace(generated_real)
                             tmp_generated_dir = None
                 finally:
                     if tmp_generated_dir is not None and tmp_generated_dir.exists():

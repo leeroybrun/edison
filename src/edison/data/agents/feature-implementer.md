@@ -2,7 +2,6 @@
 name: feature-implementer
 description: "Full-stack feature implementer delivering end-to-end product experiences"
 model: claude
-palRole: "{{project.palRoles.feature-implementer}}"
 allowed_tools:
   - Read
   - Edit

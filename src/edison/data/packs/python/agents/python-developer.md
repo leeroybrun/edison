@@ -2,7 +2,6 @@
 name: python-developer
 description: "Python module developer with TDD, strict typing, and modern Python patterns"
 model: claude
-palRole: "{{project.palRoles.python-developer}}"
 context7_ids: []
 allowed_tools:
   - Read

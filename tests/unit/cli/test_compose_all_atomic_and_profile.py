@@ -78,6 +78,46 @@ def test_compose_all_atomic_generated_removes_stale_files(tmp_path: Path, args: 
     assert not stale.exists(), "Atomic rebuild should remove stale _generated files"
 
 
+def test_compose_all_atomic_generated_works_when_generated_is_symlink(tmp_path: Path, args: Namespace) -> None:
+    """Atomic compose must work when `<project-config-dir>/_generated` is a symlink.
+
+    This models Edison worktree setups where session worktrees (and optionally primary)
+    link `_generated` to a shared location.
+    """
+    _setup_minimal_edison_structure(tmp_path)
+    args.project_root = str(tmp_path)
+
+    config_dir = get_project_config_dir(tmp_path)
+    generated = config_dir / "_generated"
+
+    # Replace _generated with a symlink to a "shared" location.
+    shared_root = tmp_path / "shared-generated-root"
+    shared_root.mkdir(parents=True, exist_ok=True)
+    shared_generated = shared_root / "_generated"
+    shared_generated.mkdir(parents=True, exist_ok=True)
+
+    if generated.exists():
+        # In tests `_ensure_structure` may have created it as a real directory.
+        import shutil
+
+        shutil.rmtree(generated)
+
+    generated.symlink_to(shared_generated, target_is_directory=True)
+    assert generated.is_symlink()
+    assert generated.resolve() == shared_generated.resolve()
+
+    # Seed a stale file in the *target* directory.
+    stale = shared_generated / "validators" / "stale.md"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("stale", encoding="utf-8")
+    assert stale.exists()
+
+    # Full compose (defaults to atomic rebuild) should succeed and remove stale files.
+    assert main(args) == 0
+    assert generated.is_symlink(), "Compose should not replace the symlink"
+    assert not stale.exists(), "Atomic rebuild should remove stale files from symlink target"
+
+
 def test_compose_all_profile_json_includes_profiling(tmp_path: Path, args: Namespace, capsys) -> None:
     _setup_minimal_edison_structure(tmp_path)
     args.project_root = str(tmp_path)

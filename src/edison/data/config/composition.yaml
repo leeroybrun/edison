@@ -310,7 +310,7 @@ composition:
           enabled: true
           source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
           destination: ".pal/conf/systemprompts/clink/project"
-          filename_pattern: "{name}.txt"
+          filename_pattern: "agent-{name}.txt"
         validators:
           enabled: true
           source: "{{PROJECT_EDISON_DIR}}/_generated/validators"

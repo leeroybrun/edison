@@ -2,7 +2,6 @@
 name: ansible-agent
 description: "Ansible automation agent (playbooks/roles) with ansible-lint-first, FQCN, vault hygiene, and idempotency guarantees"
 model: claude
-palRole: "{{project.palRoles.ansible-agent}}"
 context7_ids: []
 allowed_tools:
   - Read

@@ -32,7 +32,7 @@ class PalComposerMixin:
         """Generate prompt text for a given role/model combination.
 
         The prompt includes:
-          - Model/role header with model-specific context hints
+          - Role header (model-agnostic; prompts are shared across CLI clients)
           - Base Edison context (via composition registries)
           - Role-specific guideline excerpts
           - Role-specific rules summary
@@ -74,18 +74,7 @@ class PalComposerMixin:
                 rule_lines.append(f"- {label}")
         rules_block = "\n".join(rule_lines)
 
-        header_lines: List[str] = [
-            "=== Edison / Pal MCP Prompt ===",
-            f"Model: {model_key}",
-            f"Role: {canonical_role}",
-        ]
-        # Model-specific context window hints (token-aware formatting)
-        if model_key == "codex":
-            header_lines.append("Context window: ~200k tokens (approximate)")
-        elif model_key == "claude":
-            header_lines.append("Context window: ~200k+ tokens; prefer concise reasoning.")
-        elif model_key == "gemini":
-            header_lines.append("Context window: ~1M tokens; richer references allowed.")
+        header_lines: List[str] = ["=== Edison / Pal Prompt ===", f"Role: {canonical_role}"]
 
         header = "\n".join(header_lines)
 

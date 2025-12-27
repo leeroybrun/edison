@@ -31,14 +31,6 @@ class TestPalAdapterExports:
         assert hasattr(PalAdapter, 'sync_role_prompts')
         assert hasattr(PalAdapter, 'verify_cli_prompts')
 
-    def test_can_import_workflow_heading_constant(self):
-        """Verify WORKFLOW_HEADING constant is available."""
-        from edison.core.adapters import WORKFLOW_HEADING
-
-        assert WORKFLOW_HEADING is not None
-        assert isinstance(WORKFLOW_HEADING, str)
-        assert "Edison Workflow Loop" in WORKFLOW_HEADING
-
     def test_pal_adapter_instantiation(self, tmp_path: Path):
         """Verify PalAdapter can be instantiated."""
         from edison.core.adapters import PalAdapter

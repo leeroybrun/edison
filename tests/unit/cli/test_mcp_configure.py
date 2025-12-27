@@ -56,6 +56,11 @@ def test_configure_creates_mcp_json_with_all_servers(tmp_path: Path):
     assert "edison-pal" in servers
     assert "context7" in servers
     assert servers["edison-pal"]["env"]["PAL_WORKING_DIR"] == str(project_root.resolve())
+    # Pal MCP server must be locked down to avoid context bloat.
+    # We only need clink (plus essential listmodels/version which cannot be disabled upstream).
+    assert "DISABLED_TOOLS" in servers["edison-pal"]["env"]
+    # pal-mcp-server currently requires at least one provider configured at startup.
+    assert "CUSTOM_API_URL" in servers["edison-pal"]["env"]
     assert servers["edison-pal"]["args"][-1] == "pal-mcp-server"
 
 

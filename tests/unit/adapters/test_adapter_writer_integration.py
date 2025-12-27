@@ -72,7 +72,7 @@ class TestUnifiedAdaptersHaveWriter:
         # Verify writer is lazy and cached
         assert adapter.writer is writer
 
-    def test_zen_adapter_has_writer_property(self, isolated_project_env: Path) -> None:
+    def test_pal_adapter_has_writer_property(self, isolated_project_env: Path) -> None:
         """PalAdapter should have a lazy writer property."""
         root = isolated_project_env
         _write_minimal_config(root)

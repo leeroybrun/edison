@@ -10,15 +10,9 @@ pal:
     enabled: false
     check_interval_hours: 24
 
-  # Models for which Edison should generate generic Pal system prompts
-  # (written to `.pal/conf/systemprompts/clink/project/{model}_{role}.txt`).
-  prompt_models: ["codex", "claude", "gemini"]
-
-  # Template sources used by the Pal adapter.
-  templates:
-    # Workflow loop section appended to generic + project role prompts.
-    # Relative paths are resolved against project root first, then core templates.
-    workflow_loop: "templates/pal/workflow-loop.txt"
+  # Base model used to compose the shared Pal builtin prompts (default/planner/codereviewer).
+  # Prompts are shared across CLI clients (no per-model duplication).
+  prompt_base_model: "codex"
 
   # Project-scoped CLI client definitions for Pal's `clink` tool.
   #
@@ -50,5 +44,6 @@ pal:
       # Also expose Edison-composed agent/validator prompts as Pal roles.
       include_generated_agents: true
       include_generated_validators: true
-      agent_role_prefix: "project-"
-      validator_role_prefix: "validator-"
+      prefixes:
+        agent: "agent-"
+        validator: "validator-"

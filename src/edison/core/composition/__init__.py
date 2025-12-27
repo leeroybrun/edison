@@ -38,7 +38,7 @@ from .output import (
     load_header_template,
     resolve_version,
     # Formatting
-    format_for_zen,
+    format_for_pal,
     format_rules_context,
     compose_for_role,
 )
@@ -156,7 +156,7 @@ __all__ = [
     "build_generated_header",
     "load_header_template",
     "resolve_version",
-    "format_for_zen",
+    "format_for_pal",
     "format_rules_context",
     "compose_for_role",
     # Packs

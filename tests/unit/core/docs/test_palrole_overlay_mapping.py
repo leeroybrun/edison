@@ -1,5 +1,5 @@
 """
-Tests for the palRole to project overlay documentation.
+Tests for the Pal role conventions documentation.
 
 This suite enforces the presence and minimum content of
 src/edison/data/docs/PALROLE_OVERLAY_MAPPING.md.
@@ -30,26 +30,22 @@ def test_document_exists(doc_path: Path) -> None:
 
 
 def test_explains_palroles_concept(doc_text: str) -> None:
-    """Doc should explicitly describe what palRoles are."""
-    assert "what are palroles" in doc_text, "Document should include a 'What are palRoles' section"
-    assert "how they work" in doc_text or "permissions" in doc_text or "capabilities" in doc_text, (
-        "Document should explain how palRoles operate, not just list them"
-    )
+    """Doc should describe role naming conventions and how Pal discovers prompts."""
+    assert "roles" in doc_text
+    assert "agent-" in doc_text and "validator-" in doc_text, "Doc should mention agent-/validator- role conventions"
+    assert "cli_clients" in doc_text or "clink" in doc_text, "Doc should mention clink + cli_clients discovery"
 
 
 def test_explains_overlay_mechanism(doc_text: str) -> None:
-    """Doc should explain project overlays and mapping behavior."""
-    assert "project overlays" in doc_text, "Project overlay section should be present"
-    assert "mapping" in doc_text and "overlay" in doc_text, "Mapping from palRole to overlay must be described"
-    assert ".edison" in doc_text, "Document should reference .edison/ overlay directory usage"
+    """Doc should explain the project-local prompt/config layout."""
+    assert ".pal" in doc_text, "Doc should reference the .pal directory layout"
+    assert "systemprompts" in doc_text, "Doc should mention system prompt file locations"
 
 
 def test_includes_custom_role_guidance(doc_text: str) -> None:
-    """Doc should provide instructions for defining custom palRoles."""
-    assert "create custom palroles" in doc_text or "defining custom palroles" in doc_text, (
-        "Document should guide users on creating project-specific palRoles"
-    )
-    assert "yaml" in doc_text, "Configuration should be YAML-driven, not hardcoded"
+    """Doc should explain how to add custom roles/prompts."""
+    assert "custom" in doc_text, "Doc should guide users on adding custom roles"
+    assert "yaml" in doc_text or "json" in doc_text, "Doc should mention YAML/JSON-driven configuration"
 
 
 def test_includes_examples_without_wilson(doc_text: str) -> None:

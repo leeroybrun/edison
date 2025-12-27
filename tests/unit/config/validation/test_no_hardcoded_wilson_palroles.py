@@ -1,16 +1,14 @@
-"""T-022: Test that no hardcoded wilson-* palRole values exist in core Edison files.
+"""T-022: Ensure core Edison stays project-agnostic (no hardcoded project names).
 
-This test validates that:
-1. No "wilson-" prefix appears in core agent files
-2. No "wilson-" prefix appears in core config files
-3. All palRole values use template variables like {{project.palRoles.agent-name}}
-4. Project-specific palRoles are defined in project overlay, NOT in core
+pal roles are now derived by convention:
+- Agents: role name == prompt file stem (e.g. agent-api-builder)
+- Validators: role name == prompt file stem (e.g. validator-security)
 
-Related: T-016 (YAML Frontmatter - dependency)
+Core Edison MUST NOT ship project-specific role mappings (no project.palRoles),
+and core agent templates MUST NOT require palRole configuration.
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -48,7 +46,7 @@ def test_no_wilson_prefix_in_agent_files() -> None:
 
     assert not violations, (
         "Found hardcoded 'wilson-' prefix in agent files. "
-        "Use template variables like {{project.palRoles.agent-name}} instead:\n"
+        "Core Edison must not contain project-specific names:\n"
         + "\n".join(
             f"  {filename}: {lines}"
             for filename, lines in violations
@@ -132,22 +130,12 @@ def test_no_wilson_prefix_in_validator_files() -> None:
     )
 
 
-def test_agent_palroles_use_template_variables() -> None:
-    """Verify all agent palRole values use template variable syntax.
-
-    This is the CORRECT pattern for core Edison agents:
-    palRole: "{{project.palRoles.api-builder}}"
-
-    This allows projects to define their own palRole mappings in:
-    .edison/config/project.yaml
-    """
+def test_core_agents_do_not_require_palrole_mapping() -> None:
+    """Core agents must not depend on project.palRoles mappings."""
     agents_dir = get_data_path("agents")
     agent_files = list(agents_dir.glob("*.md"))
 
     assert agent_files, "No agent files found - check agents directory"
-
-    # Pattern to match palRole in YAML frontmatter
-    palrole_pattern = re.compile(r'^palRole:\s*"?\{\{project\.palRoles\.[a-z0-9-]+\}\}"?', re.MULTILINE)
 
     violations = []
     for agent_file in agent_files:
@@ -166,26 +154,27 @@ def test_agent_palroles_use_template_variables() -> None:
             violations.append((agent_file.name, "Missing frontmatter end delimiter"))
             continue
 
-        # Check if palRole exists and uses correct template
-        if "palRole:" not in frontmatter:
-            violations.append((agent_file.name, "Missing palRole field in frontmatter"))
-            continue
-
-        if not palrole_pattern.search(frontmatter):
-            # Extract the actual palRole line for error reporting
+        # Core agents should not define palRole at all; role names are implied by prompt files.
+        if "palRole:" in frontmatter:
             palrole_line = [line for line in frontmatter.splitlines() if "palRole:" in line]
-            violations.append((
-                agent_file.name,
-                f"palRole does not use template variable syntax: {palrole_line[0] if palrole_line else 'NOT FOUND'}"
-            ))
+            violations.append((agent_file.name, palrole_line[0] if palrole_line else "palRole present"))
 
     assert not violations, (
-        "Agent files have incorrect palRole format. Must use {{project.palRoles.agent-name}}:\n"
+        "Core agent files must NOT define palRole; roles are derived by convention:\n"
         + "\n".join(
             f"  {filename}: {error}"
             for filename, error in violations
         )
     )
+
+
+def test_core_project_config_does_not_define_palroles_mapping() -> None:
+    """Core project.yaml must not ship a project.palRoles mapping."""
+    config_dir = get_data_path("config")
+    project_yaml = config_dir / "project.yaml"
+    assert project_yaml.exists(), "Core project.yaml missing"
+    content = project_yaml.read_text(encoding="utf-8")
+    assert "palRoles:" not in content, "project.palRoles mapping should not exist in core config"
 
 
 def test_no_hardcoded_project_names_in_core() -> None:

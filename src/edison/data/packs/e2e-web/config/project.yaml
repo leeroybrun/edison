@@ -1,4 +1,1 @@
-project:
-  palRoles:
-    e2e-tests-engineer: "agent-e2e-tests-engineer"
-
+project: {}

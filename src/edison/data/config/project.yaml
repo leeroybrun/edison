@@ -6,15 +6,3 @@ project:
   name: "project"  # Can be overridden by EDISON_project__name
   owner: null  # If null, will default to getpass.getuser() at runtime
   audit_terms: []  # Additional terms for audit purity checks
-
-  # Pal Role Mappings for Agents
-  # These map agent names to their Pal MCP role identifiers
-  # Override in .edison/config/project.yaml for project-specific roles
-  palRoles:
-    api-builder: "agent-api-builder"
-    code-reviewer: "agent-code-reviewer"
-    component-builder: "agent-component-builder"
-    database-architect: "agent-database-architect"
-    feature-implementer: "agent-feature-implementer"
-    python-developer: "agent-python-developer"
-    test-engineer: "agent-test-engineer"

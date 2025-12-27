@@ -39,9 +39,9 @@ export OPENROUTER_API_KEY
 export CLI_CLIENTS_CONFIG_PATH="${PAL_ROOT}/conf/cli_clients"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
-# Preserve existing DISABLED_TOOLS if provided, otherwise default to safe subset
-# Only enable: clink, listmodels, version (essential tools)
-export DISABLED_TOOLS="${DISABLED_TOOLS:-planner,codereview,precommit,debug,challenge,apilookup,job_status,cancel_job,chat,thinkdeep,consensus,analyze,refactor,testgen,secaudit,docgen,tracer}"
+# Preserve existing DISABLED_TOOLS if provided, otherwise default to a safe subset.
+# Only enable: clink, listmodels, version (the latter two are essential upstream and cannot be disabled).
+export DISABLED_TOOLS="${DISABLED_TOOLS:-chat,thinkdeep,planner,consensus,codereview,precommit,debug,secaudit,docgen,analyze,refactor,tracer,testgen,challenge,apilookup}"
 
 # Point Pal to project-scoped configs.
 export CLI_CLIENTS_CONFIG_PATH="${CLI_CLIENTS_CONFIG_PATH:-${PAL_ROOT}/conf/cli_clients}"

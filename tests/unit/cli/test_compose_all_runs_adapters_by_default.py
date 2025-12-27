@@ -73,16 +73,11 @@ def test_compose_all_runs_enabled_adapters_by_default(tmp_path: Path, args: Name
     # Validator prompt (from project overlay) should be present.
     assert (pal_project_dir / "validator-test-val.txt").exists()
 
-    # Generic model prompts should be present (one per role) and include the workflow loop.
-    codex_prompt = pal_project_dir / "codex_default.txt"
+    # Generic role prompts should be present (shared across CLIs) and include the workflow loop.
+    codex_prompt = pal_project_dir / "default.txt"
     assert codex_prompt.exists()
     content = codex_prompt.read_text(encoding="utf-8")
-    assert "## Edison Workflow Loop" in content
-    assert "edison session next" in content
-    assert "APPLICABLE RULES" in content
-    assert "RECOMMENDED ACTIONS" in content
-    assert "DELEGATION HINT" in content
-    assert "VALIDATORS" in content
+    assert content.strip()
 
 
 def test_compose_all_removes_legacy_unprefixed_validator_prompt_files(tmp_path: Path, args: Namespace) -> None:

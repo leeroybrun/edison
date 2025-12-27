@@ -23,7 +23,7 @@ from .loader import AdapterLoader  # noqa: F401
 # ============================================================================
 from .platforms.claude import ClaudeAdapter  # noqa: F401
 from .platforms.managed_files import ManagedFilesAdapter  # noqa: F401
-from .platforms.pal import PalAdapter, WORKFLOW_HEADING  # noqa: F401
+from .platforms.pal import PalAdapter  # noqa: F401
 from .platforms.codex import CodexAdapter  # noqa: F401
 from .platforms.cursor import CursorAdapter  # noqa: F401
 from .platforms.coderabbit import CoderabbitAdapter  # noqa: F401
@@ -50,8 +50,6 @@ __all__ = [
     "CursorAdapter",
     "CodexAdapter",
     "CoderabbitAdapter",
-    # Constants
-    "WORKFLOW_HEADING",
     # Schema utilities
     "load_schema",
     "validate_payload",

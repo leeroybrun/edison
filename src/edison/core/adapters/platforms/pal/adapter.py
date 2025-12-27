@@ -17,7 +17,7 @@ from edison.core.rules import RulesRegistry
 
 from .discovery import PalDiscoveryMixin
 from .composer import PalComposerMixin
-from .sync import PalSyncMixin, WORKFLOW_HEADING
+from .sync import PalSyncMixin
 
 if TYPE_CHECKING:
     from edison.core.config.domains.composition import AdapterConfig
@@ -174,12 +174,15 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
             synced_validators = self.sync_from_config("validators")
             prompts.extend(synced_validators)
 
-            # If validator prompt filenames include the validator role prefix (e.g. `validator-*.txt`),
+            # If validator prompt filenames include the configured validator prefix (e.g. `validator-*.txt`),
             # delete legacy unprefixed prompt files (e.g. `security.txt`) to avoid ambiguity.
             pal_cfg = self.config.get("pal") or {}
             cli_cfg = (pal_cfg.get("cli_clients") or {}) if isinstance(pal_cfg, dict) else {}
             roles_spec = (cli_cfg.get("roles") or {}) if isinstance(cli_cfg, dict) else {}
-            validator_prefix = str(roles_spec.get("validator_role_prefix") or "validator-")
+            prefixes = (roles_spec.get("prefixes") or {}) if isinstance(roles_spec, dict) else {}
+            validator_prefix = str(prefixes.get("validator") or "").strip()
+            if not validator_prefix:
+                raise ValueError("pal.cli_clients.roles.prefixes.validator must be configured (non-empty).")
             for p in synced_validators:
                 try:
                     if p.is_file() and p.name.startswith(validator_prefix) and p.suffix == ".txt":
@@ -192,35 +195,58 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
         if self.is_sync_enabled("prompts"):
             prompts.extend(self.sync_from_config("prompts"))
 
-        # Ensure synced agent/validator prompts include the workflow loop section.
-        # (Sync-from-config is a raw file copy; we want Pal prompts to always carry the loop.)
-        for p in [*synced_agents, *synced_validators]:
-            if not p.exists():
-                continue
-            try:
-                existing = p.read_text(encoding="utf-8")
-            except Exception:
-                continue
-            if WORKFLOW_HEADING in existing:
-                continue
-            updated = self._attach_workflow_loop(existing, p)
-            self.writer.write_text(p, updated)
-
-        # Also produce generic model-level prompts (codex/claude/gemini) used by Pal CLI clients.
+        # Clean up legacy unprefixed agent prompt files (e.g. `api-builder.txt`) when the
+        # new prefixed form exists (e.g. `agent-api-builder.txt`).
         pal_cfg = self.config.get("pal") or {}
-        models = []
-        if isinstance(pal_cfg, dict):
-            raw_models = pal_cfg.get("prompt_models")
-            if isinstance(raw_models, list):
-                models = [str(m).strip() for m in raw_models if str(m).strip()]
-        if not models:
-            models = ["codex", "claude", "gemini"]
+        cli_cfg = (pal_cfg.get("cli_clients") or {}) if isinstance(pal_cfg, dict) else {}
+        roles_spec = (cli_cfg.get("roles") or {}) if isinstance(cli_cfg, dict) else {}
+        prefixes = (roles_spec.get("prefixes") or {}) if isinstance(roles_spec, dict) else {}
+        agent_prefix = str(prefixes.get("agent") or "").strip()
+        if not agent_prefix:
+            raise ValueError("pal.cli_clients.roles.prefixes.agent must be configured (non-empty).")
+        for p in synced_agents:
+            try:
+                if p.is_file() and p.name.startswith(agent_prefix) and p.suffix == ".txt":
+                    legacy = p.parent / p.name[len(agent_prefix) :]
+                    if legacy.exists() and legacy.is_file():
+                        legacy.unlink()
+            except Exception:
+                # Best-effort cleanup; never fail sync due to deletion issues.
+                pass
 
-        # Generate Pal clink role prompts for each configured CLI client/model.
+        # Produce shared Pal builtin prompts (default/planner/codereviewer).
+        pal_cfg = self.config.get("pal") or {}
+        base_model = None
+        if isinstance(pal_cfg, dict):
+            base_model = pal_cfg.get("prompt_base_model")
+        if not isinstance(base_model, str) or not base_model.strip():
+            raise ValueError("pal.prompt_base_model must be configured (non-empty string).")
+
         builtin_roles = ["default", "codereviewer", "planner"]
-        for model in models:
-            out = self.sync_role_prompts(model=model, roles=builtin_roles)
-            prompts.extend(sorted(set(out.values())))
+        out = self.sync_role_prompts(model=base_model.strip(), roles=builtin_roles)
+        prompts.extend(sorted(set(out.values())))
+
+        # Clean up legacy per-client builtin prompt files (e.g. `codex_default.txt`) now that
+        # builtin prompts are shared (`default.txt`, `planner.txt`, `codereviewer.txt`).
+        try:
+            prompts_dir = next(iter(out.values())).parent if out else None
+            if prompts_dir is not None:
+                clients = []
+                if isinstance(cli_cfg, dict):
+                    raw_clients = cli_cfg.get("clients") or {}
+                    if isinstance(raw_clients, dict):
+                        clients = [str(k).strip() for k in raw_clients.keys() if str(k).strip()]
+                for client in clients:
+                    legacy_model_prompt = prompts_dir / f"{client}.txt"
+                    if legacy_model_prompt.exists() and legacy_model_prompt.is_file():
+                        legacy_model_prompt.unlink()
+                    for r in builtin_roles:
+                        legacy = prompts_dir / f"{client}_{r}.txt"
+                        if legacy.exists() and legacy.is_file():
+                            legacy.unlink()
+        except Exception:
+            # Best-effort cleanup only.
+            pass
 
         # Generate Pal clink CLI client config files so Pal can discover our roles.
         pal_cfg = self.config.get("pal") or {}
@@ -233,8 +259,13 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
             cli_clients_dir = self.get_output_path() / "cli_clients"
             cli_clients_dir.mkdir(parents=True, exist_ok=True)
 
-            role_prefix = str(roles_spec.get("agent_role_prefix") or "project-")
-            validator_prefix = str(roles_spec.get("validator_role_prefix") or "validator-")
+            prefixes = (roles_spec.get("prefixes") or {}) if isinstance(roles_spec, dict) else {}
+            agent_prefix = str(prefixes.get("agent") or "").strip()
+            validator_prefix = str(prefixes.get("validator") or "").strip()
+            if not agent_prefix:
+                raise ValueError("pal.cli_clients.roles.prefixes.agent must be configured (non-empty).")
+            if not validator_prefix:
+                raise ValueError("pal.cli_clients.roles.prefixes.validator must be configured (non-empty).")
             include_agents = bool(roles_spec.get("include_generated_agents", True))
             include_validators = bool(roles_spec.get("include_generated_validators", True))
             configured_builtin_roles = roles_spec.get("builtin")
@@ -244,19 +275,22 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
             agent_roles: List[tuple[str, str]] = []
             if include_agents:
                 for p in synced_agents:
-                    agent_roles.append((f"{role_prefix}{p.stem}", f"../systemprompts/clink/project/{p.name}"))
+                    if not p.stem.startswith(agent_prefix):
+                        raise ValueError(
+                            f"Generated agent prompt '{p.name}' must be prefixed with '{agent_prefix}'. "
+                            "Update pal adapter filename_pattern to include the agent prefix."
+                        )
+                    agent_roles.append((p.stem, f"../systemprompts/clink/project/{p.name}"))
 
             validator_roles: List[tuple[str, str]] = []
             if include_validators:
                 for p in synced_validators:
-                    # Validator prompt filenames may already include the validator prefix
-                    # (e.g. `validator-security.txt`). Ensure we do not double-prefix roles.
-                    stem = p.stem
-                    if stem.startswith(validator_prefix):
-                        stem = stem[len(validator_prefix) :]
-                    validator_roles.append(
-                        (f"{validator_prefix}{stem}", f"../systemprompts/clink/project/{p.name}")
-                    )
+                    if not p.stem.startswith(validator_prefix):
+                        raise ValueError(
+                            f"Generated validator prompt '{p.name}' must be prefixed with '{validator_prefix}'. "
+                            "Update pal adapter filename_pattern to include the validator prefix."
+                        )
+                    validator_roles.append((p.stem, f"../systemprompts/clink/project/{p.name}"))
 
             if isinstance(clients_spec, dict):
                 for client_name, spec in clients_spec.items():
@@ -269,13 +303,13 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
                     env = spec.get("env") or {}
 
                     roles: Dict[str, Any] = {}
-                    # Builtin roles map to Edison-generated prompt files `<model>_<role>.txt`.
+                    # Builtin roles map to Edison-generated shared prompt files `<role>.txt`.
                     for r in builtin_roles:
                         r_key = str(r).strip()
                         if not r_key:
                             continue
                         roles[r_key] = {
-                            "prompt_path": f"../systemprompts/clink/project/{client_name}_{r_key}.txt",
+                            "prompt_path": f"../systemprompts/clink/project/{r_key}.txt",
                             "role_args": [],
                         }
                     # Project agent + validator roles

@@ -38,17 +38,53 @@ properties:
             minimum: 1
             maximum: 90
         additionalProperties: false
-      prompt_models:
-        type: array
-        description: Models for which Edison generates Pal system prompts.
-        items:
-          type: string
-      templates:
+      prompt_base_model:
+        type: string
+        description: Base model key used to compose the shared Pal builtin prompts (default/planner/codereviewer).
+      cli_clients:
         type: object
-        description: Template sources used by the Pal adapter.
+        description: Configuration for Pal MCP clink cli_clients JSON generation.
         properties:
-          workflow_loop:
-            type: string
+          enabled:
+            type: boolean
+          clients:
+            type: object
+            description: CLI client definitions (one JSON per client).
+            additionalProperties:
+              type: object
+              properties:
+                command:
+                  type: string
+                additional_args:
+                  type: array
+                  items:
+                    type: string
+                env:
+                  type: object
+                  additionalProperties:
+                    type: string
+              additionalProperties: true
+          roles:
+            type: object
+            description: Role generation settings for cli_clients JSON.
+            properties:
+              builtin:
+                type: array
+                items:
+                  type: string
+              include_generated_agents:
+                type: boolean
+              include_generated_validators:
+                type: boolean
+              prefixes:
+                type: object
+                properties:
+                  agent:
+                    type: string
+                  validator:
+                    type: string
+                additionalProperties: false
+            additionalProperties: false
         additionalProperties: false
     additionalProperties: false
   paths:
@@ -275,11 +311,6 @@ properties:
         items:
           type: string
         default: []
-      palRoles:
-        description: Mapping of agent names to Pal MCP role identifiers.
-        type: object
-        additionalProperties:
-          type: string
       type:
         type: string
         description: Optional project category (used for discovery/templating).
@@ -478,6 +509,9 @@ properties:
                     - primary
                     default: shared
                   mergeExisting:
+                    type: boolean
+                    default: true
+                  enabled:
                     type: boolean
                     default: true
                 required:

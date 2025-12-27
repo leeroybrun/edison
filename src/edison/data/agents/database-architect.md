@@ -2,7 +2,6 @@
 name: database-architect
 description: "Database schema and migration specialist for reliable, performant data layers"
 model: codex
-palRole: "{{project.palRoles.database-architect}}"
 allowed_tools:
   - Read
   - Edit

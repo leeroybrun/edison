@@ -44,6 +44,7 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                     "mergeExisting": True,
                     "targetRoot": "shared",
                     "type": "dir",
+                    "enabled": True,
                 }
             )
             continue
@@ -72,6 +73,11 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
             if item_type not in {"dir", "file"}:
                 item_type = "dir"
 
+            enabled = item.get("enabled")
+            if enabled is None:
+                enabled = True
+            enabled = bool(enabled)
+
             out.append(
                 {
                     "path": path,
@@ -79,11 +85,37 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                     "mergeExisting": merge_existing,
                     "targetRoot": target_root,
                     "type": item_type,
+                    "enabled": enabled,
                 }
             )
             continue
 
-    return out
+    # Normalize duplicates by path: last occurrence wins. This enables projects to:
+    # - append additional paths (via deep-merge "+" list syntax), and
+    # - disable a default path by appending `{path: "...", enabled: false}`.
+    by_path: dict[str, Dict[str, Any]] = {}
+    order: list[str] = []
+    for entry in out:
+        p = str(entry.get("path") or "").strip()
+        if not p:
+            continue
+        if p in by_path:
+            try:
+                order.remove(p)
+            except ValueError:
+                pass
+        by_path[p] = entry
+        order.append(p)
+
+    normalized: list[Dict[str, Any]] = []
+    for p in order:
+        e = by_path.get(p)
+        if not e:
+            continue
+        if e.get("enabled") is False:
+            continue
+        normalized.append(e)
+    return normalized
 
 
 def _path_is_tracked(*, checkout_path: Path, rel_path: str) -> bool:
@@ -231,14 +263,42 @@ def _ensure_meta_commit_guard(*, meta_path: Path, cfg: Dict[str, Any]) -> None:
             return
         if guard.get("enabled") is False:
             return
-        allow = guard.get("allowPrefixes")
-        if not isinstance(allow, list) or not [p for p in allow if str(p).strip()]:
+
+        # The allowlist is intentionally configuration-driven, but we also treat configured
+        # meta-managed `sharedPaths` as implicitly allowed to avoid duplicated lists and
+        # drift across renames (e.g. `.zen` -> `.pal`).
+        allow: list[str] = []
+        raw_allow = guard.get("allowPrefixes")
+        if isinstance(raw_allow, list):
+            allow = [str(p).strip() for p in raw_allow if str(p).strip()]
+
+        for item in _parse_shared_paths(cfg):
+            if str(item.get("targetRoot") or "shared").strip().lower() != "shared":
+                continue
+            p = str(item.get("path") or "").strip()
+            if not p:
+                continue
+            item_type = str(item.get("type") or "dir").strip().lower()
+            if item_type == "dir":
+                allow.append(p.rstrip("/") + "/")
+            else:
+                allow.append(p.strip())
+
+        if not allow:
             return
 
         def _bash_escape(s: str) -> str:
             return s.replace("\\", "\\\\").replace('"', '\\"')
 
-        allow_prefixes = [str(p).strip() for p in allow if str(p).strip()]
+        # Preserve order while removing duplicates to keep generated hooks stable/readable.
+        allow_prefixes_raw = [str(p).strip() for p in allow if str(p).strip()]
+        allow_prefixes: list[str] = []
+        seen: set[str] = set()
+        for p in allow_prefixes_raw:
+            if p in seen:
+                continue
+            seen.add(p)
+            allow_prefixes.append(p)
         allow_block = "\n".join([f'  "{_bash_escape(p)}"' for p in allow_prefixes])
 
         meta_branch = str(ss.get("metaBranch") or "edison-meta").strip()

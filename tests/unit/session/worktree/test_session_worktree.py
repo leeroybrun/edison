@@ -549,6 +549,98 @@ def test_ensure_meta_worktree_installs_commit_guard_hook(session_git_repo_path):
     assert commit.returncode != 0
 
 
+def test_meta_commit_guard_includes_configured_shared_paths(session_git_repo_path):
+    """Meta commit guard should automatically allow configured sharedPaths.
+
+    sharedPaths are the set of repo-root paths that are intended to be meta-managed and
+    symlinked into primary/session worktrees. The meta branch should be able to commit
+    those paths without requiring a second, duplicated allowlist.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    # Configure sharedPaths but leave commitGuard allowPrefixes empty.
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [
+        {"path": ".pal", "scopes": ["primary", "session"]},
+        {"path": ".claude", "scopes": ["primary", "session"]},
+        {"path": ".coderabbit.yaml", "type": "file", "scopes": ["primary", "session"]},
+    ]
+    if "commitGuard" not in (data.get("worktrees", {}).get("sharedState", {}) or {}):
+        data["worktrees"]["sharedState"]["commitGuard"] = {"enabled": True, "allowPrefixes": []}
+    else:
+        data["worktrees"]["sharedState"]["commitGuard"]["allowPrefixes"] = []
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+    assert meta_path.exists()
+
+    hooks_path_cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    hook_path = Path((hooks_path_cp.stdout or "").strip())
+    if not hook_path.is_absolute():
+        hook_path = (meta_path / hook_path).resolve()
+    assert hook_path.exists()
+
+    hook_text = hook_path.read_text(encoding="utf-8")
+    assert "EDISON_META_COMMIT_GUARD" in hook_text
+    assert ".pal/" in hook_text
+    assert ".claude/" in hook_text
+    assert ".coderabbit.yaml" in hook_text
+
+
+def test_meta_commit_guard_dedupes_allow_prefixes(session_git_repo_path):
+    """Meta commit guard should not emit duplicate allow prefixes.
+
+    Users may include sharedPaths entries in commitGuard.allowPrefixes (historical config).
+    The generated hook should remain stable and avoid duplicating identical prefixes.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".pal", "scopes": ["primary", "session"]}]
+    data["worktrees"]["sharedState"]["commitGuard"] = {
+        "enabled": True,
+        "allowPrefixes": [".project/tasks/", ".project/qa/", ".pal/"],
+    }
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+
+    hooks_path_cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    hook_path = Path((hooks_path_cp.stdout or "").strip())
+    if not hook_path.is_absolute():
+        hook_path = (meta_path / hook_path).resolve()
+    hook_text = hook_path.read_text(encoding="utf-8")
+
+    # The ALLOW_PREFIXES block uses one prefix per line like: '  ".pal/"'
+    assert hook_text.splitlines().count('  ".pal/"') == 1
+
+
 def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_git_repo_path):
     """Meta init should make the primary checkout share `.project/*` via symlinks + excludes."""
     if sys.platform.startswith("win"):
@@ -627,11 +719,32 @@ def test_worktree_links_configured_shared_paths(session_git_repo_path):
 
     (wt1 / ".specify" / "foo.txt").parent.mkdir(parents=True, exist_ok=True)
     (wt1 / ".specify" / "foo.txt").write_text("hello\n", encoding="utf-8")
+
     assert (meta_path / ".specify" / "foo.txt").exists()
 
     wt2, _ = worktree.create_worktree("shared-paths-2", base_branch="main")
     assert wt2 is not None
     assert (wt2 / ".specify" / "foo.txt").exists()
+
+
+def test_shared_paths_can_disable_defaults(session_git_repo_path):
+    """Projects should be able to disable a default sharedPath via enabled:false appended entry."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    # Append a disable marker for a default path (e.g. .pal).
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = ["+", {"path": ".pal", "enabled": False}]
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    # Create a worktree; .pal should NOT be symlinked/managed.
+    wt_path, _ = worktree.create_worktree("disable-shared-defaults", base_branch="main")
+    assert wt_path is not None
+    assert not (wt_path / ".pal").exists()
 
 
 def test_initialize_meta_shared_state_skips_tracked_shared_paths(session_git_repo_path):

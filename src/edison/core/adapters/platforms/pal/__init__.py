@@ -8,7 +8,7 @@ from __future__ import annotations
 from .adapter import PalAdapter, PalAdapterError
 from .composer import PalComposerMixin, _canonical_model
 from .discovery import PalDiscoveryMixin, _canonical_role
-from .sync import PalSyncMixin, WORKFLOW_HEADING
+from .sync import PalSyncMixin
 
 __all__ = [
     "PalAdapter",
@@ -18,5 +18,4 @@ __all__ = [
     "PalSyncMixin",
     "_canonical_model",
     "_canonical_role",
-    "WORKFLOW_HEADING",
 ]
