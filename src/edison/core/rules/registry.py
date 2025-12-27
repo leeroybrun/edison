@@ -11,8 +11,8 @@ Architecture:
     - User rules: <user-config-dir>/rules/registry.yml (overrides)
     - Project rules: <project-config-dir>/rules/registry.yml (overrides)
 
-Uses ConfigManager for pack directory resolution to maintain consistency
-with the unified configuration system.
+Uses the unified composition path resolver for consistent layer roots
+across config/composition/packs/rules subsystems.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class RulesRegistry:
     - YAML-based rule loading
     - Anchor extraction from guidelines
     - Include resolution
-    - Uses ConfigManager for pack directory resolution
+    - Uses unified composition path resolver for layer roots
 
     Registry locations:
       - Bundled: edison.data/rules/registry.yml (ALWAYS used for core)
@@ -56,25 +56,18 @@ class RulesRegistry:
         except (EdisonPathError, ValueError) as exc:
             raise RulesCompositionError(str(exc)) from exc
 
-        # Use ConfigManager for consistent pack directory resolution
-        from edison.core.config import ConfigManager
+        # Resolve all layer roots from the unified composition path resolver.
+        from edison.core.composition.core.paths import CompositionPathResolver
 
-        cfg_mgr = ConfigManager(repo_root=self.project_root)
+        resolver = CompositionPathResolver(self.project_root)
+        layer_ctx = resolver.layer_context
 
         # Project config directory (e.g. <project-config-dir>, configurable)
-        self.project_dir = cfg_mgr.project_config_dir.parent
-
-        # Pack directories from ConfigManager (unified source of truth)
-        self.bundled_packs_dir = cfg_mgr.bundled_packs_dir
-        self.user_packs_dir = cfg_mgr.user_packs_dir
-        self.project_packs_dir = cfg_mgr.project_packs_dir
+        self.project_dir = layer_ctx.project_dir
         # User config directory root (~/<user-config-dir>)
-        try:
-            from edison.core.utils.paths import get_user_config_dir
-
-            self.user_dir = get_user_config_dir(create=False)
-        except Exception:
-            self.user_dir = Path.home() / ".edison"
+        self.user_dir = layer_ctx.user_dir
+        # Pack roots (bundled → user → project)
+        self._pack_roots = layer_ctx.pack_roots
 
         # Core registry is ALWAYS from bundled data
         self.core_registry_path = get_data_path("rules", "registry.yml")
@@ -83,7 +76,9 @@ class RulesRegistry:
         self.bundled_data_dir = Path(get_data_path(""))
 
         # Store reference to config manager for active packs lookup
-        self._cfg_mgr = cfg_mgr
+        from edison.core.config import ConfigManager
+
+        self._cfg_mgr = ConfigManager(repo_root=self.project_root)
         self._types_manager: Optional["ComposableTypesManager"] = None  # type: ignore[name-defined]
 
     def get_active_packs(self) -> List[str]:
@@ -236,35 +231,28 @@ class RulesRegistry:
         """Load pack-specific rules registry, merging bundled + user + project.
 
         Architecture:
-        - Bundled pack rules: edison.data/packs/<pack>/rules/registry.yml (base)
-        - User pack rules: <user-config-dir>/packs/<pack>/rules/registry.yml (extends/overrides)
-        - Project pack rules: <project-config-dir>/packs/<pack>/rules/registry.yml (extends/overrides)
-        - Merge strategy: later roots are appended so later IDs can override earlier ones
+        - Pack rules can exist in multiple pack roots (bundled → user → project).
+        - Each root contributes <packs-root>/<pack>/rules/registry.yml.
+        - Merge strategy: rules are appended low→high precedence so later IDs
+          can override earlier ones during composition.
         """
-        # Load bundled pack registry (base layer)
-        bundled_path = self.bundled_packs_dir / pack_name / "rules" / "registry.yml"
-        bundled_registry = self._load_yaml(bundled_path, required=False)
-
-        # Load user pack registry (override layer)
-        user_path = self.user_packs_dir / pack_name / "rules" / "registry.yml"
-        user_registry = self._load_yaml(user_path, required=False)
-
-        # Load project pack registry (override layer)
-        project_path = self.project_packs_dir / pack_name / "rules" / "registry.yml"
-        project_registry = self._load_yaml(project_path, required=False)
+        registries: List[Dict[str, Any]] = []
+        for root in self._pack_roots:
+            path = root.path / pack_name / "rules" / "registry.yml"
+            registries.append(self._load_yaml(path, required=False))
 
         merged_rules: List[Any] = []
-        merged_rules.extend(list(bundled_registry.get("rules", [])))
-        merged_rules.extend(list(user_registry.get("rules", [])))
-        merged_rules.extend(list(project_registry.get("rules", [])))
+        for reg in registries:
+            merged_rules.extend(list(reg.get("rules", [])))
 
-        return {
-            "version": project_registry.get("version")
-            or user_registry.get("version")
-            or bundled_registry.get("version")
-            or "1.0.0",
-            "rules": merged_rules,
-        }
+        version = "1.0.0"
+        for reg in reversed(registries):
+            v = reg.get("version")
+            if v:
+                version = str(v)
+                break
+
+        return {"version": version, "rules": merged_rules}
 
     # ------------------------------------------------------------------
     # Composition helpers

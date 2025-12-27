@@ -82,8 +82,10 @@ class FilePatternRegistry:
         if not dir_path.exists():
             return []
         
+        from edison.core.utils.io import iter_yaml_files
+
         results: List[Dict[str, Any]] = []
-        for yaml_file in sorted(dir_path.glob("*.yml")) + sorted(dir_path.glob("*.yaml")):
+        for yaml_file in iter_yaml_files(dir_path):
             if yaml_file.is_file():
                 data = self._load_yaml_file(yaml_file, required=False)
                 if isinstance(data, dict):

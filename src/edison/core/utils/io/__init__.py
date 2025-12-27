@@ -36,6 +36,7 @@ from .yaml import (
     dump_yaml_string,
     parse_yaml_string,
     read_yaml,
+    iter_yaml_files,
     write_yaml,
 )
 
@@ -58,6 +59,7 @@ __all__ = [
     "write_yaml",
     "parse_yaml_string",
     "dump_yaml_string",
+    "iter_yaml_files",
     # locking
     "acquire_file_lock",
     "LockTimeoutError",

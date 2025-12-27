@@ -17,6 +17,54 @@ from edison.core.rules import RulesRegistry, compose_rules
 class TestPackSpecificRegistries:
     """Test pack-specific rule registries functionality."""
 
+    def test_load_pack_registry_iterates_all_pack_roots(
+        self,
+        isolated_project_env: Path,
+    ) -> None:
+        """RulesRegistry.load_pack_registry() must iterate pack roots, not hard-code 3 paths.
+
+        This enables future N-layer pack roots without duplicating rules loading logic.
+        """
+        root = isolated_project_env
+        registry = RulesRegistry(project_root=root)
+
+        pack_name = "custompack"
+        extra_root = root / "extra-pack-root"
+        extra_registry = extra_root / pack_name / "rules" / "registry.yml"
+        extra_registry.parent.mkdir(parents=True, exist_ok=True)
+        with open(extra_registry, "w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                {
+                    "version": "9.9.9",
+                    "rules": [
+                        {
+                            "id": "RULE.EXTRA.PACK_ROOT",
+                            "title": "Extra pack root rule",
+                            "category": "implementation",
+                            "blocking": False,
+                            "applies_to": ["agent"],
+                            "guidance": "Loaded from an extra pack root.",
+                        }
+                    ],
+                },
+                f,
+                sort_keys=False,
+            )
+
+        from edison.core.packs.paths import PackRoot
+
+        # Insert an extra root between bundled and user to ensure load_pack_registry
+        # truly iterates roots rather than relying on fixed attributes.
+        registry._pack_roots = (  # type: ignore[attr-defined]
+            registry._pack_roots[0],  # type: ignore[index]
+            PackRoot(kind="extra", path=extra_root),
+            *registry._pack_roots[1:],  # type: ignore[index]
+        )
+
+        merged = registry.load_pack_registry(pack_name)
+        ids = {r.get("id") for r in (merged.get("rules") or []) if isinstance(r, dict)}
+        assert "RULE.EXTRA.PACK_ROOT" in ids
+
     def test_nextjs_pack_has_rule_registry(self) -> None:
         """
         Test that nextjs pack has a rules/registry.yml file.

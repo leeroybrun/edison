@@ -25,6 +25,7 @@ from typing import Optional
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
+from edison.core.packs.paths import PackRoot, get_pack_roots
 from edison.data import get_data_path
 
 
@@ -53,6 +54,49 @@ class ResolvedPaths:
     def uses_bundled_data(self) -> bool:
         """Always True - core content is always from bundled data."""
         return True
+
+
+@dataclass(frozen=True)
+class LayerContext:
+    """Unified layer context for Edison extensibility.
+
+    Encapsulates all resolved layer roots and derived config directories so
+    subsystems can share a single source of truth and avoid drift.
+    """
+
+    repo_root: Path
+
+    # Bundled Edison data (always present)
+    core_dir: Path
+    core_config_dir: Path
+
+    # User layer (defaults to ~/.edison)
+    user_dir: Path
+    user_config_dir: Path
+
+    # Project layer (.edison)
+    project_dir: Path
+    project_config_dir: Path
+    project_local_config_dir: Path
+
+    # Pack roots (bundled → user → project)
+    pack_roots: tuple[PackRoot, PackRoot, PackRoot]
+
+    @property
+    def bundled_packs_dir(self) -> Path:
+        return self.pack_roots[0].path
+
+    @property
+    def user_packs_dir(self) -> Path:
+        return self.pack_roots[1].path
+
+    @property
+    def project_packs_dir(self) -> Path:
+        return self.pack_roots[2].path
+
+    def pack_root_paths(self) -> list[tuple[str, Path]]:
+        """Return pack roots in low→high precedence order."""
+        return [(r.kind, r.path) for r in self.pack_roots]
 
 
 class CompositionPathResolver:
@@ -87,6 +131,7 @@ class CompositionPathResolver:
         self.repo_root = repo_root or PathResolver.resolve_project_root()
         self.content_type = content_type
         self._resolved: Optional[ResolvedPaths] = None
+        self._layer_context: Optional[LayerContext] = None
     
     def _resolve(self) -> ResolvedPaths:
         """Resolve paths - core is always bundled, project overrides at .edison/."""
@@ -166,6 +211,32 @@ class CompositionPathResolver:
         """Get all resolved paths as a dataclass."""
         return self._resolve()
 
+    @property
+    def layer_context(self) -> LayerContext:
+        """Unified layer context for composition + config + loaders."""
+        if self._layer_context is not None:
+            return self._layer_context
+
+        resolved = self._resolve()
+        project_config_dir = resolved.project_dir / "config"
+        project_local_config_dir = resolved.project_dir / "config.local"
+        user_config_dir = resolved.user_dir / "config"
+        core_config_dir = Path(get_data_path("config"))
+        pack_roots = get_pack_roots(resolved.repo_root)
+
+        self._layer_context = LayerContext(
+            repo_root=resolved.repo_root,
+            core_dir=resolved.core_dir,
+            core_config_dir=core_config_dir,
+            user_dir=resolved.user_dir,
+            user_config_dir=user_config_dir,
+            project_dir=resolved.project_dir,
+            project_config_dir=project_config_dir,
+            project_local_config_dir=project_local_config_dir,
+            pack_roots=pack_roots,
+        )
+        return self._layer_context
+
 
 @lru_cache(maxsize=32)
 def get_resolved_paths(
@@ -190,5 +261,6 @@ def get_resolved_paths(
 __all__ = [
     "CompositionPathResolver",
     "ResolvedPaths",
+    "LayerContext",
     "get_resolved_paths",
 ]

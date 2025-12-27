@@ -18,9 +18,15 @@ Complete reference for configuring the Edison Framework.
 Edison uses a layered configuration system with the following priority (highest to lowest):
 
 1. **Environment variables** (`EDISON_*`)
-2. **Project overrides** (`.edison/config/`)
-3. **Pack configurations** (`.edison/packs/{pack}/config/`)
-4. **Bundled defaults** (`edison.data.config/`)
+2. **Project-local overrides** (`.edison/config.local/`, uncommitted; per-user per-project)
+3. **Project overrides** (`.edison/config/`)
+4. **User overrides** (`~/.edison/config/` by default)
+5. **Pack configurations** (`packs/{pack}/config/` from bundled + user + project pack roots for active packs)
+6. **Bundled defaults** (`src/edison/data/config/`)
+
+Notes:
+- **Pack-aware bootstrap**: Edison first loads `core → user → project → project-local` to determine `packs.active`, then performs the full merge including pack configs.
+- **User config directory** defaults to `~/.edison` and is configurable via `EDISON_paths__user_config_dir`.
 
 ### How Merging Works
 
@@ -69,6 +75,9 @@ export EDISON_RUNTIME__LOG_LEVEL=debug  # Creates {"RUNTIME": {"LOG_LEVEL": "deb
 ```bash
 # Override project config directory (default: .edison)
 export EDISON_paths__project_config_dir=.custom_config
+
+# Override user config directory (default: ~/.edison)
+export EDISON_paths__user_config_dir=~/.my-edison
 ```
 
 ### Project Variables
@@ -1331,9 +1340,21 @@ Edison includes the following bundled packs:
 - `e2e-web` - Playwright-first web E2E testing + browser UI validation
 - `fastify` - Fastify API framework
 
+### Pack Portability
+
+Projects may enable packs that are not available on every developer machine (e.g. user-only packs under `~/.edison/packs/`). Edison can warn or fail fast:
+
+- `packs.portability.userOnly: warn|error|off` — a pack exists only in the user pack root
+- `packs.portability.missing: warn|error|off` — a pack listed in `packs.active` is missing from all pack roots
+
 ### Pack Structure
 
-Each pack is located in `src/edison/data/packs/{pack}/` with:
+Packs can live in any pack root, and the structure is identical in each root:
+- Bundled: `src/edison/data/packs/{pack}/` (ships with Edison)
+- User: `~/.edison/packs/{pack}/` (personal, not committed)
+- Project: `.edison/packs/{pack}/` (committed to the repo)
+
+Each pack is located in `{packs_root}/{pack}/` with:
 
 ```
 packs/{pack}/

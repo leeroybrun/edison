@@ -69,9 +69,9 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
             files: list[tuple[str, int, int]] = []
             if not d.exists():
                 return files
-            yml_files = list(d.glob("*.yml"))
-            yaml_files = list(d.glob("*.yaml"))
-            for p in sorted([*yml_files, *yaml_files]):
+            from edison.core.utils.io import iter_yaml_files
+
+            for p in iter_yaml_files(d):
                 try:
                     st = p.stat()
                     files.append((p.name, int(st.st_mtime_ns), int(st.st_size)))
@@ -208,5 +208,4 @@ __all__ = [
     "register_cache_clearer",
     "is_cached",
 ]
-
 

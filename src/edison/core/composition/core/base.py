@@ -254,46 +254,38 @@ class CompositionBase(ABC):
         result: Dict[str, Any] = {}
         subdirs = subdirs or []
 
-        # Helper to merge yaml with .yaml/.yml fallback
-        def merge_with_ext_fallback(base: Dict[str, Any], dir_path: Path) -> Dict[str, Any]:
-            yaml_path = dir_path / f"{config_name}.yaml"
-            yml_path = dir_path / f"{config_name}.yml"
-            if yaml_path.exists():
-                return self.merge_yaml(base, yaml_path)
-            if yml_path.exists():
-                return self.merge_yaml(base, yml_path)
-            return base
+        from edison.core.utils.layered_yaml import merge_named_yaml
 
         # 1. Core layer
-        result = merge_with_ext_fallback(result, self.core_dir.joinpath(*subdirs))
+        result = merge_named_yaml(result, self.core_dir.joinpath(*subdirs), config_name)
 
         # 2. Pack layers - bundled packs
         for pack in self.get_active_packs():
             pack_dir = self.bundled_packs_dir / pack / Path(*subdirs)
-            result = merge_with_ext_fallback(result, pack_dir)
+            result = merge_named_yaml(result, pack_dir, config_name)
 
         # 3. Pack layers - user packs
         user_packs_base = getattr(self, "user_packs_dir", None)
         if user_packs_base:
             for pack in self.get_active_packs():
                 pack_dir = user_packs_base / pack / Path(*subdirs)
-                result = merge_with_ext_fallback(result, pack_dir)
+                result = merge_named_yaml(result, pack_dir, config_name)
 
         # 4. Pack layers - project packs (for IDE composers, allow project-level pack overrides)
         project_packs_base = getattr(self, "project_packs_dir", None)
         if project_packs_base:
             for pack in self.get_active_packs():
                 pack_dir = project_packs_base / pack / Path(*subdirs)
-                result = merge_with_ext_fallback(result, pack_dir)
+                result = merge_named_yaml(result, pack_dir, config_name)
 
         # 5. User layer
         user_subdir = getattr(self, "user_dir", None)
         if user_subdir:
-            result = merge_with_ext_fallback(result, Path(user_subdir).joinpath(*subdirs))
+            result = merge_named_yaml(result, Path(user_subdir).joinpath(*subdirs), config_name)
 
         # 6. Project layer
         project_subdir = self.project_dir.joinpath(*subdirs)
-        result = merge_with_ext_fallback(result, project_subdir)
+        result = merge_named_yaml(result, project_subdir, config_name)
 
         return result
 

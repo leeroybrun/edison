@@ -9,6 +9,11 @@ packs:
     # - error: fail-closed (recommended for CI/reproducibility)
     # - off:   disable portability checks
     userOnly: warn
+    # Behavior when an active pack is missing from all pack roots:
+    # - warn:  allow but warn (default)
+    # - error: fail-closed (recommended for CI)
+    # - off:   disable missing-pack checks
+    missing: warn
   composition:
     # How Edison combines multiple packs' config
     strategy: deep-merge

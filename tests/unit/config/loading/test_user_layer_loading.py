@@ -174,3 +174,37 @@ def test_user_only_pack_portability_can_error(tmp_path: Path, monkeypatch: pytes
     with pytest.raises(RuntimeError) as excinfo:
         mgr.load_config(validate=False, include_packs=True)
     assert "private-pack" in str(excinfo.value)
+
+
+def test_missing_pack_portability_warns_by_default(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Missing packs in packs.active warn by default (opt-in error for CI)."""
+    project_config = tmp_path / ".edison" / "config"
+    project_config.mkdir(parents=True)
+    (project_config / "packs.yaml").write_text("packs:\n  active:\n    - missing-pack\n", encoding="utf-8")
+
+    caplog.set_level("WARNING")
+    mgr = ConfigManager(tmp_path)
+    mgr.load_config(validate=False, include_packs=True)
+    assert "missing-pack" in caplog.text
+    assert "not found" in caplog.text.lower()
+
+
+def test_missing_pack_portability_can_error(tmp_path: Path) -> None:
+    """Missing packs can fail-closed when packs.portability.missing=error."""
+    project_config = tmp_path / ".edison" / "config"
+    project_config.mkdir(parents=True)
+    (project_config / "packs.yaml").write_text(
+        "packs:\n"
+        "  active:\n"
+        "    - missing-pack\n"
+        "  portability:\n"
+        "    missing: error\n",
+        encoding="utf-8",
+    )
+
+    mgr = ConfigManager(tmp_path)
+    with pytest.raises(RuntimeError) as excinfo:
+        mgr.load_config(validate=False, include_packs=True)
+    assert "missing-pack" in str(excinfo.value)

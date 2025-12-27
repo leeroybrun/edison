@@ -255,16 +255,9 @@ class ConfigManager:
         Returns:
             Merged configuration dictionary
         """
-        if not directory.exists():
-            return cfg
+        from edison.core.utils.layered_yaml import merge_yaml_directory
 
-        yml_files = list(directory.glob("*.yml"))
-        yaml_files = list(directory.glob("*.yaml"))
-        for path in sorted(yml_files + yaml_files):
-            module_cfg = self.load_yaml(path)
-            cfg = self.deep_merge(cfg, module_cfg)
-
-        return cfg
+        return merge_yaml_directory(cfg, directory)
 
     def _get_bootstrap_packs(self, cfg: Dict[str, Any]) -> List[str]:
         """Extract active packs from bootstrap config (Phase 1).
@@ -341,6 +334,29 @@ class ConfigManager:
 
         return user_only
 
+    def _find_missing_packs(self, active_packs: List[str]) -> List[str]:
+        """Return packs that do not exist in any pack root (bundled/user/project)."""
+        missing: List[str] = []
+
+        for pack_name in active_packs:
+            try:
+                bundled_exists = (Path(self.bundled_packs_dir) / pack_name).exists()
+            except Exception:
+                bundled_exists = False
+            try:
+                project_exists = (Path(self.project_packs_dir) / pack_name).exists()
+            except Exception:
+                project_exists = False
+            try:
+                user_exists = (Path(self.user_packs_dir) / pack_name).exists()
+            except Exception:
+                user_exists = False
+
+            if not (bundled_exists or user_exists or project_exists):
+                missing.append(pack_name)
+
+        return missing
+
     def _packs_portability_user_only_mode(self, cfg: Dict[str, Any]) -> str:
         packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
         portability = packs.get("portability") if isinstance(packs.get("portability"), dict) else {}
@@ -355,8 +371,38 @@ class ConfigManager:
             return "off"
         return "warn"
 
+    def _packs_portability_missing_mode(self, cfg: Dict[str, Any]) -> str:
+        packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
+        portability = packs.get("portability") if isinstance(packs.get("portability"), dict) else {}
+        raw = portability.get("missing", "warn")
+        mode = str(raw).strip().lower() if raw is not None else "warn"
+
+        if mode in {"warn", "warning"}:
+            return "warn"
+        if mode in {"error", "fail", "fatal"}:
+            return "error"
+        if mode in {"off", "none", "false", "0"}:
+            return "off"
+        return "warn"
+
     def _enforce_pack_portability(self, cfg: Dict[str, Any], *, active_packs: List[str]) -> None:
         """Warn/error when active packs are resolved only from the user layer."""
+        missing = self._find_missing_packs(active_packs)
+        missing_mode = self._packs_portability_missing_mode(cfg)
+        if missing and missing_mode != "off":
+            if missing_mode == "error":
+                packs_list = ", ".join(sorted(missing))
+                raise RuntimeError(
+                    "Pack portability check failed: active pack(s) were not found in bundled, user, or project packs: "
+                    f"{packs_list}."
+                )
+            for pack_name in missing:
+                logger.warning(
+                    "Active pack '%s' was not found in bundled, user, or project packs. "
+                    "This pack will be ignored.",
+                    pack_name,
+                )
+
         user_only = self._find_user_only_packs(active_packs)
         if not user_only:
             return

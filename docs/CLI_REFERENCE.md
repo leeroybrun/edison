@@ -2,7 +2,7 @@
 
 **Complete Command Reference for the Edison Framework**
 
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-27
 
 ---
 
@@ -24,7 +24,8 @@
 14. [MCP Domain](#mcp-domain)
 15. [Orchestrator Domain](#orchestrator-domain)
 16. [Import Domain](#import-domain)
-17. [Typical Workflows](#typical-workflows)
+17. [Debug Domain](#debug-domain)
+18. [Typical Workflows](#typical-workflows)
 
 ---
 
@@ -53,6 +54,7 @@ edison <domain> <command> [options]
 | `mcp` | MCP server configuration |
 | `orchestrator` | Orchestrator session management |
 | `import` | Import tasks from external systems (SpecKit, OpenSpec) |
+| `debug` | Debug and introspection utilities |
 
 ---
 
@@ -120,6 +122,7 @@ Edison respects the following environment variables for configuration:
   - Example: `EDISON_database__url` overrides `database.url` in config
   - Example: `EDISON_tdd_enforceRedGreenRefactor=false` disables TDD enforcement
   - Example: `EDISON_paths__project_config_dir=custom` sets custom config directory
+  - Example: `EDISON_paths__user_config_dir=~/.edison` sets the user config directory
 
 ### Session Management
 
@@ -136,8 +139,11 @@ Edison respects the following environment variables for configuration:
 Edison loads configuration in this order (later overrides earlier):
 
 1. Bundled defaults (from edison package)
-2. Project config files (`.edison/config/*.yml`)
-3. Environment variables (`EDISON_*`)
+2. Pack config files (active packs across bundled/user/project pack roots)
+3. User config files (`~/.edison/config/*.yml` by default)
+4. Project config files (`.edison/config/*.yml`)
+5. Project-local config files (`.edison/config.local/*.yml`, uncommitted; per-user per-project)
+6. Environment variables (`EDISON_*`)
 
 ---
 
@@ -2761,6 +2767,45 @@ edison import openspec . --dry-run
 | Change-id removed | Flag with `removed-from-openspec` tag |
 
 For detailed documentation, see [OPENSPEC_INTEGRATION.md](OPENSPEC_INTEGRATION.md).
+
+---
+
+## Debug Domain
+
+Debug and introspection utilities.
+
+### debug resolve - Explain Layer Resolution
+
+Explain how a composable entity resolves across layers (core → packs → user → project).
+
+```bash
+edison debug resolve <type> <name> [--packs <pack>...] [--json] [--repo-root <path>]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `type` | Composable type (e.g. `agents`, `validators`, `guidelines`) |
+| `name` | Entity name (e.g. `shared/VALIDATION`) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--packs` | Override active packs (space-separated or comma-separated) |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+# Human-readable output
+edison debug resolve validators global --packs python
+
+# Machine-readable output
+edison debug resolve guidelines shared/VALIDATION --json | jq '.applied_layers'
+```
 
 ## Typical Workflows
 

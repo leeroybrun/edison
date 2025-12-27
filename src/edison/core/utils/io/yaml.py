@@ -143,6 +143,18 @@ def dump_yaml_string(data: Any, sort_keys: bool = True) -> str:
         allow_unicode=True,
     )
 
+def iter_yaml_files(dir_path: Path) -> list[Path]:
+    """Return YAML files in ``dir_path`` in deterministic order.
+
+    Includes both ``*.yml`` and ``*.yaml``.
+    """
+    d = Path(dir_path)
+    if not d.exists():
+        return []
+    yml_files = list(d.glob("*.yml"))
+    yaml_files = list(d.glob("*.yaml"))
+    return sorted([*yml_files, *yaml_files])
+
 
 __all__ = [
     "HAS_YAML",
@@ -150,8 +162,8 @@ __all__ = [
     "write_yaml",
     "parse_yaml_string",
     "dump_yaml_string",
+    "iter_yaml_files",
 ]
-
 
 
 

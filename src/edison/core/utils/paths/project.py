@@ -15,6 +15,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Iterable
+
+from edison.core.utils.io import iter_yaml_files
 from edison.data import get_data_path
 
 try:
@@ -75,9 +77,7 @@ def _resolve_project_dir_from_configs(repo_root: Path) -> str:
     # Note: Using DEFAULT_PROJECT_CONFIG_PRIMARY here is necessary to bootstrap config loading
     config_dir = repo_root / DEFAULT_PROJECT_CONFIG_PRIMARY / "config"
     if config_dir.exists():
-        yaml_files = sorted(config_dir.glob("*.yml")) + sorted(
-            config_dir.glob("*.yaml")
-        )
+        yaml_files = iter_yaml_files(config_dir)
         for yaml_path in yaml_files:
             found = _load_project_dir_from_yaml(yaml_path)
             if found is not None:
@@ -118,6 +118,3 @@ __all__ = [
     "DEFAULT_PROJECT_CONFIG_PRIMARY",
     "get_project_config_dir",
 ]
-
-
-

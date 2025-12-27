@@ -96,6 +96,17 @@ properties:
             type: string
             description: Append-only JSONL process events log path (relative to repo root).
         additionalProperties: false
+      maxConcurrentAgents:
+        type: integer
+        minimum: 1
+        description: Maximum concurrent agents/validators to run.
+      validatorTimeout:
+        type: integer
+        minimum: 1
+        description: Default validator timeout (seconds).
+      executionMode:
+        type: string
+        description: Orchestration execution mode.
     additionalProperties: false
   memory:
     type: object
@@ -154,6 +165,19 @@ properties:
         additionalProperties:
           $ref: '#/$defs/memory_pipeline'
     additionalProperties: false
+  tasks:
+    type: object
+    description: Task + QA project-state configuration.
+    properties:
+      paths:
+        type: object
+        additionalProperties: true
+      defaults:
+        type: object
+        additionalProperties: true
+      readiness:
+        type: object
+        additionalProperties: true
       similarity:
         type: object
         properties:
@@ -201,6 +225,7 @@ properties:
                 default: null
             additionalProperties: false
         additionalProperties: false
+    additionalProperties: true
   project:
     type: object
     required:
@@ -628,6 +653,10 @@ properties:
           type: object
           properties:
             userOnly:
+              type: string
+              enum: [warn, error, off]
+              default: warn
+            missing:
               type: string
               enum: [warn, error, off]
               default: warn

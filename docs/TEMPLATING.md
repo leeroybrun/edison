@@ -36,6 +36,7 @@ Config layering (YAML):
 
 Pack portability:
 - `packs.portability.userOnly: warn|error|off` controls behavior when a project activates a pack that only exists in `~/.edison/packs/`.
+- `packs.portability.missing: warn|error|off` controls behavior when `packs.active` references a pack that does not exist in any pack root (bundled/user/project).
 
 Overlays vs new files (non-guidelines):
 - New content: place at the root of the type directory (e.g., `.edison/agents/api.md`).
