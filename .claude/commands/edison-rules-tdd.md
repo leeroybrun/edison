@@ -1,5 +1,9 @@
 ---
 description: "Show TDD workflow rules"
+edison-generated: true
+edison-id: "rules-tdd"
+edison-platform: "claude"
+
 
 
 ---

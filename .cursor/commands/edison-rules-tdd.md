@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=rules-tdd platform=cursor -->
+
 # edison-rules-tdd
 
 Displays comprehensive TDD (Test-Driven Development) guidelines

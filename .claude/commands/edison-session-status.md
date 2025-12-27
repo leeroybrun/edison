@@ -1,5 +1,9 @@
 ---
 description: "Show current session state"
+edison-generated: true
+edison-id: "session-status"
+edison-platform: "claude"
+
 
 
 ---

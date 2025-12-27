@@ -1,4 +1,51 @@
-<!-- 2fb8af18-af0c-40b4-a740-da7082398f2a f3664980-2718-4de1-81c9-18ca80325428 -->
+---
+name: "Single Source of Truth: Task/QA Files as Canonical Data"
+overview: ""
+todos:
+  - id: 3b86804b-a50f-4a3c-ab2c-8a436e1d80ad
+    content: Create src/edison/data/templates/documents/TASK.md with YAML frontmatter
+    status: pending
+  - id: 68e9b3d2-9ff3-45a4-a24d-67b32e2e109e
+    content: Create src/edison/data/templates/documents/QA.md with YAML frontmatter
+    status: pending
+  - id: 17a21061-332f-4b3b-83c9-f20c977ace51
+    content: Create src/edison/core/utils/text/frontmatter.py for YAML parsing
+    status: pending
+  - id: 57ea7d3f-4503-4e68-8df7-42e202fe42f7
+    content: Add depends_on, blocks_tasks, claimed_at, last_active, continuation_id to Task model
+    status: pending
+  - id: 7e34b086-2ba3-409d-9fc2-6c576135eec8
+    content: Add all fields from QAEntry to QARecord model
+    status: pending
+  - id: a0adec27-cb71-4fbd-b02a-d14b367ad33a
+    content: Update TaskRepository to use YAML frontmatter, derive state from directory
+    status: pending
+  - id: 691a30a1-819d-42d0-9f6c-796c5b630a16
+    content: Update QARepository to use YAML frontmatter
+    status: pending
+  - id: c778eb19-c4f5-408a-9947-6d9cf7953065
+    content: Create TaskIndex service for ripgrep-based task discovery
+    status: pending
+  - id: 8d5cce6b-f70d-4b51-9a1f-65da0bc74b9c
+    content: Remove TaskEntry/QAEntry from Session, keep only session-level data
+    status: pending
+  - id: 0f040185-2f25-4b5a-b5f8-853d8ee34ec4
+    content: Update graph.py to use TaskIndex instead of session JSON
+    status: pending
+  - id: 3046c8f8-c177-45a8-92b8-05f9313a8995
+    content: Update workflow.py to write only to files, no session JSON
+    status: pending
+  - id: b64f926d-26e7-4c0d-b3f2-f390c408a1e9
+    content: Create DocumentTemplateRegistry for template composition
+    status: pending
+  - id: 2b9eab73-8f44-446c-8bc3-9f130c0d4b06
+    content: Add --documents flag to edison compose --all
+    status: pending
+  - id: e3a9b0fd-94d7-4382-82d0-820a01703fa1
+    content: Create migration script to convert existing tasks to YAML frontmatter
+    status: pending
+---
+
 # Single Source of Truth: Task/QA Files as Canonical Data
 
 ## Problem Statement
@@ -131,20 +178,3 @@ Then parse each YAML block with Python's `yaml.safe_load()`.
                                                                                                 - Same changes as TaskRepository
 
 ### Phase 3: Update Task
-
-### To-dos
-
-- [ ] Create src/edison/data/templates/documents/TASK.md with YAML frontmatter
-- [ ] Create src/edison/data/templates/documents/QA.md with YAML frontmatter
-- [ ] Create src/edison/core/utils/text/frontmatter.py for YAML parsing
-- [ ] Add depends_on, blocks_tasks, claimed_at, last_active, continuation_id to Task model
-- [ ] Add all fields from QAEntry to QARecord model
-- [ ] Update TaskRepository to use YAML frontmatter, derive state from directory
-- [ ] Update QARepository to use YAML frontmatter
-- [ ] Create TaskIndex service for ripgrep-based task discovery
-- [ ] Remove TaskEntry/QAEntry from Session, keep only session-level data
-- [ ] Update graph.py to use TaskIndex instead of session JSON
-- [ ] Update workflow.py to write only to files, no session JSON
-- [ ] Create DocumentTemplateRegistry for template composition
-- [ ] Add --documents flag to edison compose --all
-- [ ] Create migration script to convert existing tasks to YAML frontmatter

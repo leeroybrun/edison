@@ -1,4 +1,33 @@
-<!-- 6b7768cd-ebe5-47e5-b0b5-fb2f8ca2da00 657ab468-4133-42a6-bb77-766c3b72ba5a -->
+---
+name: Unified Composition Architecture - Complete Plan
+overview: ""
+todos:
+  - id: f1e8cf50-cfa7-4972-8c05-20343f4330bd
+    content: Add compose_validator() to ValidatorRegistry for file composition
+    status: pending
+  - id: f5f3797e-4c86-41b8-adee-bfd396c33f04
+    content: Convert ConstitutionRegistry from functions to class extending ComposableRegistry
+    status: pending
+  - id: 824647ab-3eff-4e2b-8588-6182db914b30
+    content: Create data/rosters/*.md templates and refactor rosters.py
+    status: pending
+  - id: 749d83dc-87ec-4f0e-914d-c9f52b87c70c
+    content: Create ComposableGenerator base class and refactor roster generators
+    status: pending
+  - id: c07238a7-27b0-42dc-8748-bdcfa6886f3a
+    content: Move composition/ide/ to adapters/components/, create AdapterComponent base
+    status: pending
+  - id: f027080e-a869-4479-9011-e6968620e1f7
+    content: Restructure adapters with component-based architecture
+    status: pending
+  - id: 8ad7a356-13c5-442d-b159-60575628f5b7
+    content: Ensure all composers use _load_layered_config() consistently
+    status: pending
+  - id: 1c9b6df1-cb52-4300-a302-9164089f6488
+    content: Run full test suite and fix all refactoring-related failures
+    status: pending
+---
+
 # Unified Composition Architecture - Complete Plan
 
 ## Critical Principles (Non-Negotiable)
@@ -525,14 +554,3 @@ class SyncAdapter(CompositionBase):
 | **Total** | | | **~800 lines** |
 
 **Plus**: Validators now have file composition (new feature, not just cleanup)
-
-### To-dos
-
-- [ ] Add compose_validator() to ValidatorRegistry for file composition
-- [ ] Convert ConstitutionRegistry from functions to class extending ComposableRegistry
-- [ ] Create data/rosters/*.md templates and refactor rosters.py
-- [ ] Create ComposableGenerator base class and refactor roster generators
-- [ ] Move composition/ide/ to adapters/components/, create AdapterComponent base
-- [ ] Restructure adapters with component-based architecture
-- [ ] Ensure all composers use _load_layered_config() consistently
-- [ ] Run full test suite and fix all refactoring-related failures

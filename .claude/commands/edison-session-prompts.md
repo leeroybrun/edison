@@ -1,5 +1,9 @@
 ---
 description: "List available START_* prompts"
+edison-generated: true
+edison-id: "session-prompts"
+edison-platform: "claude"
+
 
 
 ---

@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=task-ready platform=cursor -->
+
 # edison-task-ready
 
 Workflow: mark the task ready for validation (typically `wip` → `done`).
@@ -11,13 +13,13 @@ Use this only when:
 ## Usage
 
 ```bash
-edison task ready $1
+edison task ready <record_id>
 ```
 
 
 ## Arguments
 
-- task_id (required): Task identifier
+- record_id: Task identifier to mark ready (omit to list ready tasks)
 
 
 
@@ -33,4 +35,4 @@ edison task ready $1
 
 - /edison-qa-new
 
-- /edison-validate-now
+- /edison-qa-validate

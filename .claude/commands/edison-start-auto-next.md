@@ -1,5 +1,9 @@
 ---
 description: "Print START_AUTO_NEXT prompt"
+edison-generated: true
+edison-id: "start-auto-next"
+edison-platform: "claude"
+
 
 
 ---
@@ -10,7 +14,7 @@ Prints the Edison START_AUTO_NEXT prompt used to automatically determine next ac
 
 
 ```bash
-edison compose start && cat .edison/_generated/start/START_AUTO_NEXT.md
+edison compose all --start && cat .edison/_generated/start/START_AUTO_NEXT.md
 ```
 
 

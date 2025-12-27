@@ -1,5 +1,11 @@
 ---
 description: "Show current task state"
+edison-generated: true
+edison-id: "task-status"
+edison-platform: "claude"
+
+
+argument-hint: "record_id"
 
 
 ---
@@ -10,8 +16,13 @@ Workflow: inspect a task's current state, owner, session linkage, and recent act
 
 
 ```bash
-edison task status --current
+edison task status <record_id>
 ```
+
+
+## Arguments
+
+- **record_id** (required): Task or QA identifier (e.g., 150-wave1-auth-gate)
 
 
 

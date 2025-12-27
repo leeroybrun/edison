@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=qa-promote platform=cursor -->
+
 # edison-qa-promote
 
 Workflow: promote a task/QA record to `validated` after successful validation.
@@ -11,7 +13,7 @@ Only use when:
 ## Usage
 
 ```bash
-edison qa promote $1
+edison qa promote <task_id>
 ```
 
 
@@ -30,5 +32,7 @@ edison qa promote $1
 
 
 ## Related
+
+- /edison-qa-round
 
 - /edison-qa-audit

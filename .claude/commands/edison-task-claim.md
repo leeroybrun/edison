@@ -1,7 +1,11 @@
 ---
 description: "Claim and move task to wip"
+edison-generated: true
+edison-id: "task-claim"
+edison-platform: "claude"
 
-argument-hint: "task_id"
+
+argument-hint: "record_id"
 
 
 ---
@@ -16,13 +20,13 @@ After claiming:
 
 
 ```bash
-edison task claim $1
+edison task claim <record_id>
 ```
 
 
 ## Arguments
 
-- **task_id** (required): Task identifier (e.g., TASK-123, 150-implement-feature)
+- **record_id** (required): Task or QA identifier (e.g., 150-wave1-auth-gate)
 
 
 

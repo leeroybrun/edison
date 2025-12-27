@@ -1,5 +1,9 @@
 ---
 description: "Show rules for current state"
+edison-generated: true
+edison-id: "rules-current"
+edison-platform: "claude"
+
 
 
 ---

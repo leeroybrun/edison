@@ -1,4 +1,144 @@
-<!-- 3c23dff0-be10-48b5-835f-b39841b35d92 795f1046-d913-43d6-8ca9-fcc91da98ebb -->
+---
+name: Edison Composition Unification - Comprehensive Architecture
+overview: ""
+todos:
+  - id: d0364b43-0158-465b-b1f1-2c542793f171
+    content: "Phase 0.1: Create ConditionEvaluator class with 8 condition functions (has-pack, config, config-eq, env, file-exists, not, and, or) in transformers/conditionals.py"
+    status: pending
+  - id: d041a6f7-06b2-4248-a59f-e971ecfb5f87
+    content: "Phase 0.2: Migrate all Handlebars-style block conditionals {{#if pack:name}} to {{if:has-pack(name)}} in src/edison/data/**/*.md"
+    status: pending
+  - id: 71389138-63b3-4669-a5d2-f21d946d8990
+    content: "Phase 0.3: Migrate all ANCHOR markers to SECTION markers (<!-- ANCHOR: --> → <!-- SECTION: -->) in src/edison/data/**/*.md"
+    status: pending
+  - id: f5a8913b-8aa3-429b-bc6a-fa78a86d36e8
+    content: "Phase 0.4: Remove all deprecated placeholders ({{SECTION:Name}}, {{EXTENSIBLE_SECTIONS}}, {{APPEND_SECTIONS}}) from templates"
+    status: pending
+  - id: 52546694-6299-40b7-b71a-f9b5bef6a360
+    content: "Phase 0.5: Add <!-- SECTION: composed-additions --> empty sections to core templates that need pack extensions"
+    status: pending
+  - id: 2bb6c042-eb0a-4fd4-9fa3-d01776191a60
+    content: "Phase 0.6: Write comprehensive tests for ConditionEvaluator (all 8 functions + nested + errors)"
+    status: pending
+  - id: bcaf9179-8123-42ac-aa3c-550bb37c76b7
+    content: "Phase 0.7: Verify Phase 0 - grep confirms no ANCHOR: or {{#if pack: patterns remain, all tests pass"
+    status: pending
+  - id: dbe35256-db29-49b6-86b2-1ef89ce3aa1b
+    content: "Phase 1.1: Simplify SectionParser to only SECTION_PATTERN and EXTEND_PATTERN (remove ANCHOR, NEW_SECTION, APPEND handling)"
+    status: pending
+  - id: b95c0d4c-f04d-431b-b74e-8b35ee44aa72
+    content: "Phase 1.2: Implement merge_extensions() method in SectionParser to merge EXTEND content into SECTION regions"
+    status: pending
+  - id: daea386d-fa65-4594-b768-6f72089f8c80
+    content: "Phase 1.3: Update all {{include-anchor:path#name}} to {{include-section:path#name}} across codebase"
+    status: pending
+  - id: fc8e8bbc-aef5-490b-b362-44eaff5989f3
+    content: "Phase 1.4: Write tests for SectionParser (parse_section, parse_extend, merge_single/multiple_extensions, preserves_markers)"
+    status: pending
+  - id: deae5f63-f814-49ee-97ff-047faee43efe
+    content: "Phase 1.5: Verify Phase 1 - all SectionParser tests pass, no legacy patterns remain"
+    status: pending
+  - id: c84c5a45-c9c9-4b4a-a7c3-ebeed356c8b0
+    content: "Phase 2.1: Create transformers/base.py with ContentTransformer abstract base class"
+    status: pending
+  - id: 1e92b0a7-d985-4f0d-8041-f80d101fb838
+    content: "Phase 2.2: Create transformers/includes.py (IncludeResolver + SectionExtractor)"
+    status: pending
+  - id: 5e032363-dcff-4baa-a684-6965cf2e6a26
+    content: "Phase 2.3: Extend transformers/conditionals.py with ConditionalProcessor transformer"
+    status: pending
+  - id: b29dc5f9-4a04-41f1-b62b-827195694faf
+    content: "Phase 2.4: Create transformers/loops.py (LoopExpander for {{#each collection}})"
+    status: pending
+  - id: a577f5b2-4871-42d1-b7ab-9c230653a9d6
+    content: "Phase 2.5: Create transformers/variables.py (ConfigVar, ContextVar, PathVar replacers)"
+    status: pending
+  - id: d3adf4d4-401f-4872-a403-dffd4cf94806
+    content: "Phase 2.6: Create transformers/references.py (ReferenceRenderer for {{reference-section:}})"
+    status: pending
+  - id: f4e45248-4e7a-4cb0-ab42-b757d07d5c2c
+    content: "Phase 2.7: Create core/report.py with CompositionReport dataclass"
+    status: pending
+  - id: 80b3fd39-0c20-4b92-a8ac-d574ab2ad479
+    content: "Phase 2.8: Create engine.py with TemplateEngine class implementing 9-step transformation pipeline"
+    status: pending
+  - id: 54c8f340-ccc0-4ecd-a343-70b37913f619
+    content: "Phase 2.9: Add resolve_single_include() helper function to includes.py for 3-layer search"
+    status: pending
+  - id: 0e68523b-459b-4f0a-b7d3-85bc4e1d223d
+    content: "Phase 2.10: Update cli/compose/all.py for two-phase composition (Phase 1: LayeredComposer, Phase 2: TemplateEngine)"
+    status: pending
+  - id: f710995c-cf1d-4ce0-b761-f58e56f946e0
+    content: "Phase 2.11: Write tests for TemplateEngine (all 9 transformations + two-phase integration)"
+    status: pending
+  - id: a1f14ec3-f863-4bed-a630-aca5f94b332e
+    content: "Phase 2.12: Write tests for each individual transformer module"
+    status: pending
+  - id: 93f61f6e-0beb-4c36-ba0f-f20876cc2dcc
+    content: "Phase 2.13: Verify Phase 2 - TemplateEngine processes all markers, two-phase works end-to-end"
+    status: pending
+  - id: 3d944255-6950-4f6a-91a5-830d8e986871
+    content: "Phase 3.1: Create core/base.py with CompositionBase class (extract from BaseRegistry + IDEComposerBase)"
+    status: pending
+  - id: 523cc621-3c52-481a-80c5-2fe35ac4410b
+    content: "Phase 3.2: Create output/writer.py with CompositionFileWriter (write_text, write_json, write_yaml, write_executable)"
+    status: pending
+  - id: 4cbf8c76-05c9-462b-8dfb-d36fb362d094
+    content: "Phase 3.3: Create output/resolver.py with OutputPathResolver (merge OutputConfigLoader + CompositionPathResolver)"
+    status: pending
+  - id: f0cdda71-42b9-42e4-b8c0-e86049585ed7
+    content: "Phase 3.4: Create core/errors.py with unified error hierarchy (12 error classes)"
+    status: pending
+  - id: 1a6d9f24-5b2b-412f-883e-0d1b50967e95
+    content: "Phase 3.5: Create core/metadata.py with MetadataExtractor for unified frontmatter parsing"
+    status: pending
+  - id: 0ece0996-a03f-41a9-851d-beaf0029a97f
+    content: "Phase 3.6: Write tests for all Phase 3 infrastructure (base, writer, resolver, errors, metadata)"
+    status: pending
+  - id: 24c823c0-9a5c-4646-9f77-553cc62b479b
+    content: "Phase 3.7: Verify Phase 3 - ~90 lines duplication eliminated, all infrastructure tests pass"
+    status: pending
+  - id: 82816ce4-69d0-46f8-84b7-2a4d80722581
+    content: "Phase 4.1: Update BaseRegistry to extend CompositionBase, implement _setup_composition_dirs()"
+    status: pending
+  - id: 56602a84-2823-40c6-8370-91b3047263c5
+    content: "Phase 4.2: Update IDEComposerBase to extend CompositionBase, implement _setup_composition_dirs()"
+    status: pending
+  - id: 0a4bcce7-f4dd-4d35-af5c-9c486606745f
+    content: "Phase 4.3: Update GuidelineRegistry to use LayeredComposer and LayerDiscovery"
+    status: pending
+  - id: a781d0fb-52cd-4cd0-8af6-1f3fb871d30c
+    content: "Phase 4.4: Update FilePatternRegistry to use CompositionPathResolver"
+    status: pending
+  - id: 7508a04b-db81-42f8-87e1-eedccd59cec4
+    content: "Phase 4.5: Update JsonSchemaComposer to use CompositionFileWriter"
+    status: pending
+  - id: 12191ba7-f971-4a39-b20e-fcf61bf2e022
+    content: "Phase 4.6: Add _load_yaml_with_fallback(), _load_layered_config(), _merge_with_handlers() to IDEComposerBase"
+    status: pending
+  - id: 802e9f54-2ba8-4d2e-92e0-acfcad93a24c
+    content: "Phase 4.7: Migrate IDE composers (hooks, commands, settings, coderabbit) to use _load_layered_config()"
+    status: pending
+  - id: 625e6338-9d67-4183-876e-63e5cc888676
+    content: "Phase 4.8: Consolidate ZenSync - create zen.py, delete 5 files in zen/ directory"
+    status: pending
+  - id: f89a1a62-af5c-4a67-8e9e-8f78ac42f822
+    content: "Phase 4.9: Consolidate PromptAdapter base classes - enhance adapters/base.py, delete prompt/base.py"
+    status: pending
+  - id: e9d8a122-a011-4ad5-a616-0bccb550aa17
+    content: "Phase 4.10: Fix CodexAdapter to use ConfigMixin instead of duplicate _load_config()"
+    status: pending
+  - id: 80be3ff5-0438-4228-9842-8a26b0b40107
+    content: "Phase 4.11: Update ClaudeSync and CursorSync adapters to use ConfigMixin"
+    status: pending
+  - id: 62ca3039-f190-46fa-86a0-a5a985be6330
+    content: "Phase 4.12: Update all registries to use unified error hierarchy from core/errors.py"
+    status: pending
+  - id: c9bb37f6-e20c-4c32-b9ff-615929a70694
+    content: "Phase 4.13: Final verification - all tests pass, ~200+ lines eliminated, edison compose all works"
+    status: pending
+---
+
 # Edison Composition Unification - Comprehensive Architecture
 
 ## Executive Summary
@@ -3113,51 +3253,3 @@ src/edison/core/adapters/prompt/base.py
 9. ~200+ lines total duplication eliminated
 10. All tests pass (unit, integration, e2e)
 11. `edison compose all` produces fully processed output
-
-### To-dos
-
-- [ ] Phase 0.1: Create ConditionEvaluator class with 8 condition functions (has-pack, config, config-eq, env, file-exists, not, and, or) in transformers/conditionals.py
-- [ ] Phase 0.2: Migrate all Handlebars-style block conditionals {{#if pack:name}} to {{if:has-pack(name)}} in src/edison/data/**/*.md
-- [ ] Phase 0.3: Migrate all ANCHOR markers to SECTION markers (<!-- ANCHOR: --> → <!-- SECTION: -->) in src/edison/data/**/*.md
-- [ ] Phase 0.4: Remove all deprecated placeholders ({{SECTION:Name}}, {{EXTENSIBLE_SECTIONS}}, {{APPEND_SECTIONS}}) from templates
-- [ ] Phase 0.5: Add <!-- SECTION: composed-additions --> empty sections to core templates that need pack extensions
-- [ ] Phase 0.6: Write comprehensive tests for ConditionEvaluator (all 8 functions + nested + errors)
-- [ ] Phase 0.7: Verify Phase 0 - grep confirms no ANCHOR: or {{#if pack: patterns remain, all tests pass
-- [ ] Phase 1.1: Simplify SectionParser to only SECTION_PATTERN and EXTEND_PATTERN (remove ANCHOR, NEW_SECTION, APPEND handling)
-- [ ] Phase 1.2: Implement merge_extensions() method in SectionParser to merge EXTEND content into SECTION regions
-- [ ] Phase 1.3: Update all {{include-anchor:path#name}} to {{include-section:path#name}} across codebase
-- [ ] Phase 1.4: Write tests for SectionParser (parse_section, parse_extend, merge_single/multiple_extensions, preserves_markers)
-- [ ] Phase 1.5: Verify Phase 1 - all SectionParser tests pass, no legacy patterns remain
-- [ ] Phase 2.1: Create transformers/base.py with ContentTransformer abstract base class
-- [ ] Phase 2.2: Create transformers/includes.py (IncludeResolver + SectionExtractor)
-- [ ] Phase 2.3: Extend transformers/conditionals.py with ConditionalProcessor transformer
-- [ ] Phase 2.4: Create transformers/loops.py (LoopExpander for {{#each collection}})
-- [ ] Phase 2.5: Create transformers/variables.py (ConfigVar, ContextVar, PathVar replacers)
-- [ ] Phase 2.6: Create transformers/references.py (ReferenceRenderer for {{reference-section:}})
-- [ ] Phase 2.7: Create core/report.py with CompositionReport dataclass
-- [ ] Phase 2.8: Create engine.py with TemplateEngine class implementing 9-step transformation pipeline
-- [ ] Phase 2.9: Add resolve_single_include() helper function to includes.py for 3-layer search
-- [ ] Phase 2.10: Update cli/compose/all.py for two-phase composition (Phase 1: LayeredComposer, Phase 2: TemplateEngine)
-- [ ] Phase 2.11: Write tests for TemplateEngine (all 9 transformations + two-phase integration)
-- [ ] Phase 2.12: Write tests for each individual transformer module
-- [ ] Phase 2.13: Verify Phase 2 - TemplateEngine processes all markers, two-phase works end-to-end
-- [ ] Phase 3.1: Create core/base.py with CompositionBase class (extract from BaseRegistry + IDEComposerBase)
-- [ ] Phase 3.2: Create output/writer.py with CompositionFileWriter (write_text, write_json, write_yaml, write_executable)
-- [ ] Phase 3.3: Create output/resolver.py with OutputPathResolver (merge OutputConfigLoader + CompositionPathResolver)
-- [ ] Phase 3.4: Create core/errors.py with unified error hierarchy (12 error classes)
-- [ ] Phase 3.5: Create core/metadata.py with MetadataExtractor for unified frontmatter parsing
-- [ ] Phase 3.6: Write tests for all Phase 3 infrastructure (base, writer, resolver, errors, metadata)
-- [ ] Phase 3.7: Verify Phase 3 - ~90 lines duplication eliminated, all infrastructure tests pass
-- [ ] Phase 4.1: Update BaseRegistry to extend CompositionBase, implement _setup_composition_dirs()
-- [ ] Phase 4.2: Update IDEComposerBase to extend CompositionBase, implement _setup_composition_dirs()
-- [ ] Phase 4.3: Update GuidelineRegistry to use LayeredComposer and LayerDiscovery
-- [ ] Phase 4.4: Update FilePatternRegistry to use CompositionPathResolver
-- [ ] Phase 4.5: Update JsonSchemaComposer to use CompositionFileWriter
-- [ ] Phase 4.6: Add _load_yaml_with_fallback(), _load_layered_config(), _merge_with_handlers() to IDEComposerBase
-- [ ] Phase 4.7: Migrate IDE composers (hooks, commands, settings, coderabbit) to use _load_layered_config()
-- [ ] Phase 4.8: Consolidate ZenSync - create zen.py, delete 5 files in zen/ directory
-- [ ] Phase 4.9: Consolidate PromptAdapter base classes - enhance adapters/base.py, delete prompt/base.py
-- [ ] Phase 4.10: Fix CodexAdapter to use ConfigMixin instead of duplicate _load_config()
-- [ ] Phase 4.11: Update ClaudeSync and CursorSync adapters to use ConfigMixin
-- [ ] Phase 4.12: Update all registries to use unified error hierarchy from core/errors.py
-- [ ] Phase 4.13: Final verification - all tests pass, ~200+ lines eliminated, edison compose all works

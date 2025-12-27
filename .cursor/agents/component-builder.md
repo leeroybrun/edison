@@ -2,7 +2,6 @@
 name: component-builder
 description: "UI component specialist for accessible, responsive interfaces"
 model: claude
-zenRole: "agent-component-builder"
 allowed_tools:
   - Read
   - Edit
@@ -292,7 +291,7 @@ pytest tests/ -v --tb=short
 Use Context7 to refresh your knowledge **before** implementing or validating when work touches any configured post-training package.
 
 - Project overrides live in `.edison/config/context7.yaml`.
-- To view the merged effective Context7 configuration (core → packs → project), run: `edison config show context7 --format yaml`.
+- To view the merged effective Context7 configuration (core → packs → user → project), run: `edison config show context7 --format yaml`.
 - If the task/change does not touch any configured package, do not spend context on Context7.
 - When required, record evidence using the project's configured evidence markers/locations (don’t invent new file names).
 

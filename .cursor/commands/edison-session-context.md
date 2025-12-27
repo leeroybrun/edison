@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=session-context platform=cursor -->
+
 # edison-session-context
 
 Prints a small, deterministic context refresher intended for:

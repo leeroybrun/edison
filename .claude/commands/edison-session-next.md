@@ -1,5 +1,11 @@
 ---
 description: "Show next session steps"
+edison-generated: true
+edison-id: "session-next"
+edison-platform: "claude"
+
+
+argument-hint: "session_id"
 
 
 ---
@@ -13,8 +19,13 @@ session/task/QA state and returns the recommended next actions.
 
 
 ```bash
-edison session next
+edison session next <session_id>
 ```
+
+
+## Arguments
+
+- **session_id** (required): Session identifier (e.g., sess-001). If unknown, run `edison session status` first.
 
 
 

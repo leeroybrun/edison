@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=start-auto-next platform=cursor -->
+
 # edison-start-auto-next
 
 Prints the Edison START_AUTO_NEXT prompt used to automatically determine next actions.
@@ -6,7 +8,7 @@ Prints the Edison START_AUTO_NEXT prompt used to automatically determine next ac
 ## Usage
 
 ```bash
-edison compose start && cat .edison/_generated/start/START_AUTO_NEXT.md
+edison compose all --start && cat .edison/_generated/start/START_AUTO_NEXT.md
 ```
 
 

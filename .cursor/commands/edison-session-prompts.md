@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=session-prompts platform=cursor -->
+
 # edison-session-prompts
 
 Workflow: discover which START_* prompts exist for this repo (project-composed

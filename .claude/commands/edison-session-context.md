@@ -1,5 +1,9 @@
 ---
 description: "Print hook-safe session context"
+edison-generated: true
+edison-id: "session-context"
+edison-platform: "claude"
+
 
 
 ---

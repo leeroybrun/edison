@@ -1,7 +1,11 @@
 ---
 description: "Mark task ready for QA (wip→done)"
+edison-generated: true
+edison-id: "task-ready"
+edison-platform: "claude"
 
-argument-hint: "task_id"
+
+argument-hint: "record_id"
 
 
 ---
@@ -17,13 +21,13 @@ Use this only when:
 
 
 ```bash
-edison task ready $1
+edison task ready <record_id>
 ```
 
 
 ## Arguments
 
-- **task_id** (required): Task identifier
+- **record_id**: Task identifier to mark ready (omit to list ready tasks)
 
 
 
@@ -37,4 +41,4 @@ edison task ready $1
 
 - /edison-qa-new
 
-- /edison-validate-now
+- /edison-qa-validate

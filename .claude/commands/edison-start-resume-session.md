@@ -1,5 +1,9 @@
 ---
 description: "Print START_RESUME_SESSION prompt"
+edison-generated: true
+edison-id: "start-resume-session"
+edison-platform: "claude"
+
 
 
 ---
@@ -10,7 +14,7 @@ Prints the Edison START_RESUME_SESSION prompt used to resume work in an existing
 
 
 ```bash
-edison compose start && cat .edison/_generated/start/START_RESUME_SESSION.md
+edison compose all --start && cat .edison/_generated/start/START_RESUME_SESSION.md
 ```
 
 

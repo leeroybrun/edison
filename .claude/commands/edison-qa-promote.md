@@ -1,5 +1,9 @@
 ---
 description: "Promote QA/task to validated"
+edison-generated: true
+edison-id: "qa-promote"
+edison-platform: "claude"
+
 
 argument-hint: "task_id"
 
@@ -17,7 +21,7 @@ Only use when:
 
 
 ```bash
-edison qa promote $1
+edison qa promote <task_id>
 ```
 
 
@@ -34,5 +38,7 @@ edison qa promote $1
 
 
 ## Related Commands
+
+- /edison-qa-round
 
 - /edison-qa-audit

@@ -9,6 +9,19 @@
 # Emit a minimal, deterministic context refresher.
 command -v edison >/dev/null 2>&1 && edison session context 2>/dev/null || true
 
+_edison_audit_event() {
+  # Fail-open: audit must never break hooks.
+  local event="$1"
+  shift || true
+  edison audit event "$event" \
+    --repo-root "$PWD" \
+    --field "hook_id=compaction-reminder" \
+    --field "hook_type=PreCompact" \
+    "$@" 2>/dev/null || true
+}
+
+command -v edison >/dev/null 2>&1 && _edison_audit_event "hook.compaction-reminder" || true
+
 
 
 # Configuration from hooks.yaml

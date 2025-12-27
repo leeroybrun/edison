@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=start-new-session platform=cursor -->
+
 # edison-start-new-session
 
 Prints the Edison START_NEW_SESSION prompt used to bootstrap a fresh session.
@@ -7,7 +9,7 @@ This is a prompt document meant for the LLM; it does not mutate task/session sta
 ## Usage
 
 ```bash
-edison compose start && cat .edison/_generated/start/START_NEW_SESSION.md
+edison compose all --start && cat .edison/_generated/start/START_NEW_SESSION.md
 ```
 
 

@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=session-status platform=cursor -->
+
 # edison-session-status
 
 Workflow: inspect current session state (tasks, worktree, validation state).

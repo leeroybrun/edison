@@ -1,5 +1,9 @@
 ---
 description: "Create QA brief for a task"
+edison-generated: true
+edison-id: "qa-new"
+edison-platform: "claude"
+
 
 argument-hint: "task_id"
 
@@ -16,7 +20,7 @@ Notes:
 
 
 ```bash
-edison qa new $1
+edison qa new <task_id>
 ```
 
 
@@ -37,4 +41,4 @@ edison qa new $1
 
 - /edison-qa-validate
 
-- /edison-qa-audit
+- /edison-qa-round

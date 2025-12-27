@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=qa-validate platform=cursor -->
+
 # edison-qa-validate
 
 Workflow: run QA validation for a specific task (creates a validation round).
@@ -6,7 +8,7 @@ Workflow: run QA validation for a specific task (creates a validation round).
 ## Usage
 
 ```bash
-edison qa validate $1 --round 1
+edison qa validate <task_id> --execute
 ```
 
 
@@ -20,13 +22,13 @@ edison qa validate $1 --round 1
 ## When to use
 
 - The task is `done` and ready for validation
-- You need a deterministic round number
+- You want Edison to run the validators (use `--execute`)
 
 
 
 
 ## Related
 
-- /edison-qa-audit
+- /edison-qa-round
 
 - /edison-qa-promote

@@ -1,7 +1,11 @@
 ---
 description: "Create a new task (playbook)"
+edison-generated: true
+edison-id: "task-new"
+edison-platform: "claude"
 
-argument-hint: "id slug desc"
+
+argument-hint: "id slug"
 
 
 ---
@@ -16,7 +20,7 @@ Recommended:
 
 
 ```bash
-edison task new --id <id> --slug <slug> --description "<desc>"
+edison task new --id <id> --slug <slug>
 
 ```
 
@@ -26,8 +30,6 @@ edison task new --id <id> --slug <slug> --description "<desc>"
 - **id** (required): Numeric id (e.g., 100)
 
 - **slug** (required): Short slug (e.g., implement-auth)
-
-- **desc** (required): Human description / acceptance criteria
 
 
 

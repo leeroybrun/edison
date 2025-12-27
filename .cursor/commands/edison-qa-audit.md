@@ -1,30 +1,29 @@
+<!-- EDISON:GENERATED id=qa-audit platform=cursor -->
+
 # edison-qa-audit
 
-Workflow: audit the QA record to see current state, rounds, and outstanding blockers.
+Workflow: audit Edison prompt/guideline content for quality issues:
+- duplication across guidelines
+- purity violations (project terms leaking into core/packs)
 
 
 ## Usage
 
 ```bash
-edison qa audit $1
+edison qa audit --check-duplication --check-purity
 ```
-
-
-## Arguments
-
-- task_id (required): Task identifier
 
 
 
 
 ## When to use
 
-- You want to see what is blocking promotion
-- You want to confirm whether validators agree
+- You suspect duplicated/conflicting guidance across the composed stack
+- You want to enforce prompt best practices (single source of truth)
 
 
 
 
 ## Related
 
-- /edison-qa-validate
+- /edison-rules-current

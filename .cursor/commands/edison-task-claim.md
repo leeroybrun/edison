@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=task-claim platform=cursor -->
+
 # edison-task-claim
 
 Workflow: move a task from `todo` → `wip` and associate it with the active session.
@@ -10,13 +12,13 @@ After claiming:
 ## Usage
 
 ```bash
-edison task claim $1
+edison task claim <record_id>
 ```
 
 
 ## Arguments
 
-- task_id (required): Task identifier (e.g., TASK-123, 150-implement-feature)
+- record_id (required): Task or QA identifier (e.g., 150-wave1-auth-gate)
 
 
 

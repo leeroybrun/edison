@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=rules-current platform=cursor -->
+
 # edison-rules-current
 
 Displays rules applicable to the current task state.

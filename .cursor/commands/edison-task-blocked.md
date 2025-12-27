@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=task-blocked platform=cursor -->
+
 # edison-task-blocked
 
 Lists todo tasks that are blocked by unmet `depends_on` prerequisites,

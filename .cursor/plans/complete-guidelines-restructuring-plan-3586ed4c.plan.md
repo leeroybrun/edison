@@ -1,4 +1,36 @@
-<!-- 3586ed4c-83d4-402b-b34c-42118219eed2 c8396b52-8a1a-4a5a-8edf-d806c3fc4c7d -->
+---
+name: Complete Edison Guidelines Unification Plan
+overview: ""
+todos:
+  - id: 56be8ecf-6361-4889-895d-c728df0fcf07
+    content: Create includes/ directory with TDD.md, NO_MOCKS.md, CONTEXT7.md, QUALITY.md, HONEST_STATUS.md, VALIDATION.md (all with role sections)
+    status: pending
+  - id: 44862b5c-585c-4a1b-b4ab-ea5d487e0010
+    content: Redesign constitutions to embed critical content via include-section
+    status: pending
+  - id: 677c1839-bb54-4028-8384-03478166a419
+    content: "Redesign all 6 agent prompts: add {{include:constitution}}, slim to role-specific content"
+    status: pending
+  - id: 746d560f-89ec-4fac-baca-954506dcf82f
+    content: "Redesign all validator prompts: add {{include:constitution}}, slim content"
+    status: pending
+  - id: 49f3e433-332e-47c2-b998-c270f09845b9
+    content: Update all pack overlays to use EXTEND pattern only (Python, Vitest, React, NextJS, etc.)
+    status: pending
+  - id: 0437c07e-b9b6-4ace-8bcc-68033219d49b
+    content: Remove generic content from pack guidelines, add SECTION markers
+    status: pending
+  - id: f18c75b8-4247-4a93-829a-e7fd8a76571b
+    content: Create state_machine.py, update tasks_states.py to read from config
+    status: pending
+  - id: ec6f032e-2b5f-442d-9c5d-4f99355599bf
+    content: Delete redundant files, update constitution.yaml to empty mandatoryReads
+    status: pending
+  - id: 1d2e5a87-0612-4d6b-882d-725efe118bf3
+    content: Run edison compose --all, verify sizes reduced, test re-read instructions
+    status: pending
+---
+
 # Complete Edison Guidelines Unification Plan
 
 ## Executive Summary
@@ -839,15 +871,3 @@ orchestrator:
 6. **Single Source of Truth**: Change includes file → propagates to all
 7. **Functions for Dynamic**: State machine from config, not hardcoded
 8. **Empty mandatoryReads**: All critical content embedded, optionalReads for deep-dives
-
-### To-dos
-
-- [ ] Create includes/ directory with TDD.md, NO_MOCKS.md, CONTEXT7.md, QUALITY.md, HONEST_STATUS.md, VALIDATION.md (all with role sections)
-- [ ] Redesign constitutions to embed critical content via include-section
-- [ ] Redesign all 6 agent prompts: add {{include:constitution}}, slim to role-specific content
-- [ ] Redesign all validator prompts: add {{include:constitution}}, slim content
-- [ ] Update all pack overlays to use EXTEND pattern only (Python, Vitest, React, NextJS, etc.)
-- [ ] Remove generic content from pack guidelines, add SECTION markers
-- [ ] Create state_machine.py, update tasks_states.py to read from config
-- [ ] Delete redundant files, update constitution.yaml to empty mandatoryReads
-- [ ] Run edison compose --all, verify sizes reduced, test re-read instructions

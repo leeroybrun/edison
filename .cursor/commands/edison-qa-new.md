@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id=qa-new platform=cursor -->
+
 # edison-qa-new
 
 Workflow: create (or ensure) the QA brief/record for a completed task.
@@ -10,7 +12,7 @@ Notes:
 ## Usage
 
 ```bash
-edison qa new $1
+edison qa new <task_id>
 ```
 
 
@@ -33,4 +35,4 @@ edison qa new $1
 
 - /edison-qa-validate
 
-- /edison-qa-audit
+- /edison-qa-round

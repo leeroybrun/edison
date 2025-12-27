@@ -1,4 +1,66 @@
-<!-- 37e49df7-55c0-46d3-a20a-81761327d236 80eff9ff-4127-48ed-9f1c-0ad9b19af3b2 -->
+---
+name: Edison Composition Unification - Comprehensive Architecture
+overview: ""
+todos:
+  - id: e4aa80c0-52ac-4fac-86d1-eb70b0562826
+    content: "Phase 1.1: Simplify SectionParser to only SECTION and EXTEND patterns"
+    status: pending
+  - id: 6ec7b0d5-6dbe-4e79-92ea-06ce319297d2
+    content: "Phase 1.2: Migrate all ANCHOR markers to SECTION in edison.data templates"
+    status: pending
+  - id: da2bf51d-e1c7-45da-852e-5fae24b45a84
+    content: "Phase 1.3: Remove {{SECTION:Name}}, {{EXTENSIBLE_SECTIONS}}, {{APPEND_SECTIONS}} placeholders"
+    status: pending
+  - id: 5309940d-1eec-4bc1-9037-5f4856fc314f
+    content: "Phase 1.4: Add composed-additions sections to templates that need pack extensions"
+    status: pending
+  - id: e6165a9e-026c-46e1-a91c-fae588507032
+    content: "Phase 2.1: Create CompositionFileWriter in output/writer.py"
+    status: pending
+  - id: 93b4e167-88ed-495a-a6d6-1494565c887c
+    content: "Phase 2.2: Create CompositionReport in core/report.py"
+    status: pending
+  - id: c1ea56ec-7feb-4b18-b1db-bd586d592a95
+    content: "Phase 2.3: Create transformers module (base, includes, conditionals, loops, variables, references)"
+    status: pending
+  - id: 0216c937-39c9-4a97-b3cf-a6082d6657fc
+    content: "Phase 2.4: Create TemplateEngine in engine.py"
+    status: pending
+  - id: 3c619b7e-dd76-4711-a408-03259b8b1597
+    content: "Phase 2.5: Update cli/compose/all.py for two-phase composition"
+    status: pending
+  - id: cec27007-8086-474a-8496-638a168ab230
+    content: "Phase 3.1: Create CompositionBase in core/base.py"
+    status: pending
+  - id: f4c658b5-8ee0-4fbb-ad72-d55048bd247c
+    content: "Phase 3.2: Create OutputPathResolver in output/resolver.py"
+    status: pending
+  - id: ecd20e97-d25d-4b2e-a87d-ec9ac5a23398
+    content: "Phase 3.3: Update BaseRegistry to extend CompositionBase"
+    status: pending
+  - id: fb4fd947-5f7d-4321-a2d5-bc2c27ac2ec9
+    content: "Phase 3.4: Update IDEComposerBase to extend CompositionBase"
+    status: pending
+  - id: 58a8520b-ed10-4e98-9037-ff201c6f3ce2
+    content: "Phase 4.1: Update GuidelineRegistry to use LayeredComposer"
+    status: pending
+  - id: 741d7cf8-a329-47a9-b7bd-5aa99a714ab5
+    content: "Phase 4.2: Add _load_layered_config utilities to IDEComposerBase"
+    status: pending
+  - id: 0860583b-fc56-4bcb-a1e6-116c82899af2
+    content: "Phase 4.3: Migrate HookComposer, SettingsComposer, CodeRabbitComposer to use utilities"
+    status: pending
+  - id: 5be4704a-bcce-4e8d-89b0-060353e886e8
+    content: "Phase 4.4: Update sync adapters to use ConfigMixin and lazy registries"
+    status: pending
+  - id: d94a1ac6-cab1-42c7-9017-861c9a26d3f0
+    content: "Phase 4.5: Consolidate Zen adapter from 4 files to 1"
+    status: pending
+  - id: 94d8d70d-5b05-451f-8fb9-9070be44c535
+    content: "Phase 4.6: Fix CodexAdapter to use ConfigMixin instead of reimplementing"
+    status: pending
+---
+
 # Edison Composition Unification - Comprehensive Architecture
 
 ## Executive Summary
@@ -693,25 +755,3 @@ class TemplateEngine:
 ## References
 - guidelines/shared/VALIDATION.md#tdd-rules: TDD rules for reference
 ```
-
-### To-dos
-
-- [ ] Phase 1.1: Simplify SectionParser to only SECTION and EXTEND patterns
-- [ ] Phase 1.2: Migrate all ANCHOR markers to SECTION in edison.data templates
-- [ ] Phase 1.3: Remove {{SECTION:Name}}, {{EXTENSIBLE_SECTIONS}}, {{APPEND_SECTIONS}} placeholders
-- [ ] Phase 1.4: Add composed-additions sections to templates that need pack extensions
-- [ ] Phase 2.1: Create CompositionFileWriter in output/writer.py
-- [ ] Phase 2.2: Create CompositionReport in core/report.py
-- [ ] Phase 2.3: Create transformers module (base, includes, conditionals, loops, variables, references)
-- [ ] Phase 2.4: Create TemplateEngine in engine.py
-- [ ] Phase 2.5: Update cli/compose/all.py for two-phase composition
-- [ ] Phase 3.1: Create CompositionBase in core/base.py
-- [ ] Phase 3.2: Create OutputPathResolver in output/resolver.py
-- [ ] Phase 3.3: Update BaseRegistry to extend CompositionBase
-- [ ] Phase 3.4: Update IDEComposerBase to extend CompositionBase
-- [ ] Phase 4.1: Update GuidelineRegistry to use LayeredComposer
-- [ ] Phase 4.2: Add _load_layered_config utilities to IDEComposerBase
-- [ ] Phase 4.3: Migrate HookComposer, SettingsComposer, CodeRabbitComposer to use utilities
-- [ ] Phase 4.4: Update sync adapters to use ConfigMixin and lazy registries
-- [ ] Phase 4.5: Consolidate Zen adapter from 4 files to 1
-- [ ] Phase 4.6: Fix CodexAdapter to use ConfigMixin instead of reimplementing
