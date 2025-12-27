@@ -39,4 +39,6 @@ You are auto-starting work as an **ORCHESTRATOR**.
 edison task ready --json     # Get ready tasks as JSON
 edison session create [--session-id <id>]  # Create a session record (ID auto-infers if omitted)
 edison task claim <id>       # Claim tasks
+edison session context      # Print current session state and context
+edison session next      # Print next recommended actions
 ```

@@ -14,6 +14,7 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 
 3. **Display Status**
    Run: `edison session status`
+   Run: `edison session context`
    Run: `edison task status`
 
 4. **Report to User**
