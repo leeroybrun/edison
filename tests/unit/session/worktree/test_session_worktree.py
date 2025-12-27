@@ -469,6 +469,47 @@ def test_create_worktree_applies_worktree_local_git_excludes(session_git_repo_pa
     assert ".project/" in contents.splitlines()
 
 
+def test_create_worktree_writes_excludes_for_shared_path_symlinks(session_git_repo_path):
+    """Configured shared path symlinks should not show as untracked noise.
+
+    Git treats a symlink as a file, so excluding only `.specify/` does not ignore a `.specify`
+    symlink. Edison should write exclude patterns that ignore the symlink path itself.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Git worktree exclude paths differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".specify", "scopes": ["session"]}]
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    sid = "git-excludes-shared-path"
+    wt_path, _ = worktree.create_worktree(sid, base_branch="main")
+    assert wt_path is not None
+    assert (wt_path / ".specify").is_symlink()
+
+    cp = run_with_timeout(
+        ["git", "rev-parse", "--git-dir"],
+        cwd=wt_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    raw_git_dir = (cp.stdout or "").strip()
+    assert raw_git_dir
+    git_dir = Path(raw_git_dir)
+    if not git_dir.is_absolute():
+        git_dir = (wt_path / git_dir).resolve()
+
+    exclude_file = git_dir / "info" / "exclude"
+    assert exclude_file.exists()
+    contents = exclude_file.read_text(encoding="utf-8").splitlines()
+    assert ".specify" in contents
+
+
 def test_ensure_meta_worktree_installs_commit_guard_hook(session_git_repo_path):
     """Meta worktree should install a pre-commit hook to keep meta branch clean."""
     if sys.platform.startswith("win"):
@@ -673,6 +714,38 @@ def test_recreate_meta_shared_state_resets_non_orphan_and_preserves_shared_paths
     wt, _ = worktree.create_worktree("after-recreate", base_branch="main")
     assert wt is not None
     assert (wt / ".specify" / "foo.txt").exists()
+
+
+def test_recreate_meta_shared_state_does_not_follow_symlink_cycles(session_git_repo_path):
+    """Meta recreate must not follow symlinks when snapshotting preserved state."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    meta_dir = session_git_repo_path / "worktrees" / "_meta"
+    meta_branch = "edison-meta"
+
+    run_with_timeout(
+        ["git", "worktree", "add", "-b", meta_branch, str(meta_dir), "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    recovery = meta_dir / ".project" / "sessions" / "recovery"
+    recovery.mkdir(parents=True, exist_ok=True)
+    (recovery / "real").mkdir(parents=True, exist_ok=True)
+    (recovery / "real" / "seed.txt").write_text("seed\n", encoding="utf-8")
+
+    cycle = recovery / "cycle"
+    if cycle.exists() or cycle.is_symlink():
+        cycle.unlink()
+    cycle.symlink_to(recovery, target_is_directory=True)
+
+    out = worktree.recreate_meta_shared_state(force=True)
+    assert out.get("recreated") is True
+    assert (meta_dir / ".project" / "sessions" / "recovery" / "real" / "seed.txt").exists()
+    assert (meta_dir / ".project" / "sessions" / "recovery" / "cycle").is_symlink()
 
 
 def test_recreate_meta_shared_state_refuses_tracked_without_force(session_git_repo_path):
