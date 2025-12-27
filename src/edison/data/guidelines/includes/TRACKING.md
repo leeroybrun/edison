@@ -1,7 +1,9 @@
 # Tracking (Agents/Validators/Orchestrators) - Include-Only File
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
-Edison uses *evidence reports* as the durable source of truth for “who did what, when”.
+Edison uses:
+- **Evidence reports** as the durable source of truth for per-task/per-round “who did what, when”.
+- An **append-only process events log** as the durable source of truth for listing and correlating running/stopped LLM processes across the project/session/task.
 
 Tracking metadata lives in:
 - Implementation report `tracking.*` (per task round)
@@ -10,6 +12,7 @@ Tracking metadata lives in:
 The UI can derive “active” vs “historical” by combining:
 - Report status (`completionStatus=partial`, `verdict=pending`) and timestamps
 - Best-effort PID liveness (local only)
+- The derived **process index** computed from the JSONL process events stream
 
 <!-- section: agent-tracking -->
 ## agent-tracking
@@ -66,4 +69,8 @@ edison session track processes --json
 - `continuationId` (when provided)
 - `isRunning` (best-effort local liveness; `null` when hostname is not local)
 - `isStale` (computed from `lastActive` and `orchestration.tracking.activeStaleSeconds`)
+
+Notes:
+- `processes` computes a project-wide process list from the JSONL stream. It may append `process.detected_stopped` events for dead local PIDs so future listings don’t need to re-check them.
+- `sweep` is an explicit “refresh the stop events now” command.
 <!-- /section: orchestrator-monitoring -->

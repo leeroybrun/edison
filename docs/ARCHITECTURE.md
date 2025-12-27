@@ -826,7 +826,7 @@ Validators are configured in `validators.yaml` with:
 3. **CLIEngine** executes validators directly via CLI tools when available
 4. **Fallback**: If CLI unavailable, `ZenMCPEngine` generates delegation instructions
 5. **Parsers** normalize CLI output to structured `ValidationResult`
-6. **Evidence** saved to `.edison/qa/validation-evidence/{task-id}/round-N/`
+6. **Evidence** saved to `.project/qa/validation-evidence/{task-id}/round-N/`
 7. **Results** feed into QA state machine for promotion decisions
 
 ### Unified Validator Execution
@@ -892,39 +892,26 @@ The validation system uses a centralized `ValidationExecutor` for all execution:
 
 ```
 my-project/
-├── .edison/                    # Edison management directory
-│   ├── config/                 # Project configuration
-│   │   ├── project.yaml        # Project metadata
-│   │   ├── workflow.yaml       # Workflow overrides
-│   │   └── ...
-│   ├── sessions/               # Session data
-│   │   └── S-20251201-183000/  # Session instance
-│   │       ├── session.json    # Session entity
-│   │       ├── tasks/          # Task entities
-│   │       │   └── T-001.json
-│   │       └── qa/             # QA entities
-│   │           └── T-001-qa.json
-│   ├── tasks/                  # Global task registry
-│   │   └── T-001.json
-│   ├── qa/                     # QA data
+├── .edison/                    # Edison configuration + overlays (tracked)
+│   ├── config/                 # Project configuration (tracked)
+│   ├── config.local/           # Project-local overrides (uncommitted)
+│   ├── agents/                 # Project agent overlays (optional)
+│   ├── validators/             # Project validator overlays (optional)
+│   ├── guidelines/             # Project guidelines (optional)
+│   ├── rules/                  # Project rules (optional)
+│   └── _generated/             # Composed artifacts (DO NOT EDIT)
+├── .project/                   # Project management artifacts (uncommitted)
+│   ├── tasks/                  # Task state files
+│   ├── qa/                     # QA briefs + evidence
 │   │   └── validation-evidence/
-│   │       └── T-001/          # Evidence for task T-001
+│   │       └── T-001/
 │   │           └── round-1/
 │   │               ├── implementation-report.md
-│   │               └── validator-results/
-│   ├── _generated/             # Composed artifacts (DO NOT EDIT)
-│   │   ├── agents/
-│   │   ├── validators/
-│   │   ├── constitutions/
-│   │   └── ...
-│   ├── agents/                 # Project agent overlays (OPTIONAL)
-│   │   └── overlays/
-│   │       └── api-builder.md  # Customize API builder
-│   ├── validators/             # Project validator overlays (OPTIONAL)
-│   │   └── overlays/
-│   ├── guidelines/             # Project guidelines (OPTIONAL)
-│   └── rules/                  # Project rules (OPTIONAL)
-│       └── registry.yml
+│   │               └── validator-security-report.md
+│   ├── sessions/               # Session entities + worktree links
+│   └── logs/                   # Runtime logs (append-only)
+│       └── edison/
+│           └── process-events.jsonl
 ├── .claude/                    # Claude IDE integration
 │   ├── settings.json           # IDE settings (generated)
 │   └── commands/               # Slash commands (generated)
@@ -935,8 +922,12 @@ my-project/
 │   ├── settings.json
 │   └── ...
 ├── .mcp.json                   # MCP server configuration
-└── .gitignore                  # Git ignore (includes .edison/sessions/)
+└── .gitignore                  # Git ignore (includes .project/ and .edison/_generated/)
 ```
+
+Notes:
+- The project management directory defaults to `.project` and is configurable via `project_management_dir`.
+- The process events log is append-only and is used to derive the “current process list” in the CLI/UI.
 
 ### File Naming Conventions
 

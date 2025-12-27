@@ -1107,12 +1107,33 @@ validation:
   transaction:
     maxAgeHours: 24
     autoCleanup: true
-
-orchestration:
-  maxConcurrentAgents: 4
-  validatorTimeout: 300
-  executionMode: parallel
 ```
+
+---
+
+### orchestration.yaml
+
+Multi-agent orchestration and process tracking configuration.
+
+```yaml
+orchestration:
+  # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
+  # Default is false for safety and determinism; projects may override.
+  allowCliEngines: false
+
+  tracking:
+    # Staleness threshold for "active" runs (seconds since lastActive heartbeat).
+    activeStaleSeconds: 120
+
+    # Append-only process events log (JSONL). This is the source of truth for the
+    # process list shown in the CLI and edison-ui.
+    processEventsJsonl: "{PROJECT_MANAGEMENT_DIR}/logs/edison/process-events.jsonl"
+```
+
+Notes:
+- This file is **append-only** at runtime: Edison appends one JSON object per line.
+- The “process index” is derived from events (no mutable `process-index.json` file).
+- Edison may append `process.detected_stopped` when it detects a tracked local PID is no longer running.
 
 ---
 

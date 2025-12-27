@@ -108,6 +108,7 @@ guidelines/
 ├── includes/            # NEVER read directly (section-only)
 │   ├── TDD.md          # Has sections: principles, agent-execution, validator-check, orchestrator-verify
 │   ├── NO_MOCKS.md     # Has sections: philosophy, agent-impl, validator-flags
+│   ├── TRACKING.md     # Has sections: agent-tracking, validator-tracking, orchestrator-monitoring
 │   └── ...
 ├── shared/              # Can be read directly (optional deep-dives)
 └── agents/              # Role-specific files

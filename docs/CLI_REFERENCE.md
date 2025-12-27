@@ -741,6 +741,10 @@ edison session track sweep [options]
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
+**Notes:**
+- `edison session track processes` also performs best-effort stop detection by default; use `track sweep` for an explicit “update the log now” pass.
+- Once a run has a stop event, Edison treats it as `stopped` and will not keep re-checking its liveness.
+
 #### track processes - List Tracked Processes
 
 List tracked processes computed from the append-only JSONL process events stream.
@@ -756,6 +760,10 @@ edison session track processes [options]
 | `--all` | Include stopped processes (default: active only) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
+
+**Notes:**
+- `track processes` derives a “process index” from the append-only JSONL stream (no mutable index file).
+- For runs still marked `active`, Edison performs best-effort PID liveness checks (local host only). If a PID is detected as not running, Edison appends a `process.detected_stopped` event so future listings don’t need to re-check it.
 
 **Examples:**
 

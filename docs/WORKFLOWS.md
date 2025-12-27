@@ -138,9 +138,12 @@ filePatternRules:
   "blockers": [],
   "followUpTasks": [],
   "tracking": {
+    "runId": "b6b8c0b9-5d8e-41ee-9c80-5ee421c1f2ac",
     "processId": 12345,
     "startedAt": "2025-12-01T10:00:00Z",
+    "lastActive": "2025-12-01T10:10:00Z",
     "completedAt": "2025-12-01T10:30:00Z",
+    "continuationId": "optional-resume-id",
     "hostname": "dev-machine"
   },
   "tddCompliance": {
@@ -148,6 +151,10 @@ filePatternRules:
   }
 }
 ```
+
+Notes:
+- `tracking.completedAt` is **optional until the run is completed**; do not fabricate it at start.
+- `tracking.runId` is the stable join key between evidence reports and the append-only process events log.
 
 ---
 
@@ -159,13 +166,24 @@ edison session track start --task <id> --type implementation
 
 # Complete tracking
 edison session track complete --task <id>
+
+# Optional: update liveness/stop events in the process log
+edison session track sweep --json
+
+# Project-wide process list (computed from process events JSONL)
+edison session track processes --json
 ```
 
 **Heartbeat tracking:**
 - Process ID recording
 - Timestamp tracking
 - Hostname identification
-- Session association
+- `runId` correlation across systems
+
+**Process tracking (project-wide):**
+- Edison writes an append-only JSONL stream at:
+  - `.project/logs/edison/process-events.jsonl` (default; configurable via `orchestration.tracking.processEventsJsonl`)
+- `edison session track processes` derives a process index from this log and will append `process.detected_stopped` for dead local PIDs so future listings don’t need to keep re-checking them.
 
 ---
 
@@ -260,12 +278,14 @@ edison qa run <validator-name> --task <task-id>
 
 **Validator configuration:**
 ```yaml
-# From qa.yaml
+# From orchestration.yaml
 orchestration:
-  maxConcurrentAgents: 4
-  validatorTimeout: 300
-  executionMode: parallel
+  allowCliEngines: false
+  tracking:
+    activeStaleSeconds: 120
+    processEventsJsonl: "{PROJECT_MANAGEMENT_DIR}/logs/edison/process-events.jsonl"
 
+# From qa.yaml
 validation:
   requiredEvidenceFiles:
     - command-type-check.txt
