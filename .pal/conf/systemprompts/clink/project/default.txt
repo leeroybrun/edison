@@ -115,25 +115,25 @@ These are designed to be embedded into agent/validator constitutions via `{{incl
 
 # Agent Common Guidelines (MANDATORY)
 
-Read this alongside your role constitution: `.edison/_generated/constitutions/AGENTS.md`.
+Read this alongside your role constitution: run `edison read AGENTS --type constitutions`.
 
 ## Canonical Guideline Roster
 Use this roster instead of repeating the table in each agent file:
 
-| # | Guideline | Path | Purpose |
+| # | Guideline | Read | Purpose |
 |---|-----------|------|---------|
-| 1 | **Workflow** | `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` | Implement → evidence/report → handoff (no orchestration) |
-| 2 | **TDD (embedded)** | `.edison/_generated/constitutions/AGENTS.md` | TDD principles + execution requirements |
-| 3 | **Validation** | `.edison/_generated/guidelines/shared/VALIDATION.md` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` |
-| 4 | **Delegation** | `.edison/_generated/guidelines/agents/DELEGATION_AWARENESS.md` | Config-driven, no re-delegation |
-| 5 | **Context7** | `.edison/_generated/guidelines/shared/CONTEXT7.md` | Post-training package docs |
-| 6 | **Rules** | `.edison/_generated/guidelines/agents/IMPORTANT_RULES.md` | Production-critical standards |
+| 1 | **Workflow** | `edison read MANDATORY_WORKFLOW --type guidelines/agents` | Implement → evidence/report → handoff (no orchestration) |
+| 2 | **TDD (embedded)** | `edison read AGENTS --type constitutions` | TDD principles + execution requirements |
+| 3 | **Validation** | `edison read VALIDATION --type guidelines/shared` | Multi-validator architecture; roster in `AVAILABLE_VALIDATORS.md` (`edison read AVAILABLE_VALIDATORS`) |
+| 4 | **Delegation** | `edison read DELEGATION_AWARENESS --type guidelines/agents` | Config-driven, no re-delegation |
+| 5 | **Context7** | `edison read CONTEXT7 --type guidelines/shared` | Post-training package docs |
+| 6 | **Rules** | `edison read IMPORTANT_RULES --type guidelines/agents` | Production-critical standards |
 
 ## Edison CLI & Validation Tools
 
 ### Edison CLI
 - `edison task status <task-id>` - Read-only: check task details/state
-- Tracking (mandatory): see `.edison/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` (includes the canonical tracking commands).
+- Tracking (mandatory): run `edison read MANDATORY_WORKFLOW --type guidelines/agents` (includes the canonical tracking commands).
 - `edison config show <domain> --format yaml` - Inspect merged config (read-only)
 
 > Orchestrator-only (do not run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa new`, `edison qa promote`, `edison qa bundle`, `edison qa validate`, `edison session next`, `edison git worktree-*`, `edison compose all`.
@@ -173,7 +173,7 @@ This project uses configuration-driven model selection managed by the orchestrat
 
 ### Configuration-Driven Delegation
 
-**Delegation Roster**: `.edison/_generated/AVAILABLE_AGENTS.md` (single source of truth for agent routing hints and model bindings presented to LLMs)
+**Delegation Roster**: run `edison read AVAILABLE_AGENTS` (single source of truth for agent routing hints and model bindings presented to LLMs)
 
 The orchestrator uses this configuration to assign tasks to the most appropriate agent based on:
 - File patterns being modified
@@ -184,7 +184,7 @@ The orchestrator uses this configuration to assign tasks to the most appropriate
 
 **You are a sub-agent** assigned by the orchestrator. Your workflow is:
 
-1. **READ** `.edison/_generated/AVAILABLE_AGENTS.md` to understand the active roster and routing hints
+1. **READ** `edison read AVAILABLE_AGENTS` to understand the active roster and routing hints
 2. **EXECUTE** if the task matches your role
 3. **IF MISMATCH**: Return `MISMATCH` with brief rationale
 4. **NEVER re-delegate** from within a sub-agent (orchestrator handles delegation)
@@ -244,7 +244,7 @@ Orchestrator → component-builder (UI work)
 
 ```pseudocode
 // Example: Reading the roster
-roster = read_markdown('.edison/_generated/AVAILABLE_AGENTS.md')
+roster = `edison read AVAILABLE_AGENTS`
 
 // Find your assigned agent entry and its scope hints (as rendered in the roster)
 // Then follow the orchestrator's instructions for your slice.
@@ -328,8 +328,8 @@ edison agents scope api-builder
 
 ## References
 
-- Delegation guide: `.edison/_generated/guidelines/shared/DELEGATION.md`
-- Schema: `.edison/_generated/schemas/config/delegation-config.schema.yaml`
+- Delegation guide: `edison read DELEGATION --type guidelines/shared`
+- Schema: `edison read delegation-config.schema.yaml --type schemas/config`
 
 ---
 
@@ -535,9 +535,9 @@ edison task status TASK-123 --json
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md` - Full agent workflow
-- `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md` - Output format requirements
-- `.edison/_generated/constitutions/AGENTS.md` - TDD requirements (embedded)
+- `edison read AGENT_WORKFLOW --type guidelines/agents` - Full agent workflow
+- `edison read OUTPUT_FORMAT --type guidelines/agents` - Output format requirements
+- `edison read AGENTS --type constitutions` - TDD requirements (embedded)
 
 ---
 
@@ -860,8 +860,8 @@ python -m build
 
 ## References
 
-- Quality standards: `.edison/_generated/guidelines/includes/QUALITY.md`
-- Honest status guide: `.edison/_generated/guidelines/shared/HONEST_STATUS.md`
+- Quality standards: `edison read QUALITY --type guidelines/includes`
+- Honest status guide: `edison read HONEST_STATUS --type guidelines/shared`
 
 ---
 
@@ -930,7 +930,7 @@ Notes:
 
 Create or update the implementation report for the current round:
 - **Path**: `.project/qa/validation-evidence/<task-id>/round-<N>/implementation-report.md` (filename is config-driven; default is `implementation-report.md`).
-- **Schema (LLM reference)**: `.edison/_generated/schemas/reports/implementation-report.schema.yaml`
+- **Schema (LLM reference)**: `edison read implementation-report.schema.yaml --type schemas/reports`
 - Include any implementation‑discovered follow-ups in `followUpTasks[]` (used by `edison session next` to propose follow-up planning).
 
 #### Phase 3: Handoff to orchestrator (do NOT self-validate)
@@ -973,9 +973,9 @@ edison task status <task-id>
 
 ## References
 
-- Extended workflow: `.edison/_generated/guidelines/agents/AGENT_WORKFLOW.md`
-- Output format: `.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`
-- Session workflow: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
+- Extended workflow: `edison read AGENT_WORKFLOW --type guidelines/agents`
+- Output format: `edison read OUTPUT_FORMAT --type guidelines/agents`
+- Session workflow: `edison read SESSION_WORKFLOW --type guidelines/orchestrators`
 
 ---
 
@@ -1002,7 +1002,7 @@ Example path:
 ## Schema (single source of truth)
 
 See the schema for the exact required fields:
-- `.edison/_generated/schemas/reports/implementation-report.schema.yaml`
+- `edison read implementation-report.schema.yaml --type schemas/reports`
 
 ## Required machine fields (YAML frontmatter)
 
@@ -3596,11 +3596,11 @@ class Repo(Protocol):
 
 # Delegation Models (Orchestrators)
 
-> Canonical path: `.edison/_generated/guidelines/orchestrators/DELEGATION.md` (composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
+> Canonical path: `.edison/_generated/guidelines/orchestrators/DELEGATION.md` (read via `edison read DELEGATION --type guidelines/orchestrators`; composed via ConfigManager overlays; never hardcode roles/models—resolve from YAML).
 
 ## Delegation Criteria
 
-- Load the delegation roster first: `.edison/_generated/AVAILABLE_AGENTS.md` (fail-closed if missing).
+- Load the delegation roster first: run `edison read AVAILABLE_AGENTS` (fail-closed if missing).
 - Source of truth lives in YAML overlays (core → packs → user → project), but orchestrators should rely on the generated roster + `edison session next` suggestions rather than hardcoding config paths in prompts.
 - Delegate by default; orchestrators implement only when criteria say **Handle Directly**.
 - Enforce the priority chain (user instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers). Stop if ambiguous.
@@ -3619,7 +3619,7 @@ class Repo(Protocol):
 ## Agent Selection Guidance
 
 - Resolve candidates from the generated roster + rules output (no hardcoded names). Use:
-  - `.edison/_generated/AVAILABLE_AGENTS.md`
+  - `edison read AVAILABLE_AGENTS`
   - `edison session next <session-id>`
 - Choose the **first deterministic match** from the priority chain; do not shop for a better model after selection.
 - Keep independence: separate implementer vs validator roles/models; never assign both to one agent.
@@ -4208,9 +4208,9 @@ edison session next sess-001
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` - Full session workflow
-- `.edison/_generated/guidelines/shared/DELEGATION.md` - Delegation priority chain
-- `.edison/_generated/guidelines/orchestrators/STATE_MACHINE_GUARDS.md` - State transition rules
+- `edison read SESSION_WORKFLOW --type guidelines/orchestrators` - Full session workflow
+- `edison read DELEGATION --type guidelines/shared` - Delegation priority chain
+- `edison read STATE_MACHINE_GUARDS --type guidelines/orchestrators` - State transition rules
 
 ---
 
@@ -4236,9 +4236,7 @@ edison session next sess-001
 
 # Session Workflow (Active Session Playbook)
 
-> **Canonical Location**: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (bundled with the core guidelines).
-
-Canonical path: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md`
+Canonical path: `.edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md` (read via `edison read SESSION_WORKFLOW --type guidelines/orchestrators`)
 
 This guide assumes you already ran the appropriate intake prompt (the orchestrator constitution prompt, or a dedicated shared-QA variant) and a session record exists under `.project/sessions/`.
 
@@ -4319,16 +4317,16 @@ Session state names map to on-disk directories as follows:
 - `.project/sessions/done/` (closing)
 - `.project/sessions/validated/` (validated)
 
-- <!-- section: RULE.SESSION.ISOLATION -->
+- 
 - Claiming a task into a session physically moves it under `.project/sessions/wip/<session-id>/tasks/<status>/` (session state: active). Paired QA lives under `.project/sessions/wip/<session-id>/qa/<status>/`.
 - While the session is active, operate on the session-scoped queues by passing `--session <id>` (or set your project’s session-owner environment variable so CLIs auto-detect).
 - Other agents must never touch items under another session’s `.project/sessions/wip/<id>/` (active) tree. Global queues contain only unclaimed work.
 - Session completion restores all session-scoped files back to the global queues, preserving final status.
-- <!-- /section: RULE.SESSION.ISOLATION -->
+- 
 
 ## Session Timeouts (WP-002)
 
-- Default inactivity timeout is configured in `.edison/_generated/constitutions/ORCHESTRATOR.md` (`session.timeout_hours`).
+- Default inactivity timeout is configured in the orchestrator constitution (run `edison read ORCHESTRATOR --type constitutions`) (`session.timeout_hours`).
 - Stale detection cadence is configured via `session.stale_check_interval_hours` for schedulers.
 - When a session exceeds the timeout window (based on the most recent of `lastActive`, `claimedAt`, or `createdAt`):
   - `edison session cleanup-expired` detects and automatically cleans up expired sessions.
@@ -4341,7 +4339,7 @@ Session state names map to on-disk directories as follows:
 
 - [ ] Session record in `.project/sessions/wip/` (active) is current (Owner, Last Active, Activity Log).
 - [ ] Every claimed task has a matching QA brief (state: `waiting`, `todo`, `wip`, `done`, `validated`).
-- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`.edison/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
+- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (run `edison read OUTPUT_FORMAT --type guidelines/agents`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
 - [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
@@ -4349,25 +4347,19 @@ Session state names map to on-disk directories as follows:
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `.project/tasks/wip/` and QA in `.project/qa/waiting/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `validated`. Child tasks can be `done|validated`. Parent QA must be `done|validated`. Child QA should be `done` when approved in the parent bundle (or `waiting|todo` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow `.edison/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
+- [ ] State transitions follow the canonical state machine (run `edison read STATE_MACHINE`); use guards (`edison task ready`, `edison qa bundle`) not manual moves.
 - [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
 
-<!-- section: RULE.CONTEXT.BUDGET_MINIMIZE -->
 <!-- section: context-budget -->
 Keep orchestrator context under roughly 50K tokens by default. Prefer concise summaries and diffs over full files, and aggressively trim stale or redundant content from the session.
 Use focused snippets around the relevant change (for example, 80–120 lines of code or a single section of a document) instead of entire files whenever possible.
 <!-- /section: context-budget -->
-<!-- /section: RULE.CONTEXT.BUDGET_MINIMIZE -->
 
-<!-- section: RULE.CONTEXT.NO_BIG_FILES -->
 Avoid loading very large files (logs, generated artefacts, bundled assets) into prompts unless absolutely necessary for the current decision. When large inputs are unavoidable, extract only the minimal relevant portion and reference the full artefact by path.
-<!-- /section: RULE.CONTEXT.NO_BIG_FILES -->
 
-<!-- section: RULE.CONTEXT.SNIPPET_ONLY -->
 When sharing code or documentation with sub-agents, send focused snippets around the change (functions, components, or paragraphs) instead of whole files. Combine multiple small snippets when cross-references are required rather than sending the entire project tree.
-<!-- /section: RULE.CONTEXT.SNIPPET_ONLY -->
 
 ## Active Session Board
 
@@ -4384,29 +4376,21 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 ### Hierarchy & State Machine
 
-- Session files now live in `.project/sessions/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in `.edison/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the view for humans/LLMs.
-<!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
+- Session files now live in `.project/sessions/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in the generated state machine (run `edison read STATE_MACHINE`); `edison session status <id>` renders the view for humans/LLMs.
+
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
-<!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
+
 - Before promoting a task to `done/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `done|validated`).
 - Before invoking validators, run `edison qa bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
 - Use `edison session status` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
-<!-- section: RULE.GUARDS.NO_MANUAL_MOVES -->
 All task/QA moves MUST go through guarded CLIs (`edison task status`, `edison qa promote`, `edison qa round`, `edison session`). Manual `git mv` or filesystem moves are prohibited.
-<!-- /section: RULE.GUARDS.NO_MANUAL_MOVES -->
 
-<!-- section: RULE.QA.PAIR_ON_WIP -->
 Create and pair a QA brief (`.project/qa/waiting/`) as soon as a task enters `.project/tasks/wip/`. Do not defer QA creation to later phases.
-<!-- /section: RULE.QA.PAIR_ON_WIP -->
 
-<!-- section: RULE.STATE.NO_SKIP -->
 State transitions must be adjacent per the state machine; skipping states (e.g., `todo → validated`) is not allowed.
-<!-- /section: RULE.STATE.NO_SKIP -->
 
-<!-- section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
 Close a session only when all scoped tasks are `validated`, paired QA are `done|validated`, and no unresolved blockers or report/schema errors remain.
-<!-- /section: RULE.SESSION.CLOSE_NO_BLOCKERS -->
 
 ## 1. Keep the session record alive
 1. Use `edison session status <session-id>` at least every two hours to confirm every scoped task/QA still lives where you expect.
@@ -4434,7 +4418,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `.edison/_generated/constitutions/ORCHESTRATOR.md`:**
+**Delegate according to the orchestrator constitution (run `edison read ORCHESTRATOR --type constitutions`):**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
@@ -4467,7 +4451,7 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 
 **If you must implement yourself:**
 
-1. **YOU must follow `.edison/_generated/constitutions/AGENTS.md`:**
+1. **YOU must follow the agent constitution (run `edison read AGENTS --type constitutions`):**
    - Call `edison session track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
    - Call `edison session track complete`
@@ -4498,16 +4482,14 @@ This transition is guarded (fail-closed) and should only be executed once implem
 - ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
 - ✅ QA brief is ready to move `waiting → todo` once the task is `done`
 
-<!-- section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 Parent tasks MUST NOT move to `done` until every child task in the session scope is `done|validated`.
-<!-- /section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 
 **If guard fails:** Fix issues before proceeding. Guard errors are explicit about what's missing.
 
 > **💡 CRITICAL WORKFLOW AID:** After every action (claim, delegate, status change), run `edison session next <session-id>` to see the next steps and stay "on rails." This enhanced orchestration helper:
 > - Shows ALL applicable rules BEFORE actions (proactive, not just at enforcement)
 > - Displays complete validator roster with model bindings (prevents forgetting validators or using wrong models)
-> - Shows delegation suggestions with detailed reasoning from `.edison/_generated/AVAILABLE_AGENTS.md`
+> - Shows delegation suggestions with detailed reasoning from the active roster (run `edison read AVAILABLE_AGENTS`)
 > - Lists related tasks (parent/child/sibling) for context
 > - Provides decision points (concurrency cap, wave batching, optional validators)
 > - Returns precise commands with rule references so you never miss a step
@@ -4520,7 +4502,6 @@ Parent tasks MUST NOT move to `done` until every child task in the session scope
 
 ### 3.1. Validator Independence Rules
 
-<!-- section: RULE.VALIDATION.INDEPENDENCE -->
 **🔴 CRITICAL:** Validators MUST be independent from implementation.
 
 **FORBIDDEN:**
@@ -4536,7 +4517,6 @@ Parent tasks MUST NOT move to `done` until every child task in the session scope
 - ✅ Wait for ALL blocking validators to complete before making approval decision
 
 **Rationale:** Independent validation catches blind spots. Self-validation is confirmation bias.
-<!-- /section: RULE.VALIDATION.INDEPENDENCE -->
 
 ### 3.2. Prepare for Validation
 
@@ -4647,7 +4627,7 @@ Parent tasks MUST NOT move to `done` until every child task in the session scope
 - Triggers: Framework file patterns from pack configuration
 - Focus: Framework patterns, routing, data loading, caching
 
-**Note**: Specific models, blocking status, and trigger patterns are defined in `.edison/_generated/AVAILABLE_VALIDATORS.md` based on active packs.
+**Note**: Specific models, blocking status, and trigger patterns are defined in the active validator roster (run `edison read AVAILABLE_VALIDATORS`) based on active packs.
 
 **Each validator will handle:**
 - ✅ Calling `edison session track start` (their mandatory first step)
@@ -4763,18 +4743,14 @@ edison session verify <session-id>
    - If no, leave it in `.project/tasks/todo/` for a future session but document the handoff.
 5. After fixes are implemented, move the parent task to `done/`, QA to `todo/`, and re-run the validator waves (Round 2, Round 3, etc.).
 
-<!-- section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 ### Linking semantics for follow-ups (fail-closed)
 - Linking a follow-up as a child of the parent denotes a hard dependency. If a follow-up is linked, it MUST be claimed into the same session and will block promotion of the parent until the child is `done|validated`.
 - Only follow-ups marked as blocking (e.g., `blockingBeforeValidation=true` in the implementation report) should be linked to the parent.
 - The readiness gate runs `edison task ensure_followups --source implementation --enforce` and then enforces `childIds` readiness before `wip → done`.
-<!-- /section: RULE.FOLLOWUPS.LINK_ONLY_BLOCKING -->
 
-<!-- section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
 ### Duplicate prevention before creation
 - Before creating any follow-up, search existing tasks by slug/title similarity. If a near-duplicate (≥0.82) exists, do NOT create a new task—link/record the existing ID where appropriate.
 - The helper `edison task ensure_followups` performs this check automatically.
-<!-- /section: RULE.FOLLOWUPS.DEDUPE_FIRST -->
 
 ### Parent Requeue (auto‑suggested)
 - When a parent task is set to `blocked` and all its child follow‑ups are `done|validated`, the Active Session "next" plan will suggest:
@@ -4798,15 +4774,17 @@ edison session verify <session-id>
 - Rejoining later? Claim/resume each task via `edison task claim --session <session-id>` so `Last Active` timestamps confirm the work is in progress.
 - Handing off? Mention the session ID inside each task/QA file's metadata so the next orchestrator can pick it up.
 
+<!-- /section: workflow -->
+
 ---
 
 **References**
-- `.edison/_generated/constitutions/AGENTS.md` – orchestration policies & delegation guardrails
-- `.edison/_generated/guidelines/shared/VALIDATION.md` – validator gate specifics
-- `.edison/_generated/constitutions/ORCHESTRATOR.md` – TDD verification requirements (embedded)
-- `.edison/_generated/guidelines/shared/HONEST_STATUS.md` – directory semantics + reporting rules
-- `.edison/_generated/AVAILABLE_AGENTS.md` – agent roster and delegation patterns
-- `.edison/_generated/AVAILABLE_VALIDATORS.md` – validator triggers + block/allow list
+- `edison read AGENTS --type constitutions` – orchestration policies & delegation guardrails
+- `edison read VALIDATION --type guidelines/shared` – validator gate specifics
+- `edison read ORCHESTRATOR --type constitutions` – TDD verification requirements (embedded)
+- `edison read HONEST_STATUS --type guidelines/shared` – directory semantics + reporting rules
+- `edison read AVAILABLE_AGENTS` – agent roster and delegation patterns
+- `edison read AVAILABLE_VALIDATORS` – validator triggers + block/allow list
 
 ## Guideline: orchestrators/STATE_MACHINE_GUARDS
 
@@ -4854,7 +4832,7 @@ stateDiagram-v2
     validated --> [*]
 ```
 
-The authoritative definition lives in `.edison/_generated/STATE_MACHINE.md` and is loaded by `lib/task.validate_state_transition`.
+The authoritative definition lives in the composed state machine (run `edison read STATE_MACHINE`) and is loaded by `lib/task.validate_state_transition`.
 
 ## Enforcement Points
 
@@ -5697,7 +5675,7 @@ edison qa validate <task-id> --session <session-id> --dry-run
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in `.edison/_generated/AVAILABLE_VALIDATORS.md`; the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in the active validator roster (run `edison read AVAILABLE_VALIDATORS`); the active set is listed in `AVAILABLE_VALIDATORS.md`.
 **Specialized (triggered, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
 
 Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
@@ -5964,7 +5942,7 @@ edison qa round TASK-123 --status approve
 
 Validator report format is defined in:
 - `guidelines/validators/OUTPUT_FORMAT.md` (canonical human + JSON requirements)
-- `.edison/_generated/schemas/reports/validator-report.schema.yaml` (exact schema; YAML)
+- `edison read validator-report.schema.yaml --type schemas/reports` (exact schema; YAML)
 
 ---
 
@@ -5973,7 +5951,7 @@ Validator report format is defined in:
 ### Global Validators (Always Run)
 
 **Global validators** are defined in validator configuration:
-- Check `.edison/_generated/AVAILABLE_VALIDATORS.md` for current global validators
+- Check the current global validators: run `edison read AVAILABLE_VALIDATORS`
 - Typically includes multiple models for diverse perspectives
 - Most global validators are blocking
 
@@ -6114,7 +6092,7 @@ Check active pack guidelines for framework-specific validation criteria:
 - **Database Tools**: Schema design, migration strategy
 - **Styling Systems**: Design tokens, responsive patterns
 
-Refer to `.edison/_generated/AVAILABLE_VALIDATORS.md` for active pack validators and their specific focus areas.
+Refer to active pack validators and focus areas: run `edison read AVAILABLE_VALIDATORS`.
 
 ---
 
@@ -6151,11 +6129,11 @@ Refer to `.edison/_generated/AVAILABLE_VALIDATORS.md` for active pack validators
 
 ## Related Documentation
 
-- `.edison/_generated/guidelines/validators/VALIDATOR_GUIDELINES.md` - Full validator guidelines
-- `.edison/_generated/guidelines/validators/VALIDATOR_WORKFLOW.md` - Validation workflow
-- `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` - Report format requirements
-- `.edison/_generated/guidelines/validators/code-quality.md` - Code quality standards
-- `.edison/_generated/guidelines/validators/testing.md` - Testing requirements
+- `edison read VALIDATOR_GUIDELINES --type guidelines/validators` - Full validator guidelines
+- `edison read VALIDATOR_WORKFLOW --type guidelines/validators` - Validation workflow
+- `edison read OUTPUT_FORMAT --type guidelines/validators` - Report format requirements
+- `edison read code-quality --type guidelines/validators` - Code quality standards
+- `edison read testing --type guidelines/validators` - Testing requirements
 
 ---
 
@@ -6180,7 +6158,7 @@ Canonical format: **Markdown + YAML frontmatter** (LLM-readable body, machine-re
 ## Report File (REQUIRED): Markdown + YAML frontmatter
 
 **Schema (single source of truth)**:
-- `.edison/_generated/schemas/reports/validator-report.schema.yaml`
+- `edison read validator-report.schema.yaml --type schemas/reports`
 
 **Location (per round)**:
 - `.project/qa/validation-evidence/<task-id>/round-<N>/validator-<validatorId>-report.md`
@@ -6332,7 +6310,7 @@ Validators may add domain-specific sections:
 
 # Validator Common Guidelines (MANDATORY)
 
-Read this alongside your role constitution: `.edison/_generated/constitutions/VALIDATORS.md`.
+Read this alongside your role constitution: run `edison read VALIDATORS --type constitutions`.
 
 ---
 
@@ -6372,7 +6350,7 @@ Validators are **independent code reviewers** that ensure production-ready quali
 
 ### Step 1: Context7 Knowledge Refresh (MANDATORY)
 
-- Follow the **Context7 Knowledge Refresh** section in `.edison/_generated/constitutions/VALIDATORS.md` before validating any task that touches post-training packages.
+- Follow the **Context7 Knowledge Refresh** section by running `edison read VALIDATORS --type constitutions` before validating any task that touches post-training packages.
 - Use the pack-provided `
 ` hints to target the correct libraries and topics.
 - **Why**: Your training data is stale for post-training packages. Using outdated patterns can cause complete feature failures, breaking API changes, and security vulnerabilities.
@@ -6554,7 +6532,7 @@ Every validator MUST perform these universal checks:
 ## Edison validation guards (current)
 
 - Validate only against bundles emitted by `edison qa bundle <root-task>`; return `BLOCKED` if the manifest or parent `bundle-summary.md` is missing.
-- Load roster, triggers, and blocking flags via ConfigManager overlays (`.edison/_generated/AVAILABLE_VALIDATORS.md` → pack overlays → `.edison/_generated/AVAILABLE_VALIDATORS.md`) instead of JSON.
+- Load roster, triggers, and blocking flags via ConfigManager overlays (roster: `edison read AVAILABLE_VALIDATORS`) instead of JSON.
 - `edison qa promote` enforces state machine rules plus bundle presence; ensure Markdown + JSON reports live in the round evidence directory referenced by the bundle.
 - Honor Context7 requirements: auto-detected post-training packages must have markers (HMAC when enabled) before issuing approval.
 
@@ -6617,7 +6595,7 @@ If a domain-specific validator encounters issues outside its domain:
 
 ## Output Requirements
 
-See `.edison/_generated/guidelines/validators/OUTPUT_FORMAT.md` for detailed output format requirements.
+See output format requirements: run `edison read OUTPUT_FORMAT --type guidelines/validators`.
 
 **All validators must produce**:
 1. Human-readable Markdown report with status, findings, and evidence

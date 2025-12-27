@@ -23,10 +23,8 @@ _edison_audit_event() {
 command -v edison >/dev/null 2>&1 && _edison_audit_event "hook.compaction-reminder" || true
 
 
-
 # Configuration from hooks.yaml
 ROLE="agents"
-
 MESSAGE_TEMPLATE="⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
 NOTIFY="True"
 

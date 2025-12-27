@@ -5,7 +5,6 @@
 # Blocking: YES - CAN BLOCK COMMITS
 
 # Fast check: Skip if no Edison session file exists
-
 SESSION_FILE=".project/.session-id"
 if [[ ! -f "$SESSION_FILE" ]]; then
   exit 0  # No Edison session, skip hook
@@ -14,12 +13,6 @@ fi
 # Parse input JSON (with timeout to prevent hanging)
 INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
-
-
-
-
-
-
 
 
 SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
@@ -49,7 +42,6 @@ fi
 echo "🔍 Edison Commit Guard: Checking tests..."
 _edison_audit_event "hook.commit-guard.start" --field "tool=$TOOL_NAME" --field "command=$COMMAND"
 
-
 # Run tests
 if ! edison ci test 2>&1; then
   echo ""
@@ -61,8 +53,6 @@ if ! edison ci test 2>&1; then
   _edison_audit_event "hook.commit-guard.blocked" --field "reason=tests_failed"
   exit 1  # BLOCK
 fi
-
-
 
 # Check coverage
 COVERAGE=$(edison ci coverage --json 2>/dev/null | jq -r '.overall' || echo "0")
@@ -77,7 +67,6 @@ if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
   _edison_audit_event "hook.commit-guard.blocked" --field "reason=coverage_low" --field "coverage=$COVERAGE" --field "threshold=$THRESHOLD"
   exit 1  # BLOCK
 fi
-
 
 echo "✅ Commit guard passed"
 _edison_audit_event "hook.commit-guard.passed"
