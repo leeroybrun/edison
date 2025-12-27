@@ -1,5 +1,8 @@
 ---
 description: {{ short_desc }}
+edison-generated: true
+edison-id: "{{ command.id }}"
+edison-platform: "{{ platform }}"
 {% if args %}
 argument-hint: {% for arg in args %}{{ arg.name }}{% if not loop.last %} {% endif %}{% endfor %}
 {% endif %}

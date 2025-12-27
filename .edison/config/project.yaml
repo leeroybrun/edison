@@ -7,12 +7,3 @@ project:
   pythonVersion: "3.12"
   sourceDir: "src/edison"
   testsDir: "tests"
-
-worktrees:
-  sharedState:
-    commitGuard:
-      allowPrefixes:
-        - ".project/tasks/"
-        - ".project/qa/"
-        # NOTE: All configured `worktrees.sharedState.sharedPaths` are implicitly allowed
-        # by the meta commit guard, so those prefixes do not need to be duplicated here.

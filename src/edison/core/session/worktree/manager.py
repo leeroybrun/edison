@@ -45,6 +45,7 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                     "targetRoot": "shared",
                     "type": "dir",
                     "enabled": True,
+                    "commitAllowed": True,
                 }
             )
             continue
@@ -78,6 +79,11 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                 enabled = True
             enabled = bool(enabled)
 
+            commit_allowed = item.get("commitAllowed")
+            if commit_allowed is None:
+                commit_allowed = True
+            commit_allowed = bool(commit_allowed)
+
             out.append(
                 {
                     "path": path,
@@ -86,6 +92,7 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                     "targetRoot": target_root,
                     "type": item_type,
                     "enabled": enabled,
+                    "commitAllowed": commit_allowed,
                 }
             )
             continue
@@ -274,6 +281,8 @@ def _ensure_meta_commit_guard(*, meta_path: Path, cfg: Dict[str, Any]) -> None:
 
         for item in _parse_shared_paths(cfg):
             if str(item.get("targetRoot") or "shared").strip().lower() != "shared":
+                continue
+            if item.get("commitAllowed") is False:
                 continue
             p = str(item.get("path") or "").strip()
             if not p:
@@ -641,19 +650,7 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
         )
         return status
 
-    # Link primary management dirs into the shared root.
-    subdirs = ss.get("managementSubdirs")
-    if not isinstance(subdirs, list) or not subdirs:
-        subdirs = ["sessions", "tasks", "qa", "logs", "archive"]
-    primary_links_updated = 0
-    for subdir in [str(s) for s in subdirs if str(s).strip()]:
-        before = (primary_repo_dir / ".project" / subdir)
-        was_link = before.is_symlink()
-        _ensure_shared_management_subdir(worktree_path=primary_repo_dir, repo_dir=primary_repo_dir, subdir=subdir)
-        after = (primary_repo_dir / ".project" / subdir)
-        if after.is_symlink() and (not was_link or after.resolve() == (meta_path / ".project" / subdir).resolve()):
-            primary_links_updated += 1
-
+    # Link primary shared paths into the shared root (includes `.project/*` and `.edison/_generated` via defaults).
     primary_shared_updated, primary_shared_skipped_tracked = _ensure_shared_paths_in_checkout(
         checkout_path=primary_repo_dir,
         repo_dir=primary_repo_dir,
@@ -706,7 +703,7 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
 
     status.update(
         {
-            "primary_links_updated": int(primary_links_updated),
+            "primary_links_updated": int(primary_shared_updated),
             "shared_paths_primary_updated": int(primary_shared_updated),
             "shared_paths_primary_skipped_tracked": int(primary_shared_skipped_tracked),
             "shared_paths_session_updated": int(session_shared_updated),
@@ -742,11 +739,6 @@ def recreate_meta_shared_state(
     if dry_run:
         status["recreated"] = True
         return status
-
-    subdirs = ss.get("managementSubdirs")
-    if not isinstance(subdirs, list) or not subdirs:
-        subdirs = ["sessions", "tasks", "qa", "logs", "archive"]
-    subdirs = [str(s).strip() for s in subdirs if str(s).strip()]
 
     shared_paths = [p for p in _parse_shared_paths(cfg) if str(p.get("targetRoot") or "shared").lower() == "shared"]
 
@@ -871,13 +863,6 @@ def recreate_meta_shared_state(
         # Snapshot shared state before removal to avoid data loss.
         snapshot_dir = Path(tempfile.mkdtemp(prefix="edison-meta-shared-state-"))
         try:
-            for subdir in subdirs:
-                src = meta_path / ".project" / subdir
-                if not src.exists():
-                    continue
-                dest = snapshot_dir / ".project" / subdir
-                _snapshot_item(src=src, dest=dest)
-
             for item in shared_paths:
                 raw = str(item.get("path") or "").strip()
                 if not raw:
@@ -988,86 +973,6 @@ def _ensure_shared_paths_in_checkout(
             updated += 1
 
     return updated, skipped_tracked
-
-
-def _ensure_shared_management_subdir(
-    *,
-    worktree_path: Path,
-    repo_dir: Path,
-    subdir: str,
-) -> None:
-    """Ensure a management subdirectory is shared across git worktrees.
-
-    Git worktrees do not share untracked files. Edison stores local-first management state
-    under `<project-management-dir>/*` (sessions, tasks, QA, logs, archive). Each session worktree
-    therefore gets a symlink pointing to the primary checkout's directory.
-
-    Best-effort behavior:
-    - If a real directory exists in the worktree, attempt to merge its children into the shared
-      directory, then replace it with a symlink.
-    - Never raise; worktree creation must not be blocked by linking failures.
-    """
-    try:
-        from edison.core.utils.paths.management import ProjectManagementPaths
-
-        cfg = _config().get_worktree_config()
-        shared_root = _resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
-        mgmt_dir_name = ProjectManagementPaths(shared_root).get_management_root().name
-        shared = (shared_root / mgmt_dir_name / subdir).resolve()
-        ensure_directory(shared)
-
-        project_dir = worktree_path / mgmt_dir_name
-        ensure_directory(project_dir)
-
-        link = project_dir / subdir
-        _ensure_symlink_with_merge(link=link, target=shared, item_type="dir", merge_existing=True)
-    except Exception:
-        # Never block worktree creation on best-effort linking.
-        return
-
-
-def _ensure_shared_project_management_dirs(*, worktree_path: Path, repo_dir: Path) -> None:
-    """Ensure project management state is shared across git worktrees."""
-    cfg = _config().get_worktree_config()
-    ss = _shared_state_cfg(cfg)
-    subdirs = ss.get("managementSubdirs")
-    if not isinstance(subdirs, list) or not subdirs:
-        subdirs = ["sessions", "tasks", "qa", "logs", "archive"]
-    for subdir in [str(s) for s in subdirs if str(s).strip()]:
-        _ensure_shared_management_subdir(worktree_path=worktree_path, repo_dir=repo_dir, subdir=subdir)
-
-
-def _ensure_shared_project_generated_dir(*, worktree_path: Path, repo_dir: Path) -> None:
-    """Ensure `<project-config-dir>/_generated` is shared across git worktrees.
-
-    Start prompts and constitutions reference composed artifacts under `_generated`. Git worktrees
-    do not share untracked files, so worktrees must link to the primary checkout's generated dir.
-    """
-    try:
-        from edison.core.utils.paths.project import get_project_config_dir
-
-        cfg = _config().get_worktree_config()
-        ss = _shared_state_cfg(cfg)
-        if ss.get("shareGenerated") is False:
-            return
-
-        gen_source = str(ss.get("generatedSource") or "primary").strip().lower()
-        if gen_source == "shared":
-            shared_root = _resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
-        else:
-            # Default: keep composed artifacts centralized in the primary checkout.
-            shared_root = get_worktree_parent(repo_dir) or repo_dir
-        cfg_dir = get_project_config_dir(shared_root, create=True)
-        shared = (cfg_dir / "_generated").resolve()
-        ensure_directory(shared)
-
-        worktree_cfg_dir = worktree_path / cfg_dir.name
-        ensure_directory(worktree_cfg_dir)
-
-        link = worktree_cfg_dir / "_generated"
-        _ensure_symlink_with_merge(link=link, target=shared, item_type="dir", merge_existing=True)
-    except Exception:
-        return
 
 
 def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) -> None:
@@ -1227,7 +1132,6 @@ def create_worktree(
             if mode != "meta":
                 return
             primary_repo_dir = get_worktree_parent(repo_dir) or repo_dir
-            _ensure_shared_project_management_dirs(worktree_path=primary_repo_dir, repo_dir=primary_repo_dir)
             _ensure_shared_paths_in_checkout(
                 checkout_path=primary_repo_dir,
                 repo_dir=primary_repo_dir,
@@ -1245,8 +1149,6 @@ def create_worktree(
     if existing_wt is not None:
         resolved = existing_wt.resolve()
         if not dry_run:
-            _ensure_shared_project_management_dirs(worktree_path=resolved, repo_dir=repo_dir)
-            _ensure_shared_project_generated_dir(worktree_path=resolved, repo_dir=repo_dir)
             _ensure_shared_paths_in_checkout(checkout_path=resolved, repo_dir=repo_dir, cfg=config, scope="session")
             _ensure_worktree_session_id_file(worktree_path=resolved, session_id=session_id)
             _ensure_checkout_git_excludes(checkout_path=resolved, cfg=config, scope="session")
@@ -1451,8 +1353,6 @@ def create_worktree(
     except Exception as e:
         raise RuntimeError(f"Worktree health checks failed: {e}")
 
-    _ensure_shared_project_management_dirs(worktree_path=worktree_path, repo_dir=repo_dir)
-    _ensure_shared_project_generated_dir(worktree_path=worktree_path, repo_dir=repo_dir)
     _ensure_shared_paths_in_checkout(checkout_path=worktree_path, repo_dir=repo_dir, cfg=config, scope="session")
     _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
     _ensure_checkout_git_excludes(checkout_path=worktree_path, cfg=config, scope="session")

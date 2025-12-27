@@ -21,9 +21,6 @@ worktrees:
     mode: "meta"
     metaBranch: "edison-meta"
     metaPathTemplate: "../{PROJECT_NAME}-worktrees/_meta"
-    # Subdirectories under `.project/` to share via symlink from each session worktree.
-    # Tracking policy (what is committed) is intentionally separate from sharing.
-    managementSubdirs: ["sessions", "tasks", "qa", "logs", "archive"]
     # Additional repo-root relative paths to share via symlink into worktrees.
     #
     # This is intended for untracked "project meta" that should be shared across all
@@ -44,6 +41,29 @@ worktrees:
     # Projects can disable a default by appending:
     #   sharedPaths: ["+", {path: ".pal", enabled: false}]
     sharedPaths:
+      # Project management state (meta-managed).
+      # Commit policy default: tasks + qa are committable; sessions/logs/archive are not.
+      - path: ".project/tasks"
+        scopes: ["primary", "session"]
+        commitAllowed: true
+      - path: ".project/qa"
+        scopes: ["primary", "session"]
+        commitAllowed: true
+      - path: ".project/sessions"
+        scopes: ["primary", "session"]
+        commitAllowed: false
+      - path: ".project/logs"
+        scopes: ["primary", "session"]
+        commitAllowed: false
+      - path: ".project/archive"
+        scopes: ["primary", "session"]
+        commitAllowed: false
+
+      # Composed artifacts (meta-managed, never committed).
+      - path: ".edison/_generated"
+        scopes: ["primary", "session"]
+        commitAllowed: false
+
       - path: ".specify"
         scopes: ["primary", "session"]
       - path: "specs"
@@ -71,17 +91,12 @@ worktrees:
         scopes: ["primary", "session"]
       - path: ".edison/scripts"
         scopes: ["primary", "session"]
-    # Whether to share composed project artifacts under `<project-config-dir>/_generated`.
-    shareGenerated: true
-    # Where the shared symlink for `<project-config-dir>/_generated` should point:
-    # - primary: always the primary checkout (keeps "compose" outputs centralized)
-    # - shared: the same shared root as `.project/*` (meta/external/primary)
-    generatedSource: "primary"
     # Worktree-local git excludes to avoid cross-branch status noise. These are written to
-    # each checkout's gitdir `info/exclude` (worktree-specific), not repo `.gitignore`.
+    # each checkout via per-worktree `core.excludesFile`, not repo `.gitignore`.
     gitExcludes:
       primary:
         - ".project/"
+        - ".edison/_generated/"
       session:
         - ".project/"
         - ".edison/_generated/"
@@ -94,9 +109,7 @@ worktrees:
     # Guard against accidental commits of code changes on the meta branch.
     commitGuard:
       enabled: true
-      allowPrefixes:
-        - ".project/tasks/"
-        - ".project/qa/"
+      allowPrefixes: []
   installDeps: false
   postInstallCommands: []
   enableDatabaseIsolation: false

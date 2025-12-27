@@ -474,11 +474,6 @@ properties:
             - string
             - 'null'
             default: null
-          managementSubdirs:
-            type: array
-            items:
-              type: string
-            default: []
           sharedPaths:
             description: Additional repo-root relative paths to share via symlink into worktrees.
             type: array
@@ -514,18 +509,13 @@ properties:
                   enabled:
                     type: boolean
                     default: true
+                  commitAllowed:
+                    type: boolean
+                    default: true
                 required:
                 - path
                 additionalProperties: false
-          shareGenerated:
-            type: boolean
-            default: true
-          generatedSource:
-            type: string
-            enum:
-            - primary
-            - shared
-            default: primary
+          # shareGenerated/generatedSource removed: `.edison/_generated` is managed via sharedPaths
           gitExcludes:
             type: object
             properties:

@@ -19,11 +19,14 @@ Also, if you track those files on code branches, you’ll get merge conflicts an
 
 ## What lives where (default meta setup)
 
-### 1) Local management state (`.project/*`)
+### 1) Canonical shared state (`worktrees.sharedState.sharedPaths`)
 
-- Canonical location: **meta worktree** (`<meta>/.project/…`)
-- In primary + session worktrees: `.project/{tasks,qa,logs,archive,sessions}` are **symlinks** pointing into the meta worktree.
-- Rationale: task/QA commands work the same everywhere, and state is not tied to code branches.
+`sharedPaths` is the single source of truth for what is shared via symlink between worktrees.
+
+By default it includes:
+- `.project/{tasks,qa,sessions,logs,archive}` (meta-managed)
+- `.edison/_generated` (meta-managed; never committed)
+- Tool/config folders like `.pal/`, `.claude/`, `.cursor/`, `.specify/`, `specs/`, `.openspec/`, etc.
 
 ### 2) Bootstrap configuration (`.edison/config/*`)
 
@@ -33,28 +36,15 @@ Also, if you track those files on code branches, you’ll get merge conflicts an
 
 If you want config to be shared across all worktrees, do it by editing config in your code branch and letting Git propagate it as normal code/config.
 
-### 3) Composed artifacts (`.edison/_generated/*`)
-
-- Default canonical location: **primary checkout**.
-- In session worktrees: `.edison/_generated` is symlinked back to the primary checkout’s `.edison/_generated`.
-- Rationale: `_generated` is gitignored and should be shared so every worktree sees the same composed constitutions/guidelines/prompts.
-
-### 4) “Meta-managed” arbitrary paths (`worktrees.sharedState.sharedPaths`)
-
-Examples: `.claude/`, `.cursor/`, `.pal/`, `specs/`, `.specify/`, `.openspec/`, `.augment/`, and selected `.edison/*` subdirs.
-
-- Canonical location: **meta worktree** (`<meta>/<path>`).
-- In primary + session worktrees: those paths become **symlinks** pointing into the meta worktree.
-- Rationale: tool/system prompt folders stay consistent across worktrees and across code branches.
-
 ## Git ignores / excludes (how noise is prevented)
 
 Symlinked shared state must not show up as “untracked noise” in worktrees.
 
-Edison writes ignore patterns into each checkout’s **worktree-local excludes**:
+Edison writes ignore patterns using **per-worktree excludes** so that meta/primary/session can have different noise policies.
 
-- Location: `<gitdir>/info/exclude` (note: for worktrees the gitdir is not necessarily `<checkout>/.git`)
-- This is where Edison adds patterns like `.project/`, `.edison/_generated/`, and each configured shared path.
+- Mechanism: `git config --worktree core.excludesFile <path>`
+- Edison writes patterns like `.project/`, `.edison/_generated/`, and shared-path symlink locations into that file.
+- Git requirement: Edison enables `extensions.worktreeConfig=true` so per-worktree config is supported in repos with multiple worktrees.
 
 Important:
 
@@ -64,8 +54,8 @@ Important:
 ## Meta branch commit safety (commit guard)
 
 The meta worktree installs a pre-commit hook (“commit guard”) that only allows commits for:
-- the configured `worktrees.sharedState.commitGuard.allowPrefixes` (e.g. `.project/tasks/`, `.project/qa/`)
-- and any configured `worktrees.sharedState.sharedPaths` (dirs/files) whose `targetRoot` is `shared`
+- any configured `worktrees.sharedState.sharedPaths` entries (dirs/files) whose `targetRoot` is `shared` **and** `commitAllowed: true`
+- plus any explicit extras in `worktrees.sharedState.commitGuard.allowPrefixes`
 
 This keeps the meta branch “meta-only” even though it is a normal git worktree checkout.
 
@@ -75,6 +65,7 @@ Edison ships a **recommended default** `worktrees.sharedState.sharedPaths` list 
 Projects can:
 - append new items (deep-merge list append): `sharedPaths: ["+", {path: "foo", scopes: ["primary","session"]}]`
 - disable a default item by appending a matching path with `enabled: false`: `sharedPaths: ["+", {path: ".pal", enabled: false}]`
+- avoid replacing defaults accidentally (do not set `sharedPaths: [...]` unless you mean to replace the entire list)
 
 ## Setup / initialization
 

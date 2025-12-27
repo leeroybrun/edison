@@ -15,7 +15,6 @@ commands:
       - task
       - qa
       - rules
-      - memory
     exclude:
       - setup
       - internal
@@ -61,8 +60,11 @@ commands:
 
         Use this whenever you are unsure what Edison expects next. It reads
         session/task/QA state and returns the recommended next actions.
-      cli: "edison session next"
-      args: []
+      cli: "edison session next <session_id>"
+      args:
+        - name: session_id
+          description: "Session identifier (e.g., sess-001). If unknown, run `edison session status` first."
+          required: true
       when_to_use: |
         - You just finished a step and want the next step
         - You're resuming work after a break
@@ -126,7 +128,7 @@ commands:
       full_desc: |
         Prints the Edison START_NEW_SESSION prompt used to bootstrap a fresh session.
         This is a prompt document meant for the LLM; it does not mutate task/session state.
-      cli: "edison compose start && cat .edison/_generated/start/START_NEW_SESSION.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_NEW_SESSION.md"
       args: []
       when_to_use: |
         - Starting a brand new Edison session
@@ -141,7 +143,7 @@ commands:
       short_desc: "Print START_RESUME_SESSION prompt"
       full_desc: |
         Prints the Edison START_RESUME_SESSION prompt used to resume work in an existing session.
-      cli: "edison compose start && cat .edison/_generated/start/START_RESUME_SESSION.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_RESUME_SESSION.md"
       args: []
       when_to_use: |
         - Resuming an existing session after a break
@@ -156,7 +158,7 @@ commands:
       short_desc: "Print START_AUTO_NEXT prompt"
       full_desc: |
         Prints the Edison START_AUTO_NEXT prompt used to automatically determine next actions.
-      cli: "edison compose start && cat .edison/_generated/start/START_AUTO_NEXT.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_AUTO_NEXT.md"
       args: []
       when_to_use: |
         - You want Edison to recommend next steps based on current state
@@ -165,27 +167,27 @@ commands:
         - session-next
 
     - id: start-validate-session
-      domain: session
+      domain: start
       command: start-validate-session
       short_desc: "Print START_VALIDATE_SESSION prompt"
       full_desc: |
         Prints the Edison START_VALIDATE_SESSION prompt used to validate a session's readiness.
-      cli: "edison compose start && cat .edison/_generated/start/START_VALIDATE_SESSION.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_VALIDATE_SESSION.md"
       args: []
       when_to_use: |
         - Before closing a session
         - When preparing for QA / validation workflow
       related_commands:
-        - validate-now
+        - qa-validate
         - session-next
 
     - id: start-continue-stale
-      domain: session
+      domain: start
       command: start-continue-stale
       short_desc: "Print START_CONTINUE_STALE prompt"
       full_desc: |
         Prints the Edison START_CONTINUE_STALE prompt for continuing a stale/timed-out session.
-      cli: "edison compose start && cat .edison/_generated/start/START_CONTINUE_STALE.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_CONTINUE_STALE.md"
       args: []
       when_to_use: |
         - Recovering from a stale session state
@@ -194,12 +196,12 @@ commands:
         - session-status
 
     - id: start-cleanup
-      domain: session
+      domain: start
       command: start-cleanup
       short_desc: "Print START_CLEANUP prompt"
       full_desc: |
         Prints the Edison START_CLEANUP prompt used for cleanup and hygiene workflows.
-      cli: "edison compose start && cat .edison/_generated/start/START_CLEANUP.md"
+      cli: "edison compose all --start && cat .edison/_generated/start/START_CLEANUP.md"
       args: []
       when_to_use: |
         - End-of-session cleanup
@@ -219,16 +221,13 @@ commands:
         - Keep the task small enough to validate in one round.
         - Put acceptance criteria into the task description.
       cli: |
-        edison task new --id <id> --slug <slug> --description "<desc>"
+        edison task new --id <id> --slug <slug>
       args:
         - name: id
           description: "Numeric id (e.g., 100)"
           required: true
         - name: slug
           description: "Short slug (e.g., implement-auth)"
-          required: true
-        - name: desc
-          description: "Human description / acceptance criteria"
           required: true
       when_to_use: |
         - You're about to start a new unit of work
@@ -247,10 +246,10 @@ commands:
         After claiming:
         - Follow your agent constitution + mandatory workflow (TDD, no mocks, config-first).
         - Work only inside the session worktree (no git checkout/switch in primary).
-      cli: "edison task claim $1"
+      cli: "edison task claim <record_id>"
       args:
-        - name: task_id
-          description: "Task identifier (e.g., TASK-123, 150-implement-feature)"
+        - name: record_id
+          description: "Task or QA identifier (e.g., 150-wave1-auth-gate)"
           required: true
       when_to_use: |
         - You are ready to start implementation on a specific task
@@ -265,8 +264,11 @@ commands:
       short_desc: "Show current task state"
       full_desc: |
         Workflow: inspect a task's current state, owner, session linkage, and recent activity.
-      cli: "edison task status --current"
-      args: []
+      cli: "edison task status <record_id>"
+      args:
+        - name: record_id
+          description: "Task or QA identifier (e.g., 150-wave1-auth-gate)"
+          required: true
       when_to_use: "To check current task progress and state"
       related_commands:
         - task-claim
@@ -283,16 +285,16 @@ commands:
         - Tests are green
         - The implementation is complete (no TODO/FIXME placeholders)
         - Any required evidence generation has been run
-      cli: "edison task ready $1"
+      cli: "edison task ready <record_id>"
       args:
-        - name: task_id
-          description: "Task identifier"
-          required: true
+        - name: record_id
+          description: "Task identifier to mark ready (omit to list ready tasks)"
+          required: false
       when_to_use: |
         - Implementation is complete and ready to validate
       related_commands:
         - qa-new
-        - validate-now
+        - qa-validate
 
     - id: task-blocked
       domain: task
@@ -321,7 +323,7 @@ commands:
         Notes:
         - QA briefs track rounds, evidence, and validator results.
         - Create it when a task is moving toward validation.
-      cli: "edison qa new $1"
+      cli: "edison qa new <task_id>"
       args:
         - name: task_id
           description: "Task identifier"
@@ -331,10 +333,10 @@ commands:
         - You want to start tracking validation rounds
       related_commands:
         - qa-validate
-        - qa-audit
+        - qa-round
 
     - id: validate-now
-      domain: qa
+      domain: internal
       command: validate
       short_desc: "Validate current work (playbook)"
       full_desc: |
@@ -342,8 +344,11 @@ commands:
 
         Use this to get fast feedback before marking a task as `done`, or as a
         final check before promotion.
-      cli: "edison qa validate --current"
-      args: []
+      cli: "edison qa validate <task_id> --execute"
+      args:
+        - name: task_id
+          description: "Task identifier to validate"
+          required: true
       when_to_use: |
         - You want feedback while still implementing
         - You want a pre-flight validation run before task-ready
@@ -357,34 +362,51 @@ commands:
       short_desc: "Validate a specific task (playbook)"
       full_desc: |
         Workflow: run QA validation for a specific task (creates a validation round).
-      cli: "edison qa validate $1 --round 1"
+      cli: "edison qa validate <task_id> --execute"
       args:
         - name: task_id
           description: "Task identifier"
           required: true
       when_to_use: |
         - The task is `done` and ready for validation
-        - You need a deterministic round number
+        - You want Edison to run the validators (use `--execute`)
       related_commands:
-        - qa-audit
+        - qa-round
         - qa-promote
 
     - id: qa-audit
       domain: qa
       command: audit
-      short_desc: "Summarize QA status and findings"
+      short_desc: "Audit prompt/guideline hygiene (duplication, purity)"
       full_desc: |
-        Workflow: audit the QA record to see current state, rounds, and outstanding blockers.
-      cli: "edison qa audit $1"
+        Workflow: audit Edison prompt/guideline content for quality issues:
+        - duplication across guidelines
+        - purity violations (project terms leaking into core/packs)
+      cli: "edison qa audit --check-duplication --check-purity"
+      args: []
+      when_to_use: |
+        - You suspect duplicated/conflicting guidance across the composed stack
+        - You want to enforce prompt best practices (single source of truth)
+      related_commands:
+        - rules-current
+
+    - id: qa-round
+      domain: qa
+      command: round
+      short_desc: "Inspect QA rounds for a task"
+      full_desc: |
+        Workflow: inspect the QA round history for a task (current round, list of rounds).
+      cli: "edison qa round <task_id> --list"
       args:
         - name: task_id
           description: "Task identifier"
           required: true
       when_to_use: |
-        - You want to see what is blocking promotion
-        - You want to confirm whether validators agree
+        - You want to see which round is current
+        - You want to check whether QA is pending/blocked/approved
       related_commands:
         - qa-validate
+        - task-status
 
     - id: qa-promote
       domain: qa
@@ -397,7 +419,7 @@ commands:
         - Required validators are green
         - Evidence is present for the round(s)
         - There are no open blocking findings
-      cli: "edison qa promote $1"
+      cli: "edison qa promote <task_id>"
       args:
         - name: task_id
           description: "Task identifier"
@@ -405,6 +427,7 @@ commands:
       when_to_use: |
         - All validations passed and you want to finalize
       related_commands:
+        - qa-round
         - qa-audit
 
     # Rules and guidelines
@@ -504,9 +527,9 @@ commands:
       full_desc: |
         Shows comprehensive status: session, task, worktree, and git state.
         One-command overview of everything relevant.
-      cli: "edison session status && edison task status --current"
+      cli: "edison session status && edison task list --status wip"
       args: []
       when_to_use: "Quick overview of current state"
       related_commands:
-        - edison-session-status
-        - edison-task-status
+        - session-status
+        - task-status

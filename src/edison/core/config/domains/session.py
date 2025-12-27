@@ -183,76 +183,9 @@ class SessionConfig(BaseDomainConfig):
         """Get worktree configuration (merged from defaults and overrides)."""
         from edison.core.utils.paths import get_project_config_dir
 
-        defaults = {
-            "enabled": True,
-            "baseBranchMode": "current",
-            "baseBranch": None,
-            "branchPrefix": "session/",
-            "baseDirectory": ".worktrees",
-            "archiveDirectory": ".worktrees/_archived",
-            "pathTemplate": "../{PROJECT_NAME}-worktrees/{sessionId}",
-            "sharedState": {
-                "mode": "meta",
-                "metaBranch": "edison-meta",
-                "metaPathTemplate": "../{PROJECT_NAME}-worktrees/_meta",
-                "managementSubdirs": ["sessions", "tasks", "qa", "logs", "archive"],
-                "shareGenerated": True,
-                "generatedSource": "primary",
-                "gitExcludes": {
-                    "primary": [".project/"],
-                    "session": [".project/", ".edison/_generated/"],
-                    "meta": [
-                        ".project/sessions/",
-                        ".project/logs/",
-                        ".project/archive/",
-                        ".edison/_generated/",
-                    ],
-                },
-                "commitGuard": {
-                    "enabled": True,
-                    "allowPrefixes": [".project/tasks/", ".project/qa/"],
-                },
-            },
-            "cleanup": {
-                "autoArchive": True,
-                "archiveAfterDays": 30,
-                "deleteAfterDays": 90,
-            },
-            "enforcement": {
-                # When enabled, certain session-scoped commands are blocked unless the
-                # current working directory is inside the session worktree.
-                #
-                # This is intentionally opt-in because some workflows use the primary
-                # checkout for discovery (task listing, session creation) before
-                # switching into the worktree.
-                "enabled": True,
-                "commands": [
-                    "session close",
-                    "session next",
-                    "session status",
-                    "session track",
-                    "session verify",
-                    "session complete",
-                    "session validate",
-                    "task claim",
-                    "task status",
-                    "task mark-delegated",
-                    "task split",
-                    "task link",
-                    "qa validate",
-                    "qa run",
-                    "qa bundle",
-                    "qa promote",
-                ],
-            },
-            # Optional worktree features (kept here for backward compatibility with
-            # existing project overlays; schema allows these keys).
-            "installDeps": False,
-            "enableDatabaseIsolation": False,
-            "autoCleanupOnMerge": False,
-        }
-        cfg = dict(defaults)
-        cfg.update(self._config.get("worktrees", {}) or {})
+        # Single source of truth: worktree defaults come from bundled YAML config
+        # (`edison.data/config/worktrees.yaml`) and are merged into `self._config`.
+        cfg = dict(self._config.get("worktrees", {}) or {})
         # Merge overrides from manifest.json when present
         try:
             root = self.repo_root
@@ -267,7 +200,9 @@ class SessionConfig(BaseDomainConfig):
                 if isinstance(manifest, dict):
                     wt = manifest.get("worktrees")
                     if isinstance(wt, dict):
-                        cfg.update(wt)
+                        from edison.core.utils.merge import deep_merge
+
+                        cfg = deep_merge(cfg, wt)
         except Exception:
             pass
         return cfg

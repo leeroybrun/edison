@@ -1,3 +1,5 @@
+<!-- EDISON:GENERATED id={{ command.id }} platform={{ platform }} -->
+
 # {{ name }}
 
 {{ full_desc }}

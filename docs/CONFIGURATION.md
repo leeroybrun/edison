@@ -904,7 +904,9 @@ IDE slash command generation configuration.
 ```yaml
 commands:
   enabled: true
-  platforms: [claude, cursor, codex]
+  # Default to repo-local platforms. Codex prompts are user-global by default
+  # (`~/.codex/prompts`) and should be opt-in at the project layer.
+  platforms: [claude, cursor]
 
   # Selection strategy
   selection:
@@ -914,6 +916,7 @@ commands:
       - task
       - qa
       - rules
+    # Optional domains like `memory` can be enabled at the project layer.
     exclude:
       - setup
       - internal
@@ -927,7 +930,8 @@ commands:
       prefix: "edison-"
       max_short_desc: 80
       template: "claude-command.md.template"
-      allow_bash: true
+      # Default to workflow guidance prompts (no implicit execution).
+      allow_bash: false
 
     cursor:
       enabled: true
@@ -945,7 +949,7 @@ commands:
       short_desc: "Show next session steps"
       full_desc: |
         Shows recommended next actions for the current Edison session.
-      cli: "edison session next"
+      cli: "edison session next <session_id>"
       args: []
       when_to_use: |
         - After completing a task
@@ -955,10 +959,10 @@ commands:
       domain: task
       command: claim
       short_desc: "Claim and move task to wip"
-      cli: "edison task claim $1"
+      cli: "edison task claim <record_id>"
       args:
-        - name: task_id
-          description: "Task identifier"
+        - name: record_id
+          description: "Task or QA identifier"
           required: true
 ```
 

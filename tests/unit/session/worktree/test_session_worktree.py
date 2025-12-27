@@ -28,9 +28,8 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
                 "mode": "meta",
                 "metaBranch": "edison-meta",
                 "metaPathTemplate": str(meta_dir),
-                "managementSubdirs": ["sessions", "tasks", "qa", "logs", "archive"],
-                "shareGenerated": True,
-                "sharedPaths": [],
+                # Do not override sharedPaths defaults here; tests that need overrides
+                # should modify `session.yml` explicitly.
             },
             "timeouts": {
                 "health_check": 2,
@@ -451,19 +450,15 @@ def test_create_worktree_applies_worktree_local_git_excludes(session_git_repo_pa
     assert wt_path is not None
 
     cp = run_with_timeout(
-        ["git", "rev-parse", "--git-dir"],
+        ["git", "config", "--worktree", "--get", "core.excludesFile"],
         cwd=wt_path,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
-    raw_git_dir = (cp.stdout or "").strip()
-    assert raw_git_dir
-    git_dir = Path(raw_git_dir)
-    if not git_dir.is_absolute():
-        git_dir = (wt_path / git_dir).resolve()
-
-    exclude_file = git_dir / "info" / "exclude"
+    excludes_file_raw = (cp.stdout or "").strip()
+    assert excludes_file_raw, "Expected Edison to configure core.excludesFile for this worktree"
+    exclude_file = Path(excludes_file_raw).expanduser().resolve()
     assert exclude_file.exists()
     contents = exclude_file.read_text(encoding="utf-8")
     assert ".project/" in contents.splitlines()
@@ -492,19 +487,15 @@ def test_create_worktree_writes_excludes_for_shared_path_symlinks(session_git_re
     assert (wt_path / ".specify").is_symlink()
 
     cp = run_with_timeout(
-        ["git", "rev-parse", "--git-dir"],
+        ["git", "config", "--worktree", "--get", "core.excludesFile"],
         cwd=wt_path,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
-    raw_git_dir = (cp.stdout or "").strip()
-    assert raw_git_dir
-    git_dir = Path(raw_git_dir)
-    if not git_dir.is_absolute():
-        git_dir = (wt_path / git_dir).resolve()
-
-    exclude_file = git_dir / "info" / "exclude"
+    excludes_file_raw = (cp.stdout or "").strip()
+    assert excludes_file_raw, "Expected Edison to configure core.excludesFile for this worktree"
+    exclude_file = Path(excludes_file_raw).expanduser().resolve()
     assert exclude_file.exists()
     contents = exclude_file.read_text(encoding="utf-8").splitlines()
     assert ".specify" in contents
@@ -664,14 +655,15 @@ def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_
 
     # Primary checkout should have worktree-local excludes to avoid untracked noise.
     cp = run_with_timeout(
-        ["git", "rev-parse", "--path-format=absolute", "--git-dir"],
+        ["git", "config", "--worktree", "--get", "core.excludesFile"],
         cwd=session_git_repo_path,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
-    git_dir = Path((cp.stdout or "").strip()).resolve()
-    exclude_file = git_dir / "info" / "exclude"
+    excludes_file_raw = (cp.stdout or "").strip()
+    assert excludes_file_raw, "Expected Edison to configure core.excludesFile for the primary worktree"
+    exclude_file = Path(excludes_file_raw).expanduser().resolve()
     assert exclude_file.exists()
     assert ".project/" in exclude_file.read_text(encoding="utf-8").splitlines()
 
@@ -779,7 +771,8 @@ def test_recreate_meta_shared_state_resets_non_orphan_and_preserves_shared_paths
 
     config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
     data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".specify", "scopes": ["session"]}]
+    # Append to default sharedPaths (do not replace defaults like `.project/tasks`).
+    data["worktrees"]["sharedState"]["sharedPaths"] = ["+", {"path": ".specify", "scopes": ["session"]}]
     config_path.write_text(yaml.dump(data), encoding="utf-8")
     clear_path_caches()
     clear_all_caches()

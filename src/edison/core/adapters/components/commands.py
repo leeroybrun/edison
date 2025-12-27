@@ -13,7 +13,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 try:  # Optional dependency; fall back to basic rendering when absent
     from jinja2 import Template  # type: ignore
@@ -136,6 +136,11 @@ class CodexCommandAdapter(PlatformCommandAdapter):
 class CommandComposer(AdapterComponent):
     """Compose slash commands for IDE platforms."""
 
+    _GENERATED_MARKERS: tuple[str, ...] = (
+        "edison-generated: true",
+        "EDISON:GENERATED",
+    )
+
     def __init__(
         self,
         context: AdapterContext,
@@ -241,8 +246,10 @@ class CommandComposer(AdapterComponent):
         template = Template(template_text) if Template is not None else None
 
         results: Dict[str, Path] = {}
+        expected_stems: Set[str] = set()
         for cmd in defs:
             display_name = f"{prefix}{cmd.id}"
+            expected_stems.add(display_name)
 
             related = self._normalize_related_commands(cmd.related_commands, prefix=prefix)
             short_desc = self._truncate(str(cmd.short_desc or ""), max_short_desc)
@@ -277,7 +284,56 @@ class CommandComposer(AdapterComponent):
             )
             out_path.write_text(rendered, encoding="utf-8")
             results[cmd.id] = out_path
+
+        self._prune_stale_generated_files(output_dir, expected_stems=expected_stems, prefix=prefix)
         return results
+
+    def _prune_stale_generated_files(self, output_dir: Path, *, expected_stems: Set[str], prefix: str) -> None:
+        """Remove stale Edison-generated command files.
+
+        Only deletes files that:
+        - match the platform prefix, and
+        - are not part of the current composed set, and
+        - are Edison-generated (marker-based; with a conservative legacy fallback).
+        """
+        if not prefix:
+            return
+
+        for path in output_dir.glob(f"{prefix}*.md"):
+            if path.stem in expected_stems:
+                continue
+
+            try:
+                content = path.read_text(encoding="utf-8")
+            except Exception:
+                continue
+
+            if self._is_edison_generated_content(content, prefix=prefix):
+                try:
+                    path.unlink()
+                except Exception:
+                    continue
+
+    def _is_edison_generated_content(self, content: str, *, prefix: str) -> bool:
+        """Heuristic to identify Edison-generated command files.
+
+        Marker-based detection is the primary mechanism. A conservative legacy
+        fallback exists to prune older Edison files produced before the marker
+        was added, while minimizing the risk of deleting user-authored files.
+        """
+        if any(marker in content for marker in self._GENERATED_MARKERS):
+            return True
+
+        # Legacy Claude-style: YAML frontmatter with a `description:` plus an Edison-prefixed title.
+        stripped = content.lstrip()
+        if stripped.startswith("---") and "description:" in content and f"# {prefix}" in content:
+            return True
+
+        # Legacy Cursor-style: Edison-prefixed title plus common Edison sections.
+        if f"# {prefix}" in content and ("## Related" in content or "## Related Commands" in content):
+            return True
+
+        return False
 
     def compose_all(self) -> Dict[str, Dict[str, Path]]:
         """Compose commands for all configured platforms."""

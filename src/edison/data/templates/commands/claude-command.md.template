@@ -1,5 +1,8 @@
 ---
 description: "{{ short_desc | replace('\"', '\\\"') }}"
+edison-generated: true
+edison-id: "{{ command.id }}"
+edison-platform: "{{ platform }}"
 {% set platform_config = platform_config | default({'allow_bash': true}) %}
 {% if args %}
 argument-hint: "{% for arg in args %}{{ arg.name }}{% if not loop.last %} {% endif %}{% endfor %}"
