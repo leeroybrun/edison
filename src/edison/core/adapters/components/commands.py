@@ -16,9 +16,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 try:  # Optional dependency; fall back to basic rendering when absent
-    from jinja2 import Template  # type: ignore
+    from jinja2 import Environment  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
-    Template = None  # type: ignore[assignment]
+    Environment = None  # type: ignore[assignment]
 
 from edison.core.composition.utils.paths import resolve_project_dir_placeholders
 from edison.core.utils.io import ensure_directory
@@ -243,7 +243,12 @@ class CommandComposer(AdapterComponent):
 
         template_path = self._resolve_template(template_name)
         template_text = template_path.read_text(encoding="utf-8")
-        template = Template(template_text) if Template is not None else None
+        template = None
+        if Environment is not None:
+            # Our templates use control blocks (`{% if ... %}`) on their own lines.
+            # Without trimming, those lines become blank lines in rendered output.
+            env = Environment(trim_blocks=True, lstrip_blocks=True)
+            template = env.from_string(template_text)
 
         results: Dict[str, Path] = {}
         expected_stems: Set[str] = set()
@@ -299,20 +304,46 @@ class CommandComposer(AdapterComponent):
         if not prefix:
             return
 
-        for path in output_dir.glob(f"{prefix}*.md"):
-            if path.stem in expected_stems:
-                continue
+        prefixes = [prefix, *self._legacy_prefixes(prefix)]
+        seen: Set[Path] = set()
+        for active_prefix in prefixes:
+            for path in output_dir.glob(f"{active_prefix}*.md"):
+                if path in seen:
+                    continue
+                seen.add(path)
 
-            try:
-                content = path.read_text(encoding="utf-8")
-            except Exception:
-                continue
+                if path.stem in expected_stems:
+                    continue
 
-            if self._is_edison_generated_content(content, prefix=prefix):
                 try:
-                    path.unlink()
+                    content = path.read_text(encoding="utf-8")
                 except Exception:
                     continue
+
+                if self._is_edison_generated_content(content, prefix=active_prefix):
+                    try:
+                        path.unlink()
+                    except Exception:
+                        continue
+
+    @staticmethod
+    def _legacy_prefixes(prefix: str) -> List[str]:
+        """Known prefix variants to prune when prefix conventions change.
+
+        Edison historically used `edison-...` and now prefers `edison....` (per
+        Speckit-style namespace prefixes). When switching conventions, stale
+        files from the previous prefix should be removed.
+        """
+        p = str(prefix or "")
+        if not p:
+            return []
+
+        out: List[str] = []
+        if p.endswith("."):
+            out.append(p[:-1] + "-")
+        elif p.endswith("-"):
+            out.append(p[:-1] + ".")
+        return out
 
     def _is_edison_generated_content(self, content: str, *, prefix: str) -> bool:
         """Heuristic to identify Edison-generated command files.

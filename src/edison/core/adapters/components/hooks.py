@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:  # Optional dependency; fall back to plain text rendering when absent
-    from jinja2 import Template  # type: ignore
+    from jinja2 import Environment  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
-    Template = None  # type: ignore[assignment]
+    Environment = None  # type: ignore[assignment]
 
 from edison.core.utils.io import ensure_directory
 from .base import AdapterComponent, AdapterContext
@@ -278,15 +278,18 @@ class HookComposer(AdapterComponent):
         if template_path and template_path.exists():
             raw = template_path.read_text(encoding="utf-8")
             # Check if template uses Jinja2 block tags that require full Jinja2
-            if Template is None and self._uses_jinja2_block_tags(raw):
+            if Environment is None and self._uses_jinja2_block_tags(raw):
                 raise RuntimeError(
                     f"Template '{template_path.name}' uses Jinja2 block tags "
                     f"({{% set %}}, {{% if %}}, {{% for %}}, etc.) but Jinja2 is not installed. "
                     f"Install Jinja2 with: pip install Jinja2>=3.0"
                 )
-            if Template is None:
+            if Environment is None:
                 return self._render_basic_template(raw, context)
-            template = Template(template_path.read_text(encoding="utf-8"))
+            # The bundled hook templates frequently use control blocks on their own lines.
+            # Without trimming, those lines become empty lines in the rendered scripts.
+            env = Environment(trim_blocks=True, lstrip_blocks=True)
+            template = env.from_string(raw)
             return template.render(**context)
 
         raise ValueError(f"Template not found for hook: {hook_def.id}")

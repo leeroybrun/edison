@@ -14,9 +14,9 @@ import re
 from typing import Any, Dict
 
 try:  # Optional dependency; fallback rendering when missing
-    from jinja2 import Template  # type: ignore
+    from jinja2 import Environment  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
-    Template = None  # type: ignore[assignment]
+    Environment = None  # type: ignore[assignment]
 
 
 _VAR_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
@@ -31,9 +31,12 @@ def strip_frontmatter_block(text: str) -> str:
 
 def render_template_text(text: str, context: Dict[str, Any]) -> str:
     """Render ``text`` using Jinja2 if available, else a simple {{var}} replacer."""
-    if Template is not None:
+    if Environment is not None:
         try:
-            return Template(text).render(**context)
+            # Many Edison templates use control blocks on their own lines.
+            # Without trimming, those tag-only lines become empty lines.
+            env = Environment(trim_blocks=True, lstrip_blocks=True)
+            return env.from_string(text).render(**context)
         except Exception:
             pass
 
