@@ -410,19 +410,24 @@ class CommandComposer(AdapterComponent):
         if not name:
             raise ValueError("Command template name is required")
 
-        # Priority: project templates > user templates > pack templates > bundled Edison templates
-        candidates: List[Path] = [
-            self.project_dir / "templates" / "commands" / name,
-            self.user_dir / "templates" / "commands" / name,
-        ]
+        from edison.core.composition.core.paths import CompositionPathResolver
+
+        resolver = CompositionPathResolver(self.project_root)
+
+        # Priority (highest → lowest):
+        # - overlay layer templates (project → user → company → ...)
+        # - pack templates (higher pack root overrides lower)
+        # - bundled Edison templates
+        candidates: List[Path] = []
+
+        for _layer_id, layer_root in reversed(resolver.overlay_layers):
+            candidates.append(layer_root / "templates" / "commands" / name)
 
         # Pack templates in reverse order (later packs override earlier ones).
-        # Within a given pack name, precedence is:
-        # project-pack > user-pack > bundled-pack.
+        # Within a given pack name, precedence is highest pack root first.
         for pack in reversed(self.active_packs):
-            candidates.append(self.project_packs_dir / pack / "templates" / "commands" / name)
-            candidates.append(self.user_packs_dir / pack / "templates" / "commands" / name)
-            candidates.append(self.bundled_packs_dir / pack / "templates" / "commands" / name)
+            for root in reversed(resolver.pack_roots):
+                candidates.append(root.path / pack / "templates" / "commands" / name)
 
         candidates.append(self._templates_dir / name)
 

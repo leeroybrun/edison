@@ -37,19 +37,17 @@ class FilePatternRegistry:
             # Fall back to cwd when path resolution fails (defensive guard for tests)
             self.project_root = Path.cwd()
 
-        # Project config directory (e.g. .edison, configurable)
-        self.project_dir = get_project_config_dir(self.project_root, create=False)
-        
-        # Bundled packs directory
-        self.bundled_packs_dir = get_data_path("packs")
-        
-        # Project packs directory
-        self.project_packs_dir = self.project_dir / "packs"
+        from edison.core.composition.core.paths import CompositionPathResolver
+
+        resolver = CompositionPathResolver(self.project_root)
+        self.project_dir = resolver.project_dir
+        self._pack_roots = resolver.pack_roots
+        self._overlay_layers = resolver.overlay_layers
 
         # Core rules are ALWAYS from bundled data
         self.core_rules_dir = get_data_path("rules") / "file_patterns"
 
-        # Project-level file pattern overrides
+        # Project-level file pattern overrides (kept for backwards compatibility)
         self.project_rules_dir = self.project_dir / "rules" / "file_patterns"
 
     def _load_yaml_file(self, path: Path, required: bool = True) -> Any:
@@ -135,24 +133,25 @@ class FilePatternRegistry:
         return self._load_yaml_dir(self.core_rules_dir, "core")
 
     def load_pack_rules(self, pack_name: str) -> List[Dict[str, Any]]:
-        """Return file pattern rules from the given pack (bundled or project)."""
-        # Try bundled pack first
-        bundled_candidate = self.bundled_packs_dir / pack_name / "rules" / "file_patterns"
-        if bundled_candidate.exists():
-            return self._load_yaml_dir(bundled_candidate, f"pack:{pack_name}")
+        """Return file pattern rules from the given pack across all pack roots."""
+        rules: List[Dict[str, Any]] = []
+        for root in self._pack_roots:
+            candidate = root.path / pack_name / "rules" / "file_patterns"
+            if candidate.exists():
+                rules.extend(self._load_yaml_dir(candidate, f"pack:{pack_name}"))
+        return rules
 
-        # Try project pack
-        project_candidate = self.project_packs_dir / pack_name / "rules" / "file_patterns"
-        if project_candidate.exists():
-            return self._load_yaml_dir(project_candidate, f"pack:{pack_name}")
-
-        return []
+    def load_layer_rules(self, layer_id: str, layer_root: Path) -> List[Dict[str, Any]]:
+        """Return file pattern rules from an overlay layer root."""
+        return self._load_yaml_dir(layer_root / "rules" / "file_patterns", layer_id)
 
     def compose(self, *, active_packs: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Compose bundled core + pack file pattern rules respecting active packs."""
         rules = list(self.load_core_rules())
         for pack in active_packs or []:
             rules.extend(self.load_pack_rules(pack))
+        for layer_id, layer_root in self._overlay_layers:
+            rules.extend(self.load_layer_rules(layer_id, layer_root))
         return rules
 
 

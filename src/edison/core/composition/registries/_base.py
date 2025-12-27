@@ -117,19 +117,18 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         if self._discovery is None:
             type_cfg = self.comp_config.get_content_type(self.content_type)
             exclude_globs = (type_cfg.exclude_globs if type_cfg else []) or []
-            # Centralize pack-root ordering (bundled → user → project) to avoid drift
-            # between pack discovery and file-based composition registries.
-            from edison.core.packs.paths import get_pack_roots
+            from edison.core.composition.core.paths import CompositionPathResolver
 
-            pack_roots = [(r.kind, r.path) for r in get_pack_roots(self.project_root)]
+            resolver = CompositionPathResolver(self.project_root)
+            pack_roots = [(r.kind, r.path) for r in resolver.pack_roots]
             self._discovery = LayerDiscovery(
                 content_type=self.content_type,
                 core_dir=self.core_dir,
                 pack_roots=pack_roots,
-                user_dir=self.user_dir,
-                project_dir=self.project_dir,
+                overlay_layers=resolver.overlay_layers,
                 file_pattern=self.file_pattern,
                 exclude_globs=exclude_globs,
+                allow_shadowing=bool(self.merge_same_name),
             )
         return self._discovery
 
@@ -226,17 +225,20 @@ class ComposableRegistry(CompositionBase, Generic[T]):
         Returns:
             Dict mapping entity names to file paths from project layer
         """
-        # Existing entities: core + packs + user
+        # Existing entities: core + packs + all layers before project
         existing = set(self.discover_core().keys())
         for pack in self.get_active_packs():
             # iter_pack_layers mutates `existing` to include new pack entities.
             self.discovery.iter_pack_layers(pack, existing)
 
-        user_new = self.discovery.discover_user_new(existing)
-        existing.update(user_new.keys())
+        for layer_id, _path in self.discovery.overlay_layers:
+            if layer_id == "project":
+                break
+            new_map = self.discovery.discover_layer_new(layer_id, existing)
+            existing.update(new_map.keys())
 
         # Discover project-new entities
-        project_new = self.discovery.discover_project_new(existing)
+        project_new = self.discovery.discover_layer_new("project", existing)
         return {name: source.path for name, source in project_new.items()}
 
     def discover_all(self, packs: Optional[List[str]] = None) -> Dict[str, Path]:
@@ -263,25 +265,12 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 for name, source in pack_over.items():
                     result[name] = source.path
 
-        # User layer (new + overlays)
-        user_new = self.discovery.discover_user_new(existing)
-        for name, source in user_new.items():
-            result[name] = source.path
-        existing.update(user_new.keys())
-
-        user_over = self.discovery.discover_user_overlays(existing)
-        for name, source in user_over.items():
-            result[name] = source.path
-
-        # Project layer (new + overlays)
-        project_new = self.discovery.discover_project_new(existing)
-        for name, source in project_new.items():
-            result[name] = source.path
-        existing.update(project_new.keys())
-
-        project_over = self.discovery.discover_project_overlays(existing)
-        for name, source in project_over.items():
-            result[name] = source.path
+        # Overlay layers (company → user → project, etc.)
+        for _layer_id, new_map, over_map in self.discovery.iter_overlay_layers(existing):
+            for name, source in new_map.items():
+                result[name] = source.path
+            for name, source in over_map.items():
+                result[name] = source.path
 
         return result
 
@@ -532,37 +521,22 @@ class ComposableRegistry(CompositionBase, Generic[T]):
                 if name in pack_over:
                     _append(pack_over[name].path, f"pack:{pack}")
 
-        # User layer (new + overlays)
-        user_new = self.discovery.discover_user_new(existing)
-        if name in user_new and (self.merge_same_name or name not in core_entities):
-            _append(user_new[name].path, "user")
-        existing.update(user_new.keys())
-
-        user_over = self.discovery.discover_user_overlays(existing)
-        if name in user_over:
-            _append(user_over[name].path, "user")
-
-        # Project layer (new + overlays)
-        project_new = self.discovery.discover_project_new(existing)
-        if name in project_new and (self.merge_same_name or name not in core_entities):
-            _append(project_new[name].path, "project")
-        existing.update(project_new.keys())
-
-        project_over = self.discovery.discover_project_overlays(existing)
-        # Overlays should ALWAYS be applied - they extend existing entities
-        if name in project_over:
-            _append(project_over[name].path, "project")
+        # Overlay layers (company → user → project, etc.)
+        for layer_id, new_map, over_map in self.discovery.iter_overlay_layers(existing):
+            if name in new_map and (self.merge_same_name or name not in core_entities):
+                _append(new_map[name].path, layer_id)
+            if name in over_map:
+                _append(over_map[name].path, layer_id)
 
         # When merge_same_name is enabled, allow project same-name file even if discover_project_new skipped it
         if self.merge_same_name:
-            for base, label in (
-                (self.user_dir / self.content_type, "user"),
-                (self.project_dir / self.content_type, "project"),
-            ):
-                if base.exists():
-                    for candidate in base.rglob(f"{name}.md"):
-                        if candidate.is_file() and all(l.path != candidate for l in layers):
-                            _append(candidate, label)
+            ext = ".md"
+            if self.file_pattern.startswith("*.") and len(self.file_pattern) > 2:
+                ext = self.file_pattern[1:]
+            for layer_id, layer_root in self.discovery.overlay_layers:
+                candidate = (layer_root / self.content_type / f"{name}{ext}").resolve()
+                if candidate.is_file() and all(l.path != candidate for l in layers):
+                    _append(candidate, layer_id)
 
         return layers
 

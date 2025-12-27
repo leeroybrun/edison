@@ -95,17 +95,32 @@ class CoderabbitAdapter(PlatformAdapter):
         config = deep_merge(config, self._load_coderabbit_yaml(core_path))
 
         # Layer 2: Pack configs (bundled + project packs)
-        for pack in self.get_active_packs():
-            # Bundled pack
-            bundled_path = self.bundled_packs_dir / pack / "config" / "coderabbit.yaml"
-            config = deep_merge(config, self._load_coderabbit_yaml(bundled_path))
-            # Project pack override
-            project_pack_path = self.project_packs_dir / pack / "config" / "coderabbit.yaml"
-            config = deep_merge(config, self._load_coderabbit_yaml(project_pack_path))
+        from edison.core.composition.core.paths import CompositionPathResolver
 
-        # Layer 3: Project config
-        project_path = self.project_dir / "config" / "coderabbit.yaml"
-        config = deep_merge(config, self._load_coderabbit_yaml(project_path))
+        resolver = CompositionPathResolver(self.project_root)
+        pack_roots = list(resolver.pack_roots)
+        # Honor test overrides on the adapter instance (common in unit tests).
+        for i, root in enumerate(pack_roots):
+            if root.kind == "bundled":
+                pack_roots[i] = type(root)(kind=root.kind, path=Path(self.bundled_packs_dir))
+            elif root.kind == "user":
+                pack_roots[i] = type(root)(kind=root.kind, path=Path(self.user_packs_dir))
+            elif root.kind == "project":
+                pack_roots[i] = type(root)(kind=root.kind, path=Path(self.project_packs_dir))
+
+        for root in pack_roots:
+            for pack in self.get_active_packs():
+                config = deep_merge(
+                    config,
+                    self._load_coderabbit_yaml(root.path / pack / "config" / "coderabbit.yaml"),
+                )
+
+        # Layer 3: Overlay layers (company → user → project, etc.)
+        for _layer_id, layer_root in resolver.overlay_layers:
+            config = deep_merge(
+                config,
+                self._load_coderabbit_yaml(layer_root / "config" / "coderabbit.yaml"),
+            )
 
         return config
 

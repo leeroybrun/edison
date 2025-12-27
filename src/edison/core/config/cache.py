@@ -63,7 +63,7 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
     env_fp = hashlib.sha256(repr(env_items).encode("utf-8")).hexdigest()[:12]
 
     try:
-        from edison.core.utils.paths import get_project_config_dir, get_user_config_dir
+        from edison.core.layers import resolve_layer_stack
 
         def _fingerprint_dir(d: Path) -> list[tuple[str, int, int]]:
             files: list[tuple[str, int, int]] = []
@@ -79,18 +79,11 @@ def _cache_key(repo_root: Optional[Path], include_packs: bool = True) -> str:
                     files.append((p.name, 0, 0))
             return files
 
-        project_root_dir = get_project_config_dir(Path(base), create=False)
-        project_cfg_dir = project_root_dir / "config"
-        project_local_cfg_dir = project_root_dir / "config.local"
-
-        user_root_dir = get_user_config_dir(create=False)
-        user_cfg_dir = user_root_dir / "config"
-
-        cfg_files = {
-            "project": _fingerprint_dir(project_cfg_dir),
-            "project_local": _fingerprint_dir(project_local_cfg_dir),
-            "user": _fingerprint_dir(user_cfg_dir),
-        }
+        stack = resolve_layer_stack(Path(base))
+        cfg_files: dict[str, list[tuple[str, int, int]]] = {}
+        for layer in stack.layers:
+            cfg_files[f"layer:{layer.id}"] = _fingerprint_dir(layer.path / "config")
+        cfg_files["project_local"] = _fingerprint_dir(stack.project_local_config_dir)
         cfg_fp = hashlib.sha256(repr(cfg_files).encode("utf-8")).hexdigest()[:12]
     except Exception:
         cfg_fp = "000000000000"
@@ -208,4 +201,3 @@ __all__ = [
     "register_cache_clearer",
     "is_cached",
 ]
-

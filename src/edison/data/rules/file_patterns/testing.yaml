@@ -1,0 +1,15 @@
+id: FILE_PATTERN.TESTING
+title: Generic tests trigger testing validator
+blocking: false
+severity: warning
+patterns:
+  - "**/tests/**"
+  - "**/__tests__/**"
+  - "**/*test.*"
+  - "**/*spec.*"
+validators:
+  - testing
+rationale: >-
+  Test changes benefit from extra validation around determinism, isolation, and
+  assertion quality.
+

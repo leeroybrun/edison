@@ -15,7 +15,7 @@ import importlib.util
 import logging
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, Iterable, List, Optional, Set
+from typing import Callable, Iterable, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -23,38 +23,52 @@ logger = logging.getLogger(__name__)
 def build_layer_dirs(
     core_dir: Path,
     content_type: str,
-    bundled_packs_dir: Path,
-    project_packs_dir: Path,
-    project_dir: Path,
     active_packs: List[str],
+    bundled_packs_dir: Optional[Path] = None,
+    project_packs_dir: Optional[Path] = None,
+    project_dir: Optional[Path] = None,
     user_packs_dir: Optional[Path] = None,
     user_dir: Optional[Path] = None,
+    pack_roots: Optional[Iterable[Tuple[str, Path]]] = None,
+    overlay_layers: Optional[Iterable[Tuple[str, Path]]] = None,
 ) -> List[Path]:
-    """Build layered directory list: core → packs → user → project.
+    """Build layered directory list: core → packs → overlay layers.
 
     Args:
         core_dir: Base directory for core modules (e.g., core/state/handlers/)
         content_type: Subdirectory name (e.g., "actions", "guards", "functions")
-        bundled_packs_dir: Bundled packs directory (data/packs/)
-        user_packs_dir: Optional user packs directory (~/<user-config-dir>/packs)
-        project_packs_dir: Project packs directory (.edison/packs/)
-        user_dir: Optional user config directory (~/<user-config-dir>)
-        project_dir: Project config directory (.edison/)
+        bundled_packs_dir: Bundled packs directory (data/packs/) (legacy)
+        user_packs_dir: Optional user packs directory (legacy)
+        project_packs_dir: Project packs directory (legacy)
+        user_dir: Optional user config directory (legacy)
+        project_dir: Project config directory (legacy)
+        pack_roots: Optional explicit pack roots in precedence order (preferred)
+        overlay_layers: Optional explicit overlay layer roots in precedence order (preferred)
         active_packs: List of active pack names
 
     Returns:
         List of directories in layer order (core first, project last)
     """
+    if pack_roots is not None and overlay_layers is not None:
+        return [
+            core_dir / content_type,
+            *(
+                Path(root) / pack / content_type
+                for pack in active_packs
+                for _kind, root in pack_roots
+            ),
+            *(Path(layer_root) / content_type for _lid, layer_root in overlay_layers),
+        ]
+
+    if bundled_packs_dir is None or project_packs_dir is None or project_dir is None:
+        raise ValueError("build_layer_dirs requires either (pack_roots + overlay_layers) or legacy args.")
+
     return [
         core_dir / content_type,
         *(bundled_packs_dir / p / content_type for p in active_packs),
-        *(
-            (user_packs_dir / p / content_type)
-            for p in active_packs
-            if user_packs_dir is not None
-        ),
+        *((user_packs_dir / p / content_type) for p in active_packs if user_packs_dir is not None),
         *(project_packs_dir / p / content_type for p in active_packs),
-        *( [user_dir / content_type] if user_dir is not None else [] ),
+        *([user_dir / content_type] if user_dir is not None else []),
         project_dir / content_type,
     ]
 
@@ -81,12 +95,14 @@ def build_layer_dirs_from_resolver(
     return build_layer_dirs(
         core_dir=core_dir,
         content_type=content_type,
+        active_packs=active_packs,
+        pack_roots=[(r.kind, r.path) for r in resolver.pack_roots],
+        overlay_layers=resolver.overlay_layers,
         bundled_packs_dir=resolver.bundled_packs_dir,
         user_packs_dir=getattr(resolver, "user_packs_dir", None),
         project_packs_dir=resolver.project_packs_dir,
         user_dir=getattr(resolver, "user_dir", None),
         project_dir=resolver.project_dir,
-        active_packs=active_packs,
     )
 
 
@@ -201,7 +217,6 @@ __all__ = [
     "register_callables_from_module",
     "load_and_register_modules",
 ]
-
 
 
 

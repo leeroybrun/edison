@@ -25,7 +25,7 @@ from typing import Optional
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_project_config_dir
-from edison.core.packs.paths import PackRoot, get_pack_roots
+from edison.core.packs.model import PackRoot
 from edison.data import get_data_path
 
 
@@ -80,19 +80,31 @@ class LayerContext:
     project_local_config_dir: Path
 
     # Pack roots (bundled → user → project)
-    pack_roots: tuple[PackRoot, PackRoot, PackRoot]
+    pack_roots: tuple[PackRoot, ...]
+
+    # Overlay layers (e.g., company → user → project)
+    overlay_layers: tuple[tuple[str, Path], ...]
 
     @property
     def bundled_packs_dir(self) -> Path:
+        for r in self.pack_roots:
+            if r.kind == "bundled":
+                return r.path
         return self.pack_roots[0].path
 
     @property
     def user_packs_dir(self) -> Path:
-        return self.pack_roots[1].path
+        for r in self.pack_roots:
+            if r.kind == "user":
+                return r.path
+        return self.user_dir / "packs"
 
     @property
     def project_packs_dir(self) -> Path:
-        return self.pack_roots[2].path
+        for r in self.pack_roots:
+            if r.kind == "project":
+                return r.path
+        return self.project_dir / "packs"
 
     def pack_root_paths(self) -> list[tuple[str, Path]]:
         """Return pack roots in low→high precedence order."""
@@ -132,6 +144,7 @@ class CompositionPathResolver:
         self.content_type = content_type
         self._resolved: Optional[ResolvedPaths] = None
         self._layer_context: Optional[LayerContext] = None
+        self._layer_stack = None
     
     def _resolve(self) -> ResolvedPaths:
         """Resolve paths - core is always bundled, project overrides at .edison/."""
@@ -174,22 +187,45 @@ class CompositionPathResolver:
     @property
     def user_dir(self) -> Path:
         """User configuration directory (~/<user-config-dir>)."""
-        return self._resolve().user_dir
+        stack = self.layer_stack
+        user = stack.layer_by_id("user")
+        return user.path if user else self._resolve().user_dir
 
     @property
     def user_packs_dir(self) -> Path:
         """User packs directory (~/<user-config-dir>/packs)."""
-        return self._resolve().user_packs_dir
+        return self.user_dir / "packs"
     
     @property
     def project_packs_dir(self) -> Path:
         """Project-level packs directory (.edison/packs/)."""
-        return self._resolve().project_packs_dir
+        return self.project_dir / "packs"
     
     @property
     def project_dir(self) -> Path:
         """Project configuration directory (.edison/)."""
-        return self._resolve().project_dir
+        stack = self.layer_stack
+        proj = stack.layer_by_id("project")
+        return proj.path if proj else self._resolve().project_dir
+
+    @property
+    def layer_stack(self):
+        """Resolved overlay layer stack (e.g., company → user → project)."""
+        if self._layer_stack is None:
+            from edison.core.layers import resolve_layer_stack
+
+            self._layer_stack = resolve_layer_stack(self.repo_root)
+        return self._layer_stack
+
+    @property
+    def overlay_layers(self) -> list[tuple[str, Path]]:
+        """Overlay layer roots in low→high precedence order."""
+        return [(l.id, l.path) for l in self.layer_stack.layers]
+
+    @property
+    def pack_roots(self) -> tuple[PackRoot, ...]:
+        """Pack roots in low→high precedence order (bundled + all overlay layers)."""
+        return self.layer_stack.pack_roots()
     
     @property
     def uses_bundled_data(self) -> bool:
@@ -217,23 +253,27 @@ class CompositionPathResolver:
         if self._layer_context is not None:
             return self._layer_context
 
-        resolved = self._resolve()
-        project_config_dir = resolved.project_dir / "config"
-        project_local_config_dir = resolved.project_dir / "config.local"
-        user_config_dir = resolved.user_dir / "config"
+        stack = self.layer_stack
+        user_dir = stack.layer_by_id("user").path if stack.layer_by_id("user") else self._resolve().user_dir
+        project_dir = stack.layer_by_id("project").path if stack.layer_by_id("project") else self._resolve().project_dir
+
+        project_config_dir = project_dir / "config"
+        project_local_config_dir = project_dir / "config.local"
+        user_config_dir = user_dir / "config"
         core_config_dir = Path(get_data_path("config"))
-        pack_roots = get_pack_roots(resolved.repo_root)
+        pack_roots = stack.pack_roots()
 
         self._layer_context = LayerContext(
-            repo_root=resolved.repo_root,
-            core_dir=resolved.core_dir,
+            repo_root=self.repo_root,
+            core_dir=Path(get_data_path("")),
             core_config_dir=core_config_dir,
-            user_dir=resolved.user_dir,
+            user_dir=user_dir,
             user_config_dir=user_config_dir,
-            project_dir=resolved.project_dir,
+            project_dir=project_dir,
             project_config_dir=project_config_dir,
             project_local_config_dir=project_local_config_dir,
             pack_roots=pack_roots,
+            overlay_layers=tuple((l.id, l.path) for l in stack.layers),
         )
         return self._layer_context
 

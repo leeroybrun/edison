@@ -1,0 +1,17 @@
+# Layer Stack Configuration (bootstrap)
+#
+# This file is read early to determine which overlay layer roots exist.
+# Additional layers are inserted into the default overlay stack:
+#   user (~/.edison) → project (<repo>/.edison)
+#
+# Example: insert a company layer before user:
+#
+# layers:
+#   roots:
+#     - id: mycompany
+#       path: /opt/company/edison
+#       before: user
+#
+layers:
+  roots: []
+

@@ -40,10 +40,12 @@ def load_functions(project_root: Optional[Path], active_packs: List[str]) -> Non
     dirs = build_layer_dirs(
         core_dir=_CORE_FUNCTIONS_DIR.parent,
         content_type="functions",
+        active_packs=active_packs,
+        pack_roots=[(r.kind, r.path) for r in resolver.pack_roots],
+        overlay_layers=resolver.overlay_layers,
         bundled_packs_dir=resolver.bundled_packs_dir,
         project_packs_dir=resolver.project_packs_dir,
         project_dir=resolver.project_dir,
-        active_packs=active_packs,
         user_packs_dir=resolver.user_packs_dir,
         user_dir=resolver.user_dir,
     )

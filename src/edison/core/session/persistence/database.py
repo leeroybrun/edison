@@ -68,8 +68,18 @@ def _load_database_adapter_module(db_cfg: Optional[Dict[str, Any]] = None) -> Op
             return None
 
         repo_dir = PathResolver.resolve_project_root()
-        adapter_path = get_project_config_dir(repo_dir, create=False) / "packs" / str(adapter_name) / "db_adapter.py"
-        if not adapter_path.exists():
+
+        from edison.core.layers import resolve_layer_stack
+
+        stack = resolve_layer_stack(repo_dir)
+        adapter_path = None
+        for root in reversed(stack.pack_roots()):
+            candidate = root.path / str(adapter_name) / "db_adapter.py"
+            if candidate.exists():
+                adapter_path = candidate
+                break
+
+        if adapter_path is None:
             return None
 
         spec = _importlib_util.spec_from_file_location(

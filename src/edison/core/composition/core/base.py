@@ -234,15 +234,12 @@ class CompositionBase(ABC):
         config_name: str,
         subdirs: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """Load config from all layers (core → packs → user → project).
+        """Load config from all layers (core → packs → overlay layers).
 
         Searches for config_name.yaml or config_name.yml in:
         1. core_dir/{subdirs}/config_name.{yaml|yml}
-        2. bundled_packs_dir/{pack}/{subdirs}/config_name.{yaml|yml} for each active pack
-        3. user_packs_dir/{pack}/{subdirs}/config_name.{yaml|yml} for each active pack (if exists)
-        4. project_packs_dir/{pack}/{subdirs}/config_name.{yaml|yml} for each active pack (if exists)
-        5. user_dir/{subdirs}/config_name.{yaml|yml}
-        6. project_dir/{subdirs}/config_name.{yaml|yml}
+        2. <pack_root>/{pack}/{subdirs}/config_name.{yaml|yml} for each active pack
+        3. <overlay_layer_root>/{subdirs}/config_name.{yaml|yml} for each overlay layer
 
         Args:
             config_name: Name of the config file (without .yaml/.yml extension).
@@ -255,37 +252,22 @@ class CompositionBase(ABC):
         subdirs = subdirs or []
 
         from edison.core.utils.layered_yaml import merge_named_yaml
+        from edison.core.composition.core.paths import CompositionPathResolver
 
         # 1. Core layer
         result = merge_named_yaml(result, self.core_dir.joinpath(*subdirs), config_name)
 
-        # 2. Pack layers - bundled packs
+        resolver = CompositionPathResolver(self.project_root)
+
+        # 2. Pack layers across all pack roots (bundled + overlay layers)
         for pack in self.get_active_packs():
-            pack_dir = self.bundled_packs_dir / pack / Path(*subdirs)
-            result = merge_named_yaml(result, pack_dir, config_name)
-
-        # 3. Pack layers - user packs
-        user_packs_base = getattr(self, "user_packs_dir", None)
-        if user_packs_base:
-            for pack in self.get_active_packs():
-                pack_dir = user_packs_base / pack / Path(*subdirs)
+            for root in resolver.pack_roots:
+                pack_dir = root.path / pack / Path(*subdirs)
                 result = merge_named_yaml(result, pack_dir, config_name)
 
-        # 4. Pack layers - project packs (for IDE composers, allow project-level pack overrides)
-        project_packs_base = getattr(self, "project_packs_dir", None)
-        if project_packs_base:
-            for pack in self.get_active_packs():
-                pack_dir = project_packs_base / pack / Path(*subdirs)
-                result = merge_named_yaml(result, pack_dir, config_name)
-
-        # 5. User layer
-        user_subdir = getattr(self, "user_dir", None)
-        if user_subdir:
-            result = merge_named_yaml(result, Path(user_subdir).joinpath(*subdirs), config_name)
-
-        # 6. Project layer
-        project_subdir = self.project_dir.joinpath(*subdirs)
-        result = merge_named_yaml(result, project_subdir, config_name)
+        # 3. Overlay layer roots (company → user → project, etc.)
+        for _layer_id, layer_root in resolver.overlay_layers:
+            result = merge_named_yaml(result, layer_root.joinpath(*subdirs), config_name)
 
         return result
 

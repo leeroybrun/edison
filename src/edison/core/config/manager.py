@@ -55,6 +55,11 @@ class ConfigManager:
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self.repo_root = repo_root or self._find_repo_root()
 
+        from edison.core.layers import resolve_layer_stack
+
+        # Centralized layer stack (core → packs → layers → project-local → env)
+        self._layer_stack = resolve_layer_stack(self.repo_root)
+
         # Lazy import to avoid circular dependencies
         from edison.core.utils.paths import get_project_config_dir
         project_root_dir = get_project_config_dir(self.repo_root, create=False)
@@ -62,7 +67,7 @@ class ConfigManager:
         user_root_dir = get_user_config_dir(create=False)
 
         # Bundled defaults from edison.data package (always available)
-        self.core_config_dir = get_data_path("config")
+        self.core_config_dir = self._layer_stack.core_config_dir
 
         # User-specific config overlays (e.g. ~/.edison/config)
         self.user_config_dir = user_root_dir / "config"
@@ -73,7 +78,7 @@ class ConfigManager:
         self.project_local_config_dir = project_root_dir / "config.local"
 
         # Pack directories
-        self.bundled_packs_dir = get_data_path("packs")
+        self.bundled_packs_dir = self._layer_stack.bundled_packs_dir
         self.user_packs_dir = user_root_dir / "packs"
         self.project_packs_dir = project_root_dir / "packs"
 
@@ -334,17 +339,40 @@ class ConfigManager:
         Default roots are bundled → user → project. Tests (and future layers)
         can inject additional roots via `self._pack_roots`.
         """
-        from edison.core.packs.paths import PackRoot
-
         roots = getattr(self, "_pack_roots", None)
         if roots is not None:
             return roots
 
-        return (
-            PackRoot(kind="bundled", path=Path(self.bundled_packs_dir)),
-            PackRoot(kind="user", path=Path(self.user_packs_dir)),
-            PackRoot(kind="project", path=Path(self.project_packs_dir)),
-        )
+        # If callers override the legacy directory attributes (common in unit tests),
+        # honor those overrides to keep behavior deterministic.
+        try:
+            default_user_packs = (self._layer_stack.layer_by_id("user").path / "packs") if self._layer_stack.layer_by_id("user") else None
+            default_project_packs = (self._layer_stack.layer_by_id("project").path / "packs") if self._layer_stack.layer_by_id("project") else None
+        except Exception:
+            default_user_packs = None
+            default_project_packs = None
+
+        if (
+            Path(self.bundled_packs_dir) != Path(self._layer_stack.bundled_packs_dir)
+            or (default_user_packs is not None and Path(self.user_packs_dir) != default_user_packs)
+            or (default_project_packs is not None and Path(self.project_packs_dir) != default_project_packs)
+        ):
+            from edison.core.packs.paths import PackRoot
+
+            return (
+                PackRoot(kind="bundled", path=Path(self.bundled_packs_dir)),
+                PackRoot(kind="user", path=Path(self.user_packs_dir)),
+                PackRoot(kind="project", path=Path(self.project_packs_dir)),
+            )
+
+        return self._layer_stack.pack_roots()
+
+    def _iter_overlay_config_dirs(self) -> List[Path]:
+        """Return overlay config directories (excluding project-local)."""
+        dirs: List[Path] = []
+        for layer in self._layer_stack.layers:
+            dirs.append(layer.path / "config")
+        return dirs
 
     def _packs_portability_user_only_mode(self, cfg: Dict[str, Any]) -> str:
         packs = cfg.get("packs") if isinstance(cfg.get("packs"), dict) else {}
@@ -490,8 +518,8 @@ class ConfigManager:
             if include_packs:
                 with span("config.load_config.bootstrap"):
                     bootstrap_cfg = dict(cfg)
-                    bootstrap_cfg = self._load_directory(self.user_config_dir, bootstrap_cfg)
-                    bootstrap_cfg = self._load_directory(self.project_config_dir, bootstrap_cfg)
+                    for cfg_dir in self._iter_overlay_config_dirs():
+                        bootstrap_cfg = self._load_directory(cfg_dir, bootstrap_cfg)
                     bootstrap_cfg = self._load_directory(self.project_local_config_dir, bootstrap_cfg)
                     active_packs = self._get_bootstrap_packs(bootstrap_cfg)
 
@@ -501,14 +529,11 @@ class ConfigManager:
                         cfg = self._load_pack_configs(cfg, active_packs)
 
             # Layer 3: User config (wins over packs)
-            with span("config.load_config.user"):
-                cfg = self._load_directory(self.user_config_dir, cfg)
+            with span("config.load_config.layers", count=len(self._layer_stack.layers)):
+                for cfg_dir in self._iter_overlay_config_dirs():
+                    cfg = self._load_directory(cfg_dir, cfg)
 
-            # Layer 4: Project config (wins over user)
-            with span("config.load_config.project"):
-                cfg = self._load_directory(self.project_config_dir, cfg)
-
-            # Layer 5: Project-local config (wins over committed project config)
+            # Last: Project-local config (wins over all committed config)
             with span("config.load_config.project_local"):
                 cfg = self._load_directory(self.project_local_config_dir, cfg)
 

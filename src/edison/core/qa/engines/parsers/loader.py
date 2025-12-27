@@ -94,27 +94,14 @@ def load_parsers(project_root: Path | None = None, active_packs: list[str] | Non
 
         resolver = CompositionPathResolver(project_root)
 
-        # 2. Bundled pack parsers
-        for pack in active_packs:
-            pack_dir = resolver.bundled_packs_dir / pack / "parsers"
-            dirs.append(pack_dir)
+        # 2-4. Pack parsers across all pack roots (bundled + overlay layers)
+        for root in resolver.pack_roots:
+            for pack in active_packs:
+                dirs.append(root.path / pack / "parsers")
 
-        # 3. User pack parsers
-        for pack in active_packs:
-            pack_dir = resolver.user_packs_dir / pack / "parsers"
-            dirs.append(pack_dir)
-
-        # 4. Project pack parsers
-        for pack in active_packs:
-            pack_dir = resolver.project_packs_dir / pack / "parsers"
-            dirs.append(pack_dir)
-
-        # 5. User parsers
-        dirs.append(resolver.user_dir / "parsers")
-
-        # 6. Project parsers
-        project_parsers = resolver.project_dir / "parsers"
-        dirs.append(project_parsers)
+        # 5+. Overlay layer parsers (company → user → project, etc.)
+        for _layer_id, layer_root in resolver.overlay_layers:
+            dirs.append(layer_root / "parsers")
 
     # Load parsers from all directories using common utility
     for path in iter_python_files(dirs, exclude=_EXCLUDED_FILES):

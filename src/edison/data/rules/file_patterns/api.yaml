@@ -1,0 +1,14 @@
+id: FILE_PATTERN.API
+title: Generic API code triggers api validator
+blocking: false
+severity: warning
+patterns:
+  - "**/api/**"
+  - "**/*route.*"
+  - "**/*handler.*"
+validators:
+  - api
+rationale: >-
+  Generic API entrypoints benefit from validation around request/response schema,
+  error handling, and security baselines.
+

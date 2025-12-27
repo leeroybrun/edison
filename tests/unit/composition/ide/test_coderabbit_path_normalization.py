@@ -142,18 +142,16 @@ def test_bundled_data_structure_uses_config_directory(tmp_path: Path) -> None:
     packs_dir = data_root / "packs"
 
     # ASSERT: Templates should use "config" directory
-    templates_config_dir = templates_dir / "config"
     templates_configs_dir = templates_dir / "configs"
 
-    # At least one should exist (or neither if templates don't have config)
-    # But "configs" plural should NOT exist for coderabbit
+    # "configs" plural should NOT contain coderabbit configs.
     if templates_configs_dir.exists():
-        # If configs exists, it should NOT contain coderabbit files
         coderabbit_files = list(templates_configs_dir.glob("coderabbit.y*"))
-        assert len(coderabbit_files) == 0, \
+        assert len(coderabbit_files) == 0, (
             f"Found coderabbit files in templates/configs/: {coderabbit_files}. Should be in templates/config/"
+        )
 
-    # Check pack directories
+    # Pack directories should also avoid "configs" for coderabbit.
     if packs_dir.exists():
         for pack_dir in packs_dir.iterdir():
             if not pack_dir.is_dir():
@@ -161,7 +159,40 @@ def test_bundled_data_structure_uses_config_directory(tmp_path: Path) -> None:
 
             pack_configs_dir = pack_dir / "configs"
             if pack_configs_dir.exists():
-                # If configs exists, it should NOT contain coderabbit files
                 coderabbit_files = list(pack_configs_dir.glob("coderabbit.y*"))
-                assert len(coderabbit_files) == 0, \
+                assert len(coderabbit_files) == 0, (
                     f"Found coderabbit files in {pack_dir.name}/configs/: {coderabbit_files}. Should be in {pack_dir.name}/config/"
+                )
+
+
+def test_coderabbit_composer_loads_company_pack_config(tmp_path: Path) -> None:
+    """Company-layer packs should contribute coderabbit.yaml when active."""
+    company_dir = tmp_path / "company-layer"
+    (company_dir / "config").mkdir(parents=True, exist_ok=True)
+
+    # Insert company layer before user.
+    config_dir = tmp_path / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "layers.yaml").write_text(
+        "layers:\n"
+        "  roots:\n"
+        "    - id: mycompany\n"
+        f"      path: {company_dir.as_posix()}\n"
+        "      before: user\n",
+        encoding="utf-8",
+    )
+
+    # Provide a pack coderabbit config in the company pack root.
+    pack_config_dir = company_dir / "packs" / "python" / "config"
+    pack_config_dir.mkdir(parents=True, exist_ok=True)
+    write_yaml(
+        pack_config_dir / "coderabbit.yaml",
+        {"coderabbit": {"company_pack": True}},
+    )
+
+    # Activate the pack in project config so adapter loads it.
+    write_yaml(config_dir / "edison.yaml", {"packs": {"active": ["python"]}})
+
+    composer = CoderabbitAdapter(project_root=tmp_path)
+    loaded = composer.compose_coderabbit_config()
+    assert loaded.get("coderabbit", {}).get("company_pack") is True

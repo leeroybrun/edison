@@ -34,11 +34,8 @@ _CORE_HANDLERS_DIR = Path(__file__).parent / "builtin"
 
 def _get_layer_dirs(
     handler_type: str,
-    bundled_packs_dir: Path,
-    user_packs_dir: Path,
-    project_packs_dir: Path,
-    user_dir: Path,
-    project_dir: Path,
+    pack_roots: list[tuple[str, Path]],
+    overlay_layers: list[tuple[str, Path]],
     active_packs: List[str],
 ) -> List[Path]:
     """Get directories for a handler type in layer order.
@@ -49,12 +46,9 @@ def _get_layer_dirs(
     return build_layer_dirs(
         core_dir=_CORE_HANDLERS_DIR,
         content_type=handler_type,
-        bundled_packs_dir=bundled_packs_dir,
-        project_packs_dir=project_packs_dir,
-        user_packs_dir=user_packs_dir,
-        user_dir=user_dir,
-        project_dir=project_dir,
         active_packs=active_packs,
+        pack_roots=pack_roots,
+        overlay_layers=overlay_layers,
     )
 
 
@@ -79,11 +73,8 @@ def load_guards(project_root: Optional[Path], active_packs: List[str]) -> int:
         resolver = CompositionPathResolver(project_root)
         dirs = _get_layer_dirs(
             "guards",
-            resolver.bundled_packs_dir,
-            resolver.user_packs_dir,
-            resolver.project_packs_dir,
-            resolver.user_dir,
-            resolver.project_dir,
+            [(r.kind, r.path) for r in resolver.pack_roots],
+            resolver.overlay_layers,
             active_packs,
         )
     
@@ -114,11 +105,8 @@ def load_actions(project_root: Optional[Path], active_packs: List[str]) -> int:
         resolver = CompositionPathResolver(project_root)
         dirs = _get_layer_dirs(
             "actions",
-            resolver.bundled_packs_dir,
-            resolver.user_packs_dir,
-            resolver.project_packs_dir,
-            resolver.user_dir,
-            resolver.project_dir,
+            [(r.kind, r.path) for r in resolver.pack_roots],
+            resolver.overlay_layers,
             active_packs,
         )
     
@@ -149,11 +137,8 @@ def load_conditions(project_root: Optional[Path], active_packs: List[str]) -> in
         resolver = CompositionPathResolver(project_root)
         dirs = _get_layer_dirs(
             "conditions",
-            resolver.bundled_packs_dir,
-            resolver.user_packs_dir,
-            resolver.project_packs_dir,
-            resolver.user_dir,
-            resolver.project_dir,
+            [(r.kind, r.path) for r in resolver.pack_roots],
+            resolver.overlay_layers,
             active_packs,
         )
     

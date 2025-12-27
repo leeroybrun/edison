@@ -10,32 +10,22 @@ Pack layering model:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 from edison.data import get_data_path
 from edison.core.utils.paths import get_project_config_dir, get_user_config_dir
+from edison.core.packs.model import PackRoot
 
-
-@dataclass(frozen=True)
-class PackRoot:
-    kind: str  # "bundled" | "user" | "project"
-    path: Path
-
-
-def get_pack_roots(repo_root: Path) -> tuple[PackRoot, PackRoot, PackRoot]:
+def get_pack_roots(repo_root: Path) -> tuple[PackRoot, ...]:
     """Return pack roots in deterministic precedence order.
 
-    Precedence (low → high) is bundled → user → project.
+    Precedence (low → high) is:
+      bundled → (company, etc) → user → project
     """
-    project_dir = get_project_config_dir(repo_root, create=False)
-    user_dir = get_user_config_dir(create=False)
-    return (
-        PackRoot(kind="bundled", path=Path(get_data_path("packs"))),
-        PackRoot(kind="user", path=user_dir / "packs"),
-        PackRoot(kind="project", path=project_dir / "packs"),
-    )
+    from edison.core.layers import resolve_layer_stack
+
+    return resolve_layer_stack(repo_root).pack_roots()
 
 
 def iter_pack_dirs(
@@ -43,14 +33,14 @@ def iter_pack_dirs(
     *,
     packs: Optional[Iterable[str]] = None,
 ) -> Iterator[tuple[str, Path, str]]:
-    """Iterate pack directories from bundled + project roots.
+    """Iterate pack directories from all pack roots.
 
     Args:
         repo_root: Repository root.
         packs: Optional iterable of pack names to filter to.
 
     Yields:
-        Tuples of (pack_name, pack_dir, kind) where kind is "bundled" or "project".
+        Tuples of (pack_name, pack_dir, kind) where kind matches PackRoot.kind.
     """
     allowed = {p for p in (packs or []) if isinstance(p, str) and p.strip()} or None
 

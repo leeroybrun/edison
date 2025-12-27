@@ -89,3 +89,32 @@ def test_user_template_overrides_pack_templates(tmp_path: Path) -> None:
     resolved = composer._resolve_template("x.md.template")
     assert resolved == (ctx.user_dir / "templates" / "commands" / "x.md.template")
 
+
+def test_company_layer_template_overrides_pack_templates(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, packs=["p1"])
+
+    company_dir = tmp_path / "company-layer"
+    (company_dir / "config").mkdir(parents=True, exist_ok=True)
+    (company_dir / "templates" / "commands").mkdir(parents=True, exist_ok=True)
+
+    # Insert company layer before user.
+    (ctx.project_dir / "config" / "layers.yaml").write_text(
+        "layers:\n"
+        "  roots:\n"
+        "    - id: mycompany\n"
+        f"      path: {company_dir.as_posix()}\n"
+        "      before: user\n",
+        encoding="utf-8",
+    )
+
+    (ctx.bundled_packs_dir / "p1" / "templates" / "commands").mkdir(parents=True, exist_ok=True)
+    (ctx.bundled_packs_dir / "p1" / "templates" / "commands" / "x.md.template").write_text(
+        "bundled", encoding="utf-8"
+    )
+    (company_dir / "templates" / "commands" / "x.md.template").write_text(
+        "company", encoding="utf-8"
+    )
+
+    composer = CommandComposer(ctx)
+    resolved = composer._resolve_template("x.md.template")
+    assert resolved == (company_dir / "templates" / "commands" / "x.md.template")
