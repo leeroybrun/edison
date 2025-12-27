@@ -118,13 +118,22 @@ class SetupDiscovery:
                 if agent_id not in ids:
                     ids.append(agent_id)
 
-        # Discover from project agents directory
-        project_agents_dir = get_project_config_dir(self.repo_root, create=False) / "agents"
-        if project_agents_dir.exists():
-            for agent_file in project_agents_dir.glob("*.md"):
-                agent_id = agent_file.stem
-                if agent_id not in ids:
-                    ids.append(agent_id)
+        # Discover from overlay layer agent directories (company/user/project, etc.)
+        try:
+            from edison.core.layers import resolve_layer_stack
+
+            stack = resolve_layer_stack(self.repo_root)
+            for layer in stack.layers:
+                layer_agents_dir = layer.path / "agents"
+                if not layer_agents_dir.exists():
+                    continue
+                for agent_file in layer_agents_dir.glob("*.md"):
+                    agent_id = agent_file.stem
+                    if agent_id not in ids:
+                        ids.append(agent_id)
+        except Exception:
+            # Best effort; config-based discovery still works.
+            pass
 
         # Discover from pack agent directories (bundled + project) for the selected packs.
         for _pack_name, pack_dir, _kind in iter_pack_dirs(self.repo_root, packs=packs):
@@ -142,24 +151,15 @@ class SetupDiscovery:
         """Discover setup questions contributed by selected packs."""
         questions: List[Dict[str, Any]] = []
 
-        for pack in selected_packs or []:
-            # Check bundled pack setup
-            bundled_pack_setup = self.bundled_packs_dir / pack / "config" / "setup.yml"
-            if bundled_pack_setup.exists():
-                pack_setup = self._load_yaml(bundled_pack_setup)
-                pack_questions = (pack_setup.get("setup") or {}).get("questions") or []
-                for question in pack_questions:
-                    if self._check_dependencies(question, selected_packs):
-                        questions.append(question)
-            
-            # Check project pack setup (overrides/additions)
-            project_pack_setup = self.project_packs_dir / pack / "config" / "setup.yml"
-            if project_pack_setup.exists():
-                pack_setup = self._load_yaml(project_pack_setup)
-                pack_questions = (pack_setup.get("setup") or {}).get("questions") or []
-                for question in pack_questions:
-                    if self._check_dependencies(question, selected_packs):
-                        questions.append(question)
+        for _pack_name, pack_dir, _kind in iter_pack_dirs(self.repo_root, packs=selected_packs):
+            pack_setup_path = pack_dir / "config" / "setup.yml"
+            if not pack_setup_path.exists():
+                continue
+            pack_setup = self._load_yaml(pack_setup_path)
+            pack_questions = (pack_setup.get("setup") or {}).get("questions") or []
+            for question in pack_questions:
+                if self._check_dependencies(question, selected_packs):
+                    questions.append(question)
 
         return questions
 
@@ -220,14 +220,13 @@ class SetupDiscovery:
         return ids
 
     def _iter_pack_overlay_configs(self, packs: List[str], filenames: List[str]) -> List[Path]:
-        """Return candidate config overlay paths for selected packs (bundled + project)."""
+        """Return candidate config overlay paths for selected packs (all pack roots)."""
         paths: List[Path] = []
-        for pack in packs or []:
-            for base in (self.bundled_packs_dir, self.project_packs_dir):
-                for name in filenames:
-                    p = base / pack / "config" / name
-                    if p.exists():
-                        paths.append(p)
+        for _pack_name, pack_dir, _kind in iter_pack_dirs(self.repo_root, packs=packs):
+            for name in filenames:
+                p = pack_dir / "config" / name
+                if p.exists():
+                    paths.append(p)
         return paths
 
     def _extract_validator_ids_from_pack_configs(self, packs: List[str]) -> List[str]:

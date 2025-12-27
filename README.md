@@ -47,13 +47,13 @@ The framework enforces strict workflows through state machines, requires test-dr
 
 ### Configurable via YAML
 - Zero hardcoded values - all behavior driven by configuration
-- Hierarchical config system: core → packs → user → project (plus `.edison/config.local` for uncommitted per-user per-project overrides)
+- Hierarchical config system: core → packs → overlay layers → project (plus `.edison/config.local` for uncommitted per-user per-project overrides). Overlay layers are configurable via `config/layers.yaml`.
 - JSON schema validation for all config files
 - Runtime composition of prompts, guidelines, and constitutions
 
 ### Composition System (Unified)
 - Single MarkdownCompositionStrategy for all markdown content (agents, validators, guidelines, constitutions, rosters, docs)
-- Layering: **core → packs → user → project** with configurable merge_same_name for guidelines (concat + dedupe) and section-based merges elsewhere
+- Layering: **core → packs → overlay layers (company/user/project/...)** with configurable merge_same_name for guidelines (concat + dedupe) and section-based merges elsewhere
 - Templating: sections/includes/conditionals/loops/variables/references/functions; everything is YAML-configurable, no hardcoded paths
 - DRY deduplication: shingle-based optional pass to remove repeated paragraphs
 - Functions extension: drop Python functions into `functions/` under core, packs, user, or project and call with `{{fn:name arg1 arg2}}`

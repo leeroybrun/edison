@@ -20,13 +20,14 @@ Edison uses a layered configuration system with the following priority (highest 
 1. **Environment variables** (`EDISON_*`)
 2. **Project-local overrides** (`.edison/config.local/`, uncommitted; per-user per-project)
 3. **Project overrides** (`.edison/config/`)
-4. **User overrides** (`~/.edison/config/` by default)
-5. **Pack configurations** (`packs/{pack}/config/` from bundled + user + project pack roots for active packs)
+4. **Overlay layer overrides** (`<layer>/config/` for each overlay layer; user layer defaults to `~/.edison/config/`)
+5. **Pack configurations** (`<pack-root>/{pack}/config/` from bundled + overlay-layer pack roots for active packs)
 6. **Bundled defaults** (`src/edison/data/config/`)
 
 Notes:
 - **Pack-aware bootstrap**: Edison first loads `core → user → project → project-local` to determine `packs.active`, then performs the full merge including pack configs.
 - **User config directory** defaults to `~/.edison` and is configurable via `EDISON_paths__user_config_dir`.
+- **Configurable overlay layers**: Add extra layer roots (e.g. a shared company layer) via `config/layers.yaml` (loaded from core → user → project → project-local).
 
 ### How Merging Works
 

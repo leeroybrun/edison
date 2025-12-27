@@ -192,7 +192,6 @@ def test_coderabbit_composer_loads_company_pack_config(tmp_path: Path) -> None:
 
     # Activate the pack in project config so adapter loads it.
     write_yaml(config_dir / "edison.yaml", {"packs": {"active": ["python"]}})
-
     composer = CoderabbitAdapter(project_root=tmp_path)
     loaded = composer.compose_coderabbit_config()
     assert loaded.get("coderabbit", {}).get("company_pack") is True

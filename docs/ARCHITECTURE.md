@@ -457,29 +457,29 @@ Edison's composition system assembles content from multiple layers with intellig
 
 ### Layer Hierarchy
 
-**Core → Packs → User → Project** (later layers override earlier)
+**Core → Packs → Overlay Layers** (later layers override earlier)
 
 1. **Core Layer**: Bundled defaults from `edison.data/`
    - Location: `edison.data/{type}/{name}.md`
    - Example: `edison.data/agents/api-builder.md`
    - Immutable (shipped with Edison)
 
-2. **Pack Layer**: Technology-specific additions/overrides
+2. **Pack Layer**: Technology-specific additions/overrides (from ALL pack roots)
    - Location: `edison.data/packs/{pack}/{type}/{name}.md` (new entities)
    - Location: `edison.data/packs/{pack}/{type}/overlays/{name}.md` (overrides)
+   - Additional pack roots: `<overlay-layer-root>/packs/{pack}/...`
    - Example: `edison.data/packs/nextjs/agents/overlays/api-builder.md`
    - Activated via project config
 
-3. **User Layer**: Personal customization (not committed)
-   - Location: `~/.edison/{type}/{name}.md` (new entities)
-   - Location: `~/.edison/{type}/overlays/{name}.md` (overrides)
-   - Example: `~/.edison/agents/overlays/api-builder.md`
-
-4. **Project Layer**: Project-specific customization
-   - Location: `.edison/{type}/{name}.md` (new entities)
-   - Location: `.edison/{type}/overlays/{name}.md` (overrides)
-   - Example: `.edison/agents/overlays/api-builder.md`
-   - Highest priority
+3. **Overlay Layers**: Customization roots that participate in composition
+   - Default overlay stack: `user → project`
+   - User layer (not committed by default):
+     - Location: `~/.edison/{type}/{name}.md` (new entities)
+     - Location: `~/.edison/{type}/overlays/{name}.md` (overrides)
+   - Project layer:
+     - Location: `.edison/{type}/{name}.md` (new entities)
+     - Location: `.edison/{type}/overlays/{name}.md` (overrides)
+   - Extra layers (e.g. `company`) can be inserted via `config/layers.yaml` (loaded from core → user → project → project-local).
 
 **Config-only local overrides** (highest precedence for YAML config):
 - `.edison/config.local/*.yml|*.yaml` (uncommitted; intended for per-user per-project settings like enabling personal packs)

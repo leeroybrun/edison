@@ -122,6 +122,119 @@ def test_discover_agents_combines_sources(isolated_project_env: Path) -> None:
     assert "core-agent" in found
     assert "pack-agent" in found
 
+
+def test_discover_agents_includes_company_pack_overlays_when_project_overrides(isolated_project_env: Path) -> None:
+    repo = isolated_project_env
+
+    # Insert an extra overlay layer before the user layer.
+    write_yaml(
+        repo / ".edison" / "config" / "layers.yaml",
+        {
+            "layers": {
+                "roots": [
+                    {
+                        "id": "company",
+                        "path": ".edison-company",
+                        "before": "user",
+                    }
+                ]
+            }
+        },
+    )
+
+    # Company pack config (should be considered a pack overlay root).
+    company_pack_dir = repo / ".edison-company" / "packs" / "alpha"
+    (company_pack_dir).mkdir(parents=True, exist_ok=True)
+    (company_pack_dir / "pack.yml").write_text(
+        "name: alpha\nversion: 0.0.0\ndescription: alpha\n",
+        encoding="utf-8",
+    )
+    write_yaml(company_pack_dir / "config" / "agents.yml", {"agents": [{"id": "company-pack-agent"}]})
+
+    # Enable the pack so ConfigManager includes its config overlays.
+    write_yaml(repo / ".edison" / "config" / "packs.yml", {"packs": {"active": ["alpha"]}})
+
+    # Project overrides agents list (replace semantics), so discovery must scan pack overlays.
+    write_yaml(repo / ".edison" / "config" / "agents.yaml", {"agents": [{"id": "project-agent"}]})
+
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
+    found = discovery.discover_agents(["alpha"])
+
+    assert "project-agent" in found
+    assert "company-pack-agent" in found
+
+
+def test_discover_pack_setup_questions_includes_company_pack(isolated_project_env: Path) -> None:
+    repo = isolated_project_env
+
+    write_yaml(
+        repo / ".edison" / "config" / "layers.yaml",
+        {
+            "layers": {
+                "roots": [
+                    {
+                        "id": "company",
+                        "path": ".edison-company",
+                        "before": "user",
+                    }
+                ]
+            }
+        },
+    )
+
+    company_pack_dir = repo / ".edison-company" / "packs" / "alpha"
+    company_pack_dir.mkdir(parents=True, exist_ok=True)
+    (company_pack_dir / "pack.yml").write_text(
+        "name: alpha\nversion: 0.0.0\ndescription: alpha\n",
+        encoding="utf-8",
+    )
+    write_yaml(
+        company_pack_dir / "config" / "setup.yml",
+        {
+            "setup": {
+                "questions": [
+                    {
+                        "id": "company-q1",
+                        "title": "Company question",
+                        "type": "string",
+                    }
+                ]
+            }
+        },
+    )
+
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
+    questions = discovery.discover_pack_setup_questions(["alpha"])
+    ids = [q.get("id") for q in questions if isinstance(q, dict)]
+    assert "company-q1" in ids
+
+
+def test_discover_agents_scans_company_layer_agents_directory(isolated_project_env: Path) -> None:
+    repo = isolated_project_env
+
+    write_yaml(
+        repo / ".edison" / "config" / "layers.yaml",
+        {
+            "layers": {
+                "roots": [
+                    {
+                        "id": "company",
+                        "path": ".edison-company",
+                        "before": "user",
+                    }
+                ]
+            }
+        },
+    )
+
+    company_agents_dir = repo / ".edison-company" / "agents"
+    company_agents_dir.mkdir(parents=True, exist_ok=True)
+    (company_agents_dir / "company-agent.md").write_text("# Company Agent\n", encoding="utf-8")
+
+    discovery = SetupDiscovery(repo / ".edison" / "config", repo)
+    found = discovery.discover_agents([])
+    assert "company-agent" in found
+
 def test_detect_project_name_prefers_package_json(isolated_project_env: Path) -> None:
     repo = isolated_project_env
     write_json(repo / "package.json", {"name": "sample-app"})

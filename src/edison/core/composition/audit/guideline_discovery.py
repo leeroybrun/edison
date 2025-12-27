@@ -50,17 +50,17 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
     Uses CompositionPathResolver for consistent path resolution.
 
     Categories:
-    - bundled: edison.data/guidelines/**/*.md (bundled defaults)
-    - pack:    .edison/packs/*/guidelines/**/*.md
-    - project: .edison/guidelines/**/*.md (including overlays)
+    - core:    edison.data/guidelines/**/*.md (bundled defaults)
+    - pack:    <any-pack-root>/<pack>/guidelines/**/*.md
+    - project: <any-overlay-layer>/guidelines/**/*.md (company/user/project, including overlays)
     """
     root = repo_root or _repo_root()
     
     # Use composition path resolver for consistent path resolution
     path_resolver = CompositionPathResolver(root, "guidelines")
     core_dir = path_resolver.core_dir / "guidelines"
-    packs_root = path_resolver.bundled_packs_dir
-    project_dir = path_resolver.project_dir / "guidelines"
+    pack_roots = [r.path for r in path_resolver.pack_roots]
+    overlay_layers = [p for _lid, p in path_resolver.overlay_layers]
     
     records: List[GuidelineRecord] = []
 
@@ -71,8 +71,10 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
                 continue
             records.append(GuidelineRecord(path=path, category="core"))
 
-    # Pack guidelines
-    if packs_root.exists():
+    # Pack guidelines (all pack roots)
+    for packs_root in pack_roots:
+        if not packs_root.exists():
+            continue
         for pack_dir in sorted(p for p in packs_root.iterdir() if p.is_dir()):
             gdir = pack_dir / "guidelines"
             if not gdir.exists():
@@ -80,13 +82,14 @@ def discover_guidelines(repo_root: Optional[Path] = None) -> List[GuidelineRecor
             for path in sorted(gdir.rglob("*.md")):
                 if path.name == "README.md":
                     continue
-                records.append(
-                    GuidelineRecord(path=path, category="pack", pack=pack_dir.name)
-                )
+                records.append(GuidelineRecord(path=path, category="pack", pack=pack_dir.name))
 
-    # Project guidelines (including overlays)
-    if project_dir.exists():
-        for path in sorted(project_dir.rglob("*.md")):
+    # Overlay layer guidelines (company/user/project; including overlays/)
+    for layer_dir in overlay_layers:
+        gdir = layer_dir / "guidelines"
+        if not gdir.exists():
+            continue
+        for path in sorted(gdir.rglob("*.md")):
             if "README.md" == path.name:
                 continue
             records.append(GuidelineRecord(path=path, category="project"))

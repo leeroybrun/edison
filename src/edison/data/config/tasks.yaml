@@ -45,9 +45,7 @@ tasks:
       threshold: null
       topK: null
       # Optional states filter; when null, all states are considered.
-      states: null
-
-  # Derived readiness/blocked semantics computed from the graph.
+      states: null  # Derived readiness/blocked semantics computed from the graph.
   # NOTE: Values are semantic state keys, resolved via WorkflowConfig.get_semantic_state().
   readiness:
     # A todo task is "ready" when all dependencies are in one of these satisfied states.

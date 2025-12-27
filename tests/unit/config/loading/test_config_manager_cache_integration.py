@@ -66,9 +66,7 @@ def test_get_cached_config_default_repo_root_key_tracks_resolved_project_root(tm
 
         os.environ["AGENTS_PROJECT_ROOT"] = str(root1)
         cfg1 = get_cached_config(repo_root=None, validate=False)
-        assert cfg1.get("project", {}).get("name") == "one"
-
-        # Switch project root in the same process; must not reuse the prior cache entry.
+        assert cfg1.get("project", {}).get("name") == "one"        # Switch project root in the same process; must not reuse the prior cache entry.
         os.environ["AGENTS_PROJECT_ROOT"] = str(root2)
         cfg2 = get_cached_config(repo_root=None, validate=False)
         assert cfg2.get("project", {}).get("name") == "two"
