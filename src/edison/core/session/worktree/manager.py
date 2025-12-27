@@ -178,7 +178,17 @@ def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], s
             return
         from edison.core.utils.git.excludes import ensure_worktree_excludes
 
-        final: list[str] = [str(p) for p in patterns]
+        final: list[str] = []
+        for raw in patterns:
+            pat = str(raw).strip()
+            if not pat:
+                continue
+            final.append(pat)
+
+            # If the user provides a directory-style exclude (`foo/`), also ignore the
+            # path itself (`foo`) so that symlinks at that path don't show as untracked.
+            if pat.endswith("/") and not any(ch in pat for ch in "*?["):
+                final.append(pat.rstrip("/"))
 
         # Automatically ignore configured shared paths in non-meta checkouts to avoid
         # untracked symlink noise (tracked changes are never ignored by excludes).
@@ -189,12 +199,24 @@ def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], s
                 p = str(item.get("path") or "").strip()
                 if not p:
                     continue
-                if str(item.get("type") or "dir").strip().lower() == "dir":
-                    final.append(p.rstrip("/") + "/")
+                item_type = str(item.get("type") or "dir").strip().lower()
+                if item_type == "dir":
+                    base = p.rstrip("/")
+                    final.append(base)
+                    final.append(base + "/")
                 else:
-                    final.append(p)
+                    final.append(p.strip())
 
-        ensure_worktree_excludes(checkout_path, final)
+        # Preserve order while removing duplicates.
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for pat in final:
+            if pat in seen:
+                continue
+            seen.add(pat)
+            deduped.append(pat)
+
+        ensure_worktree_excludes(checkout_path, deduped)
     except Exception:
         # Avoid blocking worktree creation due to git exclude helpers.
         return
@@ -697,6 +719,21 @@ def recreate_meta_shared_state(
 
     snapshot_dir: Optional[Path] = None
 
+    def _snapshot_item(*, src: Path, dest: Path) -> None:
+        if src.is_symlink():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.exists() or dest.is_symlink():
+                dest.unlink()
+            dest.symlink_to(os.readlink(src), target_is_directory=src.is_dir())
+            return
+
+        if src.is_dir():
+            shutil.copytree(src, dest, dirs_exist_ok=True, symlinks=True, ignore_dangling_symlinks=True)
+            return
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+
     if meta_path.exists():
         if not is_worktree_registered(meta_path, repo_root=primary_repo_dir):
             raise RuntimeError(
@@ -779,11 +816,7 @@ def recreate_meta_shared_state(
                 if not src.exists():
                     continue
                 dest = snapshot_dir / ".project" / subdir
-                if src.is_dir():
-                    shutil.copytree(src, dest, dirs_exist_ok=True)
-                else:
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dest)
+                _snapshot_item(src=src, dest=dest)
 
             for item in shared_paths:
                 raw = str(item.get("path") or "").strip()
@@ -796,11 +829,7 @@ def recreate_meta_shared_state(
                 if not src.exists():
                     continue
                 dest = snapshot_dir / str(p)
-                if src.is_dir():
-                    shutil.copytree(src, dest, dirs_exist_ok=True)
-                else:
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dest)
+                _snapshot_item(src=src, dest=dest)
         except Exception:
             shutil.rmtree(snapshot_dir, ignore_errors=True)
             raise
@@ -845,7 +874,7 @@ def recreate_meta_shared_state(
 
     if snapshot_dir is not None:
         try:
-            shutil.copytree(snapshot_dir, meta_path, dirs_exist_ok=True)
+            shutil.copytree(snapshot_dir, meta_path, dirs_exist_ok=True, symlinks=True, ignore_dangling_symlinks=True)
         finally:
             shutil.rmtree(snapshot_dir, ignore_errors=True)
 
