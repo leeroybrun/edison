@@ -53,9 +53,10 @@ def test_configure_creates_mcp_json_with_all_servers(tmp_path: Path):
 
     data = json.loads(mcp_path.read_text())
     servers = data["mcpServers"]
-    assert "edison-zen" in servers
+    assert "edison-pal" in servers
     assert "context7" in servers
-    assert servers["edison-zen"]["env"]["ZEN_WORKING_DIR"] == str(project_root.resolve())
+    assert servers["edison-pal"]["env"]["PAL_WORKING_DIR"] == str(project_root.resolve())
+    assert servers["edison-pal"]["args"][-1] == "pal-mcp-server"
 
 
 def test_configure_updates_existing_without_clobbering(tmp_path: Path):
@@ -69,6 +70,8 @@ def test_configure_updates_existing_without_clobbering(tmp_path: Path):
         "version": 1,
         "mcpServers": {
             "other": {"command": "other", "args": ["run"], "env": {}},
+            # Any existing `edison-*` entry not present in current config should be removed.
+            "edison-legacy": {"command": "legacy", "args": [], "env": {}},
         },
     }
     mcp_path.write_text(json.dumps(preexisting, indent=2))
@@ -82,10 +85,11 @@ def test_configure_updates_existing_without_clobbering(tmp_path: Path):
 
     data = json.loads(mcp_path.read_text())
     assert "other" in data["mcpServers"]
-    assert "edison-zen" in data["mcpServers"]
+    assert "edison-pal" in data["mcpServers"]
     assert "context7" in data["mcpServers"]
     assert data["mcpServers"]["other"]["command"] == "other"
-    assert data["mcpServers"]["edison-zen"]["command"] != "legacy"
+    assert data["mcpServers"]["edison-pal"]["command"] != "legacy"
+    assert "edison-legacy" not in data["mcpServers"]
 
 
 def test_configure_dry_run_does_not_write(tmp_path: Path):
@@ -102,7 +106,7 @@ def test_configure_dry_run_does_not_write(tmp_path: Path):
     assert result.returncode == 0, result.stderr
     assert ".mcp.json" not in {p.name for p in project_root.iterdir()}
     assert "mcpServers" in result.stdout
-    assert "edison-zen" in result.stdout
+    assert "edison-pal" in result.stdout
 
 
 def test_configure_rejects_invalid_existing_config(tmp_path: Path):

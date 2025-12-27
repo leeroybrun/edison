@@ -32,17 +32,17 @@ def _make_repo(tmp_path: Path) -> Path:
 def test_precedence_env_over_project_over_core(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _make_repo(tmp_path)
 
-    # Project overlay changes core default (core zen.retry.max_attempts=3)
+    # Project overlay changes core default (core pal.retry.max_attempts=3)
     write_yaml(
-        repo / ".edison" / "config" / "zen.yaml",
-        {"zen": {"retry": {"max_attempts": 5}}},
+        repo / ".edison" / "config" / "pal.yaml",
+        {"pal": {"retry": {"max_attempts": 5}}},
     )
 
     # Env must win
-    monkeypatch.setenv("EDISON_ZEN__RETRY__MAX_ATTEMPTS", "7")
+    monkeypatch.setenv("EDISON_PAL__RETRY__MAX_ATTEMPTS", "7")
 
     cfg = ConfigManager(repo_root=repo).load_config(validate=False)
-    assert cfg["zen"]["retry"]["max_attempts"] == 7
+    assert cfg["pal"]["retry"]["max_attempts"] == 7
 
 
 def test_env_creates_new_keys_lowercased(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

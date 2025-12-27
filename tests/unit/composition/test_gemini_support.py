@@ -15,8 +15,8 @@ class TestGeminiSupport:
             f"Found validators: {list(validators.keys())}"
         )
 
-    def test_gemini_role_in_zen_composition(self) -> None:
-        """Zen composition must support gemini model."""
+    def test_gemini_role_in_pal_composition(self) -> None:
+        """Pal composition must support gemini model."""
         # Check if models config defines gemini
         models_cfg = read_yaml("config", "models.yaml")
 

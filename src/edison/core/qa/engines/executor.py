@@ -101,7 +101,7 @@ class ExecutionResult:
                         if task.get("type") == "delegation":
                             delegation_instructions.append({
                                 "validator_id": v.validator_id,
-                                "zen_role": task.get("zenRole"),
+                                "pal_role": task.get("palRole"),
                                 "instructionsPath": task.get("instructionsPath"),
                             })
 
@@ -698,7 +698,7 @@ class ValidationExecutor:
             task_id=task_id,
             round_num=rn,
             model=model,
-            zen_role=getattr(validator, "zen_role", None),
+            pal_role=getattr(validator, "pal_role", None),
             started_at=now,
             completed_at=now,
         )

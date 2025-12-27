@@ -181,7 +181,7 @@ Evidence: {{fn:evidence_root}}/<task-id>/round-<N>/
 - **Never re-delegate**: Sub-agents implement directly or report blockers
 - **Context discipline**: Send snippets, not full files
 - **Evidence logging**: Record all actions in task file
-- **Zen MCP integration**: Record `continuation_id` for conversation continuity
+- **Pal MCP integration**: Record `continuation_id` for conversation continuity
 
 ### Validator Orchestration
 - Validators execute in **waves** (batched by manifest cap)

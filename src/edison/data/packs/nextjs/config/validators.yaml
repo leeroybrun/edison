@@ -3,7 +3,7 @@ validation:
     nextjs:
       name: "Next.js Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/nextjs.md"
       wave: comprehensive
       always_run: false
@@ -17,7 +17,7 @@ validation:
     api:
       name: "Next.js API Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/api.md"
       wave: comprehensive
       always_run: false

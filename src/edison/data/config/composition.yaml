@@ -10,7 +10,7 @@
 #   composition:
 #     defaults: Global composition defaults (dedupe, headers)
 #     content_types: ALL composable content (agents, validators, roots, etc.)
-#     adapters: Platform adapter configurations (claude, cursor, zen, etc.)
+#     adapters: Platform adapter configurations (claude, cursor, pal, etc.)
 #
 # Usage:
 #   edison compose agents        # Compose only agents
@@ -298,26 +298,26 @@ composition:
       output_path: ".cursor"
 
     # -------------------------------------------------------------------------
-    # ZEN (Zen MCP / Cline)
+    # PAL (Pal MCP / Cline)
     # -------------------------------------------------------------------------
-    zen:
+    pal:
       enabled: true
-      adapter_class: edison.core.adapters.platforms.zen.adapter.ZenAdapter
-      description: "Zen MCP / Cline integration"
-      output_path: ".zen/conf"
+      adapter_class: edison.core.adapters.platforms.pal.adapter.PalAdapter
+      description: "Pal MCP / Cline integration"
+      output_path: ".pal/conf"
       sync:
         agents:
           enabled: true
           source: "{{PROJECT_EDISON_DIR}}/_generated/agents"
-          destination: ".zen/conf/systemprompts/clink/project"
+          destination: ".pal/conf/systemprompts/clink/project"
           filename_pattern: "{name}.txt"
         validators:
           enabled: true
           source: "{{PROJECT_EDISON_DIR}}/_generated/validators"
-          destination: ".zen/conf/systemprompts/clink/project"
+          destination: ".pal/conf/systemprompts/clink/project"
           source_glob: "*.md"
           recursive: true
-          filename_pattern: "{name}.txt"
+          filename_pattern: "validator-{name}.txt"
 
     # -------------------------------------------------------------------------
     # CODERABBIT (CodeRabbit CI)

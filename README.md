@@ -96,7 +96,7 @@ edison init --non-interactive
 # This creates:
 # - .edison/ directory with config and generated artifacts
 # - .project/ directory for sessions, tasks, and QA
-# - .mcp.json for Zen MCP Server integration
+# - .mcp.json for Pal MCP Server integration
 ```
 
 ### Compose Artifacts
@@ -290,7 +290,7 @@ your-project/
 │       ├── briefs/                   # Validation briefs
 │       ├── evidence/                 # Collected evidence
 │       └── reports/                  # Validator reports
-└── .mcp.json                         # Zen MCP Server config
+└── .mcp.json                         # Pal MCP Server config
 ```
 
 ### Important Directories
@@ -602,14 +602,14 @@ edison git status                                # Git status for session
 ### MCP Commands
 
 ```bash
-edison mcp setup                                 # Setup Zen MCP Server
+edison mcp setup                                 # Setup Pal MCP Server
 edison mcp configure                             # Configure .mcp.json
 edison mcp setup --check                         # Verify setup
 ```
 
-## Zen MCP Integration
+## Pal MCP Integration
 
-Edison uses the [Zen MCP Server](https://github.com/BeehiveInnovations/zen-mcp-server) for sub-agent delegation via the Model Context Protocol.
+Edison uses the [Pal MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server) for sub-agent delegation via the Model Context Protocol.
 
 ### Setup
 
@@ -619,34 +619,34 @@ edison init my-project
 
 # Or manual setup
 pip install uv                    # Provides uvx
-edison mcp setup                  # Setup Zen
+edison mcp setup                  # Setup Pal
 edison mcp configure .            # Configure project
 edison mcp setup --check          # Verify
 ```
 
 ### Configuration
 
-The `.mcp.json` file configures the Zen MCP Server:
+The `.mcp.json` file configures the Pal MCP Server:
 
 ```json
 {
   "mcpServers": {
-    "edison-zen": {
+    "edison-pal": {
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
-        "zen-mcp-server"
+        "git+https://github.com/BeehiveInnovations/pal-mcp-server.git",
+        "pal-mcp-server"
       ],
       "env": {
-        "ZEN_WORKING_DIR": "/path/to/project"
+        "PAL_WORKING_DIR": "/path/to/project"
       }
     }
   }
 }
 ```
 
-For detailed setup instructions and troubleshooting, see [docs/ZEN_SETUP.md](docs/ZEN_SETUP.md).
+For detailed setup instructions and troubleshooting, see [docs/PAL_SETUP.md](docs/PAL_SETUP.md).
 
 ## Development
 
@@ -741,7 +741,7 @@ edison/
 
 ## Documentation
 
-- [Zen MCP Setup Guide](docs/ZEN_SETUP.md) - Detailed Zen MCP Server integration guide
+- [Pal MCP Setup Guide](docs/PAL_SETUP.md) - Detailed Pal MCP Server integration guide
 
 ## Contributing
 

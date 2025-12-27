@@ -26,9 +26,9 @@ properties:
     type: string
     description: Execution backend identifier used for this validation (e.g., 'claude',
       'codex', 'gemini', 'auggie', 'coderabbit', 'human').
-  zenRole:
+  palRole:
     type: string
-    description: Zen MCP role used (e.g., 'validator-codex-global')
+    description: Pal MCP role used (e.g., 'validator-codex-global')
   verdict:
     type: string
     enum:
@@ -149,4 +149,4 @@ properties:
         description: Machine hostname (for distributed validation)
       continuationId:
         type: string
-        description: Zen MCP continuation ID (if applicable)
+        description: Pal MCP continuation ID (if applicable)

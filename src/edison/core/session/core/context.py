@@ -30,13 +30,13 @@ class SessionContext:
         return resolved
 
     @staticmethod
-    def build_zen_environment(
+    def build_pal_environment(
         session_id: str,
         base_env: Optional[Dict[str, str]] = None,
         *,
         require_worktree: bool = True,
     ) -> Dict[str, str]:
-        """Return an environment dict with ZEN_WORKING_DIR bound to the session worktree."""
+        """Return an environment dict with PAL_WORKING_DIR bound to the session worktree."""
         # Lazy import to avoid circular dependency with lifecycle.manager
         from edison.core.session.lifecycle.manager import get_session
         session = get_session(session_id)
@@ -47,13 +47,13 @@ class SessionContext:
         if not worktree_path:
             if require_worktree:
                 raise RuntimeError(
-                    f"Session {session_id} is missing git.worktreePath; cannot prepare Zen environment"
+                    f"Session {session_id} is missing git.worktreePath; cannot prepare Pal environment"
                 )
-            env.pop("ZEN_WORKING_DIR", None)
+            env.pop("PAL_WORKING_DIR", None)
             return env
 
         resolved = SessionContext._validate_worktree_path(worktree_path)
-        env["ZEN_WORKING_DIR"] = str(resolved)
+        env["PAL_WORKING_DIR"] = str(resolved)
         # Enforce Edison path resolution within the session worktree even if callers
         # run the process from the primary checkout or change directories later.
         env["AGENTS_PROJECT_ROOT"] = str(resolved)
@@ -68,14 +68,14 @@ class SessionContext:
         session = get_session(session_id)
         worktree_path = SessionContext._extract_worktree_path(session)
         original_cwd = os.getcwd()
-        original_zen_dir = os.environ.get("ZEN_WORKING_DIR")
+        original_pal_dir = os.environ.get("PAL_WORKING_DIR")
         original_agents_root = os.environ.get("AGENTS_PROJECT_ROOT")
         original_agents_session = os.environ.get("AGENTS_SESSION")
         try:
             if worktree_path:
                 try:
                     resolved = SessionContext._validate_worktree_path(worktree_path)
-                    os.environ["ZEN_WORKING_DIR"] = str(resolved)
+                    os.environ["PAL_WORKING_DIR"] = str(resolved)
                     os.environ["AGENTS_PROJECT_ROOT"] = str(resolved)
                     os.environ["AGENTS_SESSION"] = str(session_id)
                     os.chdir(resolved)
@@ -86,10 +86,10 @@ class SessionContext:
                     worktree_path = None
             yield session
         finally:
-            if original_zen_dir is None:
-                os.environ.pop("ZEN_WORKING_DIR", None)
+            if original_pal_dir is None:
+                os.environ.pop("PAL_WORKING_DIR", None)
             else:
-                os.environ["ZEN_WORKING_DIR"] = original_zen_dir
+                os.environ["PAL_WORKING_DIR"] = original_pal_dir
             if original_agents_root is None:
                 os.environ.pop("AGENTS_PROJECT_ROOT", None)
             else:

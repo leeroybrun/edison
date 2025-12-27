@@ -60,9 +60,9 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Sync to Cursor after composing",
     )
     parser.add_argument(
-        "--zen",
+        "--pal",
         action="store_true",
-        help="Sync to Zen MCP after composing",
+        help="Sync to Pal MCP after composing",
     )
     parser.add_argument(
         "--coderabbit",

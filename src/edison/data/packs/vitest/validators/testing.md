@@ -1,7 +1,7 @@
 # Testing Validator (Vitest)
 
 **Role**: Vitest-focused code reviewer for test quality and reliability
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: Unit/integration tests, assertions, determinism, no-mocks discipline
 **Priority**: 2
 **Triggers**: `**/*.test.ts`, `**/*.spec.ts`, `**/__tests__/**`

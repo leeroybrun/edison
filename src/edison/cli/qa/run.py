@@ -90,7 +90,7 @@ def main(args: argparse.Namespace) -> int:
                     "always_run": config.always_run,
                     "timeout": config.timeout,
                     "prompt": config.prompt,
-                    "zen_role": config.zen_role,
+                    "pal_role": config.pal_role,
                 },
                 "status": "dry_run",
                 "message": f"Validator {args.validator_id} would run with engine {config.engine}",
@@ -124,7 +124,7 @@ def main(args: argparse.Namespace) -> int:
                     task_id=args.task_id,
                     round_num=rn,
                     model=model,
-                    zen_role=getattr(config, "zen_role", None),
+                    pal_role=getattr(config, "pal_role", None),
                     started_at=now,
                     completed_at=now,
                 )

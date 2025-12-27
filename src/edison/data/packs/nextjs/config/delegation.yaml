@@ -4,38 +4,38 @@ delegation:
       preferredModel: codex
       reason: "API security, validation, error handling precision"
       subAgentType: api-builder
-      preferredZenRole: api-builder
+      preferredPalRole: api-builder
       confidence: very-high
       examples: ["app/api/health/route.ts", "app/api/auth/login/route.ts"]
     "**/page.tsx":
       preferredModel: claude
       reason: "Page composition, data fetching strategy, UX flow"
       subAgentType: component-builder
-      preferredZenRole: component-builder
+      preferredPalRole: component-builder
       confidence: medium
     "**/layout.tsx":
       preferredModel: claude
       reason: "Layout structure, responsive design, accessibility"
       subAgentType: component-builder
-      preferredZenRole: component-builder
+      preferredPalRole: component-builder
       confidence: medium
     "**/loading.tsx":
       preferredModel: claude
       reason: "Loading state UX, skeleton components"
       subAgentType: component-builder
-      preferredZenRole: component-builder
+      preferredPalRole: component-builder
       confidence: medium
     "**/error.tsx":
       preferredModel: claude
       reason: "Error state UX, user-friendly messaging"
       subAgentType: component-builder
-      preferredZenRole: component-builder
+      preferredPalRole: component-builder
       confidence: medium
     "**/middleware.ts":
       preferredModel: codex
       reason: "Request interception, security, performance"
       subAgentType: api-builder
-      preferredZenRole: api-builder
+      preferredPalRole: api-builder
       confidence: high
 
 

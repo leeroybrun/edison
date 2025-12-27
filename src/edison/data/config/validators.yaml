@@ -69,7 +69,7 @@ validation:
       prompt_mode: file
       prompt_flag: "--config"
 
-    zen-mcp:
+    pal-mcp:
       type: delegated
       description: "Generate delegation instructions for orchestrator"
 
@@ -83,7 +83,7 @@ validation:
     global-codex:
       name: "Global Validator (Codex)"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -97,7 +97,7 @@ validation:
     global-claude:
       name: "Global Validator (Claude)"
       engine: claude-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -111,7 +111,7 @@ validation:
     global-gemini:
       name: "Global Validator (Gemini)"
       engine: gemini-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -125,7 +125,7 @@ validation:
     global-auggie:
       name: "Global Validator (Auggie)"
       engine: auggie-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -140,7 +140,7 @@ validation:
     security:
       name: "Security Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/security.md"
       wave: critical
       always_run: true
@@ -154,7 +154,7 @@ validation:
     performance:
       name: "Performance Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/performance.md"
       wave: critical
       always_run: true
@@ -168,7 +168,7 @@ validation:
     coderabbit:
       name: "CodeRabbit AI Review"
       engine: coderabbit-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/coderabbit.md"
       wave: critical
       always_run: false

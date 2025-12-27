@@ -29,7 +29,7 @@ edison session track complete --task <task-id>
 
 Notes:
 - `--model` should be the execution backend (e.g. `codex`, `claude`, `human`).
-- If you have a resumable conversation/session identifier (e.g. Codex session id / Zen continuation id),
+- If you have a resumable conversation/session identifier (e.g. Codex session id / Pal continuation id),
   pass it via `--continuation-id` so the orchestrator/UI can correlate runs and resume reliably.
 <!-- /section: agent-tracking -->
 

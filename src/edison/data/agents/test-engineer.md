@@ -2,7 +2,7 @@
 name: test-engineer
 description: "Test automation and TDD guardian ensuring coverage and reliability"
 model: codex
-zenRole: "{{project.zenRoles.test-engineer}}"
+palRole: "{{project.palRoles.test-engineer}}"
 allowed_tools:
   - Read
   - Edit

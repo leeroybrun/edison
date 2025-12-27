@@ -14,7 +14,7 @@ validation:
         model: codex
         interface: clink
         role: codereviewer
-        zenRole: validator-python
+        palRole: validator-python
         specFile: specialized/python.md
         triggers:
           - "**/*.py"
@@ -31,7 +31,7 @@ validation:
         model: codex
         interface: clink
         role: codereviewer
-        zenRole: validator-edison
+        palRole: validator-edison
         specFile: specialized/edison.md
         triggers:
           - "src/edison/**/*.py"

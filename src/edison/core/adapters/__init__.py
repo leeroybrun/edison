@@ -7,7 +7,7 @@ All platform adapters now inherit from PlatformAdapter and are located in
 the platforms/ subdirectory. This provides a unified architecture for:
 - Claude Code (.claude/)
 - Cursor (.cursor/)
-- Zen MCP (.zen/)
+- Pal MCP (.pal/)
 - CodeRabbit (.coderabbit.yaml)
 - Codex (.codex/)
 """
@@ -23,7 +23,7 @@ from .loader import AdapterLoader  # noqa: F401
 # ============================================================================
 from .platforms.claude import ClaudeAdapter  # noqa: F401
 from .platforms.managed_files import ManagedFilesAdapter  # noqa: F401
-from .platforms.zen import ZenAdapter, WORKFLOW_HEADING  # noqa: F401
+from .platforms.pal import PalAdapter, WORKFLOW_HEADING  # noqa: F401
 from .platforms.codex import CodexAdapter  # noqa: F401
 from .platforms.cursor import CursorAdapter  # noqa: F401
 from .platforms.coderabbit import CoderabbitAdapter  # noqa: F401
@@ -46,7 +46,7 @@ __all__ = [
     # Platform adapters
     "ClaudeAdapter",
     "ManagedFilesAdapter",
-    "ZenAdapter",
+    "PalAdapter",
     "CursorAdapter",
     "CodexAdapter",
     "CoderabbitAdapter",

@@ -42,10 +42,10 @@ def test_init_configures_mcp_by_default(tmp_path: Path):
 
     data = json.loads(mcp_path.read_text())
     servers = data.get("mcpServers", {})
-    assert "edison-zen" in servers
+    assert "edison-pal" in servers
     assert "context7" in servers
-    env = servers["edison-zen"].get("env", {})
-    assert env.get("ZEN_WORKING_DIR") == str(project.resolve())
+    env = servers["edison-pal"].get("env", {})
+    assert env.get("PAL_WORKING_DIR") == str(project.resolve())
 
 
 def test_init_can_skip_mcp_setup(tmp_path: Path):
@@ -67,7 +67,7 @@ def test_init_mcp_script_option_uses_run_script(tmp_path: Path):
     assert result.returncode == 0, result.stderr
 
     data = json.loads((project / ".mcp.json").read_text())
-    server = data["mcpServers"]["edison-zen"]
+    server = data["mcpServers"]["edison-pal"]
     assert server["command"].endswith("run-server.sh")
 
 

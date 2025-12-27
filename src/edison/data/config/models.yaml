@@ -2,7 +2,7 @@ delegation:
   models:
     codex:
       displayName: "Codex (ChatGPT PRO)"
-      provider: zen-mcp
+      provider: pal-mcp
       interface: clink
       roles: [default, planner, codereviewer]
       capabilities:
@@ -42,7 +42,7 @@ delegation:
       avoidFor: [deep-static-analysis, precise-refactoring-across-many-files]
     gemini:
       displayName: "Gemini 2.5 Pro/Flash"
-      provider: zen-mcp
+      provider: pal-mcp
       interface: clink
       roles: [default, planner, codereviewer]
       capabilities:

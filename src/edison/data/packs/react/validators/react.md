@@ -1,7 +1,7 @@
 # React Validator
 
 **Role**: React 19-focused code reviewer for application components
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: React patterns, hooks, (when applicable) Server Components, suspense, accessibility
 **Priority**: 3 (specialized - runs after critical validators)
 **Triggers**: `*.tsx`, `*.jsx`, `components/**/*.tsx`, `components/**/*.jsx`

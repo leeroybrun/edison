@@ -167,7 +167,7 @@ def format_clink_cli_command(
 
 
 # NOTE: dependencies module is NOT imported here to avoid import-time coupling
-# Import directly: from edison.core.utils.dependencies import detect_uvx, detect_zen_mcp_server
+# Import directly: from edison.core.utils.dependencies import detect_uvx, detect_pal_mcp_server
 
 __all__ = [
     # CLI

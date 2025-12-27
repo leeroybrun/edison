@@ -1,12 +1,12 @@
 # Project-specific MCP configuration override for Edison repository
-# This uses the local run-server.sh script which handles .zen/.env loading
+# This uses the local run-server.sh script which handles .pal/.env loading
 
 mcp:
   servers:
-    edison-zen:
+    edison-pal:
       # Use local script for Edison repo development
-      # The script handles: .env loading, zen-mcp-server discovery, PATH setup
+      # The script handles: .env loading, pal-mcp-server discovery, PATH setup
       # Relative path - Claude Code runs from project root
-      command: "./scripts/zen/run-server.sh"
+      command: "./scripts/pal/run-server.sh"
       args: []
       env: {}

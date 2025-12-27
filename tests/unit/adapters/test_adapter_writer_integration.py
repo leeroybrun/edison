@@ -4,7 +4,7 @@ Verifies that all platform adapters use CompositionFileWriter
 for unified file writing instead of direct .write_text() calls.
 
 Note: The old separate "sync" and "prompt" adapters have been unified
-into single platform adapters (ClaudeAdapter, CursorAdapter, ZenAdapter, etc.)
+into single platform adapters (ClaudeAdapter, CursorAdapter, PalAdapter, etc.)
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pytest
 from edison.core.adapters import (
     ClaudeAdapter,
     CursorAdapter,
-    ZenAdapter,
+    PalAdapter,
     CodexAdapter,
     CoderabbitAdapter,
 )
@@ -73,11 +73,11 @@ class TestUnifiedAdaptersHaveWriter:
         assert adapter.writer is writer
 
     def test_zen_adapter_has_writer_property(self, isolated_project_env: Path) -> None:
-        """ZenAdapter should have a lazy writer property."""
+        """PalAdapter should have a lazy writer property."""
         root = isolated_project_env
         _write_minimal_config(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
 
         # Verify writer property exists
         assert hasattr(adapter, 'writer')

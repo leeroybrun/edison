@@ -48,7 +48,7 @@ def args() -> Namespace:
     a.json = False
     a.claude = False
     a.cursor = False
-    a.zen = False
+    a.pal = False
     a.coderabbit = False
     a.all_adapters = False
     # New flags (atomic + profiling); default off

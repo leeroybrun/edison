@@ -1,7 +1,7 @@
 # Motion (framer-motion/motion) Validator
 
 **Role**: Animation and motion patterns reviewer for React components
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: Framer Motion/Motion 12 patterns, animations, performance
 **Priority**: 3 (specialized - runs after critical validators)
 **Triggers**: `*.tsx`, `*.jsx`, `components/**/*.tsx`, `**/motion/**/*`

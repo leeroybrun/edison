@@ -3,7 +3,7 @@ validation:
     browser-e2e:
       name: "Browser E2E Validator (Playwright MCP)"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/browser-e2e.md"
       wave: comprehensive
       always_run: false

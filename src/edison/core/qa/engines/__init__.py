@@ -7,7 +7,7 @@ Architecture:
     - ValidationExecutor: Main entry point for batch validation (preferred)
     - EngineRegistry: Lower-level registry for single validators
     - CLIEngine: Executes CLI-based validators (Codex, Claude, Gemini, etc.)
-    - ZenMCPEngine: Generates delegation instructions for orchestrators
+    - PalMCPEngine: Generates delegation instructions for orchestrators
     - ValidationResult: Standard result format from all engines
     - EngineConfig: Configuration for execution engines
 
@@ -61,7 +61,7 @@ Configuration:
       validators:
         global-codex:
           engine: codex-cli
-          fallback_engine: zen-mcp
+          fallback_engine: pal-mcp
           prompt: "_generated/validators/global.md"
           wave: critical
           always_run: true
@@ -76,7 +76,7 @@ from __future__ import annotations
 
 from .base import EngineConfig, EngineProtocol, ValidationResult
 from .cli import CLIEngine
-from .delegated import ZenMCPEngine
+from .delegated import PalMCPEngine
 from .executor import ExecutionResult, ValidationExecutor, WaveResult
 from .registry import EngineRegistry
 
@@ -90,7 +90,7 @@ __all__ = [
     "ValidationResult",
     # Engine classes
     "CLIEngine",
-    "ZenMCPEngine",
+    "PalMCPEngine",
     # Configuration
     "EngineConfig",
     "EngineProtocol",

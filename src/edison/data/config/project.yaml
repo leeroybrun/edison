@@ -7,10 +7,10 @@ project:
   owner: null  # If null, will default to getpass.getuser() at runtime
   audit_terms: []  # Additional terms for audit purity checks
 
-  # Zen Role Mappings for Agents
-  # These map agent names to their Zen MCP role identifiers
+  # Pal Role Mappings for Agents
+  # These map agent names to their Pal MCP role identifiers
   # Override in .edison/config/project.yaml for project-specific roles
-  zenRoles:
+  palRoles:
     api-builder: "agent-api-builder"
     code-reviewer: "agent-code-reviewer"
     component-builder: "agent-component-builder"

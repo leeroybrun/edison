@@ -43,7 +43,7 @@ def test_compose_all_managed_files_adds_project_gitignore(tmp_path: Path) -> Non
         json=True,
         claude=False,
         cursor=False,
-        zen=False,
+        pal=False,
         coderabbit=False,
         all_adapters=False,
         no_adapters=False,

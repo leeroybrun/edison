@@ -612,7 +612,7 @@
   - `tests/integration/constitutions/`
   - `tests/integration/guidelines/`
   - `tests/integration/rules/`
-  - `tests/integration/zen/`
+  - `tests/integration/pal/`
 - **Note**: Unit test directories intentionally do not have `__init__.py` files (not meant to be importable packages)
 
 ### Task 11.3: Verify final test structure
@@ -638,7 +638,7 @@
   │   ├── constitutions/
   │   ├── guidelines/
   │   ├── rules/
-  │   └── zen/
+  │   └── pal/
   ├── tools/           - Non-test utilities
   │   └── context/     - Context analysis tools
   ├── unit/            - Unit tests (27 subdirectories)
@@ -664,7 +664,7 @@
   ?? tests/integration/constitutions/__init__.py
   ?? tests/integration/guidelines/__init__.py
   ?? tests/integration/rules/__init__.py
-  ?? tests/integration/zen/__init__.py
+  ?? tests/integration/pal/__init__.py
   ```
 
 ### Task 11.6: Update RESTRUCTURING_PLAN.md with final status
@@ -750,7 +750,7 @@
   - `tests/integration/constitutions/__init__.py`
   - `tests/integration/guidelines/__init__.py`
   - `tests/integration/rules/__init__.py`
-  - `tests/integration/zen/__init__.py`
+  - `tests/integration/pal/__init__.py`
 - **Note**: Unit test directories intentionally omitted (not meant to be importable)
 
 #### 3. Test Structure Verification

@@ -75,7 +75,7 @@ def real_args():
     args.json = False
     args.claude = False
     args.cursor = False
-    args.zen = False
+    args.pal = False
     args.platforms = None
     return args
 

@@ -51,7 +51,7 @@ from ..engines import (
     ValidationResult,
     EngineConfig,
     CLIEngine,
-    ZenMCPEngine,
+    PalMCPEngine,
 )
 
 # ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ __all__ = [
     "ValidationResult",
     "EngineConfig",
     "CLIEngine",
-    "ZenMCPEngine",
+    "PalMCPEngine",
     # Backwards-compatible functional API
     "validate_dimension_weights",
     "process_validator_template",

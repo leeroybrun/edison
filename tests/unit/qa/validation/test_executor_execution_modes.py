@@ -15,7 +15,7 @@ def _write_yaml(path: Path, data: object) -> None:
 def test_can_execute_validator_false_when_only_delegation_fallback(isolated_project_env: Path) -> None:
     """can_execute_validator() must mean 'can run via CLI', not 'can delegate'.
 
-    A delegated fallback engine (zen-mcp) is always available, but that does NOT
+    A delegated fallback engine (pal-mcp) is always available, but that does NOT
     mean we can execute validators directly.
     """
     repo = isolated_project_env
@@ -47,7 +47,7 @@ def test_can_execute_validator_false_when_only_delegation_fallback(isolated_proj
                     "git-validator": {
                         "name": "Git Validator (test)",
                         "engine": "git-cli",
-                        "fallback_engine": "zen-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,
@@ -96,7 +96,7 @@ def test_executor_marks_delegated_when_cli_disabled(isolated_project_env: Path) 
                     "git-validator": {
                         "name": "Git Validator (test)",
                         "engine": "git-cli",
-                        "fallback_engine": "zen-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,

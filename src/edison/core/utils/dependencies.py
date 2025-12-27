@@ -78,13 +78,13 @@ def detect_uvx(
     )
 
 
-def detect_zen_mcp_server(
+def detect_pal_mcp_server(
     env_get: Callable[[str, Optional[str]], Optional[str]] = os.environ.get,
     home_func: Callable[[], Path] = Path.home,
     uvx_detector: Callable[[], UvxStatus] = detect_uvx,
 ) -> tuple[bool, Optional[Path]]:
     """
-    Detect if zen-mcp-server is available.
+    Detect if pal-mcp-server is available.
 
     Args:
         env_get: Function to get environment variables (defaults to os.environ.get)
@@ -95,14 +95,14 @@ def detect_zen_mcp_server(
         Tuple of (available: bool, path: Optional[Path])
     """
     # Check environment variable first
-    env_path = env_get("ZEN_MCP_SERVER_DIR", None)
+    env_path = env_get("PAL_MCP_SERVER_DIR", None)
     if env_path:
         path = Path(env_path)
         if path.exists() and (path / "pyproject.toml").exists():
             return True, path
 
     # Check standard location
-    home_path = home_func() / "zen-mcp-server"
+    home_path = home_func() / "pal-mcp-server"
     if home_path.exists() and (home_path / "pyproject.toml").exists():
         return True, home_path
 

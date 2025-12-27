@@ -1,6 +1,6 @@
 """Delegated engine for orchestrator-based validation.
 
-This module provides the ZenMCPEngine which generates delegation instructions
+This module provides the PalMCPEngine which generates delegation instructions
 for validators that should be run by an orchestrator (human or AI) rather than
 executed directly via CLI.
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ZenMCPEngine:
+class PalMCPEngine:
     """Engine that generates delegation instructions for orchestrators.
 
     This engine does not execute validators directly. Instead, it generates
@@ -122,7 +122,7 @@ class ZenMCPEngine:
                 {
                     "type": "delegation",
                     "validator": validator.id,
-                    "zenRole": validator.zen_role,
+                    "palRole": validator.pal_role,
                     "instructionsPath": instructions_path_rel,
                 }
             ],
@@ -158,8 +158,8 @@ class ZenMCPEngine:
             f"- **Round**: {round_num or 'N/A'}",
             f"- **Worktree**: {worktree_path}",
             "",
-            "## Zen Role",
-            f"Execute as: `{validator.zen_role}`",
+            "## Pal Role",
+            f"Execute as: `{validator.pal_role}`",
             "",
         ]
 
@@ -240,4 +240,4 @@ class ZenMCPEngine:
         return filepath
 
 
-__all__ = ["ZenMCPEngine"]
+__all__ = ["PalMCPEngine"]

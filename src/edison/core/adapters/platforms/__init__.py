@@ -9,7 +9,7 @@ Each adapter handles:
 Available platforms:
 - ClaudeAdapter: Claude Code integration
 - CursorAdapter: Cursor IDE integration
-- ZenAdapter: Zen MCP integration
+- PalAdapter: Pal MCP integration
 - CodexAdapter: Codex IDE integration
 - CoderabbitAdapter: CodeRabbit integration
 """
@@ -19,7 +19,7 @@ from .claude import ClaudeAdapter, ClaudeAdapterError
 from .cursor import CursorAdapter, CursorAdapterError
 from .codex import CodexAdapter, CodexAdapterError
 from .coderabbit import CoderabbitAdapter, CoderabbitAdapterError
-from .zen import ZenAdapter, ZenAdapterError
+from .pal.adapter import PalAdapter, PalAdapterError
 
 __all__ = [
     "ClaudeAdapter",
@@ -30,6 +30,6 @@ __all__ = [
     "CodexAdapterError",
     "CoderabbitAdapter",
     "CoderabbitAdapterError",
-    "ZenAdapter",
-    "ZenAdapterError",
+    "PalAdapter",
+    "PalAdapterError",
 ]

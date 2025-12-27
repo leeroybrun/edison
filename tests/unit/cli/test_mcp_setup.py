@@ -38,7 +38,7 @@ def test_mcp_setup_creates_config_for_all_servers(tmp_path: Path) -> None:
     assert mcp_path.exists()
     data = json.loads(mcp_path.read_text())
     servers = data.get("mcpServers", {})
-    assert "edison-zen" in servers
+    assert "edison-pal" in servers
     assert "context7" in servers
 
 
@@ -49,7 +49,7 @@ def test_mcp_setup_preserves_user_defined_servers(tmp_path: Path) -> None:
     existing = {
         "mcpServers": {
             "user-custom": {"command": "custom", "args": [], "env": {"X": "1"}},
-            "edison-zen": {"command": "legacy", "args": [], "env": {}},
+            "edison-pal": {"command": "legacy", "args": [], "env": {}},
         }
     }
     (project_root / ".mcp.json").write_text(json.dumps(existing))
@@ -63,7 +63,7 @@ def test_mcp_setup_preserves_user_defined_servers(tmp_path: Path) -> None:
     data = json.loads((project_root / ".mcp.json").read_text())
     assert "user-custom" in data["mcpServers"]
     assert data["mcpServers"]["user-custom"]["command"] == "custom"
-    assert data["mcpServers"]["edison-zen"]["command"] != "legacy"
+    assert data["mcpServers"]["edison-pal"]["command"] != "legacy"
 
 
 def test_mcp_setup_dry_run_outputs_without_writing(tmp_path: Path) -> None:

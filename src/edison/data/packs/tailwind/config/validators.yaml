@@ -3,7 +3,7 @@ validation:
     styling:
       name: "Styling Validator (Tailwind)"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/styling.md"
       wave: comprehensive
       always_run: false

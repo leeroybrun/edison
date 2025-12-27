@@ -47,7 +47,7 @@ def test_mcp_call_includes_working_directory_when_in_worktree(repo_with_commit: 
         session_id=session_id,
     )
 
-    assert "mcp__edison-zen__clink" in cmd
+    assert "mcp__edison-pal__clink" in cmd
     assert "--working_directory" in cmd
     assert str(worktree_path) in cmd
     assert resolve_working_directory(session_id) == worktree_path

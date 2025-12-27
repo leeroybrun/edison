@@ -16,7 +16,7 @@ from edison.core.utils.paths import (
 from edison.core.utils import git as git_utils
 from edison.core.utils import subprocess as subprocess_utils
 from edison.core.task.paths import _get_root as task_paths_get_root
-# from edison.core.adapters.sync import zen as zen_adapter
+# from edison.core.adapters.sync import pal as zen_adapter
 from edison.core.adapters.platforms import cursor as cursor_adapter
 from tests.helpers.cache_utils import reset_edison_caches
 from tests.helpers.env_setup import setup_project_root
@@ -105,9 +105,9 @@ class TestRepoRootConsolidation:
         monkeypatch.chdir(temp_git_repo)
         monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
         
-        # Zen Sync
-        # zen = zen_adapter.ZenAdapter()
-        # assert zen.project_root == temp_git_repo
+        # Pal Sync
+        # pal = zen_adapter.PalAdapter()
+        # assert pal.project_root == temp_git_repo
         
         # Cursor Sync
         cursor = cursor_adapter.CursorAdapter()

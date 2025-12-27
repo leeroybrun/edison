@@ -1,7 +1,7 @@
-"""Zen sync mixin for prompt synchronization.
+"""Pal sync mixin for prompt synchronization.
 
-This module provides ZenSyncMixin which handles syncing
-Zen prompts to the appropriate directories.
+This module provides PalSyncMixin which handles syncing
+Pal prompts to the appropriate directories.
 """
 from __future__ import annotations
 from pathlib import Path
@@ -12,18 +12,18 @@ from .composer import _canonical_model
 from .discovery import _canonical_role
 
 if TYPE_CHECKING:
-    from .adapter import ZenAdapter
+    from .adapter import PalAdapter
 
 WORKFLOW_HEADING = "## Edison Workflow Loop"
 
 
-class ZenSyncMixin:
-    """Mixin for syncing Zen prompts."""
+class PalSyncMixin:
+    """Mixin for syncing Pal prompts."""
 
-    def _workflow_template(self: ZenAdapter) -> Optional[str]:
+    def _workflow_template(self: PalAdapter) -> Optional[str]:
         """Get workflow loop template text."""
-        zen_cfg = self.config.get("zen") or {}
-        template_cfg = (zen_cfg.get("templates") or {}) if isinstance(zen_cfg, dict) else {}
+        pal_cfg = self.config.get("pal") or {}
+        template_cfg = (pal_cfg.get("templates") or {}) if isinstance(pal_cfg, dict) else {}
         configured = None
         if isinstance(template_cfg, dict):
             configured = template_cfg.get("workflow_loop")
@@ -39,7 +39,7 @@ class ZenSyncMixin:
                 candidates.append(self.core_dir / raw_path)
 
         # Core default (kept as a file, not a hardcoded string).
-        candidates.append(self.core_dir / "templates" / "zen" / "workflow-loop.txt")
+        candidates.append(self.core_dir / "templates" / "pal" / "workflow-loop.txt")
 
         for path in candidates:
             if path.exists():
@@ -56,7 +56,7 @@ class ZenSyncMixin:
         workflow = content[idx:]
         return body, workflow
 
-    def _attach_workflow_loop(self: ZenAdapter, core_text: str, existing_file: Optional[Path]) -> str:
+    def _attach_workflow_loop(self: PalAdapter, core_text: str, existing_file: Optional[Path]) -> str:
         """Attach or preserve workflow loop section when syncing prompts."""
         existing_loop: Optional[str] = None
         if existing_file is not None and existing_file.exists():
@@ -75,9 +75,9 @@ class ZenSyncMixin:
 
         return core_text.rstrip() + "\n\n" + loop_text.rstrip() + "\n"
 
-    def _zen_prompts_dir(self: ZenAdapter) -> Path:
-        """Get Zen prompts directory path."""
-        # Prefer the configured sync destination (agents/prompts) so all Zen prompt
+    def _pal_prompts_dir(self: PalAdapter) -> Path:
+        """Get Pal prompts directory path."""
+        # Prefer the configured sync destination (agents/prompts) so all prompt
         # artifacts land in a single coherent directory.
         dest = self.get_sync_destination("agents") or self.get_sync_destination("prompts")
         if dest is None:
@@ -85,13 +85,12 @@ class ZenSyncMixin:
         ensure_directory(dest)
         return dest
 
-    def sync_role_prompts(self: ZenAdapter, model: str, roles: List[str]) -> Dict[str, Path]:
+    def sync_role_prompts(self: PalAdapter, model: str, roles: List[str]) -> Dict[str, Path]:
         """Sync composed prompts for a model across one or more logical roles.
 
-        Generic roles (default / codereviewer / planner) are combined into
-        the model-level file `<model>.txt`. project-specific roles
-        (`project-*`) are written to individual files matching the Zen role
-        name (e.g. `project-api-builder.txt`).
+        Each role gets its own file under the Pal system prompts directory:
+        - Generic roles: `<model>_<role>.txt` (e.g. `codex_default.txt`)
+        - Project roles: `<model>_<project-role>.txt` (e.g. `codex_project-api-builder.txt`)
 
         Args:
             model: Model identifier (codex/claude/gemini)
@@ -105,7 +104,7 @@ class ZenSyncMixin:
             roles = ["default"]
 
         packs = self.get_active_packs()
-        prompts_dir = self._zen_prompts_dir()
+        prompts_dir = self._pal_prompts_dir()
 
         results: Dict[str, Path] = {}
 
@@ -117,30 +116,27 @@ class ZenSyncMixin:
             else:
                 generic_roles.append(role)
 
-        # Generic roles share a single file per model
-        if generic_roles:
-            sections: List[str] = []
-            for role in generic_roles:
-                sections.append(self.compose_zen_prompt(role=role, model=model_key, packs=packs))
-            combined = "\n\n".join(sections)
-            target = prompts_dir / f"{model_key}.txt"
-            final_text = self._attach_workflow_loop(combined, target if target.exists() else None)
+        # Generic roles: one file per (model, role)
+        for role in generic_roles:
+            role_key = _canonical_role(role)
+            target = prompts_dir / f"{model_key}_{role_key}.txt"
+            text = self.compose_pal_prompt(role=role, model=model_key, packs=packs)
+            final_text = self._attach_workflow_loop(text, target if target.exists() else None)
             self.writer.write_text(target, final_text)
-            for role in generic_roles:
-                results[role] = target
+            results[role] = target
 
-        # project roles each get their own file
+        # Project roles: one file per (model, role)
         for role in project_roles:
-            target = prompts_dir / f"{role}.txt"
-            text = self.compose_zen_prompt(role=role, model=model_key, packs=packs)
+            target = prompts_dir / f"{model_key}_{role}.txt"
+            text = self.compose_pal_prompt(role=role, model=model_key, packs=packs)
             final_text = self._attach_workflow_loop(text, target if target.exists() else None)
             self.writer.write_text(target, final_text)
             results[role] = target
 
         return results
 
-    def verify_cli_prompts(self: ZenAdapter, sync: bool = True) -> Dict[str, Any]:
-        """Verify that all Zen MCP CLI client roles have prompt files.
+    def verify_cli_prompts(self: PalAdapter, sync: bool = True) -> Dict[str, Any]:
+        """Verify that all Pal MCP CLI client roles have prompt files.
 
         When ``sync`` is True (default), this method first syncs prompts
         for all project-specific roles discovered in CLI client configs
@@ -161,12 +157,12 @@ class ZenSyncMixin:
         from edison.core.config.domains import CompositionConfig
 
         comp_cfg = CompositionConfig(repo_root=self.project_root)
-        zen_adapter = next((a for a in comp_cfg.get_enabled_adapters() if a.name == "zen"), None)
-        if zen_adapter is None:
+        pal_adapter = next((a for a in comp_cfg.get_enabled_adapters() if a.name == "pal"), None)
+        if pal_adapter is None:
             return {"ok": True, "models": [], "roles": [], "missing": [], "missingWorkflow": []}
 
-        zen_conf_dir = comp_cfg.resolve_output_path(zen_adapter.output_path)
-        cli_dir = zen_conf_dir / "cli_clients"
+        pal_conf_dir = comp_cfg.resolve_output_path(pal_adapter.output_path)
+        cli_dir = pal_conf_dir / "cli_clients"
         report: Dict[str, Any] = {
             "ok": True,
             "models": [],
@@ -236,4 +232,4 @@ class ZenSyncMixin:
         return report
 
 
-__all__ = ["ZenSyncMixin", "WORKFLOW_HEADING"]
+__all__ = ["PalSyncMixin", "WORKFLOW_HEADING"]

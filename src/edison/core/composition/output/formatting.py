@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 def format_for_zen(content: str) -> str:
-    """Format composed content for Zen MCP consumption (plain text)."""
+    """Format composed content for Pal MCP consumption (plain text)."""
     txt = content.replace("```python", "").replace("```typescript", "").replace("```", "")
     txt = re.sub(r"^### (.+)$", r"**\1**", txt, flags=re.MULTILINE)
     txt = re.sub(r"^## (.+)$", r"\n**\1**\n", txt, flags=re.MULTILINE)
@@ -64,7 +64,7 @@ def compose_for_role(
         config: Optional config dict (used when adapter_or_repo_root is a Path)
         active_packs: Optional list of active packs (used when adapter_or_repo_root is a Path)
     """
-    # NOTE: This function is legacy-ish formatting glue used by the Zen adapter.
+    # NOTE: This function is legacy-ish formatting glue used by the Pal adapter.
     # Prefer composing validators via the unified registry pipeline when possible.
     from ..core import CompositionPathResolver
     from ..engine import TemplateEngine

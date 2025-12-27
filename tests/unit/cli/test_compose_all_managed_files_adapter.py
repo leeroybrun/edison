@@ -42,7 +42,7 @@ def args() -> Namespace:
     a.json = True
     a.claude = False
     a.cursor = False
-    a.zen = False
+    a.pal = False
     a.coderabbit = False
     a.all_adapters = False
     a.no_adapters = False

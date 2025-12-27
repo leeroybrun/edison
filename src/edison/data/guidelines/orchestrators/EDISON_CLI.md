@@ -336,7 +336,7 @@ The following validators were NOT auto-triggered but may be relevant:
 
 **For delegated validators:**
 1. Read delegation instructions from evidence folder
-2. Execute validation using the specified zenRole
+2. Execute validation using the specified palRole
 3. Save results to `validator-<id>-report.md`
 
 **Example with mixed execution:**

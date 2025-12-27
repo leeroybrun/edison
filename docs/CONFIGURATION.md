@@ -473,7 +473,7 @@ validation:
       read_only_flags: ["--prompt-only"]
       response_parser: coderabbit
 
-    zen-mcp:
+    pal-mcp:
       type: delegated
       description: "Generate delegation instructions for orchestrator"
 
@@ -482,7 +482,7 @@ validation:
     global-codex:
       name: "Global Validator (Codex)"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -494,7 +494,7 @@ validation:
     global-claude:
       name: "Global Validator (Claude)"
       engine: claude-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
       always_run: true
@@ -505,7 +505,7 @@ validation:
     security:
       name: "Security Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "critical/security.md"
       wave: critical
       always_run: false
@@ -517,7 +517,7 @@ validation:
     react:
       name: "React Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "specialized/react.md"
       wave: comprehensive
       always_run: false
@@ -545,7 +545,7 @@ validation:
 - **Engines**: Define execution backends (CLI tools or delegation)
 - **Validators**: Reference engines with fallback support
 - **Waves**: Group validators for ordered execution
-- **zenRole**: Automatically inferred as `validator-{id}` (no explicit config needed)
+- **palRole**: Automatically inferred as `validator-{id}` (no explicit config needed)
 
 **Common Overrides**:
 
@@ -588,31 +588,31 @@ delegation:
       reason: "UI/UX thinking, component design, accessibility"
       subAgentType: component-builder-nextjs
       excludePatterns: ["**/*.test.tsx", "**/*.spec.tsx"]
-      preferredZenRole: component-builder-nextjs
+      preferredPalRole: component-builder-nextjs
       confidence: high
 
     "**/route.ts":
       preferredModel: codex
       reason: "API security, precise validation, error handling, type safety"
       subAgentType: api-builder
-      delegateVia: zen-mcp
-      preferredZenRole: api-builder
+      delegateVia: pal-mcp
+      preferredPalRole: api-builder
       confidence: very-high
 
     "**/*.test.ts":
       preferredModel: codex
       reason: "Systematic test coverage, edge case generation, TDD compliance"
       subAgentType: test-engineer
-      delegateVia: zen-mcp
-      preferredZenRole: test-engineer
+      delegateVia: pal-mcp
+      preferredPalRole: test-engineer
       confidence: high
 
     "schema.prisma":
       preferredModel: codex
       reason: "Schema precision, relationship correctness, migration safety"
       subAgentType: database-architect-prisma
-      delegateVia: zen-mcp
-      preferredZenRole: database-architect-prisma
+      delegateVia: pal-mcp
+      preferredPalRole: database-architect-prisma
       confidence: very-high
 
   # Task type rules
@@ -622,14 +622,14 @@ delegation:
       subAgentType: component-builder-nextjs
       reason: "Component design needs UX thinking, accessibility"
       delegation: required
-      preferredZenRole: component-builder-nextjs
+      preferredPalRole: component-builder-nextjs
 
     api-route:
       preferredModel: codex
       subAgentType: api-builder
       reason: "API security, validation, error handling precision"
       delegation: required
-      preferredZenRole: api-builder
+      preferredPalRole: api-builder
 
     full-stack-feature:
       preferredModel: multi
@@ -637,7 +637,7 @@ delegation:
       subAgentType: feature-implementer
       reason: "UI parts use Gemini; backend uses Codex (multi-model)"
       delegation: partial
-      preferredZenRole: feature-implementer
+      preferredPalRole: feature-implementer
 ```
 
 ---
@@ -987,7 +987,7 @@ delegation:
   models:
     codex:
       displayName: "Codex (ChatGPT PRO)"
-      provider: zen-mcp
+      provider: pal-mcp
       interface: clink
       roles: [default, planner, codereviewer]
       capabilities:
@@ -1039,7 +1039,7 @@ delegation:
 
     gemini:
       displayName: "Gemini 2.5 Pro/Flash"
-      provider: zen-mcp
+      provider: pal-mcp
       interface: clink
       roles: [default, planner, codereviewer]
       capabilities:
@@ -1236,25 +1236,25 @@ MCP (Model Context Protocol) server configuration.
 mcp:
   config_file: ".mcp.json"
   tool_names:
-    edison_zen_clink: "mcp__edison-zen__clink"
+    edison_pal_clink: "mcp__edison-pal__clink"
 
   servers:
-    edison-zen:
-      # Portable: use uvx to run zen-mcp-server from git
+    edison-pal:
+      # Portable: use uvx to run pal-mcp-server from git
       command: "uvx"
       args:
         - "--from"
-        - "git+https://github.com/BeehiveInnovations/zen-mcp-server.git"
-        - "zen-mcp-server"
+        - "git+https://github.com/BeehiveInnovations/pal-mcp-server.git"
+        - "pal-mcp-server"
       env:
-        ZEN_WORKING_DIR: "{PROJECT_ROOT}"
+        PAL_WORKING_DIR: "{PROJECT_ROOT}"
       setup:
         require:
           commands:
             - "uvx"
         instructions: |
           Install uvx: pip install uv
-          Configure API keys in {PROJECT_ROOT}/.zen/.env
+          Configure API keys in {PROJECT_ROOT}/.pal/.env
 
     context7:
       command: "npx"
@@ -1280,9 +1280,9 @@ mcp:
 ```yaml
 mcp:
   servers:
-    edison-zen:
+    edison-pal:
       # Use local script for development
-      command: "./scripts/zen/run-server.sh"
+      command: "./scripts/pal/run-server.sh"
       args: []
       env: {}
 ```
@@ -1625,7 +1625,7 @@ validation:
         model: claude
         interface: Task
         role: code-reviewer
-        zenRole: validator-accessibility
+        palRole: validator-accessibility
         specFile: specialized/accessibility.md
         triggers: ["**/*.tsx", "**/*.jsx"]
         alwaysRun: false
@@ -1666,7 +1666,7 @@ delegation:
       preferredModel: codex
       reason: "Analytics tracking requires precision"
       subAgentType: api-builder
-      preferredZenRole: api-builder
+      preferredPalRole: api-builder
       confidence: high
 ```
 

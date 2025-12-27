@@ -1,7 +1,7 @@
-"""Zen discovery mixin for role-specific guidelines and rules.
+"""Pal discovery mixin for role-specific guidelines and rules.
 
-This module provides ZenDiscoveryMixin which handles discovering
-applicable guidelines and rules for different Zen roles.
+This module provides PalDiscoveryMixin which handles discovering
+applicable guidelines and rules for different Pal roles.
 
 Uses unified patterns module for fnmatch operations.
 """
@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Set, TYPE_CHECKING
 from edison.core.utils.patterns import matches_any_pattern
 
 if TYPE_CHECKING:
-    from .adapter import ZenAdapter
+    from .adapter import PalAdapter
 
 
 def _canonical_role(role: str) -> str:
@@ -44,10 +44,10 @@ def _canonical_role(role: str) -> str:
     return low
 
 
-class ZenDiscoveryMixin:
+class PalDiscoveryMixin:
     """Mixin for discovering role-specific guidelines and rules."""
 
-    def get_applicable_guidelines(self: ZenAdapter, role: str) -> List[str]:
+    def get_applicable_guidelines(self: PalAdapter, role: str) -> List[str]:
         """Return guideline names applicable to a logical role.
 
         Role mapping reference:
@@ -57,7 +57,7 @@ class ZenDiscoveryMixin:
           - project-*: Project overlays + pack guidelines
 
         Args:
-            role: Zen role identifier
+            role: Pal role identifier
 
         Returns:
             List of applicable guideline names
@@ -125,11 +125,11 @@ class ZenDiscoveryMixin:
         # Fallback: return everything for unknown roles
         return all_names
 
-    def get_applicable_rules(self: ZenAdapter, role: str) -> List[Dict[str, Any]]:
+    def get_applicable_rules(self: PalAdapter, role: str) -> List[Dict[str, Any]]:
         """Return composed rules applicable to a logical role.
 
         Args:
-            role: Zen role identifier
+            role: Pal role identifier
 
         Returns:
             List of applicable rule dictionaries
@@ -203,4 +203,4 @@ class ZenDiscoveryMixin:
         return [rules_map[rid] for rid in selected_ids if rid in rules_map]
 
 
-__all__ = ["ZenDiscoveryMixin", "_canonical_role"]
+__all__ = ["PalDiscoveryMixin", "_canonical_role"]

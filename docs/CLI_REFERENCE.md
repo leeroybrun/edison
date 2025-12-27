@@ -1550,9 +1550,9 @@ edison qa run <validator_id> --task <task_id> [options]
 
 **Execution Flow:**
 
-1. **Engine Selection**: Uses CLIEngine if CLI tool is available, otherwise falls back to ZenMCPEngine
+1. **Engine Selection**: Uses CLIEngine if CLI tool is available, otherwise falls back to PalMCPEngine
 2. **Direct Execution**: CLIEngine executes the CLI tool directly (codex, claude, gemini, auggie, coderabbit)
-3. **Delegation**: ZenMCPEngine generates delegation instructions if CLI unavailable
+3. **Delegation**: PalMCPEngine generates delegation instructions if CLI unavailable
 4. **Evidence**: Results saved to validation evidence directory
 
 **When to Use:**
@@ -1639,10 +1639,10 @@ edison compose all [options]
 | `--constitutions` | Only compose constitutions (and supporting rosters) |
 | `--guidelines` | Only compose guidelines |
 | `--start` | Only compose start prompts |
-| `--platforms` | Target platforms (comma-separated: `claude`, `cursor`, `zen`) |
+| `--platforms` | Target platforms (comma-separated: `claude`, `cursor`, `pal`) |
 | `--claude` | Sync to Claude Code after composing |
 | `--cursor` | Sync to Cursor after composing |
-| `--zen` | Sync to Zen MCP after composing |
+| `--pal` | Sync to Pal MCP after composing |
 | `--dry-run` | Show what would be done without making changes |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
@@ -1667,7 +1667,7 @@ edison compose all --agents
 edison compose all --claude
 
 # Compose and sync to all platforms
-edison compose all --claude --cursor --zen
+edison compose all --claude --cursor --pal
 
 # Dry-run to preview
 edison compose all --dry-run
@@ -1683,7 +1683,7 @@ edison compose all --agents --validators --guidelines
 3. **Guidelines**: Composes guidelines with concatenation and deduplication
 4. **Validators**: Composes validators from section-based templates
 5. **Start Prompts**: Composes start prompts with project overlays
-6. **Platform Sync**: Optionally syncs to Claude Code, Cursor, or Zen MCP
+6. **Platform Sync**: Optionally syncs to Claude Code, Cursor, or Pal MCP
 
 **Generated Files:**
 
@@ -2442,7 +2442,7 @@ edison mcp configure
 edison mcp configure /path/to/project
 
 # Configure only specific servers
-edison mcp configure --server zen --server cline
+edison mcp configure --server pal --server cline
 
 # Dry-run to preview changes
 edison mcp configure --dry-run
@@ -3009,7 +3009,7 @@ my-project/
 │   ├── .sessions/                # Session data
 │   │   └── sessions.db           # Session database
 │   ├── scripts/                  # Helper scripts
-│   │   └── zen/                  # Zen MCP scripts
+│   │   └── pal/                  # Pal MCP scripts
 │   └── .gitignore
 ├── .mcp.json                     # MCP configuration
 └── .worktrees/                   # Session worktrees

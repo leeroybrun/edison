@@ -121,7 +121,7 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                     lines.append(f"\n      ✅ Always Required ({len(roster['alwaysRequired'])} validators):")
                     for v in roster["alwaysRequired"]:
                         lines.append(
-                            f"         - {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})"
+                            f"         - {v['id']} (engine: {v.get('engine', 'N/A')}, palRole: {v.get('palRole', 'N/A')})"
                         )
 
                 if roster.get("triggeredBlocking"):
@@ -129,7 +129,7 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                     for v in roster["triggeredBlocking"]:
                         method_icon = "🎯" if v.get("detectionMethod") == "git-diff" else "📄"
                         lines.append(
-                            f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})"
+                            f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, palRole: {v.get('palRole', 'N/A')})"
                         )
                         lines.append(f"           Reason: {v.get('reason', 'N/A')}")
 
@@ -138,7 +138,7 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                     for v in roster["triggeredOptional"]:
                         method_icon = "🎯" if v.get("detectionMethod") == "git-diff" else "📄"
                         lines.append(
-                            f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, zenRole: {v.get('zenRole', 'N/A')})"
+                            f"         {method_icon} {v['id']} (engine: {v.get('engine', 'N/A')}, palRole: {v.get('palRole', 'N/A')})"
                         )
 
                 if roster.get("decisionPoints"):
@@ -151,7 +151,7 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                 details = a["delegationDetails"]
                 if details.get("suggested"):
                     lines.append("\n   🔧 DELEGATION SUGGESTION:")
-                    lines.append(f"      Model: {details.get('model')} | Role: {details.get('zenRole')}")
+                    lines.append(f"      Model: {details.get('model')} | Role: {details.get('palRole')}")
                     lines.append(f"      Interface: {details.get('interface')}")
                     if details.get("reasoning"):
                         lines.append("      Reasoning:")

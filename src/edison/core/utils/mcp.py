@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Helpers for formatting Zen MCP clink invocations with worktree awareness."""
+"""Helpers for formatting Pal MCP clink invocations with worktree awareness."""
 
 import os
 import shlex
@@ -18,7 +18,7 @@ def get_tool_name() -> str:
     """Load MCP tool name from configuration.
 
     Returns:
-        str: The MCP tool name for edison-zen clink
+        str: The MCP tool name for edison-pal clink
 
     Raises:
         RuntimeError: If config cannot be loaded or tool name is missing
@@ -47,11 +47,11 @@ def get_tool_name() -> str:
                 "Add 'mcp.tool_names' section to your YAML config."
             )
 
-        tool_name = full_config["mcp"]["tool_names"].get("edison_zen_clink")
+        tool_name = full_config["mcp"]["tool_names"].get("edison_pal_clink")
         if not tool_name:
             raise RuntimeError(
-                "mcp.tool_names.edison_zen_clink is not configured. "
-                "Add 'mcp.tool_names.edison_zen_clink' to your YAML config."
+                "mcp.tool_names.edison_pal_clink is not configured. "
+                "Add 'mcp.tool_names.edison_pal_clink' to your YAML config."
             )
 
         _TOOL_NAME_CACHE = str(tool_name)
@@ -85,14 +85,14 @@ def resolve_working_directory(
     """
     if session_id:
         try:
-            env = SessionContext.build_zen_environment(
+            env = SessionContext.build_pal_environment(
                 session_id,
                 base_env=os.environ.copy(),
                 require_worktree=False,
             )
-            zen_dir = env.get("ZEN_WORKING_DIR")
-            if zen_dir:
-                return Path(zen_dir).expanduser().resolve()
+            pal_dir = env.get("PAL_WORKING_DIR")
+            if pal_dir:
+                return Path(pal_dir).expanduser().resolve()
         except Exception:
             # Fall through to git-based detection when session metadata is incomplete.
             pass
@@ -120,7 +120,7 @@ def format_clink_cli_command(
     Return a CLI-style clink invocation string with optional worktree binding.
 
     Examples:
-        mcp__edison-zen__clink --cli_name codex --role default --prompt '...' --working_directory /abs/path
+        mcp__edison-pal__clink --cli_name codex --role default --prompt '...' --working_directory /abs/path
     """
     if tool_name is None:
         tool_name = get_tool_name()

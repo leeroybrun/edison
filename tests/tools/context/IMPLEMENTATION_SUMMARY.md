@@ -248,7 +248,7 @@ mkdir -p .edison/delegation/modules
 # Split into:
 # - modules/file-patterns.json
 # - modules/task-types.json
-# - modules/zen-mcp.json
+# - modules/pal-mcp.json
 
 # Update code to lazy-load only needed modules
 ```

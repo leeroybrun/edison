@@ -3,7 +3,7 @@ validation:
     testing:
       name: "Testing Validator"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/testing.md"
       wave: comprehensive
       always_run: false

@@ -23,8 +23,8 @@ def test_can_validate_qa_raises_actionable_error_when_missing_reports(isolated_p
                 "validators": {
                     "v1": {
                         "name": "V1",
-                        "engine": "zen-mcp",
-                        "fallback_engine": "zen-mcp",
+                        "engine": "pal-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,
@@ -32,8 +32,8 @@ def test_can_validate_qa_raises_actionable_error_when_missing_reports(isolated_p
                     },
                     "v2": {
                         "name": "V2",
-                        "engine": "zen-mcp",
-                        "fallback_engine": "zen-mcp",
+                        "engine": "pal-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,
@@ -76,7 +76,7 @@ def test_can_validate_qa_raises_actionable_error_when_missing_reports(isolated_p
             "round": 1,
             "validatorId": "v1",
             "model": "test",
-            "zenRole": "validator-v1",
+            "palRole": "validator-v1",
             "verdict": "approve",
             "findings": [],
             "strengths": [],

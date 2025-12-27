@@ -25,7 +25,7 @@ worktrees:
         scopes: ["primary", "session"]
       - path: ".cursor"
         scopes: ["primary", "session"]
-      - path: ".zen"
+      - path: ".pal"
         scopes: ["primary", "session"]
 
       # `.edison/config/*` stays tracked as a bootstrap config source.
@@ -55,7 +55,7 @@ worktrees:
         - ".codex/"
         - ".augment/"
         - ".cursor/"
-        - ".zen/"
+        - ".pal/"
         - ".edison/agents/"
         - ".edison/canonical/"
         - ".edison/clients/"

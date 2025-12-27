@@ -97,7 +97,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 | Task State | Required QA State | What to do | Scripts & Notes |
 |------------|------------------|------------|-----------------|
 | `{{fn:task_state_dir("todo")}}/` (new follow-ups created during the session) | `{{fn:qa_state_dir("waiting")}}/` | Decide whether to claim now. If claimed, move task → `{{fn:semantic_state("task","wip")}}/`, create QA via `edison qa new`, and add both IDs to the session scope. | `edison task status <id> --status {{fn:semantic_state("task","wip")}}`<br/>`edison qa new <id> --session <session-id>` |
-| `{{fn:task_state_dir("wip")}}/` | `{{fn:qa_state_dir("waiting")}}/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Zen MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
+| `{{fn:task_state_dir("wip")}}/` | `{{fn:qa_state_dir("waiting")}}/` while implementing | Keep task + QA paired in your session scope. Update `Last Active` after every change, run Context7 + TDD cycle, delegate via Pal MCP as needed. | `edison task claim <id> --session <session-id>` updates timestamps + session record. |
 | `{{fn:task_state_dir("wip")}}/` (ready for validation) | `{{fn:qa_state_dir("todo")}}/` | Move QA to `{{fn:semantic_state("qa","todo")}}/` when implementation is in `{{fn:semantic_state("task","done")}}/`. Do **not** move the task to `{{fn:semantic_state("task","done")}}/` until QA is ready. | `edison qa promote <task-id> --status {{fn:semantic_state("qa","todo")}}` |
 | `{{fn:task_state_dir("done")}}/` | `{{fn:qa_state_dir("wip")}}/` | Launch validators in parallel waves (up to cap). Capture findings + evidence paths in QA doc. | Run `edison qa bundle <task-id>` to produce the manifest, then `edison qa promote <task-id> --status {{fn:semantic_state("qa","wip")}}` to begin validation. |
 | `{{fn:task_state_dir("wip")}}/` (after rejection) | `{{fn:qa_state_dir("waiting")}}/` | Task returns/stays in `{{fn:semantic_state("task","wip")}}/` until fixes are validated. QA re-enters `{{fn:semantic_state("qa","waiting")}}/` with a “Round N” section summarizing findings. | Spawn follow-ups in `{{fn:task_state_dir("todo")}}/` + `{{fn:qa_state_dir("waiting")}}/` immediately; link them in both task + QA documents. |
@@ -264,7 +264,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 **REQUIRED:**
 - ✅ Launch ALL blocking validators (global + critical + triggered specialized with `blocksOnFail=true`)
 - ✅ Use DIFFERENT models for validation than implementation (if possible)
-- ✅ Launch validators via delegation (Zen MCP) so they run independently
+- ✅ Launch validators via delegation (Pal MCP) so they run independently
 - ✅ Wait for ALL blocking validators to complete before making approval decision
 
 **Rationale:** Independent validation catches blind spots. Self-validation is confirmation bias.

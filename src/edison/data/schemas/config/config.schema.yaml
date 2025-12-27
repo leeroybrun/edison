@@ -4,7 +4,7 @@ title: Edison Config Schema (Generic)
 description: Configuration schema for defaults.yaml and edison.yaml.
 type: object
 properties:
-  zen:
+  pal:
     type: object
     properties:
       retry:
@@ -40,12 +40,12 @@ properties:
         additionalProperties: false
       prompt_models:
         type: array
-        description: Models for which Edison generates Zen system prompts.
+        description: Models for which Edison generates Pal system prompts.
         items:
           type: string
       templates:
         type: object
-        description: Template sources used by the Zen adapter.
+        description: Template sources used by the Pal adapter.
         properties:
           workflow_loop:
             type: string
@@ -275,8 +275,8 @@ properties:
         items:
           type: string
         default: []
-      zenRoles:
-        description: Mapping of agent names to Zen MCP role identifiers.
+      palRoles:
+        description: Mapping of agent names to Pal MCP role identifiers.
         type: object
         additionalProperties:
           type: string

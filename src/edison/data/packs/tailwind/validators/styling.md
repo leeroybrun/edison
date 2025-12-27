@@ -1,7 +1,7 @@
 # Tailwind Validator
 
 **Role**: Tailwind CSS v4-focused reviewer for application UI  
-**Model**: Codex (via Zen MCP `clink` interface)  
+**Model**: Codex (via Pal MCP `clink` interface)  
 **Scope**: Tailwind v4 syntax, utility-first composition, responsive patterns, theme tokens, accessibility, config hygiene  
 **Priority**: 3 (specialized - runs after critical validators)  
 **Triggers**: `*.tsx`, `*.jsx`, `*.js`, `*.ts`, `*.css`, `*.scss`, `*.mdx`, `tailwind.config.*`, `postcss.config.*`  

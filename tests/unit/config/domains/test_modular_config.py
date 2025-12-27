@@ -46,7 +46,7 @@ delegation:
     (project_config_dir / "models.yaml").write_text("""
 models:
   codex:
-    provider: zen-mcp
+    provider: pal-mcp
 """, encoding="utf-8")
 
     # 5. packs.yaml
@@ -88,7 +88,7 @@ statemachine:
     assert cfg["delegation"]["implementers"]["primary"] == "codex"
     
     assert "models" in cfg
-    assert cfg["models"]["codex"]["provider"] == "zen-mcp"
+    assert cfg["models"]["codex"]["provider"] == "pal-mcp"
     
     assert "packs" in cfg
     assert cfg["packs"]["enabled"] is True

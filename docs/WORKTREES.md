@@ -41,7 +41,7 @@ If you want config to be shared across all worktrees, do it by editing config in
 
 ### 4) “Meta-managed” arbitrary paths (`worktrees.sharedState.sharedPaths`)
 
-Examples: `.claude/`, `.cursor/`, `.zen/`, `specs/`, `.specify/`, `.openspec/`, `.augment/`, and selected `.edison/*` subdirs.
+Examples: `.claude/`, `.cursor/`, `.pal/`, `specs/`, `.specify/`, `.openspec/`, `.augment/`, and selected `.edison/*` subdirs.
 
 - Canonical location: **meta worktree** (`<meta>/<path>`).
 - In primary + session worktrees: those paths become **symlinks** pointing into the meta worktree.

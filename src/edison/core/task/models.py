@@ -39,7 +39,7 @@ class Task:
         blocks_tasks: List of task IDs blocked by this task
         claimed_at: ISO timestamp when task was claimed by a session
         last_active: ISO timestamp of last activity
-        continuation_id: Zen MCP continuation ID for tracking
+        continuation_id: Pal MCP continuation ID for tracking
         result: Task result/outcome (optional)
         delegated_to: Who the task was delegated to (optional)
         delegated_in_session: Session ID where delegation happened (optional)
@@ -219,7 +219,7 @@ class Task:
             parent_id: Parent task ID for subtasks
             depends_on: List of task IDs this task depends on
             blocks_tasks: List of task IDs blocked by this task
-            continuation_id: Zen MCP continuation ID
+            continuation_id: Pal MCP continuation ID
             
         Returns:
             New Task instance

@@ -265,7 +265,7 @@ class BloatDetector:
             elif section == "taskTypeRules":
                 return "Extract to delegation/task-types.json with lazy loading"
             elif section == "zenMcpIntegration":
-                return "Extract to delegation/zen-mcp.json (only load when delegating)"
+                return "Extract to delegation/pal-mcp.json (only load when delegating)"
 
         elif config_name == "validators":
             if section == "validators":

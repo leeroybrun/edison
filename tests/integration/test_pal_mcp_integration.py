@@ -1,12 +1,12 @@
 """
-Integration tests for zen-mcp-server relocation into .edison
+Integration tests for pal-mcp-server relocation into .edison
 
 Tests verify:
-1. zen-mcp-server exists in .edison/tools/
+1. pal-mcp-server exists in .edison/tools/
 2. setup.sh creates working venv
-3. run-server.sh launches with ZEN_WORKING_DIR
+3. run-server.sh launches with PAL_WORKING_DIR
 4. .mcp.json is valid and properly configured
-5. No dependency on global ~/Documents/Development/zen-mcp-server
+5. No dependency on global ~/Documents/Development/pal-mcp-server
 
 TDD: These tests SHOULD FAIL initially (RED phase)
 
@@ -24,11 +24,11 @@ import pytest
 from tests.helpers.timeouts import SUBPROCESS_TIMEOUT, PROCESS_WAIT_TIMEOUT
 
 
-def _has_zen_mcp_setup() -> bool:
-    """Check if zen-mcp-server is set up (project-specific, not in standalone Edison)."""
+def _has_pal_mcp_setup() -> bool:
+    """Check if pal-mcp-server is set up (project-specific, not in standalone Edison)."""
     # These tests require:
-    # 1. .edison/tools/zen-mcp-server/
-    # 2. .edison/scripts/zen/
+    # 1. .edison/tools/pal-mcp-server/
+    # 2. .edison/scripts/pal/
     # 3. .mcp.json at project root
     #
     # This is ONLY present in wilson-leadgen, NOT in standalone Edison package
@@ -39,12 +39,12 @@ def _has_zen_mcp_setup() -> bool:
     for _ in range(5):  # Go up max 5 levels
         edison_dir = current / ".edison"
         if edison_dir.exists():
-            # Check if zen-mcp-server is actually set up
-            has_zen_server = (edison_dir / "tools" / "zen-mcp-server").exists()
-            has_zen_scripts = (edison_dir / "scripts" / "zen").exists()
+            # Check if pal-mcp-server is actually set up
+            has_pal_server = (edison_dir / "tools" / "pal-mcp-server").exists()
+            has_pal_scripts = (edison_dir / "scripts" / "pal").exists()
             has_mcp_json = (current / ".mcp.json").exists()
 
-            if has_zen_server and has_zen_scripts and has_mcp_json:
+            if has_pal_server and has_pal_scripts and has_mcp_json:
                 return True
 
         if current.parent == current:
@@ -54,15 +54,15 @@ def _has_zen_mcp_setup() -> bool:
     return False
 
 
-# Skip entire test class if zen-mcp-server not set up
+# Skip entire test class if pal-mcp-server not set up
 pytestmark = pytest.mark.skipif(
-    not _has_zen_mcp_setup(),
-    reason="Zen MCP integration tests require project-specific zen-mcp-server setup (wilson-leadgen)"
+    not _has_pal_mcp_setup(),
+    reason="Pal MCP integration tests require project-specific pal-mcp-server setup (wilson-leadgen)"
 )
 
 
-class TestZenMcpRelocation:
-    """Test suite for zen-mcp-server relocation to .edison/tools/"""
+class TestPalMcpRelocation:
+    """Test suite for pal-mcp-server relocation to .edison/tools/"""
 
     @pytest.fixture
     def edison_root(self):
@@ -70,7 +70,7 @@ class TestZenMcpRelocation:
         Get .edison root directory.
 
         In wilson-leadgen project structure:
-        - Test file: /path/to/wilson-leadgen/tests/integration/test_zen_mcp_integration.py
+        - Test file: /path/to/wilson-leadgen/tests/integration/test_pal_mcp_integration.py
         - Searches up to find: /path/to/wilson-leadgen/.edison/
         """
         test_dir = Path(__file__).parent
@@ -92,20 +92,20 @@ class TestZenMcpRelocation:
         return edison_root.parent
 
     @pytest.fixture
-    def zen_server_dir(self, edison_root):
-        """Get zen-mcp-server directory in .edison/tools/"""
-        return edison_root / "tools" / "zen-mcp-server"
+    def pal_server_dir(self, edison_root):
+        """Get pal-mcp-server directory in .edison/tools/"""
+        return edison_root / "tools" / "pal-mcp-server"
 
-    def test_zen_server_exists_in_edison_tools(self, zen_server_dir):
-        """Test that zen-mcp-server directory exists in .edison/tools/"""
-        assert zen_server_dir.exists(), (
-            f"zen-mcp-server not found at {zen_server_dir}. "
+    def test_pal_server_exists_in_edison_tools(self, pal_server_dir):
+        """Test that pal-mcp-server directory exists in .edison/tools/"""
+        assert pal_server_dir.exists(), (
+            f"pal-mcp-server not found at {pal_server_dir}. "
             "Expected to be relocated from global location."
         )
-        assert zen_server_dir.is_dir(), f"{zen_server_dir} is not a directory"
+        assert pal_server_dir.is_dir(), f"{pal_server_dir} is not a directory"
 
-    def test_zen_server_has_required_files(self, zen_server_dir):
-        """Test that zen-mcp-server has all required files"""
+    def test_pal_server_has_required_files(self, pal_server_dir):
+        """Test that pal-mcp-server has all required files"""
         required_files = [
             "server.py",
             "requirements.txt",
@@ -113,12 +113,12 @@ class TestZenMcpRelocation:
         ]
 
         for filename in required_files:
-            file_path = zen_server_dir / filename
+            file_path = pal_server_dir / filename
             assert file_path.exists(), f"Missing required file: {file_path}"
 
-    def test_zen_server_gitignore_contains_venv(self, zen_server_dir):
+    def test_pal_server_gitignore_contains_venv(self, pal_server_dir):
         """Test that .gitignore properly ignores .venv"""
-        gitignore = zen_server_dir / ".gitignore"
+        gitignore = pal_server_dir / ".gitignore"
         assert gitignore.exists(), f".gitignore not found at {gitignore}"
 
         content = gitignore.read_text()
@@ -127,43 +127,43 @@ class TestZenMcpRelocation:
         assert "*.pyc" in content, ".gitignore must contain *.pyc"
 
     def test_setup_script_exists(self, edison_root):
-        """Test that setup.sh exists in .edison/scripts/zen/"""
-        setup_script = edison_root / "scripts" / "zen" / "setup.sh"
+        """Test that setup.sh exists in .edison/scripts/pal/"""
+        setup_script = edison_root / "scripts" / "pal" / "setup.sh"
         assert setup_script.exists(), f"setup.sh not found at {setup_script}"
         assert os.access(setup_script, os.X_OK), "setup.sh must be executable"
 
     def test_run_server_script_exists(self, edison_root):
-        """Test that run-server.sh exists in .edison/scripts/zen/"""
-        run_script = edison_root / "scripts" / "zen" / "run-server.sh"
+        """Test that run-server.sh exists in .edison/scripts/pal/"""
+        run_script = edison_root / "scripts" / "pal" / "run-server.sh"
         assert run_script.exists(), f"run-server.sh not found at {run_script}"
         assert os.access(run_script, os.X_OK), "run-server.sh must be executable"
 
     def test_run_server_prioritizes_local_edison_tools(self, edison_root):
-        """Test that run-server.sh prioritizes .edison/tools/zen-mcp-server"""
-        run_script = edison_root / "scripts" / "zen" / "run-server.sh"
+        """Test that run-server.sh prioritizes .edison/tools/pal-mcp-server"""
+        run_script = edison_root / "scripts" / "pal" / "run-server.sh"
         content = run_script.read_text()
 
-        # Should check for .edison/tools/zen-mcp-server FIRST
-        assert ".edison/tools/zen-mcp-server" in content or "EDISON_ROOT" in content, (
-            "run-server.sh must check for local .edison/tools/zen-mcp-server"
+        # Should check for .edison/tools/pal-mcp-server FIRST
+        assert ".edison/tools/pal-mcp-server" in content or "EDISON_ROOT" in content, (
+            "run-server.sh must check for local .edison/tools/pal-mcp-server"
         )
 
-        # Should NOT have ~/Documents/Development/zen-mcp-server as fallback
+        # Should NOT have ~/Documents/Development/pal-mcp-server as fallback
         # (it's OK to have it as option 2, but .edison should be priority 1)
         lines = content.split('\n')
         edison_check_line = None
         global_check_line = None
 
         for i, line in enumerate(lines):
-            if '.edison/tools/zen-mcp-server' in line or 'EDISON_ROOT' in line:
+            if '.edison/tools/pal-mcp-server' in line or 'EDISON_ROOT' in line:
                 if edison_check_line is None:
                     edison_check_line = i
-            if '$HOME/Documents/Development/zen-mcp-server' in line:
+            if '$HOME/Documents/Development/pal-mcp-server' in line:
                 if global_check_line is None:
                     global_check_line = i
 
         assert edison_check_line is not None, (
-            "run-server.sh must check for .edison/tools/zen-mcp-server"
+            "run-server.sh must check for .edison/tools/pal-mcp-server"
         )
 
     def test_mcp_json_exists_at_project_root(self, project_root):
@@ -186,58 +186,58 @@ class TestZenMcpRelocation:
 
         assert isinstance(data, dict), ".mcp.json must be a JSON object"
 
-    def test_mcp_json_has_edison_zen_config(self, project_root):
-        """Test that .mcp.json contains edison-zen MCP server configuration"""
+    def test_mcp_json_has_edison_pal_config(self, project_root):
+        """Test that .mcp.json contains edison-pal MCP server configuration"""
         mcp_json = project_root / ".mcp.json"
 
         with open(mcp_json) as f:
             data = json.load(f)
 
         assert "mcpServers" in data, ".mcp.json must have mcpServers key"
-        assert "edison-zen" in data["mcpServers"], (
-            ".mcp.json must have edison-zen server config"
+        assert "edison-pal" in data["mcpServers"], (
+            ".mcp.json must have edison-pal server config"
         )
 
-    def test_edison_zen_config_uses_local_run_script(self, project_root):
-        """Test that edison-zen config points to .edison/scripts/zen/run-server.sh"""
+    def test_edison_pal_config_uses_local_run_script(self, project_root):
+        """Test that edison-pal config points to .edison/scripts/pal/run-server.sh"""
         mcp_json = project_root / ".mcp.json"
 
         with open(mcp_json) as f:
             data = json.load(f)
 
-        edison_zen = data["mcpServers"]["edison-zen"]
+        edison_pal = data["mcpServers"]["edison-pal"]
 
         # Check command
-        assert edison_zen.get("command") in ["bash", "/bin/bash"], (
-            "edison-zen must use bash command"
+        assert edison_pal.get("command") in ["bash", "/bin/bash"], (
+            "edison-pal must use bash command"
         )
 
-        # Check args include .edison/scripts/zen/run-server.sh
-        args = edison_zen.get("args", [])
-        assert len(args) > 0, "edison-zen must have args"
+        # Check args include .edison/scripts/pal/run-server.sh
+        args = edison_pal.get("args", [])
+        assert len(args) > 0, "edison-pal must have args"
 
         run_script_arg = args[0]
-        assert ".edison/scripts/zen/run-server.sh" in run_script_arg, (
-            f"edison-zen must use .edison/scripts/zen/run-server.sh, got: {run_script_arg}"
+        assert ".edison/scripts/pal/run-server.sh" in run_script_arg, (
+            f"edison-pal must use .edison/scripts/pal/run-server.sh, got: {run_script_arg}"
         )
 
-    def test_edison_zen_config_sets_zen_working_dir(self, project_root):
-        """Test that edison-zen config sets ZEN_WORKING_DIR environment variable"""
+    def test_edison_pal_config_sets_pal_working_dir(self, project_root):
+        """Test that edison-pal config sets PAL_WORKING_DIR environment variable"""
         mcp_json = project_root / ".mcp.json"
 
         with open(mcp_json) as f:
             data = json.load(f)
 
-        edison_zen = data["mcpServers"]["edison-zen"]
-        env = edison_zen.get("env", {})
+        edison_pal = data["mcpServers"]["edison-pal"]
+        env = edison_pal.get("env", {})
 
-        assert "ZEN_WORKING_DIR" in env, (
-            "edison-zen must set ZEN_WORKING_DIR in env"
+        assert "PAL_WORKING_DIR" in env, (
+            "edison-pal must set PAL_WORKING_DIR in env"
         )
 
         # Should use ${workspaceFolder} variable
-        assert "${workspaceFolder}" in env["ZEN_WORKING_DIR"], (
-            "ZEN_WORKING_DIR should use ${workspaceFolder} variable"
+        assert "${workspaceFolder}" in env["PAL_WORKING_DIR"], (
+            "PAL_WORKING_DIR should use ${workspaceFolder} variable"
         )
 
     def test_mcp_json_example_exists(self, project_root):
@@ -255,8 +255,8 @@ class TestZenMcpRelocation:
         with open(example) as f:
             data = json.load(f)
 
-        edison_zen = data["mcpServers"]["edison-zen"]
-        env = edison_zen.get("env", {})
+        edison_pal = data["mcpServers"]["edison-pal"]
+        env = edison_pal.get("env", {})
 
         # API keys should use ${env:...} placeholders
         api_key_vars = ["GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY"]
@@ -278,24 +278,24 @@ class TestZenMcpRelocation:
                 ".gitignore should exclude .mcp.json (contains user API keys)"
             )
 
-    def test_edison_gitignore_excludes_zen_venv(self, edison_root):
-        """Test that .edison/.gitignore excludes zen-mcp-server/.venv"""
+    def test_edison_gitignore_excludes_pal_venv(self, edison_root):
+        """Test that .edison/.gitignore excludes pal-mcp-server/.venv"""
         gitignore = edison_root / ".gitignore"
 
         if gitignore.exists():
             content = gitignore.read_text()
-            assert "tools/zen-mcp-server/.venv" in content or ".venv" in content, (
-                ".edison/.gitignore should exclude zen-mcp-server/.venv"
+            assert "tools/pal-mcp-server/.venv" in content or ".venv" in content, (
+                ".edison/.gitignore should exclude pal-mcp-server/.venv"
             )
 
     @pytest.fixture
-    def clean_zen_venv(self, zen_server_dir):
-        """Fixture to manage zen venv state.
+    def clean_pal_venv(self, pal_server_dir):
+        """Fixture to manage pal venv state.
 
         Creates fresh venv for tests, cleans up after.
         Uses fixture instead of deleting during test to avoid side effects.
         """
-        venv_dir = zen_server_dir / ".venv"
+        venv_dir = pal_server_dir / ".venv"
         # Clean existing venv if present
         if venv_dir.exists():
             import shutil
@@ -303,12 +303,12 @@ class TestZenMcpRelocation:
         yield venv_dir
         # Cleanup happens automatically with tmp_path
 
-    def test_setup_creates_venv(self, edison_root, zen_server_dir, clean_zen_venv):
-        """Test that setup.sh creates virtualenv in .edison/tools/zen-mcp-server/.venv"""
-        venv_dir = clean_zen_venv
+    def test_setup_creates_venv(self, edison_root, pal_server_dir, clean_pal_venv):
+        """Test that setup.sh creates virtualenv in .edison/tools/pal-mcp-server/.venv"""
+        venv_dir = clean_pal_venv
 
         # Run setup script
-        setup_script = edison_root / "scripts" / "zen" / "setup.sh"
+        setup_script = edison_root / "scripts" / "pal" / "setup.sh"
         result = subprocess.run(
             [str(setup_script)],
             cwd=str(edison_root),
@@ -330,14 +330,14 @@ class TestZenMcpRelocation:
             "venv missing python executable"
         )
 
-    def test_run_server_requires_zen_working_dir(self, edison_root):
-        """Test that run-server.sh fails without ZEN_WORKING_DIR"""
-        run_script = edison_root / "scripts" / "zen" / "run-server.sh"
+    def test_run_server_requires_pal_working_dir(self, edison_root):
+        """Test that run-server.sh fails without PAL_WORKING_DIR"""
+        run_script = edison_root / "scripts" / "pal" / "run-server.sh"
 
-        # Run WITHOUT ZEN_WORKING_DIR
+        # Run WITHOUT PAL_WORKING_DIR
         env = os.environ.copy()
-        if "ZEN_WORKING_DIR" in env:
-            del env["ZEN_WORKING_DIR"]
+        if "PAL_WORKING_DIR" in env:
+            del env["PAL_WORKING_DIR"]
 
         result = subprocess.run(
             [str(run_script), "--help"],
@@ -348,27 +348,27 @@ class TestZenMcpRelocation:
             timeout=int(PROCESS_WAIT_TIMEOUT),
         )
 
-        # Should fail with error about ZEN_WORKING_DIR
+        # Should fail with error about PAL_WORKING_DIR
         assert result.returncode != 0, (
-            "run-server.sh should fail without ZEN_WORKING_DIR"
+            "run-server.sh should fail without PAL_WORKING_DIR"
         )
-        assert "ZEN_WORKING_DIR" in result.stderr, (
-            "Error message should mention ZEN_WORKING_DIR"
+        assert "PAL_WORKING_DIR" in result.stderr, (
+            "Error message should mention PAL_WORKING_DIR"
         )
 
-    def test_run_server_works_with_zen_working_dir(self, edison_root, project_root):
-        """Test that run-server.sh launches with ZEN_WORKING_DIR set"""
+    def test_run_server_works_with_pal_working_dir(self, edison_root, project_root):
+        """Test that run-server.sh launches with PAL_WORKING_DIR set"""
         # Skip if venv doesn't exist yet
-        zen_server_dir = edison_root / "tools" / "zen-mcp-server"
-        venv_dir = zen_server_dir / ".venv"
+        pal_server_dir = edison_root / "tools" / "pal-mcp-server"
+        venv_dir = pal_server_dir / ".venv"
         if not venv_dir.exists():
             pytest.skip("venv not created yet, run setup.sh first")
 
-        run_script = edison_root / "scripts" / "zen" / "run-server.sh"
+        run_script = edison_root / "scripts" / "pal" / "run-server.sh"
 
-        # Run WITH ZEN_WORKING_DIR
+        # Run WITH PAL_WORKING_DIR
         env = os.environ.copy()
-        env["ZEN_WORKING_DIR"] = str(project_root)
+        env["PAL_WORKING_DIR"] = str(project_root)
 
         # Just check if it starts (use --help or similar)
         result = subprocess.run(
@@ -380,23 +380,23 @@ class TestZenMcpRelocation:
             timeout=int(PROCESS_WAIT_TIMEOUT),
         )
 
-        # Should succeed or at least not fail on ZEN_WORKING_DIR check
-        # (may fail on other validation, but not on missing ZEN_WORKING_DIR)
+        # Should succeed or at least not fail on PAL_WORKING_DIR check
+        # (may fail on other validation, but not on missing PAL_WORKING_DIR)
         if result.returncode != 0:
-            assert "ZEN_WORKING_DIR" not in result.stderr, (
-                f"Should not fail on ZEN_WORKING_DIR check:\n{result.stderr}"
+            assert "PAL_WORKING_DIR" not in result.stderr, (
+                f"Should not fail on PAL_WORKING_DIR check:\n{result.stderr}"
             )
 
-    def test_no_dependency_on_global_zen_server(self, edison_root):
+    def test_no_dependency_on_global_pal_server(self, edison_root):
         """Test that .edison is 100% relocatable (no hardcoded global paths)"""
         # Check run-server.sh doesn't REQUIRE global installation
-        run_script = edison_root / "scripts" / "zen" / "run-server.sh"
+        run_script = edison_root / "scripts" / "pal" / "run-server.sh"
         content = run_script.read_text()
 
-        # Should NOT fail if global ~/Documents/Development/zen-mcp-server missing
-        # as long as .edison/tools/zen-mcp-server exists
+        # Should NOT fail if global ~/Documents/Development/pal-mcp-server missing
+        # as long as .edison/tools/pal-mcp-server exists
 
-        # This is a design check - if .edison/tools/zen-mcp-server exists,
+        # This is a design check - if .edison/tools/pal-mcp-server exists,
         # script should use it WITHOUT checking global location
         lines = content.split('\n')
 

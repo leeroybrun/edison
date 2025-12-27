@@ -86,7 +86,7 @@ def _ensure_structure(project_root: Path) -> Path:
     """Create base `<project-config-dir>/` structure and return config root."""
     config_root = get_project_config_dir(project_root)
 
-    for rel in ["config", "guidelines", "_generated", "constitutions", "scripts/zen"]:
+    for rel in ["config", "guidelines", "_generated", "constitutions", "scripts/pal"]:
         (config_root / rel).mkdir(parents=True, exist_ok=True)
 
     gitignore = config_root / ".gitignore"
@@ -100,10 +100,10 @@ def _ensure_structure(project_root: Path) -> Path:
 
 
 def _copy_mcp_scripts(config_root: Path) -> None:
-    """Place bundled MCP helper scripts under `<project-config-dir>/scripts/zen` for shell mode."""
-    dest_dir = config_root / "scripts" / "zen"
+    """Place bundled MCP helper scripts under `<project-config-dir>/scripts/pal` for shell mode."""
+    dest_dir = config_root / "scripts" / "pal"
     src_dir_candidates = [
-        Path(__file__).resolve().parents[4] / "scripts" / "zen",
+        Path(__file__).resolve().parents[4] / "scripts" / "pal",
     ]
 
     for src_dir in src_dir_candidates:
@@ -160,7 +160,7 @@ def _run_initial_composition(project_root: Path) -> None:
         platforms=None,
         claude=False,
         cursor=False,
-        zen=False,
+        pal=False,
         dry_run=False,
         json=False,
         repo_root=str(project_root),
@@ -301,14 +301,14 @@ def main(args: argparse.Namespace) -> int:
 
         # Fail closed: --mcp-script requires run-server.sh to exist in the project.
         # This is only available when Edison is running from a source checkout that
-        # includes `scripts/zen/` (unless the package distribution bundles them).
+        # includes `scripts/pal/` (unless the package distribution bundles them).
         if getattr(args, "mcp_script", False):
-            run_script = config_root / "scripts" / "zen" / "run-server.sh"
+            run_script = config_root / "scripts" / "pal" / "run-server.sh"
             if not run_script.exists():
-                formatter.text("❌ --mcp-script requested but Zen run script is not available.")
+                formatter.text("❌ --mcp-script requested but Pal run script is not available.")
                 formatter.text(f"   Missing: {run_script}")
                 formatter.text("   Recommended: use default uvx-based setup (omit --mcp-script).")
-                formatter.text("   Or install Edison from a source checkout that includes scripts/zen.")
+                formatter.text("   Or install Edison from a source checkout that includes scripts/pal.")
                 return 1
         
         # Run questionnaire (interactive mode) or skip (non-interactive)

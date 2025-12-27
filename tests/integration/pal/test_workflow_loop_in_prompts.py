@@ -6,7 +6,7 @@ import os
 from edison.core.utils.subprocess import run_with_timeout
 
 
-class TestZenWorkflowLoop:
+class TestPalWorkflowLoop:
     def test_all_generic_prompts_have_workflow_loop(self, isolated_project_env: Path):
         """Test that all generic role prompts include workflow loop instructions."""
         repo_root = isolated_project_env
@@ -27,19 +27,19 @@ class TestZenWorkflowLoop:
             f"STDERR:\n{result.stderr}"
         )
 
-        zen_prompts_dir = (
-            repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
+        pal_prompts_dir = (
+            repo_root / ".pal" / "conf" / "systemprompts" / "clink" / "project"
         )
-        assert zen_prompts_dir.exists(), "Zen prompts directory not found after compose"
+        assert pal_prompts_dir.exists(), "Pal prompts directory not found after compose"
 
         prompts = [
-            "codex.txt",
-            "claude.txt",
-            "gemini.txt",
+            "codex_default.txt",
+            "claude_default.txt",
+            "gemini_default.txt",
         ]
 
         for prompt_file in prompts:
-            prompt_path = zen_prompts_dir / prompt_file
+            prompt_path = pal_prompts_dir / prompt_file
 
             assert prompt_path.exists(), f"Missing prompt file: {prompt_file}"
 
@@ -90,15 +90,15 @@ class TestZenWorkflowLoop:
             f"STDERR:\n{result.stderr}"
         )
 
-        zen_prompts_dir = (
-            repo_root / ".zen" / "conf" / "systemprompts" / "clink" / "project"
+        pal_prompts_dir = (
+            repo_root / ".pal" / "conf" / "systemprompts" / "clink" / "project"
         )
 
-        assert zen_prompts_dir.exists(), "Zen prompts directory not found after compose"
+        assert pal_prompts_dir.exists(), "Pal prompts directory not found after compose"
 
-        codex_prompt = zen_prompts_dir / "codex.txt"
+        codex_prompt = pal_prompts_dir / "codex_default.txt"
 
-        assert codex_prompt.exists(), "codex.txt not found after compose"
+        assert codex_prompt.exists(), "codex_default.txt not found after compose"
 
         content = codex_prompt.read_text()
 

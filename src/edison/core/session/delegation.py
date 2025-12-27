@@ -73,7 +73,7 @@ def simple_delegation_hint(
         for f in primary_files:
             if matches_any_pattern(f, [pattern]):
                 model = rule.get("preferredModel")
-                role = rule.get("preferredZenRole") or rule.get("zenRole")
+                role = rule.get("preferredPalRole") or rule.get("palRole")
                 if model and role:
                     selected = (str(model), str(role))
                     break
@@ -85,7 +85,7 @@ def simple_delegation_hint(
         if task_type and task_type in tt_rules:
             rule = tt_rules[task_type]
             model = rule.get("preferredModel")
-            role = rule.get("preferredZenRole") or rule.get("zenRole")
+            role = rule.get("preferredPalRole") or rule.get("palRole")
             if model and role:
                 selected = (str(model), str(role))
 
@@ -100,7 +100,7 @@ def simple_delegation_hint(
         for sub in priority:
             if sub in sad:
                 model = sad[sub].get("defaultModel")
-                role = sad[sub].get("zenRole")
+                role = sad[sub].get("palRole")
                 if model and role:
                     selected = (str(model), str(role))
                     break
@@ -113,14 +113,14 @@ def simple_delegation_hint(
         "id": "delegation.plan",
         "entity": "task",
         "recordId": task_id,
-        "cmd": ["zen-mcp", "call", model, "--role", role, "--prompt", "…"],
+        "cmd": ["pal-mcp", "call", model, "--role", role, "--prompt", "…"],
         "rationale": (
             "Delegation chosen via priority chain "
             "(filePatternRules → taskTypeRules → subAgentDefaults)"
         ),
         "blocking": False,
         "model": model,
-        "zenRole": role,
+        "palRole": role,
     }
     if rule_id:
         action["ruleRef"] = {"id": rule_id}
@@ -171,7 +171,7 @@ def enhance_delegation_hint(
                         "pattern": pattern,
                         "file": f,
                         "model": rule.get("preferredModel"),
-                        "role": rule.get("preferredZenRole") or rule.get("zenRole"),
+                        "role": rule.get("preferredPalRole") or rule.get("palRole"),
                     }
                 )
 
@@ -191,7 +191,7 @@ def enhance_delegation_hint(
             reasoning.append(
                 "Delegation config recommends: "
                 f"{rule.get('preferredModel')} with role "
-                f"{rule.get('preferredZenRole') or rule.get('zenRole')}"
+                f"{rule.get('preferredPalRole') or rule.get('palRole')}"
             )
     else:
         reasoning.append("No file pattern or task type match; using sub-agent defaults")
@@ -199,7 +199,7 @@ def enhance_delegation_hint(
     return {
         "suggested": True,
         "model": basic_hint.get("model"),
-        "zenRole": basic_hint.get("zenRole"),
+        "palRole": basic_hint.get("palRole"),
         "interface": "clink" if basic_hint.get("model") in ["codex", "gemini"] else "Task",
         "reasoning": reasoning,
         "cmd": basic_hint.get("cmd"),

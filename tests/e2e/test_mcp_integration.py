@@ -57,7 +57,7 @@ def run_edison(repo_root: Path, args: list[str], cwd: Path) -> tuple[int, str, s
 def project_dir(tmp_path: Path) -> Path:
     """Isolated project root for CLI commands."""
 
-    root = tmp_path / "zen-project"
+    root = tmp_path / "pal-project"
     root.mkdir()
     return root
 
@@ -110,7 +110,7 @@ def test_mcp_configure_writes_mcp_json(repo_root: Path, project_dir: Path):
         src_cfg = _SERVERS[server_id]
         assert server_cfg["command"] == src_cfg["command"]
         assert server_cfg.get("args") == src_cfg.get("args")
-    assert config["mcpServers"][DEFAULT_SERVER_ID].get("env", {}).get("ZEN_WORKING_DIR") == str(project_dir.resolve())
+    assert config["mcpServers"][DEFAULT_SERVER_ID].get("env", {}).get("PAL_WORKING_DIR") == str(project_dir.resolve())
 
 
 def test_mcp_configure_preserves_existing_servers(repo_root: Path, project_dir: Path):
@@ -180,11 +180,11 @@ def test_init_can_skip_mcp(repo_root: Path, project_dir: Path):
 def test_verification_script_runs(repo_root: Path, tmp_path: Path):
     """Shell verification script should succeed end-to-end in a temp workspace."""
 
-    script = (repo_root / "scripts" / "verify_zen_setup.sh").resolve()
+    script = (repo_root / "scripts" / "verify_pal_setup.sh").resolve()
     assert script.exists(), "verification script must be present"
 
     target_env = _cli_env(repo_root)
-    target_env["ZEN_VERIFY_SKIP_SERVER"] = "1"
+    target_env["PAL_VERIFY_SKIP_SERVER"] = "1"
     target_env["TMPDIR"] = str(tmp_path)
 
     result = run_with_timeout(

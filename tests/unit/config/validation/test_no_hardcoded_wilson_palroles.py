@@ -1,10 +1,10 @@
-"""T-022: Test that no hardcoded wilson-* zenRole values exist in core Edison files.
+"""T-022: Test that no hardcoded wilson-* palRole values exist in core Edison files.
 
 This test validates that:
 1. No "wilson-" prefix appears in core agent files
 2. No "wilson-" prefix appears in core config files
-3. All zenRole values use template variables like {{project.zenRoles.agent-name}}
-4. Project-specific zenRoles are defined in project overlay, NOT in core
+3. All palRole values use template variables like {{project.palRoles.agent-name}}
+4. Project-specific palRoles are defined in project overlay, NOT in core
 
 Related: T-016 (YAML Frontmatter - dependency)
 """
@@ -19,13 +19,13 @@ from edison.data import get_data_path
 
 
 def test_no_wilson_prefix_in_agent_files() -> None:
-    """Verify no agent file contains hardcoded 'wilson-' prefix in zenRole.
+    """Verify no agent file contains hardcoded 'wilson-' prefix in palRole.
 
-    zenRole values should use template variables like:
-    zenRole: "{{project.zenRoles.api-builder}}"
+    palRole values should use template variables like:
+    palRole: "{{project.palRoles.api-builder}}"
 
     NOT hardcoded project names like:
-    zenRole: wilson-api-builder
+    palRole: wilson-api-builder
     """
     agents_dir = get_data_path("agents")
     agent_files = list(agents_dir.glob("*.md"))
@@ -48,7 +48,7 @@ def test_no_wilson_prefix_in_agent_files() -> None:
 
     assert not violations, (
         "Found hardcoded 'wilson-' prefix in agent files. "
-        "Use template variables like {{project.zenRoles.agent-name}} instead:\n"
+        "Use template variables like {{project.palRoles.agent-name}} instead:\n"
         + "\n".join(
             f"  {filename}: {lines}"
             for filename, lines in violations
@@ -60,7 +60,7 @@ def test_no_wilson_prefix_in_config_files() -> None:
     """Verify no config file contains hardcoded 'wilson-' prefix.
 
     Config files should reference agents by template variables, not hardcoded names.
-    Project-specific zenRoles belong in .edison/config/project.yaml overlay.
+    Project-specific palRoles belong in .edison/config/project.yaml overlay.
     """
     config_dir = get_data_path("config")
     config_files = list(config_dir.glob("*.yaml"))
@@ -132,13 +132,13 @@ def test_no_wilson_prefix_in_validator_files() -> None:
     )
 
 
-def test_agent_zenroles_use_template_variables() -> None:
-    """Verify all agent zenRole values use template variable syntax.
+def test_agent_palroles_use_template_variables() -> None:
+    """Verify all agent palRole values use template variable syntax.
 
     This is the CORRECT pattern for core Edison agents:
-    zenRole: "{{project.zenRoles.api-builder}}"
+    palRole: "{{project.palRoles.api-builder}}"
 
-    This allows projects to define their own zenRole mappings in:
+    This allows projects to define their own palRole mappings in:
     .edison/config/project.yaml
     """
     agents_dir = get_data_path("agents")
@@ -146,8 +146,8 @@ def test_agent_zenroles_use_template_variables() -> None:
 
     assert agent_files, "No agent files found - check agents directory"
 
-    # Pattern to match zenRole in YAML frontmatter
-    zenrole_pattern = re.compile(r'^zenRole:\s*"?\{\{project\.zenRoles\.[a-z0-9-]+\}\}"?', re.MULTILINE)
+    # Pattern to match palRole in YAML frontmatter
+    palrole_pattern = re.compile(r'^palRole:\s*"?\{\{project\.palRoles\.[a-z0-9-]+\}\}"?', re.MULTILINE)
 
     violations = []
     for agent_file in agent_files:
@@ -166,21 +166,21 @@ def test_agent_zenroles_use_template_variables() -> None:
             violations.append((agent_file.name, "Missing frontmatter end delimiter"))
             continue
 
-        # Check if zenRole exists and uses correct template
-        if "zenRole:" not in frontmatter:
-            violations.append((agent_file.name, "Missing zenRole field in frontmatter"))
+        # Check if palRole exists and uses correct template
+        if "palRole:" not in frontmatter:
+            violations.append((agent_file.name, "Missing palRole field in frontmatter"))
             continue
 
-        if not zenrole_pattern.search(frontmatter):
-            # Extract the actual zenRole line for error reporting
-            zenrole_line = [line for line in frontmatter.splitlines() if "zenRole:" in line]
+        if not palrole_pattern.search(frontmatter):
+            # Extract the actual palRole line for error reporting
+            palrole_line = [line for line in frontmatter.splitlines() if "palRole:" in line]
             violations.append((
                 agent_file.name,
-                f"zenRole does not use template variable syntax: {zenrole_line[0] if zenrole_line else 'NOT FOUND'}"
+                f"palRole does not use template variable syntax: {palrole_line[0] if palrole_line else 'NOT FOUND'}"
             ))
 
     assert not violations, (
-        "Agent files have incorrect zenRole format. Must use {{project.zenRoles.agent-name}}:\n"
+        "Agent files have incorrect palRole format. Must use {{project.palRoles.agent-name}}:\n"
         + "\n".join(
             f"  {filename}: {error}"
             for filename, error in violations

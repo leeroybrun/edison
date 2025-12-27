@@ -43,14 +43,14 @@ class ValidatorMetadata:
     focus: list[str] = field(default_factory=list)
 
     @property
-    def zen_role(self) -> str:
-        """Get the zenRole for this validator (inferred from ID)."""
+    def pal_role(self) -> str:
+        """Get the Pal role for this validator (inferred from ID)."""
         return f"validator-{self.id}"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = asdict(self)
-        result["zen_role"] = self.zen_role
+        result["pal_role"] = self.pal_role
         return result
 
 
@@ -382,7 +382,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                         "wave": wave,
                         "name": v.name,
                         "engine": v.engine,
-                        "zenRole": v.zen_role,
+                        "palRole": v.pal_role,
                         "blocking": v.blocking,
                         "reason": f"Added by orchestrator (wave: {wave})",
                         "addedByOrchestrator": True,
@@ -395,7 +395,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 "name": v.name,
                 "engine": v.engine,
                 "wave": v.wave,
-                "zenRole": v.zen_role,
+                "palRole": v.pal_role,
                 "priority": 1 if v.always_run else 2,
                 "blocking": v.blocking,
                 "context7Required": v.context7_required,

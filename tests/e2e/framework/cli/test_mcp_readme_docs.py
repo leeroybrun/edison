@@ -13,7 +13,7 @@ from pathlib import Path
 
 REPO_ROOT = Path.cwd()
 README_PATH = REPO_ROOT / "README.md"
-ZEN_SETUP_DOC = REPO_ROOT / "docs" / "ZEN_SETUP.md"
+PAL_SETUP_DOC = REPO_ROOT / "docs" / "PAL_SETUP.md"
 
 
 def _read_readme() -> str:
@@ -42,5 +42,5 @@ def test_readme_mentions_mcp_config_files():
 
 def test_readme_links_to_setup_doc():
     content = _read_readme()
-    assert "docs/ZEN_SETUP.md" in content, "README must link to ZEN_SETUP.md (setup instructions)"
-    assert ZEN_SETUP_DOC.exists(), "docs/ZEN_SETUP.md must exist"
+    assert "docs/PAL_SETUP.md" in content, "README must link to PAL_SETUP.md (setup instructions)"
+    assert PAL_SETUP_DOC.exists(), "docs/PAL_SETUP.md must exist"

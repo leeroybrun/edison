@@ -260,7 +260,7 @@ The comprehensive report includes:
    - Savings: ~3,598 tokens (when only needed guide loads)
 
 4. **Modularize `delegation/config.json`**
-   - Split into: `file-patterns.json`, `task-types.json`, `zen-mcp.json`
+   - Split into: `file-patterns.json`, `task-types.json`, `pal-mcp.json`
    - Enable lazy loading (load only what's needed)
    - Savings: ~1,500 tokens per task
 

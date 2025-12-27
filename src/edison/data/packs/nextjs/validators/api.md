@@ -1,7 +1,7 @@
 # API Validator
 
 **Role**: API-focused code reviewer for application APIs
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: Route handlers, input validation, error handling, status codes, auth, response shapes
 **Priority**: 3 (specialized - runs after critical validators)
 **Triggers**: `**/route.ts`, `api/**/*.ts`

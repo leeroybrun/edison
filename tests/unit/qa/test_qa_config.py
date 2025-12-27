@@ -30,7 +30,7 @@ def test_qa_config_class_provides_delegation_config(tmp_path: Path, monkeypatch)
                 "taskTypeRules": {
                     "ui-component": {
                         "preferredModel": "claude",
-                        "preferredZenRole": "component-builder-nextjs",
+                        "preferredPalRole": "component-builder-nextjs",
                     }
                 },
                 "filePatternRules": {},

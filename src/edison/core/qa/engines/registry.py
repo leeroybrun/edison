@@ -2,7 +2,7 @@
 
 This module provides the EngineRegistry class which:
 - Loads engine configurations from validators.yaml
-- Instantiates appropriate engine classes (CLIEngine, ZenMCPEngine)
+- Instantiates appropriate engine classes (CLIEngine, PalMCPEngine)
 - Handles fallback logic when primary engines are unavailable
 - Delegates to ValidatorRegistry for roster building
 
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from .base import EngineConfig, ValidationResult
 from .cli import CLIEngine
-from .delegated import ZenMCPEngine
+from .delegated import PalMCPEngine
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
@@ -69,7 +69,7 @@ class EngineRegistry:
         self.project_root = project_root
         self._qa_config = QAConfig(repo_root=project_root)
         self._validator_registry = ValidatorRegistry(project_root=project_root)
-        self._engines: dict[str, CLIEngine | ZenMCPEngine] = {}
+        self._engines: dict[str, CLIEngine | PalMCPEngine] = {}
         self._engine_configs: dict[str, EngineConfig] = {}
 
         # Load engine configurations only (validators come from ValidatorRegistry)
@@ -90,7 +90,7 @@ class EngineRegistry:
 
         logger.debug(f"Loaded {len(self._engine_configs)} engines")
 
-    def _get_or_create_engine(self, engine_id: str) -> CLIEngine | ZenMCPEngine | None:
+    def _get_or_create_engine(self, engine_id: str) -> CLIEngine | PalMCPEngine | None:
         """Get or create an engine instance.
 
         Args:
@@ -113,7 +113,7 @@ class EngineRegistry:
 
         # Instantiate appropriate engine class
         if engine_config.type == "delegated":
-            engine = ZenMCPEngine(engine_config, self.project_root)
+            engine = PalMCPEngine(engine_config, self.project_root)
         else:
             engine = CLIEngine(engine_config, self.project_root)
 
@@ -171,7 +171,7 @@ class EngineRegistry:
                 "read_only_flags": ["--prompt-only"],
                 "response_parser": "coderabbit",
             },
-            "zen-mcp": {
+            "pal-mcp": {
                 "type": "delegated",
                 "command": "",
                 "response_parser": "plain_text",

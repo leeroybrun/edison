@@ -1,7 +1,7 @@
 # Database Validator
 
 **Role**: Database-focused code reviewer for application data layers
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: Prisma schemas, migrations, query optimization, indexes
 **Priority**: 3 (specialized - runs after critical validators)
 **Triggers**: `schema.prisma`, `prisma/**/*.ts`, `migrations/**/*`

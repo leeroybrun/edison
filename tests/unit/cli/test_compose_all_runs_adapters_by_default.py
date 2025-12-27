@@ -47,7 +47,7 @@ def args() -> Namespace:
     a.json = False
     a.claude = False
     a.cursor = False
-    a.zen = False
+    a.pal = False
     a.coderabbit = False
     a.all_adapters = False
     a.atomic_generated = False
@@ -60,21 +60,21 @@ def test_compose_all_runs_enabled_adapters_by_default(tmp_path: Path, args: Name
     """
     Full `edison compose all` should run enabled adapters by default.
 
-    In particular, Zen sync should write agent + validator prompt files under `.zen/`.
+    In particular, Pal sync should write agent + validator prompt files under `.pal/`.
     """
     _setup_minimal_project(tmp_path)
     args.project_root = str(tmp_path)
 
     assert main(args) == 0
 
-    zen_project_dir = tmp_path / ".zen" / "conf" / "systemprompts" / "clink" / "project"
-    assert zen_project_dir.exists(), f"Expected Zen project prompts dir: {zen_project_dir}"
+    pal_project_dir = tmp_path / ".pal" / "conf" / "systemprompts" / "clink" / "project"
+    assert pal_project_dir.exists(), f"Expected Pal project prompts dir: {pal_project_dir}"
 
     # Validator prompt (from project overlay) should be present.
-    assert (zen_project_dir / "test-val.txt").exists()
+    assert (pal_project_dir / "validator-test-val.txt").exists()
 
-    # Generic model prompts should be present and include the workflow loop.
-    codex_prompt = zen_project_dir / "codex.txt"
+    # Generic model prompts should be present (one per role) and include the workflow loop.
+    codex_prompt = pal_project_dir / "codex_default.txt"
     assert codex_prompt.exists()
     content = codex_prompt.read_text(encoding="utf-8")
     assert "## Edison Workflow Loop" in content
@@ -83,3 +83,23 @@ def test_compose_all_runs_enabled_adapters_by_default(tmp_path: Path, args: Name
     assert "RECOMMENDED ACTIONS" in content
     assert "DELEGATION HINT" in content
     assert "VALIDATORS" in content
+
+
+def test_compose_all_removes_legacy_unprefixed_validator_prompt_files(tmp_path: Path, args: Namespace) -> None:
+    """When validator prompts are synced as `validator-*.txt`, remove legacy `*.txt` files."""
+    _setup_minimal_project(tmp_path)
+    args.project_root = str(tmp_path)
+
+    # Simulate a pre-existing legacy file in the sync destination.
+    legacy_dir = tmp_path / ".pal" / "conf" / "systemprompts" / "clink" / "project"
+    legacy_dir.mkdir(parents=True, exist_ok=True)
+    legacy_file = legacy_dir / "test-val.txt"
+    legacy_file.write_text("legacy content", encoding="utf-8")
+    assert legacy_file.exists()
+
+    assert main(args) == 0
+
+    # New file exists...
+    assert (legacy_dir / "validator-test-val.txt").exists()
+    # ...and legacy file should be gone to avoid ambiguity.
+    assert not legacy_file.exists()

@@ -21,7 +21,8 @@ def test_worktree_package_structure_exists():
     assert (worktree_path / "__init__.py").exists(), "worktree must be a package with __init__.py"
 
     # Verify sub-modules exist
-    assert (worktree_path / "manager.py").exists(), "manager.py module must exist"
+    assert (worktree_path / "manager").is_dir(), "manager must be a package directory"
+    assert (worktree_path / "manager" / "__init__.py").exists(), "manager must be a package with __init__.py"
     assert (worktree_path / "cleanup.py").exists(), "cleanup.py module must exist"
     assert (worktree_path / "config_helpers.py").exists(), "config_helpers.py module must exist"
 
@@ -32,7 +33,19 @@ def test_worktree_module_sizes():
 
     worktree_path = Path(worktree.__file__).parent
 
-    modules = ["manager.py", "cleanup.py", "config_helpers.py", "__init__.py"]
+    modules = [
+        "cleanup.py",
+        "config_helpers.py",
+        "__init__.py",
+        # manager is a package; keep each submodule small
+        "manager/__init__.py",
+        "manager/api.py",
+        "manager/create.py",
+        "manager/env.py",
+        "manager/meta.py",
+        "manager/post_install.py",
+        "manager/refs.py",
+    ]
 
     for module_name in modules:
         module_file = worktree_path / module_name

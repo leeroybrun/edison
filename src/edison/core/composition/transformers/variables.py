@@ -20,11 +20,11 @@ class ConfigVariableTransformer(ContentTransformer):
     {{project.xxx}} is treated as an alias for {{config.project.xxx}}
 
     Examples:
-        Config: {"project": {"name": "edison", "zenRoles": {"api-builder": "agent-api"}}}
+        Config: {"project": {"name": "edison", "palRoles": {"api-builder": "agent-api"}}}
         Template: Project: {{config.project.name}}
         Output: Project: edison
-        Template: zenRole: "{{project.zenRoles.api-builder}}"
-        Output: zenRole: "agent-api"
+        Template: palRole: "{{project.palRoles.api-builder}}"
+        Output: palRole: "agent-api"
     """
 
     # Pattern for config variables: {{config.path.to.value}} or {{project.path}}

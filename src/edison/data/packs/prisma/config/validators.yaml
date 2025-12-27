@@ -3,7 +3,7 @@ validation:
     database:
       name: "Database Validator (Prisma)"
       engine: codex-cli
-      fallback_engine: zen-mcp
+      fallback_engine: pal-mcp
       prompt: "_generated/validators/database.md"
       wave: comprehensive
       always_run: false

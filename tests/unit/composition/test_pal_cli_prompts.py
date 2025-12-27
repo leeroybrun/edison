@@ -5,16 +5,16 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ZenAdapter, WORKFLOW_HEADING
+from edison.core.adapters import PalAdapter, WORKFLOW_HEADING
 from edison.core.config import ConfigManager
 from tests.helpers.paths import get_repo_root
 
 
 def _cli_roles_and_paths(repo_root: Path) -> list[tuple[str, Path]]:
     """Return (role, prompt_path) pairs for project CLI roles."""
-    cli_dir = repo_root / ".zen" / "conf" / "cli_clients"
+    cli_dir = repo_root / ".pal" / "conf" / "cli_clients"
     if not cli_dir.exists():
-        pytest.skip("Zen CLI client config directory missing")
+        pytest.skip("Pal CLI client config directory missing")
 
     roles: list[tuple[str, Path]] = []
     for cfg_path in cli_dir.glob("*.json"):
@@ -34,12 +34,12 @@ def _cli_roles_and_paths(repo_root: Path) -> list[tuple[str, Path]]:
 
 def test_verify_cli_prompts_syncs_all_project_roles(isolated_project_env: Path) -> None:
     """
-    ZenAdapter.verify_cli_prompts should ensure all CLI project roles
+    PalAdapter.verify_cli_prompts should ensure all CLI project roles
     have prompt files that include the workflow loop section.
     """
     repo_root = isolated_project_env
     cfg = ConfigManager(repo_root).load_config(validate=False)
-    adapter = ZenAdapter(project_root=repo_root, config=cfg)
+    adapter = PalAdapter(project_root=repo_root, config=cfg)
 
     report = adapter.verify_cli_prompts(sync=True)
 

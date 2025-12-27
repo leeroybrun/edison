@@ -8,11 +8,11 @@
       "command": "npx",
       "env": {}
     },
-    "edison-zen": {
+    "edison-pal": {
       "args": [],
-      "command": "./scripts/zen/run-server.sh",
+      "command": "./scripts/pal/run-server.sh",
       "env": {
-        "ZEN_WORKING_DIR": "/Users/leeroy/Documents/Development/edison"
+        "PAL_WORKING_DIR": "/Users/leeroy/Documents/Development/edison"
       }
     },
     "sequential-thinking": {

@@ -123,7 +123,7 @@ _INDEX_FIELDS = {
     "launcherPid",
     "parentPid",
     "agentRole",
-    "zenRole",
+    "palRole",
 }
 
 

@@ -1,10 +1,10 @@
-# Zen MCP Server Setup Guide
+# Pal MCP Server Setup Guide
 
 ## Overview
 
-Edison delegates work to specialized sub-agents using the [Zen MCP Server](https://github.com/BeehiveInnovations/zen-mcp-server). This document covers setup, configuration, and troubleshooting.
+Edison delegates work to specialized sub-agents using the [Pal MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server). This document covers setup, configuration, and troubleshooting.
 
-The Zen MCP Server enables Edison to:
+The Pal MCP Server enables Edison to:
 - Delegate tasks to specialized AI agents
 - Maintain conversation context across delegations
 - Execute tasks in isolated environments
@@ -20,7 +20,7 @@ The Zen MCP Server enables Edison to:
 
 ### Method 1: Automatic (Recommended)
 
-The easiest way to set up Zen integration is during project initialization:
+The easiest way to set up Pal integration is during project initialization:
 
 ```bash
 edison init my-project
@@ -28,19 +28,19 @@ edison init my-project
 
 This automatically:
 1. Creates `.edison/` directory structure
-2. Checks for uvx/zen-mcp-server availability
-3. Configures `.mcp.json` with Zen server entry
+2. Checks for uvx/pal-mcp-server availability
+3. Configures `.mcp.json` with Pal server entry
 4. Verifies the setup
 
 ### Method 2: Manual Setup
 
-If you need to set up Zen manually or add it to an existing project:
+If you need to set up Pal manually or add it to an existing project:
 
 ```bash
 # 1. Verify uvx is installed
 pip install uv
 
-# 2. Run Edison zen setup
+# 2. Run Edison pal setup
 edison mcp setup
 
 # 3. Configure your project
@@ -59,15 +59,15 @@ The `edison mcp configure` command creates a `.mcp.json` file in your project ro
 ```json
 {
   "mcpServers": {
-    "edison-zen": {
+    "edison-pal": {
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
-        "zen-mcp-server"
+        "git+https://github.com/BeehiveInnovations/pal-mcp-server.git",
+        "pal-mcp-server"
       ],
       "env": {
-        "ZEN_WORKING_DIR": "/path/to/your/project"
+        "PAL_WORKING_DIR": "/path/to/your/project"
       }
     }
   }
@@ -122,7 +122,7 @@ edison mcp start-server --background
 
 ### Check Setup Status
 
-Verify that Zen is properly configured:
+Verify that Pal is properly configured:
 
 ```bash
 edison mcp setup --check
@@ -130,7 +130,7 @@ edison mcp setup --check
 
 This will check:
 - ✅ uvx is installed and available
-- ✅ zen-mcp-server can be accessed via uvx
+- ✅ pal-mcp-server can be accessed via uvx
 - ✅ Configuration is valid
 
 ### Test Delegation
@@ -143,9 +143,9 @@ edison init test-project
 cd test-project
 
 # Create a test task
-edison task new "Test delegation" --description "Verify Zen MCP integration"
+edison task new "Test delegation" --description "Verify Pal MCP integration"
 
-# The task system should be able to delegate to Zen
+# The task system should be able to delegate to Pal
 ```
 
 ## Troubleshooting
@@ -163,16 +163,16 @@ pip install uv
 uvx --version
 ```
 
-### zen-mcp-server Installation Fails
+### pal-mcp-server Installation Fails
 
-**Problem**: `uvx` fails to install zen-mcp-server from GitHub
+**Problem**: `uvx` fails to install pal-mcp-server from GitHub
 
 **Solution**:
 1. Check your internet connection
 2. Verify Git is installed: `git --version`
 3. Try installing manually:
    ```bash
-   uvx --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server --version
+   uvx --from git+https://github.com/BeehiveInnovations/pal-mcp-server.git pal-mcp-server --version
    ```
 
 ### .mcp.json Not Found
@@ -212,12 +212,12 @@ edison mcp configure --config-file ~/.mcp.json
    uvx --version
    ```
 
-2. **Verify zen-mcp-server is accessible**:
+2. **Verify pal-mcp-server is accessible**:
    ```bash
-   uvx --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server --version
+   uvx --from git+https://github.com/BeehiveInnovations/pal-mcp-server.git pal-mcp-server --version
    ```
 
-3. **Check for port conflicts**: Zen may use specific ports that are already in use
+3. **Check for port conflicts**: Pal may use specific ports that are already in use
 
 4. **Review error messages**: Look for specific error details in the output
 
@@ -237,18 +237,18 @@ edison mcp configure --config-file ~/.mcp.json
 
 ### Environment Variable Issues
 
-**Problem**: `ZEN_WORKING_DIR` not set correctly
+**Problem**: `PAL_WORKING_DIR` not set correctly
 
 **Solution**:
-The `ZEN_WORKING_DIR` environment variable in `.mcp.json` should point to your project root. If it's incorrect:
+The `PAL_WORKING_DIR` environment variable in `.mcp.json` should point to your project root. If it's incorrect:
 
 1. Edit `.mcp.json` manually:
    ```json
    {
      "mcpServers": {
-       "edison-zen": {
+       "edison-pal": {
          "env": {
-           "ZEN_WORKING_DIR": "/correct/path/to/project"
+           "PAL_WORKING_DIR": "/correct/path/to/project"
          }
        }
      }
@@ -263,14 +263,14 @@ The `ZEN_WORKING_DIR` environment variable in `.mcp.json` should point to your p
 
 ## Advanced Usage
 
-### Using Custom Zen MCP Server
+### Using Custom Pal MCP Server
 
-If you're developing a custom version of zen-mcp-server:
+If you're developing a custom version of pal-mcp-server:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
-   cd zen-mcp-server
+   git clone https://github.com/BeehiveInnovations/pal-mcp-server.git
+   cd pal-mcp-server
    ```
 
 2. Install in development mode:
@@ -282,11 +282,11 @@ If you're developing a custom version of zen-mcp-server:
    ```json
    {
      "mcpServers": {
-       "edison-zen": {
-         "command": "zen-mcp-server",
+       "edison-pal": {
+         "command": "pal-mcp-server",
          "args": [],
          "env": {
-           "ZEN_WORKING_DIR": "/path/to/project"
+           "PAL_WORKING_DIR": "/path/to/project"
          }
        }
      }
@@ -295,7 +295,7 @@ If you're developing a custom version of zen-mcp-server:
 
 ### Multiple Projects
 
-You can configure Zen for multiple projects:
+You can configure Pal for multiple projects:
 
 ```bash
 # Configure project A
@@ -319,7 +319,7 @@ steps:
   - name: Install uv
     run: pip install uv
 
-  - name: Setup Edison Zen
+  - name: Setup Edison Pal
     run: |
       edison mcp setup
       edison mcp configure .
@@ -331,7 +331,7 @@ steps:
 ### Command-Line Help
 
 ```bash
-# General zen help
+# General pal help
 edison mcp --help
 
 # Specific command help
@@ -342,7 +342,7 @@ edison mcp start-server --help
 
 ### Community Support
 
-- **GitHub Issues**: https://github.com/BeehiveInnovations/zen-mcp-server/issues
+- **GitHub Issues**: https://github.com/BeehiveInnovations/pal-mcp-server/issues
 - **Edison Issues**: Report Edison-specific issues to the Edison repository
 
 ### Debugging
@@ -363,7 +363,7 @@ edison mcp configure --dry-run
 2. **Use relative paths**: Avoid hardcoded absolute paths in `.mcp.json`
 3. **Version control**: Commit `.mcp.json` to your repository (it's project-specific)
 4. **Document custom changes**: If you modify `.mcp.json` manually, document why
-5. **Test after updates**: Re-run verification after updating Edison or Zen MCP Server
+5. **Test after updates**: Re-run verification after updating Edison or Pal MCP Server
 
 ## Next Steps
 
@@ -378,10 +378,10 @@ After successful setup:
 
 ### Related Commands
 
-- `edison init` - Initialize a new Edison project (includes Zen setup)
-- `edison mcp setup` - Setup zen-mcp-server
+- `edison init` - Initialize a new Edison project (includes Pal setup)
+- `edison mcp setup` - Setup pal-mcp-server
 - `edison mcp configure` - Configure .mcp.json
-- `edison mcp start-server` - Start the Zen MCP server
+- `edison mcp start-server` - Start the Pal MCP server
 
 ### Configuration Files
 
@@ -390,9 +390,9 @@ After successful setup:
 
 ### External Links
 
-- [Zen MCP Server Repository](https://github.com/BeehiveInnovations/zen-mcp-server)
+- [Pal MCP Server Repository](https://github.com/BeehiveInnovations/pal-mcp-server)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [uvx Documentation](https://docs.astral.sh/uv/)
 
 
-Note: Adapters are unified under `src/edison/core/adapters/` (components/ + platforms/zen/). See `docs/TEMPLATING.md` for the composition pipeline feeding adapter outputs.
+Note: Adapters are unified under `src/edison/core/adapters/` (components/ + platforms/pal/). See `docs/TEMPLATING.md` for the composition pipeline feeding adapter outputs.

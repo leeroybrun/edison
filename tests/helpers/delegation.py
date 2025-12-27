@@ -40,7 +40,7 @@ def map_role(generic_role: str, cfg: Optional[Dict[str, Any]] = None) -> str:
 
 def _clink_target() -> Optional[str]:
     # Allow multiple env names; first non-empty wins.
-    for key in ('ZEN_MCP_CLINK', 'EDISON_DELEGATION_CLINK', 'EDISON_CLINK_TARGET'):
+    for key in ('PAL_MCP_CLINK', 'EDISON_DELEGATION_CLINK', 'EDISON_CLINK_TARGET'):
         val = os.environ.get(key)
         if val:
             return val

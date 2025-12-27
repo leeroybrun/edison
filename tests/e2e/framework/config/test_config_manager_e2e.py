@@ -59,16 +59,16 @@ def validate_with_schema(candidate: dict, schema_path: Path) -> None:
     Draft202012Validator(schema).validate(candidate)
     jsonschema.validate(instance=candidate, schema=schema)
 
-    # Explicit guard for zen.secret_rotation.check_interval_hours maximum.
-    zen_props = (schema.get("properties", {}).get("zen") or {}).get("properties", {})
-    rotation_schema = zen_props.get("secret_rotation") or {}
+    # Explicit guard for pal.secret_rotation.check_interval_hours maximum.
+    pal_props = (schema.get("properties", {}).get("pal") or {}).get("properties", {})
+    rotation_schema = pal_props.get("secret_rotation") or {}
     rotation_props = rotation_schema.get("properties", {}) or {}
     check_schema = rotation_props.get("check_interval_hours") or {}
     max_interval = check_schema.get("maximum")
 
     if isinstance(max_interval, int):
         value = (
-            (candidate.get("zen") or {})
+            (candidate.get("pal") or {})
             .get("secret_rotation", {})
             .get("check_interval_hours")
         )
@@ -101,13 +101,13 @@ def test_nested_env_array_append(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
 
 def test_nested_env_deep_object(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    defaults = {"zen": {"retry": {"max_attempts": 3}}}
+    defaults = {"pal": {"retry": {"max_attempts": 3}}}
     repo = make_tmp_repo(tmp_path, defaults, {})
 
-    monkeypatch.setenv("EDISON_ZEN__RETRY__MAX_ATTEMPTS", "5")
+    monkeypatch.setenv("EDISON_PAL__RETRY__MAX_ATTEMPTS", "5")
 
     cfg = load_with_manager(repo)
-    assert cfg["zen"]["retry"]["max_attempts"] == 5
+    assert cfg["pal"]["retry"]["max_attempts"] == 5
 
 
 # C2: Schema Validation Gaps for secret rotation
@@ -117,7 +117,7 @@ def test_schema_validation_secret_rotation(tmp_path: Path):
     assert schema_path.exists(), f"Missing core config schema: {schema_path}"
 
     # Valid config should pass
-    valid = {"zen": {"secret_rotation": {"enabled": True, "check_interval_hours": 24}}}
+    valid = {"pal": {"secret_rotation": {"enabled": True, "check_interval_hours": 24}}}
     # Should not raise
     try:
         validate_with_schema(valid, schema_path)
@@ -125,21 +125,21 @@ def test_schema_validation_secret_rotation(tmp_path: Path):
         pytest.fail(f"Valid secret_rotation rejected: {e}")
 
     # Invalid config should fail (requires maximum constraint in schema)
-    invalid = {"zen": {"secret_rotation": {"enabled": True, "check_interval_hours": 200}}}
+    invalid = {"pal": {"secret_rotation": {"enabled": True, "check_interval_hours": 200}}}
     with pytest.raises(ValidationError):
         validate_with_schema(invalid, schema_path)
 
 
 # C3/C4: Type validation in CLI and consistent merge precedence
 def test_config_merge_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    defaults = {"zen": {"retry": {"max_attempts": 3}}}
-    project = {"zen": {"retry": {"max_attempts": 5}}}
+    defaults = {"pal": {"retry": {"max_attempts": 3}}}
+    project = {"pal": {"retry": {"max_attempts": 5}}}
     repo = make_tmp_repo(tmp_path, defaults, project)
 
-    monkeypatch.setenv("EDISON_ZEN__RETRY__MAX_ATTEMPTS", "7")
+    monkeypatch.setenv("EDISON_PAL__RETRY__MAX_ATTEMPTS", "7")
 
     cfg = load_with_manager(repo)
-    assert cfg["zen"]["retry"]["max_attempts"] == 7  # ENV should win
+    assert cfg["pal"]["retry"]["max_attempts"] == 7  # ENV should win
 
 
 def test_config_type_coercion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -159,12 +159,12 @@ def test_config_type_coercion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_config_concurrent_access(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    defaults = {"zen": {"retry": {"max_attempts": 3}}}
+    defaults = {"pal": {"retry": {"max_attempts": 3}}}
     repo = make_tmp_repo(tmp_path, defaults, {})
-    monkeypatch.setenv("EDISON_ZEN__RETRY__MAX_ATTEMPTS", "9")
+    monkeypatch.setenv("EDISON_PAL__RETRY__MAX_ATTEMPTS", "9")
 
     def load() -> int:
-        return load_with_manager(repo)["zen"]["retry"]["max_attempts"]
+        return load_with_manager(repo)["pal"]["retry"]["max_attempts"]
 
     with ThreadPoolExecutor(max_workers=8) as ex:
         results = list(ex.map(lambda _: load(), range(16)))

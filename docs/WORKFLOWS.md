@@ -106,17 +106,17 @@ edison task claim <task-id> --session <session-id>
 filePatternRules:
   "*.tsx":
     preferredModel: claude
-    preferredZenRole: component-builder-nextjs
+    preferredPalRole: component-builder-nextjs
 
   "**/route.ts":
     preferredModel: codex
-    preferredZenRole: api-builder
-    delegateVia: zen-mcp
+    preferredPalRole: api-builder
+    delegateVia: pal-mcp
 
   "**/*.test.ts":
     preferredModel: codex
-    preferredZenRole: test-engineer
-    delegateVia: zen-mcp
+    preferredPalRole: test-engineer
+    delegateVia: pal-mcp
 ```
 
 **Agent workflow:**
@@ -618,7 +618,7 @@ ValidationExecutor (core/qa/engines/executor.py)
        ├── CLIEngine (direct CLI execution)
        │       └── codex, claude, gemini, auggie, coderabbit
        │
-       └── ZenMCPEngine (delegation fallback)
+       └── PalMCPEngine (delegation fallback)
                └── Generates orchestrator instructions
 ```
 
@@ -632,7 +632,7 @@ engines:
     subcommand: exec
     response_parser: codex
 
-  zen-mcp:
+  pal-mcp:
     type: delegated
     description: "Generate delegation instructions for orchestrator"
 
@@ -640,7 +640,7 @@ validators:
   global-codex:
     name: "Global Validator (Codex)"
     engine: codex-cli
-    fallback_engine: zen-mcp
+    fallback_engine: pal-mcp
     prompt: "_generated/validators/global.md"
     wave: critical
     always_run: true
@@ -722,7 +722,7 @@ but weren't triggered automatically.
 2. For each wave (in order):
    - Separates validators: executable (CLI available) vs delegated
    - Runs executable validators in parallel via `CLIEngine`
-   - Generates delegation instructions for unavailable CLIs via `ZenMCPEngine`
+  - Generates delegation instructions for unavailable CLIs via `PalMCPEngine`
    - Collects results and checks blocking status
    - Stops if blocking validators fail
 
@@ -746,8 +746,8 @@ When some CLI tools are available and others aren't:
 Wave: critical
   ✓ global-codex: approve (2.3s)     ← CLIEngine executed directly
   ✓ global-claude: approve (1.8s)    ← CLIEngine executed directly
-  → global-gemini: pending           ← ZenMCPEngine generated delegation
-  → global-auggie: pending           ← ZenMCPEngine generated delegation
+ → global-gemini: pending           ← PalMCPEngine generated delegation
+ → global-auggie: pending           ← PalMCPEngine generated delegation
 
 ═══ ORCHESTRATOR ACTION REQUIRED ═══
 Delegation instructions saved to evidence folder.
@@ -755,7 +755,7 @@ Delegation instructions saved to evidence folder.
 
 For delegated validators, the orchestrator must:
 1. Read delegation instructions from evidence folder
-2. Execute validation manually using the specified zenRole
+2. Execute validation manually using the specified palRole
 3. Save results to `validator-<id>-report.md`
 
 ---
@@ -943,26 +943,26 @@ filePatternRules:
   # React components → Claude
   "*.tsx":
     preferredModel: claude
-    preferredZenRole: component-builder-nextjs
-    delegateVia: zen-mcp
+    preferredPalRole: component-builder-nextjs
+    delegateVia: pal-mcp
 
   # API routes → Codex
   "**/route.ts":
     preferredModel: codex
-    preferredZenRole: api-builder
-    delegateVia: zen-mcp
+    preferredPalRole: api-builder
+    delegateVia: pal-mcp
 
   # Tests → Codex
   "**/*.test.ts":
     preferredModel: codex
-    preferredZenRole: test-engineer
-    delegateVia: zen-mcp
+    preferredPalRole: test-engineer
+    delegateVia: pal-mcp
 
   # Database schema → Codex
   "schema.prisma":
     preferredModel: codex
-    preferredZenRole: database-architect-prisma
-    delegateVia: zen-mcp
+    preferredPalRole: database-architect-prisma
+    delegateVia: pal-mcp
 ```
 
 ---
@@ -987,26 +987,26 @@ delegation:
 
 ### 3. Sub-Agent Spawning
 
-**Via Zen MCP Server:**
+**Via Pal MCP Server:**
 
 ```bash
-# Edison delegates to Zen MCP
-# Zen spawns isolated sub-agent
+# Edison delegates to Pal MCP
+# Pal spawns isolated sub-agent
 ```
 
-**Zen configuration (`.mcp.json`):**
+**Pal configuration (`.mcp.json`):**
 ```json
 {
   "mcpServers": {
-    "edison-zen": {
+    "edison-pal": {
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
-        "zen-mcp-server"
+        "git+https://github.com/BeehiveInnovations/pal-mcp-server.git",
+        "pal-mcp-server"
       ],
       "env": {
-        "ZEN_WORKING_DIR": "/path/to/project"
+        "PAL_WORKING_DIR": "/path/to/project"
       }
     }
   }
@@ -1039,9 +1039,9 @@ delegation:
 {
   "taskId": "T-001",
   "round": 1,
-  "implementationApproach": "delegated-zen-mcp",
+  "implementationApproach": "delegated-pal-mcp",
   "primaryModel": "codex",
-  "zenRole": "api-builder",
+  "palRole": "api-builder",
   "completionStatus": "complete",
   "filesModified": [
     "src/app/api/users/route.ts",
@@ -1064,18 +1064,18 @@ delegation:
 taskTypeRules:
   ui-component:
     preferredModel: claude
-    preferredZenRole: component-builder-nextjs
+    preferredPalRole: component-builder-nextjs
     delegation: required
 
   api-route:
     preferredModel: codex
-    preferredZenRole: api-builder
+    preferredPalRole: api-builder
     delegation: required
 
   full-stack-feature:
     preferredModel: multi
     preferredModels: [gemini, codex]
-    preferredZenRole: feature-implementer
+    preferredPalRole: feature-implementer
     delegation: partial  # Multi-model orchestration
 ```
 
@@ -1343,7 +1343,7 @@ For each task validation round:
 
 - [STATE_MACHINE.md](STATE_MACHINE.md) - Complete state machine, guards, actions, and conditions reference
 - [CONFIGURATION.md](CONFIGURATION.md) - Full configuration guide
-- [ZEN_SETUP.md](ZEN_SETUP.md) - Zen MCP Server setup
+- [PAL_SETUP.md](PAL_SETUP.md) - Pal MCP Server setup
 - [README.md](../README.md) - Edison overview
 
 ---

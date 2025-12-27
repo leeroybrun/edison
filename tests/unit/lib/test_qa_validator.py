@@ -41,7 +41,7 @@ def test_simple_delegation_hint_uses_task_type_rules(
         "taskTypeRules": {
             "ui-component": {
                 "preferredModel": "claude",
-                "preferredZenRole": "component-builder-nextjs",
+                "preferredPalRole": "component-builder-nextjs",
             }
         },
         "filePatternRules": {},
@@ -51,7 +51,7 @@ def test_simple_delegation_hint_uses_task_type_rules(
     hint = simple_delegation_hint(task_id, delegation_cfg=delegation_cfg)
     assert hint is not None, "expected a delegation hint for ui-component task"
     assert hint.get("model") == "claude"
-    assert hint.get("zenRole") == "component-builder-nextjs"
+    assert hint.get("palRole") == "component-builder-nextjs"
 
 
 def test_engine_registry_build_execution_roster(

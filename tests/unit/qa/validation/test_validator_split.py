@@ -24,7 +24,7 @@ def test_engine_api_imports() -> None:
         EngineRegistry,
         ValidationResult,
         CLIEngine,
-        ZenMCPEngine,
+        PalMCPEngine,
     )
     # ValidatorMetadata is now in registries module
     from edison.core.registries.validators import ValidatorMetadata
@@ -37,7 +37,7 @@ def test_engine_api_imports() -> None:
         "ValidationResult": ValidationResult,
         "ValidatorMetadata": ValidatorMetadata,
         "CLIEngine": CLIEngine,
-        "ZenMCPEngine": ZenMCPEngine,
+        "PalMCPEngine": PalMCPEngine,
     }
 
     for name, value in exported.items():
@@ -53,7 +53,7 @@ def test_engines_module_structure() -> None:
     assert hasattr(engines, "ValidationResult")
     assert hasattr(engines, "EngineConfig")
     assert hasattr(engines, "CLIEngine")
-    assert hasattr(engines, "ZenMCPEngine")
+    assert hasattr(engines, "PalMCPEngine")
 
 
 def test_parsers_module_structure() -> None:
@@ -86,7 +86,7 @@ def test_parsers_module_structure() -> None:
         (
             "edison.core.qa.engines.delegated",
             {
-                "ZenMCPEngine",
+                "PalMCPEngine",
             },
         ),
         (

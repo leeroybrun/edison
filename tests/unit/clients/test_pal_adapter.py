@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from edison.core.adapters import ZenAdapter
+from edison.core.adapters import PalAdapter
 from tests.helpers.io_utils import write_yaml
 
 
-class TestZenAdapterUnit:
+class TestPalAdapterUnit:
     def _write_basic_config(self, root: Path) -> None:
         """Write modular config overlays in the new YAML layout."""
         config_dir = root / ".edison" / "config"
@@ -16,9 +16,9 @@ class TestZenAdapterUnit:
         # Explicit pack activation (none for the baseline tests)
         write_yaml(config_dir / "packs.yaml", {"packs": {"active": []}})
 
-        # Zen roles must use mapping form (no legacy lists) to satisfy validator.
-        write_yaml(config_dir / "zen.yaml", {
-            "zen": {
+        # Pal roles must use mapping form (no legacy lists) to satisfy validator.
+        write_yaml(config_dir / "pal.yaml", {
+            "pal": {
                 "enabled": True,
                 "roles": {
                     "codex": {},
@@ -34,7 +34,7 @@ class TestZenAdapterUnit:
             write_yaml(project_config_path, {"project": {"name": "test-project"}})
 
     def _write_config_with_project_roles(self, root: Path) -> None:
-        """Config with active packs and zen.roles mapping for project roles."""
+        """Config with active packs and pal.roles mapping for project roles."""
         config_dir = root / ".edison" / "config"
 
         # Project packs are declared in modular overlay form.
@@ -44,9 +44,9 @@ class TestZenAdapterUnit:
             }
         })
 
-        # Role mapping now lives under zen.yaml with per-role mappings.
-        write_yaml(config_dir / "zen.yaml", {
-            "zen": {
+        # Role mapping now lives under pal.yaml with per-role mappings.
+        write_yaml(config_dir / "pal.yaml", {
+            "pal": {
                 "enabled": True,
                 "roles": {
                     "project-api-builder": {
@@ -188,12 +188,12 @@ class TestZenAdapterUnit:
         write_yaml(root / ".edison" / "packs" / "prisma" / "rules" / "registry.yaml", prisma_registry)
 
     def test_role_based_guideline_filtering(self, isolated_project_env: Path) -> None:
-        """ZenAdapter.get_applicable_guidelines should filter by role."""
+        """PalAdapter.get_applicable_guidelines should filter by role."""
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
 
         default_guides = adapter.get_applicable_guidelines("default")
         assert {"QUALITY", "security", "performance", "architecture"} <= set(default_guides)
@@ -209,12 +209,12 @@ class TestZenAdapterUnit:
         assert "QUALITY" not in planner_guides
 
     def test_role_based_rule_filtering(self, isolated_project_env: Path) -> None:
-        """ZenAdapter.get_applicable_rules should filter rule categories."""
+        """PalAdapter.get_applicable_rules should filter rule categories."""
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
 
         all_rules = adapter.get_applicable_rules("default")
         assert {r["id"] for r in all_rules} == {
@@ -240,12 +240,12 @@ class TestZenAdapterUnit:
     def test_config_driven_guideline_mapping_for_project_role(
         self, isolated_project_env: Path
     ) -> None:
-        """Config-driven zen.roles should control guideline selection for project roles."""
+        """Config-driven pal.roles should control guideline selection for project roles."""
         root = isolated_project_env
         self._write_config_with_project_roles(root)
         self._write_guidelines_with_packs_and_overlays(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
 
         names = adapter.get_applicable_guidelines("project-api-builder")
 
@@ -261,12 +261,12 @@ class TestZenAdapterUnit:
     def test_config_driven_rule_mapping_for_project_role(
         self, isolated_project_env: Path
     ) -> None:
-        """Config-driven zen.roles.rules should filter by category and pack."""
+        """Config-driven pal.roles.rules should filter by category and pack."""
         root = isolated_project_env
         self._write_config_with_project_roles(root)
         self._write_rules_with_packs(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
         rules = adapter.get_applicable_rules("project-api-builder")
         ids = {r["id"] for r in rules}
 
@@ -284,17 +284,17 @@ class TestZenAdapterUnit:
         assert "RULE.CORE.DELEGATION" not in ids
 
     def test_compose_prompt_includes_role_sections(self, isolated_project_env: Path) -> None:
-        """compose_zen_prompt should include model/role and role-specific sections."""
+        """compose_pal_prompt should include model/role and role-specific sections."""
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(project_root=root)
+        adapter = PalAdapter(project_root=root)
 
-        text = adapter.compose_zen_prompt(role="codereviewer", model="codex", packs=[])
+        text = adapter.compose_pal_prompt(role="codereviewer", model="codex", packs=[])
 
-        assert "Edison / Zen MCP Prompt" in text
+        assert "Edison / Pal MCP Prompt" in text
         assert "Model: codex" in text
         assert "Role: codereviewer" in text
 
@@ -306,14 +306,14 @@ class TestZenAdapterUnit:
 
     @pytest.mark.parametrize("model", ["codex", "claude", "gemini"])
     def test_model_specific_formatting(self, isolated_project_env: Path, model: str) -> None:
-        """compose_zen_prompt should annotate prompts with model-specific hints."""
+        """compose_pal_prompt should annotate prompts with model-specific hints."""
         root = isolated_project_env
         self._write_basic_config(root)
         self._write_guidelines(root)
         self._write_rules_registry(root)
 
-        adapter = ZenAdapter(project_root=root)
-        text = adapter.compose_zen_prompt(role="default", model=model, packs=[])
+        adapter = PalAdapter(project_root=root)
+        text = adapter.compose_pal_prompt(role="default", model=model, packs=[])
 
         assert f"Model: {model}" in text
         # Each model should have some context-window hint

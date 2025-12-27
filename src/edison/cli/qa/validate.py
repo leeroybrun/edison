@@ -566,7 +566,7 @@ def _execute_with_executor(
             display = "<evidence-root>/<task-id>/round-N/delegation-*.md"
 
         formatter.text(f"  1. Read delegation instructions from: {display}")
-        formatter.text("  2. Execute validation manually using the specified zenRole")
+        formatter.text("  2. Execute validation manually using the specified palRole")
         formatter.text("  3. Save results to: validator-<id>-report.md")
         formatter.text("")
         formatter.text("After completing delegated validations:")

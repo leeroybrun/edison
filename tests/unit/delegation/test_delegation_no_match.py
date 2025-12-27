@@ -78,7 +78,7 @@ class TestDelegationNoMatch(unittest.TestCase):
                 "preferredModel": "gemini",
                 "subAgentType": "feature-implementer",
                 "delegation": "required",
-                "preferredZenRole": "project-feature-implementer",
+                "preferredPalRole": "project-feature-implementer",
             }
         }
         path = self.write_config(cfg)
@@ -87,7 +87,7 @@ class TestDelegationNoMatch(unittest.TestCase):
         out = json.loads(res.stdout or "{}")
         sel = out.get("selected") or {}
         self.assertEqual(sel.get("model"), "gemini")
-        # role comes from preferredZenRole when provided
+        # role comes from preferredPalRole when provided
         self.assertIn(sel.get("subAgentType"), {"feature-implementer"})
         self.assertEqual(sel.get("role"), "project-feature-implementer")
         self.assertNotIn("error", out)

@@ -2,7 +2,7 @@
 name: api-builder
 description: "Backend API specialist for route handlers, validation, and data flow"
 model: codex
-zenRole: "{{project.zenRoles.api-builder}}"
+palRole: "{{project.palRoles.api-builder}}"
 allowed_tools:
   - Read
   - Edit

@@ -43,7 +43,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     start_parser.add_argument(
         "--continuation-id",
         dest="continuation_id",
-        help="Continuation/resume identifier (e.g., Codex/Zen continuation id)",
+        help="Continuation/resume identifier (e.g., Codex/Pal continuation id)",
     )
     add_json_flag(start_parser)
     add_repo_root_flag(start_parser)

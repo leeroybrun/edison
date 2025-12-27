@@ -144,7 +144,7 @@ class PlatformAdapter(CompositionBase, ABC):
         """Return the unique identifier for this platform.
 
         Returns:
-            Platform name (e.g., "claude", "cursor", "zen", "codex").
+            Platform name (e.g., "claude", "cursor", "pal", "codex").
         """
         pass
 
@@ -163,7 +163,7 @@ class PlatformAdapter(CompositionBase, ABC):
         Example return values:
             - ClaudeAdapter: {"claude_md": [Path], "agents": [Path]}
             - CursorAdapter: {"agents": [Path], "rules": [Path], "commands": [Path]}
-            - ZenAdapter: {"roles": {role: [Path]}, "workflows": [Path]}
+            - PalAdapter: {"roles": {role: [Path]}, "workflows": [Path]}
         """
         pass
 

@@ -85,6 +85,16 @@ class McpConfig:
         self.servers[server_id] = config
         return not existed
 
+    def remove_server(self, server_id: str) -> bool:
+        """Remove a server config.
+
+        Returns True if an entry was removed, False if it did not exist.
+        """
+        if server_id in self.servers:
+            self.servers.pop(server_id, None)
+            return True
+        return False
+
     def to_dict(self) -> dict[str, Any]:
         return {"mcpServers": {k: v.to_dict() for k, v in self.servers.items()}}
 
@@ -221,6 +231,7 @@ def configure_mcp_json(
 
     project_root = Path(project_root).expanduser().resolve()
     target_path, servers, _ = build_mcp_servers(project_root, packs=packs, prefer_scripts=prefer_scripts)
+    mcp_cfg = _load_mcp_config(project_root, packs=packs)
 
     if server_ids is not None:
         servers = {sid: cfg for sid, cfg in servers.items() if sid in server_ids}
@@ -239,8 +250,22 @@ def configure_mcp_json(
         if is_new:
             added_count += 1
 
+    removed_count = 0
+    managed_prefixes = mcp_cfg.get("managed_prefixes") or []
+    # Only perform managed namespace cleanup when configuring the full set
+    # (server_ids=None). This avoids surprising deletions during targeted updates.
+    if overwrite and server_ids is None and isinstance(managed_prefixes, list) and managed_prefixes:
+        prefixes = [str(p) for p in managed_prefixes if str(p)]
+        keep = set(servers.keys())
+        for existing_id in list(config.servers.keys()):
+            if existing_id in keep:
+                continue
+            if any(existing_id.startswith(pfx) for pfx in prefixes):
+                if config.remove_server(existing_id):
+                    removed_count += 1
+
     result = config.to_dict()
-    result["_meta"] = {"path": str(target_path), "added": added_count}
+    result["_meta"] = {"path": str(target_path), "added": added_count, "removed": removed_count}
 
     if dry_run:
         return result

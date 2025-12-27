@@ -13,6 +13,18 @@ def test_build_mcp_servers_merges_overrides(tmp_path: Path) -> None:
 
     project_root = tmp_path
 
+    # Activate the custom pack so ConfigManager includes `.edison/packs/custom/config/*`.
+    project_cfg_dir = project_root / ".edison" / "config"
+    project_cfg_dir.mkdir(parents=True, exist_ok=True)
+    (project_cfg_dir / "packs.yaml").write_text(
+        """
+packs:
+  active:
+    - custom
+""",
+        encoding="utf-8",
+    )
+
     pack_cfg_dir = project_root / ".edison" / "packs" / "custom" / "config"
     pack_cfg_dir.mkdir(parents=True)
     (pack_cfg_dir / "mcp.yaml").write_text(
@@ -30,9 +42,6 @@ mcp:
 """,
         encoding="utf-8",
     )
-
-    project_cfg_dir = project_root / ".edison" / "config"
-    project_cfg_dir.mkdir(parents=True, exist_ok=True)
     (project_cfg_dir / "mcp.yaml").write_text(
         """
 mcp:
@@ -49,14 +58,14 @@ mcp:
     config_path, servers, setup = build_mcp_servers(project_root)
 
     assert config_path.name == ".mcp.json"
-    assert "edison-zen" in servers
+    assert "edison-pal" in servers
     assert "context7" in servers
     assert "custom-server" in servers
     assert isinstance(servers["context7"], McpServerConfig)
     assert servers["context7"].env["CTX_TOKEN"] == "project"
     assert servers["context7"].env["REGION"] == "local"
     assert servers["custom-server"].env["LEVEL"] == "pack"
-    assert setup.get("edison-zen") is not None
+    assert setup.get("edison-pal") is not None
 
 
 def test_configure_mcp_json_preserves_user_servers(tmp_path: Path) -> None:
@@ -66,7 +75,7 @@ def test_configure_mcp_json_preserves_user_servers(tmp_path: Path) -> None:
     existing = {
         "mcpServers": {
             "user-defined": {"command": "custom", "args": [], "env": {"X": "1"}},
-            "edison-zen": {"command": "legacy", "args": [], "env": {}},
+            "edison-pal": {"command": "legacy", "args": [], "env": {}},
         }
     }
     (project_root / ".mcp.json").write_text(json.dumps(existing))
@@ -76,7 +85,7 @@ def test_configure_mcp_json_preserves_user_servers(tmp_path: Path) -> None:
     data = json.loads((project_root / ".mcp.json").read_text())
     assert "user-defined" in data["mcpServers"]
     assert data["mcpServers"]["user-defined"]["command"] == "custom"
-    assert data["mcpServers"]["edison-zen"]["command"] != "legacy"
+    assert data["mcpServers"]["edison-pal"]["command"] != "legacy"
     assert "context7" in data["mcpServers"]
     assert result["_meta"]["path"] == str(project_root / ".mcp.json")
 
@@ -90,5 +99,5 @@ def test_configure_mcp_json_dry_run_returns_structure(tmp_path: Path) -> None:
 
     assert not (project_root / ".mcp.json").exists()
     assert "mcpServers" in result
-    assert "edison-zen" in result["mcpServers"]
+    assert "edison-pal" in result["mcpServers"]
     assert "context7" in result["mcpServers"]

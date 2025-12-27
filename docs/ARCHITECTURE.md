@@ -132,7 +132,7 @@ edison.core/
 │   │   ├── base.py        # ValidationResult, ValidatorConfig, EngineProtocol
 │   │   ├── executor.py    # ValidationExecutor - centralized execution
 │   │   ├── cli.py         # CLIEngine - executes CLI validators
-│   │   ├── delegated.py   # ZenMCPEngine - orchestrator delegation
+│   │   ├── delegated.py   # PalMCPEngine - orchestrator delegation
 │   │   ├── registry.py    # EngineRegistry - engine/validator management
 │   │   └── parsers/       # CLI output parsers
 │   │       ├── codex.py   # Codex JSONL parser
@@ -196,7 +196,7 @@ edison.core/
 │   ├── platforms/         # Platform-specific adapters
 │   │   ├── claude.py      # ClaudeAdapter (.claude/, CLAUDE.md)
 │   │   ├── cursor.py      # CursorAdapter (.cursor/)
-│   │   ├── zen.py/        # ZenAdapter package (.zen/)
+│   │   ├── pal.py/        # PalAdapter package (.pal/)
 │   │   ├── codex.py       # CodexAdapter (.codex/)
 │   │   └── coderabbit.py  # CoderabbitAdapter (.coderabbit.yaml)
 │   └── components/        # Shared adapter components
@@ -560,7 +560,7 @@ _generated/
 │   └── ...
 └── clients/             # IDE-specific files
     ├── claude.md        # Claude-specific content
-    └── zen.md           # Zen-specific content
+    └── pal.md           # Pal-specific content
 ```
 
 **Generated File Headers**: All `_generated/` files include a header:
@@ -801,7 +801,7 @@ Edison has two types of rules:
 
 ## Delegation Model
 
-Edison delegates work to specialized agents via the **Zen MCP Server**.
+Edison delegates work to specialized agents via the **Pal MCP Server**.
 
 ### Agent Roster
 
@@ -815,7 +815,7 @@ Agents are defined in `edison.data/agents/`:
 ### Validator Configuration
 
 Validators are configured in `validators.yaml` with:
-- **Engines**: CLI execution backends (codex-cli, claude-cli, gemini-cli, auggie-cli, coderabbit-cli, zen-mcp)
+- **Engines**: CLI execution backends (codex-cli, claude-cli, gemini-cli, auggie-cli, coderabbit-cli, pal-mcp)
 - **Validators**: Flat list with engine references, prompts, and execution parameters
 - **Waves**: Execution groups (critical, comprehensive) with ordering and failure behavior
 
@@ -824,7 +824,7 @@ Validators are configured in `validators.yaml` with:
 1. **Orchestrator** triggers validation via `edison qa validate <task-id>`
 2. **EngineRegistry** loads validator configurations and builds execution roster
 3. **CLIEngine** executes validators directly via CLI tools when available
-4. **Fallback**: If CLI unavailable, `ZenMCPEngine` generates delegation instructions
+4. **Fallback**: If CLI unavailable, `PalMCPEngine` generates delegation instructions
 5. **Parsers** normalize CLI output to structured `ValidationResult`
 6. **Evidence** saved to `.project/qa/validation-evidence/{task-id}/round-N/`
 7. **Results** feed into QA state machine for promotion decisions
@@ -849,12 +849,12 @@ The validation system uses a centralized `ValidationExecutor` for all execution:
            │ 2. For each wave (in order):
            │    ├── Separate: executable vs delegated
            │    ├── Run executable in parallel (CLIEngine)
-           │    └── Generate delegation for others (ZenMCPEngine)
+           │    └── Generate delegation for others (PalMCPEngine)
            ↓
     ┌──────┴──────┐
     ↓             ↓
 ┌─────────┐  ┌─────────────┐
-│CLIEngine│  │ZenMCPEngine │
+│CLIEngine│  │PalMCPEngine │
 └────┬────┘  └──────┬──────┘
      │              │
      │ Execute      │ Generate
@@ -918,7 +918,7 @@ my-project/
 ├── .cursor/                    # Cursor IDE integration
 │   ├── settings.json
 │   └── ...
-├── .zen/                       # Zen IDE integration
+├── .pal/                       # Pal IDE integration
 │   ├── settings.json
 │   └── ...
 ├── .mcp.json                   # MCP server configuration
@@ -989,7 +989,7 @@ task_config = TaskConfig.from_dict(config["task"])
 
 ## IDE Integration
 
-Edison generates IDE-specific configuration files for Claude, Cursor, and Zen.
+Edison generates IDE-specific configuration files for Claude, Cursor, and Pal.
 
 ### Composition Flow
 
@@ -997,7 +997,7 @@ Edison generates IDE-specific configuration files for Claude, Cursor, and Zen.
 2. **Pack overlays**: `edison.data/packs/{pack}/commands.yaml`, etc.
 3. **Project overlays**: `.edison/config/commands.yaml`, etc.
 4. **Composition**: Layered composer merges all layers
-5. **Output**: Write to `.claude/`, `.cursor/`, `.zen/`
+5. **Output**: Write to `.claude/`, `.cursor/`, `.pal/`
 
 ### Claude Integration
 
@@ -1015,11 +1015,11 @@ Edison generates IDE-specific configuration files for Claude, Cursor, and Zen.
 - `.cursor/settings.json`: Cursor-specific settings
 - `.cursor/commands/`: Slash commands for Cursor
 
-### Zen Integration
+### Pal Integration
 
 **Files Generated**:
-- `.zen/settings.json`: Zen-specific settings
-- `.zen/commands/`: Slash commands for Zen
+- `.pal/settings.json`: Pal-specific settings
+- `.pal/commands/`: Slash commands for Pal
 
 ### Settings Sync
 
@@ -1092,8 +1092,8 @@ tests/
 
 ### External Integration
 
-- **Zen MCP Server**: Sub-agent delegation
-- **Claude/Cursor/Zen IDEs**: AI code editors
+- **Pal MCP Server**: Sub-agent delegation
+- **Claude/Cursor/Pal IDEs**: AI code editors
 - **Git**: Worktree management, diff parsing
 - **Context7 API**: Documentation context (optional)
 

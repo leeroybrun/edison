@@ -1,31 +1,35 @@
 mcp:
   config_file: ".mcp.json"
+  # Any existing `.mcp.json` entries with these id prefixes are considered Edison-managed.
+  # They will be removed when running `edison mcp configure` unless they are present in `mcp.servers`.
+  managed_prefixes: ["edison-"]
   tool_names:
-    edison_zen_clink: "mcp__edison-zen__clink"
+    edison_pal_clink: "mcp__edison-pal__clink"
   servers:
-    edison-zen:
-      # Portable: use uvx to run zen-mcp-server from git
+    edison-pal:
+      # Portable: use uvx to run pal-mcp-server from git
       # This works on any machine with uvx installed (pip install uv)
       command: "uvx"
       args:
         - "--from"
-        - "git+https://github.com/BeehiveInnovations/zen-mcp-server.git"
-        - "zen-mcp-server"
+        - "git+https://github.com/BeehiveInnovations/pal-mcp-server.git"
+        - "pal-mcp-server"
       # Script-based command variant (preferred for local + deterministic setups).
-      # `edison init --mcp-script` copies `scripts/zen/*.sh` into `{PROJECT_ROOT}/{PROJECT_CONFIG_DIR}/scripts/zen/`.
+      # `edison init --mcp-script` copies `scripts/pal/*.sh` into `{PROJECT_ROOT}/{PROJECT_CONFIG_DIR}/scripts/pal/`.
       script:
-        command: "{PROJECT_ROOT}/{PROJECT_CONFIG_DIR}/scripts/zen/run-server.sh"
+        command: "{PROJECT_ROOT}/{PROJECT_CONFIG_DIR}/scripts/pal/run-server.sh"
         args: []
       env:
-        ZEN_WORKING_DIR: "{PROJECT_ROOT}"
+        PAL_WORKING_DIR: "{PROJECT_ROOT}"
+        CLI_CLIENTS_CONFIG_PATH: "{PROJECT_ROOT}/.pal/conf/cli_clients"
       setup:
         require:
           commands:
             - "uvx"
         instructions: |
           Install uvx: pip install uv
-          Or clone zen-mcp-server: git clone https://github.com/BeehiveInnovations/zen-mcp-server.git ~/zen-mcp-server
-          Configure API keys in {PROJECT_ROOT}/.zen/.env
+          Or clone pal-mcp-server: git clone https://github.com/BeehiveInnovations/pal-mcp-server.git ~/pal-mcp-server
+          Configure API keys in {PROJECT_ROOT}/.pal/.env
     context7:
       command: "npx"
       args:

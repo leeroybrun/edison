@@ -40,7 +40,7 @@
 
 - Compose prompts using your orchestration layer's prompt templating system to pull the YAML overlays you used for selection.
 - Include session/task context, acceptance criteria, constraints (TDD, no mocks, no legacy/hardcodes), and expected deliverables (implementation report path, tests, commands run).
-- Attach ownership + model details from config so Zen activates the correct persona.
+- Attach ownership + model details from config so Pal activates the correct persona.
 
 ### Prompt Template
 

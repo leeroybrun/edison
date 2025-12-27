@@ -179,7 +179,7 @@ def start_validation(
     validator_id: str,
     model: str,
     round_num: Optional[int] = None,
-    zen_role: Optional[str] = None,
+    pal_role: Optional[str] = None,
     continuation_id: Optional[str] = None,
     run_id: Optional[str] = None,
     process_id: Optional[int] = None,
@@ -198,7 +198,7 @@ def start_validation(
     report.setdefault("round", int(resolved_round))
     report.setdefault("validatorId", str(validator_id))
     report.setdefault("model", str(model))
-    report.setdefault("zenRole", zen_role)
+    report.setdefault("palRole", pal_role)
     report.setdefault("verdict", "pending")
     report.setdefault("findings", [])
     report.setdefault("strengths", [])
@@ -233,7 +233,7 @@ def start_validation(
         startedAt=tr.get("startedAt"),
         lastActive=tr.get("lastActive"),
         continuationId=tr.get("continuationId"),
-        zenRole=report.get("zenRole"),
+        palRole=report.get("palRole"),
         **_launcher_fields(),
     )
 
@@ -357,7 +357,7 @@ def heartbeat(
                 processId=tr.get("processId"),
                 processHostname=tr.get("hostname"),
                 lastActive=tr.get("lastActive"),
-                zenRole=data.get("zenRole"),
+                palRole=data.get("palRole"),
                 **_launcher_fields(),
             )
 
@@ -421,7 +421,7 @@ def complete_validation(
         processHostname=tr.get("hostname"),
         completedAt=tr.get("completedAt"),
         lastActive=tr.get("lastActive"),
-        zenRole=data.get("zenRole"),
+        palRole=data.get("palRole"),
         **_launcher_fields(),
     )
 

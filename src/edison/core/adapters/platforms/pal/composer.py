@@ -1,7 +1,7 @@
-"""Zen composer mixin for role/model prompt composition.
+"""Pal composer mixin for role/model prompt composition.
 
-This module provides ZenComposerMixin which handles composing
-prompts for different Zen roles and models.
+This module provides PalComposerMixin which handles composing
+prompts for different Pal roles and models.
 """
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
@@ -10,7 +10,7 @@ from edison.core.composition.output.formatting import compose_for_role
 from .discovery import _canonical_role
 
 if TYPE_CHECKING:
-    from .adapter import ZenAdapter
+    from .adapter import PalAdapter
 
 
 def _canonical_model(model: str) -> str:
@@ -25,10 +25,10 @@ def _canonical_model(model: str) -> str:
     return low or "codex"
 
 
-class ZenComposerMixin:
-    """Mixin for composing Zen prompts."""
+class PalComposerMixin:
+    """Mixin for composing Pal prompts."""
 
-    def compose_zen_prompt(self: ZenAdapter, role: str, model: str, packs: List[str]) -> str:
+    def compose_pal_prompt(self: "PalAdapter", role: str, model: str, packs: List[str]) -> str:
         """Generate prompt text for a given role/model combination.
 
         The prompt includes:
@@ -38,7 +38,7 @@ class ZenComposerMixin:
           - Role-specific rules summary
 
         Args:
-            role: Zen role identifier
+            role: Pal role identifier
             model: Model identifier (codex/claude/gemini)
             packs: List of active packs
 
@@ -75,7 +75,7 @@ class ZenComposerMixin:
         rules_block = "\n".join(rule_lines)
 
         header_lines: List[str] = [
-            "=== Edison / Zen MCP Prompt ===",
+            "=== Edison / Pal MCP Prompt ===",
             f"Model: {model_key}",
             f"Role: {canonical_role}",
         ]
@@ -98,4 +98,4 @@ class ZenComposerMixin:
         return "\n\n".join([section for section in sections if section]).rstrip() + "\n"
 
 
-__all__ = ["ZenComposerMixin", "_canonical_model"]
+__all__ = ["PalComposerMixin", "_canonical_model"]

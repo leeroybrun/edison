@@ -28,8 +28,8 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
                 "validators": {
                     "v1": {
                         "name": "V1",
-                        "engine": "zen-mcp",
-                        "fallback_engine": "zen-mcp",
+                        "engine": "pal-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,
@@ -37,8 +37,8 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
                     },
                     "v2": {
                         "name": "V2",
-                        "engine": "zen-mcp",
-                        "fallback_engine": "zen-mcp",
+                        "engine": "pal-mcp",
+                        "fallback_engine": "pal-mcp",
                         "wave": "critical",
                         "always_run": True,
                         "blocking": True,
@@ -80,7 +80,7 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
             "round": 1,
             "validatorId": "v1",
             "model": "test",
-            "zenRole": "validator-v1",
+            "palRole": "validator-v1",
             "verdict": "approve",
             "findings": [],
             "strengths": [],

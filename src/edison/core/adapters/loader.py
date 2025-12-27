@@ -39,7 +39,7 @@ class AdapterLoader:
         loader = AdapterLoader(project_root)
         
         # List available adapters
-        print(loader.get_enabled_adapter_names())  # ['claude', 'cursor', 'zen', ...]
+        print(loader.get_enabled_adapter_names())  # ['claude', 'cursor', 'pal', ...]
         
         # Load a specific adapter
         adapter = loader.load_adapter('claude')
@@ -91,7 +91,7 @@ class AdapterLoader:
         Caches loaded adapters for reuse.
         
         Args:
-            name: Adapter name (e.g., "claude", "cursor", "zen")
+            name: Adapter name (e.g., "claude", "cursor", "pal")
             
         Returns:
             PlatformAdapter instance or None if not found

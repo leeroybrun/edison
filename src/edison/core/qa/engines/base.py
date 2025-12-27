@@ -98,7 +98,7 @@ class ValidationResult:
         task_id: str,
         round_num: int,
         model: str,
-        zen_role: str | None = None,
+        pal_role: str | None = None,
         started_at: str | None = None,
         completed_at: str | None = None,
     ) -> dict[str, Any]:
@@ -144,8 +144,8 @@ class ValidationResult:
             "tracking": tracking,
         }
 
-        if zen_role is not None:
-            report["zenRole"] = zen_role
+        if pal_role is not None:
+            report["palRole"] = pal_role
 
         return report
 

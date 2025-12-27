@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, Union
 
 import pytest
 
-from edison.core.utils.dependencies import UvxStatus, detect_uvx, detect_zen_mcp_server
+from edison.core.utils.dependencies import UvxStatus, detect_uvx, detect_pal_mcp_server
 
 
 # --- Test Helpers ---
@@ -143,51 +143,51 @@ class TestDetectUvx:
         assert result.available is False
 
 
-class TestDetectZenMcpServer:
-    """Test zen-mcp-server detection utility."""
+class TestDetectPalMcpServer:
+    """Test pal-mcp-server detection utility."""
 
-    def test_detect_zen_mcp_server_finds_env_var_installation(self, tmp_path):
-        """Test: detect_zen_mcp_server detects installation from ZEN_MCP_SERVER_DIR env var."""
-        zen_dir = tmp_path / "custom-zen"
-        zen_dir.mkdir()
-        (zen_dir / "pyproject.toml").write_text("[project]\nname='zen'")
+    def test_detect_pal_mcp_server_finds_env_var_installation(self, tmp_path):
+        """Test: detect_pal_mcp_server detects installation from PAL_MCP_SERVER_DIR env var."""
+        pal_dir = tmp_path / "custom-pal"
+        pal_dir.mkdir()
+        (pal_dir / "pyproject.toml").write_text("[project]\nname='pal'")
 
-        fake_env = make_fake_env_get({"ZEN_MCP_SERVER_DIR": str(zen_dir)})
+        fake_env = make_fake_env_get({"PAL_MCP_SERVER_DIR": str(pal_dir)})
         
         # Other deps not needed for this path but required by signature
         fake_home = make_fake_home(tmp_path)
         fake_uvx = FakeUvxDetector(UvxStatus(False, None, None, ""))
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx
         )
 
         assert available is True
-        assert path == zen_dir
+        assert path == pal_dir
 
-    def test_detect_zen_mcp_server_finds_home_installation(self, tmp_path):
-        """Test: detect_zen_mcp_server detects installation in home directory."""
-        zen_dir = tmp_path / "zen-mcp-server"
-        zen_dir.mkdir()
-        (zen_dir / "pyproject.toml").write_text("[project]\nname='zen'")
+    def test_detect_pal_mcp_server_finds_home_installation(self, tmp_path):
+        """Test: detect_pal_mcp_server detects installation in home directory."""
+        pal_dir = tmp_path / "pal-mcp-server"
+        pal_dir.mkdir()
+        (pal_dir / "pyproject.toml").write_text("[project]\nname='pal'")
 
         fake_env = make_fake_env_get({})
         fake_home = make_fake_home(tmp_path)
         fake_uvx = FakeUvxDetector(UvxStatus(False, None, None, ""))
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx
         )
 
         assert available is True
-        assert path == zen_dir
+        assert path == pal_dir
 
-    def test_detect_zen_mcp_server_returns_true_when_uvx_available(self, tmp_path):
-        """Test: detect_zen_mcp_server returns available=True when uvx is available."""
+    def test_detect_pal_mcp_server_returns_true_when_uvx_available(self, tmp_path):
+        """Test: detect_pal_mcp_server returns available=True when uvx is available."""
         fake_env = make_fake_env_get({})
         fake_home = make_fake_home(tmp_path / "nonexistent")
         
@@ -199,7 +199,7 @@ class TestDetectZenMcpServer:
         )
         fake_uvx = FakeUvxDetector(uvx_status)
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx
@@ -208,8 +208,8 @@ class TestDetectZenMcpServer:
         assert available is True
         assert path is None  # No local path, will use uvx
 
-    def test_detect_zen_mcp_server_returns_false_when_nothing_found(self, tmp_path):
-        """Test: detect_zen_mcp_server returns available=False when nothing is found."""
+    def test_detect_pal_mcp_server_returns_false_when_nothing_found(self, tmp_path):
+        """Test: detect_pal_mcp_server returns available=False when nothing is found."""
         fake_env = make_fake_env_get({})
         fake_home = make_fake_home(tmp_path / "nonexistent")
         
@@ -221,7 +221,7 @@ class TestDetectZenMcpServer:
         )
         fake_uvx = FakeUvxDetector(uvx_status)
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx
@@ -230,34 +230,34 @@ class TestDetectZenMcpServer:
         assert available is False
         assert path is None
 
-    def test_detect_zen_mcp_server_env_var_takes_precedence(self, tmp_path):
-        """Test: detect_zen_mcp_server prioritizes ZEN_MCP_SERVER_DIR over home directory."""
+    def test_detect_pal_mcp_server_env_var_takes_precedence(self, tmp_path):
+        """Test: detect_pal_mcp_server prioritizes PAL_MCP_SERVER_DIR over home directory."""
         # Create both installations
-        env_zen = tmp_path / "env-zen"
-        env_zen.mkdir()
-        (env_zen / "pyproject.toml").write_text("[project]\nname='zen-env'")
+        env_pal = tmp_path / "env-pal"
+        env_pal.mkdir()
+        (env_pal / "pyproject.toml").write_text("[project]\nname='pal-env'")
 
-        home_zen = tmp_path / "zen-mcp-server"
-        home_zen.mkdir()
-        (home_zen / "pyproject.toml").write_text("[project]\nname='zen-home'")
+        home_pal = tmp_path / "pal-mcp-server"
+        home_pal.mkdir()
+        (home_pal / "pyproject.toml").write_text("[project]\nname='pal-home'")
 
-        fake_env = make_fake_env_get({"ZEN_MCP_SERVER_DIR": str(env_zen)})
+        fake_env = make_fake_env_get({"PAL_MCP_SERVER_DIR": str(env_pal)})
         fake_home = make_fake_home(tmp_path)
         fake_uvx = FakeUvxDetector(UvxStatus(False, None, None, ""))
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx
         )
 
         assert available is True
-        assert path == env_zen  # Should return env var path, not home
+        assert path == env_pal  # Should return env var path, not home
 
-    def test_detect_zen_mcp_server_requires_pyproject_toml(self, tmp_path):
-        """Test: detect_zen_mcp_server requires pyproject.toml to be present."""
-        zen_dir = tmp_path / "zen-mcp-server"
-        zen_dir.mkdir()
+    def test_detect_pal_mcp_server_requires_pyproject_toml(self, tmp_path):
+        """Test: detect_pal_mcp_server requires pyproject.toml to be present."""
+        pal_dir = tmp_path / "pal-mcp-server"
+        pal_dir.mkdir()
         # No pyproject.toml
 
         fake_env = make_fake_env_get({})
@@ -271,7 +271,7 @@ class TestDetectZenMcpServer:
         )
         fake_uvx = FakeUvxDetector(uvx_status)
 
-        available, path = detect_zen_mcp_server(
+        available, path = detect_pal_mcp_server(
             env_get=fake_env,
             home_func=fake_home,
             uvx_detector=fake_uvx

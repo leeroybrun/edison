@@ -338,7 +338,7 @@ def isolated_project_env(tmp_path, monkeypatch):
     if config_src_dir.exists():
         shutil.copytree(config_src_dir, agents_root / "config", dirs_exist_ok=True)
 
-    # Create AGENTS.md for tests that need it (e.g., Zen CLI prompt verification)
+    # Create AGENTS.md for tests that need it (e.g., Pal CLI prompt verification)
     agents_md_src = REPO_ROOT / "AGENTS.md"
     agents_md_dst = tmp_path / "AGENTS.md"
     if agents_md_src.exists():

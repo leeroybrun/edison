@@ -46,7 +46,7 @@ REQUIRED_KEYS = {
     "name",
     "description",
     "model",
-    "zenRole",
+    "palRole",
     "allowed_tools",
     "requires_validation",
     "constitution",
@@ -113,7 +113,7 @@ def test_agent_frontmatter_required_fields(agent_name: str, spec: dict) -> None:
     assert fm["name"] == agent_name
     assert fm["description"] == spec["description"]
     assert fm["model"] == spec["model"]
-    assert fm["zenRole"] == f"{{{{project.zenRoles.{agent_name}}}}}", "zenRole must use project variable"
+    assert fm["palRole"] == f"{{{{project.palRoles.{agent_name}}}}}", "palRole must use project variable"
     assert fm["allowed_tools"] == ALLOWED_TOOLS
     assert fm["requires_validation"] is True
     assert fm["constitution"] == CONSTITUTION_PATH

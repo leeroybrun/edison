@@ -4,13 +4,13 @@ delegation:
       preferredModel: codex
       reason: "Systematic test coverage, edge case generation, TDD compliance"
       subAgentType: test-engineer
-      preferredZenRole: test-engineer
+      preferredPalRole: test-engineer
       confidence: high
     "**/*.spec.*":
       preferredModel: codex
       reason: "Specification testing, contract validation"
       subAgentType: test-engineer
-      preferredZenRole: test-engineer
+      preferredPalRole: test-engineer
       confidence: high
 
 

@@ -1,7 +1,7 @@
 # Next.js Validator
 
 **Role**: Next.js 16-focused code reviewer for application code
-**Model**: Codex (via Zen MCP `clink` interface)
+**Model**: Codex (via Pal MCP `clink` interface)
 **Scope**: App Router patterns, route handlers, Metadata API, Server Actions, caching, loading/error handling
 **Priority**: 3 (specialized - runs after critical validators)
 **Triggers**: `app/**/*.tsx`, `**/route.ts`, `**/layout.tsx`, `**/page.tsx`
