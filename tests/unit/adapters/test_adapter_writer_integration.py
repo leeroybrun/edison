@@ -124,23 +124,38 @@ class TestUnifiedAdaptersHaveWriter:
 class TestAdaptersUseWriterForFileOperations:
     """Test that adapters use writer methods instead of direct write_text."""
 
-    def test_cursor_adapter_uses_writer_for_cursorrules(self, isolated_project_env: Path) -> None:
-        """CursorAdapter should use writer.write_text for .cursorrules."""
+    def test_cursor_adapter_uses_writer_for_structured_rules(self, isolated_project_env: Path) -> None:
+        """CursorAdapter should use writer.write_text for `.cursor/rules/*.mdc`."""
         root = isolated_project_env
         _write_minimal_config(root)
 
         adapter = CursorAdapter(project_root=root)
-        out_path = adapter.sync_to_cursorrules()
 
-        # File should exist with Edison structure
+        # Minimal rules registry producing a categorized structured rule
+        rules_dir = root / ".edison" / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        write_yaml(
+            rules_dir / "registry.yml",
+            {
+                "version": "1.0.0",
+                "rules": [
+                    {
+                        "id": "RULE.VALIDATION.ONE",
+                        "title": "Validation One",
+                        "category": "validation",
+                        "blocking": True,
+                        "guidance": "Validation rule body.",
+                    }
+                ],
+            },
+        )
+
+        written = adapter.sync_structured_rules()
+        out_path = root / ".cursor" / "rules" / "validation.mdc"
+
+        assert out_path in written
         assert out_path.exists()
-        assert out_path.name == ".cursorrules"
-        content = out_path.read_text(encoding="utf-8")
-        # Check for autogen markers (the adapter's structure)
-        assert "EDISON_CURSOR_AUTOGEN:BEGIN" in content
-        assert "EDISON_CURSOR_AUTOGEN:END" in content
-        # Check that guidelines section was composed
-        assert "Guidelines" in content or "Rules" in content
+        assert "id: RULE.VALIDATION.ONE" in out_path.read_text(encoding="utf-8")
 
     def test_claude_adapter_uses_writer_for_agents(self, isolated_project_env: Path) -> None:
         """ClaudeAdapter should use writer.write_text for agent files."""

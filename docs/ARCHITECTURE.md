@@ -195,7 +195,7 @@ edison.core/
 │   ├── base.py            # PlatformAdapter base class
 │   ├── platforms/         # Platform-specific adapters
 │   │   ├── claude.py      # ClaudeAdapter (.claude/, CLAUDE.md)
-│   │   ├── cursor.py      # CursorAdapter (.cursor/, .cursorrules)
+│   │   ├── cursor.py      # CursorAdapter (.cursor/)
 │   │   ├── zen.py/        # ZenAdapter package (.zen/)
 │   │   ├── codex.py       # CodexAdapter (.codex/)
 │   │   └── coderabbit.py  # CoderabbitAdapter (.coderabbit.yaml)

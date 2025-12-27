@@ -162,7 +162,7 @@ class PlatformAdapter(CompositionBase, ABC):
 
         Example return values:
             - ClaudeAdapter: {"claude_md": [Path], "agents": [Path]}
-            - CursorAdapter: {"cursorrules": [Path], "agents": [Path], "rules": [Path]}
+            - CursorAdapter: {"agents": [Path], "rules": [Path], "commands": [Path]}
             - ZenAdapter: {"roles": {role: [Path]}, "workflows": [Path]}
         """
         pass

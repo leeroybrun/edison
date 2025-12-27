@@ -2,8 +2,8 @@
 """
 Test for merged CursorAdapter functionality from adapters/cursor.py.
 
-This test verifies that ALL functionality from root cursor_adapter.py
-has been successfully merged into adapters/cursor.py.
+This test verifies the CursorAdapter implements the supported Cursor surface
+(.cursor/ only) and does not retain removed legacy paths.
 """
 
 import pytest
@@ -22,24 +22,14 @@ def test_cursor_sync_has_full_functionality():
 
     # Core methods from unified adapter implementation
     required_methods = [
-        'sync_to_cursorrules',
         'sync_structured_rules',
-        'merge_cursor_overrides',
         'sync_agents_to_cursor',
         'sync_all',  # Unified adapter entry point
-        'validate_structure',  # Directory structure validation
+        'ensure_structure',  # Cursor directory structure validation
     ]
 
     for method_name in required_methods:
         assert hasattr(CursorAdapter, method_name), f"Missing method: {method_name}"
-
-
-def test_cursor_adapter_has_autogen_constants():
-    """Verify AUTOGEN_BEGIN and AUTOGEN_END constants exist."""
-    from edison.core.adapters import AUTOGEN_BEGIN, AUTOGEN_END
-
-    assert AUTOGEN_BEGIN == "<!-- EDISON_CURSOR_AUTOGEN:BEGIN -->"
-    assert AUTOGEN_END == "<!-- EDISON_CURSOR_AUTOGEN:END -->"
 
 
 def test_cursor_sync_can_be_instantiated(tmp_path):

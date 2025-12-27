@@ -6,7 +6,7 @@ Platform adapters for Edison integrations.
 All platform adapters now inherit from PlatformAdapter and are located in
 the platforms/ subdirectory. This provides a unified architecture for:
 - Claude Code (.claude/)
-- Cursor (.cursor/, .cursorrules)
+- Cursor (.cursor/)
 - Zen MCP (.zen/)
 - CodeRabbit (.coderabbit.yaml)
 - Codex (.codex/)
@@ -25,7 +25,7 @@ from .platforms.claude import ClaudeAdapter  # noqa: F401
 from .platforms.managed_files import ManagedFilesAdapter  # noqa: F401
 from .platforms.zen import ZenAdapter, WORKFLOW_HEADING  # noqa: F401
 from .platforms.codex import CodexAdapter  # noqa: F401
-from .platforms.cursor import CursorAdapter, AUTOGEN_BEGIN, AUTOGEN_END  # noqa: F401
+from .platforms.cursor import CursorAdapter  # noqa: F401
 from .platforms.coderabbit import CoderabbitAdapter  # noqa: F401
 
 # ============================================================================
@@ -52,8 +52,6 @@ __all__ = [
     "CoderabbitAdapter",
     # Constants
     "WORKFLOW_HEADING",
-    "AUTOGEN_BEGIN",
-    "AUTOGEN_END",
     # Schema utilities
     "load_schema",
     "validate_payload",

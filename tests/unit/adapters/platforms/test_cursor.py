@@ -12,7 +12,6 @@ CursorAdapter merges functionality from:
 from __future__ import annotations
 
 from pathlib import Path
-import pytest
 
 from edison.core.adapters.platforms.cursor import CursorAdapter
 
@@ -30,28 +29,6 @@ def test_cursor_adapter_has_sync_all():
     # Should have sync_all method
     assert hasattr(adapter, "sync_all")
     assert callable(adapter.sync_all)
-
-
-def test_cursor_adapter_sync_cursorrules(tmp_path: Path):
-    """Test syncing .cursorrules file."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-
-    edison_dir = project_root / ".edison"
-    edison_dir.mkdir()
-
-    # Create minimal config to prevent errors
-    config_dir = edison_dir / "config"
-    config_dir.mkdir()
-    composition_yaml = config_dir / "composition.yaml"
-    composition_yaml.write_text("version: 1.0")
-
-    adapter = CursorAdapter(project_root=project_root)
-    result = adapter.sync_to_cursorrules()
-
-    # Should create .cursorrules at project root
-    assert result == project_root / ".cursorrules"
-    assert result.exists()
 
 
 def test_cursor_adapter_sync_agents(tmp_path: Path):
@@ -113,9 +90,9 @@ def test_cursor_adapter_sync_all_returns_dict(tmp_path: Path):
 
     # Should return dict with expected keys
     assert isinstance(result, dict)
-    assert "cursorrules" in result
     assert "rules" in result
     assert "agents" in result
-    assert isinstance(result["cursorrules"], list)
+    assert "commands" in result
     assert isinstance(result["rules"], list)
     assert isinstance(result["agents"], list)
+    assert isinstance(result["commands"], list)
