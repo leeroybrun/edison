@@ -632,10 +632,103 @@ def test_meta_commit_guard_dedupes_allow_prefixes(session_git_repo_path):
     assert hook_text.splitlines().count('  ".pal/"') == 1
 
 
+def test_meta_commit_guard_supports_subpath_allowlist_for_shared_dirs(session_git_repo_path):
+    """A shared dir may be non-committable by default but allow specific subpaths.
+
+    Example: `.codex` contains runtime state (auth/history/logs) that must not be committed,
+    but `.codex/prompts/` should be committable and tracked in meta.
+    """
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [
+        {
+            "path": ".codex",
+            "scopes": ["primary", "session"],
+            "commitAllowed": False,
+            "commitAllowPrefixes": [".codex/prompts/"],
+        }
+    ]
+    data["worktrees"]["sharedState"]["commitGuard"] = {"enabled": True, "allowPrefixes": []}
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+
+    hooks_path_cp = run_with_timeout(
+        ["git", "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    hook_path = Path((hooks_path_cp.stdout or "").strip())
+    if not hook_path.is_absolute():
+        hook_path = (meta_path / hook_path).resolve()
+    hook_text = hook_path.read_text(encoding="utf-8")
+
+    # Ensure base dir is NOT allowed (only explicit sub-prefix is).
+    assert '  ".codex/"' not in hook_text.splitlines()
+    assert ".codex/prompts/" in hook_text
+
+
+def test_meta_git_excludes_ignore_codex_noise_but_not_prompts(session_git_repo_path):
+    """Meta worktree should ignore codex runtime noise but keep prompts visible."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    status = worktree.ensure_meta_worktree()
+    meta_path = Path(status["meta_path"])
+
+    # Create codex noise + a new prompt.
+    (meta_path / ".codex" / "prompts").mkdir(parents=True, exist_ok=True)
+    (meta_path / ".codex" / "auth.json").write_text("secret\n", encoding="utf-8")
+    (meta_path / ".codex" / "prompts" / "new-prompt.md").write_text("# hi\n", encoding="utf-8")
+
+    # `auth.json` should be ignored; the prompt should remain visible for normal `git add`.
+    st = run_with_timeout(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=meta_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    lines = (st.stdout or "").splitlines()
+    assert not any(".codex/auth.json" in ln for ln in lines)
+    assert any(".codex/prompts/new-prompt.md" in ln for ln in lines)
+
+
 def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_git_repo_path):
     """Meta init should make the primary checkout share `.project/*` via symlinks + excludes."""
     if sys.platform.startswith("win"):
         pytest.skip("Symlink semantics differ on Windows")
+
+    # Simulate a legacy installation where Edison wrote shared-path ignores into the
+    # repo-wide `.git/info/exclude`. With per-worktree excludes enabled, these stale
+    # ignores must be removed or they will prevent the meta branch from tracking
+    # meta-managed shared paths like `.claude/`.
+    info_exclude = session_git_repo_path / ".git" / "info" / "exclude"
+    info_exclude.parent.mkdir(parents=True, exist_ok=True)
+    info_exclude.write_text(
+        "\n".join(
+            [
+                "# legacy excludes",
+                ".project/",
+                ".claude/",
+                ".cursor/",
+                ".pal/",
+                ".edison/_generated/",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
     # Seed primary checkout with local management state that should become shared.
     primary_seed = session_git_repo_path / ".project" / "tasks" / "todo" / "seed.txt"
@@ -666,6 +759,16 @@ def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_
     exclude_file = Path(excludes_file_raw).expanduser().resolve()
     assert exclude_file.exists()
     assert ".project/" in exclude_file.read_text(encoding="utf-8").splitlines()
+
+    # Repo-wide info/exclude should no longer ignore meta-managed/shared paths.
+    # If left in place, `git status` in the meta worktree won't show these files and
+    # they can't be committed as intended.
+    info_lines = info_exclude.read_text(encoding="utf-8").splitlines()
+    assert ".project/" not in info_lines
+    assert ".claude/" not in info_lines
+    assert ".cursor/" not in info_lines
+    assert ".pal/" not in info_lines
+    assert ".edison/_generated/" not in info_lines
 
 
 def test_ensure_meta_worktree_creates_orphan_branch(session_git_repo_path):

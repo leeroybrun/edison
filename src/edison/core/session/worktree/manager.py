@@ -84,6 +84,11 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                 commit_allowed = True
             commit_allowed = bool(commit_allowed)
 
+            commit_allow_prefixes_raw = item.get("commitAllowPrefixes")
+            commit_allow_prefixes: list[str] = []
+            if isinstance(commit_allow_prefixes_raw, list):
+                commit_allow_prefixes = [str(p).strip() for p in commit_allow_prefixes_raw if str(p).strip()]
+
             out.append(
                 {
                     "path": path,
@@ -93,6 +98,7 @@ def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
                     "type": item_type,
                     "enabled": enabled,
                     "commitAllowed": commit_allowed,
+                    "commitAllowPrefixes": commit_allow_prefixes,
                 }
             )
             continue
@@ -215,7 +221,7 @@ def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], s
         patterns = ge.get(scope)
         if not isinstance(patterns, list):
             return
-        from edison.core.utils.git.excludes import ensure_worktree_excludes
+        from edison.core.utils.git.excludes import cleanup_repo_info_exclude, ensure_worktree_excludes
 
         final: list[str] = []
         for raw in patterns:
@@ -256,6 +262,29 @@ def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], s
             deduped.append(pat)
 
         ensure_worktree_excludes(checkout_path, deduped)
+
+        # Migration: legacy Edison patterns in repo-wide `.git/info/exclude` affect ALL
+        # worktrees and can prevent the meta branch from tracking meta-managed shared
+        # paths (e.g. `.claude/`). Now that per-worktree excludes are configured, remove
+        # those legacy lines (best-effort, exact-line removal only).
+        legacy_remove: list[str] = []
+        # Historical: older Edison versions ignored the entire management root.
+        legacy_remove.extend([".project", ".project/"])
+        for item in _parse_shared_paths(cfg):
+            p = str(item.get("path") or "").strip()
+            if not p:
+                continue
+            item_type = str(item.get("type") or "dir").strip().lower()
+            if item_type == "dir":
+                base = p.rstrip("/")
+                legacy_remove.extend([base, base + "/"])
+            else:
+                legacy_remove.append(p)
+        # Historical: `.zen` was renamed to `.pal`.
+        legacy_remove.extend([".zen", ".zen/"])
+        # Generated dirs: should not be globally ignored; handled by per-worktree excludes.
+        legacy_remove.extend([".edison/_generated", ".edison/_generated/", ".edison/_generated.__tmp__*"])
+        cleanup_repo_info_exclude(checkout_path, legacy_remove)
     except Exception:
         # Avoid blocking worktree creation due to git exclude helpers.
         return
@@ -282,16 +311,26 @@ def _ensure_meta_commit_guard(*, meta_path: Path, cfg: Dict[str, Any]) -> None:
         for item in _parse_shared_paths(cfg):
             if str(item.get("targetRoot") or "shared").strip().lower() != "shared":
                 continue
-            if item.get("commitAllowed") is False:
-                continue
             p = str(item.get("path") or "").strip()
             if not p:
                 continue
-            item_type = str(item.get("type") or "dir").strip().lower()
-            if item_type == "dir":
-                allow.append(p.rstrip("/") + "/")
-            else:
-                allow.append(p.strip())
+
+            # If the shared path is committable, allow its base prefix.
+            if item.get("commitAllowed") is not False:
+                item_type = str(item.get("type") or "dir").strip().lower()
+                if item_type == "dir":
+                    allow.append(p.rstrip("/") + "/")
+                else:
+                    allow.append(p.strip())
+
+            # Additionally, allow any explicitly whitelisted sub-prefixes.
+            cap = item.get("commitAllowPrefixes")
+            if isinstance(cap, list):
+                for sub in cap:
+                    s = str(sub).strip()
+                    if not s:
+                        continue
+                    allow.append(s)
 
         if not allow:
             return

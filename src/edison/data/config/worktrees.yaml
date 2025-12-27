@@ -74,6 +74,11 @@ worktrees:
         scopes: ["primary", "session"]
       - path: ".codex"
         scopes: ["primary", "session"]
+        # Codex stores runtime state here (auth/history/logs). Do not allow committing
+        # the directory as a whole, but allow prompts to be tracked.
+        commitAllowed: false
+        commitAllowPrefixes:
+          - ".codex/prompts/"
       - path: ".augment"
         scopes: ["primary", "session"]
       - path: ".cursor"
@@ -106,6 +111,16 @@ worktrees:
         - ".project/archive/"
         - ".edison/_generated/"
         - ".edison/_generated.__tmp__*"
+        # Ignore Codex runtime noise in meta, but keep prompts visible/trackable.
+        - ".codex/*"
+        - "!.codex/prompts/"
+        - "!.codex/prompts/**"
+        # Ignore Edison-generated command files (they can always be regenerated).
+        - ".claude/commands/edison.*.md"
+        - ".cursor/commands/edison.*.md"
+        # OS/editor noise
+        - ".DS_Store"
+        - "*.bak"
     # Guard against accidental commits of code changes on the meta branch.
     commitGuard:
       enabled: true

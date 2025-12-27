@@ -512,6 +512,12 @@ properties:
                   commitAllowed:
                     type: boolean
                     default: true
+                  commitAllowPrefixes:
+                    description: Optional extra allowlist prefixes for meta commits (used when a shared dir is not committable as a whole but some subpaths are).
+                    type: array
+                    items:
+                      type: string
+                    default: []
                 required:
                 - path
                 additionalProperties: false
