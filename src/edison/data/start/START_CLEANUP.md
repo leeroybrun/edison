@@ -7,7 +7,7 @@ You are cleaning up the project as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
+   Run: `edison read ORCHESTRATOR --type constitutions`
 
 2. **Identify Stale Items**
    Run: `edison session stale --list`

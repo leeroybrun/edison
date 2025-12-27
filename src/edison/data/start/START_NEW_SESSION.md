@@ -7,7 +7,7 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
+   Run: `edison read ORCHESTRATOR --type constitutions`
 
 2. **Load Mandatory Reads**
    See constitution for mandatory file list.

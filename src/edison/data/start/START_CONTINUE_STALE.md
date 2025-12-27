@@ -7,7 +7,7 @@ You are reclaiming stale tasks as an **ORCHESTRATOR**.
 ## Immediate Actions
 
 1. **Load Constitution**
-   Read: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`
+   Run: `edison read ORCHESTRATOR --type constitutions`
 
 2. **Find Stale Tasks**
    Run: `edison session stale --list`

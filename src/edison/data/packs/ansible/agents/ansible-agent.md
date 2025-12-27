@@ -34,8 +34,8 @@ metadata:
 Build production-ready Ansible playbooks and roles that are secure-by-default and idempotent-by-design. Prefer declarative modules, enforce FQCN, and validate everything with `ansible-lint` and (where applicable) Molecule.
 
 ## Mandatory Baseline
-- Follow the core agent constitution at `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md` (TDD, NO MOCKS, evidence rules).
-- Follow the core agent workflow and report format in `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` and `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`.
+- Follow the core agent constitution: run `edison read AGENTS --type constitutions` (TDD, NO MOCKS, evidence rules).
+- Follow the core agent workflow and report format: run `edison read MANDATORY_WORKFLOW --type guidelines/agents` and `edison read OUTPUT_FORMAT --type guidelines/agents`.
 
 ## Tools
 
@@ -91,7 +91,6 @@ ansible-navigator run <playbook.yml> --check --diff
 4. **Prove idempotency**: converge twice (or run playbook twice) and ensure the second run is “ok=… changed=0 …”.
 
 ## Output Format Requirements
-Follow `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` for implementation reports, and include:
+Follow the implementation report requirements: run `edison read OUTPUT_FORMAT --type guidelines/agents`, and include:
 - The exact `ansible-lint` output path (evidence file)
 - The exact Molecule / playbook run outputs (if applicable)
-

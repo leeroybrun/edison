@@ -117,7 +117,7 @@ Validator report format is defined in:
 ### Global Validators (Always Run)
 
 **Global validators** are defined in validator configuration:
-- Check `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for current global validators
+- Check the current global validators: run `edison read AVAILABLE_VALIDATORS`
 - Typically includes multiple models for diverse perspectives
 - Most global validators are blocking
 
@@ -258,7 +258,7 @@ Check active pack guidelines for framework-specific validation criteria:
 - **Database Tools**: Schema design, migration strategy
 - **Styling Systems**: Design tokens, responsive patterns
 
-Refer to `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` for active pack validators and their specific focus areas.
+Refer to active pack validators and focus areas: run `edison read AVAILABLE_VALIDATORS`.
 
 ---
 

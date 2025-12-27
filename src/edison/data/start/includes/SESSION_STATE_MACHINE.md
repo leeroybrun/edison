@@ -1,6 +1,6 @@
 ## Session State Machine
 
-Read the generated state machine reference in `{{PROJECT_EDISON_DIR}}/_generated/STATE_MACHINE.md`.
+Read the generated state machine reference: run `edison read STATE_MACHINE`.
 Follow the allowed transitions for session, task, and QA domains defined there—do
 not assume defaults. Use `edison session next` to stay aligned with the configured
 state machine.
@@ -15,4 +15,4 @@ Transition triggers (high level):
 
 Task states can also transition to blocked if blockers are encountered.
 
-State diagram: See `{{PROJECT_EDISON_DIR}}/_generated/STATE_MACHINE.md` for the canonical diagram (no embedded copies here).
+State diagram: run `edison read STATE_MACHINE` for the canonical diagram (no embedded copies here).

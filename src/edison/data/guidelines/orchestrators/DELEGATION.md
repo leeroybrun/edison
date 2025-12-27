@@ -5,7 +5,7 @@
 <!-- section: rules -->
 ## Delegation Criteria
 
-- Load the delegation roster first: `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` (fail-closed if missing).
+- Load the delegation roster first: run `edison read AVAILABLE_AGENTS` (fail-closed if missing).
 - Source of truth lives in YAML overlays (core → packs → user → project), but orchestrators should rely on the generated roster + `edison session next` suggestions rather than hardcoding config paths in prompts.
 - Delegate by default; orchestrators implement only when criteria say **Handle Directly**.
 - Enforce the priority chain (user instruction → file pattern rules → task type rules → sub-agent defaults → tie-breakers). Stop if ambiguous.
@@ -24,7 +24,7 @@
 ## Agent Selection Guidance
 
 - Resolve candidates from the generated roster + rules output (no hardcoded names). Use:
-  - `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md`
+  - `edison read AVAILABLE_AGENTS`
   - `edison session next <session-id>`
 - Choose the **first deterministic match** from the priority chain; do not shop for a better model after selection.
 - Keep independence: separate implementer vs validator roles/models; never assign both to one agent.

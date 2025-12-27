@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-Open and follow: `{{fn:project_config_dir}}/_generated/constitutions/VALIDATORS.md`
+Open and follow: run `edison read VALIDATORS --type constitutions`
 
 ---
 

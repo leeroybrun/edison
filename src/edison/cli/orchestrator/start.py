@@ -39,7 +39,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--start-prompt",
         type=str,
-        help="Start prompt ID to load from templates and send to orchestrator (e.g. AUTO_NEXT). See `edison session prompts`.",
+        help="Start prompt ID to load from templates and send to orchestrator (e.g. AUTO_NEXT). See `edison list --type start --format detail`.",
     )
     parser.add_argument(
         "--prompt-file",

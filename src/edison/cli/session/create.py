@@ -60,7 +60,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--prompt",
         dest="start_prompt",
         required=False,
-        help="Optional start prompt ID to print after creation (e.g. AUTO_NEXT). See `edison session prompts`.",
+        help="Optional start prompt ID to print after creation (e.g. AUTO_NEXT). See `edison list --type start --format detail`.",
     )
     parser.add_argument(
         "--include-prompt-text",

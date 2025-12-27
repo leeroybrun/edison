@@ -10,9 +10,9 @@ This document defines the canonical orchestration rules for all Edison framework
 
 Every agent MUST follow these 13 items. **Any violation halts work immediately** until resolved.
 
-1. **Mandatory preload** – Load `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
+1. **Mandatory preload** – Run `edison read ORCHESTRATOR --type constitutions` and every `mandatory` entry before touching code. Edison CLI (`edison session next`, `edison task claim`) injects rules proactively.
 
-2. **Correct intake prompt** – Start every session via `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`. That checklist handles QA sweeps + task selection.
+2. **Correct intake prompt** – Start every session by running `edison read ORCHESTRATOR --type constitutions`. That checklist handles QA sweeps + task selection.
 
 3. **Session record alive** – Every session has a JSON file under `{{fn:sessions_root}}/{active,closing,validated}/`. Keep Owner, Last Active, hierarchy links, and Activity Log current via Edison guarded CLIs.
 
@@ -20,7 +20,7 @@ Every agent MUST follow these 13 items. **Any violation halts work immediately**
 
 5. **TDD is law** – RED → GREEN → REFACTOR for every change; log the cycle + evidence paths in the task file. No mocked tests - use real filesystem, real git, real processes.
 
-6. **Delegate, don't do** – Route work through `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
+6. **Delegate, don't do** – Route work through `edison read ORCHESTRATOR --type constitutions`; only ≤10-line surgical edits may be performed directly. Complex features go to specialized implementers.
 
 7. **Context7 first** – Query Context7 before coding against any post-training package detected by `context7.triggers` / `context7.contentDetection`. Never guess about post-training APIs.
 
@@ -131,7 +131,7 @@ edison rules require <RULE_ID>
 
 ## Session Workflow
 
-See `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` for the canonical lifecycle specification.
+See the canonical lifecycle specification: run `edison read SESSION_WORKFLOW --type guidelines/orchestrators`.
 
 **Key Phases**:
 1. **Session Intake** (via ORCHESTRATOR.md constitution checklist)
@@ -357,7 +357,7 @@ Once bundle validated, each implementer completes their session.
 - Follows full TDD + validation workflow
 - Evidence logged in own task file
 
-See `{{PROJECT_EDISON_DIR}}/_generated/guidelines/SESSION_WORKFLOW.md` section "Parallel Sessions and Task Splitting" for detailed workflow.
+See "Parallel Sessions and Task Splitting": run `edison read SESSION_WORKFLOW --type guidelines/orchestrators`.
 
 ---
 
@@ -423,4 +423,4 @@ This orchestration hub ensures:
 - ✅ Delegation patterns (route complex work to specialists)
 - ✅ Post-training safety (Context7 queries mandatory)
 
-**Next Step**: Read `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHESTRATOR.md` to begin a session correctly.
+**Next Step**: Run `edison read ORCHESTRATOR --type constitutions` to begin a session correctly.

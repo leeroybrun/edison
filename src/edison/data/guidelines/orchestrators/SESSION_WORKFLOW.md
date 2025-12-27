@@ -51,7 +51,7 @@ Session state names map to on-disk directories as follows:
 
 ## Session Timeouts (WP-002)
 
-- Default inactivity timeout is configured in `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md` (`session.timeout_hours`).
+- Default inactivity timeout is configured in the orchestrator constitution (run `edison read ORCHESTRATOR --type constitutions`) (`session.timeout_hours`).
 - Stale detection cadence is configured via `session.stale_check_interval_hours` for schedulers.
 - When a session exceeds the timeout window (based on the most recent of `lastActive`, `claimedAt`, or `createdAt`):
   - `edison session cleanup-expired` detects and automatically cleans up expired sessions.
@@ -64,7 +64,7 @@ Session state names map to on-disk directories as follows:
 
 - [ ] Session record in `{{fn:session_state_dir("active")}}/` (active) is current (Owner, Last Active, Activity Log).
 - [ ] Every claimed task has a matching QA brief (state: {{fn:state_names("qa")}}).
-- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (`{{fn:project_config_dir}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`).
+- [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (run `edison read OUTPUT_FORMAT --type guidelines/agents`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
 - [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
@@ -72,7 +72,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `{{fn:task_state_dir("wip")}}/` and QA in `{{fn:qa_state_dir("waiting")}}/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `{{fn:semantic_state("task","validated")}}`. Child tasks can be `{{fn:semantic_states("task","done,validated","pipe")}}`. Parent QA must be `{{fn:semantic_states("qa","done,validated","pipe")}}`. Child QA should be `{{fn:semantic_state("qa","done")}}` when approved in the parent bundle (or `{{fn:semantic_states("qa","waiting,todo","pipe")}}` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md`; use guards (`edison task ready`, `edison qa bundle`) not manual moves.
+- [ ] State transitions follow the canonical state machine (run `edison read STATE_MACHINE`); use guards (`edison task ready`, `edison qa bundle`) not manual moves.
 - [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
@@ -107,7 +107,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 
 ### Hierarchy & State Machine
 
-- Session files now live in `{{fn:sessions_root}}/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in `{{fn:project_config_dir}}/_generated/STATE_MACHINE.md`; `edison session status <id>` renders the view for humans/LLMs.
+- Session files now live in `{{fn:sessions_root}}/<state>/<session-id>/session.json` and store session metadata only. Task relationships (parent/child) live in task frontmatter; QA linkage lives in QA frontmatter. The canonical transitions are defined in the generated state machine (run `edison read STATE_MACHINE`); `edison session status <id>` renders the view for humans/LLMs.
 <!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
@@ -161,7 +161,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 ### 2.2a. If Delegating (RECOMMENDED)
 
-**Delegate according to `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md`:**
+**Delegate according to the orchestrator constitution (run `edison read ORCHESTRATOR --type constitutions`):**
 
 1. **Launch sub-agent via your project's orchestration layer:**
    ```bash
@@ -194,7 +194,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 **If you must implement yourself:**
 
-1. **YOU must follow `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md`:**
+1. **YOU must follow the agent constitution (run `edison read AGENTS --type constitutions`):**
    - Call `edison session track start --task <id> --type implementation --model claude`
    - Follow TDD, query Context7, fill report, run automation
    - Call `edison session track complete`
@@ -239,7 +239,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 > **💡 CRITICAL WORKFLOW AID:** After every action (claim, delegate, status change), run `edison session next <session-id>` to see the next steps and stay "on rails." This enhanced orchestration helper:
 > - Shows ALL applicable rules BEFORE actions (proactive, not just at enforcement)
 > - Displays complete validator roster with model bindings (prevents forgetting validators or using wrong models)
-> - Shows delegation suggestions with detailed reasoning from `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md`
+> - Shows delegation suggestions with detailed reasoning from the active roster (run `edison read AVAILABLE_AGENTS`)
 > - Lists related tasks (parent/child/sibling) for context
 > - Provides decision points (concurrency cap, wave batching, optional validators)
 > - Returns precise commands with rule references so you never miss a step
@@ -383,7 +383,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 - Triggers: Framework file patterns from pack configuration
 - Focus: Framework patterns, routing, data loading, caching
 
-**Note**: Specific models, blocking status, and trigger patterns are defined in `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md` based on active packs.
+**Note**: Specific models, blocking status, and trigger patterns are defined in the active validator roster (run `edison read AVAILABLE_VALIDATORS`) based on active packs.
 
 **Each validator will handle:**
 - ✅ Calling `edison session track start` (their mandatory first step)
@@ -544,9 +544,9 @@ edison session verify <session-id>
 ---
 
 **References**
-- `{{fn:project_config_dir}}/_generated/constitutions/AGENTS.md` – orchestration policies & delegation guardrails
-- `{{fn:project_config_dir}}/_generated/guidelines/shared/VALIDATION.md` – validator gate specifics
-- `{{fn:project_config_dir}}/_generated/constitutions/ORCHESTRATOR.md` – TDD verification requirements (embedded)
-- `{{fn:project_config_dir}}/_generated/guidelines/shared/HONEST_STATUS.md` – directory semantics + reporting rules
-- `{{fn:project_config_dir}}/_generated/AVAILABLE_AGENTS.md` – agent roster and delegation patterns
-- `{{fn:project_config_dir}}/_generated/AVAILABLE_VALIDATORS.md` – validator triggers + block/allow list
+- `edison read AGENTS --type constitutions` – orchestration policies & delegation guardrails
+- `edison read VALIDATION --type guidelines/shared` – validator gate specifics
+- `edison read ORCHESTRATOR --type constitutions` – TDD verification requirements (embedded)
+- `edison read HONEST_STATUS --type guidelines/shared` – directory semantics + reporting rules
+- `edison read AVAILABLE_AGENTS` – agent roster and delegation patterns
+- `edison read AVAILABLE_VALIDATORS` – validator triggers + block/allow list

@@ -26,8 +26,7 @@ command -v edison >/dev/null 2>&1 && _edison_audit_event "hook.compaction-remind
 
 # Configuration from hooks.yaml
 ROLE="{{ cfg.get('default_role', 'agents') }}"
-{% set project_cfg_dir = global_config.get("paths", {}).get("project_config_dir", ".edison") %}
-MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution at: ' ~ project_cfg_dir ~ '/_generated/constitutions/{ROLE}.md') }}"
+MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution: run `edison read {ROLE} --type constitutions`.') }}"
 NOTIFY="{{ cfg.get('notify', True) }}"
 
 # Expand {ROLE} placeholder in message template

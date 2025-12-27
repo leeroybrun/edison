@@ -8,8 +8,8 @@ This session is for running validators only, not implementation.
 
 ## Pre-Validation Checklist
 
-1. ✅ Read validator constitution: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md`
-2. ✅ Load validator roster: `{{PROJECT_EDISON_DIR}}/_generated/AVAILABLE_VALIDATORS.md`
+1. ✅ Read validator constitution: run `edison read VALIDATORS --type constitutions`
+2. ✅ Load validator roster: run `edison read AVAILABLE_VALIDATORS`
 3. ✅ Identify tasks ready for validation: `edison task list --status=done`
 
 ## Validation Protocol
@@ -41,4 +41,4 @@ edison qa validate --all-ready
 
 ## Constitution Reference
 
-Your full validator instructions are at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDATORS.md`
+Your full validator instructions: run `edison read VALIDATORS --type constitutions`

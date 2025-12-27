@@ -45,8 +45,8 @@ Build production-ready Python modules with strict TDD, comprehensive type hints,
 
 ## Mandatory Baseline
 
-- Follow the core agent constitution at `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS.md` (TDD, NO MOCKS, evidence rules).
-- Follow the core agent workflow and report format in `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/MANDATORY_WORKFLOW.md` and `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md`.
+- Follow the core agent constitution: run `edison read AGENTS --type constitutions` (TDD, NO MOCKS, evidence rules).
+- Follow the core agent workflow and report format: run `edison read MANDATORY_WORKFLOW --type guidelines/agents` and `edison read OUTPUT_FORMAT --type guidelines/agents`.
 
 ## Tools
 
@@ -232,7 +232,7 @@ pytest tests/unit/test_new_feature.py -v
 
 ## Output Format Requirements
 
-Follow `{{PROJECT_EDISON_DIR}}/_generated/guidelines/agents/OUTPUT_FORMAT.md` for implementation reports.
+Follow the implementation report requirements: run `edison read OUTPUT_FORMAT --type guidelines/agents`.
 
 ```markdown
 ## IMPLEMENTATION COMPLETE
