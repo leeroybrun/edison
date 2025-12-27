@@ -60,6 +60,8 @@ class ProjectConfig(BaseDomainConfig):
         Resolution order:
         1. AGENTS_OWNER environment variable (highest priority)
         2. Config file (project.owner in YAML)
+        3. Process tree inspection (topmost Edison/LLM process)
+        4. Current system user (fallback)
 
         Returns:
             Owner string, or None if no owner could be determined.
@@ -74,7 +76,21 @@ class ProjectConfig(BaseDomainConfig):
         if isinstance(owner_raw, str) and owner_raw.strip():
             return owner_raw.strip()
 
-        return None
+        # Infer from process tree (best-effort, no mocks).
+        try:
+            from edison.core.utils.process.inspector import find_topmost_process
+
+            name, _pid = find_topmost_process()
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+        except Exception:
+            pass
+
+        # Final fallback: current user.
+        try:
+            return getpass.getuser()
+        except Exception:
+            return None
 
     @cached_property
     def audit_terms(self) -> List[str]:
@@ -169,4 +185,3 @@ __all__ = [
     "ProjectConfig",
     "DEFAULT_PROJECT_TERMS",
 ]
-

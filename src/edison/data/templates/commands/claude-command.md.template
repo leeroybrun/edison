@@ -1,5 +1,6 @@
 ---
 description: "{{ short_desc | replace('\"', '\\\"') }}"
+{% set platform_config = platform_config | default({'allow_bash': true}) %}
 {% if args %}
 argument-hint: "{% for arg in args %}{{ arg.name }}{% if not loop.last %} {% endif %}{% endfor %}"
 {% endif %}

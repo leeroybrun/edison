@@ -33,7 +33,11 @@ class LayerDiscovery:
     
     Validates:
     - Overlays must reference existing entities
-    - New entities must not shadow existing ones
+    - New entities are those that do not exist in lower-precedence layers
+
+    Convention:
+    - Files at `{layer}/{type}/{name}.md` define NEW entities (must be unique).
+    - Files at `{layer}/{type}/overlays/{name}.md` overlay existing entities.
     """
     
     def __init__(
@@ -41,9 +45,11 @@ class LayerDiscovery:
         content_type: str,
         core_dir: Path,
         pack_roots: List[Tuple[str, Path]],
-        overlay_layers: List[Tuple[str, Path]],
+        overlay_layers: Optional[List[Tuple[str, Path]]] = None,
         file_pattern: str = "*.md",
         *,
+        user_dir: Optional[Path] = None,
+        project_dir: Optional[Path] = None,
         exclude_globs: Optional[List[str]] = None,
         allow_shadowing: bool = False,
     ) -> None:
@@ -52,6 +58,14 @@ class LayerDiscovery:
         # Pack roots in low→high precedence order (bundled → user → project).
         self.pack_roots = list(pack_roots)
         # Overlay layers in low→high precedence order (e.g., company → user → project).
+        # Backwards compatible: allow callers to pass user_dir/project_dir instead of overlay_layers.
+        if overlay_layers is None:
+            inferred: List[Tuple[str, Path]] = []
+            if user_dir is not None:
+                inferred.append(("user", user_dir))
+            if project_dir is not None:
+                inferred.append(("project", project_dir))
+            overlay_layers = inferred
         self.overlay_layers = list(overlay_layers)
         self.file_pattern = file_pattern
         self.exclude_globs = list(exclude_globs or [])
@@ -275,8 +289,17 @@ class LayerDiscovery:
                 )
         return new_map
 
-    def discover_layer_overlays(self, layer_id: str, existing: Set[str]) -> Dict[str, LayerSource]:
-        """Discover overlays for an overlay layer (must reference existing entities)."""
+    def discover_layer_overlays(
+        self,
+        layer_id: str,
+        existing: Set[str],
+        *,
+        lower_existing: Optional[Set[str]] = None,
+    ) -> Dict[str, LayerSource]:
+        """Discover overlays for an overlay layer.
+
+        Overlays must reference existing entities.
+        """
         layer_path = dict(self.overlay_layers).get(layer_id)
         if layer_path is None:
             return {}

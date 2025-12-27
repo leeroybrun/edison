@@ -17,7 +17,7 @@ from typing import List, Optional
 
 from edison.core.composition.core.paths import CompositionPathResolver
 from edison.core.utils.loader import (
-    build_layer_dirs,
+    build_layer_dirs_from_resolver,
     iter_python_files,
     load_module_from_path,
     register_callables_from_module,
@@ -37,17 +37,11 @@ def load_functions(project_root: Optional[Path], active_packs: List[str]) -> Non
 
     # Use the shared layered-loader helper so the function search path stays
     # consistent with other extensibility surfaces (guards/actions/parsers/etc).
-    dirs = build_layer_dirs(
+    dirs = build_layer_dirs_from_resolver(
         core_dir=_CORE_FUNCTIONS_DIR.parent,
         content_type="functions",
+        resolver=resolver,
         active_packs=active_packs,
-        pack_roots=[(r.kind, r.path) for r in resolver.pack_roots],
-        overlay_layers=resolver.overlay_layers,
-        bundled_packs_dir=resolver.bundled_packs_dir,
-        project_packs_dir=resolver.project_packs_dir,
-        project_dir=resolver.project_dir,
-        user_packs_dir=resolver.user_packs_dir,
-        user_dir=resolver.user_dir,
     )
 
     for path in iter_python_files(dirs):

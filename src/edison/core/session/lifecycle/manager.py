@@ -312,13 +312,25 @@ class SessionManager:
         }
 
         # Delegate to repository.transition for unified validation + history + save semantics.
-        self._repo.transition(
-            sid,
-            target,
-            context=ctx,
-            reason=reason or "core-session-manager",
-        )
+        try:
+            self._repo.transition(
+                sid,
+                target,
+                context=ctx,
+                reason=reason or "core-session-manager",
+            )
+        except Exception as exc:
+            # Normalize transition failures to the public StateTransitionError contract.
+            from edison.core.entity.exceptions import EntityStateError
+            from edison.core.state import StateTransitionError
 
+            if isinstance(exc, EntityStateError):
+                raise StateTransitionError(
+                    str(exc),
+                    context={"session_id": sid, "from": current, "to": target},
+                ) from exc
+            raise
+ 
         return self._repo.get_session_json_path(sid)
 
     def create_session(

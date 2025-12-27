@@ -92,12 +92,22 @@ def build_layer_dirs_from_resolver(
     Returns:
         List of directories in layer order
     """
+    pack_roots = None
+    overlay_layers = None
+    if hasattr(resolver, "pack_roots") and hasattr(resolver, "overlay_layers"):
+        try:
+            pack_roots = [(r.kind, r.path) for r in resolver.pack_roots]  # type: ignore[attr-defined]
+            overlay_layers = resolver.overlay_layers  # type: ignore[attr-defined]
+        except Exception:
+            pack_roots = None
+            overlay_layers = None
+
     return build_layer_dirs(
         core_dir=core_dir,
         content_type=content_type,
         active_packs=active_packs,
-        pack_roots=[(r.kind, r.path) for r in resolver.pack_roots],
-        overlay_layers=resolver.overlay_layers,
+        pack_roots=pack_roots,
+        overlay_layers=overlay_layers,
         bundled_packs_dir=resolver.bundled_packs_dir,
         user_packs_dir=getattr(resolver, "user_packs_dir", None),
         project_packs_dir=resolver.project_packs_dir,
@@ -217,7 +227,6 @@ __all__ = [
     "register_callables_from_module",
     "load_and_register_modules",
 ]
-
 
 
 

@@ -84,7 +84,8 @@ statemachine:
     # Create the generators template directory
     gen_dir = edison_dir / "generators"
     gen_dir.mkdir()
-    (gen_dir / "STATE_MACHINE.md").write_text("""# State Machine
+    (gen_dir / "overlays").mkdir(parents=True, exist_ok=True)
+    (gen_dir / "overlays" / "STATE_MACHINE.md").write_text("""# State Machine
 {{#each domains}}
 ## {{this.title}} Domain
 {{#each this.states}}
@@ -125,7 +126,8 @@ statemachine:
     # Create the generators template directory
     gen_dir = edison_dir / "generators"
     gen_dir.mkdir()
-    (gen_dir / "STATE_MACHINE.md").write_text("""# State Machine
+    (gen_dir / "overlays").mkdir(parents=True, exist_ok=True)
+    (gen_dir / "overlays" / "STATE_MACHINE.md").write_text("""# State Machine
 {{#each domains}}
 ## {{this.title}} Domain
 {{/each}}
