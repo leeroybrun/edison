@@ -980,6 +980,23 @@ commands:
       args: []
 ```
 
+**Override Example: enable extra domains (project opt-in)**:
+
+```yaml
+commands:
+  selection:
+    domains: ["+", "typescript"]
+```
+
+**Override Example: disable a core command**:
+
+```yaml
+commands:
+  definitions:
+    - id: task-claim
+      enabled: false
+```
+
 ---
 
 ### models.yaml

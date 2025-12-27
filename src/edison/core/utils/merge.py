@@ -13,7 +13,7 @@ Features:
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 
 def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -81,6 +81,47 @@ def merge_arrays(base: List[Any], override: List[Any]) -> List[Any]:
         if first == "=":
             # Explicit replace: take rest of override
             return list(override[1:])
+        if first == "-":
+            # Remove mode: remove the listed items from base (scalar lists).
+            remove_set: Set[Any] = set(override[1:])
+            return [x for x in base if x not in remove_set]
+    # If the override is a list of dicts with stable IDs, treat it as an extensibility
+    # list and merge-by-id by default (override wins). This prevents packs/projects from
+    # accidentally replacing core definitions when they forget the explicit "+" marker.
+    #
+    # To explicitly replace, use the "=" marker; to clear, use an empty list.
+    if all(isinstance(x, dict) and "id" in x for x in override) and all(
+        isinstance(x, dict) and "id" in x for x in base
+    ):
+        merged: Dict[str, Dict[str, Any]] = {}
+        order: List[str] = []
+        for item in base:
+            _id = str(item.get("id"))
+            if not _id:
+                continue
+            merged[_id] = dict(item)
+            order.append(_id)
+        for item in override:
+            _id = str(item.get("id"))
+            if not _id:
+                continue
+            # Removal/disable semantics: `{id: "...", enabled: false}` removes the item.
+            if item.get("enabled") is False:
+                if _id in merged:
+                    merged.pop(_id, None)
+                try:
+                    order.remove(_id)
+                except ValueError:
+                    pass
+                continue
+            if _id not in merged:
+                order.append(_id)
+                merged[_id] = dict(item)
+            else:
+                # Shallow merge: later properties override earlier ones.
+                merged[_id] = {**merged[_id], **dict(item)}
+        return [merged[_id] for _id in order if _id in merged]
+
     # Default: replace entirely
     return list(override)
 
