@@ -21,9 +21,9 @@
 
 | Your Role | Constitution File |
 |-----------|-------------------|
-| Orchestrator | `.edison/_generated/constitutions/ORCHESTRATOR.md` |
-| Agent (Implementer) | `.edison/_generated/constitutions/AGENTS.md` |
-| Validator | `.edison/_generated/constitutions/VALIDATORS.md` |
+| Orchestrator | `edison read ORCHESTRATOR --type constitutions` |
+| Agent (Implementer) | `edison read AGENTS --type constitutions` |
+| Validator | `edison read VALIDATORS --type constitutions` |
 
 **Determine your role from the task assignment, then read the appropriate constitution.**
 
