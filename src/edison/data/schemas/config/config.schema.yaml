@@ -352,6 +352,41 @@ properties:
             items:
               type: string
             default: []
+          sharedPaths:
+            description: Additional repo-root relative paths to share via symlink into worktrees.
+            type: array
+            default: []
+            items:
+              oneOf:
+              - type: string
+              - type: object
+                properties:
+                  path:
+                    type: string
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                    default:
+                    - session
+                  type:
+                    type: string
+                    enum:
+                    - dir
+                    - file
+                    default: dir
+                  targetRoot:
+                    type: string
+                    enum:
+                    - shared
+                    - primary
+                    default: shared
+                  mergeExisting:
+                    type: boolean
+                    default: true
+                required:
+                - path
+                additionalProperties: false
           shareGenerated:
             type: boolean
             default: true

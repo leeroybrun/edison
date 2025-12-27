@@ -21,6 +21,16 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Do not create; only show computed meta worktree status",
     )
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Recreate the meta worktree + orphan meta branch (destructive)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force removal of existing meta worktree (use with --recreate)",
+    )
     add_dry_run_flag(parser)
     add_json_flag(parser)
 
@@ -31,6 +41,11 @@ def main(args: argparse.Namespace) -> int:
     try:
         if args.no_create:
             status = worktree.get_meta_worktree_status()
+        elif getattr(args, "recreate", False):
+            status = worktree.recreate_meta_shared_state(
+                dry_run=bool(getattr(args, "dry_run", False)),
+                force=bool(getattr(args, "force", False)),
+            )
         else:
             status = worktree.initialize_meta_shared_state(dry_run=bool(getattr(args, "dry_run", False)))
 

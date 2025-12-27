@@ -30,6 +30,7 @@ def setup_worktree_config(session_git_repo_path, monkeypatch):
                 "metaPathTemplate": str(meta_dir),
                 "managementSubdirs": ["sessions", "tasks", "qa", "logs", "archive"],
                 "shareGenerated": True,
+                "sharedPaths": [],
             },
             "timeouts": {
                 "health_check": 2,
@@ -540,6 +541,157 @@ def test_initialize_meta_shared_state_links_primary_and_writes_excludes(session_
     exclude_file = git_dir / "info" / "exclude"
     assert exclude_file.exists()
     assert ".project/" in exclude_file.read_text(encoding="utf-8").splitlines()
+
+
+def test_ensure_meta_worktree_creates_orphan_branch(session_git_repo_path):
+    """Meta branch must be an orphan branch (no shared history with primary)."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    status = worktree.ensure_meta_worktree()
+    meta_branch = str(status["meta_branch"])
+    assert meta_branch
+
+    mb = run_with_timeout(
+        ["git", "merge-base", meta_branch, "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert mb.returncode != 0
+
+
+def test_worktree_links_configured_shared_paths(session_git_repo_path):
+    """Session worktrees should link configured shared paths outside `.project`."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".specify", "scopes": ["session"]}]
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    wt1, _ = worktree.create_worktree("shared-paths-1", base_branch="main")
+    assert wt1 is not None
+
+    meta_path = Path(worktree.ensure_meta_worktree()["meta_path"])
+    link = wt1 / ".specify"
+    assert link.exists()
+    assert link.is_symlink()
+    assert link.resolve() == (meta_path / ".specify").resolve()
+
+    (wt1 / ".specify" / "foo.txt").parent.mkdir(parents=True, exist_ok=True)
+    (wt1 / ".specify" / "foo.txt").write_text("hello\n", encoding="utf-8")
+    assert (meta_path / ".specify" / "foo.txt").exists()
+
+    wt2, _ = worktree.create_worktree("shared-paths-2", base_branch="main")
+    assert wt2 is not None
+    assert (wt2 / ".specify" / "foo.txt").exists()
+
+
+def test_initialize_meta_shared_state_skips_tracked_shared_paths(session_git_repo_path):
+    """Meta init must not replace tracked content with symlinks."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".specify", "scopes": ["primary"]}]
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    tracked = session_git_repo_path / ".specify" / "tracked.txt"
+    tracked.parent.mkdir(parents=True, exist_ok=True)
+    tracked.write_text("tracked\n", encoding="utf-8")
+    run_with_timeout(["git", "add", ".specify/tracked.txt"], cwd=session_git_repo_path, check=True, capture_output=True, text=True)
+    run_with_timeout(["git", "commit", "-m", "track specify"], cwd=session_git_repo_path, check=True, capture_output=True, text=True)
+
+    init = worktree.initialize_meta_shared_state()
+    assert init.get("shared_paths_primary_skipped_tracked") == 1
+    assert (session_git_repo_path / ".specify").exists()
+    assert not (session_git_repo_path / ".specify").is_symlink()
+
+
+def test_recreate_meta_shared_state_resets_non_orphan_and_preserves_shared_paths(session_git_repo_path):
+    """Meta recreate should rebuild a non-orphan meta branch as orphan and preserve configured shared paths."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    config_path = session_git_repo_path / ".edison" / "config" / "session.yml"
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["worktrees"]["sharedState"]["sharedPaths"] = [{"path": ".specify", "scopes": ["session"]}]
+    config_path.write_text(yaml.dump(data), encoding="utf-8")
+    clear_path_caches()
+    clear_all_caches()
+    reset_config_cache()
+
+    meta_dir = session_git_repo_path / "worktrees" / "_meta"
+    meta_branch = "edison-meta"
+
+    # Create a non-orphan meta branch/worktree (shares history with primary).
+    run_with_timeout(
+        ["git", "worktree", "add", "-b", meta_branch, str(meta_dir), "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    mb_before = run_with_timeout(
+        ["git", "merge-base", meta_branch, "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert mb_before.returncode == 0
+
+    (meta_dir / ".project" / "tasks" / "todo").mkdir(parents=True, exist_ok=True)
+    (meta_dir / ".project" / "tasks" / "todo" / "seed.md").write_text("seed\n", encoding="utf-8")
+    (meta_dir / ".specify").mkdir(parents=True, exist_ok=True)
+    (meta_dir / ".specify" / "foo.txt").write_text("foo\n", encoding="utf-8")
+
+    out = worktree.recreate_meta_shared_state(force=True)
+    assert out.get("recreated") is True
+
+    mb_after = run_with_timeout(
+        ["git", "merge-base", meta_branch, "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert mb_after.returncode != 0
+    assert (meta_dir / ".project" / "tasks" / "todo" / "seed.md").exists()
+    assert (meta_dir / ".specify" / "foo.txt").exists()
+
+    wt, _ = worktree.create_worktree("after-recreate", base_branch="main")
+    assert wt is not None
+    assert (wt / ".specify" / "foo.txt").exists()
+
+
+def test_recreate_meta_shared_state_refuses_tracked_without_force(session_git_repo_path):
+    """Recreate must fail-closed when meta branch tracks unexpected files (unless forced)."""
+    if sys.platform.startswith("win"):
+        pytest.skip("Symlink semantics differ on Windows")
+
+    meta_dir = session_git_repo_path / "worktrees" / "_meta"
+    meta_branch = "edison-meta"
+    run_with_timeout(
+        ["git", "worktree", "add", "-b", meta_branch, str(meta_dir), "HEAD"],
+        cwd=session_git_repo_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    with pytest.raises(Exception):
+        worktree.recreate_meta_shared_state()
 
 
 def test_create_worktree_links_primary_management_dirs_in_meta_mode(session_git_repo_path):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -21,6 +22,150 @@ def _shared_state_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
+def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
+    """Parse `worktrees.sharedState.sharedPaths` into a normalized list of dicts."""
+    ss = _shared_state_cfg(cfg)
+    raw = ss.get("sharedPaths")
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        return []
+
+    out: list[Dict[str, Any]] = []
+    for item in raw:
+        if isinstance(item, str):
+            path = item.strip()
+            if not path:
+                continue
+            out.append(
+                {
+                    "path": path,
+                    "scopes": ["session"],
+                    "mergeExisting": True,
+                    "targetRoot": "shared",
+                    "type": "dir",
+                }
+            )
+            continue
+
+        if isinstance(item, dict):
+            path = str(item.get("path") or "").strip()
+            if not path:
+                continue
+
+            scopes_raw = item.get("scopes")
+            if isinstance(scopes_raw, list) and scopes_raw:
+                scopes = [str(s).strip().lower() for s in scopes_raw if str(s).strip()]
+            else:
+                scopes = ["session"]
+
+            merge_existing = item.get("mergeExisting")
+            if merge_existing is None:
+                merge_existing = True
+            merge_existing = bool(merge_existing)
+
+            target_root = str(item.get("targetRoot") or "shared").strip().lower()
+            if target_root not in {"shared", "primary"}:
+                target_root = "shared"
+
+            item_type = str(item.get("type") or "dir").strip().lower()
+            if item_type not in {"dir", "file"}:
+                item_type = "dir"
+
+            out.append(
+                {
+                    "path": path,
+                    "scopes": scopes,
+                    "mergeExisting": merge_existing,
+                    "targetRoot": target_root,
+                    "type": item_type,
+                }
+            )
+            continue
+
+    return out
+
+
+def _path_is_tracked(*, checkout_path: Path, rel_path: str) -> bool:
+    """Return True if `rel_path` is tracked in the checkout's index."""
+    try:
+        cp = run_with_timeout(
+            ["git", "ls-files", "-z", "--", rel_path],
+            cwd=checkout_path,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=int(_config().get_worktree_timeout("health_check", 10)),
+        )
+        return bool((cp.stdout or "").strip())
+    except Exception:
+        return False
+
+
+def _ensure_symlink_with_merge(
+    *,
+    link: Path,
+    target: Path,
+    item_type: str,
+    merge_existing: bool,
+) -> bool:
+    """Ensure `link` is a symlink to `target`, optionally merging existing content."""
+    try:
+        if item_type == "dir":
+            ensure_directory(target)
+        else:
+            ensure_directory(target.parent)
+
+        if link.is_symlink():
+            try:
+                if link.resolve() == target.resolve():
+                    return False
+            except Exception:
+                pass
+            try:
+                link.unlink()
+            except Exception:
+                return False
+
+        if link.exists() and not link.is_symlink():
+            if item_type == "dir" and link.is_dir():
+                if merge_existing:
+                    try:
+                        for child in link.iterdir():
+                            dest = target / child.name
+                            if dest.exists():
+                                continue
+                            shutil.move(str(child), str(dest))
+                    except Exception:
+                        return False
+                try:
+                    shutil.rmtree(link, ignore_errors=True)
+                except Exception:
+                    return False
+            elif item_type == "file" and link.is_file():
+                if merge_existing and not target.exists():
+                    try:
+                        shutil.move(str(link), str(target))
+                    except Exception:
+                        return False
+                else:
+                    return False
+            else:
+                return False
+
+        if not link.exists():
+            link.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                link.symlink_to(target, target_is_directory=(item_type == "dir"))
+            except Exception:
+                if item_type == "dir":
+                    ensure_directory(link)
+                return False
+            return True
+    except Exception:
+        return False
+    return False
+
 def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], scope: str) -> None:
     """Best-effort: ensure worktree-local git excludes for a checkout."""
     try:
@@ -33,7 +178,23 @@ def _ensure_checkout_git_excludes(*, checkout_path: Path, cfg: Dict[str, Any], s
             return
         from edison.core.utils.git.excludes import ensure_worktree_excludes
 
-        ensure_worktree_excludes(checkout_path, [str(p) for p in patterns])
+        final: list[str] = [str(p) for p in patterns]
+
+        # Automatically ignore configured shared paths in non-meta checkouts to avoid
+        # untracked symlink noise (tracked changes are never ignored by excludes).
+        if scope in {"primary", "session"}:
+            for item in _parse_shared_paths(cfg):
+                if scope not in set(item.get("scopes") or []):
+                    continue
+                p = str(item.get("path") or "").strip()
+                if not p:
+                    continue
+                if str(item.get("type") or "dir").strip().lower() == "dir":
+                    final.append(p.rstrip("/") + "/")
+                else:
+                    final.append(p)
+
+        ensure_worktree_excludes(checkout_path, final)
     except Exception:
         # Avoid blocking worktree creation due to git exclude helpers.
         return
@@ -144,6 +305,31 @@ def _ensure_meta_worktree_setup(*, meta_path: Path, cfg: Dict[str, Any]) -> None
     _ensure_meta_commit_guard(meta_path=meta_path, cfg=cfg)
 
 
+def _create_orphan_branch(*, repo_dir: Path, branch: str, timeout: int) -> str:
+    """Create an orphan branch with a single empty root commit, without checking it out."""
+    empty_tree = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+    cp = run_with_timeout(
+        ["git", "commit-tree", empty_tree, "-m", "Initialize Edison meta branch"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=timeout,
+    )
+    sha = (cp.stdout or "").strip()
+    if not sha:
+        raise RuntimeError(f"Failed to create orphan commit for branch {branch}")
+    run_with_timeout(
+        ["git", "update-ref", f"refs/heads/{branch}", sha],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=timeout,
+    )
+    return sha
+
+
 def _resolve_meta_worktree_path(*, cfg: Dict[str, Any], repo_dir: Path) -> Path:
     """Resolve meta worktree path from config.
 
@@ -227,9 +413,9 @@ def _ensure_meta_worktree(*, repo_dir: Path, cfg: Dict[str, Any], dry_run: bool 
                 timeout=timeout_add,
             )
         else:
-            base_ref = resolve_worktree_base_ref(repo_dir=primary_repo_dir, cfg=cfg, override=None)
+            _create_orphan_branch(repo_dir=primary_repo_dir, branch=branch, timeout=timeout_health)
             run_with_timeout(
-                ["git", "worktree", "add", "-b", branch, str(meta_path), base_ref],
+                ["git", "worktree", "add", str(meta_path), branch],
                 cwd=primary_repo_dir,
                 capture_output=True,
                 text=True,
@@ -363,6 +549,10 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
         status.update(
             {
                 "primary_links_updated": 0,
+                "shared_paths_primary_updated": 0,
+                "shared_paths_primary_skipped_tracked": 0,
+                "shared_paths_session_updated": 0,
+                "shared_paths_session_skipped_tracked": 0,
                 "session_worktrees_updated": 0,
                 "primary_excludes_updated": False,
             }
@@ -382,10 +572,19 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
         if after.is_symlink() and (not was_link or after.resolve() == (meta_path / ".project" / subdir).resolve()):
             primary_links_updated += 1
 
+    primary_shared_updated, primary_shared_skipped_tracked = _ensure_shared_paths_in_checkout(
+        checkout_path=primary_repo_dir,
+        repo_dir=primary_repo_dir,
+        cfg=cfg,
+        scope="primary",
+    )
+
     _ensure_checkout_git_excludes(checkout_path=primary_repo_dir, cfg=cfg, scope="primary")
 
     # Apply excludes to all non-primary/non-meta worktrees as "session" checkouts.
     session_updated = 0
+    session_shared_updated = 0
+    session_shared_skipped_tracked = 0
     try:
         cp = run_with_timeout(
             ["git", "worktree", "list", "--porcelain"],
@@ -410,6 +609,14 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
                 p = current.resolve()
                 if p == primary_repo_dir.resolve() or p == meta_path.resolve():
                     continue
+                su, ss_tracked = _ensure_shared_paths_in_checkout(
+                    checkout_path=p,
+                    repo_dir=p,
+                    cfg=cfg,
+                    scope="session",
+                )
+                session_shared_updated += su
+                session_shared_skipped_tracked += ss_tracked
                 _ensure_checkout_git_excludes(checkout_path=p, cfg=cfg, scope="session")
                 session_updated += 1
     except Exception:
@@ -418,11 +625,280 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
     status.update(
         {
             "primary_links_updated": int(primary_links_updated),
+            "shared_paths_primary_updated": int(primary_shared_updated),
+            "shared_paths_primary_skipped_tracked": int(primary_shared_skipped_tracked),
+            "shared_paths_session_updated": int(session_shared_updated),
+            "shared_paths_session_skipped_tracked": int(session_shared_skipped_tracked),
             "session_worktrees_updated": int(session_updated),
             "primary_excludes_updated": True,
         }
     )
     return status
+
+
+def recreate_meta_shared_state(
+    *,
+    repo_dir: Optional[Path] = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    """Recreate the meta branch/worktree as an orphan branch, preserving configured shared state."""
+    root = repo_dir or get_repo_dir()
+    cfg = _config().get_worktree_config()
+    ss = _shared_state_cfg(cfg)
+    mode = str(ss.get("mode") or "meta").strip().lower()
+
+    status = get_meta_worktree_status(repo_dir=root)
+    status["mode"] = mode
+    if mode != "meta":
+        return status
+
+    primary_repo_dir = Path(status["primary_repo_dir"])
+    meta_path = Path(status["meta_path"])
+    branch = str(status["meta_branch"])
+
+    if dry_run:
+        status["recreated"] = True
+        return status
+
+    subdirs = ss.get("managementSubdirs")
+    if not isinstance(subdirs, list) or not subdirs:
+        subdirs = ["sessions", "tasks", "qa", "logs", "archive"]
+    subdirs = [str(s).strip() for s in subdirs if str(s).strip()]
+
+    shared_paths = [p for p in _parse_shared_paths(cfg) if str(p.get("targetRoot") or "shared").lower() == "shared"]
+
+    # Refuse to recreate if the meta branch is checked out in other worktrees.
+    cp = run_with_timeout(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=primary_repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=int(_config().get_worktree_timeout("health_check", 10)),
+    )
+    current: Optional[Path] = None
+    current_branch: Optional[str] = None
+    for line in (cp.stdout or "").splitlines():
+        if line.startswith("worktree "):
+            current = Path(line.split(" ", 1)[1].strip())
+            current_branch = None
+            continue
+        if line.startswith("branch "):
+            current_branch = line.split(" ", 1)[1].strip()
+            continue
+        if not line.strip():
+            if current is not None and current_branch == f"refs/heads/{branch}":
+                p = current.resolve()
+                if p != meta_path.resolve():
+                    raise RuntimeError(f"Refusing to recreate meta branch; it is checked out elsewhere: {p}")
+            current = None
+            current_branch = None
+
+    snapshot_dir: Optional[Path] = None
+
+    if meta_path.exists():
+        if not is_worktree_registered(meta_path, repo_root=primary_repo_dir):
+            raise RuntimeError(
+                "Meta path exists but is not a registered worktree; refusing to recreate. "
+                f"Path: {meta_path}"
+            )
+
+        # Fail closed if the meta branch currently tracks files outside the preserved prefixes.
+        tracked_allowed = [".project/"]
+        for item in shared_paths:
+            raw = str(item.get("path") or "").strip()
+            if not raw:
+                continue
+            tracked_allowed.append(raw.rstrip("/") + "/")
+            tracked_allowed.append(raw.rstrip("/"))
+        try:
+            ls = run_with_timeout(
+                ["git", "ls-tree", "-r", "--name-only", "HEAD"],
+                cwd=meta_path,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=int(_config().get_worktree_timeout("health_check", 10)),
+            )
+            tracked_files = [p.strip() for p in (ls.stdout or "").splitlines() if p.strip()]
+            unexpected = [
+                p
+                for p in tracked_files
+                if not any(p.startswith(prefix) for prefix in tracked_allowed)
+            ]
+            if unexpected and not force:
+                sample = ", ".join(unexpected[:10])
+                raise RuntimeError(
+                    "Refusing to recreate meta branch because it tracks files outside the preserved prefixes. "
+                    f"Count={len(unexpected)}. Sample: {sample}. "
+                    "Add paths to worktrees.sharedState.sharedPaths or re-run with --force to discard."
+                )
+        except RuntimeError:
+            raise
+        except Exception:
+            # If we can't reliably inspect tracked files, fail closed.
+            raise RuntimeError("Failed to inspect tracked files in meta worktree; refusing to recreate.")
+
+        # Fail closed if there are local changes outside of the shared state we will preserve.
+        allowed_prefixes = [".project/", ".edison/_generated/"]
+        for item in shared_paths:
+            raw = str(item.get("path") or "").strip()
+            if not raw:
+                continue
+            allowed_prefixes.append(raw.rstrip("/") + "/")
+            allowed_prefixes.append(raw.rstrip("/"))
+
+        st = run_with_timeout(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+            cwd=meta_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=int(_config().get_worktree_timeout("health_check", 10)),
+        )
+        unsafe: list[str] = []
+        for line in (st.stdout or "").splitlines():
+            if not line.strip():
+                continue
+            path_part = line[3:].strip()
+            for part in [p.strip() for p in path_part.split(" -> ") if p.strip()]:
+                if not any(part.startswith(prefix) for prefix in allowed_prefixes):
+                    unsafe.append(part)
+        if unsafe and not force:
+            raise RuntimeError(
+                "Refusing to recreate meta worktree with local changes outside shared state. "
+                f"Re-run with --force to discard: {', '.join(sorted(set(unsafe)))}"
+            )
+
+        # Snapshot shared state before removal to avoid data loss.
+        snapshot_dir = Path(tempfile.mkdtemp(prefix="edison-meta-shared-state-"))
+        try:
+            for subdir in subdirs:
+                src = meta_path / ".project" / subdir
+                if not src.exists():
+                    continue
+                dest = snapshot_dir / ".project" / subdir
+                if src.is_dir():
+                    shutil.copytree(src, dest, dirs_exist_ok=True)
+                else:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dest)
+
+            for item in shared_paths:
+                raw = str(item.get("path") or "").strip()
+                if not raw:
+                    continue
+                p = Path(raw)
+                if p.is_absolute() or ".." in p.parts:
+                    continue
+                src = meta_path / str(p)
+                if not src.exists():
+                    continue
+                dest = snapshot_dir / str(p)
+                if src.is_dir():
+                    shutil.copytree(src, dest, dirs_exist_ok=True)
+                else:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dest)
+        except Exception:
+            shutil.rmtree(snapshot_dir, ignore_errors=True)
+            raise
+
+        run_with_timeout(
+            ["git", "worktree", "remove", "--force", str(meta_path)],
+            cwd=primary_repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=int(_config().get_worktree_timeout("worktree_add", 30)),
+        )
+
+    show = run_with_timeout(
+        ["git", "show-ref", "--verify", f"refs/heads/{branch}"],
+        cwd=primary_repo_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=int(_config().get_worktree_timeout("health_check", 10)),
+    )
+    if show.returncode == 0:
+        run_with_timeout(
+            ["git", "update-ref", "-d", f"refs/heads/{branch}"],
+            cwd=primary_repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=int(_config().get_worktree_timeout("health_check", 10)),
+        )
+
+    _create_orphan_branch(repo_dir=primary_repo_dir, branch=branch, timeout=int(_config().get_worktree_timeout("health_check", 10)))
+    run_with_timeout(
+        ["git", "worktree", "add", str(meta_path), branch],
+        cwd=primary_repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=int(_config().get_worktree_timeout("worktree_add", 30)),
+    )
+    _ensure_meta_worktree_setup(meta_path=meta_path, cfg=cfg)
+
+    if snapshot_dir is not None:
+        try:
+            shutil.copytree(snapshot_dir, meta_path, dirs_exist_ok=True)
+        finally:
+            shutil.rmtree(snapshot_dir, ignore_errors=True)
+
+    init = initialize_meta_shared_state(repo_dir=primary_repo_dir, dry_run=False)
+    init["recreated"] = True
+    return init
+
+
+def _ensure_shared_paths_in_checkout(
+    *,
+    checkout_path: Path,
+    repo_dir: Path,
+    cfg: Dict[str, Any],
+    scope: str,
+) -> tuple[int, int]:
+    """Ensure configured shared paths exist as symlinks in the checkout.
+
+    Returns (updated_count, skipped_tracked_count).
+    """
+    updated = 0
+    skipped_tracked = 0
+
+    for item in _parse_shared_paths(cfg):
+        scopes = set(item.get("scopes") or [])
+        if scope not in scopes:
+            continue
+
+        raw = str(item.get("path") or "").strip()
+        if not raw:
+            continue
+        p = Path(raw)
+        if p.is_absolute() or ".." in p.parts:
+            continue
+        rel = str(p)
+
+        if _path_is_tracked(checkout_path=checkout_path, rel_path=rel):
+            skipped_tracked += 1
+            continue
+
+        item_type = str(item.get("type") or "dir").strip().lower()
+        merge_existing = bool(item.get("mergeExisting", True))
+        target_root = str(item.get("targetRoot") or "shared").strip().lower()
+        if target_root == "primary":
+            shared_root = get_worktree_parent(repo_dir) or repo_dir
+        else:
+            shared_root = _resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
+
+        link = checkout_path / rel
+        target = Path(shared_root) / rel
+        if _ensure_symlink_with_merge(link=link, target=target, item_type=item_type, merge_existing=merge_existing):
+            updated += 1
+
+    return updated, skipped_tracked
 
 
 def _ensure_shared_management_subdir(
@@ -455,45 +931,7 @@ def _ensure_shared_management_subdir(
         ensure_directory(project_dir)
 
         link = project_dir / subdir
-
-        if link.is_symlink():
-            try:
-                if link.resolve() == shared:
-                    return
-            except Exception:
-                pass
-            # Retarget symlink when it points elsewhere (migration between shared roots).
-            try:
-                link.unlink()
-            except Exception:
-                return
-
-        if link.exists() and link.is_dir() and not link.is_symlink():
-            # Best-effort merge: move any existing entries into the shared dir.
-            try:
-                for child in link.iterdir():
-                    dest = shared / child.name
-                    if dest.exists():
-                        continue
-                    shutil.move(str(child), str(dest))
-            except Exception:
-                # If merge fails, do not risk data loss; keep existing directory.
-                return
-            try:
-                shutil.rmtree(link, ignore_errors=True)
-            except Exception:
-                return
-
-        if link.exists() and not link.is_symlink():
-            # Unexpected file type; avoid clobbering.
-            return
-
-        if not link.exists():
-            try:
-                link.symlink_to(shared, target_is_directory=True)
-            except Exception:
-                # Fallback: create a local directory (state won't be shared).
-                ensure_directory(link)
+        _ensure_symlink_with_merge(link=link, target=shared, item_type="dir", merge_existing=True)
     except Exception:
         # Never block worktree creation on best-effort linking.
         return
@@ -538,42 +976,7 @@ def _ensure_shared_project_generated_dir(*, worktree_path: Path, repo_dir: Path)
         ensure_directory(worktree_cfg_dir)
 
         link = worktree_cfg_dir / "_generated"
-
-        if link.is_symlink():
-            try:
-                if link.resolve() == shared:
-                    return
-            except Exception:
-                pass
-            # Retarget symlink when it points elsewhere (migration between shared roots).
-            try:
-                link.unlink()
-            except Exception:
-                return
-
-        if link.exists() and link.is_dir() and not link.is_symlink():
-            # Best-effort merge: move any existing entries into the shared dir.
-            try:
-                for child in link.iterdir():
-                    dest = shared / child.name
-                    if dest.exists():
-                        continue
-                    shutil.move(str(child), str(dest))
-            except Exception:
-                return
-            try:
-                shutil.rmtree(link, ignore_errors=True)
-            except Exception:
-                return
-
-        if link.exists() and not link.is_symlink():
-            return
-
-        if not link.exists():
-            try:
-                link.symlink_to(shared, target_is_directory=True)
-            except Exception:
-                ensure_directory(link)
+        _ensure_symlink_with_merge(link=link, target=shared, item_type="dir", merge_existing=True)
     except Exception:
         return
 
@@ -736,6 +1139,12 @@ def create_worktree(
                 return
             primary_repo_dir = get_worktree_parent(repo_dir) or repo_dir
             _ensure_shared_project_management_dirs(worktree_path=primary_repo_dir, repo_dir=primary_repo_dir)
+            _ensure_shared_paths_in_checkout(
+                checkout_path=primary_repo_dir,
+                repo_dir=primary_repo_dir,
+                cfg=config,
+                scope="primary",
+            )
             _ensure_checkout_git_excludes(checkout_path=primary_repo_dir, cfg=config, scope="primary")
         except Exception:
             return
@@ -749,6 +1158,7 @@ def create_worktree(
         if not dry_run:
             _ensure_shared_project_management_dirs(worktree_path=resolved, repo_dir=repo_dir)
             _ensure_shared_project_generated_dir(worktree_path=resolved, repo_dir=repo_dir)
+            _ensure_shared_paths_in_checkout(checkout_path=resolved, repo_dir=repo_dir, cfg=config, scope="session")
             _ensure_worktree_session_id_file(worktree_path=resolved, session_id=session_id)
             _ensure_checkout_git_excludes(checkout_path=resolved, cfg=config, scope="session")
             _maybe_align_primary_shared_state()
@@ -954,6 +1364,7 @@ def create_worktree(
 
     _ensure_shared_project_management_dirs(worktree_path=worktree_path, repo_dir=repo_dir)
     _ensure_shared_project_generated_dir(worktree_path=worktree_path, repo_dir=repo_dir)
+    _ensure_shared_paths_in_checkout(checkout_path=worktree_path, repo_dir=repo_dir, cfg=config, scope="session")
     _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
     _ensure_checkout_git_excludes(checkout_path=worktree_path, cfg=config, scope="session")
     _maybe_align_primary_shared_state()

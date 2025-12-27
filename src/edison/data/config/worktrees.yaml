@@ -24,6 +24,21 @@ worktrees:
     # Subdirectories under `.project/` to share via symlink from each session worktree.
     # Tracking policy (what is committed) is intentionally separate from sharing.
     managementSubdirs: ["sessions", "tasks", "qa", "logs", "archive"]
+    # Additional repo-root relative paths to share via symlink into worktrees.
+    #
+    # This is intended for untracked "project meta" that should be shared across all
+    # worktrees regardless of code branch (e.g. OpenSpec/Speckit state).
+    #
+    # IMPORTANT: Edison will NOT replace tracked paths with symlinks. If a path is
+    # tracked on the code branch, it will be skipped (and must be migrated manually).
+    #
+    # Each entry supports:
+    # - path: repo-root relative path (no absolute paths / no `..`)
+    # - scopes: ["session"] (default), or ["primary","session"] to also link in primary
+    # - type: "dir" (default) or "file"
+    # - targetRoot: "shared" (default) or "primary"
+    # - mergeExisting: true (default) to merge existing untracked content into the shared target
+    sharedPaths: []
     # Whether to share composed project artifacts under `<project-config-dir>/_generated`.
     shareGenerated: true
     # Where the shared symlink for `<project-config-dir>/_generated` should point:
