@@ -50,6 +50,10 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 
 {{include-section:guidelines/includes/EPHEMERAL_SUMMARIES.md#principles}}
 
+{{include-section:guidelines/includes/CLI_OUTPUTS.md#principles}}
+
+{{include-section:guidelines/includes/CLI_OUTPUTS.md#validator}}
+
 ---
 
 {{include-section:guidelines/includes/TDD.md#validator-check}}

@@ -17,6 +17,8 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
    Run: `edison session context`
    Run: `edison task status`
 
+{{include:start/includes/TASK_PLANNING.md}}
+
 4. **Report to User**
    Present:
    - Current session status (if any)

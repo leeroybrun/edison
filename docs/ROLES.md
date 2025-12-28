@@ -103,7 +103,7 @@ edison compose <subcommand>    # Compose constitutions/guidelines
    - Handle rejections by creating follow-up tasks
 
 5. **Quality Gates**
-   - Run `edison task ready` before validation
+  - Run `edison task plan` to pick parallel work (Wave 1), then `edison task ready` before validation
    - Verify TDD evidence exists
    - Check automation evidence (type-check, lint, test, build)
    - Ensure child tasks are ready before promoting parent

@@ -8,6 +8,40 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 
+def dependencies_satisfied(ctx: Mapping[str, Any]) -> bool:
+    """Return True when the task's explicit dependencies are satisfied.
+
+    This condition enforces `depends_on` ordering at claim/start time so that
+    tasks cannot be claimed out-of-order.
+
+    The satisfied states are configured in `tasks.readiness.dependencySatisfiedStates`
+    and resolved through WorkflowConfig semantics.
+    """
+    # Optional escape hatch for exceptional situations (e.g., human-directed override).
+    if bool(ctx.get("force")):
+        return True
+
+    task_id = ctx.get("task_id")
+    if not task_id:
+        task = ctx.get("task", {})
+        if isinstance(task, Mapping):
+            task_id = task.get("id") or task.get("task_id") or task.get("taskId")
+    if not task_id:
+        # If the caller didn't provide enough context, do not block unrelated transitions.
+        return True
+
+    try:
+        from edison.core.task.readiness import TaskReadinessEvaluator
+        from edison.core.utils.paths import PathResolver
+
+        project_root = ctx.get("project_root") or PathResolver.resolve_project_root()
+        evaluator = TaskReadinessEvaluator(project_root=project_root)
+        return bool(evaluator.evaluate_task(str(task_id)).ready)
+    except Exception:
+        # FAIL-CLOSED for claim workflows: if we cannot evaluate dependencies, treat as blocked.
+        return False
+
+
 def has_task(ctx: Mapping[str, Any]) -> bool:
     """Check if session has at least one task.
     

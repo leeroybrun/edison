@@ -149,6 +149,9 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 1. **Confirm QA exists:** `find {{fn:qa_root}} -name "*<task-id>*-qa.md"`. If missing, create via `edison qa new <task-id> --session <session-id>`.
 
+2. **Plan parallel work (waves):**
+{{include-section:guidelines/includes/TASK_PLANNING.md#orchestrator-step-snippet}}
+
 2. **Decide approach:**
    - **Option A: Delegate to sub-agent** (recommended for complex/specialized work)
    - **Option B: Implement yourself** (only for trivial tasks where delegation overhead isn't worth it)

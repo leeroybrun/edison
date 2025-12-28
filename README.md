@@ -549,6 +549,7 @@ edison session me                                 # Show current session
 ```bash
 edison task new --id <id> --slug <slug>          # Create new task
 edison task claim <task-id> --session <sess-id>  # Claim task for session
+edison task plan                                 # Plan parallelizable waves of todo tasks
 edison task ready                                # List ready tasks
 edison task list                                 # List all tasks
 edison task status <task-id>                     # Check task status

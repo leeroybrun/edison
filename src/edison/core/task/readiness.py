@@ -79,10 +79,12 @@ class TaskReadinessEvaluator:
         self._workflow = WorkflowConfig(repo_root=project_root)
         self._tasks_cfg = TaskConfig(repo_root=project_root)
 
-    def _todo_state(self) -> str:
+    def todo_state(self) -> str:
+        """Return the resolved task semantic 'todo' state string."""
         return str(self._workflow.get_semantic_state("task", "todo"))
 
-    def _dependency_satisfied_states(self) -> tuple[str, ...]:
+    def dependency_satisfied_states(self) -> tuple[str, ...]:
+        """Return resolved task states that satisfy `depends_on` prerequisites."""
         cfg = self._tasks_cfg.section.get("readiness", {}) or {}
         raw = cfg.get("dependencySatisfiedStates", [])  # semantic state keys
         if not isinstance(raw, list) or not raw:
@@ -96,7 +98,8 @@ class TaskReadinessEvaluator:
                 continue
         return tuple(resolved)
 
-    def _treat_missing_dependency_as_blocked(self) -> bool:
+    def treat_missing_dependency_as_blocked(self) -> bool:
+        """Return True if missing dependency IDs should block readiness."""
         cfg = self._tasks_cfg.section.get("readiness", {}) or {}
         val = cfg.get("treatMissingDependencyAsBlocked")
         return True if val is None else bool(val)
@@ -113,7 +116,7 @@ class TaskReadinessEvaluator:
 
     def list_ready_tasks(self, *, session_id: Optional[str] = None) -> list[TaskReadiness]:
         graph = self._graph()
-        todo_state = self._todo_state()
+        todo_state = self.todo_state()
         out: list[TaskReadiness] = []
         for t in graph.tasks.values():
             if t.state != todo_state:
@@ -128,7 +131,7 @@ class TaskReadinessEvaluator:
 
     def list_blocked_tasks(self, *, session_id: Optional[str] = None) -> list[TaskReadiness]:
         graph = self._graph()
-        todo_state = self._todo_state()
+        todo_state = self.todo_state()
         out: list[TaskReadiness] = []
         for t in graph.tasks.values():
             if t.state != todo_state:
@@ -142,18 +145,18 @@ class TaskReadinessEvaluator:
         return out
 
     def _evaluate_summary(self, task: TaskSummary, graph: TaskGraph) -> TaskReadiness:
-        todo_state = self._todo_state()
+        todo_state = self.todo_state()
         if task.state != todo_state:
             return TaskReadiness(task=task, ready=False, blocked_by=())
 
-        satisfied_states = self._dependency_satisfied_states()
+        satisfied_states = self.dependency_satisfied_states()
         blocked: list[BlockedByDependency] = []
 
         for dep_id in task.depends_on or []:
             dep_id_str = str(dep_id)
             dep = graph.tasks.get(dep_id_str)
             if dep is None:
-                if self._treat_missing_dependency_as_blocked():
+                if self.treat_missing_dependency_as_blocked():
                     blocked.append(
                         BlockedByDependency(
                             dependency_id=dep_id_str,

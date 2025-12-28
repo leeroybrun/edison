@@ -82,4 +82,10 @@ properties:
     items:
       type: string
       pattern: ^task-[0-9]+$
+  relatedTasks:
+    type: array
+    description: Non-blocking related tasks (used for grouping/planning only)
+    items:
+      type: string
+      pattern: ^task-[0-9]+$
 additionalProperties: false

@@ -35,6 +35,7 @@ class TaskSummary:
     child_ids: List[str] = field(default_factory=list)
     depends_on: List[str] = field(default_factory=list)
     blocks_tasks: List[str] = field(default_factory=list)
+    related: List[str] = field(default_factory=list)
     owner: Optional[str] = None
     title: Optional[str] = None
 
@@ -243,6 +244,7 @@ class TaskIndex:
                     child_ids=fm.get("child_ids", []) or [],
                     depends_on=fm.get("depends_on", []) or [],
                     blocks_tasks=fm.get("blocks_tasks", []) or [],
+                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))
@@ -298,6 +300,7 @@ class TaskIndex:
                     child_ids=fm.get("child_ids", []) or [],
                     depends_on=fm.get("depends_on", []) or [],
                     blocks_tasks=fm.get("blocks_tasks", []) or [],
+                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))
@@ -387,6 +390,7 @@ class TaskIndex:
                 child_ids=fm.get("child_ids", []) or [],
                 depends_on=fm.get("depends_on", []) or [],
                 blocks_tasks=fm.get("blocks_tasks", []) or [],
+                related=fm.get("related", []) or fm.get("related_tasks", []) or [],
                 owner=fm.get("owner"),
                 title=fm.get("title"),
             )
@@ -430,6 +434,7 @@ class TaskIndex:
                     child_ids=fm.get("child_ids", []) or [],
                     depends_on=fm.get("depends_on", []) or [],
                     blocks_tasks=fm.get("blocks_tasks", []) or [],
+                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))
@@ -443,5 +448,3 @@ __all__ = [
     "QASummary",
     "TaskGraph",
 ]
-
-

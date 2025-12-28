@@ -231,6 +231,7 @@ class TaskQAWorkflow:
             "task_id": task_id,
             "session": {"id": session_id},
             "session_id": session_id,
+            "project_root": self.project_root,
             "entity_type": "task",
             "entity_id": task_id,
         }

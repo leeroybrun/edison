@@ -37,6 +37,7 @@ class Task:
         child_ids: List of child task IDs
         depends_on: List of task IDs this task depends on
         blocks_tasks: List of task IDs blocked by this task
+        related: List of task IDs related to this task (non-blocking)
         claimed_at: ISO timestamp when task was claimed by a session
         last_active: ISO timestamp of last activity
         continuation_id: Pal MCP continuation ID for tracking
@@ -56,6 +57,7 @@ class Task:
     child_ids: List[str] = field(default_factory=list)
     depends_on: List[str] = field(default_factory=list)
     blocks_tasks: List[str] = field(default_factory=list)
+    related: List[str] = field(default_factory=list)
     claimed_at: Optional[str] = None
     last_active: Optional[str] = None
     continuation_id: Optional[str] = None
@@ -122,6 +124,9 @@ class Task:
         
         if self.blocks_tasks:
             data["blocks_tasks"] = self.blocks_tasks
+
+        if self.related:
+            data["related"] = self.related
         
         if self.claimed_at:
             data["claimed_at"] = self.claimed_at
@@ -184,6 +189,7 @@ class Task:
             child_ids=data.get("child_ids") or data.get("childIds") or data.get("children", []),
             depends_on=data.get("depends_on") or data.get("dependsOn", []),
             blocks_tasks=data.get("blocks_tasks") or data.get("blocksTasks", []),
+            related=data.get("related") or data.get("related_tasks") or data.get("relatedTasks", []),
             claimed_at=data.get("claimed_at") or data.get("claimedAt"),
             last_active=data.get("last_active") or data.get("lastActive"),
             continuation_id=data.get("continuation_id") or data.get("continuationId"),
@@ -205,6 +211,7 @@ class Task:
         parent_id: Optional[str] = None,
         depends_on: Optional[List[str]] = None,
         blocks_tasks: Optional[List[str]] = None,
+        related: Optional[List[str]] = None,
         continuation_id: Optional[str] = None,
     ) -> "Task":
         """Factory method to create a new task.
@@ -240,6 +247,7 @@ class Task:
             parent_id=parent_id,
             depends_on=depends_on or [],
             blocks_tasks=blocks_tasks or [],
+            related=related or [],
             continuation_id=continuation_id,
         )
 
@@ -247,5 +255,4 @@ class Task:
 __all__ = [
     "Task",
 ]
-
 

@@ -36,6 +36,9 @@ edison.cli/
 ├── task/                   # Task management commands
 │   ├── new.py             # Create task
 │   ├── claim.py           # Claim task for session
+│   ├── plan.py            # Plan parallelizable task waves (depends_on)
+│   ├── blocked.py         # Explain todo tasks blocked by depends_on
+│   ├── relate.py          # Link related tasks (non-blocking)
 │   ├── ready.py           # Mark task ready for QA
 │   ├── status.py          # Show task status
 │   └── split.py           # Split task into subtasks

@@ -62,7 +62,10 @@ edison read ORCHESTRATOR --type constitutions
 # List available tasks
 edison task list --status todo
 
-# Select 1-5 tasks for session scope
+# Plan parallelizable work (waves) from depends_on
+edison task plan
+
+# Select tasks for session scope (prefer Wave 1; respect orchestration.maxConcurrentAgents)
 ```
 
 **Task selection criteria:**
@@ -89,10 +92,11 @@ edison task claim <task-id> --session <session-id>
 - Links task to session
 - Records state history
 - Creates task lock (prevents concurrent edits)
+- Fail-closed dependency enforcement: if `depends_on` is unmet, claim is blocked (use `edison task blocked <task-id> --json`)
 
 **Task file location:**
 ```
-.project/tasks/wip/<task-id>.md
+.project/sessions/wip/<session-id>/tasks/wip/<task-id>.md
 ```
 
 ---

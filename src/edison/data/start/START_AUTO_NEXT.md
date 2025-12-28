@@ -9,20 +9,16 @@ You are auto-starting work as an **ORCHESTRATOR**.
 1. **Load Constitution**
    Run: `edison read ORCHESTRATOR --type constitutions`
 
-2. **Find Ready Tasks**
-   Run: `edison task ready --json`
+2. **Plan Work Waves (Parallelizable Tasks)**
+   Run: `edison task plan`
 
-3. **Analyze Parallelization**
-   Identify tasks that can run in parallel:
-   - No dependencies on each other
-   - Different file scopes
-   - Different agent types
+{{include:start/includes/TASK_PLANNING.md}}
 
-4. **Create Session and Claim**
+3. **Create Session and Claim**
    Run: `edison session create [--session-id <id>]`
    Run: `edison task claim <task-id>` for each selected task
 
-5. **Begin Work**
+4. **Begin Work**
    Start implementation immediately.
    Delegate to sub-agents as needed.
 
@@ -36,7 +32,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
 
 ## Key Commands
 ```bash
-edison task ready --json     # Get ready tasks as JSON
+edison task plan             # Plan parallelizable waves (todo tasks)
 edison session create [--session-id <id>]  # Create a session record (ID auto-infers if omitted)
 edison task claim <id>       # Claim tasks
 edison session context      # Print current session state and context

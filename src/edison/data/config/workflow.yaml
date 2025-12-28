@@ -31,6 +31,8 @@ workflow:
             - to: wip
               guard: can_start_task
               conditions:
+                - name: dependencies_satisfied
+                  error: "Task has unmet depends_on; run `edison task blocked <task-id>` for details."
                 - name: task_claimed
               rules: [RULE.GUARDS.FAIL_CLOSED]
               recommendations:

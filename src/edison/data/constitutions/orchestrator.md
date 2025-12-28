@@ -51,6 +51,10 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHES
 
 {{include-section:guidelines/includes/EPHEMERAL_SUMMARIES.md#principles}}
 
+{{include-section:guidelines/includes/CLI_OUTPUTS.md#principles}}
+
+{{include-section:guidelines/includes/CLI_OUTPUTS.md#orchestrator}}
+
 ---
 
 {{include-section:guidelines/includes/TDD.md#orchestrator-verify}}
@@ -90,6 +94,10 @@ See: AVAILABLE_VALIDATORS.md for the current validator roster.
 
 ## Delegation Rules
 See: guidelines/orchestrators/DELEGATION.md
+
+## Task Planning (Parallelizable Waves)
+
+{{include-section:guidelines/includes/TASK_PLANNING.md#orchestrator-constitution-snippet}}
 
 ## Applicable Rules
 {{#each rules}}

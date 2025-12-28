@@ -142,6 +142,8 @@ edison session complete <session-id>
 
 ## Task Management
 
+{{include-section:guidelines/includes/TASK_PLANNING.md#orchestrator-cli-snippet}}
+
 ### List Ready Tasks
 
 ```bash
@@ -181,6 +183,12 @@ edison task claim <task-id> [--session <session-id>]
 
 **Purpose**: Claim a task from `{{fn:semantic_state("task","todo")}} → {{fn:semantic_state("task","wip")}}` and bind to session
 **When to use**: Starting work on a new task
+
+**Dependency enforcement**: Claim is fail-closed. If the task has unmet `depends_on`, the claim is blocked. Use:
+```bash
+edison task blocked <task-id>
+edison task plan
+```
 
 **Example:**
 ```bash

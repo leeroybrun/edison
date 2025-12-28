@@ -52,13 +52,13 @@ Orchestrators can monitor tracking runs:
 
 ```bash
 edison session track active
-edison session track active --json
+edison session track active --json  # optional structured output
 
 # Detect stopped processes and append stop events
-edison session track sweep --json
+edison session track sweep           # (use --json if you need structured output)
 
 # Process index (computed from append-only JSONL process events)
-edison session track processes --json
+edison session track processes        # (use --json if you need structured output)
 ```
 
 `active` returns tracking records derived from evidence reports, including:

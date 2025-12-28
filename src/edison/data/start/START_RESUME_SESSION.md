@@ -23,6 +23,8 @@ edison session next {{session_id}}
 3. ✅ Review in-progress tasks: `edison task list --status=wip`
 4. ✅ Check for blocked tasks: `edison task list --status=blocked`
 
+{{include:start/includes/TASK_PLANNING.md}}
+
 ## State Assessment
 
 The session may have been interrupted due to:

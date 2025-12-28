@@ -1022,6 +1022,49 @@ Valid transitions:
 
 ---
 
+### task plan - Plan Parallelizable Work (Waves)
+
+Compute topological “waves” of parallelizable **todo** tasks based on `depends_on`.
+
+```bash
+edison task plan [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--session` | Optional session filter (only tasks with matching `session_id`) |
+| `--cap` | Optional max parallel cap override (defaults to `orchestration.maxConcurrentAgents` when available) |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Picking the next set of tasks that can run in parallel
+- Avoiding manual dependency scanning across many task files
+
+**Examples:**
+
+```bash
+# Show wave plan (human output)
+edison task plan
+
+# Machine-readable plan
+edison task plan --json
+
+# Override cap (e.g., local throughput limit)
+edison task plan --cap 2 --json
+```
+
+**Notes:**
+
+- Tasks in **Wave 1** are parallelizable “start now” candidates.
+- If a wave exceeds the cap, the JSON payload includes `batches` to chunk the wave deterministically.
+- Use `edison task blocked <task-id> --json` to explain why a task is blocked.
+
+---
+
 ### task ready - Mark Task Ready
 
 List tasks ready to be claimed (in `todo` state) or mark a task as ready/complete (move from `wip` to `done`).
@@ -1138,6 +1181,39 @@ edison task link <parent> <child> [options]
 ```bash
 # Link child task to parent
 edison task link 150-auth-feature 151-login-ui
+```
+
+---
+
+### task relate - Link Related Tasks (Non-Blocking)
+
+Create or remove a **non-blocking** relationship between two tasks (stored in task frontmatter as `related`).
+
+```bash
+edison task relate <task-a> <task-b> [--remove] [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--remove` | Remove the relation instead of adding it |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Grouping related work in planning (affects `edison task plan` within-wave ordering)
+- Cross-referencing tasks that touch the same area, without creating blocking dependencies
+
+**Examples:**
+
+```bash
+# Add relation
+edison task relate 150-auth-feature 151-login-ui
+
+# Remove relation
+edison task relate 150-auth-feature 151-login-ui --remove
 ```
 
 ---
