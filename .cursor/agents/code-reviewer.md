@@ -188,6 +188,17 @@ Later layers override earlier ones.
 - Archive/analysis files go under `docs/archive/` only when explicitly requested.
 - Before marking work complete, ensure there are no stray `*_SUMMARY.md` / `*_ANALYSIS.md` files or similar; delete unapproved summaries and rely on the canonical directories.
 
+## principles
+
+Default to human-readable CLI output.
+
+- Prefer plain text/Markdown output when reading command results inside an LLM conversation.
+- Use `--json` only when you need structured output for tools/scripts or when explicitly requested.
+
+## agent
+
+Agents should default to non-JSON output while implementing; only use `--json` when required by a specific workflow step or when the orchestrator requests structured output.
+
 ---
 
 ## TDD Execution (Agents)

@@ -2389,6 +2389,38 @@ After changes:
 - [ ] No duplicate content in composed output
 - [ ] Each role loads only their content
 
+## Guideline: includes/CLI_OUTPUTS
+
+# CLI Output Preference - Include-Only File
+<!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
+
+<!-- section: principles -->
+## principles
+
+Default to human-readable CLI output.
+
+- Prefer plain text/Markdown output when reading command results inside an LLM conversation.
+- Use `--json` only when you need structured output for tools/scripts or when explicitly requested.
+<!-- /section: principles -->
+
+<!-- section: orchestrator -->
+## orchestrator
+
+Orchestrators should default to non-JSON output when making decisions and briefing sub-agents. Only use `--json` when piping into tooling or when you need exact structured fields.
+<!-- /section: orchestrator -->
+
+<!-- section: agent -->
+## agent
+
+Agents should default to non-JSON output while implementing; only use `--json` when required by a specific workflow step or when the orchestrator requests structured output.
+<!-- /section: agent -->
+
+<!-- section: validator -->
+## validator
+
+Validators should default to non-JSON output while reviewing. Use `--json` only when it is explicitly needed for structured extraction or reporting.
+<!-- /section: validator -->
+
 ## Guideline: includes/CONFIGURATION
 
 # Configuration-First - Include-Only File
@@ -2933,6 +2965,43 @@ All must pass with zero warnings.
 - [ ] No layer violations
 <!-- /section: validator-checklist -->
 
+## Guideline: includes/TASK_PLANNING
+
+# Task Planning (Parallelizable Waves) - Include-Only File
+<!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
+
+<!-- section: orchestrator-step-snippet -->
+## orchestrator-step-snippet
+
+Compute parallelizable “waves” from `depends_on`:
+
+```bash
+edison task plan
+```
+
+<!-- section: orchestrator-cli-snippet -->
+## orchestrator-cli-snippet
+
+### Task Plan (Parallelizable Waves)
+
+```bash
+edison task plan [--json] [--cap <n>]
+```
+
+**Purpose**: Compute topological “waves” of **todo** tasks based on `depends_on`, so you can safely delegate independent work in parallel without reading every task file.
+
+**How to use**:
+- Prefer **Wave 1** tasks for “start now”.
+- Respect the configured cap (`orchestration.maxConcurrentAgents`). Use `--json` only when you need structured batches for tools/scripts.
+- Use `edison task blocked` for detailed “why blocked” explanations on a specific task.
+<!-- /section: orchestrator-cli-snippet -->
+
+<!-- section: orchestrator-constitution-snippet -->
+## orchestrator-constitution-snippet
+
+Use `edison task plan` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
+<!-- /section: orchestrator-constitution-snippet -->
+
 ## Guideline: includes/TDD
 
 # TDD (Test-Driven Development) - Include-Only File
@@ -3357,13 +3426,13 @@ Orchestrators can monitor tracking runs:
 
 ```bash
 edison session track active
-edison session track active --json
+edison session track active --json  # optional structured output
 
 # Detect stopped processes and append stop events
-edison session track sweep --json
+edison session track sweep           # (use --json if you need structured output)
 
 # Process index (computed from append-only JSONL process events)
-edison session track processes --json
+edison session track processes        # (use --json if you need structured output)
 ```
 
 `active` returns tracking records derived from evidence reports, including:
@@ -3812,6 +3881,21 @@ edison session complete <session-id>
 
 ## Task Management
 
+## orchestrator-cli-snippet
+
+### Task Plan (Parallelizable Waves)
+
+```bash
+edison task plan [--json] [--cap <n>]
+```
+
+**Purpose**: Compute topological “waves” of **todo** tasks based on `depends_on`, so you can safely delegate independent work in parallel without reading every task file.
+
+**How to use**:
+- Prefer **Wave 1** tasks for “start now”.
+- Respect the configured cap (`orchestration.maxConcurrentAgents`). Use `--json` only when you need structured batches for tools/scripts.
+- Use `edison task blocked` for detailed “why blocked” explanations on a specific task.
+
 ### List Ready Tasks
 
 ```bash
@@ -3851,6 +3935,12 @@ edison task claim <task-id> [--session <session-id>]
 
 **Purpose**: Claim a task from `todo → wip` and bind to session
 **When to use**: Starting work on a new task
+
+**Dependency enforcement**: Claim is fail-closed. If the task has unmet `depends_on`, the claim is blocked. Use:
+```bash
+edison task blocked <task-id>
+edison task plan
+```
 
 **Example:**
 ```bash
@@ -4223,7 +4313,7 @@ edison session next sess-001
 
 # Orchestrator Guidelines (Core)
 
-- Own the session: scope tasks/QA, keep the session record current, and run within the concurrency cap.
+- Own the session: scope tasks/QA, keep the session record current, and plan parallel work with `edison task plan` (respect the concurrency cap).
 - Delegate by default; only implement directly for trivial changes. Use the project’s delegation config and Pal role mappings.
 - Keep sub-agents independent: distinct roles/models for implementation vs validation.
 - Enforce TDD, Context7 refreshes for post-training packages, automation, and implementation reports before validation.
@@ -4278,13 +4368,13 @@ Orchestrators can monitor tracking runs:
 
 ```bash
 edison session track active
-edison session track active --json
+edison session track active --json  # optional structured output
 
 # Detect stopped processes and append stop events
-edison session track sweep --json
+edison session track sweep           # (use --json if you need structured output)
 
 # Process index (computed from append-only JSONL process events)
-edison session track processes --json
+edison session track processes        # (use --json if you need structured output)
 ```
 
 `active` returns tracking records derived from evidence reports, including:
@@ -4405,6 +4495,9 @@ Close a session only when all scoped tasks are `validated`, paired QA are `done|
 ### 2.1. Setup and Planning
 
 1. **Confirm QA exists:** `find .project/qa -name "*<task-id>*-qa.md"`. If missing, create via `edison qa new <task-id> --session <session-id>`.
+
+2. **Plan parallel work (waves):**
+<!-- ERROR: Section 'orchestrator-step-snippet' not found in guidelines/includes/TASK_PLANNING.md -->
 
 2. **Decide approach:**
    - **Option A: Delegate to sub-agent** (recommended for complex/specialized work)
