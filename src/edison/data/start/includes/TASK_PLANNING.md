@@ -1,6 +1,6 @@
-# Task Planning (Parallelizable Waves)
+# Task Waves (Parallelizable Waves)
 
-Use `edison task plan` to compute **parallelizable waves** of todo tasks from `depends_on` (Wave 1 = “start now”).
+Use `edison task waves` to compute **parallelizable waves** of todo tasks from `depends_on` (Wave 1 = “start now”).
 
 - Respect `orchestration.maxConcurrentAgents` (shown as “Max concurrent” and used for batch suggestions).
 - For “why blocked”, run `edison task blocked <task-id>`.

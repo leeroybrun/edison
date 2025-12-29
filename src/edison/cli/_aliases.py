@@ -10,25 +10,26 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Dict, Iterable, List, Tuple
-
 
 # Canonical domain (folder) -> extra CLI aliases.
 #
 # The dispatcher also automatically exposes a trailing-underscore domain (e.g. `import_`)
 # as a user-friendly primary name without the underscore (e.g. `import`), while keeping
 # the canonical name as an alias.
-DOMAIN_ALIASES: Dict[str, List[str]] = {
+DOMAIN_ALIASES: dict[str, list[str]] = {
     # Python keyword avoidance: expose `edison import …` while keeping `edison import_ …`.
     "import_": ["import"],
+    # Plural UX convenience: `edison tasks …` as alias for `edison task …`.
+    "task": ["tasks"],
 }
 
 
-def domain_cli_names(canonical_domain: str) -> Tuple[str, List[str]]:
+def domain_cli_names(canonical_domain: str) -> tuple[str, list[str]]:
     """Return (primary, aliases) for an on-disk canonical domain name."""
     primary = canonical_domain
-    aliases: List[str] = []
+    aliases: list[str] = []
 
     # Human-friendly primary for keyword-avoiding packages like `import_`.
     if canonical_domain.endswith("_") and len(canonical_domain) > 1:
@@ -40,7 +41,7 @@ def domain_cli_names(canonical_domain: str) -> Tuple[str, List[str]]:
 
     # De-dupe and remove accidental self-aliases.
     seen: set[str] = set()
-    out_aliases: List[str] = []
+    out_aliases: list[str] = []
     for a in aliases:
         if not a or a == primary or a in seen:
             continue
@@ -51,9 +52,9 @@ def domain_cli_names(canonical_domain: str) -> Tuple[str, List[str]]:
 
 
 @lru_cache(maxsize=32)
-def build_domain_alias_index(canonical_domains: Tuple[str, ...]) -> Dict[str, str]:
+def build_domain_alias_index(canonical_domains: tuple[str, ...]) -> dict[str, str]:
     """Build a lookup map of {cli_token -> canonical_domain}."""
-    index: Dict[str, str] = {}
+    index: dict[str, str] = {}
     for canonical in canonical_domains:
         primary, aliases = domain_cli_names(canonical)
         index[canonical] = canonical
@@ -69,7 +70,6 @@ def resolve_canonical_domain(
     canonical_domains: Iterable[str],
 ) -> str | None:
     """Resolve a CLI domain token to a canonical on-disk domain folder name."""
-    domains_tuple = tuple(sorted(set(str(d) for d in canonical_domains if d)))
+    domains_tuple = tuple(sorted({str(d) for d in canonical_domains if d}))
     index = build_domain_alias_index(domains_tuple)
     return index.get(token)
-

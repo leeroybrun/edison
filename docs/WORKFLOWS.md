@@ -63,7 +63,7 @@ edison read ORCHESTRATOR --type constitutions
 edison task list --status todo
 
 # Plan parallelizable work (waves) from depends_on
-edison task plan
+edison task waves
 
 # Select tasks for session scope (prefer Wave 1; respect orchestration.maxConcurrentAgents)
 ```

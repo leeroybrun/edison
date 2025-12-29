@@ -13,7 +13,7 @@ from edison.core.task.repository import TaskRepository
 
 
 @pytest.mark.task
-def test_task_plan_emits_parallelizable_waves(isolated_project_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_task_waves_emits_parallelizable_waves(isolated_project_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     project_root = isolated_project_env
     workflow = WorkflowConfig(repo_root=project_root)
     todo = workflow.get_semantic_state("task", "todo")
@@ -65,14 +65,14 @@ def test_task_plan_emits_parallelizable_waves(isolated_project_env: Path, capsys
         )
     )
 
-    from edison.cli.task.plan import main as plan_main
+    from edison.cli.task.waves import main as waves_main
 
     args = argparse.Namespace(
         session=None,
         json=True,
         repo_root=project_root,
     )
-    rc = plan_main(args)
+    rc = waves_main(args)
     assert rc == 0
 
     data = json.loads(capsys.readouterr().out)
@@ -85,7 +85,7 @@ def test_task_plan_emits_parallelizable_waves(isolated_project_env: Path, capsys
 
 
 @pytest.mark.task
-def test_task_plan_lists_tasks_blocked_by_missing_dependencies(isolated_project_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_task_waves_lists_tasks_blocked_by_missing_dependencies(isolated_project_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     project_root = isolated_project_env
     workflow = WorkflowConfig(repo_root=project_root)
     todo = workflow.get_semantic_state("task", "todo")
@@ -101,18 +101,17 @@ def test_task_plan_lists_tasks_blocked_by_missing_dependencies(isolated_project_
         )
     )
 
-    from edison.cli.task.plan import main as plan_main
+    from edison.cli.task.waves import main as waves_main
 
     args = argparse.Namespace(
         session=None,
         json=True,
         repo_root=project_root,
     )
-    rc = plan_main(args)
+    rc = waves_main(args)
     assert rc == 0
 
     data = json.loads(capsys.readouterr().out)
     assert data["waves"] == []
     assert data["blocked"][0]["id"] == "G"
     assert data["blocked"][0]["unmetDependencies"][0]["id"] == "MISSING"
-

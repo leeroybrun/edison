@@ -10,7 +10,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
    Run: `edison read ORCHESTRATOR --type constitutions`
 
 2. **Plan Work Waves (Parallelizable Tasks)**
-   Run: `edison task plan`
+   Run: `edison task waves`
 
 {{include:start/includes/TASK_PLANNING.md}}
 
@@ -32,7 +32,7 @@ You are auto-starting work as an **ORCHESTRATOR**.
 
 ## Key Commands
 ```bash
-edison task plan             # Plan parallelizable waves (todo tasks)
+edison task waves            # Plan parallelizable waves (todo tasks)
 edison session create [--session-id <id>]  # Create a session record (ID auto-infers if omitted)
 edison task claim <id>       # Claim tasks
 edison session context      # Print current session state and context

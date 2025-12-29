@@ -1,4 +1,4 @@
-# Task Planning (Parallelizable Waves) - Include-Only File
+# Task Waves (Parallelizable Waves) - Include-Only File
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
 <!-- section: orchestrator-step-snippet -->
@@ -7,7 +7,7 @@
 Compute parallelizable “waves” from `depends_on`:
 
 ```bash
-edison task plan
+edison task waves
 ```
 
 - Prefer **Wave 1** tasks for “start now”.
@@ -22,10 +22,10 @@ edison task plan
 <!-- section: orchestrator-cli-snippet -->
 ## orchestrator-cli-snippet
 
-### Task Plan (Parallelizable Waves)
+### Task Waves (Parallelizable Waves)
 
 ```bash
-edison task plan [--json] [--cap <n>]
+edison task waves [--json] [--cap <n>]
 ```
 
 **Purpose**: Compute topological “waves” of **todo** tasks based on `depends_on`, so you can safely delegate independent work in parallel without reading every task file.
@@ -39,5 +39,5 @@ edison task plan [--json] [--cap <n>]
 <!-- section: orchestrator-constitution-snippet -->
 ## orchestrator-constitution-snippet
 
-Use `edison task plan` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
+Use `edison task waves` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
 <!-- /section: orchestrator-constitution-snippet -->

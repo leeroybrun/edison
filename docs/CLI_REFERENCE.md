@@ -1022,12 +1022,12 @@ Valid transitions:
 
 ---
 
-### task plan - Plan Parallelizable Work (Waves)
+### task waves - Plan Parallelizable Work (Waves)
 
 Compute topological “waves” of parallelizable **todo** tasks based on `depends_on`.
 
 ```bash
-edison task plan [options]
+edison task waves [options]
 ```
 
 **Options:**
@@ -1048,13 +1048,13 @@ edison task plan [options]
 
 ```bash
 # Show wave plan (human output)
-edison task plan
+edison task waves
 
 # Machine-readable plan
-edison task plan --json
+edison task waves --json
 
 # Override cap (e.g., local throughput limit)
-edison task plan --cap 2 --json
+edison task waves --cap 2 --json
 ```
 
 **Notes:**
@@ -1203,7 +1203,7 @@ edison task relate <task-a> <task-b> [--remove] [options]
 
 **When to Use:**
 
-- Grouping related work in planning (affects `edison task plan` within-wave ordering)
+- Grouping related work in planning (affects `edison task waves` within-wave ordering)
 - Cross-referencing tasks that touch the same area, without creating blocking dependencies
 
 **Examples:**

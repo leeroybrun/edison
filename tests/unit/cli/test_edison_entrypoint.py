@@ -6,19 +6,20 @@ The old bin/edison shell script architecture has been replaced with
 a proper Python package entry point using edison.cli._dispatcher.
 """
 import os
-import pytest
 from pathlib import Path
 
-from edison.core.utils.paths import resolve_project_root
-from edison.core.utils.git import get_git_root, is_git_repository
+import pytest
+
 from edison.cli._dispatcher import (
-    discover_domains,
-    discover_commands,
-    _strip_profile_flag,
-    _resolve_fast_command_module,
     _get_active_packs_fast,
+    _resolve_fast_command_module,
+    _strip_profile_flag,
     build_parser,
+    discover_commands,
+    discover_domains,
 )
+from edison.core.utils.git import get_git_root, is_git_repository
+from edison.core.utils.paths import resolve_project_root
 from tests.helpers.env_setup import clear_path_caches
 from tests.helpers.fixtures import create_repo_with_git
 
@@ -47,7 +48,7 @@ def test_discover_commands_in_domain() -> None:
 
     assert isinstance(commands, dict)
     # Each command should have expected structure
-    for cmd_name, cmd_info in commands.items():
+    for _cmd_name, cmd_info in commands.items():
         assert "module" in cmd_info
         assert "summary" in cmd_info
 
@@ -60,7 +61,6 @@ def test_resolve_project_root_walks_up(isolated_project_env: Path) -> None:
     nested.mkdir(parents=True, exist_ok=True)
 
     # Set env var to point to the nested directory, then resolve should find root
-    import os
     original_cwd = Path.cwd()
     try:
         os.chdir(nested)
@@ -114,7 +114,7 @@ def test_strip_profile_flag_only_before_domain() -> None:
 def test_build_parser_accepts_profile_flag() -> None:
     parser = build_parser()
     args = parser.parse_args(["--profile", "rules", "check"])
-    assert getattr(args, "profile") is True
+    assert args.profile is True
 
 
 def test_fast_command_resolution_finds_domain_command() -> None:
@@ -132,6 +132,7 @@ def test_fast_command_resolution_supports_import_domain_alias() -> None:
     assert spec["domain"] == "import_"
     assert spec["command"] == "speckit"
 
+
 def test_fast_command_resolution_supports_import_openspec() -> None:
     spec = _resolve_fast_command_module(["import", "openspec"])
     assert spec is not None
@@ -140,12 +141,28 @@ def test_fast_command_resolution_supports_import_openspec() -> None:
     assert spec["command"] == "openspec"
 
 
+def test_fast_command_resolution_supports_tasks_domain_alias() -> None:
+    spec = _resolve_fast_command_module(["tasks", "waves"])
+    assert spec is not None
+    assert spec["module"].endswith(".task.waves")
+    assert spec["domain"] == "task"
+    assert spec["command"] == "waves"
+
+
 def test_build_parser_accepts_import_domain_alias() -> None:
     from edison.cli.import_.speckit import main as import_speckit_main
 
     parser = build_parser()
     args = parser.parse_args(["import", "speckit", "specs/auth", "--dry-run"])
-    assert getattr(args, "_func") is import_speckit_main
+    assert args._func is import_speckit_main
+
+
+def test_build_parser_accepts_tasks_domain_alias() -> None:
+    from edison.cli.task.waves import main as task_waves_main
+
+    parser = build_parser()
+    args = parser.parse_args(["tasks", "waves", "--json"])
+    assert args._func is task_waves_main
 
 
 def test_cli_rules_precheck_detects_core_rule_for_task_claim(tmp_path: Path) -> None:

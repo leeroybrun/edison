@@ -1,5 +1,5 @@
 """
-Edison task plan command.
+Edison task waves command.
 
 SUMMARY: Compute topological "waves" of parallelizable todo tasks from depends_on
 """
@@ -97,7 +97,12 @@ def main(args: argparse.Namespace) -> int:
                     lines.append(f"Wave {w.get('wave')}: {', '.join(ids)}")
                 batches = payload.get("batches", [])
                 if max_concurrent and isinstance(batches, list):
-                    multi = [b for b in batches if (b or {}).get("batchesInWave", 1) and int((b or {}).get("batchesInWave", 1) or 1) > 1]
+                    multi = [
+                        b
+                        for b in batches
+                        if (b or {}).get("batchesInWave", 1)
+                        and int((b or {}).get("batchesInWave", 1) or 1) > 1
+                    ]
                     if multi:
                         lines.append("\nBatch suggestions (respect cap):")
                         shown = 0
@@ -108,7 +113,8 @@ def main(args: argparse.Namespace) -> int:
                             tasks = b.get("tasks", [])
                             ids = [t.get("id") for t in tasks if isinstance(t, dict) and t.get("id")]
                             lines.append(
-                                f"  - Wave {b.get('wave')} batch {b.get('batch')}/{b.get('batchesInWave')}: {', '.join(ids)}"
+                                f"  - Wave {b.get('wave')} batch {b.get('batch')}/{b.get('batchesInWave')}: "
+                                f"{', '.join(ids)}"
                             )
                             shown += 1
                 if payload["blocked"]:
@@ -127,7 +133,7 @@ def main(args: argparse.Namespace) -> int:
 
         return 0
     except Exception as exc:
-        formatter.error(exc, error_code="plan_error")
+        formatter.error(exc, error_code="waves_error")
         return 1
 
 
@@ -136,3 +142,4 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
+

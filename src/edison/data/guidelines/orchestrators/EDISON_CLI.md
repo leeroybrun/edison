@@ -187,7 +187,7 @@ edison task claim <task-id> [--session <session-id>]
 **Dependency enforcement**: Claim is fail-closed. If the task has unmet `depends_on`, the claim is blocked. Use:
 ```bash
 edison task blocked <task-id>
-edison task plan
+edison task waves
 ```
 
 **Example:**

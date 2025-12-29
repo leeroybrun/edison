@@ -14,6 +14,7 @@ from edison.core.config.cache import clear_all_caches, is_cached
     [
         "edison.cli.task.status",
         "edison.cli.task.claim",
+        "edison.cli.task.waves",
         "edison.cli.qa.promote",
         "edison.cli.session.verify",
     ],
@@ -28,7 +29,6 @@ def test_register_args_does_not_load_config(isolated_project_env: Path, module_p
     register_args(parser)
 
     assert is_cached(repo_root=None, include_packs=True) is False
-
 
 
 
