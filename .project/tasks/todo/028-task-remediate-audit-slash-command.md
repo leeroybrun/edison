@@ -1,0 +1,94 @@
+---
+id: "028-task-remediate-audit-slash-command"
+title: "Slash command: task-remediate-audit (approval-gated remediation from deterministic audit)"
+type: docs
+owner:
+session_id:
+parent_id:
+child_ids:
+depends_on:
+  - "006-task-group-helper"
+blocks_tasks:
+related:
+  - "010-task-relationships-registry"
+  - "011-task-relationships-mutators"
+  - "012-task-relationships-consumers"
+  - "026.9-wave4-slash-commands-and-start-plan-mode"
+claimed_at:
+last_active:
+continuation_id:
+created_at: "2025-12-31T00:00:00Z"
+updated_at: "2025-12-31T00:00:00Z"
+tags:
+  - tasks
+  - prompts
+  - commands
+  - planning
+priority: high
+estimated_hours:
+model:
+---
+
+# Slash command: task-remediate-audit (approval-gated remediation from deterministic audit)
+
+## Summary
+
+Add a high-value Edison core slash command `/edison.task-remediate-audit` that turns deterministic backlog signals into a safe, approval-gated remediation plan.
+
+It MUST:
+- Ground itself in `edison task audit --json` output (deterministic evidence).
+- Produce a Spec‑Kit/OpenSpec/BMAD-style structured report (severity, evidence, stable IDs).
+- Propose concrete edits (frontmatter + “Files to Create/Modify”) but **never apply them** without explicit approval.
+
+## Required Reading
+
+- `src/edison/data/commands/task/task-audit.md` (existing audit workflow prompt)
+- `src/edison/data/commands/task/task-backlog-coherence.md` (structured read-only report pattern)
+- Spec‑Kit analyze template (methodology reference): `/tmp/edison-vendor-commands/spec-kit/templates/commands/analyze.md`
+- OpenSpec validate (validator UX reference): `/tmp/edison-vendor-commands/OpenSpec/src/commands/validate.ts`
+- BMAD checklist style (halt conditions + status tracking reference): `/tmp/edison-vendor-commands/BMAD-METHOD/src/modules/bmgd/workflows/4-production/correct-course/checklist.md`
+
+## Objectives
+
+- [ ] Add command definition file: `src/edison/data/commands/task/task-remediate-audit.md`.
+- [ ] The command must instruct the LLM to collect:
+  - `edison task audit --json --tasks-root .project/tasks`
+  - optionally `edison task waves --json` (for parallelization constraints)
+- [ ] The command must define a strict remediation taxonomy with stable IDs:
+  - `R*` (Relationship fixes: implicit_reference → add `depends_on`/`related`/`blocks_tasks`)
+  - `C*` (Collision fixes: unordered `file_overlap` → add ordering or refactor ownership)
+  - `D*` (Duplicate candidates: unify/scope split/merge proposals)
+- [ ] The command must implement **halt conditions** (BMAD style):
+  - if audit JSON is missing/unparseable
+  - if tasks root not found
+  - if prerequisites fail (stop and report)
+- [ ] The command must include a strict **Ask/Approval gate**:
+  - “Do you want me to apply these task edits now?”
+  - If approved, it must propose a minimal patch plan first (no broad rewrites).
+
+## Output Format (STRICT)
+
+The slash command output must be a single Markdown report (no file writes) containing:
+1) Executive summary (counts, top risks)
+2) Findings table:
+   - `ID` (stable, e.g. `R1`, `C2`)
+   - `Severity` (CRITICAL/HIGH/MEDIUM/LOW)
+   - `Evidence` (task IDs, file paths, wave numbers)
+   - `Recommendation` (read-only)
+3) Proposed edits (patch plan), in a machine-reviewable structure:
+   - per task: “frontmatter changes” + “body section changes”
+4) Ask gate (explicit approval required)
+
+## Acceptance Criteria
+
+- [ ] The command definition is composable and layered like other Edison commands (markdown definition file).
+- [ ] Remediation proposals are minimal, targeted, and evidence-cited.
+- [ ] No edits are applied without explicit approval.
+- [ ] Methodology clearly reflects Spec‑Kit/OpenSpec/BMAD best practices (guardrails, severity rubric, structured output, halt conditions).
+
+## Files to Create/Modify
+
+```
+# Add
+src/edison/data/commands/task/task-remediate-audit.md
+```

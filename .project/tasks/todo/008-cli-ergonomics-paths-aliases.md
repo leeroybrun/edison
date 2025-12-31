@@ -10,6 +10,8 @@ tags:
   - qa
 depends_on:
   - 002-prompts-constitutions-compaction
+related:
+  - 006-task-group-helper
 ---
 # Chore: CLI ergonomics (paths + aliases)
 

@@ -9,6 +9,9 @@ tags:
   - recovery
 depends_on:
   - 001-session-id-inference
+related:
+  - 002-prompts-constitutions-compaction
+  - 003-validation-presets
 ---
 # Chore: stale sessions resumable
 

@@ -10,6 +10,8 @@ tags:
   - config
 depends_on:
   - 001-session-id-inference
+related:
+  - 004-stale-sessions-resumable
 ---
 # Chore: validation presets
 

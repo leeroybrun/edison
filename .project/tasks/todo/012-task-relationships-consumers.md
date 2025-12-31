@@ -2,7 +2,7 @@
 id: 012-task-relationships-consumers
 title: "Refactor: update readiness/planning/session-next to use canonical relationships"
 created_at: "2025-12-28T19:05:20Z"
-updated_at: "2025-12-28T19:05:20Z"
+updated_at: "2025-12-28T15:47:58Z"
 tags:
   - edison-core
   - tasks
@@ -11,6 +11,9 @@ tags:
   - refactor
 depends_on:
   - 010-task-relationships-registry
+related:
+  - 011-task-relationships-mutators
+  - 027-qa-bundle-scopes-and-guards
 ---
 # Refactor: update readiness/planning/session-next to use canonical relationships
 
@@ -32,6 +35,10 @@ Update all Edison logic that **reads** task relationships (readiness, claim gati
 - `session next` “related tasks in session” computation/output
 - Any other direct reads of `parent_id`, `child_ids`, `depends_on`, `blocks_tasks`, `related`
 
+## Out of Scope (explicit)
+
+- Bundle scope semantics for QA bundling/validation (`--scope bundle|hierarchy|auto`) and bundle-root clusters are implemented in `027-qa-bundle-scopes-and-guards`.
+
 ## Required Behavior (must remain true)
 
 - Readiness semantics stay the same: a todo task is ready when all prerequisites are in configured satisfied states (`tasks.readiness.dependencySatisfiedStates`).
@@ -44,4 +51,3 @@ Update all Edison logic that **reads** task relationships (readiness, claim gati
 - [ ] No consumer reads legacy relationship fields directly; all relationship reads go through one graph/query surface.
 - [ ] `edison task ready`, `edison task blocked`, claim gating, and `edison task plan` behave as before.
 - [ ] Tests cover readiness, blocked reporting, planning waves, and related grouping.
-

@@ -70,7 +70,7 @@ We must fix this following `docs/PROMPT_DEVELOPMENT.md`:
 - [ ] There is exactly one canonical include-only file for orchestration gates, and overlapping guidance is not duplicated elsewhere.
 - [ ] ORCHESTRATOR constitution includes the durable orchestration gates, so re-reading it after compaction restores key rules.
 - [ ] All start prompts under `src/edison/data/start/*.md` include a bootstrap include section and do not duplicate durable gate content.
-- [ ] Compaction hook output explicitly instructs the user/LLM to re-read the appropriate constitution with the exact command.
+- [ ] Compaction hook output explicitly instructs the user/LLM to re-read their constitution (directive, not informational).
 - [ ] Start prompts do not reference missing CLIs.
 - [ ] `docs/WORKFLOWS.md` is corrected so it matches actual session-scoped storage semantics (global vs session queues).
 - [ ] `edison compose all` succeeds after changes (no broken includes/sections).
@@ -98,7 +98,8 @@ Implementation outline:
    - Locate the platform compaction hook implementation/templates.
    - Make compaction output directive (not informational) and provide exact commands. Current implementation is `src/edison/data/templates/hooks/compaction-reminder.sh.template` driven by `src/edison/data/config/hooks.yaml` (`hooks.definitions.compaction-reminder.config.message_template`).
    - Update the template/config so it prints something unambiguous like:
-     - “MANDATORY: Re-read your constitution NOW (post-compaction): `edison read AGENTS --type constitutions` (or ORCHESTRATOR / VALIDATORS depending on your role).”
+     - “MANDATORY (post-compaction): re-read your constitution now.”
+   - NOTE: Exact, role-specific “read command” routing (agent vs orchestrator vs validator) is implemented via Actor Identity + role-aware `edison session context` (see tasks `021-024`). This task should not try to guess role inside the hook template itself.
    - Do not add double-loaded content: the hook should print a short directive, and the constitution remains the durable source of truth.
 
 5) Docs drift fixes:

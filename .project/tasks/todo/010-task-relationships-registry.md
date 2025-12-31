@@ -1,24 +1,28 @@
 ---
 id: 010-task-relationships-registry
-title: "Refactor: unified task relationship registry + canonical on-disk format"
+title: "Refactor: unified task relationship registry + canonical on-disk format (incl. bundles)"
 created_at: "2025-12-28T19:05:00Z"
-updated_at: "2025-12-28T19:05:00Z"
+updated_at: "2025-12-28T15:47:58Z"
 tags:
   - edison-core
   - tasks
   - architecture
   - refactor
 ---
-# Refactor: unified task relationship registry + canonical on-disk format
+# Refactor: unified task relationship registry + canonical on-disk format (incl. bundles)
 
 ## Summary
 
 Replace today’s fragmented task relationship fields (`parent_id`, `child_ids`, `depends_on`, `blocks_tasks`, `related`) with a single canonical relationship model + registry, and move the on-disk frontmatter to a unified `relationships:` list format.
 
+This refactor also introduces a **new, explicitly separate** relationship type for validation grouping:
+- `bundle_root` (directed): membership in a validation bundle rooted at another task (see `.project/plans/plan-2-validation-bundles.md`).
+
 This refactor must preserve existing semantics:
 - Hierarchy is **single-parent** (tree), enforced fail-closed.
 - `depends_on` and `blocks` are symmetric inverses (if A depends_on B ⇒ B blocks A).
 - `related` is symmetric and **non-blocking** (planning/grouping only).
+- `bundle_root` is **directed** and **non-blocking** (validation grouping only; not planning/readiness).
 - Claiming a task is blocked when its dependency prerequisites aren’t satisfied.
 - `edison task plan` waves still work; within-wave grouping should continue to prefer related clusters.
 
@@ -67,11 +71,14 @@ relationships:
     target: "004-qux"
   - type: related
     target: "005-quux"
+  - type: bundle_root
+    target: "006-bundle-root-task"
 ```
 
 Notes:
 - Explicit `parent` and `child` edges are allowed, but the system must keep them consistent.
 - Multiple parents are forbidden (single-parent tree).
+- `bundle_root` is a single-target relationship: at most one `bundle_root` per task (fail-closed unless forced by a mutator CLI with an explicit override flag).
 
 ## Technical Design
 
@@ -89,7 +96,7 @@ Concrete file layout suggestion (you may tweak, but keep it modular):
 - `edison/core/relationships/models.py`
 - `edison/core/relationships/registry.py`
 - `edison/core/task/relationships/types.py`:
-  - `RelationshipType` enum: `PARENT`, `CHILD`, `DEPENDS_ON`, `BLOCKS`, `RELATED`
+  - `RelationshipType` enum: `PARENT`, `CHILD`, `DEPENDS_ON`, `BLOCKS`, `RELATED`, `BUNDLE_ROOT`
 - `edison/core/task/relationships/models.py`:
   - `RelationshipEdge(type, target)`
   - parsing/normalization helpers
@@ -133,6 +140,9 @@ Add unit tests proving:
   - adding `depends_on` creates inverse `blocks` on the target
   - adding `related` enforces symmetric edges
   - adding `parent`/`child` stays consistent and blocks multiple parents
+- `bundle_root` invariants:
+  - a task has at most one bundle_root edge
+  - add/remove behaves deterministically and does not touch other relationship families
 - parsing:
   - a task file with legacy fields can be decoded into canonical relationships (if compatibility layer exists)
   - canonical relationships serialize back correctly

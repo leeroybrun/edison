@@ -11,6 +11,8 @@ tags:
 depends_on:
   - 006-task-group-helper
   - 008-cli-ergonomics-paths-aliases
+related:
+  - 007-session-auto-merge
 ---
 # Chore: tampering protection module
 

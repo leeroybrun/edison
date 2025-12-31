@@ -2,7 +2,7 @@
 id: 013-task-relationships-migration
 title: "Chore: migrate repo + edison-ui to canonical task relationships format"
 created_at: "2025-12-28T19:05:30Z"
-updated_at: "2025-12-28T19:05:30Z"
+updated_at: "2025-12-28T15:47:58Z"
 tags:
   - edison-core
   - tasks
@@ -38,6 +38,7 @@ Convert legacy fields into canonical relationships edges:
 - `parent_id` + `child_ids` → `parent`/`child` edges (symmetric)
 - `depends_on` + `blocks_tasks` → `depends_on`/`blocks` edges (inverse)
 - `related` → `related` edges (symmetric)
+- (New) Validation bundles: if the repo uses validation bundles, represent membership via `bundle_root` edges (directed) as described in `.project/plans/plan-2-validation-bundles.md`.
 
 Remove legacy keys after conversion.
 
@@ -48,6 +49,7 @@ Update templates to emit canonical relationships:
 
 Update docs/guidelines:
 - Any mention of `depends_on`, `child_ids`, etc as first-class frontmatter should be updated to “relationships-based”.
+- Validation docs should recommend bundling peers via `edison task bundle` + `bundle_root` relationships (not via “fake parent tasks”).
 
 ### C) edison-ui
 
@@ -67,4 +69,3 @@ Update `../edison-ui` (or whatever current path is configured) so it reads and d
 - [ ] After migration, Edison can still list/claim/plan tasks and build the task graph correctly.
 - [ ] `edison task plan` still computes waves and groups related tasks.
 - [ ] `../edison-ui` renders task relationships correctly from canonical `relationships`.
-

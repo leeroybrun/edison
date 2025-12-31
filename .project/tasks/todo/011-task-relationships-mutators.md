@@ -2,7 +2,7 @@
 id: 011-task-relationships-mutators
 title: "Refactor: route all task relationship mutations through registry/service"
 created_at: "2025-12-28T19:05:10Z"
-updated_at: "2025-12-28T19:05:10Z"
+updated_at: "2025-12-28T15:47:58Z"
 tags:
   - edison-core
   - tasks
@@ -10,6 +10,9 @@ tags:
   - refactor
 depends_on:
   - 010-task-relationships-registry
+related:
+  - 006-task-group-helper
+  - 012-task-relationships-consumers
 ---
 # Refactor: route all task relationship mutations through registry/service
 
@@ -38,6 +41,9 @@ Notes:
 - “Add relationship” should be a single call (e.g. `add_relationship("parent", parent, child)`), with the registry enforcing symmetry.
 - No call site should need to manually “also update the other side”.
 
+Out of scope:
+- The UX helper `edison task bundle ...` is implemented in `006-task-group-helper`. When that command exists, it MUST use the same service/registry mutation APIs (no manual frontmatter edits).
+
 ## Design Constraints
 
 - DRY/SOLID: relationship invariants enforced in one place only.
@@ -50,4 +56,3 @@ Notes:
 - [ ] `edison task link`/`split`/`relate` behave the same from a user POV (except they now operate on canonical relationships).
 - [ ] Adding/removing a relationship enforces the correct symmetric/inverse edges.
 - [ ] Tests exist for each mutator command demonstrating it persists relationships correctly.
-
