@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
-
-from collections.abc import Sequence
 
 
 @dataclass(frozen=True)

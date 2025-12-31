@@ -1,27 +1,26 @@
 # Logging / Audit Configuration
 #
 # Edison logging is designed for project-scoped and session-scoped auditing.
-# Default is OFF to avoid producing logs in repositories that haven't opted in.
+# Default is ON, writing to a single canonical audit JSONL stream.
 
 logging:
-  enabled: false
+  enabled: true
 
   audit:
     enabled: true
-    sinks:
-      jsonl:
-        enabled: true
-        paths:
-          # Project-scoped JSONL audit log (append-only).
-          project: "{PROJECT_MANAGEMENT_DIR}/logs/edison/audit-project.jsonl"
+    # Canonical audit log (append-only, JSONL).
+    # Filter by `session_id`, `invocation_id`, `event`, `taskId`, etc.
+    path: "{PROJECT_MANAGEMENT_DIR}/logs/edison/audit.jsonl"
+    # Sink-level enablement (allows keeping `audit.enabled: true` while disabling JSONL writes).
+    jsonl:
+      enabled: true
 
-          # Session-scoped JSONL audit log (append-only). When session_id is unknown, this is skipped.
-          session: "{PROJECT_MANAGEMENT_DIR}/logs/edison/audit-session-{session_id}.jsonl"
-
-          # Directory for per-invocation artifacts (stdio captures, etc.).
-          invocation_dir: "{PROJECT_MANAGEMENT_DIR}/logs/edison/invocations"
-          # Per-invocation JSONL audit log (append-only). When invocation_id is unknown, this is skipped.
-          invocation: "{PROJECT_MANAGEMENT_DIR}/logs/edison/invocations/{invocation_id}.jsonl"
+  invocation:
+    # Optional: embed small stdout/stderr/python-log tails into the canonical audit log at
+    # `cli.invocation.end` so consumers don't need to open per-invocation artifact files.
+    embed_tails:
+      enabled: false
+      max_bytes: 20000
 
   stdio:
     capture:

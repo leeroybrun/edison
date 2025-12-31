@@ -482,14 +482,18 @@ logging:
   enabled: true
   audit:
     enabled: true
-    sinks:
-      jsonl:
-        enabled: true
-        paths:
-          project: ".project/logs/edison/audit-project.jsonl"
-          session: ".project/logs/edison/audit-session-{session_id}.jsonl"
-          invocation_dir: ".project/logs/edison/invocations"
-          invocation: ".project/logs/edison/invocations/{invocation_id}.jsonl"
+    # Canonical audit log (append-only, JSONL).
+    # Filter by `event`, `session_id`, `invocation_id`, `taskId`, etc.
+    path: ".project/logs/edison/audit.jsonl"
+    jsonl:
+      enabled: true
+
+  # Optional: embed small stdout/stderr/python-log tails into the canonical audit log
+  # at `cli.invocation.end` so consumers don't need to parse per-invocation files.
+  invocation:
+    embed_tails:
+      enabled: true
+      max_bytes: 20000
   stdio:
     capture:
       enabled: true

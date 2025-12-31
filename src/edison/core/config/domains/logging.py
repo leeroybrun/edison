@@ -11,14 +11,16 @@ from __future__ import annotations
 import os
 import re
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any
+
+from edison.core.config.templating import SafeDict
+from edison.core.utils.time import utc_timestamp
 
 from ..base import BaseDomainConfig
-from edison.core.utils.time import utc_timestamp
-from edison.core.config.templating import SafeDict
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,28 @@ class LoggingConfig(BaseDomainConfig):
     def audit_enabled(self) -> bool:
         audit = self.section.get("audit") or {}
         return bool(audit.get("enabled", True))
+
+    @cached_property
+    def audit_jsonl_enabled(self) -> bool:
+        """Whether the canonical audit JSONL sink is enabled.
+
+        New config (preferred):
+          logging.audit.jsonl.enabled
+
+        Legacy config (supported for compatibility):
+          logging.audit.sinks.jsonl.enabled
+        """
+        audit = self.section.get("audit") or {}
+        jsonl = audit.get("jsonl") or {}
+        if isinstance(jsonl, dict) and "enabled" in jsonl:
+            return bool(jsonl.get("enabled", True))
+
+        sinks = audit.get("sinks") or {}
+        jsonl2 = sinks.get("jsonl") or {}
+        if isinstance(jsonl2, dict) and "enabled" in jsonl2:
+            return bool(jsonl2.get("enabled", True))
+
+        return True
 
     @cached_property
     def subprocess_enabled(self) -> bool:
@@ -157,12 +181,38 @@ class LoggingConfig(BaseDomainConfig):
         return bool(hooks.get("enabled", True))
 
     @cached_property
-    def _jsonl_paths(self) -> Dict[str, Any]:
+    def _jsonl_paths(self) -> dict[str, Any]:
         audit = self.section.get("audit") or {}
+
+        # New canonical config: a single audit JSONL path.
+        #
+        # This intentionally maps into the legacy "project" key so the rest of the
+        # implementation can stay small and backward-compatible.
+        raw_path = audit.get("path")
+        if isinstance(raw_path, str) and raw_path.strip():
+            return {"project": str(raw_path).strip()}
+
         sinks = audit.get("sinks") or {}
         jsonl = sinks.get("jsonl") or {}
         paths = jsonl.get("paths") or {}
         return dict(paths) if isinstance(paths, dict) else {}
+
+    @cached_property
+    def invocation_embed_tails_enabled(self) -> bool:
+        inv = self.section.get("invocation") or {}
+        embed = inv.get("embed_tails") or {}
+        return bool(isinstance(embed, dict) and embed.get("enabled", False))
+
+    @cached_property
+    def invocation_embed_tails_max_bytes(self) -> int:
+        inv = self.section.get("invocation") or {}
+        embed = inv.get("embed_tails") or {}
+        if not isinstance(embed, dict):
+            return 0
+        try:
+            return int(embed.get("max_bytes", 0) or 0)
+        except Exception:
+            return 0
 
     @cached_property
     def paths(self) -> LoggingPaths:
@@ -187,12 +237,12 @@ class LoggingConfig(BaseDomainConfig):
     def build_tokens(
         self,
         *,
-        invocation_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        project_root: Optional[Path] = None,
-    ) -> Dict[str, str]:
+        invocation_id: str | None = None,
+        session_id: str | None = None,
+        project_root: Path | None = None,
+    ) -> dict[str, str]:
         effective_root = project_root if project_root is not None else self.repo_root
-        tokens: Dict[str, Any] = {
+        tokens: dict[str, Any] = {
             "invocation_id": invocation_id,
             "session_id": session_id,
             "project_root": str(project_root) if project_root is not None else str(self.repo_root),
@@ -205,7 +255,7 @@ class LoggingConfig(BaseDomainConfig):
     def expand(self, template: str, tokens: Mapping[str, str]) -> str:
         return str(template).format_map(SafeDict(tokens))
 
-    def resolve_project_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
+    def resolve_project_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
         if not self.paths.project_audit_jsonl:
             return None
         expanded = Path(self.expand(self.paths.project_audit_jsonl, tokens)).expanduser()
@@ -213,7 +263,7 @@ class LoggingConfig(BaseDomainConfig):
             expanded = self.repo_root / expanded
         return expanded.resolve()
 
-    def resolve_session_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
+    def resolve_session_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
         if not self.paths.session_audit_jsonl:
             return None
         if not tokens.get("session_id"):
@@ -223,7 +273,7 @@ class LoggingConfig(BaseDomainConfig):
             expanded = self.repo_root / expanded
         return expanded.resolve()
 
-    def resolve_invocation_audit_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
+    def resolve_invocation_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
         if not self.paths.invocation_audit_jsonl:
             return None
         if not tokens.get("invocation_id"):
@@ -233,7 +283,7 @@ class LoggingConfig(BaseDomainConfig):
             expanded = self.repo_root / expanded
         return expanded.resolve()
 
-    def resolve_stdio_paths(self, *, tokens: Mapping[str, str]) -> tuple[Optional[Path], Optional[Path]]:
+    def resolve_stdio_paths(self, *, tokens: Mapping[str, str]) -> tuple[Path | None, Path | None]:
         if not self.stdio_capture_enabled:
             return (None, None)
         out_t = self.paths.stdout_template
@@ -248,7 +298,7 @@ class LoggingConfig(BaseDomainConfig):
             stderr_path = self.repo_root / stderr_path
         return (stdout_path.resolve(), stderr_path.resolve())
 
-    def resolve_stdlib_log_path(self, *, tokens: Mapping[str, str]) -> Optional[Path]:
+    def resolve_stdlib_log_path(self, *, tokens: Mapping[str, str]) -> Path | None:
         if not self.stdlib_enabled:
             return None
         if not self.stdlib_path_template:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from edison.core.audit.context import get_audit_context
 from edison.core.audit.jsonl import append_jsonl
@@ -10,7 +10,7 @@ from edison.core.config.domains.logging import LoggingConfig
 from edison.core.utils.time import utc_timestamp
 
 
-def _best_effort_repo_root(repo_root: Optional[Path]) -> Optional[Path]:
+def _best_effort_repo_root(repo_root: Path | None) -> Path | None:
     if repo_root is not None:
         try:
             return repo_root.expanduser().resolve()
@@ -24,7 +24,7 @@ def _best_effort_repo_root(repo_root: Optional[Path]) -> Optional[Path]:
         return None
 
 
-def audit_event(event: str, *, repo_root: Optional[Path] = None, **fields: Any) -> None:
+def audit_event(event: str, *, repo_root: Path | None = None, **fields: Any) -> None:
     """Emit a single structured audit event as JSONL (fail-open).
 
     This is separate from stdlib `logging` so JSON-mode CLI output stays pure.
@@ -38,7 +38,7 @@ def audit_event(event: str, *, repo_root: Optional[Path] = None, **fields: Any) 
     except Exception:
         return
 
-    if not cfg.enabled or not cfg.audit_enabled:
+    if not cfg.enabled or not cfg.audit_enabled or not cfg.audit_jsonl_enabled:
         return
 
     # Category-level gating (kept centralized so emitters remain lightweight).
@@ -65,27 +65,12 @@ def audit_event(event: str, *, repo_root: Optional[Path] = None, **fields: Any) 
         project_root=root,
     )
 
-    paths = [
-        cfg.resolve_project_audit_path(tokens=tokens),
-        cfg.resolve_session_audit_path(tokens=tokens),
-        cfg.resolve_invocation_audit_path(tokens=tokens),
-    ]
-    # Avoid writing the same event twice to the same sink when templates resolve
-    # to identical paths (e.g., project+session sinks configured to the same file).
-    sink_paths: list[Path] = []
-    seen: set[str] = set()
-    for p in paths:
-        if p is None:
-            continue
-        key = str(p)
-        if key in seen:
-            continue
-        seen.add(key)
-        sink_paths.append(p)
-    if not sink_paths:
+    # Canonical audit log: a single append-only JSONL stream.
+    path = cfg.resolve_project_audit_path(tokens=tokens)
+    if path is None:
         return
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "ts": utc_timestamp(repo_root=root),
         "event": event,
         "pid": os.getpid(),
@@ -100,8 +85,7 @@ def audit_event(event: str, *, repo_root: Optional[Path] = None, **fields: Any) 
     except Exception:
         pass
 
-    for path in sink_paths:
-        append_jsonl(path=path, payload=payload, repo_root=root)
+    append_jsonl(path=path, payload=payload, repo_root=root)
 
 
 def truncate_text(text: str, *, max_bytes: int) -> str:

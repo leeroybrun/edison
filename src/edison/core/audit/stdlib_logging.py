@@ -3,13 +3,12 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 from edison.core.utils.io import ensure_directory
 
-
-_CONFIGURED_LOG_PATH: Optional[str] = None
-_EDISON_FILE_HANDLER: Optional[logging.Handler] = None
+_CONFIGURED_LOG_PATH: str | None = None
+_EDISON_FILE_HANDLER: logging.Handler | None = None
+_JSON_MODE_NULL_HANDLER_INSTALLED: bool = False
 
 
 def _level_from_name(name: str) -> int:
@@ -84,4 +83,29 @@ def reset_stdlib_logging_for_tests() -> None:
     _EDISON_FILE_HANDLER = None
 
 
-__all__ = ["configure_stdlib_logging", "reset_stdlib_logging_for_tests"]
+def suppress_lastresort_in_json_mode() -> None:
+    """Prevent stdlib logging's lastResort handler from polluting JSON stdout/stderr.
+
+    Python's logging module may emit WARNING+ messages to stderr via the implicit
+    `lastResort` handler when no handlers are configured. For Edison CLI `--json`
+    output, we want machine-readable stdout and minimal stderr noise without
+    globally disabling logging levels.
+
+    Strategy: ensure the root logger has at least one handler (a NullHandler)
+    when it otherwise has none.
+    """
+    global _JSON_MODE_NULL_HANDLER_INSTALLED
+
+    root = logging.getLogger()
+    if root.handlers:
+        return
+    if _JSON_MODE_NULL_HANDLER_INSTALLED:
+        return
+    try:
+        root.addHandler(logging.NullHandler())
+        _JSON_MODE_NULL_HANDLER_INSTALLED = True
+    except Exception:
+        pass
+
+
+__all__ = ["configure_stdlib_logging", "reset_stdlib_logging_for_tests", "suppress_lastresort_in_json_mode"]

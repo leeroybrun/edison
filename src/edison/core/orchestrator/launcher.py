@@ -421,9 +421,17 @@ class OrchestratorLauncher:
         """Deliver prompt via stdin."""
         if process.stdin is None:
             raise OrchestratorLaunchError("Process stdin is not available for prompt delivery")
-        process.stdin.write(prompt)
-        process.stdin.flush()
-        process.stdin.close()
+        try:
+            process.stdin.write(prompt)
+            process.stdin.flush()
+        except BrokenPipeError:
+            # Fail-open: some orchestrator commands exit quickly and close stdin.
+            pass
+        finally:
+            try:
+                process.stdin.close()
+            except Exception:
+                pass
 
     def _deliver_prompt_file(self, prompt: str) -> Path:
         """Write prompt to temp file, return path."""

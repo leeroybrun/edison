@@ -1,11 +1,9 @@
 import json
 import sys
-import time
 from pathlib import Path
 
-from edison.core.orchestrator.launcher import OrchestratorLauncher
 from edison.core.config.domains import OrchestratorConfig
-
+from edison.core.orchestrator.launcher import OrchestratorLauncher
 from tests.helpers.cache_utils import reset_edison_caches
 from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.io_utils import write_yaml
@@ -25,12 +23,7 @@ def test_orchestrator_launch_emits_audit_events(tmp_path: Path, monkeypatch) -> 
                 "enabled": True,
                 "audit": {
                     "enabled": True,
-                    "sinks": {
-                        "jsonl": {
-                            "enabled": True,
-                            "paths": {"project": ".project/logs/edison/audit-project.jsonl"},
-                        }
-                    },
+                    "path": ".project/logs/edison/audit.jsonl",
                 },
             }
         },
@@ -67,7 +60,7 @@ def test_orchestrator_launch_emits_audit_events(tmp_path: Path, monkeypatch) -> 
     rc = proc.wait(timeout=5)
     assert rc == 0
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     lines = [ln for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     events = [json.loads(ln) for ln in lines]
 
@@ -89,12 +82,7 @@ def test_orchestrator_log_file_elides_prompt_when_capture_disabled(tmp_path: Pat
                 "enabled": True,
                 "audit": {
                     "enabled": True,
-                    "sinks": {
-                        "jsonl": {
-                            "enabled": True,
-                            "paths": {"project": ".project/logs/edison/audit-project.jsonl"},
-                        }
-                    },
+                    "path": ".project/logs/edison/audit.jsonl",
                 },
                 "orchestrator": {"enabled": True, "capture_prompt": False},
             }

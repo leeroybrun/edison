@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 from edison.cli._dispatcher import main as edison_main
-
 from tests.helpers.io_utils import write_yaml
 
 
@@ -17,7 +16,7 @@ def test_audit_event_command_writes_audit_jsonl(isolated_project_env: Path) -> N
                 "enabled": True,
                 "audit": {
                     "enabled": True,
-                    "sinks": {"jsonl": {"enabled": True, "paths": {"project": ".project/logs/edison/audit-project.jsonl"}}},
+                    "path": ".project/logs/edison/audit.jsonl",
                 },
                 "stdio": {"capture": {"enabled": False}},
             }
@@ -27,9 +26,8 @@ def test_audit_event_command_writes_audit_jsonl(isolated_project_env: Path) -> N
     rc = edison_main(["audit", "event", "hook.test", "--field", "k=v", "--repo-root", str(repo)])
     assert rc == 0
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert log_path.exists()
 
     events = [json.loads(ln) for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     assert any(e.get("event") == "hook.test" and e.get("k") == "v" for e in events)
-

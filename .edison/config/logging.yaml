@@ -1,0 +1,49 @@
+# Edison UI: enable all Edison audit/logging features.
+#
+# Edison ships defaults in `edison.data/config/logging.yaml` with logging ON by
+# default. This project override increases verbosity (DEBUG), enables stdio
+# capture, and embeds a small stdio/python-log tail into the canonical audit log
+# to avoid needing to parse per-invocation artifact files for common debugging.
+#
+# Note: path templates (e.g. `{PROJECT_MANAGEMENT_DIR}`) come from Edison core
+# token interpolation; we rely on the built-in defaults for paths unless
+# explicitly overridden here.
+
+logging:
+  enabled: true
+
+  audit:
+    enabled: true
+    jsonl:
+      enabled: true
+
+  invocation:
+    embed_tails:
+      enabled: true
+      max_bytes: 20000
+
+  stdio:
+    capture:
+      enabled: true
+
+  subprocess:
+    enabled: true
+
+  stdlib:
+    enabled: true
+    level: "DEBUG"
+
+  # Redaction changes the payload contents; keep it OFF by default so logs are
+  # maximally informative. If you need redaction, configure patterns here.
+  redaction:
+    enabled: false
+
+  orchestrator:
+    enabled: true
+    capture_prompt: true
+
+  guards:
+    enabled: true
+
+  hooks:
+    enabled: true

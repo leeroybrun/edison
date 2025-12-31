@@ -15,11 +15,7 @@ def test_load_config_interpolates_single_brace_tokens(tmp_path: Path) -> None:
 
     assert cfg["tasks"]["paths"]["root"] == ".project/tasks"
 
-    # Interpolation must preserve non-standard placeholders used by path templates.
-    assert (
-        cfg["logging"]["audit"]["sinks"]["jsonl"]["paths"]["session"]
-        == ".project/logs/edison/audit-session-{session_id}.jsonl"
-    )
+    assert cfg["logging"]["audit"]["path"] == ".project/logs/edison/audit.jsonl"
 
 
 def test_load_config_does_not_touch_double_brace_template_vars(tmp_path: Path) -> None:

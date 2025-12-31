@@ -5,7 +5,6 @@ from pathlib import Path
 
 from edison.cli._dispatcher import main as edison_main
 from edison.core.utils.subprocess import run_with_timeout
-
 from tests.helpers.cache_utils import reset_edison_caches
 from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.io_utils import write_yaml
@@ -21,17 +20,12 @@ def _enable_logging(repo: Path) -> None:
                 "enabled": True,
                 "audit": {
                     "enabled": True,
-                    "sinks": {
-                        "jsonl": {
-                            "enabled": True,
-                            "paths": {
-                                "project": ".project/logs/edison/audit-project.jsonl",
-                                "session": ".project/logs/edison/audit-session-{session_id}.jsonl",
-                                "invocation_dir": ".project/logs/edison/invocations",
-                            },
-                        }
-                    },
+                    # Canonical audit log: a single append-only JSONL stream.
+                    "path": ".project/logs/edison/audit.jsonl",
                 },
+                # Optional: embed small stdout/stderr tails into the canonical audit log
+                # so consumers don't need to open per-invocation artifact files.
+                "invocation": {"embed_tails": {"enabled": True, "max_bytes": 20000}},
                 "stdlib": {
                     "enabled": True,
                     "level": "INFO",
@@ -75,7 +69,7 @@ def test_subprocess_audit_log_written_when_enabled(tmp_path: Path, monkeypatch) 
     )
     assert (cp.stdout or "").strip() == "SECRET=hello"
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert log_path.exists()
 
     lines = [ln for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
@@ -99,12 +93,16 @@ def test_cli_invocation_and_stdio_are_logged(tmp_path: Path, monkeypatch, capsys
     assert rc == 0
     capsys.readouterr()
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert log_path.exists()
     events = [json.loads(ln) for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
     assert any(e.get("event") == "cli.invocation.start" for e in events)
     assert any(e.get("event") == "cli.invocation.end" for e in events)
+
+    # Canonical log should embed stdout tail (when enabled) to avoid needing to open artifact files.
+    end = next(e for e in reversed(events) if e.get("event") == "cli.invocation.end")
+    assert "project:" in (end.get("stdout_tail") or "")
 
     inv_dir = repo / ".project" / "logs" / "edison" / "invocations"
     stdout_logs = sorted(inv_dir.glob("*.stdout.log"))
@@ -149,7 +147,10 @@ def test_configure_stdlib_logging_does_not_remove_existing_file_handlers(tmp_pat
     """
     import logging
 
-    from edison.core.audit.stdlib_logging import configure_stdlib_logging, reset_stdlib_logging_for_tests
+    from edison.core.audit.stdlib_logging import (
+        configure_stdlib_logging,
+        reset_stdlib_logging_for_tests,
+    )
 
     reset_stdlib_logging_for_tests()
     try:
@@ -182,7 +183,7 @@ def test_audit_event_filters_hook_events_when_disabled(tmp_path: Path, monkeypat
 
     audit_event("hook.test", repo_root=repo, hello="world")
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert not log_path.exists()
 
 
@@ -197,14 +198,13 @@ def test_audit_event_filters_guard_events_when_disabled(tmp_path: Path, monkeypa
 
     audit_event("guard.blocked", repo_root=repo, guard="x")
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert not log_path.exists()
 
 
-def test_cli_invocation_infers_session_id_from_session_id_file(tmp_path: Path, monkeypatch) -> None:
+def test_cli_invocation_includes_session_id_when_agents_session_is_set(tmp_path: Path, monkeypatch) -> None:
     repo = create_repo_with_git(tmp_path, name="repo")
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
-    monkeypatch.delenv("AGENTS_SESSION", raising=False)
 
     from edison.core.session.core.models import Session
     from edison.core.session.persistence.repository import SessionRepository
@@ -212,8 +212,7 @@ def test_cli_invocation_infers_session_id_from_session_id_file(tmp_path: Path, m
     session_repo = SessionRepository(project_root=repo)
     session_repo.create(Session.create("sess-file-123", owner="tester", state="active"))
 
-    (repo / ".project").mkdir(parents=True, exist_ok=True)
-    (repo / ".project" / ".session-id").write_text("sess-file-123\n", encoding="utf-8")
+    monkeypatch.setenv("AGENTS_SESSION", "sess-file-123")
 
     _enable_logging(repo)
     reset_edison_caches()
@@ -221,17 +220,19 @@ def test_cli_invocation_infers_session_id_from_session_id_file(tmp_path: Path, m
     rc = edison_main(["config", "show", "project.name", "--format", "yaml", "--repo-root", str(repo)])
     assert rc == 0
 
-    project_log = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    project_log = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert project_log.exists()
     events = [json.loads(ln) for ln in project_log.read_text(encoding="utf-8").splitlines() if ln.strip()]
     starts = [e for e in events if e.get("event") == "cli.invocation.start"]
     assert starts, "expected at least one cli.invocation.start event"
     assert starts[-1].get("session_id") == "sess-file-123"
 
+    # Single canonical log: session-scoped logs should not be written as separate files.
     session_log = repo / ".project" / "logs" / "edison" / "audit-session-sess-file-123.jsonl"
-    assert session_log.exists()
-    session_events = [json.loads(ln) for ln in session_log.read_text(encoding="utf-8").splitlines() if ln.strip()]
-    assert any(e.get("event") == "cli.invocation.start" for e in session_events)
+    assert not session_log.exists()
+
+    filtered = [e for e in events if e.get("session_id") == "sess-file-123"]
+    assert any(e.get("event") == "cli.invocation.start" for e in filtered)
 
 
 def test_cli_audit_invocation_uses_repo_root_argument_when_outside_project(tmp_path: Path) -> None:
@@ -251,7 +252,36 @@ def test_cli_audit_invocation_uses_repo_root_argument_when_outside_project(tmp_p
         if old_root is not None:
             os.environ["AGENTS_PROJECT_ROOT"] = old_root
 
-    log_path = repo / ".project" / "logs" / "edison" / "audit-project.jsonl"
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert log_path.exists()
     events = [json.loads(ln) for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     assert any(e.get("event") == "cli.invocation.start" for e in events)
+
+
+def test_audit_jsonl_sink_disabled_produces_no_log_file(tmp_path: Path, monkeypatch) -> None:
+    repo = create_repo_with_git(tmp_path, name="repo")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
+
+    cfg_dir = repo / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    write_yaml(
+        cfg_dir / "logging.yaml",
+        {
+            "logging": {
+                "enabled": True,
+                "audit": {
+                    "enabled": True,
+                    "path": ".project/logs/edison/audit.jsonl",
+                    "jsonl": {"enabled": False},
+                },
+            }
+        },
+    )
+    reset_edison_caches()
+
+    from edison.core.audit.logger import audit_event
+
+    audit_event("hook.test", repo_root=repo, hello="world")
+
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
+    assert not log_path.exists()

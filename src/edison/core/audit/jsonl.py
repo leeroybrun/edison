@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.io.locking import acquire_file_lock
@@ -26,7 +26,7 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
-def append_jsonl(*, path: Path, payload: Dict[str, Any], repo_root: Optional[Path] = None) -> None:
+def append_jsonl(*, path: Path, payload: dict[str, Any], repo_root: Path | None = None) -> None:
     """Append one JSON line to `path` with a file lock + fsync (fail-open)."""
     try:
         ensure_directory(path.parent)

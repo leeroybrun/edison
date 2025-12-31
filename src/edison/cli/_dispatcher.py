@@ -915,9 +915,9 @@ def main(argv: list[str] | None = None) -> int:
                     # JSON mode must remain machine-readable (stdout/stderr should not be polluted
                     # by logging warnings emitted via the stdlib "lastResort" handler).
                     try:
-                        import logging
+                        from edison.core.audit.stdlib_logging import suppress_lastresort_in_json_mode
 
-                        logging.disable(logging.WARNING)
+                        suppress_lastresort_in_json_mode()
                     except Exception:
                         pass
                 if project_root is not None and not json_mode:

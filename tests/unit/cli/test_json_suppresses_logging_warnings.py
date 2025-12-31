@@ -10,7 +10,7 @@ import pytest
 def test_json_mode_disables_warning_logging(
     isolated_project_env: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`--json` should suppress WARNING noise emitted via stdlib logging's lastResort handler."""
+    """`--json` should suppress lastResort WARNING noise without globally disabling logging."""
     from edison.core.task.models import Task
     from edison.core.task.repository import TaskRepository
 
@@ -27,7 +27,8 @@ def test_json_mode_disables_warning_logging(
         captured = capsys.readouterr()
         assert code == 0
         json.loads(captured.out or "{}")
-        assert not logging.getLogger().isEnabledFor(logging.WARNING)
+        # WARNING should remain enabled; JSON mode should prevent stderr pollution via handlers,
+        # not by disabling logging globally.
+        assert logging.getLogger().isEnabledFor(logging.WARNING)
     finally:
         logging.disable(logging.NOTSET)
-
