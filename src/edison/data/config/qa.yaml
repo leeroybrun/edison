@@ -2,6 +2,116 @@
 # Configuration for quality assurance, evidence tracking, and validation workflows
 
 validation:
+  # Validation presets - config-driven, pack-extensible
+  # Presets define which validators to run and what evidence is required.
+  # Projects/packs can override or add presets via config overlays.
+  presets:
+    # Quick preset: minimal validation for docs-only tasks
+    quick:
+      name: quick
+      description: "Minimal validation for documentation-only changes"
+      validators:
+        - global-codex
+      required_evidence: []
+      blocking_validators:
+        - global-codex
+
+    # Standard preset: full validation for code changes
+    standard:
+      name: standard
+      description: "Standard validation for code changes"
+      validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - security
+
+    # Strict preset: comprehensive validation with all validators
+    strict:
+      name: strict
+      description: "Comprehensive validation for critical changes"
+      validators:
+        - global-codex
+        - global-claude
+        - global-gemini
+        - security
+        - performance
+        - coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+
+  # Preset inference rules - determine preset from file patterns
+  # Higher priority rules take precedence when files match multiple patterns
+  presetInference:
+    rules:
+      # Documentation-only changes -> quick preset
+      - patterns:
+          - "docs/**"
+          - "*.md"
+          - "**/*.md"
+          - "LICENSE"
+          - "LICENSE.*"
+          - "CHANGELOG*"
+        preset: quick
+        priority: 10
+
+      # Config/CI changes -> standard preset
+      - patterns:
+          - "pyproject.toml"
+          - "package.json"
+          - "*.yaml"
+          - "*.yml"
+          - ".github/**"
+          - "Makefile"
+          - "Dockerfile"
+          - "docker-compose*.yml"
+        preset: standard
+        priority: 20
+
+      # Source code changes -> standard preset
+      - patterns:
+          - "src/**"
+          - "lib/**"
+          - "app/**"
+          - "apps/**"
+          - "packages/**"
+          - "*.py"
+          - "*.ts"
+          - "*.tsx"
+          - "*.js"
+          - "*.jsx"
+          - "*.go"
+          - "*.rs"
+        preset: standard
+        priority: 30
+
+      # Test changes -> standard preset
+      - patterns:
+          - "tests/**"
+          - "test/**"
+          - "**/*_test.*"
+          - "**/*.test.*"
+          - "**/*.spec.*"
+        preset: standard
+        priority: 25
+
   # File context settings (used for validator triggering and rules routing).
   # These patterns exclude Edison-managed metadata/runtime artifacts so that
   # "modifiedFiles" reflects product/code changes rather than workflow noise.
