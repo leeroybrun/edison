@@ -24,7 +24,9 @@ validation:
     codex-cli:
       type: cli
       command: "codex"
-      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write"]
+      # Note: shell_environment_policy.inherit=core provides PATH/HOME while excluding secrets.
+      # We also explicitly exclude AGENTS_SESSION to prevent test failures in session tests.
+      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "shell_environment_policy.inherit=core", "-c", "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"]
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: []
