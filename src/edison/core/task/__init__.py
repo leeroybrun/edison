@@ -64,7 +64,7 @@ def default_owner(
 
 
 def normalize_record_id(record_type: str, record_id: str) -> str:
-    """Normalize a record ID by removing file extensions.
+    """Normalize and validate a record ID.
 
     Args:
         record_type: Type of record ('task' or 'qa')
@@ -73,10 +73,26 @@ def normalize_record_id(record_type: str, record_id: str) -> str:
     Returns:
         Normalized record ID without extension
     """
+    _ = record_type  # reserved for future record-type-specific normalization
+    raw = str(record_id)
+    if not raw:
+        raise ValueError("record_id is required")
+
     # Remove .md extension if present
-    if record_id.endswith('.md'):
-        return record_id[:-3]
-    return record_id
+    if raw.endswith(".md"):
+        raw = raw[:-3]
+
+    # Zsh footgun: unquoted variables are not split by default; enforce a strict
+    # no-whitespace policy for all record IDs.
+    if raw != raw.strip():
+        raise ValueError("record_id must not have leading/trailing whitespace")
+    if any(ch.isspace() for ch in raw):
+        raise ValueError("record_id must not contain whitespace")
+    if "/" in raw or "\\" in raw:
+        raise ValueError("record_id must not contain path separators")
+    if "\x00" in raw:
+        raise ValueError("record_id must not contain NUL bytes")
+    return raw
 
 
 __all__ = [

@@ -46,6 +46,8 @@ def main(args: argparse.Namespace) -> int:
         repo_root = get_repo_root(args)
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
 
+        from edison.core.task import normalize_record_id
+
         task_id = str(args.task_id)
 
         # Canonical ID semantics:
@@ -53,6 +55,7 @@ def main(args: argparse.Namespace) -> int:
         if task_id.endswith("-qa") or task_id.endswith(".qa"):
             task_id = task_id[:-3]
 
+        task_id = normalize_record_id("task", task_id)
         qa_id = f"{task_id}-qa"
 
         workflow = TaskQAWorkflow(project_root=repo_root)

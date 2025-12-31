@@ -74,6 +74,9 @@ def main(args: argparse.Namespace) -> int:
             parts.append(args.wave)
         parts.append(args.slug)
         task_id = "-".join(parts)
+        # Validate (reject whitespace/path separators, etc.)
+        from edison.core.task import normalize_record_id
+        task_id = normalize_record_id("task", task_id)
 
         # Build title from type and slug
         task_type = args.task_type or "feature"
@@ -88,7 +91,6 @@ def main(args: argparse.Namespace) -> int:
 
         parent_id = None
         if args.parent:
-            from edison.core.task import normalize_record_id
             parent_id = normalize_record_id("task", args.parent)
 
         # Create task using TaskManager (uses TaskRepository.create_task)
