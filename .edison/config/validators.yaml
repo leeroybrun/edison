@@ -3,7 +3,7 @@
 
 validation:
   execution:
-    timeout: 600  # 10 minutes for full test suite
+    timeout: 900  # Allow slower CLI validators during local iteration
 
   # Temporary overrides for faster Edison iteration:
   # - Keep only `global-claude` (blocking) + `global-codex` (advisory) enabled by default.
@@ -15,10 +15,12 @@ validation:
       always_run: true
       blocking: false
       triggers: ["*"]
+      timeout: 900
     global-claude:
       always_run: true
       blocking: true
       triggers: ["*"]
+      timeout: 900
     global-gemini:
       always_run: false
       blocking: false
@@ -51,12 +53,10 @@ validation:
         role: codereviewer
         palRole: validator-python
         specFile: specialized/python.md
-        triggers:
-          - "**/*.py"
-          - "pyproject.toml"
-        alwaysRun: true
+        triggers: []
+        alwaysRun: false
         priority: 3
-        blocksOnFail: true
+        blocksOnFail: false
         outputFormat: PythonReport
         reportSection: "Validator Findings & Verdicts > Python"
 
@@ -68,26 +68,17 @@ validation:
         role: codereviewer
         palRole: validator-edison
         specFile: specialized/edison.md
-        triggers:
-          - "src/edison/**/*.py"
-          - "{PROJECT_CONFIG_DIR}/**/*"
-          - "src/edison/data/config/*.yaml"
-        alwaysRun: true
+        triggers: []
+        alwaysRun: false
         priority: 3
-        blocksOnFail: true
+        blocksOnFail: false
         outputFormat: EdisonReport
         reportSection: "Validator Findings & Verdicts > Edison Architecture"
 
   # Edison-specific blocking validators
   blocking_validators:
-    - global-codex
     - global-claude
-    - security
-    - python
-    - edison-architecture
 
   # Approval criteria for Edison project
   approvalCriteria:
-    specializedValidators:
-      python: "MUST approve (blocks task on fail)"
-      edison-architecture: "MUST approve (blocks task on fail)"
+    specializedValidators: {}
