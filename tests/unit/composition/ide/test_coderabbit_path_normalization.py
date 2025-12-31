@@ -168,9 +168,7 @@ def test_bundled_data_structure_uses_config_directory(tmp_path: Path) -> None:
 def test_coderabbit_composer_loads_company_pack_config(tmp_path: Path) -> None:
     """Company-layer packs should contribute coderabbit.yaml when active."""
     company_dir = tmp_path / "company-layer"
-    (company_dir / "config").mkdir(parents=True, exist_ok=True)
-
-    # Insert company layer before user.
+    (company_dir / "config").mkdir(parents=True, exist_ok=True)    # Insert company layer before user.
     config_dir = tmp_path / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "layers.yaml").write_text(
@@ -180,9 +178,7 @@ def test_coderabbit_composer_loads_company_pack_config(tmp_path: Path) -> None:
         f"      path: {company_dir.as_posix()}\n"
         "      before: user\n",
         encoding="utf-8",
-    )
-
-    # Provide a pack coderabbit config in the company pack root.
+    )    # Provide a pack coderabbit config in the company pack root.
     pack_config_dir = company_dir / "packs" / "python" / "config"
     pack_config_dir.mkdir(parents=True, exist_ok=True)
     write_yaml(

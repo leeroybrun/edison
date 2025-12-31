@@ -115,6 +115,25 @@ class PlatformAdapter(CompositionBase, ABC):
             self._adapter_config = self.composition_config.get_adapter(self.platform_name)
         return self._adapter_config
 
+    # ---------------------------------------------------------------------
+    # Back-compat config helpers (legacy tests/callers)
+    # ---------------------------------------------------------------------
+
+    @property
+    def adapters_config(self) -> Dict[str, Any]:
+        """Back-compat: return the raw adapters config mapping."""
+        try:
+            return dict(getattr(self.composition_config, "adapters", {}) or {})
+        except Exception:
+            return {}
+
+    @property
+    def output_config(self) -> Dict[str, Any]:
+        """Back-compat: return a stable, non-null output config mapping."""
+        cfg = self.config if isinstance(self.config, dict) else {}
+        raw = cfg.get("output") or cfg.get("outputs") or {}
+        return dict(raw) if isinstance(raw, dict) else {}
+
     @property
     def context(self) -> AdapterContext:
         """Shared adapter context for components."""

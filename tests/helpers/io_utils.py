@@ -399,33 +399,63 @@ def write_minimal_compose_config(
     config_dir = base_path / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create commands.yaml with a demo command
+    # Create a demo command definition (markdown-based; NO LEGACY YAML definitions).
+    demo_def = base_path / ".edison" / "commands" / "demo" / "demo-cmd.md"
+    demo_def.parent.mkdir(parents=True, exist_ok=True)
+    demo_def.write_text(
+        "---\n"
+        "id: demo-cmd\n"
+        "domain: demo\n"
+        "command: demo\n"
+        "short_desc: \"Demo command for testing\"\n"
+        "cli: \"echo demo\"\n"
+        "args: []\n"
+        "when_to_use: \"For testing compose functionality\"\n"
+        "related_commands: []\n"
+        "---\n\n"
+        "A demo command used in tests.\n",
+        encoding="utf-8",
+    )
+
+    # Create commands.yaml (platform config + selection)
     commands_data = {
         "commands": {
-            "definitions": [
-                {
-                    "id": "demo-cmd",
-                    "domain": "demo",
-                    "command": "demo",
-                    "short_desc": "Demo command for testing",
-                    "full_desc": "A demo command used in tests.",
-                    "cli": "echo demo",
-                    "args": [],
-                    "when_to_use": "For testing compose functionality",
-                    "related_commands": [],
-                }
-            ],
+            # Override defaults for deterministic tests (no prefix, local outputs).
+            "platforms": ["claude", "cursor", "codex"],
             "selection": {"mode": "all"},
+            "platform_config": {
+                "claude": {
+                    "enabled": True,
+                    "output_dir": ".claude/commands",
+                    "prefix": "",
+                    "max_short_desc": 80,
+                    "template": "claude-command.md.template",
+                    "allow_bash": False,
+                },
+                "cursor": {
+                    "enabled": True,
+                    "output_dir": ".cursor/commands",
+                    "prefix": "",
+                    "max_short_desc": 120,
+                    "template": "cursor-command.md.template",
+                    "allow_bash": True,
+                },
+                "codex": {
+                    "enabled": True,
+                    "output_dir": ".codex/prompts",
+                    "prefix": "",
+                    "max_short_desc": 100,
+                    "template": "codex-prompt.md.template",
+                },
+            },
         }
     }
     write_yaml(config_dir / "commands.yaml", commands_data)
 
-    # Create settings.yaml with permissions
+    # Create settings.yaml with permissions (Claude settings schema)
     settings_data = {
         "settings": {
-            "permissions": {
-                "allow": ["Read(./**)"],
-            }
+            "claude": {"permissions": {"allow": ["Read(./**)"]}},
         }
     }
     write_yaml(config_dir / "settings.yaml", settings_data)

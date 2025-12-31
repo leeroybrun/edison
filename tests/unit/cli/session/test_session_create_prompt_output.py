@@ -40,6 +40,7 @@ def test_session_create_prompt_json_includes_start_prompt(
             "tester",
             "--prompt",
             "AUTO_NEXT",
+            "--include-prompt-text",
             "--json",
         ]
     )
@@ -51,4 +52,3 @@ def test_session_create_prompt_json_includes_start_prompt(
     start_prompt = payload.get("startPrompt")
     assert isinstance(start_prompt, str)
     assert "# START_AUTO_NEXT" in start_prompt
-

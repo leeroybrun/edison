@@ -940,30 +940,6 @@ commands:
       max_short_desc: 120
       template: "cursor-command.md.template"
       allow_bash: true
-
-  # Core command definitions
-  definitions:
-    - id: session-next
-      domain: session
-      command: next
-      short_desc: "Show next session steps"
-      full_desc: |
-        Shows recommended next actions for the current Edison session.
-      cli: "edison session next <session_id>"
-      args: []
-      when_to_use: |
-        - After completing a task
-        - When unsure about current workflow step
-
-    - id: task-claim
-      domain: task
-      command: claim
-      short_desc: "Claim and move task to wip"
-      cli: "edison task claim <record_id>"
-      args:
-        - name: record_id
-          description: "Task or QA identifier"
-          required: true
 ```
 
 Notes:
@@ -971,24 +947,30 @@ Notes:
 - `commands.selection` exists to keep the slash-command catalog small and relevant.
   - `mode: domains` includes only the listed domains.
   - Packs should put their commands under a distinct domain (e.g. `typescript`) and **projects opt in** by adding that domain.
-- **Safe extensibility merge semantics**:
-  - Lists of dicts with an `id` key (like `commands.definitions`) **merge-by-id by default** (later layers override by id, but do not replace the whole list).
-  - To explicitly replace the whole list: `definitions: ["=", {...}, {...}]`
-  - To clear the list: `definitions: []`
-  - To disable a specific command from a lower layer: `- {id: <id>, enabled: false}`
 
-**Override Example** (`.edison/config/commands.yaml`):
+- **Command definitions are markdown files**, not YAML lists.
+  - Core: `src/edison/data/commands/**`
+  - User: `~/.edison/commands/**`
+  - Project: `.edison/commands/**`
+  - Packs: `<pack>/commands/**`
+  - Overrides/shadowing are by `id`: higher-precedence layers win when two files define the same `id`.
 
-```yaml
-# Add custom command
-commands:
-  definitions:
-    - id: custom-report
-      domain: reporting
-      command: report
-      short_desc: "Generate custom report"
-      cli: "edison custom report"
-      args: []
+**Add/Override Example** (`.edison/commands/reporting/custom-report.md`):
+
+```md
+---
+id: custom-report
+domain: reporting
+command: report
+short_desc: "Generate custom report"
+cli: "edison custom report"
+args: []
+when_to_use: |
+  - When you need a project-specific report
+related_commands: []
+---
+
+Write your full prompt/methodology here.
 ```
 
 **Override Example: enable extra domains (project opt-in)**:

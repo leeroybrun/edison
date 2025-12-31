@@ -10,9 +10,15 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, add_dry_run_flag, get_repo_root
-from edison.core.adapters.components.commands import CommandComposer
+from edison.cli import (
+    OutputFormatter,
+    add_dry_run_flag,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+)
 from edison.cli.compose._context import build_compose_context
+from edison.core.adapters.components.commands import CommandComposer
 
 SUMMARY = "Compose CLI commands from configuration"
 
@@ -88,7 +94,9 @@ def main(args: argparse.Namespace) -> int:
                     output_dir_override = base / str(platform).lower()
 
             results = composer.compose_for_platform(
-                platform, definitions, output_dir_override=output_dir_override
+                platform,
+                definitions,
+                output_dir_override=output_dir_override,
             )
             all_results[platform] = {cmd_id: str(path) for cmd_id, path in results.items()}
 

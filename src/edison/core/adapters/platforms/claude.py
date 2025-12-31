@@ -168,6 +168,28 @@ class ClaudeAdapter(PlatformAdapter):
 
         return written
 
+    def sync_claude_md(self) -> Path | None:
+        """Sync CLAUDE.md client config into `.claude/CLAUDE.md`.
+
+        Source resolution (fail-soft; first match wins):
+        - `.edison/_generated/clients/claude.md` (legacy)
+        - `.edison/_generated/roots/CLAUDE.md` (preferred)
+        """
+        self.ensure_structure()
+
+        candidates = [
+            self.project_dir / "_generated" / "clients" / "claude.md",
+            self.project_dir / "_generated" / "roots" / "CLAUDE.md",
+        ]
+        source: Path | None = next((p for p in candidates if p.exists()), None)
+        if source is None:
+            return None
+
+        target = self.claude_dir / "CLAUDE.md"
+        content = source.read_text(encoding="utf-8", errors="strict")
+        self.write_text_managed(target, content)
+        return target
+
     def sync_all(self) -> Dict[str, List[Path]]:
         """Sync all Edison outputs to Claude Code layout.
 
@@ -175,11 +197,16 @@ class ClaudeAdapter(PlatformAdapter):
             Dict with synced file paths by category.
         """
         result: Dict[str, List[Path]] = {
+            "claude_md": [],
             "agents": [],
             "commands": [],
             "hooks": [],
             "settings": [],
         }
+
+        maybe_claude_md = self.sync_claude_md()
+        if maybe_claude_md is not None:
+            result["claude_md"].append(maybe_claude_md)
 
         result["agents"] = self.sync_agents()
 

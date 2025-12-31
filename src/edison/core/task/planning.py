@@ -133,7 +133,13 @@ class TaskPlanner:
         return out
 
     def build_plan(self, *, session_id: Optional[str] = None) -> TaskPlan:
-        graph = TaskIndex(project_root=self.project_root).get_task_graph(session_id=session_id)
+        # By default, compute waves from the global backlog (tasks root). Session-scoped
+        # tasks are only included when an explicit session filter is requested.
+        include_session_tasks = bool(session_id)
+        graph = TaskIndex(project_root=self.project_root).get_task_graph(
+            session_id=session_id,
+            include_session_tasks=include_session_tasks,
+        )
 
         todo_state = self._readiness.todo_state()
         satisfied_states = self._readiness.dependency_satisfied_states()

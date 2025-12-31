@@ -41,7 +41,7 @@ def test_compose_commands_list_and_generate(isolated_project_env: Path):
 def test_compose_all_dry_run_skips_writes(isolated_project_env: Path):
     write_minimal_compose_config(isolated_project_env, platforms=["claude", "cursor", "codex"], include_env=True)
 
-    proc = _run_command("compose", "all", ["--dry-run", "--platforms", "claude"], isolated_project_env)
+    proc = _run_command("compose", "all", ["--dry-run", "--claude"], isolated_project_env)
     assert proc.returncode == 0, proc.stderr
     assert "dry-run" in proc.stdout.lower()
 
@@ -66,4 +66,3 @@ def test_compose_validate_honors_schema_warnings(isolated_project_env: Path):
     proc = _run_command("compose", "validate", [], isolated_project_env)
     assert proc.returncode == 0, proc.stderr
     assert "valid" in proc.stdout.lower()
-

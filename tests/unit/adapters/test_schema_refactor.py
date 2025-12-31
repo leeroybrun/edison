@@ -41,7 +41,7 @@ def test_load_schema_raises_for_missing_file():
 
     # Should include helpful error message
     assert "Schema not found" in str(exc_info.value)
-    assert "nonexistent_schema_that_does_not_exist.json" in str(exc_info.value)
+    assert "nonexistent_schema_that_does_not_exist.yaml" in str(exc_info.value)
 
 
 def test_load_schema_works_with_subdirectories():

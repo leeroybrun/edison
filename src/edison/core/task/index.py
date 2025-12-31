@@ -141,7 +141,7 @@ class TaskIndex:
     
     # ---------- Task Discovery ----------
     
-    def scan_all_task_files(self) -> List[Tuple[Path, Dict[str, Any]]]:
+    def scan_all_task_files(self, *, include_session_tasks: bool = True) -> List[Tuple[Path, Dict[str, Any]]]:
         """Scan all task files and extract frontmatter.
         
         Returns:
@@ -160,14 +160,15 @@ class TaskIndex:
                     results.append((md_file, fm))
         
         # Scan session tasks
-        sessions_root = self._get_sessions_root()
-        if sessions_root.exists():
-            for session_dir in sessions_root.rglob("tasks"):
-                if session_dir.is_dir():
-                    for md_file in session_dir.rglob("*.md"):
-                        fm = self._extract_frontmatter(md_file)
-                        if fm is not None:
-                            results.append((md_file, fm))
+        if include_session_tasks:
+            sessions_root = self._get_sessions_root()
+            if sessions_root.exists():
+                for session_dir in sessions_root.rglob("tasks"):
+                    if session_dir.is_dir():
+                        for md_file in session_dir.rglob("*.md"):
+                            fm = self._extract_frontmatter(md_file)
+                            if fm is not None:
+                                results.append((md_file, fm))
         
         return results
     
@@ -362,7 +363,12 @@ class TaskIndex:
     
     # ---------- Task Graph ----------
     
-    def get_task_graph(self, session_id: Optional[str] = None) -> TaskGraph:
+    def get_task_graph(
+        self,
+        session_id: Optional[str] = None,
+        *,
+        include_session_tasks: bool = True,
+    ) -> TaskGraph:
         """Build a task dependency graph.
         
         Args:
@@ -373,7 +379,7 @@ class TaskIndex:
         """
         graph = TaskGraph()
         
-        for path, fm in self.scan_all_task_files():
+        for path, fm in self.scan_all_task_files(include_session_tasks=include_session_tasks):
             # Filter by session if specified
             if session_id and fm.get("session_id") != session_id:
                 continue

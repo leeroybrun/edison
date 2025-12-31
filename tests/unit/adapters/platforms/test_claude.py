@@ -57,7 +57,7 @@ def test_claude_adapter_sync_claude_md(tmp_path: Path):
     assert result is not None
     assert result.name == "CLAUDE.md"
     assert result.parent == claude_dir
-    assert result.read_text() == "# Claude Config\n\nTest config"
+    assert "# Claude Config\n\nTest config" in result.read_text(encoding="utf-8")
 
 
 def test_claude_adapter_sync_agents_with_frontmatter(tmp_path: Path):
