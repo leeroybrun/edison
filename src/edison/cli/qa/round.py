@@ -103,7 +103,12 @@ def main(args: argparse.Namespace) -> int:
                 "status": status,
             }
             formatter.json_output(result) if formatter.json_mode else formatter.text(
-                f"Appended round {updated_qa.round} for {args.task_id}"
+                "\n".join(
+                    [
+                        f"Appended round {updated_qa.round} for {args.task_id}",
+                        "  Note: no evidence directory was created (use `edison qa round --new` to create round-N/)",
+                    ]
+                )
             )
 
         elif args.new:
