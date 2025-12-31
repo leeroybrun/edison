@@ -9,13 +9,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import Optional
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.core.exceptions import SessionError
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
 from edison.core.session.core.naming import generate_session_id
-from edison.core.exceptions import SessionError
 
 SUMMARY = "Create a new Edison session"
 
@@ -74,7 +73,7 @@ def _emit_worktree_instructions(
     formatter: OutputFormatter,
     *,
     session_id: str,
-    worktree_path: Optional[str],
+    worktree_path: str | None,
 ) -> None:
     if not worktree_path:
         return
@@ -84,6 +83,7 @@ def _emit_worktree_instructions(
     formatter.text(f"  export AGENTS_SESSION={session_id}")
     formatter.text(f"  export AGENTS_PROJECT_ROOT={worktree_path}")
     formatter.text("  Never run `git checkout` / `git switch` in the primary checkout.")
+    formatter.text("  Never run `git reset` / `git restore` / `git clean` unless explicitly requested.")
     formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
@@ -128,7 +128,10 @@ def main(args: argparse.Namespace) -> int:
             prompt_text = None
             prompt_path = None
             if start_prompt_id:
-                from edison.core.session.start_prompts import find_start_prompt_path, read_start_prompt
+                from edison.core.session.start_prompts import (
+                    find_start_prompt_path,
+                    read_start_prompt,
+                )
 
                 prompt_path = str(find_start_prompt_path(repo_root, start_prompt_id))
                 if bool(getattr(args, "include_prompt_text", False)):
