@@ -13,14 +13,14 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import json
 import sys
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
-from edison.core.utils.profiling import Profiler, enable_profiler, span
 from edison.cli._aliases import domain_cli_names, resolve_canonical_domain
+from edison.core.utils.profiling import Profiler, enable_profiler, span
 
 
 @lru_cache(maxsize=1)
@@ -310,21 +310,21 @@ def _get_version() -> str:
         return "unknown"
 
 
-def _get_rules_engine() -> Optional[Any]:
+def _get_rules_engine() -> Any | None:
     """Get RulesEngine instance for rules display.
-    
+
     Returns None if rules engine cannot be initialized (e.g., not in project).
     """
     try:
-        from edison.core.rules import RulesEngine
         from edison.core.config import ConfigManager
+        from edison.core.rules import RulesEngine
         cfg = ConfigManager().load_config(validate=False)
         return RulesEngine(cfg)
     except Exception:
         return None
 
 
-def _get_active_packs_fast(project_root: Path) -> List[str]:
+def _get_active_packs_fast(project_root: Path) -> list[str]:
     """Fast active pack detection for CLI rules display.
 
     Avoids a full ConfigManager load when we only need `packs.active`.
@@ -359,7 +359,7 @@ def _path_within(child: Path, parent: Path) -> bool:
         return False
 
 
-def _extract_session_id_from_args(args: argparse.Namespace) -> Optional[str]:
+def _extract_session_id_from_args(args: argparse.Namespace) -> str | None:
     # Common patterns across commands:
     # - positional `session_id`
     # - optional `--session`
@@ -476,104 +476,31 @@ def _maybe_enforce_session_worktree(
     command_name: str,
     args: argparse.Namespace,
     json_mode: bool,
-) -> Optional[int]:
+) -> int | None:
     """Return an exit code when enforcement blocks the command, else None."""
     try:
-        from edison.core.config.domains.session import SessionConfig
-        from edison.core.session.core.id import detect_session_id, validate_session_id
-        from edison.core.session.persistence.repository import SessionRepository
-    except Exception:
-        return None
+        from edison.cli._worktree_enforcement import maybe_enforce_session_worktree
 
-    try:
-        wt_cfg = SessionConfig(repo_root=project_root).get_worktree_config()
-    except Exception:
-        return None
-
-    if not bool(wt_cfg.get("enabled", True)):
-        return None
-
-    enforcement = wt_cfg.get("enforcement") or {}
-    if not isinstance(enforcement, dict) or not bool(enforcement.get("enabled", False)):
-        return None
-
-    commands = enforcement.get("commands") or []
-    if not isinstance(commands, list) or not commands:
-        return None
-    if command_name not in commands and "*" not in commands:
-        return None
-
-    # Allow read-only invocations from the primary checkout.
-    if not _is_mutating_invocation(command_name, args):
-        return None
-
-    # Resolve the target session id (explicit arg wins; else env/worktree file).
-    target_raw = _extract_session_id_from_args(args) or detect_session_id(project_root=project_root)
-    if not target_raw:
-        return None
-    try:
-        session_id = validate_session_id(str(target_raw))
-    except Exception:
-        return None
-
-    try:
-        repo = SessionRepository(project_root=project_root)
-        entity = repo.get(session_id)
-        if not entity:
-            return None
-        session = entity.to_dict() if hasattr(entity, "to_dict") else (entity if isinstance(entity, dict) else {})
-        worktree_path = (session.get("git") or {}).get("worktreePath")
-        if not worktree_path:
-            return None
-        worktree_root = Path(str(worktree_path)).resolve()
-    except Exception:
-        return None
-
-    cwd = Path.cwd()
-    if _path_within(cwd, worktree_root) or _path_within(project_root, worktree_root):
-        return None
-
-    msg = (
-        "WORKTREE ENFORCEMENT: this command must run inside the session worktree.\n"
-        f"Command: {command_name}\n"
-        f"Session: {session_id}\n"
-        f"Worktree: {worktree_root}\n"
-        f"Run:\n"
-        f"  cd {worktree_root}\n"
-        f"  export AGENTS_SESSION={session_id}\n"
-        f"  export AGENTS_PROJECT_ROOT={worktree_root}\n"
-    )
-
-    if json_mode:
-        print(
-            json.dumps(
-                {
-                    "error": "worktree_enforcement",
-                    "command": command_name,
-                    "sessionId": session_id,
-                    "worktreePath": str(worktree_root),
-                    "message": "Command must run inside the session worktree.",
-                    "hint": f"cd {worktree_root}",
-                }
-            )
+        return maybe_enforce_session_worktree(
+            project_root=project_root,
+            command_name=command_name,
+            args=args,
+            json_mode=json_mode,
         )
-    else:
-        print(msg, file=sys.stderr)
-
-    # Non-zero, distinct from normal command failures.
-    return 2
+    except Exception:
+        return None
 
 
 def _get_cli_rules_to_display(
     *,
     project_root: Path,
-    rules_map: Dict[str, Dict[str, Any]],
+    rules_map: dict[str, dict[str, Any]],
     command_name: str,
     timing: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Filter CLI-displayable rules from an already-composed rules map."""
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for rule in rules_map.values():
         if not isinstance(rule, dict):
             continue
@@ -602,7 +529,7 @@ def _get_cli_rules_to_display(
 
 
 def _registry_has_cli_rules_for_command(
-    registry: Dict[str, Any],
+    registry: dict[str, Any],
     *,
     command_name: str,
     timing: str,
@@ -630,22 +557,22 @@ def _registry_has_cli_rules_for_command(
     return False
 
 
-def _format_rules_for_display(rules: List[Dict[str, Any]], timing: str) -> str:
+def _format_rules_for_display(rules: list[dict[str, Any]], timing: str) -> str:
     """Format rules for CLI display.
-    
+
     Args:
         rules: List of composed rule dicts
         timing: "before" or "after"
-        
+
     Returns:
         Formatted string for display
     """
     if not rules:
         return ""
-    
+
     header = "RULES TO FOLLOW:" if timing == "before" else "VALIDATION REMINDERS:"
     lines = [f"\n{'='*60}", f"📋 {header}", ""]
-    
+
     for rule in rules:
         blocking_marker = "[BLOCKING] " if rule.get("blocking") else ""
         lines.append(f"  {blocking_marker}{rule.get('title', rule.get('id', 'Unknown'))}")
@@ -659,7 +586,7 @@ def _format_rules_for_display(rules: List[Dict[str, Any]], timing: str) -> str:
                 if line.strip():
                     lines.append(f"    {line.strip()}")
         lines.append("")
-    
+
     lines.append("=" * 60 + "\n")
     return "\n".join(lines)
 
@@ -697,7 +624,7 @@ def _is_help_requested(argv: list[str]) -> bool:
     return any(a in ("-h", "--help") for a in argv)
 
 
-def _resolve_fast_command_module(argv: list[str]) -> Optional[dict[str, str]]:
+def _resolve_fast_command_module(argv: list[str]) -> dict[str, str] | None:
     """Resolve the target command module without importing all CLI commands.
 
     This enables a fast path for normal command invocations where we only import
@@ -907,7 +834,6 @@ def main(argv: list[str] | None = None) -> int:
             with inv_cm as inv:
                 # Rules commands manage rules themselves; avoid double-initializing the rules engine
                 # (dispatcher guidance + rules CLI) which is expensive and redundant.
-                engine = None
                 project_root = None
                 if args.domain != "rules":
                     try:
@@ -919,7 +845,7 @@ def main(argv: list[str] | None = None) -> int:
 
                 # Compose rules once per CLI invocation (core + packs + project) for CLI display.
                 # This avoids loading full config and avoids composing twice for before/after.
-                rules_map: Dict[str, Dict[str, Any]] = {}
+                rules_map: dict[str, dict[str, Any]] = {}
                 if project_root is not None:
                     try:
                         from edison.core.rules.registry import RulesRegistry
@@ -944,7 +870,9 @@ def main(argv: list[str] | None = None) -> int:
                     # JSON mode must remain machine-readable (stdout/stderr should not be polluted
                     # by logging warnings emitted via the stdlib "lastResort" handler).
                     try:
-                        from edison.core.audit.stdlib_logging import suppress_lastresort_in_json_mode
+                        from edison.core.audit.stdlib_logging import (
+                            suppress_lastresort_in_json_mode,
+                        )
 
                         suppress_lastresort_in_json_mode()
                     except Exception:

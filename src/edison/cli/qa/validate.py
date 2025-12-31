@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
+from edison.cli._worktree_enforcement import maybe_enforce_session_worktree
 from edison.core.qa.engines import ValidationExecutor
 from edison.core.registries.validators import ValidatorRegistry
 
@@ -91,6 +92,15 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         repo_root = get_repo_root(args)
+        blocked = maybe_enforce_session_worktree(
+            project_root=repo_root,
+            command_name="qa validate",
+            args=args,
+            json_mode=bool(formatter.json_mode),
+        )
+        if blocked is not None:
+            return int(blocked)
+
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
         if args.execute and args.check_only:
             raise ValueError("Pass only one of --execute or --check-only")
