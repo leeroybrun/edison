@@ -5,6 +5,7 @@ All guards follow the FAIL-CLOSED principle:
 - Return False if validation cannot be performed
 - Only return True when all conditions are explicitly met
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -63,9 +64,7 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
             + (roster.get("triggeredOptional") or [])
         )
         blocking_ids = [
-            str(v.get("id"))
-            for v in candidates
-            if isinstance(v, Mapping) and v.get("blocking")
+            str(v.get("id")) for v in candidates if isinstance(v, Mapping) and v.get("blocking")
         ]
         blocking_ids = [b for b in blocking_ids if b]
         if not blocking_ids:
@@ -88,7 +87,9 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
         ev = EvidenceService(str(task_id), project_root=qa_config.repo_root)
         round_num = ev.get_current_round()
         if round_num is None:
-            raise ValueError("No validation round found; run `edison qa validate <task> --execute` first.")
+            raise ValueError(
+                "No validation round found; run `edison qa validate <task> --execute` first."
+            )
 
         missing_or_failed: list[str] = []
         for vid in blocking_ids:
@@ -132,22 +133,47 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         return False  # FAIL-CLOSED
 
     try:
-        from edison.core.qa.evidence import missing_evidence_blockers, read_validator_reports
+        from edison.core.config.domains.qa import QAConfig
+        from edison.core.qa.evidence import EvidenceService, read_validator_reports
 
         # Check for validator reports
         v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
         if not reports:
-            return False  # FAIL-CLOSED: no reports
+            raise ValueError(
+                "No validator reports found; run `edison qa validate <task> --execute` first."
+            )
 
         # Also check required evidence files exist
-        blockers = missing_evidence_blockers(str(task_id))
-        if blockers:
-            return False  # FAIL-CLOSED: missing evidence files
+        qa_config = QAConfig()
+        ev = EvidenceService(str(task_id), project_root=qa_config.repo_root)
+        round_num = ev.get_current_round()
+        if round_num is None:
+            raise ValueError(
+                "Missing evidence: no round-* evidence directory found; run `edison qa validate <task> --execute --new-round`."
+            )
+        round_dir = ev.get_round_dir(round_num)
+        required = qa_config.get_required_evidence_files()
+        present = (
+            {p.name for p in round_dir.iterdir() if p.is_file()} if round_dir.exists() else set()
+        )
+        missing = sorted({str(r) for r in required} - present)
+        if missing:
+            expected_report = round_dir / ev.implementation_filename
+            raise ValueError(
+                "Guard 'has_validator_reports' blocked transition.\n"
+                f"Missing evidence in {round_dir.name}: {', '.join(missing)}\n"
+                f"Expected implementation report: {expected_report}"
+            )
 
         return True
-    except Exception:
-        pass
+    except ValueError:
+        raise
+    except Exception as e:
+        # FAIL-CLOSED: unexpected evidence parsing errors should block, but with a clear message.
+        raise ValueError(
+            "Unable to verify validator evidence; run `edison qa validate <task> --execute` again."
+        ) from e
 
     return False  # FAIL-CLOSED
 
@@ -208,9 +234,9 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.config.domains.qa import QAConfig
+        from edison.core.context.files import FileContextService
         from edison.core.qa.evidence import read_validator_reports
         from edison.core.registries.validators import ValidatorRegistry
-        from edison.core.context.files import FileContextService
 
         qa_config = QAConfig()
         waves = qa_config.get_waves()
@@ -320,6 +346,7 @@ def _fetch_task(task_id: str) -> Mapping[str, Any] | None:
     """Fetch task data by ID."""
     try:
         from edison.core.task import TaskRepository
+
         repo = TaskRepository()
         task = repo.get(task_id)
         if task:
