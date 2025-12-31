@@ -59,6 +59,16 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         self.dedupe_shingle_size = dedupe_shingle_size
         self.enable_template_processing = enable_template_processing
 
+        # Preserve SECTION/EXTEND markers: dedupe must never delete structural marker
+        # paragraphs/lines, or it can produce unbalanced marker output (e.g. keeping a
+        # closing marker while dropping the opening paragraph that contained the opener).
+        self._marker_token_pattern = re.compile(r"<!--\s*/?\s*(?:section|extend)\b", re.IGNORECASE)
+        # Preserve fenced code blocks: blank-line splitting is not fence-aware, so
+        # dedupe can accidentally remove the paragraph that contains the closing
+        # fence delimiter, producing an unbalanced fence and breaking downstream
+        # markdown-aware processing.
+        self._fence_line_pattern = re.compile(r"^\s*(?:```|~~~)")
+
     def compose(
         self,
         layers: List[LayerContent],
@@ -93,7 +103,12 @@ class MarkdownCompositionStrategy(CompositionStrategy):
                     result = self._concatenate_layers(layers)
 
             # Step 4: DRY deduplication AFTER composition
-            if self.enable_dedupe:
+            # IMPORTANT: When SECTION/EXTEND markers are preserved (e.g. include-only
+            # fragments used via {{include-section:...}}), deduplication can remove
+            # paragraphs containing closing markers (because "later occurrences win"),
+            # producing unbalanced sections and breaking extraction. In that mode,
+            # skip dedupe entirely.
+            if self.enable_dedupe and context.strip_section_markers:
                 with span("markdown.compose.dedupe"):
                     result = self._dedupe_result(result)
 
@@ -205,31 +220,76 @@ class MarkdownCompositionStrategy(CompositionStrategy):
         """
         from edison.core.utils.text import _paragraph_shingles, _split_paragraphs
 
-        # Split by double newlines to get paragraphs
-        paragraphs = _split_paragraphs(content)
+        def _dedupe_plain(text: str) -> str:
+            # Split by double newlines to get paragraphs
+            paragraphs = _split_paragraphs(text)
 
-        # If paragraphs don't split well (single-newline separated content),
-        # fall back to line-based deduplication
-        if len(paragraphs) == 1 and "\n" in paragraphs[0]:
-            return self._dedupe_lines(content)
+            # If paragraphs don't split well (single-newline separated content),
+            # fall back to line-based deduplication
+            if len(paragraphs) == 1 and "\n" in paragraphs[0]:
+                return self._dedupe_lines(text)
 
-        seen: Set[Tuple[str, ...]] = set()
-        keep: List[bool] = []
+            seen: Set[Tuple[str, ...]] = set()
+            keep: List[bool] = []
 
-        # Process paragraphs in reverse order (later = higher priority)
-        for idx in range(len(paragraphs) - 1, -1, -1):
-            para = paragraphs[idx]
-            shingles = _paragraph_shingles(para, k=self.dedupe_shingle_size)
-            if shingles and shingles & seen:
-                keep.insert(0, False)
-            else:
-                keep.insert(0, True)
-                if shingles:
-                    seen |= shingles
+            # Process paragraphs in reverse order (later = higher priority)
+            for idx in range(len(paragraphs) - 1, -1, -1):
+                para = paragraphs[idx]
+                if self._marker_token_pattern.search(para):
+                    # Never drop marker-containing paragraphs.
+                    keep.insert(0, True)
+                    continue
+                shingles = _paragraph_shingles(para, k=self.dedupe_shingle_size)
+                if shingles and shingles & seen:
+                    keep.insert(0, False)
+                else:
+                    keep.insert(0, True)
+                    if shingles:
+                        seen |= shingles
 
-        # Rebuild content
-        result_paragraphs = [p for p, k in zip(paragraphs, keep) if k]
-        return "\n\n".join(result_paragraphs).strip()
+            # Rebuild content
+            result_paragraphs = [p for p, k in zip(paragraphs, keep) if k]
+            return "\n\n".join(result_paragraphs).strip()
+
+        # Never dedupe inside fenced code blocks; treat them as atomic segments.
+        def _split_by_fences(text: str) -> List[tuple[bool, str]]:
+            parts: List[tuple[bool, str]] = []
+            buf: List[str] = []
+            in_fence = False
+
+            for line in text.splitlines(keepends=True):
+                if self._fence_line_pattern.match(line):
+                    if not in_fence:
+                        if buf:
+                            parts.append((False, "".join(buf)))
+                            buf = []
+                        in_fence = True
+                        buf.append(line)
+                        continue
+                    # Closing fence (or nested fence; we treat any fence line as a toggle).
+                    buf.append(line)
+                    parts.append((True, "".join(buf)))
+                    buf = []
+                    in_fence = False
+                    continue
+
+                buf.append(line)
+
+            if buf:
+                parts.append((in_fence, "".join(buf)))
+            return parts
+
+        segments = _split_by_fences(content)
+        if any(is_fence for is_fence, _ in segments):
+            out: List[str] = []
+            for is_fence, seg in segments:
+                if is_fence:
+                    out.append(seg.rstrip("\n"))
+                    continue
+                out.append(_dedupe_plain(seg.rstrip("\n")) if seg.strip() else seg.rstrip("\n"))
+            return "\n".join(out).strip()
+
+        return _dedupe_plain(content)
 
     def _dedupe_lines(self, content: str) -> str:
         """Line-based deduplication for single-newline separated content.
@@ -251,6 +311,9 @@ class MarkdownCompositionStrategy(CompositionStrategy):
             line = lines[idx].strip()
             if not line:
                 keep.insert(0, True)  # Keep empty lines
+                continue
+            if self._marker_token_pattern.search(line):
+                keep.insert(0, True)
                 continue
 
             shingles = _paragraph_shingles(line, k=self.dedupe_shingle_size)

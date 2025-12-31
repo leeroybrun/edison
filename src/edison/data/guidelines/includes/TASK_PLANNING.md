@@ -2,7 +2,7 @@
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
 <!-- section: orchestrator-step-snippet -->
-## orchestrator-step-snippet
+### Task Waves (Parallelizable Waves)
 
 Compute parallelizable “waves” from `depends_on`:
 
@@ -20,8 +20,6 @@ edison task waves
 <!-- /section: orchestrator-step-snippet -->
 
 <!-- section: orchestrator-cli-snippet -->
-## orchestrator-cli-snippet
-
 ### Task Waves (Parallelizable Waves)
 
 ```bash
@@ -37,7 +35,7 @@ edison task waves [--json] [--cap <n>]
 <!-- /section: orchestrator-cli-snippet -->
 
 <!-- section: orchestrator-constitution-snippet -->
-## orchestrator-constitution-snippet
+### Task Waves (Parallelizable Waves)
 
 Use `edison task waves` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
 <!-- /section: orchestrator-constitution-snippet -->

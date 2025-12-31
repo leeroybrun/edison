@@ -161,6 +161,43 @@ class TestMarkdownCompositionStrategy:
         assert result.count("This is the first paragraph with enough words for shingling") == 1
         assert "This is a second paragraph with different content" in result
 
+    def test_dedupe_does_not_break_fenced_code_blocks(self) -> None:
+        """Deduplication must not remove parts of fenced code blocks.
+
+        The paragraph splitter is blank-line based. If it were to split *inside*
+        a fenced code block, dedupe could remove the paragraph containing the
+        closing fence delimiter, producing an unbalanced fence that then breaks
+        downstream template processing.
+        """
+        strategy = MarkdownCompositionStrategy(
+            enable_sections=False,
+            enable_dedupe=True,
+            dedupe_shingle_size=3,
+            enable_template_processing=False,
+        )
+        dup = "dup dup dup dup dup dup dup"
+        content = "\n".join(
+            [
+                "```txt",
+                "x",
+                "",
+                dup,
+                "```",
+                "",
+                dup,
+                "",
+            ]
+        )
+        layers = [LayerContent(content=content, source="core")]
+        context = CompositionContext(active_packs=[], config={})
+
+        result = strategy.compose(layers, context)
+
+        # Fence must remain balanced.
+        assert result.count("```") == 2
+        # Both dup lines must remain: one inside the code fence, one outside.
+        assert result.count(dup) == 2
+
     def test_template_processing_disabled(self) -> None:
         """Test template processing can be disabled."""
         strategy = MarkdownCompositionStrategy(enable_template_processing=False)

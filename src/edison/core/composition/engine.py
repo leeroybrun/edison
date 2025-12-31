@@ -44,6 +44,78 @@ from .transformers.variables import VariableTransformer
 from .transformers.functions import FunctionTransformer
 
 
+class CodeLiteralProtector(ContentTransformer):
+    """Protect template directive tokens inside Markdown code spans/fences.
+
+    Edison templates are processed via regex transformers that do not understand
+    Markdown. Without protection, documentation that *shows* Edison directives
+    (e.g. `{{include:...}}`) or section markers (e.g. `<!-- SECTION: ... -->`)
+    can accidentally execute during composition and/or trigger strict validation.
+
+    This transformer masks directive tokens inside:
+    - Inline code spans: `...`
+    - Fenced code blocks: ``` ... ```
+    and a paired restorer unmasks them at the very end of the pipeline.
+    """
+
+    _LBRACE = "⟪EDISON_LBRACE⟫"
+    _RBRACE = "⟪EDISON_RBRACE⟫"
+    _COMMENT_OPEN = "⟪EDISON_COMMENT_OPEN⟫"
+    _COMMENT_CLOSE = "⟪EDISON_COMMENT_CLOSE⟫"
+
+    _INLINE_CODE = re.compile(r"(`+)([^`\n]*?)\1")
+
+    @classmethod
+    def _protect_tokens(cls, text: str) -> str:
+        return (
+            text.replace("{{", cls._LBRACE)
+            .replace("}}", cls._RBRACE)
+            .replace("<!--", cls._COMMENT_OPEN)
+            .replace("-->", cls._COMMENT_CLOSE)
+        )
+
+    def transform(self, content: str, context: TransformContext) -> str:
+        lines = content.splitlines(keepends=True)
+        out: List[str] = []
+
+        in_fence = False
+        for line in lines:
+            stripped = line.lstrip()
+            is_fence = stripped.startswith("```")
+
+            if is_fence:
+                # Fence lines themselves should remain unchanged.
+                out.append(line)
+                in_fence = not in_fence
+                continue
+
+            if in_fence:
+                out.append(self._protect_tokens(line))
+                continue
+
+            # Inline code spans (single-line only).
+            def repl(match: re.Match[str]) -> str:
+                ticks = match.group(1)
+                body = match.group(2)
+                return f"{ticks}{self._protect_tokens(body)}{ticks}"
+
+            out.append(self._INLINE_CODE.sub(repl, line))
+
+        return "".join(out)
+
+
+class CodeLiteralRestorer(ContentTransformer):
+    """Restore masked directive tokens produced by CodeLiteralProtector."""
+
+    def transform(self, content: str, context: TransformContext) -> str:
+        return (
+            content.replace(CodeLiteralProtector._LBRACE, "{{")
+            .replace(CodeLiteralProtector._RBRACE, "}}")
+            .replace(CodeLiteralProtector._COMMENT_OPEN, "<!--")
+            .replace(CodeLiteralProtector._COMMENT_CLOSE, "-->")
+        )
+
+
 class ConditionalTransformer(ContentTransformer):
     """Transformer wrapper for ConditionalProcessor.
 
@@ -140,9 +212,28 @@ class ValidationTransformer(ContentTransformer):
         for marker in unresolved:
             context.record_variable(marker, resolved=False)
 
-        # Strip section markers
+        # Fail-closed on any template/include error markers. These should never
+        # be emitted into composed artifacts; composition must stop so the root
+        # cause can be fixed (missing include, missing section, circular include, etc.).
+        if "<!-- ERROR:" in content:
+            from edison.core.composition.core.errors import CompositionValidationError
+
+            snippet = content.split("<!-- ERROR:", 1)[1]
+            first_line = snippet.split("-->", 1)[0].strip()
+            raise CompositionValidationError(f"Composition contains error marker: {first_line}")
+
+        # Strip section markers, then ensure none remain (unbalanced markers indicate
+        # a broken template or partial composition output that must be fixed).
         if getattr(context, "strip_section_markers", True):
-            return self.parser.strip_markers(content)
+            stripped = self.parser.strip_markers(content)
+            # If any markers remain, they were not part of a well-formed SECTION/EXTEND block.
+            if "<!--" in stripped:
+                upper = stripped.upper()
+                if "<!-- SECTION:" in upper or "<!-- /SECTION:" in upper or "<!-- EXTEND:" in upper or "<!-- /EXTEND" in upper:
+                    from edison.core.composition.core.errors import CompositionValidationError
+
+                    raise CompositionValidationError("Unbalanced SECTION/EXTEND markers detected (missing closing marker?)")
+            return stripped
         return content
 
 
@@ -198,6 +289,9 @@ class TemplateEngine:
             TransformerPipeline with all transformers
         """
         return TransformerPipeline([
+            # Step 0: Protect literal examples in markdown code (prevents executing
+            # directive examples inside backticks/code fences).
+            CodeLiteralProtector(),
             # Step 1-2: Includes (regular + section extracts)
             IncludeTransformer(),
             # Step 3: Conditionals
@@ -212,6 +306,8 @@ class TemplateEngine:
             ReferenceRenderer(),
             # Step 10: Validation
             ValidationTransformer(),
+            # Step 11: Restore literal examples in markdown code.
+            CodeLiteralRestorer(),
         ])
 
     def process(

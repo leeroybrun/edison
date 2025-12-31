@@ -61,9 +61,11 @@ class OutputFormatter:
         if self.json_mode:
             output = {
                 "error": error_code,
+                "code": error_code,
                 "message": msg,
             }
-            print(json.dumps(output, indent=self.indent), file=sys.stderr)
+            # In JSON mode, all machine-readable payloads go to stdout (including errors).
+            print(json.dumps(output, indent=self.indent), file=sys.stdout)
         else:
             print(f"Error: {msg}", file=sys.stderr)
 

@@ -404,6 +404,28 @@ Extension content
         assert "<!-- /EXTEND" not in result
         assert "Extension content" in result
 
+    def test_strip_nested_section_markers(self) -> None:
+        """Nested SECTION markers should be removed (iterate until stable)."""
+        content = """
+<!-- SECTION: outer -->
+Outer start
+
+<!-- SECTION: inner -->
+Inner content
+<!-- /SECTION: inner -->
+
+Outer end
+<!-- /SECTION: outer -->
+"""
+        parser = SectionParser()
+        result = parser.strip_markers(content)
+
+        assert "<!-- SECTION:" not in result.upper()
+        assert "<!-- /SECTION:" not in result.upper()
+        assert "Outer start" in result
+        assert "Inner content" in result
+        assert "Outer end" in result
+
     def test_strip_cleans_excessive_newlines(self) -> None:
         """Excessive newlines should be reduced."""
         content = """

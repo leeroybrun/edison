@@ -71,6 +71,68 @@ class TestTemplateEngine:
         assert "<!-- /SECTION:" not in result
         assert "Tool content" in result
 
+    def test_process_fails_closed_on_error_markers(self) -> None:
+        from edison.core.composition.core.errors import CompositionValidationError
+
+        engine = TemplateEngine()
+        with pytest.raises(CompositionValidationError):
+            engine.process("<!-- ERROR: Section 'x' not found in y -->", entity_name="test")
+
+    def test_process_fails_closed_on_unbalanced_section_markers(self) -> None:
+        from edison.core.composition.core.errors import CompositionValidationError
+
+        engine = TemplateEngine()
+        content = """
+<!-- SECTION: tools -->
+- Tool content
+"""
+        with pytest.raises(CompositionValidationError):
+            engine.process(content, entity_name="test")
+
+    def test_process_does_not_execute_includes_inside_inline_code(self) -> None:
+        """Template directives inside inline code spans should remain literal."""
+        engine = TemplateEngine()
+        content = "Example `{{include:nope.md}}` should not execute."
+
+        out, _ = engine.process(content, entity_name="test")
+
+        assert "{{include:nope.md}}" in out
+        assert "<!-- ERROR:" not in out
+
+    def test_process_does_not_execute_includes_inside_code_fences(self) -> None:
+        """Template directives inside fenced code blocks should remain literal."""
+        engine = TemplateEngine()
+        content = "\n".join(
+            [
+                "```markdown",
+                "{{include-section:guidelines/includes/TDD.md#agent-execution}}",
+                "```",
+                "",
+            ]
+        )
+
+        out, _ = engine.process(content, entity_name="test")
+
+        assert "include-section:guidelines/includes/TDD.md#agent-execution" in out
+        assert "<!-- ERROR:" not in out
+
+    def test_process_allows_unbalanced_section_markers_in_code_fences(self) -> None:
+        """Marker-looking text in code fences should not trigger unbalanced marker errors."""
+        engine = TemplateEngine()
+        content = "\n".join(
+            [
+                "```markdown",
+                "<!-- SECTION: tools -->",
+                "- Tool content",
+                "```",
+                "",
+            ]
+        )
+
+        out, _ = engine.process(content, entity_name="test")
+
+        assert "<!-- SECTION: tools -->" in out
+
 
 class TestConditionalProcessing:
     """Tests for conditional block processing (Step 3)."""

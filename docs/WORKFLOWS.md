@@ -228,6 +228,7 @@ edison qa new <task-id>
 **QA brief location:**
 ```
 .project/qa/waiting/<task-id>-qa.md
+.project/sessions/<session-id>/qa/waiting/<task-id>-qa.md   # when session context is resolved
 ```
 
 **Initial state:** `waiting`

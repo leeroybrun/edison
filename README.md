@@ -96,7 +96,8 @@ edison init --non-interactive
 # This creates:
 # - .edison/ directory with config and generated artifacts
 # - .project/ directory for sessions, tasks, and QA
-# - .mcp.json for Pal MCP Server integration
+# - `mcp.yaml` for MCP server configuration (see `.edison/config/mcp.yaml`)
+# - .mcp.json for Pal MCP Server integration (optional)
 ```
 
 ### Compose Artifacts

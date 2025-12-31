@@ -190,11 +190,18 @@ class SectionParser:
 
         Useful for final output where markers should not be visible.
         """
-        # Replace SECTION markers, keeping inner content
-        result = self.SECTION_PATTERN.sub(r"\2", content)
-        # Replace EXTEND markers, keeping inner content
-        result = self.EXTEND_PATTERN.sub(r"\2", result)
+        # Replace SECTION/EXTEND markers, keeping inner content.
+        #
+        # NOTE: SECTION blocks can be nested (e.g., a rule section that contains
+        # a more specific sub-section). A single pass won't strip inner markers
+        # because `re.sub` doesn't re-scan replacements. Iterate until stable.
+        result = content
+        for _ in range(50):
+            prev = result
+            result = self.SECTION_PATTERN.sub(r"\2", result)
+            result = self.EXTEND_PATTERN.sub(r"\2", result)
+            if result == prev:
+                break
         # Clean up excessive blank lines
         result = re.sub(r"\n{3,}", "\n\n", result)
         return result.strip()
-

@@ -164,10 +164,11 @@ class TestRulesRegistryAndComposition:
         self,
         isolated_project_env: Path,
     ) -> None:
-        """Circular composed-includes are surfaced as an error marker (fail-closed consumers should reject)."""
+        """Circular composed-includes fail closed (TemplateEngine raises)."""
         from edison.core.composition.engine import TemplateEngine
         from edison.core.composition.includes import ComposedIncludeProvider
         from edison.core.composition.registries._types_manager import ComposableTypesManager
+        from edison.core.composition.core.errors import CompositionValidationError
         
         root = isolated_project_env
 
@@ -208,5 +209,6 @@ class TestRulesRegistryAndComposition:
             include_provider=include_provider,
             strip_section_markers=True,
         )
-        out, _report = engine.process(a_path.read_text(encoding="utf-8"), entity_name="A", entity_type="guidelines")
-        assert "Circular composed-include detected" in out
+        with pytest.raises(CompositionValidationError) as exc:
+            engine.process(a_path.read_text(encoding="utf-8"), entity_name="A", entity_type="guidelines")
+        assert "Circular composed-include detected" in str(exc.value)

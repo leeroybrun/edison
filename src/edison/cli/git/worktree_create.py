@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import OutputFormatter, add_json_flag, add_dry_run_flag
+from edison.cli import OutputFormatter, add_json_flag, add_dry_run_flag, resolve_session_id
 from edison.core.session import worktree
 
 SUMMARY = "Create git worktree for session"
@@ -20,8 +20,9 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
         "session_id",
+        nargs="?",
         type=str,
-        help="Session ID to create worktree for",
+        help="Session ID to create worktree for (defaults to current session when omitted)",
     )
     parser.add_argument(
         "--branch",
@@ -53,6 +54,18 @@ def main(args: argparse.Namespace) -> int:
 
 
     try:
+        project_root = worktree.get_repo_dir()
+        session_id_raw = str(args.session_id) if getattr(args, "session_id", None) else None
+        if session_id_raw is None:
+            session_id_raw = resolve_session_id(
+                project_root=project_root,
+                explicit=None,
+                required=True,
+            )
+        from edison.core.session.core.id import validate_session_id
+
+        session_id = validate_session_id(str(session_id_raw))
+
         cfg = worktree._config().get_worktree_config()
         if not cfg.get("enabled", False):
             raise RuntimeError(
@@ -65,7 +78,7 @@ def main(args: argparse.Namespace) -> int:
 
         # Fail fast if the session already claims a different worktree.
         worktree_path_preview, branch_name_preview = worktree.create_worktree(
-            session_id=args.session_id,
+            session_id=session_id,
             base_branch=args.branch,
             worktree_path_override=args.path,
             install_deps=args.install_deps if args.install_deps else None,
@@ -79,9 +92,8 @@ def main(args: argparse.Namespace) -> int:
 
         from edison.core.session.persistence.repository import SessionRepository
 
-        project_root = worktree.get_repo_dir()
         sess_repo = SessionRepository(project_root=project_root)
-        session_entity = sess_repo.get(args.session_id)
+        session_entity = sess_repo.get(session_id)
         if session_entity:
             session_found = True
             existing = (session_entity.to_dict().get("git") or {}).get("worktreePath")
@@ -104,7 +116,7 @@ def main(args: argparse.Namespace) -> int:
                         )
 
         worktree_path, branch_name = worktree.create_worktree(
-            session_id=args.session_id,
+            session_id=session_id,
             base_branch=args.branch,
             worktree_path_override=args.path,
             install_deps=args.install_deps if args.install_deps else None,
@@ -120,7 +132,7 @@ def main(args: argparse.Namespace) -> int:
                 data.setdefault("git", {})
                 data["git"].update(
                     worktree.prepare_session_git_metadata(
-                        args.session_id,
+                        session_id,
                         worktree_path,
                         branch_name,
                         base_branch=base_ref,
@@ -130,7 +142,7 @@ def main(args: argparse.Namespace) -> int:
                 session_updated = True
 
         result = {
-            "session_id": args.session_id,
+            "session_id": session_id,
             "worktree_path": str(worktree_path) if worktree_path else None,
             "branch_name": branch_name,
             "base_ref": base_ref,
@@ -149,7 +161,7 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"  Branch: {branch_name}")
                 formatter.text(f"  Base: {base_ref} ({cfg.get('baseBranchMode') or 'current'})")
             else:
-                formatter.text(f"Created worktree for session: {args.session_id}")
+                formatter.text(f"Created worktree for session: {session_id}")
                 formatter.text(f"  Path: {worktree_path}")
                 formatter.text(f"  Branch: {branch_name}")
                 formatter.text(f"  Base: {base_ref} ({cfg.get('baseBranchMode') or 'current'})")

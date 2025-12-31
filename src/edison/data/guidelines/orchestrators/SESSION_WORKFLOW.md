@@ -138,7 +138,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 ## 1. Keep the session record alive
 1. Use `edison session status <session-id>` at least every two hours to confirm every scoped task/QA still lives where you expect.
 2. Every time you run `edison task claim`/`status` or `edison qa new`, pass `--session <session-id>` so the scope lists stay accurate and the session's `Last Active` is refreshed.
-3. Work inside the session worktree shown by `edison session status` (typically `../${PROJECT}-worktrees/<session-id>`). If missing, restore with `edison git worktree-restore <session-id>` (or `worktree-create` for new sessions).
+3. Work inside the session worktree shown by `edison session status` (typically `../${PROJECT}-worktrees/<session-id>`). If missing, restore with `edison git worktree-restore [<session-id>]` (or `worktree-create` for new sessions).
 4. Log meaningful milestones (delegation dispatched, validators launched, follow-ups spawned, blockers encountered) in the session file’s Activity Log. This is the source of truth for resuming after crashes.
 
 ## 2. Implementation loop (per task) - ORCHESTRATOR DUTIES

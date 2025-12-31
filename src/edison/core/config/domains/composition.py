@@ -350,7 +350,9 @@ class CompositionConfig(BaseDomainConfig):
 
         rel_str = self._repo_relative_posix(path)
         rel = PurePosixPath(rel_str)
-        for rule in self.write_policy_rules:
+        # Last-match wins so higher-precedence layers (project → user → packs → core)
+        # can override default core rules after config merge.
+        for rule in reversed(self.write_policy_rules):
             for g in rule.globs:
                 if rel.match(g):
                     return rule.policy

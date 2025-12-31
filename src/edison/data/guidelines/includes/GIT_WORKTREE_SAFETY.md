@@ -24,7 +24,7 @@
 - To force a fixed base ref (e.g. always `main`): set `worktrees.baseBranchMode: fixed` + `worktrees.baseBranch: main` (or just `worktrees.baseBranch: main`).
 - Per command override:
   - `edison session create --base-branch <ref>`
-  - `edison git worktree-create <session-id> --branch <ref>`
+  - `edison git worktree-create [<session-id>] --branch <ref>`
 <!-- /section: worktree-base-ref -->
 
 <!-- section: git-safety -->

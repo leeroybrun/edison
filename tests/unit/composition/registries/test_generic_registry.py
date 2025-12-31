@@ -173,7 +173,7 @@ composition:
     ) -> None:
         """compose() must resolve {{include:...}} relative to bundled core_dir.
 
-        Core templates use include paths like `constitutions/agents-base.md`
+        Core templates use include paths like `constitutions/agents.md`
         which live under the bundled `edison.data` root, not the repo root.
         """
         from edison.core.composition.registries.generic import GenericRegistry

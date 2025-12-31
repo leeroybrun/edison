@@ -389,6 +389,32 @@ Owner: alice
 
 ---
 
+### session show - Show Raw Session JSON
+
+Print the session JSON record exactly as stored on disk.
+
+```bash
+edison session show <session_id> [options]
+```
+
+**Arguments:**
+
+- `session_id` - Session identifier (e.g., `sess-001`)
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON (includes parsed session + raw content) |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Debugging session metadata (worktree/branch linkage, state transitions)
+- Inspecting persisted session record for recovery
+
+---
+
 ### session next - Recommended Next Actions
 
 Compute and display recommended next actions for a session based on current state.
@@ -1022,6 +1048,32 @@ Valid transitions:
 
 ---
 
+### task show - Show Raw Task Markdown
+
+Print the task Markdown exactly as stored on disk.
+
+```bash
+edison task show <task_id> [options]
+```
+
+**Arguments:**
+
+- `task_id` - Task identifier (e.g., `150-wave1-auth-gate`)
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON (includes parsed task + raw content) |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Reading the full task brief, including YAML frontmatter
+- Debugging task parsing / composition issues
+
+---
+
 ### task waves - Plan Parallelizable Work (Waves)
 
 Compute topological “waves” of parallelizable **todo** tasks based on `depends_on`.
@@ -1359,15 +1411,13 @@ edison qa new <task_id> [options]
 |--------|-------------|
 | `--owner` | Validator owner (default: `_unassigned_`) |
 | `--session` | Session ID for context |
-| `--round` | Validation round number (default: create new round) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
 **When to Use:**
 
-- Starting QA process for completed task
-- Creating validation round
-- Initializing evidence collection
+- Ensuring a QA record exists before validation begins
+- Assigning/recording validator ownership and session context
 
 **Examples:**
 
@@ -1375,24 +1425,46 @@ edison qa new <task_id> [options]
 # Create QA brief for task
 edison qa new 150-auth-feature
 
-# Create with specific round
-edison qa new 150-auth-feature --round 2
-
 # Create with session context
 edison qa new 150-auth-feature --session sess-001 --owner alice
 ```
 
 **What It Does:**
 
-1. Creates evidence directory structure
-2. Initializes QA brief JSON file
-3. Sets up validation round
-4. Returns path to QA brief
+1. Ensures a QA Markdown record exists for the task (QA id is `<task_id>-qa`)
+2. Stores the record in session scope when a session is resolved, otherwise in global QA directories
+3. Returns the QA path (and parsed metadata in `--json` mode)
 
 **Exit Codes:**
 
 - `0` - QA brief created successfully
 - `1` - Error (task not found, round exists, etc.)
+
+---
+
+### qa show - Show Raw QA Markdown
+
+Print the QA Markdown exactly as stored on disk.
+
+```bash
+edison qa show <qa_id> [options]
+```
+
+**Arguments:**
+
+- `qa_id` - QA identifier (e.g., `150-wave1-auth-gate-qa`)
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON (includes parsed QA + raw content) |
+| `--repo-root` | Override repository root path |
+
+**When to Use:**
+
+- Reading the full QA brief, including YAML frontmatter
+- Debugging QA parsing / composition issues
 
 ---
 
@@ -2198,12 +2270,12 @@ Modified (1 files):
 Create a git worktree for a session.
 
 ```bash
-edison git worktree-create <session_id> [options]
+edison git worktree-create [session_id] [options]
 ```
 
 **Arguments:**
 
-- `session_id` - Session identifier (required)
+- `session_id` - Session identifier (optional, defaults to current session when omitted)
 
 **When to Use:**
 
@@ -2216,6 +2288,9 @@ edison git worktree-create <session_id> [options]
 ```bash
 # Create worktree for session
 edison git worktree-create sess-001
+
+# In a session context (AGENTS_SESSION / worktree .session-id), session_id is optional
+edison git worktree-create
 ```
 
 ---
@@ -2300,12 +2375,12 @@ edison git worktree-archive sess-001
 Restore an archived worktree.
 
 ```bash
-edison git worktree-restore <session_id> [options]
+edison git worktree-restore [session_id] [options]
 ```
 
 **Arguments:**
 
-- `session_id` - Session identifier (required)
+- `session_id` - Session identifier (optional, defaults to current session when omitted)
 
 **When to Use:**
 
@@ -2317,6 +2392,9 @@ edison git worktree-restore <session_id> [options]
 ```bash
 # Restore worktree
 edison git worktree-restore sess-001
+
+# In a session context (AGENTS_SESSION / worktree .session-id), session_id is optional
+edison git worktree-restore
 ```
 
 ---
