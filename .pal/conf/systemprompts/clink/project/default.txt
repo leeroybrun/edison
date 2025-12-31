@@ -2967,7 +2967,7 @@ All must pass with zero warnings.
 
 ## Guideline: includes/TASK_PLANNING
 
-# Task Planning (Parallelizable Waves) - Include-Only File
+# Task Waves (Parallelizable Waves) - Include-Only File
 <!-- WARNING: This file is for {{include-section:}} only. DO NOT read directly. -->
 
 <!-- section: orchestrator-step-snippet -->
@@ -2976,16 +2976,16 @@ All must pass with zero warnings.
 Compute parallelizable “waves” from `depends_on`:
 
 ```bash
-edison task plan
+edison task waves
 ```
 
 <!-- section: orchestrator-cli-snippet -->
 ## orchestrator-cli-snippet
 
-### Task Plan (Parallelizable Waves)
+### Task Waves (Parallelizable Waves)
 
 ```bash
-edison task plan [--json] [--cap <n>]
+edison task waves [--json] [--cap <n>]
 ```
 
 **Purpose**: Compute topological “waves” of **todo** tasks based on `depends_on`, so you can safely delegate independent work in parallel without reading every task file.
@@ -2999,7 +2999,7 @@ edison task plan [--json] [--cap <n>]
 <!-- section: orchestrator-constitution-snippet -->
 ## orchestrator-constitution-snippet
 
-Use `edison task plan` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
+Use `edison task waves` to compute parallelizable waves of todo tasks from `depends_on` (Wave 1 = “start now”), and respect `orchestration.maxConcurrentAgents`. Use `edison task blocked <task-id>` for “why blocked” explanations.
 <!-- /section: orchestrator-constitution-snippet -->
 
 ## Guideline: includes/TDD
@@ -3883,10 +3883,10 @@ edison session complete <session-id>
 
 ## orchestrator-cli-snippet
 
-### Task Plan (Parallelizable Waves)
+### Task Waves (Parallelizable Waves)
 
 ```bash
-edison task plan [--json] [--cap <n>]
+edison task waves [--json] [--cap <n>]
 ```
 
 **Purpose**: Compute topological “waves” of **todo** tasks based on `depends_on`, so you can safely delegate independent work in parallel without reading every task file.
@@ -3939,7 +3939,7 @@ edison task claim <task-id> [--session <session-id>]
 **Dependency enforcement**: Claim is fail-closed. If the task has unmet `depends_on`, the claim is blocked. Use:
 ```bash
 edison task blocked <task-id>
-edison task plan
+edison task waves
 ```
 
 **Example:**
@@ -4313,7 +4313,7 @@ edison session next sess-001
 
 # Orchestrator Guidelines (Core)
 
-- Own the session: scope tasks/QA, keep the session record current, and plan parallel work with `edison task plan` (respect the concurrency cap).
+- Own the session: scope tasks/QA, keep the session record current, and plan parallel work with `edison task waves` (respect the concurrency cap).
 - Delegate by default; only implement directly for trivial changes. Use the project’s delegation config and Pal role mappings.
 - Keep sub-agents independent: distinct roles/models for implementation vs validation.
 - Enforce TDD, Context7 refreshes for post-training packages, automation, and implementation reports before validation.
