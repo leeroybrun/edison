@@ -34,6 +34,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Override worktree path",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force linking the session to the created/restored worktree even if session already points elsewhere",
+    )
+    parser.add_argument(
         "--install-deps",
         action="store_true",
         help="Install dependencies after creation",
@@ -49,16 +54,80 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         cfg = worktree._config().get_worktree_config()
+        if not cfg.get("enabled", False):
+            raise RuntimeError(
+                "Worktrees are disabled (worktrees.enabled=false). "
+                "Enable worktrees in config or use `edison session create --no-worktree`."
+            )
         base_ref = worktree.resolve_worktree_base_ref(
             repo_dir=worktree.get_repo_dir(), cfg=cfg, override=args.branch
         )
 
+        # Fail fast if the session already claims a different worktree.
+        worktree_path_preview, branch_name_preview = worktree.create_worktree(
+            session_id=args.session_id,
+            base_branch=args.branch,
+            worktree_path_override=args.path,
+            install_deps=args.install_deps if args.install_deps else None,
+            dry_run=True,
+        )
+        if worktree_path_preview is None or branch_name_preview is None:
+            raise RuntimeError("Failed to compute worktree target (unexpected null path/branch)")
+
+        session_updated = False
+        session_found = False
+
+        from edison.core.session.persistence.repository import SessionRepository
+
+        project_root = worktree.get_repo_dir()
+        sess_repo = SessionRepository(project_root=project_root)
+        session_entity = sess_repo.get(args.session_id)
+        if session_entity:
+            session_found = True
+            existing = (session_entity.to_dict().get("git") or {}).get("worktreePath")
+            if existing:
+                try:
+                    if Path(str(existing)).resolve() != Path(worktree_path_preview).resolve() and not args.force:
+                        raise RuntimeError(
+                            "Session is already linked to a different worktree. "
+                            f"Existing: {existing}. Target: {worktree_path_preview}. "
+                            "Re-run with --force to override."
+                        )
+                except RuntimeError:
+                    raise
+                except Exception:
+                    if not args.force:
+                        raise RuntimeError(
+                            "Session is already linked to a different worktree. "
+                            f"Existing: {existing}. Target: {worktree_path_preview}. "
+                            "Re-run with --force to override."
+                        )
+
         worktree_path, branch_name = worktree.create_worktree(
             session_id=args.session_id,
             base_branch=args.branch,
+            worktree_path_override=args.path,
             install_deps=args.install_deps if args.install_deps else None,
             dry_run=args.dry_run,
         )
+
+        # Persist git metadata back into the session record (when it exists).
+        if not args.dry_run and worktree_path and branch_name and session_entity:
+            from edison.core.session.core.models import Session
+
+            if session_entity:
+                data = session_entity.to_dict()
+                data.setdefault("git", {})
+                data["git"].update(
+                    worktree.prepare_session_git_metadata(
+                        args.session_id,
+                        worktree_path,
+                        branch_name,
+                        base_branch=base_ref,
+                    )
+                )
+                sess_repo.save(Session.from_dict(data))
+                session_updated = True
 
         result = {
             "session_id": args.session_id,
@@ -67,6 +136,8 @@ def main(args: argparse.Namespace) -> int:
             "base_ref": base_ref,
             "base_branch_mode": cfg.get("baseBranchMode"),
             "dry_run": args.dry_run,
+            "session_found": session_found,
+            "session_updated": session_updated,
         }
 
         if args.json:

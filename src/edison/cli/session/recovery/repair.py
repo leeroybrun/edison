@@ -72,8 +72,8 @@ def main(args: argparse.Namespace) -> int:
 
         if args.all or args.fix_worktree:
             # Fix worktree issues
-            health = worktree_health_check(session_id)
-            if not health.get("healthy", True):
+            ok, _notes = worktree_health_check()
+            if not ok:
                 fixes_applied.append("worktree")
 
         # Update session metadata

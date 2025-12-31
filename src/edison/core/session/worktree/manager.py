@@ -1211,6 +1211,7 @@ def resolve_worktree_target(session_id: str) -> tuple[Path, str]:
 def create_worktree(
     session_id: str,
     base_branch: Optional[str] = None,
+    worktree_path_override: Optional[str] = None,
     install_deps: Optional[bool] = None,
     dry_run: bool = False,
 ) -> tuple[Optional[Path], Optional[str]]:
@@ -1243,6 +1244,11 @@ def create_worktree(
             return
 
     worktree_path, branch_name = _resolve_worktree_target(session_id, config)
+    if worktree_path_override:
+        override = Path(str(worktree_path_override))
+        if not override.is_absolute():
+            override = ((get_worktree_parent(repo_dir) or repo_dir) / override).resolve()
+        worktree_path = override
     base_branch_value = resolve_worktree_base_ref(repo_dir=repo_dir, cfg=config, override=base_branch)
 
     existing_wt = get_existing_worktree_path(branch_name)
@@ -1495,7 +1501,13 @@ def _run_post_install_commands(*, worktree_path: Path, commands: list[str], time
             )
 
 
-def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_run: bool = False) -> Path:
+def restore_worktree(
+    session_id: str,
+    *,
+    source: Optional[str] = None,
+    base_branch: Optional[str] = None,
+    dry_run: bool = False,
+) -> Path:
     """Restore a worktree from archive directory back to active worktrees.
 
     Note: Since archive_worktree removes the worktree from git's tracking,
@@ -1508,7 +1520,13 @@ def restore_worktree(session_id: str, *, base_branch: Optional[str] = None, dry_
 
     worktree_path, branch_name = _resolve_worktree_target(session_id, cfg)
     archive_full = _resolve_archive_directory(cfg, repo_dir)
-    src = archive_full / session_id
+    src_root = archive_full
+    if source:
+        p = Path(str(source))
+        if not p.is_absolute():
+            p = ((get_worktree_parent(repo_dir) or repo_dir) / p).resolve()
+        src_root = p
+    src = src_root if src_root.name == session_id else (src_root / session_id)
     if not src.exists():
         raise RuntimeError(f"Archived worktree not found: {src}")
 
