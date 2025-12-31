@@ -12,6 +12,7 @@ Design principles:
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import tempfile
 import time
@@ -149,12 +150,12 @@ class CLIEngine:
 
     def run(
         self,
-        validator: "ValidatorMetadata",
+        validator: ValidatorMetadata,
         task_id: str,
         session_id: str,
         worktree_path: Path,
         round_num: int | None = None,
-        evidence_service: "EvidenceService | None" = None,
+        evidence_service: EvidenceService | None = None,
     ) -> ValidationResult:
         """Execute the validator CLI and return results.
 
@@ -225,6 +226,7 @@ class CLIEngine:
                 cmd_parts[0],
                 extra_args=cmd_parts[1:],
                 cwd=worktree_path,
+                env=env,
                 timeout=validator.timeout,
                 capture_output=True,
                 text=True,
@@ -282,7 +284,7 @@ class CLIEngine:
 
     def _build_command(
         self,
-        validator: "ValidatorMetadata",
+        validator: ValidatorMetadata,
         worktree_path: Path,
         *,
         prompt_args: list[str] | None = None,
@@ -340,12 +342,12 @@ class CLIEngine:
     def _render_prompt_text(
         self,
         *,
-        validator: "ValidatorMetadata",
+        validator: ValidatorMetadata,
         task_id: str,
         session_id: str,
         worktree_path: Path,
         round_num: int | None,
-        evidence_service: "EvidenceService | None",
+        evidence_service: EvidenceService | None,
     ) -> str:
         prompt_path = self._resolve_prompt_path(validator.prompt)
         base = ""
@@ -475,7 +477,7 @@ class CLIEngine:
 
     def _save_evidence(
         self,
-        evidence_service: "EvidenceService",
+        evidence_service: EvidenceService,
         validator_id: str,
         stdout: str,
         stderr: str,
@@ -525,7 +527,7 @@ class CLIEngine:
 
     def _to_validation_result(
         self,
-        validator: "ValidatorMetadata",
+        validator: ValidatorMetadata,
         parsed: dict[str, Any],
         stdout: str,
         stderr: str,
