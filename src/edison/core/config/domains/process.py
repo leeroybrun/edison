@@ -6,13 +6,22 @@ Edison processes, and script markers for session ID inference.
 from __future__ import annotations
 
 from functools import cached_property
-from typing import List
 
 from ..base import BaseDomainConfig
 
 # Default values as fallbacks (kept small; config expands these as needed)
-DEFAULT_LLM_NAMES = ["claude", "codex", "gemini", "cursor", "aider", "happy"]
+DEFAULT_LLM_NAMES = ["claude", "codex", "gemini", "cursor", "aider", "happy", "opencode"]
 DEFAULT_EDISON_NAMES = ["edison", "python"]
+DEFAULT_LLM_SCRIPT_MARKERS = ["happy", "claude", "codex", "cursor", "gemini", "aider", "opencode"]
+DEFAULT_LLM_MARKER_MAP = {
+    "happy": "happy",
+    "claude": "claude",
+    "codex": "codex",
+    "cursor": "cursor",
+    "gemini": "gemini",
+    "aider": "aider",
+    "opencode": "opencode",
+}
 
 
 class ProcessConfig(BaseDomainConfig):
@@ -30,19 +39,62 @@ class ProcessConfig(BaseDomainConfig):
         return "process"
 
     @cached_property
-    def llm_processes(self) -> List[str]:
+    def llm_processes(self) -> list[str]:
         """Get list of known LLM/AI assistant process names.
 
         Returns:
             List of LLM process names (default: claude, codex, gemini, etc.).
         """
         names = self.section.get("llm_processes")
+        if names is None:
+            llm_section = self.section.get("llm")
+            if isinstance(llm_section, dict):
+                names = llm_section.get("processNames") or llm_section.get("process_names")
         if isinstance(names, list):
             return [str(n).lower() for n in names if str(n).strip()]
         return list(DEFAULT_LLM_NAMES)
 
     @cached_property
-    def edison_processes(self) -> List[str]:
+    def llm_script_markers(self) -> list[str]:
+        """Get cmdline markers used to detect wrapper CLIs with generic process names.
+
+        Returns:
+            List of lowercase marker substrings to match against the full cmdline.
+        """
+        markers = self.section.get("llm_script_markers")
+        if markers is None:
+            llm_section = self.section.get("llm")
+            if isinstance(llm_section, dict):
+                markers = llm_section.get("scriptMarkers") or llm_section.get("script_markers")
+        if isinstance(markers, list):
+            return [str(m).strip().lower() for m in markers if str(m).strip()]
+        return list(DEFAULT_LLM_SCRIPT_MARKERS)
+
+    @cached_property
+    def llm_marker_map(self) -> dict[str, str]:
+        """Get marker -> canonical wrapper name mapping.
+
+        Returns:
+            Dict mapping lowercase marker keys to lowercase canonical wrapper names.
+        """
+        raw = self.section.get("llm_marker_map")
+        if raw is None:
+            llm_section = self.section.get("llm")
+            if isinstance(llm_section, dict):
+                raw = llm_section.get("markerMap") or llm_section.get("marker_map")
+        if isinstance(raw, dict):
+            out: dict[str, str] = {}
+            for k, v in raw.items():
+                key = str(k).strip().lower()
+                val = str(v).strip().lower()
+                if key and val:
+                    out[key] = val
+            if out:
+                return out
+        return dict(DEFAULT_LLM_MARKER_MAP)
+
+    @cached_property
+    def edison_processes(self) -> list[str]:
         """Get list of Edison process patterns.
 
         Returns:
@@ -54,7 +106,7 @@ class ProcessConfig(BaseDomainConfig):
         return list(DEFAULT_EDISON_NAMES)
 
     @cached_property
-    def edison_script_markers(self) -> List[str]:
+    def edison_script_markers(self) -> list[str]:
         """Get list of command-line markers that indicate Edison scripts.
 
         Returns:
@@ -74,15 +126,23 @@ class ProcessConfig(BaseDomainConfig):
         except Exception:
             return ["edison", ".edison"]
 
-    def get_llm_processes(self) -> List[str]:
+    def get_llm_processes(self) -> list[str]:
         """Get list of known LLM/AI assistant process names."""
         return self.llm_processes
 
-    def get_edison_processes(self) -> List[str]:
+    def get_llm_script_markers(self) -> list[str]:
+        """Get cmdline markers used to detect wrapper CLIs."""
+        return self.llm_script_markers
+
+    def get_llm_marker_map(self) -> dict[str, str]:
+        """Get marker -> canonical wrapper name mapping."""
+        return self.llm_marker_map
+
+    def get_edison_processes(self) -> list[str]:
         """Get list of Edison process patterns."""
         return self.edison_processes
 
-    def get_edison_script_markers(self) -> List[str]:
+    def get_edison_script_markers(self) -> list[str]:
         """Get list of command-line markers that indicate Edison scripts."""
         return self.edison_script_markers
 
@@ -91,4 +151,6 @@ __all__ = [
     "ProcessConfig",
     "DEFAULT_LLM_NAMES",
     "DEFAULT_EDISON_NAMES",
+    "DEFAULT_LLM_SCRIPT_MARKERS",
+    "DEFAULT_LLM_MARKER_MAP",
 ]

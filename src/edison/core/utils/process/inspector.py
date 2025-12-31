@@ -17,6 +17,7 @@ import psutil  # Required dependency - stable process tree inference
 
 HAS_PSUTIL = True  # Always True since psutil is now required
 
+
 def _load_llm_process_names() -> list[str]:
     """Load LLM process names from configuration with safe defaults."""
     try:
@@ -25,7 +26,37 @@ def _load_llm_process_names() -> list[str]:
 
         return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_processes()
     except Exception:
-        return ["claude", "codex", "gemini", "cursor", "aider", "happy"]
+        return ["claude", "codex", "gemini", "cursor", "aider", "happy", "opencode"]
+
+
+def _load_llm_script_markers() -> list[str]:
+    """Load command-line markers that indicate an LLM wrapper CLI."""
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_script_markers()
+    except Exception:
+        return ["happy", "claude", "codex", "cursor", "gemini", "aider", "opencode"]
+
+
+def _load_llm_marker_map() -> dict[str, str]:
+    """Load marker -> canonical wrapper name mapping."""
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_marker_map()
+    except Exception:
+        return {
+            "happy": "happy",
+            "claude": "claude",
+            "codex": "codex",
+            "cursor": "cursor",
+            "gemini": "gemini",
+            "aider": "aider",
+            "opencode": "opencode",
+        }
 
 
 def _load_edison_process_names() -> list[str]:
@@ -59,6 +90,24 @@ def _is_edison_script(cmdline: list[str]) -> bool:
     """Check if a command line indicates an Edison script invocation."""
     cmdline_str = " ".join(cmdline).lower()
     return any(marker in cmdline_str for marker in _load_edison_script_markers())
+
+
+def _match_llm_wrapper(name: str, cmdline: list[str]) -> str | None:
+    """Return canonical wrapper name if this process appears to be an LLM wrapper."""
+    llm_names = [n.strip().lower() for n in _load_llm_process_names() if str(n).strip()]
+    if name in llm_names:
+        return name
+
+    cmdline_str = " ".join(cmdline).lower()
+    markers = [m.strip().lower() for m in _load_llm_script_markers() if str(m).strip()]
+    marker_map = {
+        str(k).strip().lower(): str(v).strip().lower()
+        for k, v in _load_llm_marker_map().items()
+    }
+    for marker in markers:
+        if marker and marker in cmdline_str:
+            return marker_map.get(marker, marker)
+    return None
 
 
 def is_process_alive(pid: int) -> bool:
@@ -106,59 +155,66 @@ def find_topmost_process() -> tuple[str, int]:
         Tuple[str, int]: (process_name, pid) of the topmost matching process
     """
     try:
-        llm_names = _load_llm_process_names()
-        edison_names = _load_edison_process_names()
-
-        current = psutil.Process(os.getpid())
-        highest_match: tuple[str, int] | None = None
-
-        while current:
-            try:
-                name_raw = (current.name() or "").lower()
-                name = "python" if name_raw.startswith("python") else name_raw
-            except psutil.AccessDenied:
-                name = ""
-            except (psutil.NoSuchProcess, psutil.ZombieProcess):
-                break
-
-            try:
-                cmdline = current.cmdline()
-            except psutil.AccessDenied:
-                cmdline = []
-            except (psutil.NoSuchProcess, psutil.ZombieProcess):
-                break
-
-            # Check for LLM process - always update highest_match when found
-            if name in llm_names:
-                highest_match = (name, current.pid)
-
-            # Check for Edison process - always update highest_match when found
-            elif name in edison_names:
-                if name == "python":
-                    # For python processes, verify it's actually running Edison
-                    if _is_edison_script(cmdline):
-                        highest_match = ("edison", current.pid)
-                else:
-                    highest_match = ("edison", current.pid)
-
-            try:
-                parent = current.parent()
-                if parent is None:
-                    break
-            except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
-                break
-
-            current = parent
-
-        if highest_match:
-            return highest_match
-
-        # Fallback: default to current PID with generic python label
-        return ("python", os.getpid())
+        return _find_topmost_process_from(psutil.Process(os.getpid()))
 
     except Exception:
         # Final fallback if anything unexpected occurs
         return ("python", os.getpid())
+
+def _find_topmost_process_from(start: psutil.Process) -> tuple[str, int]:
+    """Internal helper to find the topmost-of-either match from an arbitrary start process.
+
+    This is used for deterministic unit tests without relying on the real OS process tree.
+    """
+    edison_names = _load_edison_process_names()
+
+    current = start
+    highest_match: tuple[str, int] | None = None
+
+    while current:
+        try:
+            name_raw = (current.name() or "").lower()
+            name = "python" if name_raw.startswith("python") else name_raw
+        except psutil.AccessDenied:
+            name = ""
+        except (psutil.NoSuchProcess, psutil.ZombieProcess):
+            break
+
+        try:
+            cmdline = current.cmdline()
+        except psutil.AccessDenied:
+            cmdline = []
+        except (psutil.NoSuchProcess, psutil.ZombieProcess):
+            break
+
+        # Check for LLM wrapper (by name OR cmdline markers). Always update highest_match.
+        llm_name = _match_llm_wrapper(name, cmdline)
+        if llm_name:
+            highest_match = (llm_name, current.pid)
+
+        # Check for Edison process - always update highest_match when found
+        elif name in edison_names:
+            if name == "python":
+                # For python processes, verify it's actually running Edison
+                if _is_edison_script(cmdline):
+                    highest_match = ("edison", current.pid)
+            else:
+                highest_match = ("edison", current.pid)
+
+        try:
+            parent = current.parent()
+            if parent is None:
+                break
+        except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
+            break
+
+        current = parent
+
+    if highest_match:
+        return highest_match
+
+    # Fallback: default to current PID with generic python label
+    return ("python", os.getpid())
 
 
 def infer_session_id() -> str:
@@ -192,8 +248,7 @@ __all__ = [
     "HAS_PSUTIL",
     "is_process_alive",
     "find_topmost_process",
+    "_find_topmost_process_from",
     "infer_session_id",
     "get_current_owner",
 ]
-
-

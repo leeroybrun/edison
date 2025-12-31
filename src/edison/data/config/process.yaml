@@ -9,6 +9,30 @@ process:
     - cursor
     - aider
     - happy
+    - opencode
+
+  # Optional: cmdline markers to detect wrapper CLIs when the process name is generic
+  # (e.g. "node", "python", "zsh"). Markers are substring-matched against the full cmdline.
+  #
+  # Use markerMap to normalize a marker to a canonical wrapper name.
+  llm_script_markers:
+    - happy
+    - claude
+    - codex
+    - cursor
+    - gemini
+    - aider
+    - opencode
+
+  # Optional: map marker -> canonical wrapper name
+  llm_marker_map:
+    happy: happy
+    claude: claude
+    codex: codex
+    cursor: cursor
+    gemini: gemini
+    aider: aider
+    opencode: opencode
 
   # Edison process patterns
   edison_processes:
@@ -20,4 +44,3 @@ process:
   edison_script_markers:
     - edison
     - "{PROJECT_CONFIG_DIR}"
-
