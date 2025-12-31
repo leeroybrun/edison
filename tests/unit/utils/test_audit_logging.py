@@ -285,3 +285,68 @@ def test_audit_jsonl_sink_disabled_produces_no_log_file(tmp_path: Path, monkeypa
 
     log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert not log_path.exists()
+
+
+def test_cli_invocation_includes_task_id_when_task_arg_is_present(tmp_path: Path, monkeypatch) -> None:
+    repo = create_repo_with_git(tmp_path, name="repo")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
+    _enable_logging(repo)
+    reset_edison_caches()
+
+    from edison.core.task.models import Task
+    from edison.core.task.repository import TaskRepository
+
+    task_repo = TaskRepository(project_root=repo)
+    task_repo.create(Task.create("task-xyz", title="Audit task id test"))
+
+    rc = edison_main(["qa", "new", "task-xyz", "--repo-root", str(repo)])
+    assert rc == 0
+
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
+    assert log_path.exists()
+    events = [json.loads(ln) for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+
+    starts = [e for e in events if e.get("event") == "cli.invocation.start"]
+    assert starts, "expected at least one cli.invocation.start event"
+    assert starts[-1].get("task_id") == "task-xyz"
+
+    ends = [e for e in events if e.get("event") == "cli.invocation.end"]
+    assert ends, "expected at least one cli.invocation.end event"
+    assert ends[-1].get("task_id") == "task-xyz"
+
+
+def test_legacy_audit_project_path_is_treated_as_canonical_path(tmp_path: Path, monkeypatch) -> None:
+    repo = create_repo_with_git(tmp_path, name="repo")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
+
+    cfg_dir = repo / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    write_yaml(
+        cfg_dir / "logging.yaml",
+        {
+            "logging": {
+                "enabled": True,
+                "audit": {
+                    "enabled": True,
+                    "sinks": {
+                        "jsonl": {
+                            "enabled": True,
+                            "paths": {
+                                "project": ".project/logs/edison/audit.jsonl",
+                                "session": ".project/logs/edison/audit-session-{session_id}.jsonl",
+                            },
+                        }
+                    },
+                },
+            }
+        },
+    )
+    reset_edison_caches()
+
+    from edison.core.audit.logger import audit_event
+
+    audit_event("hook.test", repo_root=repo, hello="world")
+
+    # Canonical sink path should be honored even when configured via legacy keys.
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
+    assert log_path.exists()

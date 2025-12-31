@@ -374,6 +374,33 @@ def _extract_session_id_from_args(args: argparse.Namespace) -> Optional[str]:
     return None
 
 
+def _extract_task_id_from_args(args: argparse.Namespace) -> str | None:
+    # Prefer explicit task_id fields used by QA/validation commands.
+    raw = getattr(args, "task_id", None)
+    if raw:
+        return str(raw)
+
+    # Many task commands use a positional `record_id` that can refer to either a task or a QA record.
+    record_id = getattr(args, "record_id", None)
+    if record_id:
+        try:
+            from edison.cli._utils import detect_record_type
+
+            if detect_record_type(str(record_id)) != "task":
+                return None
+        except Exception:
+            return None
+
+        try:
+            from edison.core.task import normalize_record_id
+
+            return normalize_record_id("task", str(record_id))
+        except Exception:
+            return str(record_id)
+
+    return None
+
+
 def _is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
     """Best-effort classification of whether a CLI invocation mutates project state.
 
@@ -853,6 +880,7 @@ def main(argv: list[str] | None = None) -> int:
 
             result = 1
             session_id = _extract_session_id_from_args(args)
+            task_id = _extract_task_id_from_args(args)
             if session_id is None and audit_repo_root is not None:
                 try:
                     from edison.core.session.core.id import detect_session_id
@@ -862,13 +890,14 @@ def main(argv: list[str] | None = None) -> int:
                     session_id = None
             if audit_repo_root is not None:
                 try:
-                    from edison.core.audit import audit_invocation, InvocationAudit
+                    from edison.core.audit import audit_invocation
 
                     inv_cm = audit_invocation(
                         argv=list(argv),
                         command_name=command_name,
                         repo_root=audit_repo_root,
                         session_id=session_id,
+                        task_id=task_id,
                     )
                 except Exception:
                     inv_cm = nullcontext()

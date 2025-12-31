@@ -11,6 +11,7 @@ class AuditContext:
     argv: Sequence[str]
     command_name: str
     session_id: str | None = None
+    task_id: str | None = None
 
 
 _AUDIT_CONTEXT: ContextVar[AuditContext | None] = ContextVar("_AUDIT_CONTEXT", default=None)

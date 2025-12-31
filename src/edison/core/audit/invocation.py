@@ -21,6 +21,7 @@ def audit_invocation(
     command_name: str,
     repo_root: Path,
     session_id: str | None,
+    task_id: str | None,
 ) -> Iterator[InvocationAudit | None]:
     """Emit invocation start/end events and optionally tee stdio (fail-open)."""
     try:
@@ -53,6 +54,7 @@ def audit_invocation(
                 argv=list(argv),
                 command_name=command_name,
                 session_id=session_id,
+                task_id=task_id,
             )
         )
 

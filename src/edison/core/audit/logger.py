@@ -58,6 +58,7 @@ def audit_event(event: str, *, repo_root: Path | None = None, **fields: Any) -> 
     ctx = get_audit_context()
     invocation_id = ctx.invocation_id if ctx is not None else None
     session_id = ctx.session_id if ctx is not None else None
+    task_id = ctx.task_id if ctx is not None else None
 
     tokens = cfg.build_tokens(
         invocation_id=invocation_id,
@@ -76,6 +77,7 @@ def audit_event(event: str, *, repo_root: Path | None = None, **fields: Any) -> 
         "pid": os.getpid(),
         "invocation_id": invocation_id,
         "session_id": session_id,
+        "task_id": task_id,
         "project_root": str(root),
     }
     payload.update(fields)
