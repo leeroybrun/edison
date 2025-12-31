@@ -94,14 +94,13 @@ def is_process_alive(pid: int) -> bool:
 def find_topmost_process() -> tuple[str, int]:
     """Walk up process tree to find the topmost Edison or LLM process.
 
-    Priority order:
-    1) Highest LLM wrapper process in the parent chain (Claude, Codex, Cursor, etc.)
-    2) Highest Edison process in the chain
-    3) Current process (fallback when nothing matches - uses current PID for stability)
+    Edison and LLM processes have equal weight - we simply find whichever
+    is highest in the process tree. This handles cases like:
+    - edison1 -> llm -> edison2: returns edison1
+    - llm1 -> edison1 -> llm2 -> edison2: returns llm1
+    - edison orchestrator launch -> claude: returns edison
 
-    The key improvement from task 001-session-id-inference is that we prefer the
-    **highest** LLM wrapper in the tree, making the session ID stable across
-    repeated CLI invocations within the same IDE session.
+    Fallback: current process PID when nothing matches.
 
     Returns:
         Tuple[str, int]: (process_name, pid) of the topmost matching process
@@ -129,15 +128,14 @@ def find_topmost_process() -> tuple[str, int]:
             except (psutil.NoSuchProcess, psutil.ZombieProcess):
                 break
 
-            # LLM check (highest priority - provides session stability)
+            # Check for LLM process - always update highest_match when found
             if name in llm_names:
                 highest_match = (name, current.pid)
 
-            # Edison check only if no LLM seen yet
-            elif name in edison_names and (
-                not highest_match or highest_match[0] not in llm_names
-            ):
+            # Check for Edison process - always update highest_match when found
+            elif name in edison_names:
                 if name == "python":
+                    # For python processes, verify it's actually running Edison
                     if _is_edison_script(cmdline):
                         highest_match = ("edison", current.pid)
                 else:
