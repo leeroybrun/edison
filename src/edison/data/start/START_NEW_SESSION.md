@@ -16,7 +16,8 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 3. **Display Status**
    Run: `edison session status`
    Run: `edison session context`
-   Run: `edison task status`
+   Run: `edison task list --status wip`
+   Run: `edison task ready`
 
 {{include:start/includes/TASK_PLANNING.md}}
 
