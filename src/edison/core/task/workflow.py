@@ -98,7 +98,9 @@ class TaskQAWorkflow:
         """
         from edison.core.exceptions import TaskStateError
         from edison.core.config.domains.workflow import WorkflowConfig
+        from edison.core.task import normalize_record_id
 
+        task_id = normalize_record_id("task", task_id)
         # Check if task already exists
         if self.task_repo.exists(task_id):
             raise TaskStateError(f"Task {task_id} already exists")
@@ -395,6 +397,9 @@ class TaskQAWorkflow:
         from edison.core.qa.models import QARecord
         from edison.core.config.domains.workflow import WorkflowConfig
 
+        from edison.core.task import normalize_record_id
+
+        task_id = normalize_record_id("task", task_id)
         task = self.task_repo.get(task_id)
         if not task:
             raise PersistenceError(f"Task not found: {task_id}")
