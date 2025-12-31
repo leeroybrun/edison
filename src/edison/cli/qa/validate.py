@@ -547,9 +547,34 @@ def _execute_with_executor(
     if result.delegated_validators:
         formatter.text("")
         formatter.text("═══ ORCHESTRATOR ACTION REQUIRED ═══")
-        formatter.text("The following validators could not execute directly (CLI not available):")
+        formatter.text("The following validators could not execute directly:")
         for validator_id in result.delegated_validators:
-            formatter.text(f"  → {validator_id}")
+            try:
+                details = executor.can_execute_validator_details(validator_id)
+            except Exception:
+                details = {"validatorId": validator_id, "canExecute": False, "reason": "unknown"}
+
+            reason = str(details.get("reason") or "unknown")
+            detail = str(details.get("detail") or "").strip()
+            command = details.get("command")
+
+            hint = ""
+            if reason == "disabled_by_config":
+                hint = "disabled by config (set orchestration.allowCliEngines=true)"
+            elif reason == "binary_missing":
+                hint = f"command missing: {command}" if command else "command missing"
+            elif reason == "config_error":
+                hint = "config error"
+            elif reason == "no_command":
+                hint = "engine missing command"
+            elif reason == "unknown_validator":
+                hint = "unknown validator"
+            else:
+                hint = reason
+
+            formatter.text(f"  → {validator_id}: {hint}")
+            if detail:
+                formatter.text(f"    {detail}")
         formatter.text("")
         formatter.text("Delegation instructions saved to evidence folder.")
         formatter.text("The orchestrator/LLM must:")
