@@ -42,7 +42,7 @@ worktrees:
     #   sharedPaths: ["+", {path: ".pal", enabled: false}]
     sharedPaths:
       # Project management state (meta-managed).
-      # Commit policy default: tasks + qa are committable; sessions/logs/archive are not.
+      # Commit policy default: tasks + qa + sessions are committable; logs/archive are not.
       - path: ".project/tasks"
         scopes: ["primary", "session"]
         commitAllowed: true
@@ -51,7 +51,7 @@ worktrees:
         commitAllowed: true
       - path: ".project/sessions"
         scopes: ["primary", "session"]
-        commitAllowed: false
+        commitAllowed: true
       - path: ".project/logs"
         scopes: ["primary", "session"]
         commitAllowed: false
@@ -106,7 +106,6 @@ worktrees:
         - ".project/"
         - ".edison/_generated/"
       meta:
-        - ".project/sessions/"
         - ".project/logs/"
         - ".project/archive/"
         - ".edison/_generated/"
