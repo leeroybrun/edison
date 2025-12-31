@@ -374,6 +374,26 @@ rules:
     - If something is in an impossible combination, correct it via guarded CLIs.
 
     Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
+- id: RULE.GIT.NO_DESTRUCTIVE_DEFAULT
+  title: Never “clean up” unrelated diffs with destructive git
+  category: git
+  blocking: false
+  severity: warning
+  applies_to: [agent, orchestrator, validator]
+  sourcePath: guidelines/shared/GIT_WORKFLOW.md
+  guidance: |
+    Never revert, reset, or “clean up” unrelated/uncommitted changes unless the user explicitly asks.
+
+    In multi-LLM sessions it is normal to see unrelated diffs from other in-flight work. Do not:
+    - run `git reset`, `git restore`, `git clean`, `git checkout -- <path>`, `git switch`, etc.
+    - delete or revert “unwanted modifications” on your own initiative
+
+    If you believe a change is truly accidental, escalate and ask before taking any destructive action.
+
+    Reference: `guidelines/shared/GIT_WORKFLOW.md`
+  cli:
+    commands: ["session create", "orchestrator start", "qa validate", "qa promote", "task claim", "*"]
+    timing: before
 - id: RULE.SESSION.CLOSE_NO_BLOCKERS
   title: Close session only when no blockers remain and all scope is validated
   category: session
