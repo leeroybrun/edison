@@ -391,7 +391,11 @@ class TaskQAWorkflow:
     ) -> "QARecord":
         """Ensure the associated QA record exists (create if missing).
 
-        Canonical QA records live under `<project-management-dir>/qa/<state>/<task-id>-qa.md`.
+        Canonical QA records live under `<project-management-dir>/qa/<state>/<task-id>-qa.md`
+        when they are global (no session), or under the session-scoped queue
+        `<project-management-dir>/sessions/<state>/<session-id>/qa/<state>/<task-id>-qa.md`
+        when a session context is provided.
+
         Evidence lives under `<project-management-dir>/qa/<evidence-subdir>/<task-id>/round-N/`.
         """
         from edison.core.qa.models import QARecord
