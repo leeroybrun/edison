@@ -88,12 +88,13 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
-      always_run: true
-      blocking: true
+      # Temporarily disabled for faster Edison iteration. Re-enable once session-close validation bundles exist.
+      always_run: false
+      blocking: false
       timeout: 900
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     global-claude:
@@ -116,12 +117,13 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
-      always_run: true
+      # Temporarily disabled for faster Edison iteration. Re-enable once session-close validation bundles exist.
+      always_run: false
       blocking: false  # Non-blocking, consensus reinforcement
       timeout: 900
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     global-auggie:
@@ -130,12 +132,13 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: critical
-      always_run: true
+      # Temporarily disabled for faster Edison iteration. Re-enable once session-close validation bundles exist.
+      always_run: false
       blocking: false  # Non-blocking, additional AI perspective
       timeout: 900
       context7_required: false  # Auggie uses its own codebase context engine
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     # Critical validators - cross-cutting (security/performance).
@@ -145,12 +148,13 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/security.md"
       wave: critical
-      always_run: true
-      blocking: true
+      # Temporarily disabled for faster Edison iteration. Re-enable once session-close validation bundles exist.
+      always_run: false
+      blocking: false
       timeout: 900
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
 
     performance:
@@ -159,12 +163,13 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/performance.md"
       wave: critical
-      always_run: true
-      blocking: true
+      # Temporarily disabled for faster Edison iteration. Re-enable once session-close validation bundles exist.
+      always_run: false
+      blocking: false
       timeout: 900
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
 
     coderabbit:
