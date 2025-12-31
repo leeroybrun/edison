@@ -12,13 +12,17 @@ Workflow operations include:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from edison.core.entity import EntityMetadata, PersistenceError
 from edison.core.utils.paths import PathResolver
 
 from .models import Task
 from .repository import TaskRepository
+
+if TYPE_CHECKING:
+    from edison.core.qa.models import QARecord
+    from edison.core.qa.workflow.repository import QARepository
 
 
 class TaskQAWorkflow:
@@ -35,15 +39,15 @@ class TaskQAWorkflow:
         task = workflow.complete_task("T-001", "session-abc")
     """
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(self, project_root: Path | None = None) -> None:
         """Initialize workflow orchestrator.
 
         Args:
             project_root: Project root directory
         """
         self.project_root = project_root or PathResolver.resolve_project_root()
-        self._task_repo: Optional[TaskRepository] = None
-        self._qa_repo = None  # Lazy import to avoid circular dependency
+        self._task_repo: TaskRepository | None = None
+        self._qa_repo: QARepository | None = None  # Lazy import to avoid circular dependency
 
     @property
     def task_repo(self) -> TaskRepository:
@@ -53,7 +57,7 @@ class TaskQAWorkflow:
         return self._task_repo
 
     @property
-    def qa_repo(self):
+    def qa_repo(self) -> QARepository:
         """Get or create QARepository (lazy initialization)."""
         if self._qa_repo is None:
             from edison.core.qa.workflow.repository import QARepository
@@ -68,10 +72,10 @@ class TaskQAWorkflow:
         title: str,
         *,
         description: str = "",
-        session_id: Optional[str] = None,
-        owner: Optional[str] = None,
-        parent_id: Optional[str] = None,
-        continuation_id: Optional[str] = None,
+        session_id: str | None = None,
+        owner: str | None = None,
+        parent_id: str | None = None,
+        continuation_id: str | None = None,
         create_qa: bool = True,
     ) -> Task:
         """Create a new task with optional QA record.
@@ -96,8 +100,8 @@ class TaskQAWorkflow:
         Raises:
             TaskStateError: If task already exists
         """
-        from edison.core.exceptions import TaskStateError
         from edison.core.config.domains.workflow import WorkflowConfig
+        from edison.core.exceptions import TaskStateError
         from edison.core.task import normalize_record_id
 
         task_id = normalize_record_id("task", task_id)
@@ -108,7 +112,7 @@ class TaskQAWorkflow:
         # Determine initial state
         todo_state = WorkflowConfig().get_semantic_state("task", "todo")
 
-        resolved_parent_id: Optional[str] = None
+        resolved_parent_id: str | None = None
         if parent_id:
             raw_parent = str(parent_id).strip()
             if not raw_parent:
@@ -177,7 +181,15 @@ class TaskQAWorkflow:
 
         return task
 
-    def claim_task(self, task_id: str, session_id: str, *, owner: Optional[str] = None) -> Task:
+    def claim_task(
+        self,
+        task_id: str,
+        session_id: str,
+        *,
+        owner: str | None = None,
+        takeover: bool = False,
+        takeover_reason: str | None = None,
+    ) -> Task:
         """Claim a task for a session (todo -> wip transition).
 
         This workflow operation:
@@ -200,7 +212,9 @@ class TaskQAWorkflow:
         """
         from edison.core.config.domains.workflow import WorkflowConfig
         from edison.core.session.lifecycle.recovery import is_session_expired
-        from edison.core.session.persistence.repository import SessionRepository as _SessionRepository
+        from edison.core.session.persistence.repository import (
+            SessionRepository as _SessionRepository,
+        )
 
         sess_repo = _SessionRepository(project_root=self.project_root)
         if not sess_repo.exists(session_id):
@@ -215,11 +229,30 @@ class TaskQAWorkflow:
         if not task:
             raise PersistenceError(f"Task not found: {task_id}")
 
-        # FAIL-CLOSED: prevent claiming a task already owned by another session.
+        takeover_from: str | None = None
         if task.session_id and str(task.session_id) != str(session_id):
-            raise PersistenceError(
-                f"Task {task_id} is already claimed by '{task.session_id}' (cannot claim from '{session_id}')"
-            )
+            # FAIL-CLOSED by default: prevent claiming a task owned by another session.
+            if not takeover:
+                raise PersistenceError(
+                    f"Task {task_id} is already claimed by '{task.session_id}' (cannot claim from '{session_id}')"
+                )
+
+            reason = (takeover_reason or "").strip()
+            if not reason:
+                raise PersistenceError(
+                    f"Cannot takeover task {task_id} from '{task.session_id}': missing takeover reason"
+                )
+
+            takeover_from = str(task.session_id)
+            old = sess_repo.get(takeover_from)
+            old_state = str(getattr(old, "state", "") or "").strip().lower() if old else ""
+            old_expired = is_session_expired(takeover_from, project_root=self.project_root)
+
+            # Only allow takeovers when the previous session is not active (closing/validated/etc) OR expired OR missing.
+            if old and old_state == "active" and not old_expired:
+                raise PersistenceError(
+                    f"Cannot takeover task {task_id} from active session '{takeover_from}'"
+                )
 
         workflow_config = WorkflowConfig()
         wip_state = workflow_config.get_semantic_state("task", "wip")
@@ -236,6 +269,11 @@ class TaskQAWorkflow:
             "project_root": self.project_root,
             "entity_type": "task",
             "entity_id": task_id,
+            "takeover": {
+                "enabled": bool(takeover),
+                "from_session_id": takeover_from,
+                "reason": (takeover_reason or "").strip() if takeover else "",
+            },
         }
 
         from edison.core.utils.time import utc_timestamp
@@ -250,11 +288,14 @@ class TaskQAWorkflow:
 
         # Validate transition, execute actions, record history, and persist.
         try:
+            transition_reason = "claimed"
+            if takeover_from:
+                transition_reason = f"claimed: takeover from {takeover_from} ({(takeover_reason or '').strip()})"
             task = self.task_repo.transition(
                 task_id,
                 wip_state,
                 context=context,
-                reason="claimed",
+                reason=transition_reason,
                 mutate=_mutate,
             )
         except Exception as e:
@@ -268,6 +309,17 @@ class TaskQAWorkflow:
             owner=task.metadata.created_by or owner or "_unassigned_",
             status=wip_state,
         )
+
+        if takeover_from:
+            try:
+                old = sess_repo.get(takeover_from)
+                if old:
+                    old.add_activity(
+                        f"Task {task_id} taken over by {session_id}: {(takeover_reason or '').strip()}"
+                    )
+                    sess_repo.save(old)
+            except Exception:
+                pass
 
         # 5. Move QA file
         self._move_qa_to_session(task_id, session_id)
@@ -333,7 +385,6 @@ class TaskQAWorkflow:
             "entity_type": "task",
             "entity_id": task_id,
         }
-        
         from edison.core.utils.time import utc_timestamp
 
         def _mutate(t: Task) -> None:
@@ -384,11 +435,11 @@ class TaskQAWorkflow:
         self,
         *,
         task_id: str,
-        session_id: Optional[str] = None,
-        validator_owner: Optional[str] = None,
-        created_by: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> "QARecord":
+        session_id: str | None = None,
+        validator_owner: str | None = None,
+        created_by: str | None = None,
+        title: str | None = None,
+    ) -> QARecord:
         """Ensure the associated QA record exists (create if missing).
 
         Canonical QA records live under `<project-management-dir>/qa/<state>/<task-id>-qa.md`
@@ -398,9 +449,8 @@ class TaskQAWorkflow:
 
         Evidence lives under `<project-management-dir>/qa/<evidence-subdir>/<task-id>/round-N/`.
         """
-        from edison.core.qa.models import QARecord
         from edison.core.config.domains.workflow import WorkflowConfig
-
+        from edison.core.qa.models import QARecord
         from edison.core.task import normalize_record_id
 
         task_id = normalize_record_id("task", task_id)

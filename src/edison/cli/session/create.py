@@ -171,12 +171,18 @@ def main(args: argparse.Namespace) -> int:
         # Get worktree pinning status (task 047)
         from pathlib import Path
 
-        from edison.core.session.worktree.manager import get_worktree_pinning_status
-
-        pinning_status = get_worktree_pinning_status(
-            Path(worktree_path) if worktree_path else None,
-            session_id,
+        from edison.core.session.worktree.manager import (
+            ensure_worktree_session_id_file,
+            get_worktree_pinning_status,
         )
+
+        # Even in --no-worktree mode, pin the current checkout so session context
+        # can be auto-resolved without manual file edits.
+        pinning_root = Path(worktree_path) if worktree_path else Path(repo_root)
+        if not worktree_path:
+            ensure_worktree_session_id_file(worktree_path=pinning_root, session_id=session_id)
+
+        pinning_status = get_worktree_pinning_status(pinning_root, session_id)
 
         # NOTE: Orchestrator launch is handled by `edison orchestrator start`.
         # `edison session create` is intentionally limited to creating the session record (+ optional worktree).

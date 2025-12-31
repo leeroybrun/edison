@@ -10,6 +10,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from edison.cli import (
     OutputFormatter,
@@ -59,6 +60,17 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Target status after claim (default: semantic wip). Validated against config at runtime.",
     )
+    parser.add_argument(
+        "--takeover",
+        action="store_true",
+        help="Allow taking over a task already claimed by another (inactive/expired) session (tasks only).",
+    )
+    parser.add_argument(
+        "--reason",
+        type=str,
+        default=None,
+        help="Reason for takeover (required with --takeover).",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -75,10 +87,10 @@ def main(args: argparse.Namespace) -> int:
         debug_wrappers = _is_truthy_env("project_DEBUG_WRAPPERS")
 
         # Lazy imports to keep CLI startup fast.
-        from edison.core.task import TaskQAWorkflow, normalize_record_id
         from edison.core.config.domains.project import ProjectConfig
         from edison.core.config.domains.workflow import WorkflowConfig
         from edison.core.qa.workflow.repository import QARepository
+        from edison.core.task import TaskQAWorkflow, normalize_record_id
 
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
@@ -92,6 +104,7 @@ def main(args: argparse.Namespace) -> int:
             explicit=args.session,
             required=True,
         )
+        assert session_id is not None
 
         # Get owner (for stamping when missing)
         owner = args.owner or ProjectConfig(repo_root=project_root).get_owner_or_user()
@@ -111,8 +124,17 @@ def main(args: argparse.Namespace) -> int:
             )
 
         if record_type == "task":
+            if bool(getattr(args, "takeover", False)) and not (str(getattr(args, "reason", "") or "").strip()):
+                raise ValueError("--takeover requires --reason")
+
             # Claim task using entity-based workflow
-            task_entity = workflow.claim_task(record_id, session_id, owner=owner)
+            task_entity = workflow.claim_task(
+                record_id,
+                session_id,
+                owner=owner,
+                takeover=bool(getattr(args, "takeover", False)),
+                takeover_reason=str(getattr(args, "reason", "") or "").strip() or None,
+            )
 
             # Optional post-claim transition to requested state
             if target_state != task_entity.state:
@@ -155,7 +177,7 @@ def main(args: argparse.Namespace) -> int:
             # Transition QA into semantic wip on claim.
             wip_state = workflow_cfg.get_semantic_state("qa", "wip")
 
-            def _mutate_claimed(q) -> None:
+            def _mutate_claimed(q: Any) -> None:
                 q.session_id = session_id
                 if owner and not (getattr(q, "validator_owner", "") or "").strip():
                     q.validator_owner = owner

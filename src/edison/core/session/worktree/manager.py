@@ -1,12 +1,13 @@
 """Worktree creation and management operations."""
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
@@ -1041,6 +1042,15 @@ def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) ->
         return
 
 
+def ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) -> None:
+    """Best-effort: ensure the worktree-local `.session-id` file exists.
+
+    This is used by CLIs that need to pin a session ID to a checkout even when no
+    worktree was created (e.g. `edison session create --no-worktree`).
+    """
+    _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
+
+
 def get_worktree_session_id_file_path(worktree_path: Path) -> Optional[Path]:
     """Get the path to the `.session-id` file inside the worktree management dir.
 
@@ -1155,13 +1165,16 @@ def _resolve_start_ref(repo_dir: Path, base_ref: str, *, timeout: int) -> str:
     """
 
     def _rev_parse_ok(ref: str) -> bool:
-        rr = run_with_timeout(
-            ["git", "rev-parse", "--verify", f"{ref}^{{commit}}"],
-            cwd=repo_dir,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+        rr = cast(
+            subprocess.CompletedProcess[str],
+            run_with_timeout(
+                ["git", "rev-parse", "--verify", f"{ref}^{{commit}}"],
+                cwd=repo_dir,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            ),
         )
         return rr.returncode == 0
 
@@ -1312,12 +1325,15 @@ def create_worktree(
     primary_before = _primary_head_marker(repo_dir)
 
     def _ref_exists(ref: str) -> bool:
-        rr = run_with_timeout(
-            ["git", "show-ref", "--verify", ref],
-            cwd=repo_dir,
-            capture_output=True,
-            text=True,
-            timeout=config_obj.get_worktree_timeout("branch_check", 10),
+        rr = cast(
+            subprocess.CompletedProcess[str],
+            run_with_timeout(
+                ["git", "show-ref", "--verify", ref],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                timeout=config_obj.get_worktree_timeout("branch_check", 10),
+            ),
         )
         return rr.returncode == 0
 
@@ -1392,13 +1408,16 @@ def create_worktree(
 
         def _run_install(cmd: list[str]) -> subprocess.CompletedProcess[str] | None:
             try:
-                return run_with_timeout(
-                    cmd,
-                    cwd=worktree_path,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=t_install,
+                return cast(
+                    subprocess.CompletedProcess[str],
+                    run_with_timeout(
+                        cmd,
+                        cwd=worktree_path,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=t_install,
+                    ),
                 )
             except Exception:
                 return None

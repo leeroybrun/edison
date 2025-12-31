@@ -39,7 +39,9 @@ validation:
       command: "claude"
       subcommand: "-p"
       output_flags: ["--output-format", "json"]
-      read_only_flags: ["--permission-mode", "plan"]
+      # Plan mode blocks Read/Bash tools, which prevents validators from reading diffs/evidence.
+      # Keep Claude non-interactive while disallowing edits.
+      read_only_flags: ["--permission-mode", "dontAsk", "--disallowed-tools", "Edit"]
       response_parser: claude
       prompt_mode: arg
 
