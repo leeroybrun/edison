@@ -31,3 +31,7 @@ def test_verdict_extraction_handles_cant_be_approved_variants() -> None:
     assert e._extract_verdict_from_response("Cannot approve this.") == "reject"
     assert e._extract_verdict_from_response("Not approved.") == "reject"
 
+
+def test_verdict_extraction_does_not_treat_approval_requests_as_approval() -> None:
+    e = _engine()
+    assert e._extract_verdict_from_response("Please approve exiting plan mode.") is None
