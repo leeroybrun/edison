@@ -1,24 +1,25 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 from ..exceptions import EdisonError
-from .guards import GuardRegistry
-from .conditions import ConditionRegistry
 from .actions import ActionRegistry
+from .conditions import ConditionRegistry
+from .guards import GuardRegistry
 
 
 class StateTransitionError(EdisonError, ValueError):
     """Raised when a declarative state transition fails."""
 
-    def __init__(self, message: str = "", *, context: Optional[Mapping[str, Any]] = None) -> None:
+    def __init__(self, message: str = "", *, context: Mapping[str, Any] | None = None) -> None:
         EdisonError.__init__(self, message, context=context)
         ValueError.__init__(self, message)
 
 
-def _flatten_transitions(states: Mapping[str, Any]) -> Dict[str, List[str]]:
+def _flatten_transitions(states: Mapping[str, Any]) -> dict[str, list[str]]:
     """Return a simple from->to adjacency map from rich state definitions."""
-    trans: Dict[str, List[str]] = {}
+    trans: dict[str, list[str]] = {}
     for state_name, info in (states or {}).items():
         allowed = []
         for t in (info or {}).get("allowed_transitions", []) or []:
@@ -60,19 +61,62 @@ class RichStateMachine:
         self.conditions = conditions
         self.actions = actions
 
-    def allowed_targets(self, current: str) -> List[str]:
+    def allowed_targets(self, current: str) -> list[str]:
         if current is None:
             return []
         info = self.states.get(str(current)) or {}
         transitions = info.get("allowed_transitions") or []
         return [t.get("to") for t in transitions if t.get("to")]
 
-    def _find_transition(self, current: str, target: str) -> Optional[Mapping[str, Any]]:
+    def _find_transition(self, current: str, target: str) -> Mapping[str, Any] | None:
         info = self.states.get(str(current)) or {}
         for t in info.get("allowed_transitions", []) or []:
             if t.get("to") == target:
                 return t
         return None
+
+    def _shortest_path(self, start: str, goal: str) -> list[str] | None:
+        """Return the shortest state path from start to goal (inclusive), or None."""
+        start = str(start)
+        goal = str(goal)
+        if start == goal:
+            return [start]
+
+        graph = self.transitions_map()
+        queue: list[str] = [start]
+        prev: dict[str, str | None] = {start: None}
+
+        while queue:
+            current = queue.pop(0)
+            for nxt in graph.get(current, []) or []:
+                nxt = str(nxt)
+                if nxt in prev:
+                    continue
+                prev[nxt] = current
+                if nxt == goal:
+                    # Reconstruct.
+                    path: list[str] = [goal]
+                    cur: str | None = goal
+                    while cur is not None:
+                        cur = prev.get(cur)
+                        if cur is not None:
+                            path.append(cur)
+                    return list(reversed(path))
+                queue.append(nxt)
+
+        return None
+
+    def _format_invalid_transition_message(self, current: str, target: str) -> str:
+        allowed = [t for t in self.allowed_targets(current) if t]
+        allowed_part = f" Allowed next: {', '.join(allowed)}." if allowed else ""
+
+        path = self._shortest_path(current, target)
+        path_part = f" Suggested path: {' -> '.join(path)}." if path and len(path) > 1 else ""
+
+        # Keep the substring "not allowed" stable for callers/tests.
+        return (
+            f"Invalid transition {current!r} -> {target!r}: not allowed.{allowed_part}{path_part}"
+        )
 
     def _check_guard(self, transition: Mapping[str, Any], ctx: Mapping[str, Any]) -> None:
         guard_name = transition.get("guard")
@@ -150,7 +194,7 @@ class RichStateMachine:
 
     def _get_action_timing(self, action_spec: Mapping[str, Any]) -> str:
         """Get the timing for an action (before or after transition).
-        
+
         Returns:
             'before' - Execute before guards/conditions
             'after' - Execute after successful transition (default)
@@ -161,14 +205,16 @@ class RichStateMachine:
         # Default to 'after' for all other cases (including conditional when)
         return "after"
 
-    def _should_execute_conditional(self, action_spec: Mapping[str, Any], ctx: Mapping[str, Any]) -> bool:
+    def _should_execute_conditional(
+        self, action_spec: Mapping[str, Any], ctx: Mapping[str, Any]
+    ) -> bool:
         """Check if a conditional action should execute.
-        
+
         Handles:
         - Boolean `when:` values
         - Config path resolution like `when: config.worktrees_enabled`
         - No `when:` specified (always execute)
-        
+
         Note: 'before'/'after' timing is handled by _get_action_timing,
         so those values skip conditional checks.
         """
@@ -186,13 +232,10 @@ class RichStateMachine:
         return bool(flag)
 
     def _run_actions(
-        self, 
-        transition: Mapping[str, Any], 
-        ctx: Mapping[str, Any],
-        timing: str = "after"
+        self, transition: Mapping[str, Any], ctx: Mapping[str, Any], timing: str = "after"
     ) -> None:
         """Run actions for a transition filtered by timing.
-        
+
         Args:
             transition: Transition spec from state machine config
             ctx: Context dict for action execution
@@ -201,78 +244,78 @@ class RichStateMachine:
         for action in transition.get("actions", []) or []:
             if not isinstance(action, Mapping):
                 continue
-            
+
             # Check timing first
             action_timing = self._get_action_timing(action)
             if action_timing != timing:
                 continue
-            
+
             # Check conditional execution
             if not self._should_execute_conditional(action, ctx):
                 continue
-            
+
             name = action.get("name")
             if not name:
                 continue
-            
+
             self.actions.execute(str(name), ctx)
 
     def validate(
-        self, 
-        current: str, 
-        target: str, 
-        *, 
-        context: Optional[Mapping[str, Any]] = None, 
-        execute_actions: bool = True
+        self,
+        current: str,
+        target: str,
+        *,
+        context: Mapping[str, Any] | None = None,
+        execute_actions: bool = True,
     ) -> bool:
         """Validate and optionally execute a state transition.
-        
+
         Execution order:
         1. Pre-transition actions (when: before)
         2. Guard check
         3. Condition checks
         4. Post-transition actions (when: after, default)
-        
+
         Args:
             current: Current state
             target: Target state
             context: Context dict for guards/conditions/actions
             execute_actions: Whether to execute actions (default: True)
-            
+
         Returns:
             True if transition is valid
-            
+
         Raises:
             StateTransitionError: If transition is not allowed or guards/conditions fail
         """
         ctx = context or {}
         if current == target:
             return True
-        
+
         transition = self._find_transition(str(current), str(target))
         if transition is None:
             raise StateTransitionError(
-                f"Invalid transition {current!r} -> {target!r}: not allowed",
+                self._format_invalid_transition_message(str(current), str(target)),
                 context={"domain": self.name, "from": current, "to": target},
             )
-        
+
         # 1. Pre-transition actions (when: before)
         if execute_actions:
             self._run_actions(transition, ctx, timing="before")
-        
+
         # 2. Guard check
         self._check_guard(transition, ctx)
-        
+
         # 3. Condition checks
         self._run_conditions(transition, ctx)
-        
+
         # 4. Post-transition actions (when: after, default)
         if execute_actions:
             self._run_actions(transition, ctx, timing="after")
-        
+
         return True
 
-    def transitions_map(self) -> Dict[str, List[str]]:
+    def transitions_map(self) -> dict[str, list[str]]:
         return _flatten_transitions(self.states)
 
 
