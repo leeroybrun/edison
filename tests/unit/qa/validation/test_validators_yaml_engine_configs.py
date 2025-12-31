@@ -12,5 +12,14 @@ def test_validators_yaml_configures_gemini_cli_with_positional_prompt(
     registry = EngineRegistry(project_root=isolated_project_env)
     engine = registry._get_or_create_engine("gemini-cli")
     assert engine is not None
-    assert getattr(engine, "config").subcommand == ""
+    assert engine.config.subcommand == ""
 
+
+def test_validators_yaml_does_not_run_claude_in_plan_mode(
+    isolated_project_env: Path,
+) -> None:
+    registry = EngineRegistry(project_root=isolated_project_env)
+    engine = registry._get_or_create_engine("claude-cli")
+    assert engine is not None
+    flags = [str(v).lower() for v in (engine.config.read_only_flags or [])]
+    assert "plan" not in flags
