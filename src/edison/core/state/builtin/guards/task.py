@@ -5,76 +5,78 @@ All guards follow the FAIL-CLOSED principle:
 - Return False if validation cannot be performed
 - Only return True when all conditions are explicitly met
 """
+
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 
 def can_start_task(ctx: Mapping[str, Any]) -> bool:
     """Task can start only if claimed by current session.
-    
+
     FAIL-CLOSED: Returns False if any required data is missing.
-    
+
     Prerequisites:
     - Task must exist in context
     - Session must exist in context
     - Task must be claimed by the session (matching session_id)
-    
+
     Args:
         ctx: Context with 'task' and 'session' dicts
-        
+
     Returns:
         True if task is claimed by current session
     """
     task = ctx.get("task")
     session = ctx.get("session")
-    
+
     if not isinstance(task, Mapping) or not isinstance(session, Mapping):
         return False  # FAIL-CLOSED: missing context
-    
+
     task_session = task.get("session_id") or task.get("sessionId")
     session_id = session.get("id")
-    
+
     if not task_session or not session_id:
         return False  # FAIL-CLOSED: missing IDs
-    
+
     return str(task_session) == str(session_id)
 
 
 def can_finish_task(ctx: Mapping[str, Any]) -> bool:
     """Task can finish only when Context7 + evidence requirements are satisfied.
-    
+
     FAIL-CLOSED: Returns False if evidence is missing.
-    
+
     Prerequisites:
     - Task ID must be in context (via 'task.id' or 'entity_id')
     - Context7 markers must exist for any detected packages (react, zod, etc.)
     - Implementation report must exist for the latest round
     - If evidence enforcement is enabled, required evidence files must exist
-    
+
     Args:
         ctx: Context with task ID (via 'task' dict or 'entity_id') and optionally 'project_root'
-        
+
     Returns:
         True if requirements are satisfied
     """
     # Try to get task_id from various context patterns
     task_id = None
-    
+
     # Pattern 1: task dict with id
     task = ctx.get("task")
     if isinstance(task, Mapping):
         task_id = task.get("id")
-    
+
     # Pattern 2: entity_id (from transition_entity)
     if not task_id:
         task_id = ctx.get("entity_id")
-    
+
     if not task_id:
         return False  # FAIL-CLOSED: no task ID found
-    
+
     # Get project_root from context if available (for isolated test environments)
     project_root = ctx.get("project_root")
     project_root_path: Path | None = None
@@ -105,7 +107,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         # FAIL-CLOSED: if Context7 validation can't run reliably, block completion,
         # but do so with a clear, actionable error.
         raise ValueError(f"Context7 validation failed: {e}") from e
-    
+
     # Check implementation report exists
     try:
         from edison.core.qa.evidence import EvidenceService
@@ -113,12 +115,24 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         ev_svc = EvidenceService(str(task_id), project_root=project_root_path)
         latest = ev_svc.get_current_round()
         if latest is None:
-            raise ValueError("Implementation report Markdown is required per round (no round-* evidence directory found).")
+            expected = ev_svc.get_round_dir(1) / ev_svc.implementation_filename
+            raise ValueError(
+                "Implementation report Markdown is required per round (no round-* evidence directory found).\n"
+                f"Expected: {expected}\n"
+                "Fix: run `edison session track start --task <task> --type implementation` to create the round + report."
+            )
         report = ev_svc.read_implementation_report(latest)
         if not report:
-            raise ValueError("Implementation report Markdown is required per round.")
+            expected = ev_svc.get_round_dir(latest) / ev_svc.implementation_filename
+            raise ValueError(
+                "Implementation report Markdown is required per round.\n"
+                f"Missing: {expected}\n"
+                "Fix: run `edison session track start --task <task> --type implementation --round <N>`."
+            )
 
-        enforce = bool(ctx.get("enforce_evidence")) or bool(os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE"))
+        enforce = bool(ctx.get("enforce_evidence")) or bool(
+            os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE")
+        )
         if enforce:
             from edison.core.config.domains.qa import QAConfig
             from edison.core.qa.evidence.analysis import list_evidence_files
@@ -132,7 +146,9 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                 if not any(Path(name).match(pattern) for name in files):
                     missing_files.append(str(pattern))
             if missing_files:
-                raise ValueError(f"Missing evidence files in round-{latest}: {', '.join(missing_files)}")
+                raise ValueError(
+                    f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
+                )
 
         return True
     except Exception:
@@ -143,12 +159,12 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
 
 def has_implementation_report(ctx: Mapping[str, Any]) -> bool:
     """Check if implementation report exists for the task.
-    
+
     Alias for can_finish_task with clearer semantic meaning.
-    
+
     Args:
         ctx: Context with 'task' dict containing 'id'
-        
+
     Returns:
         True if implementation report exists
     """
@@ -157,22 +173,18 @@ def has_implementation_report(ctx: Mapping[str, Any]) -> bool:
 
 def requires_rollback_reason(ctx: Mapping[str, Any]) -> bool:
     """Check if task has rollback reason for done->wip transition.
-    
+
     FAIL-CLOSED: Returns False if rollback reason is missing.
-    
+
     Args:
         ctx: Context with 'task' dict
-        
+
     Returns:
         True if rollback reason is present
     """
     task = ctx.get("task")
     if not isinstance(task, Mapping):
         return False  # FAIL-CLOSED
-    
-    reason = (
-        task.get("rollbackReason")
-        or task.get("rollback_reason")
-        or ""
-    )
+
+    reason = task.get("rollbackReason") or task.get("rollback_reason") or ""
     return bool(str(reason).strip())
