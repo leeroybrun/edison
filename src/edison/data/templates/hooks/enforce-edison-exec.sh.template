@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES - CAN BLOCK" if blocking else "NO" }}
+
+{% set cfg = config if config is defined else {} %}
+{% set allow_env = cfg.get("allow_env", "EDISON_ALLOW_DIRECT_BASH") %}
+{% set allow_builtins = cfg.get("allow_builtins", ["cd", "export", "unset", "source", "eval"]) %}
+{% set allow_edison_prefixes = cfg.get("allow_edison_prefixes", ["edison", "uv run edison", "python -m edison", "python3 -m edison"]) %}
+
+{% set mgmt_dir = global_config.get("project_management_dir") %}
+SESSION_FILE="{{ mgmt_dir }}/.session-id"
+
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
+
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  exit 0
+fi
+
+COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
+if [[ -z "$COMMAND" ]]; then
+  exit 0
+fi
+
+if [[ -n "${{ allow_env }}" && "${{ allow_env }}" != "0" ]]; then
+  exit 0
+fi
+
+CMD_TRIMMED="$(echo "$COMMAND" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+if [[ -z "$CMD_TRIMMED" ]]; then
+  exit 0
+fi
+
+_has_shell_separators() {
+  local s="$1"
+  [[ "$s" == *"&&"* || "$s" == *";"* || "$s" == *"|"* || "$s" == *$'\n'* ]]
+}
+
+# Allow pure builtins that cannot be wrapped reliably (e.g. `cd` changes parent shell state).
+for b in {% for b in allow_builtins %}"{{ b }}"{% if not loop.last %} {% endif %}{% endfor %}; do
+  if [[ "$CMD_TRIMMED" == "$b" || "$CMD_TRIMMED" == "$b "* ]]; then
+    if _has_shell_separators "$CMD_TRIMMED"; then
+      break
+    fi
+    exit 0
+  fi
+done
+
+# Allow Edison CLIs directly (not required to be wrapped by `edison exec`).
+for p in {% for p in allow_edison_prefixes %}"{{ p }}"{% if not loop.last %} {% endif %}{% endfor %}; do
+  if [[ "$CMD_TRIMMED" == "$p" || "$CMD_TRIMMED" == "$p "* ]]; then
+    exit 0
+  fi
+done
+
+# Allow `edison exec -- ...` (and common variants).
+# Heuristic: parse first tokens to allow:
+# - `edison exec -- ...`
+# - `<path>/edison exec -- ...`
+# - `uv run [flags...] edison exec -- ...`
+# - `python -m edison exec -- ...`
+read -r -a TOKENS <<< "$CMD_TRIMMED"
+PROG="${TOKENS[0]:-}"
+{% raw %}
+TOKENS_COUNT=${#TOKENS[@]}
+{% endraw %}
+
+_is_edison_prog() {
+  local prog="$1"
+  [[ "$prog" == "edison" || "$prog" == */edison ]]
+}
+
+ALLOW_WRAPPED=0
+if _is_edison_prog "$PROG"; then
+  if [[ "${TOKENS[1]:-}" == "exec" ]]; then
+    ALLOW_WRAPPED=1
+  fi
+elif [[ "$PROG" == "uv" && "${TOKENS[1]:-}" == "run" ]]; then
+  i=2
+  # Skip uv flags
+{% raw %}
+  while [[ $i -lt $TOKENS_COUNT && "${TOKENS[$i]}" == -* ]]; do
+    i=$((i + 1))
+  done
+{% endraw %}
+  if _is_edison_prog "${TOKENS[$i]:-}"; then
+    if [[ "${TOKENS[$((i + 1))]:-}" == "exec" ]]; then
+      ALLOW_WRAPPED=1
+    fi
+  fi
+elif [[ ( "$PROG" == "python" || "$PROG" == "python3" ) && "${TOKENS[1]:-}" == "-m" && "${TOKENS[2]:-}" == "edison" ]]; then
+  if [[ "${TOKENS[3]:-}" == "exec" ]]; then
+    ALLOW_WRAPPED=1
+  fi
+fi
+
+if [[ "$ALLOW_WRAPPED" == "1" ]]; then
+  exit 0
+fi
+
+SESSION_ID=""
+if [[ -f "$SESSION_FILE" ]]; then
+  SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+fi
+
+echo ""
+echo "❌ BLOCKED: direct Bash command (use `edison exec` wrapper)"
+echo ""
+echo "Command:"
+echo "  $COMMAND"
+echo ""
+echo "Edison policy: run shell commands via Edison for auditability + safety shims."
+echo ""
+echo "Do this instead:"
+echo "  edison exec -- <command> [args...]"
+echo ""
+echo "Tip: If you need to change directories first:"
+echo "  cd <dir>"
+echo "  edison exec -- <command> [args...]"
+echo ""
+echo "If the user explicitly asked you to run the command directly, re-run with:"
+echo "  export {{ allow_env }}=1"
+echo ""
+
+if [[ -n "$SESSION_ID" ]]; then
+  edison audit event "hook.enforce-edison-exec.blocked" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "command=$COMMAND" 2>/dev/null || true
+fi
+
+exit 1

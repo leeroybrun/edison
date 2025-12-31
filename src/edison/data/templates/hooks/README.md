@@ -7,6 +7,8 @@ Templates for Claude Code hook scripts. Each template is Bash rendered via Jinja
 - `inject-task-rules.sh.template` (UserPromptSubmit): when touched files match configured patterns, injects rule snippets for the current task state.
 - `remind-tdd.sh.template` (PreToolUse): non-blocking RED/GREEN/REFACTOR reminder for Write/Edit tools, scoped to selected task states and skipping test files optionally.
 - `commit-guard.sh.template` (PreToolUse): gate git commits run via Bash tool; can enforce passing tests and coverage thresholds and block with exit 1.
+- `prevent-destructive-git.sh.template` (PreToolUse): blocks destructive git commands unless explicitly allowed via env.
+- `enforce-edison-exec.sh.template` (PreToolUse): blocks direct Bash commands that bypass `edison exec` (audit + shims), with a configurable allowlist.
 - `auto-format.sh.template` (PostToolUse): auto-runs configured formatters for matching Write/Edit file paths.
 - `session-init.sh.template` (SessionStart): announces session start and echoes session id.
 - `session-cleanup.sh.template` (SessionEnd): session teardown.

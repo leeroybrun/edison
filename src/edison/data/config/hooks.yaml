@@ -101,6 +101,31 @@ hooks:
           - "git checkout --"
           - "git switch"
 
+    enforce-edison-exec:
+      type: PreToolUse
+      hook_type: command
+      matcher: "*"
+      enabled: false  # Project may enable to enforce `edison exec` wrapper for Bash tool commands
+      blocking: true
+      description: "Enforce `edison exec` for non-Edison Bash commands (audit + shims)"
+      template: "enforce-edison-exec.sh.template"
+      config:
+        # Allow bypass only when the user explicitly asked to run direct shell commands.
+        allow_env: "EDISON_ALLOW_DIRECT_BASH"
+        # Allow bare shell builtins that cannot be reliably wrapped (e.g. `cd` affects the parent shell).
+        allow_builtins:
+          - "cd"
+          - "export"
+          - "unset"
+          - "source"
+          - "eval"
+        # Allowed Edison invocations (prefixes). These are NOT required to go through `edison exec`.
+        allow_edison_prefixes:
+          - "edison"
+          - "uv run edison"
+          - "python -m edison"
+          - "python3 -m edison"
+
     prevent-prod-edits:
       type: PreToolUse
       hook_type: command

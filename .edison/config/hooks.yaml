@@ -1,0 +1,10 @@
+# Edison project hook overrides
+#
+# Enables strict enforcement that Bash tool commands go through `edison exec`,
+# so command execution is audited and safety shims are applied consistently.
+
+hooks:
+  definitions:
+    enforce-edison-exec:
+      enabled: true
+
