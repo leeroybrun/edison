@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from tests.helpers.paths import get_repo_root
 
 EDISON_ROOT = get_repo_root()
@@ -31,6 +32,7 @@ def run(domain: str, command: str, args: list[str], env: dict) -> subprocess.Com
 def make_project_root(tmp_path: Path) -> Path:
     (tmp_path / ".project" / "tasks" / "todo").mkdir(parents=True)
     (tmp_path / ".project" / "qa" / "waiting").mkdir(parents=True)
+    (tmp_path / ".edison" / "config").mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     return tmp_path
 
@@ -191,6 +193,119 @@ round: 1
     evidence_root = root / ".project" / "qa" / "validation-evidence" / task_id
     assert not evidence_root.exists(), "qa round created evidence dirs without --new"
 
+
+def test_qa_validate_reports_cli_disabled_by_config_instead_of_cli_missing(tmp_path: Path) -> None:
+    root = make_project_root(tmp_path)
+    task_id = "160-wave1-validate-delegation"
+
+    # Force-disable CLI engines for this test to ensure deterministic behavior (no external CLIs).
+    (root / ".edison" / "config" / "orchestration.yaml").write_text(
+        "orchestration:\n  allowCliEngines: false\n",
+        encoding="utf-8",
+    )
+
+    # Minimal task + QA so validation can build a roster and write evidence.
+    (root / ".project" / "tasks" / "todo" / f"{task_id}.md").write_text(
+        f"""---
+id: "{task_id}"
+title: "Demo task for validate delegation"
+state: "todo"
+---
+
+# Demo
+""",
+        encoding="utf-8",
+    )
+    (root / ".project" / "qa" / "waiting" / f"{task_id}-qa.md").write_text(
+        f"""---
+id: "{task_id}-qa"
+task_id: "{task_id}"
+title: "QA for {task_id}"
+state: "waiting"
+round: 1
+---
+
+# QA for {task_id}
+""",
+        encoding="utf-8",
+    )
+
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+
+    # Default config disables CLI engines; validate should delegate and explain why.
+    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+        run("qa", "validate", [task_id, "--execute", "--blocking-only"], env)
+
+    assert excinfo.value.returncode == 1
+    out = excinfo.value.stdout
+    assert "ORCHESTRATOR ACTION REQUIRED" in out
+    assert "disabled by config" in out
+    assert "allowCliEngines" in out
+
+
+def test_qa_validate_enforces_session_worktree_for_execution(tmp_path: Path) -> None:
+    root = make_project_root(tmp_path)
+    task_id = "161-wave1-validate-worktree"
+    session_id = "python-pid-12345"
+
+    # Minimal task + QA so validation is runnable if it got past worktree enforcement.
+    (root / ".project" / "tasks" / "todo" / f"{task_id}.md").write_text(
+        f"""---
+id: "{task_id}"
+title: "Demo task for worktree enforcement"
+state: "todo"
+---
+
+# Demo
+""",
+        encoding="utf-8",
+    )
+    (root / ".project" / "qa" / "waiting" / f"{task_id}-qa.md").write_text(
+        f"""---
+id: "{task_id}-qa"
+task_id: "{task_id}"
+title: "QA for {task_id}"
+state: "waiting"
+round: 1
+---
+
+# QA for {task_id}
+""",
+        encoding="utf-8",
+    )
+
+    worktree = root / "worktrees" / session_id
+    worktree.mkdir(parents=True, exist_ok=True)
+
+    # Create a session record that declares a worktree path.
+    session_dir = root / ".project" / "sessions" / "wip" / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / "session.json").write_text(
+        json.dumps(
+            {
+                "id": session_id,
+                "state": "wip",
+                "phase": "implementation",
+                "meta": {"sessionId": session_id, "status": "wip", "owner": "alice"},
+                "git": {"worktreePath": str(worktree)},
+                "ready": True,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    env = os.environ.copy()
+    env["AGENTS_PROJECT_ROOT"] = str(root)
+    env["AGENTS_SESSION"] = session_id
+
+    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+        run("qa", "validate", [task_id, "--execute"], env)
+
+    assert excinfo.value.returncode == 2
+    assert "WORKTREE ENFORCEMENT" in (excinfo.value.stderr or "")
+    assert str(worktree) in (excinfo.value.stderr or "")
 
 def test_task_new_parent_sets_frontmatter_and_updates_parent(tmp_path: Path) -> None:
     """`edison task new --parent` must persist parent/child links in frontmatter."""
