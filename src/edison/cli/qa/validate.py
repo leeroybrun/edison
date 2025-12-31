@@ -11,7 +11,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_session_id,
+)
 from edison.cli._worktree_enforcement import maybe_enforce_session_worktree
 from edison.core.qa.engines import ValidationExecutor
 from edison.core.registries.validators import ValidatorRegistry
