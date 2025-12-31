@@ -69,6 +69,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
+
 def _emit_worktree_instructions(
     formatter: OutputFormatter,
     *,
@@ -83,14 +84,15 @@ def _emit_worktree_instructions(
     formatter.text(f"  export AGENTS_SESSION={session_id}")
     formatter.text(f"  export AGENTS_PROJECT_ROOT={worktree_path}")
     formatter.text("  Never run `git checkout` / `git switch` in the primary checkout.")
-    formatter.text("  Never run `git reset` / `git restore` / `git clean` unless explicitly requested.")
+    formatter.text(
+        "  Never run `git reset` / `git restore` / `git clean` unless explicitly requested."
+    )
     formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
 def main(args: argparse.Namespace) -> int:
     """Create a new session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
-
 
     try:
         # Honor --repo-root by making project root resolution deterministic for this process.
@@ -158,7 +160,9 @@ def main(args: argparse.Namespace) -> int:
             if session.get("git", {}).get("baseBranch"):
                 formatter.text(f"  Base: {session['git']['baseBranch']}")
 
-            _emit_worktree_instructions(formatter, session_id=session_id, worktree_path=worktree_path)
+            _emit_worktree_instructions(
+                formatter, session_id=session_id, worktree_path=worktree_path
+            )
 
             if getattr(args, "start_prompt", None):
                 from edison.core.session.start_prompts import read_start_prompt
@@ -179,8 +183,10 @@ def main(args: argparse.Namespace) -> int:
         formatter.error(e, error_code="error")
         return 1
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     register_args(parser)
     args = parser.parse_args()
