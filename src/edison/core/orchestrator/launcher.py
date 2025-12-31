@@ -18,15 +18,17 @@ import string
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from edison.core.audit.logger import audit_event, truncate_text
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.config.domains.logging import LoggingConfig
-from edison.core.audit.logger import audit_event, truncate_text
-from edison.core.tracking.process_events import append_process_event
 from edison.core.session.core.context import SessionContext
-from edison.core.utils.time import utc_timestamp
+from edison.core.shims import ShimService
+from edison.core.tracking.process_events import append_process_event
 from edison.core.utils.io import ensure_directory
+from edison.core.utils.time import utc_timestamp
+
 from .utils import SafeDict
 
 
@@ -51,18 +53,18 @@ class OrchestratorLauncher:
         """Initialize launcher with config and session context."""
         self.config = config
         self.session_context = session_context
-        self._temp_files: List[Path] = []
+        self._temp_files: list[Path] = []
         self._project_root: Path = Path(
             getattr(session_context, "project_root", None) or config.repo_root
         ).resolve()
-        self._session_worktree: Optional[Path] = self._resolve_worktree()
+        self._session_worktree: Path | None = self._resolve_worktree()
 
     # --- Public API -----------------------------------------------------
     def launch(
         self,
         profile_name: str,
-        initial_prompt: Optional[str] = None,
-        log_path: Optional[Path] = None,
+        initial_prompt: str | None = None,
+        log_path: Path | None = None,
         detach: bool = False,
     ) -> subprocess.Popen:
         """
@@ -92,7 +94,7 @@ class OrchestratorLauncher:
         # If there is no active audit context, attach a lightweight one using the
         # session id from tokens so session-scoped logs can be written.
         try:
-            from edison.core.audit.context import get_audit_context, set_audit_context, AuditContext
+            from edison.core.audit.context import AuditContext, get_audit_context, set_audit_context
 
             log_cfg = LoggingConfig(repo_root=self._project_root)
             if (
@@ -185,16 +187,17 @@ class OrchestratorLauncher:
         args = profile.get("args") or []
         if not isinstance(args, list):
             raise OrchestratorConfigError("Profile args must be a list")
-        args_list: List[str] = [str(a) for a in args]
+        args_list: list[str] = [str(a) for a in args]
 
         env = os.environ.copy()
         profile_env = profile.get("env") or {}
         if profile_env and not isinstance(profile_env, dict):
             raise OrchestratorConfigError("Profile env must be a mapping of key/value pairs")
         env.update({k: str(v) for k, v in profile_env.items()})
+        env = self._apply_shims_to_env(env)
 
         cwd = profile.get("cwd")
-        cwd_path: Optional[Path] = None
+        cwd_path: Path | None = None
         if cwd:
             cwd_path = Path(cwd)
             if not cwd_path.is_absolute():
@@ -223,7 +226,7 @@ class OrchestratorLauncher:
                 )
 
         # Determine stdin handling based on prompt delivery method
-        stdin_pipe: Optional[int] = None
+        stdin_pipe: int | None = None
         if prompt_method == "stdin" and prompt_text is not None:
             stdin_pipe = subprocess.PIPE
 
@@ -237,7 +240,7 @@ class OrchestratorLauncher:
                     and log_cfg.orchestrator_enabled
                     and prompt_text is not None
                 ):
-                    payload: Dict[str, Any] = {
+                    payload: dict[str, Any] = {
                         "profile": profile_name,
                         "prompt_method": str(prompt_method),
                         "prompt_chars": len(prompt_text),
@@ -391,13 +394,21 @@ class OrchestratorLauncher:
                 except Exception:
                     pass
 
+    def _apply_shims_to_env(self, env: dict[str, str]) -> dict[str, str]:
+        """Apply configured shims to the orchestrator subprocess env (fail-open)."""
+        try:
+            svc = ShimService(project_root=self._project_root)
+            return svc.apply_to_env(env, context="orchestrator")
+        except Exception:
+            return env
+
     # --- Helpers --------------------------------------------------------
     def _expand_template_vars(self, template: str) -> str:
         """Expand template variables in strings."""
         tokens = self._build_tokens()
         return str(template).format_map(SafeDict(tokens))
 
-    def _build_tokens(self) -> Dict[str, str]:
+    def _build_tokens(self) -> dict[str, str]:
         session_id = getattr(self.session_context, "session_id", None)
         session = getattr(self.session_context, "session", None)
         if session_id is None and isinstance(session, dict):
@@ -408,7 +419,7 @@ class OrchestratorLauncher:
             )
 
         worktree = self._session_worktree or self._extract_worktree_from_session()
-        tokens: Dict[str, Optional[str]] = {
+        tokens: dict[str, str | None] = {
             "project_root": str(self._project_root),
             "session_worktree": str(worktree) if worktree else None,
             "session_id": str(session_id) if session_id else None,
@@ -446,11 +457,11 @@ class OrchestratorLauncher:
         self._temp_files.append(temp_path)
         return temp_path
 
-    def _deliver_prompt_arg(self, prompt: str, args: List[str]) -> List[str]:
+    def _deliver_prompt_arg(self, prompt: str, args: list[str]) -> list[str]:
         """Add prompt to args list."""
         return [*args, prompt]
 
-    def _deliver_prompt_env(self, prompt: str, env: Dict[str, str]) -> Dict[str, str]:
+    def _deliver_prompt_env(self, prompt: str, env: dict[str, str]) -> dict[str, str]:
         """Add prompt to environment."""
         env_var = getattr(self, "_current_env_var", "ORCHESTRATOR_PROMPT")
         env[env_var] = prompt
@@ -466,7 +477,7 @@ class OrchestratorLauncher:
                 return True
         return shutil.which(command) is not None
 
-    def _resolve_command(self, command: str) -> Optional[str]:
+    def _resolve_command(self, command: str) -> str | None:
         """Resolve command to an executable path."""
         cmd_path = Path(command)
         if cmd_path.is_absolute():
@@ -480,14 +491,14 @@ class OrchestratorLauncher:
         found = shutil.which(command)
         return found
 
-    def _resolve_worktree(self) -> Optional[Path]:
+    def _resolve_worktree(self) -> Path | None:
         for attr in ("session_worktree", "worktree_path", "worktree", "worktreePath"):
             val = getattr(self.session_context, attr, None)
             if val:
                 return Path(val).resolve()
         return self._extract_worktree_from_session()
 
-    def _extract_worktree_from_session(self) -> Optional[Path]:
+    def _extract_worktree_from_session(self) -> Path | None:
         session = getattr(self.session_context, "session", None)
         if isinstance(session, dict):
             git = session.get("git", {}) if isinstance(session.get("git", {}), dict) else {}

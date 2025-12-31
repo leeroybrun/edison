@@ -3,6 +3,7 @@
 You are reclaiming stale tasks as an **ORCHESTRATOR**.
 
 {{include:start/includes/WORKTREE_CONFINEMENT.md}}
+{{include-section:guidelines/includes/EXECUTION_WRAPPER.md#principles}}
 
 ## Immediate Actions
 

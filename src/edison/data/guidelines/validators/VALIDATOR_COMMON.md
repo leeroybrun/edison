@@ -105,11 +105,15 @@ Every validator MUST perform these universal checks:
 - ✅ All files created/modified as specified
 - ✅ No `TODO` or `FIXME` comments in production code
 - ✅ No commented-out code
-- ✅ Git diff shows ONLY changes related to this task
+- ✅ Prefer validating inside the session worktree so the git diff is scoped to this task
+- ✅ If the diff contains unrelated changes (multi-LLM / in-flight work is common):
+  - Do NOT suggest destructive "cleanup" (no `git reset/restore/clean/switch`, etc.)
+  - Focus only on the changes relevant to the task requirements
+  - If the unrelated changes prevent validation, mark the validator as `blocked` and ask for a clean, session-scoped worktree run
 - ✅ Test runners must not include focused/skipped/disabled tests in committed code (BLOCKING)
 
 **Fail if**:
-- Changes beyond task scope (scope creep)
+- Changes beyond task scope that appear to be part of this task's implementation (scope creep)
 - Missing required implementations
 - Partial/incomplete work
 

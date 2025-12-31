@@ -1,6 +1,7 @@
 # Validation Session
 
 {{include:start/includes/WORKTREE_CONFINEMENT.md}}
+{{include-section:guidelines/includes/EXECUTION_WRAPPER.md#principles}}
 
 ## Purpose
 

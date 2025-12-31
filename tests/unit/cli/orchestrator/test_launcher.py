@@ -1,10 +1,8 @@
 import os
-import subprocess
 from pathlib import Path
-from typing import Dict
 
 import pytest
-import yaml
+from helpers.cache_utils import reset_edison_caches
 
 from edison.core.config.domains import OrchestratorConfig
 from edison.core.orchestrator import (
@@ -13,7 +11,6 @@ from edison.core.orchestrator import (
 )
 from edison.core.session.core.context import SessionContext
 from tests.helpers.io_utils import write_orchestrator_config
-from helpers.cache_utils import reset_edison_caches
 
 
 def _session_context(session_id: str, project_root: Path, worktree: Path) -> SessionContext:
@@ -55,6 +52,52 @@ def test_launcher_initialization(tmp_path: Path, isolated_project_env, monkeypat
         _session_context("sess-init", tmp_path, tmp_path / "wt"),
     )
     assert launcher is not None
+
+
+def test_launch_prepends_git_guard_shim_to_path(tmp_path: Path, isolated_project_env, monkeypatch) -> None:
+    bin_dir = tmp_path / "bin"
+    path_file = tmp_path / "path.txt"
+    which_file = tmp_path / "which-git.txt"
+
+    script = (
+        "#!/bin/sh\n"
+        "set -eu\n"
+        "printf \"%s\" \"$PATH\" > \"$PATH_FILE\"\n"
+        "command -v git > \"$WHICH_FILE\"\n"
+        "exit 0\n"
+    )
+    mock_bin = _make_mock_bin(bin_dir, "mock-env", script)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    profiles = {
+        "mock-env": {
+            "command": mock_bin.name,
+            "args": [],
+            "cwd": "{session_worktree}",
+            "env": {"PATH_FILE": str(path_file), "WHICH_FILE": str(which_file)},
+            "initial_prompt": {"enabled": False},
+        }
+    }
+    write_orchestrator_config(tmp_path, profiles, default="mock-env")
+    reset_edison_caches()  # Clear cache after writing config
+
+    launcher = OrchestratorLauncher(
+        OrchestratorConfig(repo_root=tmp_path, validate=True),
+        _session_context("sess-shim", tmp_path, tmp_path / "wt-shim"),
+    )
+
+    process = launcher.launch("mock-env", initial_prompt=None)
+    process.wait(timeout=5)
+
+    shim_dir = (tmp_path / ".edison" / "_generated" / "shims").resolve()
+    assert (shim_dir / "git").exists()
+    assert (shim_dir / "activate.sh").exists()
+
+    child_path = path_file.read_text(encoding="utf-8")
+    assert child_path.split(os.pathsep, 1)[0] == str(shim_dir)
+
+    which_git = which_file.read_text(encoding="utf-8").strip()
+    assert which_git == str(shim_dir / "git")
 
 
 def test_launch_with_stdin_prompt(tmp_path: Path, isolated_project_env, monkeypatch) -> None:

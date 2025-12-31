@@ -1,0 +1,35 @@
+# Shell Shims Configuration
+# Shims are small wrapper executables placed early in PATH to enforce safety policies
+# across LLM CLIs (Codex/Claude/etc.) and human shells.
+#
+# IMPORTANT: A shim cannot modify the parent shell environment by itself. Use:
+#   eval "$(edison shims env)"
+# or:
+#   edison shims exec -- <command>
+#
+# Shims are generated into: .edison/_generated/shims
+
+shims:
+  enabled: true
+  output_dir: ".edison/_generated/shims"
+
+  # Definitions are merged core → packs → user → project.
+  # Each shim definition renders a template into output_dir with filename `bin_name`.
+  definitions:
+    git-guard:
+      enabled: true
+      description: "Guard against destructive git commands (reset/restore/clean/switch/checkout) unless explicitly allowed."
+      bin_name: "git"
+      template: "git-guard.sh.template"
+      contexts: ["orchestrator", "shell"]
+      config:
+        allow_env: "EDISON_ALLOW_DESTRUCTIVE_GIT"
+        disable_env: "EDISON_DISABLE_GIT_GUARD_SHIM"
+        blocked_subcommands:
+          - reset
+          - restore
+          - clean
+          - switch
+          - checkout
+        exit_code: 89
+
