@@ -1,61 +1,77 @@
 ---
 id: 036-start-prompt-ralph-loop
-title: 'Feature: start prompt ralph loop'
+title: "Prompts: Add optional `START_RALPH_LOOP` start prompt (RL enablement)"
 owner: leeroy
 created_at: '2025-12-31T10:12:18Z'
 updated_at: '2025-12-31T10:12:18Z'
+tags:
+  - prompts
+  - start
+  - continuation
+depends_on:
+  - 035-session-continuation-cli
 ---
-# Feature: start prompt ralph loop
+# Prompts: Add optional `START_RALPH_LOOP` start prompt (RL enablement)
 
 <!-- EXTENSIBLE: Summary -->
 ## Summary
 
-Owner: leeroy
+Add a new optional start prompt that explains the Ralph Loop mode and shows exactly how to enable it for a session using Edison-native controls.
 
 <!-- /EXTENSIBLE: Summary -->
 
 <!-- EXTENSIBLE: ProblemStatement -->
 ## Problem Statement
 
-<!-- Describe the problem being solved -->
+Ralph Loop (hard continuation) is intentionally opt-in. We need a clean, discoverable “start prompt” that:
+- does not bloat default start flows,
+- can be requested explicitly via `edison session create --prompt START_RALPH_LOOP`,
+- teaches the Edison-native way (no transcript `<promise>` markers, no ad-hoc loops): enable mode in Edison, then follow `session next`.
 
 <!-- /EXTENSIBLE: ProblemStatement -->
 
 <!-- EXTENSIBLE: Objectives -->
 ## Objectives
 
-<!-- List specific, measurable objectives with checkboxes -->
-- [ ] Objective 1
-- [ ] Objective 2
+- [ ] Add `src/edison/data/start/START_RALPH_LOOP.md` with short, precise guidance.
+- [ ] Ensure it references existing Edison primitives:
+  - constitution re-read command
+  - loop driver (`edison session next <session-id>`)
+  - RL enablement command (`edison session continuation set <sid> --mode hard ...`)
+- [ ] Ensure the prompt is model-agnostic and does not mention client-specific implementation details (OpenCode toasts, etc.).
 
 <!-- /EXTENSIBLE: Objectives -->
 
 <!-- EXTENSIBLE: AcceptanceCriteria -->
 ## Acceptance Criteria
 
-<!-- List specific criteria that must be met for task completion -->
-- [ ] Criterion 1
-- [ ] Criterion 2
+- [ ] `edison list --type start` (or the equivalent Edison list command) shows `START_RALPH_LOOP` after composition.
+- [ ] `edison session create --prompt START_RALPH_LOOP` prints the new prompt correctly.
+- [ ] The prompt is short (no “kitchen sink” feel) and fully Edison-native.
 
 <!-- /EXTENSIBLE: AcceptanceCriteria -->
 
 <!-- EXTENSIBLE: TechnicalDesign -->
 ## Technical Design
 
-<!-- Optional: Include technical design details, code snippets, diagrams -->
+The start prompt should include:
+- A one-paragraph explanation of RL (hard continuation) and when to use it.
+- A minimal “how to enable” snippet:
+  - identify session id
+  - run `edison session continuation set <sid> --mode hard`
+- A reminder that “done” means Edison completion criteria (as surfaced by `session next`), not a `<promise>` marker.
 
 <!-- /EXTENSIBLE: TechnicalDesign -->
 
 <!-- EXTENSIBLE: FilesToModify -->
 ## Files to Create/Modify
 
-<!-- List files that will be changed -->
 ```
 # Create
-path/to/new/file.py
+src/edison/data/start/START_RALPH_LOOP.md
 
 # Modify
-path/to/existing/file.py
+src/edison/data/config/composition.yaml  # only if start prompts require registry changes (likely not)
 ```
 
 <!-- /EXTENSIBLE: FilesToModify -->
@@ -99,13 +115,14 @@ path/to/existing/file.py
 <!-- EXTENSIBLE: RelatedFiles -->
 ## Related Files
 
-<!-- List related files for context -->
+- Plan: `.project/plans/2025-12-31-continuation-ralph-loop-cwam-opencode.md`
+- Existing start prompt example: `src/edison/data/start/START_AUTO_NEXT.md`
 
 <!-- /EXTENSIBLE: RelatedFiles -->
 
 <!-- EXTENSIBLE: Notes -->
 ## Notes
 
-<!-- Additional notes, context, or considerations -->
+- Keep this prompt optional; do not alter default start prompts to include RL.
 
 <!-- /EXTENSIBLE: Notes -->

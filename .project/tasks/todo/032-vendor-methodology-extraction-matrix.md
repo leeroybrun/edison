@@ -45,14 +45,14 @@ This prevents drift and prevents repeating “we were inspired by X” without a
 ## Required Reading
 
 - Spec‑Kit templates:
-  - `/tmp/edison-vendor-commands/spec-kit/templates/commands/analyze.md`
-  - `/tmp/edison-vendor-commands/spec-kit/templates/commands/plan.md`
-  - `/tmp/edison-vendor-commands/spec-kit/templates/commands/tasks.md`
-  - `/tmp/edison-vendor-commands/spec-kit/templates/commands/clarify.md`
+  - `spec-kit/templates/commands/analyze.md`
+  - `spec-kit/templates/commands/plan.md`
+  - `spec-kit/templates/commands/tasks.md`
+  - `spec-kit/templates/commands/clarify.md`
 - OpenSpec validate UX:
-  - `/tmp/edison-vendor-commands/OpenSpec/src/commands/validate.ts`
+  - `OpenSpec/src/commands/validate.ts`
 - BMAD checklist/correct-course workflow:
-  - `/tmp/edison-vendor-commands/BMAD-METHOD/src/modules/bmgd/workflows/4-production/correct-course/checklist.md`
+  - `BMAD-METHOD/.../correct-course/checklist.md`
 
 ## Objectives
 

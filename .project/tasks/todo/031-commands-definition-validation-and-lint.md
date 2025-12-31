@@ -42,7 +42,8 @@ This mirrors OpenSpec’s philosophy: a deterministic validator with structured 
 
 - Command system implementation: `src/edison/core/adapters/components/commands.py`
 - Platform config: `src/edison/data/config/commands.yaml`
-- OpenSpec validate command UX reference: `/tmp/edison-vendor-commands/OpenSpec/src/commands/validate.ts`
+- Optional vendor reference (if available; do not block if missing):
+  - OpenSpec validate command UX: `OpenSpec/src/commands/validate.ts`
 
 ## Objectives
 
@@ -60,6 +61,35 @@ This mirrors OpenSpec’s philosophy: a deterministic validator with structured 
   - Text: clear “valid/invalid” + actionable next steps
 - [ ] Exit codes:
   - non-zero on invalid (errors), zero if ok
+
+## Validator Rules (make it implementable without prior context)
+
+### Required frontmatter keys (minimum)
+
+Each command definition markdown file MUST include at least:
+- `id` (string)
+- `domain` (string)
+- `command` (string)
+- `short_desc` (string)
+- `cli` (string, may be empty but must exist)
+- `args` (list; can be empty)
+- `when_to_use` (string; may be empty but must exist)
+- `related_commands` (list; can be empty)
+
+### Collision rules
+
+The validator MUST detect and report:
+- duplicate `id` after composition (unless explicitly treated as override; choose and enforce one rule)
+- duplicate “platform output stem” per platform (after applying prefix and filename pattern)
+- missing required fields
+- invalid arg shapes (args must be list of {name, description, required})
+
+### Lint rules (warn-only by default; strict mode upgrades to errors)
+
+Warn (or error in `--strict`) when:
+- a command in domain `plan`/`task`/`qa` lacks an explicit approval “Ask” gate section
+- a command claims to run validations but lacks a “Prerequisites / Inputs” section
+- a command suggests file edits but does not state read-only default + approval gate
 
 ## Acceptance Criteria
 

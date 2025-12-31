@@ -45,8 +45,9 @@ This is intentionally “LLM + deterministic evidence”:
 - Existing Edison task audit commands/prompts:
   - `src/edison/data/commands/task/task-audit.md`
   - `src/edison/data/commands/task/task-backlog-coherence.md`
-- Spec‑Kit analyze methodology: `/tmp/edison-vendor-commands/spec-kit/templates/commands/analyze.md`
-- BMAD checklist patterns: `/tmp/edison-vendor-commands/BMAD-METHOD/src/modules/bmgd/workflows/4-production/correct-course/checklist.md`
+- Optional vendor references (if available; do not block if missing):
+  - Spec‑Kit analyze methodology: `spec-kit/templates/commands/analyze.md`
+  - BMAD checklist patterns: `BMAD-METHOD/.../correct-course/checklist.md`
 
 ## Objectives
 
@@ -64,6 +65,34 @@ This is intentionally “LLM + deterministic evidence”:
      - evidence citations (task IDs + file paths + existing code symbols/files)
      - recommended canonical ownership assignments
      - explicit “Ask” gate before proposing edits to tasks/plans
+
+## Command Content Requirements (REQUIRED)
+
+Both commands must be self-contained and adopt vendor patterns explicitly:
+
+### Evidence gathering (deterministic-first)
+
+The command must require running these before analysis:
+- `edison task audit --json --tasks-root .project/tasks`
+- `edison task waves --json`
+
+Then it must require codebase scanning for ownership surfaces. Concrete recommended searches (examples; may vary by project):
+- Find registries: `rg -n \"Registry|register\\(|registry\" src`
+- Find exports/wiring: `rg -n \"__all__|export\\s+\\{|exports|wiring\" src`
+- Find schemas/config roots: `rg -n \"schema|config|Settings|Config\" src`
+
+### Collision/duplication decision rules (so outputs are consistent)
+
+The report must explicitly classify each risk as one of:
+- **Existing canonical owner** (new work should integrate, not duplicate)
+- **Missing canonical owner** (create a new owner module/API; pick one task/plan item as owner)
+- **Split needed** (task/plan item is too broad; risks duplicating multiple subsystems)
+
+Severity guidance:
+- CRITICAL: a task proposes creating a new module/API that already exists (competing implementations likely)
+- HIGH: multiple tasks propose overlapping ownership of the same surface (registry/export/config root)
+- MEDIUM: unclear ownership boundaries (needs a canonical owner decision)
+- LOW: naming/organization suggestions
 
 ## Output Format (STRICT)
 

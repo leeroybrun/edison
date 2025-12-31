@@ -44,9 +44,10 @@ It MUST:
 
 - `src/edison/data/commands/task/task-audit.md` (existing audit workflow prompt)
 - `src/edison/data/commands/task/task-backlog-coherence.md` (structured read-only report pattern)
-- Spec‑Kit analyze template (methodology reference): `/tmp/edison-vendor-commands/spec-kit/templates/commands/analyze.md`
-- OpenSpec validate (validator UX reference): `/tmp/edison-vendor-commands/OpenSpec/src/commands/validate.ts`
-- BMAD checklist style (halt conditions + status tracking reference): `/tmp/edison-vendor-commands/BMAD-METHOD/src/modules/bmgd/workflows/4-production/correct-course/checklist.md`
+- Optional vendor references (if available; do not block if missing):
+  - Spec‑Kit analyze methodology: `spec-kit/templates/commands/analyze.md`
+  - OpenSpec validate UX: `OpenSpec/src/commands/validate.ts`
+  - BMAD checklist style: `BMAD-METHOD/.../correct-course/checklist.md`
 
 ## Objectives
 
@@ -65,6 +66,43 @@ It MUST:
 - [ ] The command must include a strict **Ask/Approval gate**:
   - “Do you want me to apply these task edits now?”
   - If approved, it must propose a minimal patch plan first (no broad rewrites).
+
+## Patch Plan Format (REQUIRED)
+
+The command MUST specify a machine-reviewable “proposed edits” format so an implementer can apply it safely:
+
+### A) Frontmatter edits (preferred)
+
+For each task, propose minimal changes as YAML fragments (not full-file rewrites):
+- Add `depends_on` when ordering is required (true prerequisite or collision ordering).
+- Add `related` when tasks are conceptually linked but not ordered.
+- Add `blocks_tasks` only when it is truly blocking.
+
+### B) Body edits (only when needed)
+
+If remediation requires changing file targets, edits MUST be limited to the task’s:
+- `## Files to Create/Modify` fenced code block
+
+### C) Output format for proposed edits
+
+For each task, output:
+
+1) `Task: <id>`
+2) `Why` (cite audit evidence fields: mentioned ids, unordered pairs, file paths, waves)
+3) `Proposed frontmatter patch:` (YAML fragment)
+4) `Proposed body patch:` (only if required; minimal)
+
+## Relationship Heuristics (so LLM decisions are consistent)
+
+When choosing relationship types:
+- Prefer `depends_on` when:
+  - one task’s acceptance criteria require an artifact produced by another task
+  - unordered `file_overlap` indicates true competing edits and ordering resolves it
+- Prefer `related` when:
+  - tasks touch the same subsystem but can be implemented independently
+  - the mention is conceptual (“see also”) not a prerequisite
+- Prefer “no link” when:
+  - it’s a non-actionable mention or historical reference
 
 ## Output Format (STRICT)
 
