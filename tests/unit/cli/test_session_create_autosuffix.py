@@ -76,3 +76,37 @@ def test_session_create_explicit_existing_still_fails(isolated_project_env, monk
     captured = capsys.readouterr()
     out = json.loads(captured.out or captured.err)
     assert out["error"] == "session_error"
+
+
+def test_session_create_no_worktree_pins_session_id_file(isolated_project_env, monkeypatch, capsys):
+    """--no-worktree should still write the worktree-local .session-id file for this checkout."""
+    from pathlib import Path
+
+    from edison.cli.session import create as create_cli
+
+    monkeypatch.setattr(create_cli, "generate_session_id", lambda: "fixed-pid-pin")
+
+    args = argparse.Namespace(
+        session_id=None,
+        owner="tester",
+        mode="start",
+        no_worktree=True,
+        install_deps=False,
+        base_branch=None,
+        start_prompt=None,
+        include_prompt_text=False,
+        json=True,
+        repo_root=None,
+    )
+
+    assert create_cli.main(args) == 0
+    captured = capsys.readouterr()
+    out = json.loads(captured.out or captured.err)
+    assert out["session_id"] == "fixed-pid-pin"
+
+    session_id_path = out.get("sessionIdFilePath")
+    assert session_id_path, "Expected sessionIdFilePath to be populated in --no-worktree mode"
+    session_id_file = Path(session_id_path)
+    assert session_id_file.exists()
+    assert session_id_file.read_text(encoding="utf-8").strip() == out["session_id"]
+    assert out.get("worktreePinned") is True
