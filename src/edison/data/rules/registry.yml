@@ -392,7 +392,15 @@ rules:
 
     Reference: `guidelines/shared/GIT_WORKFLOW.md`
   cli:
-    commands: ["session create", "orchestrator start", "qa validate", "qa promote", "task claim", "*"]
+    commands:
+      - exec
+      - shims env
+      - shims sync
+      - session create
+      - orchestrator start
+      - qa validate
+      - qa promote
+      - task claim
     timing: before
 - id: RULE.SESSION.CLOSE_NO_BLOCKERS
   title: Close session only when no blockers remain and all scope is validated
