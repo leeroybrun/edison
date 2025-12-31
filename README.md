@@ -483,7 +483,7 @@ logging:
   audit:
     enabled: true
     # Canonical audit log (append-only, JSONL).
-    # Filter by `event`, `session_id`, `invocation_id`, `taskId`, etc.
+    # Filter by `event`, `session_id`, `invocation_id`, `task_id`, etc.
     path: ".project/logs/edison/audit.jsonl"
     jsonl:
       enabled: true

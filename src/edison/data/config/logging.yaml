@@ -1,7 +1,8 @@
 # Logging / Audit Configuration
 #
-# Edison logging is designed for project-scoped and session-scoped auditing.
-# Default is ON, writing to a single canonical audit JSONL stream.
+# Edison logging is designed for project-scoped auditing with a single canonical
+# audit JSONL stream. Events include `session_id`, `task_id`, and `invocation_id`
+# fields (when available) for easy filtering.
 
 logging:
   enabled: true
@@ -9,7 +10,7 @@ logging:
   audit:
     enabled: true
     # Canonical audit log (append-only, JSONL).
-    # Filter by `session_id`, `invocation_id`, `event`, `taskId`, etc.
+    # Filter by `session_id`, `task_id`, `invocation_id`, `event`, etc.
     path: "{PROJECT_MANAGEMENT_DIR}/logs/edison/audit.jsonl"
     # Sink-level enablement (allows keeping `audit.enabled: true` while disabling JSONL writes).
     jsonl:
@@ -36,7 +37,7 @@ logging:
     max_output_bytes: 100000
 
   stdlib:
-    enabled: true
+    enabled: false
     level: "INFO"
     # When enabled, Edison configures the Python stdlib `logging` module to write
     # to a per-invocation file (no stderr handler, so JSON output stays pure).

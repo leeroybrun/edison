@@ -350,3 +350,48 @@ def test_legacy_audit_project_path_is_treated_as_canonical_path(tmp_path: Path, 
     # Canonical sink path should be honored even when configured via legacy keys.
     log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
     assert log_path.exists()
+
+
+def test_audit_event_does_not_allow_callers_to_override_context_ids(tmp_path: Path, monkeypatch) -> None:
+    """Emitters should not be able to write mismatched ids when a context exists.
+
+    Otherwise we can end up with competing/duplicated id fields across the canonical audit log.
+    """
+    repo = create_repo_with_git(tmp_path, name="repo")
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo))
+    _enable_logging(repo)
+    reset_edison_caches()
+
+    from edison.core.audit.context import AuditContext, clear_audit_context, set_audit_context
+    from edison.core.audit.logger import audit_event
+
+    try:
+        set_audit_context(
+            AuditContext(
+                invocation_id="ctx-invocation",
+                argv=["edison", "config", "show"],
+                command_name="config.show",
+                session_id="ctx-session",
+                task_id="ctx-task",
+            )
+        )
+
+        audit_event(
+            "hook.test",
+            repo_root=repo,
+            invocation_id="caller-invocation",
+            session_id="caller-session",
+            task_id="caller-task",
+        )
+    finally:
+        clear_audit_context()
+
+    log_path = repo / ".project" / "logs" / "edison" / "audit.jsonl"
+    assert log_path.exists()
+    events = [json.loads(ln) for ln in log_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    last = events[-1]
+
+    assert last.get("event") == "hook.test"
+    assert last.get("invocation_id") == "ctx-invocation"
+    assert last.get("session_id") == "ctx-session"
+    assert last.get("task_id") == "ctx-task"

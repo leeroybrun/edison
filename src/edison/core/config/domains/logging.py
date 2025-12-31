@@ -2,7 +2,7 @@
 
 This config controls:
 - Whether Edison emits structured audit events
-- Where project/session/invocation logs are stored
+- Where the canonical audit log is stored
 - Whether stdout/stderr are captured (tee) per CLI invocation
 """
 
@@ -25,10 +25,7 @@ from ..base import BaseDomainConfig
 
 @dataclass(frozen=True)
 class LoggingPaths:
-    project_audit_jsonl: str
-    session_audit_jsonl: str
-    invocation_dir: str
-    invocation_audit_jsonl: str
+    audit_jsonl: str
     stdout_template: str
     stderr_template: str
 
@@ -195,7 +192,15 @@ class LoggingConfig(BaseDomainConfig):
         sinks = audit.get("sinks") or {}
         jsonl = sinks.get("jsonl") or {}
         paths = jsonl.get("paths") or {}
-        return dict(paths) if isinstance(paths, dict) else {}
+        if not isinstance(paths, dict):
+            return {}
+
+        # Legacy support: only the "project" path is still meaningful now that
+        # Edison uses a single canonical audit log stream.
+        raw_legacy_project = paths.get("project")
+        if isinstance(raw_legacy_project, str) and raw_legacy_project.strip():
+            return {"project": str(raw_legacy_project).strip()}
+        return {}
 
     @cached_property
     def invocation_embed_tails_enabled(self) -> bool:
@@ -223,10 +228,7 @@ class LoggingConfig(BaseDomainConfig):
             capture_paths = {}
 
         return LoggingPaths(
-            project_audit_jsonl=str(self._jsonl_paths.get("project") or ""),
-            session_audit_jsonl=str(self._jsonl_paths.get("session") or ""),
-            invocation_dir=str(self._jsonl_paths.get("invocation_dir") or ""),
-            invocation_audit_jsonl=str(self._jsonl_paths.get("invocation") or ""),
+            audit_jsonl=str(self._jsonl_paths.get("project") or ""),
             stdout_template=str(capture_paths.get("stdout") or ""),
             stderr_template=str(capture_paths.get("stderr") or ""),
         )
@@ -256,29 +258,9 @@ class LoggingConfig(BaseDomainConfig):
         return str(template).format_map(SafeDict(tokens))
 
     def resolve_project_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
-        if not self.paths.project_audit_jsonl:
+        if not self.paths.audit_jsonl:
             return None
-        expanded = Path(self.expand(self.paths.project_audit_jsonl, tokens)).expanduser()
-        if not expanded.is_absolute():
-            expanded = self.repo_root / expanded
-        return expanded.resolve()
-
-    def resolve_session_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
-        if not self.paths.session_audit_jsonl:
-            return None
-        if not tokens.get("session_id"):
-            return None
-        expanded = Path(self.expand(self.paths.session_audit_jsonl, tokens)).expanduser()
-        if not expanded.is_absolute():
-            expanded = self.repo_root / expanded
-        return expanded.resolve()
-
-    def resolve_invocation_audit_path(self, *, tokens: Mapping[str, str]) -> Path | None:
-        if not self.paths.invocation_audit_jsonl:
-            return None
-        if not tokens.get("invocation_id"):
-            return None
-        expanded = Path(self.expand(self.paths.invocation_audit_jsonl, tokens)).expanduser()
+        expanded = Path(self.expand(self.paths.audit_jsonl, tokens)).expanduser()
         if not expanded.is_absolute():
             expanded = self.repo_root / expanded
         return expanded.resolve()

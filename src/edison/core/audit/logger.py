@@ -56,9 +56,15 @@ def audit_event(event: str, *, repo_root: Path | None = None, **fields: Any) -> 
         pass
 
     ctx = get_audit_context()
-    invocation_id = ctx.invocation_id if ctx is not None else None
-    session_id = ctx.session_id if ctx is not None else None
-    task_id = ctx.task_id if ctx is not None else None
+    ctx_invocation_id = ctx.invocation_id if ctx is not None else None
+    ctx_session_id = ctx.session_id if ctx is not None else None
+    ctx_task_id = ctx.task_id if ctx is not None else None
+
+    # When a context exists, it is the canonical source of these ids.
+    # Allow explicit ids only when there is no active context.
+    invocation_id = ctx_invocation_id if ctx_invocation_id is not None else fields.get("invocation_id")
+    session_id = ctx_session_id if ctx_session_id is not None else fields.get("session_id")
+    task_id = ctx_task_id if ctx_task_id is not None else fields.get("task_id")
 
     tokens = cfg.build_tokens(
         invocation_id=invocation_id,
@@ -80,7 +86,16 @@ def audit_event(event: str, *, repo_root: Path | None = None, **fields: Any) -> 
         "task_id": task_id,
         "project_root": str(root),
     }
-    payload.update(fields)
+
+    # Prevent callers from overriding the canonical envelope fields.
+    reserved = {"ts", "event", "pid", "project_root"}
+    for k, v in fields.items():
+        if k in reserved:
+            continue
+        if k in {"invocation_id", "session_id", "task_id"}:
+            # Merged above with context taking precedence.
+            continue
+        payload[k] = v
 
     try:
         payload = cfg.redact_payload(payload)

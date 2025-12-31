@@ -109,6 +109,132 @@ properties:
     type: string
     description: Project management root directory (e.g., .project).
     default: .project
+  logging:
+    type: object
+    description: Structured audit logging configuration.
+    properties:
+      enabled:
+        type: boolean
+      audit:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          path:
+            type: string
+            description: Canonical append-only audit JSONL path.
+          jsonl:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+                default: true
+            additionalProperties: true
+          # Legacy compatibility (v1): audit.sinks.jsonl.paths.project.
+          sinks:
+            type: object
+            properties:
+              jsonl:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  paths:
+                    type: object
+                    properties:
+                      project:
+                        type: string
+                    additionalProperties: true
+                additionalProperties: true
+            additionalProperties: true
+        additionalProperties: true
+      invocation:
+        type: object
+        properties:
+          embed_tails:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+              max_bytes:
+                type: integer
+                minimum: 0
+            additionalProperties: false
+        additionalProperties: true
+      stdio:
+        type: object
+        properties:
+          capture:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+              paths:
+                type: object
+                properties:
+                  stdout:
+                    type: string
+                  stderr:
+                    type: string
+                additionalProperties: true
+            additionalProperties: true
+        additionalProperties: true
+      subprocess:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          max_output_bytes:
+            type: integer
+            minimum: 0
+        additionalProperties: false
+      stdlib:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          level:
+            type: string
+          path:
+            type: string
+        additionalProperties: false
+      redaction:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          replacement:
+            type: string
+          patterns:
+            type: array
+            items:
+              type: string
+        additionalProperties: false
+      orchestrator:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          capture_prompt:
+            type: boolean
+          max_prompt_bytes:
+            type: integer
+            minimum: 0
+        additionalProperties: false
+      guards:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+        additionalProperties: false
+      hooks:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+        additionalProperties: false
+    additionalProperties: true
   orchestration:
     type: object
     description: Multi-agent orchestration and process tracking configuration.
