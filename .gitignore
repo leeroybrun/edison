@@ -12,3 +12,4 @@ __pycache__/
 .claude/settings.json.bak
 
 .edison/config.local/
+.DS_Store
