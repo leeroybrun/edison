@@ -5,23 +5,19 @@ then generates a PID-based session identifier.
 
 IMPORTANT
 ---------
-This module reuses the psutil/is_process_alive pattern from
-``edison tasks cleanup-stale-locks`` for consistency. Keep the
-behaviour aligned with that script whenever changes are made here.
+psutil is a required dependency as of task 001-session-id-inference.
+This ensures stable process tree inference across all platforms and
+IDE wrappers (Claude, Codex, Cursor, etc.).
 """
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple
 
-try:  # Optional dependency
-    import psutil  # type: ignore
+import psutil  # Required dependency - stable process tree inference
 
-    HAS_PSUTIL = True
-except ImportError:  # pragma: no cover - handled at runtime
-    HAS_PSUTIL = False
+HAS_PSUTIL = True  # Always True since psutil is now required
 
-def _load_llm_process_names() -> List[str]:
+def _load_llm_process_names() -> list[str]:
     """Load LLM process names from configuration with safe defaults."""
     try:
         from edison.core.config.domains.process import ProcessConfig
@@ -32,7 +28,7 @@ def _load_llm_process_names() -> List[str]:
         return ["claude", "codex", "gemini", "cursor", "aider", "happy"]
 
 
-def _load_edison_process_names() -> List[str]:
+def _load_edison_process_names() -> list[str]:
     """Load Edison process names from configuration with safe defaults."""
     try:
         from edison.core.config.domains.process import ProcessConfig
@@ -43,7 +39,7 @@ def _load_edison_process_names() -> List[str]:
         return ["edison", "python"]
 
 
-def _load_edison_script_markers() -> List[str]:
+def _load_edison_script_markers() -> list[str]:
     """Load command-line markers that indicate Edison scripts."""
     try:
         from edison.core.config.domains.process import ProcessConfig
@@ -59,7 +55,7 @@ def _load_edison_script_markers() -> List[str]:
             return ["edison", ".edison"]
 
 
-def _is_edison_script(cmdline: List[str]) -> bool:
+def _is_edison_script(cmdline: list[str]) -> bool:
     """Check if a command line indicates an Edison script invocation."""
     cmdline_str = " ".join(cmdline).lower()
     return any(marker in cmdline_str for marker in _load_edison_script_markers())
@@ -95,26 +91,27 @@ def is_process_alive(pid: int) -> bool:
         return False
 
 
-def find_topmost_process() -> Tuple[str, int]:
+def find_topmost_process() -> tuple[str, int]:
     """Walk up process tree to find the topmost Edison or LLM process.
 
     Priority order:
-    1) Edison process (wins over LLM if encountered)
-    2) LLM process (used if no Edison found)
-    3) Current process (fallback when psutil unavailable or nothing matches)
+    1) Highest LLM wrapper process in the parent chain (Claude, Codex, Cursor, etc.)
+    2) Highest Edison process in the chain
+    3) Current process (fallback when nothing matches - uses current PID for stability)
+
+    The key improvement from task 001-session-id-inference is that we prefer the
+    **highest** LLM wrapper in the tree, making the session ID stable across
+    repeated CLI invocations within the same IDE session.
 
     Returns:
         Tuple[str, int]: (process_name, pid) of the topmost matching process
     """
-    if not HAS_PSUTIL:
-        return ("python", os.getpid())
-
     try:
         llm_names = _load_llm_process_names()
         edison_names = _load_edison_process_names()
 
         current = psutil.Process(os.getpid())
-        highest_match: Optional[Tuple[str, int]] = None
+        highest_match: tuple[str, int] | None = None
 
         while current:
             try:
@@ -132,22 +129,24 @@ def find_topmost_process() -> Tuple[str, int]:
             except (psutil.NoSuchProcess, psutil.ZombieProcess):
                 break
 
-            # Edison check (highest priority)
-            if name in edison_names:
+            # LLM check (highest priority - provides session stability)
+            if name in llm_names:
+                highest_match = (name, current.pid)
+
+            # Edison check only if no LLM seen yet
+            elif name in edison_names and (
+                not highest_match or highest_match[0] not in llm_names
+            ):
                 if name == "python":
                     if _is_edison_script(cmdline):
                         highest_match = ("edison", current.pid)
                 else:
                     highest_match = ("edison", current.pid)
 
-            # LLM check only if no Edison seen yet
-            elif name in llm_names and (
-                not highest_match or highest_match[0] != "edison"
-            ):
-                highest_match = (name, current.pid)
-
             try:
                 parent = current.parent()
+                if parent is None:
+                    break
             except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
                 break
 

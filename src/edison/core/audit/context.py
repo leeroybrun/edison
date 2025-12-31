@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from contextvars import ContextVar
-from typing import Optional, Sequence
+from dataclasses import dataclass
+
+from collections.abc import Sequence
 
 
 @dataclass(frozen=True)
@@ -10,7 +11,7 @@ class AuditContext:
     invocation_id: str
     argv: Sequence[str]
     command_name: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 _AUDIT_CONTEXT: ContextVar[AuditContext | None] = ContextVar("_AUDIT_CONTEXT", default=None)
@@ -29,4 +30,3 @@ def clear_audit_context() -> None:
 
 
 __all__ = ["AuditContext", "get_audit_context", "set_audit_context", "clear_audit_context"]
-

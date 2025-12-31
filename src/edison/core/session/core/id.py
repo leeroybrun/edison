@@ -10,15 +10,19 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from .._config import get_config
+
+if TYPE_CHECKING:
+    from edison.core.session.core.models import Session
+    from edison.core.session.persistence.repository import SessionRepository
 
 
 class SessionIdError(ValueError):
     """Raised when session ID validation fails."""
 
-    def __init__(self, message: str, session_id: Optional[str] = None):
+    def __init__(self, message: str, session_id: str | None = None):
         super().__init__(message)
         self.session_id = session_id
 
@@ -85,22 +89,27 @@ def validate_session_id(session_id: str) -> str:
 
 
 def detect_session_id(
-    explicit: Optional[str] = None,
-    owner: Optional[str] = None,
+    explicit: str | None = None,
+    owner: str | None = None,
     *,
-    project_root: Optional[Path] = None,
-) -> Optional[str]:
+    project_root: Path | None = None,
+) -> str | None:
     """Canonical session ID detection with validation.
 
     Detection priority:
     1. Explicit session ID parameter (if provided)
     2. AGENTS_SESSION environment variable (canonical)
-    3. Worktree `.project/.session-id` file (if present + valid + exists)
-    4. Process-derived `{process}-pid-{pid}` lookup (if exists)
+    3. Worktree `.project/.session-id` file (ONLY in linked worktrees, never primary checkout)
+    4. Process-derived `{process}-pid-{pid}` lookup with suffix handling
     5. Auto-detect from explicit owner / AGENTS_OWNER (if provided)
 
     Auto-detection uses SessionRepository as the single source of truth and
     prefers sessions in semantic "active" state (directory mapping is config-driven).
+
+    IMPORTANT (task 001-session-id-inference):
+    - `.session-id` is ONLY consulted inside linked worktrees (never primary checkout)
+    - Process-derived lookup handles -seq-N suffixes for session uniqueness
+    - When multiple sessions match a prefix, prefer active state then most recent
 
     Args:
         explicit: Explicit session ID if provided by caller
@@ -112,8 +121,8 @@ def detect_session_id(
     Raises:
         SessionIdError: If session ID format is invalid
     """
-    from edison.core.utils.paths import resolve_project_root
     from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.utils.paths import resolve_project_root
 
     root = Path(project_root).resolve() if project_root is not None else resolve_project_root()
     repo = SessionRepository(project_root=root)
@@ -129,31 +138,41 @@ def detect_session_id(
         sid = validate_session_id(env_session)
         return sid if repo.exists(sid) else None
 
-    # Priority 3: Worktree session file (exists+valid+points to existing session)
+    # Priority 3: Worktree session file (ONLY in linked worktrees - never primary checkout)
+    # This prevents session ID leakage between sessions when running from primary checkout
     try:
+        from edison.core.utils.git.worktree import is_worktree
         from edison.core.utils.paths import get_management_paths
 
-        mgmt = get_management_paths(root)
-        session_file = (mgmt.get_management_root() / ".session-id").resolve()
-        if session_file.exists():
-            raw = session_file.read_text(encoding="utf-8").strip()
-            if raw:
-                sid = validate_session_id(raw)
-                if repo.exists(sid):
-                    return sid
+        # Gate .session-id resolution behind worktree check (task 001-session-id-inference)
+        if is_worktree(root):
+            mgmt = get_management_paths(root)
+            session_file = (mgmt.get_management_root() / ".session-id").resolve()
+            if session_file.exists():
+                raw = session_file.read_text(encoding="utf-8").strip()
+                if raw:
+                    sid = validate_session_id(raw)
+                    if repo.exists(sid):
+                        return sid
     except (OSError, SessionIdError):
         # Fail closed by ignoring corrupted or unreadable session-id file.
         # Callers that require an explicit session must pass it (or set AGENTS_SESSION).
         pass
 
-    # Priority 4: Process-derived lookup (exists only)
+    # Priority 4: Process-derived lookup with suffix handling (task 001-session-id-inference)
+    # Handles session IDs with -seq-N suffixes for uniqueness
+    # When multiple sessions match a prefix, prefer active state then most recent
     try:
         from edison.core.utils.process.inspector import find_topmost_process
 
         process_name, pid = find_topmost_process()
-        candidate = validate_session_id(f"{process_name}-pid-{pid}")
-        if repo.exists(candidate):
-            return candidate
+        process_prefix = f"{process_name}-pid-{pid}"
+
+        # Find ALL sessions matching the prefix (including exact match and suffixed)
+        # and prefer active ones, then most recently updated
+        candidates = _find_sessions_by_prefix(repo, process_prefix, root)
+        if candidates:
+            return candidates[0]
     except Exception:
         pass
 
@@ -168,37 +187,91 @@ def detect_session_id(
             workflow = WorkflowConfig(repo_root=root)
             active_state = workflow.get_semantic_state("session", "active")
 
-            candidates = [s for s in repo.find_by_owner(str(owner)) if str(s.state) == str(active_state)]
-            if not candidates:
+            owner_sessions: list[Session] = [
+                s for s in repo.find_by_owner(str(owner)) if str(s.state) == str(active_state)
+            ]
+            if not owner_sessions:
                 return None
 
-            def _last_active(sess) -> str:
+            def _last_active(sess: Session) -> str:
                 try:
-                    return str(getattr(sess, "metadata").updated_at or "")
+                    return str(sess.metadata.updated_at or "")
                 except Exception:
                     return ""
 
-            candidates.sort(key=_last_active, reverse=True)
-            return validate_session_id(candidates[0].id)
+            owner_sessions.sort(key=_last_active, reverse=True)
+            return validate_session_id(owner_sessions[0].id)
         except Exception:
             return None
 
     return None
 
 
+def _find_sessions_by_prefix(
+    repo: SessionRepository,
+    prefix: str,
+    root: Path,
+) -> list[str]:
+    """Find sessions matching a process prefix, preferring active state then most recent.
+
+    This handles session IDs with -seq-N suffixes for uniqueness.
+    For example, for prefix "claude-pid-12345", matches:
+    - "claude-pid-12345" (exact)
+    - "claude-pid-12345-seq-1"
+    - "claude-pid-12345-seq-2"
+
+    Returns sessions sorted by: active state first, then most recently updated.
+    """
+    try:
+        from edison.core.config.domains.workflow import WorkflowConfig
+
+        workflow = WorkflowConfig(repo_root=root)
+        active_state = str(workflow.get_semantic_state("session", "active"))
+    except Exception:
+        active_state = "active"
+
+    # Find all sessions and filter by prefix
+    all_sessions = repo.get_all()
+    matching: list[Session] = []
+
+    for session in all_sessions:
+        sid = session.id
+        # Match exact prefix or prefix followed by -seq-
+        if sid == prefix or sid.startswith(f"{prefix}-seq-"):
+            matching.append(session)
+
+    if not matching:
+        return []
+
+    # Sort: active sessions first, then by updated_at descending
+    def sort_key(sess: Session) -> tuple[int, str]:
+        is_active = 1 if str(sess.state) == active_state else 0
+        try:
+            updated = str(sess.metadata.updated_at or "")
+        except Exception:
+            updated = ""
+        # Return (is_active, updated) with reverse=True
+        # This puts active sessions (1) before inactive ones (0)
+        # And within each group, sorts by updated_at descending
+        return (is_active, updated)
+
+    matching.sort(key=sort_key, reverse=True)
+    return [validate_session_id(s.id) for s in matching]
+
+
 def require_session_id(
-    explicit: Optional[str] = None,
+    explicit: str | None = None,
     *,
-    project_root: Optional[Path] = None,
+    project_root: Path | None = None,
 ) -> str:
     """Resolve a session id using canonical detection and require it to exist.
 
     This is the recommended entrypoint for CLIs and workflows that need a real
     session scope (claiming, session status, etc).
     """
-    from edison.core.utils.paths import resolve_project_root
-    from edison.core.session.persistence.repository import SessionRepository
     from edison.core.exceptions import SessionNotFoundError
+    from edison.core.session.persistence.repository import SessionRepository
+    from edison.core.utils.paths import resolve_project_root
 
     root = Path(project_root).resolve() if project_root is not None else resolve_project_root()
     repo = SessionRepository(project_root=root)
@@ -224,20 +297,20 @@ def require_session_id(
             )
         return sid
 
-    sid = detect_session_id(project_root=root)
-    if not sid:
+    detected_sid = detect_session_id(project_root=root)
+    if not detected_sid:
         raise SessionNotFoundError(
             "No session could be resolved. Set AGENTS_SESSION, create a worktree session (session me --set), "
             "or create a session via `edison session create`.",
             context={"projectRoot": str(root)},
         )
     # detect_session_id guarantees existence for all non-env sources, but keep a defensive check.
-    if not repo.exists(sid):
+    if not repo.exists(detected_sid):
         raise SessionNotFoundError(
-            f"Session {sid} not found",
-            context={"sessionId": sid, "projectRoot": str(root)},
+            f"Session {detected_sid} not found",
+            context={"sessionId": detected_sid, "projectRoot": str(root)},
         )
-    return sid
+    return detected_sid
 
 
 __all__ = [

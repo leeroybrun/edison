@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 
 
@@ -48,10 +49,17 @@ def test_detect_session_id_returns_none_for_unknown_owner(
 
 def test_detect_session_id_uses_session_id_file_when_present(
     isolated_project_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from edison.core.session.core.models import Session
     from edison.core.session.persistence.repository import SessionRepository
+
+    # Note: .session-id is only consulted in linked worktrees (task 001-session-id-inference)
+    # Mock is_worktree to simulate being inside a worktree
+    from edison.core.utils.git import worktree as worktree_module
     from edison.core.utils.paths.resolver import PathResolver
+
+    monkeypatch.setattr(worktree_module, "is_worktree", lambda path=None: True)
 
     repo = SessionRepository(project_root=isolated_project_env)
     repo.create(Session.create("sess-file-001", owner="tester", state="active"))
@@ -73,6 +81,12 @@ def test_detect_session_id_uses_configured_management_dir_for_session_file(
 
     # Ensure env doesn't mask file lookup.
     monkeypatch.delenv("AGENTS_SESSION", raising=False)
+
+    # Note: .session-id is only consulted in linked worktrees (task 001-session-id-inference)
+    # Mock is_worktree to simulate being inside a worktree
+    from edison.core.utils.git import worktree as worktree_module
+
+    monkeypatch.setattr(worktree_module, "is_worktree", lambda path=None: True)
 
     repo = SessionRepository(project_root=isolated_project_env)
     repo.create(Session.create("sess-file-003", owner="tester", state="active"))
