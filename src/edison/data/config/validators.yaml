@@ -26,7 +26,7 @@ validation:
       command: "codex"
       # Note: shell_environment_policy.inherit=all provides full env for dev tools (uv, mypy, ruff).
       # We explicitly exclude session-related vars to prevent test interference.
-      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "shell_environment_policy.inherit=all", "-c", "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"]
+      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "shell_environment_policy.inherit=all", "-c", "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\", \"PAL_WORKING_DIR\"]"]
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: []
