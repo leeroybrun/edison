@@ -172,6 +172,27 @@ class CLIEngine:
         """
         start_time = time.time()
 
+        env = dict(os.environ)
+        # Prevent Edison/session context from leaking into validator runs (validators should be reproducible
+        # from the repo state alone, not dependent on the operator's active session).
+        env.pop("AGENTS_SESSION", None)
+        env.pop("EDISON_SESSION_ID", None)
+        env.pop("PAL_WORKING_DIR", None)
+
+        # Make common repo-local tool shims available (uv/mypy/ruff/pytest, node tools, etc).
+        try:
+            venv_bin = worktree_path / ".venv" / ("Scripts" if os.name == "nt" else "bin")
+            if venv_bin.exists():
+                env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
+        except Exception:
+            pass
+        try:
+            node_bin = worktree_path / "node_modules" / ".bin"
+            if node_bin.exists():
+                env["PATH"] = f"{node_bin}{os.pathsep}{env.get('PATH', '')}"
+        except Exception:
+            pass
+
         prompt_input: str | None = None
         prompt_args: list[str] | None = None
 
