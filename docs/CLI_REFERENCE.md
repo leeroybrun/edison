@@ -1591,14 +1591,18 @@ edison qa promote --task 150-auth-feature --to done --json
 Manage QA validation rounds and their status.
 
 ```bash
-edison qa round <task_id> --status <status> [options]
+edison qa round <task_id> [options]
 ```
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
-| `--status` | Round status: `approve`, `reject`, `blocked`, or `pending` (required) |
+| `--status` | Append a round-history entry with status: `approve`, `reject`, `blocked`, or `pending` (default: `pending`) |
+| `--note` | Optional notes for the round (e.g., validator IDs, rationale) |
+| `--new` | Create a new evidence `round-N/` directory and append round history |
+| `--list` | List all rounds (merged view: QA round history + evidence dirs) |
+| `--current` | Show the current round number |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1611,6 +1615,8 @@ edison qa round <task_id> --status <status> [options]
 
 **When to Use:**
 
+- Inspect current/previous rounds (`--current`, `--list`)
+- Create a new evidence round directory (`--new`)
 - Recording validation results
 - Tracking round outcomes
 - Managing rework cycles
@@ -1618,6 +1624,12 @@ edison qa round <task_id> --status <status> [options]
 **Examples:**
 
 ```bash
+# List rounds
+edison qa round 150-auth-feature --list
+
+# Create a new evidence round directory (round-N/) and append history
+edison qa round 150-auth-feature --new
+
 # Approve round
 edison qa round 150-auth-feature --status approve
 

@@ -562,8 +562,9 @@ edison qa validate <task-id>
 edison qa run <validator-name> --task <task-id>
 
 # Manage rounds
-edison qa round list --task <task-id>
-edison qa round new --task <task-id>
+edison qa round <task-id> --current
+edison qa round <task-id> --list
+edison qa round <task-id> --new
 
 # Bundle management
 edison qa bundle create --task <task-id>

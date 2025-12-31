@@ -91,6 +91,19 @@ edison qa round <task-id> --status <status>
 **Purpose**: Record validator outcomes for a validation round
 **When to use**: After running validation checks
 
+**Inspect rounds:**
+```bash
+edison qa round <task-id> --current
+edison qa round <task-id> --list
+```
+
+**Create a new evidence round directory (round-N/):**
+```bash
+edison qa round <task-id> --new
+```
+
+> Note: `edison qa round --status …` appends round history; it does not create evidence directories unless you pass `--new`.
+
 **Statuses:**
 - `approve` - All checks pass
 - `reject` - Issues found, requires fixes
