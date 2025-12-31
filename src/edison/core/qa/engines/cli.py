@@ -16,7 +16,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from edison.core.utils.subprocess import run_ci_command_from_string
 
@@ -28,6 +28,14 @@ if TYPE_CHECKING:
     from edison.core.registries.validators import ValidatorMetadata
 
 logger = logging.getLogger(__name__)
+
+CanExecuteReason = Literal[
+    "ok",
+    "disabled_by_config",
+    "binary_missing",
+    "no_command",
+    "config_error",
+]
 
 
 class CLIEngine:
@@ -81,43 +89,63 @@ class CLIEngine:
         """Get the parser name to use."""
         return self.config.response_parser or "plain_text"
 
+    def can_execute_details(self) -> tuple[bool, CanExecuteReason, str]:
+        """Return whether the engine can execute and why.
+
+        This is intended for operator-facing UX (avoid misleading "CLI missing"
+        when execution is disabled by config).
+
+        Returns:
+            (can_execute, reason, detail)
+        """
+        # Config-driven safety: external CLI validators are disabled unless explicitly enabled.
+        try:
+            from edison.core.config.domains.qa import QAConfig
+
+            allow = QAConfig(repo_root=self.project_root).orchestration_config.get("allowCliEngines", False)
+            # Supported values:
+            # - false: disable all CLI engines
+            # - true: allow all CLI engines
+            # - string: allow only this engine ID
+            # - string[]: allow only these engine IDs (preferred)
+            allowed = False
+            if allow is True:
+                allowed = True
+            elif allow is False or allow is None:
+                allowed = False
+            elif isinstance(allow, str):
+                allowed = allow.strip() == self.config.id
+            elif isinstance(allow, list):
+                allow_set = {str(v).strip() for v in allow if str(v).strip()}
+                allowed = self.config.id in allow_set
+            else:
+                allowed = False
+
+            if not allowed:
+                return (
+                    False,
+                    "disabled_by_config",
+                    "orchestration.allowCliEngines is false (or does not allow this engine id)",
+                )
+        except Exception as exc:
+            return False, "config_error", f"Failed to read orchestration.allowCliEngines: {exc}"
+
+        if not self.command:
+            return False, "no_command", "Engine has no configured command"
+
+        if shutil.which(self.command) is None:
+            return False, "binary_missing", f"Command not found in PATH: {self.command}"
+
+        return True, "ok", ""
+
     def can_execute(self) -> bool:
         """Check if the CLI tool is available on the system.
 
         Returns:
             True if command exists in PATH
         """
-        # Config-driven safety: external CLI validators are disabled unless explicitly enabled.
-        try:
-            from edison.core.config.domains.qa import QAConfig
-
-            allow = QAConfig(repo_root=self.project_root).orchestration_config.get(
-                "allowCliEngines", False
-            )
-            # Supported values:
-            # - false: disable all CLI engines
-            # - true: allow all CLI engines
-            # - string[]: allow only these engine IDs (preferred)
-            if allow is True:
-                pass
-            elif allow is False or allow is None:
-                return False
-            elif isinstance(allow, str):
-                if allow.strip() != self.config.id:
-                    return False
-            elif isinstance(allow, list):
-                allow_set = {str(v).strip() for v in allow if str(v).strip()}
-                if self.config.id not in allow_set:
-                    return False
-            else:
-                # Unknown type: fail closed.
-                return False
-        except Exception:
-            return False
-
-        if not self.command:
-            return False
-        return shutil.which(self.command) is not None
+        can, _, _ = self.can_execute_details()
+        return bool(can)
 
     def run(
         self,

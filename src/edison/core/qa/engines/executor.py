@@ -663,6 +663,76 @@ class ValidationExecutor:
             return isinstance(fallback, CLIEngine) and fallback.can_execute()
         return False
 
+    def can_execute_validator_details(self, validator_id: str) -> dict[str, object]:
+        """Return structured diagnostics for whether a validator can execute via CLI.
+
+        This is operator-facing: we must distinguish "disabled by config" from
+        "binary missing", otherwise LLM operators chase the wrong fix.
+        """
+        from .cli import CLIEngine
+
+        config = self._registry.get_validator(validator_id)
+        if not config:
+            return {
+                "validatorId": validator_id,
+                "canExecute": False,
+                "reason": "unknown_validator",
+            }
+
+        engine = self._registry._get_or_create_engine(config.engine)
+        if isinstance(engine, CLIEngine):
+            can, reason, detail = engine.can_execute_details()
+            if can:
+                return {
+                    "validatorId": validator_id,
+                    "canExecute": True,
+                    "engine": config.engine,
+                    "command": engine.command,
+                    "reason": "ok",
+                }
+            primary = {
+                "validatorId": validator_id,
+                "canExecute": False,
+                "engine": config.engine,
+                "command": engine.command,
+                "reason": reason,
+                "detail": detail,
+            }
+        else:
+            primary = {
+                "validatorId": validator_id,
+                "canExecute": False,
+                "engine": config.engine,
+                "reason": "not_a_cli_engine",
+            }
+
+        if config.fallback_engine:
+            fallback = self._registry._get_or_create_engine(config.fallback_engine)
+            if isinstance(fallback, CLIEngine):
+                can, reason, detail = fallback.can_execute_details()
+                if can:
+                    return {
+                        "validatorId": validator_id,
+                        "canExecute": True,
+                        "engine": config.fallback_engine,
+                        "command": fallback.command,
+                        "reason": "ok",
+                        "via": "fallback",
+                    }
+                primary["fallback"] = {
+                    "engine": config.fallback_engine,
+                    "command": fallback.command,
+                    "reason": reason,
+                    "detail": detail,
+                }
+            else:
+                primary["fallback"] = {
+                    "engine": config.fallback_engine,
+                    "reason": "not_a_cli_engine",
+                }
+
+        return primary
+
     # ------------------------------------------------------------------
     # Evidence persistence (validator reports)
     # ------------------------------------------------------------------
