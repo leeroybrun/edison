@@ -2,47 +2,34 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from edison.core.session.lifecycle import manager as session_manager
-from edison.core.session.core.id import validate_session_id
-from edison.core.session.core.context import SessionContext
-from edison.core.session import persistence as graph
-from edison.core.task import TaskRepository
 from edison.core.config.domains.workflow import WorkflowConfig
-from edison.core.utils.io import read_json as io_read_json
-from edison.core.utils.time import utc_timestamp as io_utc_timestamp
 from edison.core.qa import evidence as qa_evidence
+from edison.core.session.core.context import SessionContext
+from edison.core.session.core.id import validate_session_id
+from edison.core.session.lifecycle import manager as session_manager
+from edison.core.task import TaskRepository
 from edison.core.utils.cli.arguments import parse_common_args
-from edison.core.utils.cli.output import output_json, error, success
+from edison.core.utils.cli.output import error, output_json, success
 
-if TYPE_CHECKING:
-    from edison.core.qa.workflow.repository import QARepository
-
-
-def _latest_round_dir(task_id: str) -> Optional[Path]:
-    """Return the latest evidence round directory for ``task_id``.
-    
-    Uses EvidenceService.get_current_round_dir() as single source.
-    """
-    ev_svc = qa_evidence.EvidenceService(task_id)
-    return ev_svc.get_current_round_dir()
+if TYPE_CHECKING:  # pragma: no cover
+    from edison.core.qa.workflow.repository import QARepository  # noqa: F401
 
 
-def verify_session_health(session_id: str) -> Dict[str, Any]:
+def verify_session_health(session_id: str) -> dict[str, Any]:
     # Lazy import to avoid circular dependency
     from edison.core.qa.workflow.repository import QARepository
     from edison.core.session.next import compute_next
 
     session_id = validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
-        session = session_manager.get_session(session_id)
+        session_manager.get_session(session_id)
 
-    failures: List[str] = []
-    health = {
+    failures: list[str] = []
+    health: dict[str, Any] = {
         "ok": True,
         "sessionId": session_id,
         "categories": {
@@ -59,21 +46,21 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     # Use TaskRepository to get tasks belonging to this session (task files are source of truth)
     task_repo = TaskRepository()
     qa_repo = QARepository()
-    
+
     # Get tasks from TaskRepository instead of session JSON
     session_tasks = task_repo.find_by_session(session_id)
     session_task_ids = {t.id for t in session_tasks}
-    
+
     for task in session_tasks:
         task_id = task.id
         try:
             p = task_repo.get_path(task_id)
             dir_status = p.parent.name
-            entity_state = task.state
-            if entity_state and entity_state != dir_status:
-                msg = f"Task {task_id} entity state '{entity_state}' != directory '{dir_status}' (no manual moves)"
+            task_entity_state = task.state
+            if task_entity_state and task_entity_state != dir_status:
+                msg = f"Task {task_id} entity state '{task_entity_state}' != directory '{dir_status}' (no manual moves)"
                 failures.append(msg)
-                health["categories"]["stateMismatches"].append({"type": "task", "taskId": task_id, "meta": entity_state, "dir": dir_status})
+                health["categories"]["stateMismatches"].append({"type": "task", "taskId": task_id, "meta": task_entity_state, "dir": dir_status})
         except FileNotFoundError:
             msg = f"Task {task_id} missing on disk"
             failures.append(msg)
@@ -85,11 +72,11 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             p = qa_repo.get_path(qa_id)
             entity = qa_repo.get(qa_id)
             dir_status = p.parent.name
-            entity_state = entity.state if entity else None
-            if entity_state and entity_state != dir_status:
-                msg = f"QA {qa_id} entity state '{entity_state}' != directory '{dir_status}' (no manual moves)"
+            qa_entity_state: str | None = entity.state if entity else None
+            if qa_entity_state and qa_entity_state != dir_status:
+                msg = f"QA {qa_id} entity state '{qa_entity_state}' != directory '{dir_status}' (no manual moves)"
                 failures.append(msg)
-                health["categories"]["stateMismatches"].append({"type": "qa", "qaId": qa_id, "meta": entity_state, "dir": dir_status})
+                health["categories"]["stateMismatches"].append({"type": "qa", "qaId": qa_id, "meta": qa_entity_state, "dir": dir_status})
         except FileNotFoundError:
             # QA might not exist for all tasks (optional)
             pass
@@ -125,7 +112,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
     qa_done = WorkflowConfig().get_semantic_state("qa", "done")
     qa_validated = WorkflowConfig().get_semantic_state("qa", "validated")
     qa_ready_states = {qa_done, qa_validated}
-    
+
     for task in session_tasks:
         task_id = task.id
         try:
@@ -148,7 +135,7 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
             ev_svc = qa_evidence.EvidenceService(task_id)
             bundle_filename = ev_svc.bundle_filename
             bundle_data = ev_svc.read_bundle()
-            
+
             if not bundle_data:
                 msg = f"Task {task_id} missing {bundle_filename} in latest round"
                 failures.append(msg)
@@ -171,52 +158,15 @@ def verify_session_health(session_id: str) -> Dict[str, Any]:
         health["ok"] = False
         return health
 
-    # Restore session-scoped records back to global queues before closing.
-    #
-    # This is part of the session lifecycle contract: the session tree provides isolation
-    # while active, and on close-out we restore all session-owned records to the global
-    # queues transactionally (FAIL-CLOSED on restore errors).
-    try:
-        from edison.core.session.lifecycle.recovery import restore_records_to_global_transactional
-
-        restore_records_to_global_transactional(session_id)
-    except Exception as e:
-        health["ok"] = False
-        health["details"].append(f"Restore to global queues failed: {e}")
-        return health
-
-    # On success, transition session to closing using the canonical repository API.
-    from edison.core.session.persistence.repository import SessionRepository
-
-    closing_state = WorkflowConfig().get_semantic_state("session", "closing")
-    session_repo = SessionRepository()
-    try:
-        entity = session_repo.get_or_raise(session_id)
-        session_repo.transition(
-            session_id,
-            closing_state,
-            context={
-                "session_id": session_id,
-                "session": entity.to_dict(),
-                "entity_type": "session",
-                "entity_id": session_id,
-            },
-            reason="session-verify",
-        )
-    except Exception as e:
-        health["ok"] = False
-        health["details"].append(f"Transition to closing blocked: {e}")
-        return health
-
     return health
 
 
-def _apply_repo_root(repo_root: Optional[Path]) -> None:
+def _apply_repo_root(repo_root: Path | None) -> None:
     if repo_root:
         os.environ["AGENTS_PROJECT_ROOT"] = str(repo_root)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Verify session for phase guards")
     parse_common_args(parser)

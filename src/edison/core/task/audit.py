@@ -15,12 +15,13 @@ Design goals:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from edison.core.config.domains.task import TaskConfig
 from edison.core.task.similarity import _jaccard, _shingle_set, _tokens
+from edison.core.utils.paths.management import get_management_paths
 from edison.core.utils.text import has_frontmatter, parse_frontmatter
 
 _FILES_SECTION_RE = re.compile(
@@ -61,14 +62,14 @@ def _infer_wave(task_id: str, markdown_body: str) -> str | None:
     return None
 
 
-def _transitive_dep_closure(tasks: list["TaskAuditTask"]) -> dict[str, set[str]]:
+def _transitive_dep_closure(tasks: list[TaskAuditTask]) -> dict[str, set[str]]:
     """Return transitive depends_on closure for each task id.
 
     Used to suppress overlap warnings when tasks are explicitly ordered and therefore
     not at risk of competing edits.
     """
 
-    by_id = {t.id: t for t in tasks}
+    by_id: dict[str, TaskAuditTask] = {t.id: t for t in tasks}
     memo: dict[str, set[str]] = {}
     visiting: set[str] = set()
 
@@ -134,8 +135,11 @@ class TaskAuditReport:
     tasks: list[TaskAuditTask]
     issues: list[TaskAuditIssue]
     duplicates: list[TaskAuditDuplicate]
+    include_session_tasks: bool = False
+    tasks_roots_scanned: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        roots = list(self.tasks_roots_scanned)
         waves: dict[str, int] = {}
         tags: dict[str, int] = {}
         for t in self.tasks:
@@ -145,6 +149,8 @@ class TaskAuditReport:
 
         return {
             "taskCount": len(self.tasks),
+            "includeSessionTasks": bool(self.include_session_tasks),
+            "tasksRootsScanned": roots,
             "waves": waves,
             "tags": tags,
             "issues": [
@@ -156,9 +162,9 @@ class TaskAuditReport:
         }
 
 
-def _load_tasks_from_dir(tasks_root: Path) -> list[TaskAuditTask]:
+def _load_tasks_from_paths(paths: list[Path]) -> list[TaskAuditTask]:
     tasks: list[TaskAuditTask] = []
-    for path in sorted(tasks_root.rglob("*.md")):
+    for path in sorted(paths):
         if path.name == "TEMPLATE.md":
             continue
         try:
@@ -213,15 +219,36 @@ def audit_tasks(
     cfg = TaskConfig(repo_root=project_root)
     root = (tasks_root or cfg.tasks_root()).resolve()
 
-    # NOTE: session-scoped tasks are intentionally excluded for this audit by default.
-    # This command is primarily intended for global backlog coherence.
-    _ = include_session_tasks
+    roots_scanned: list[str] = [str(root)]
 
-    tasks = _load_tasks_from_dir(root)
+    paths: list[Path] = list(root.rglob("*.md"))
+    if include_session_tasks:
+        sessions_root = get_management_paths(project_root).get_sessions_root()
+        roots_scanned.append(str(sessions_root))
+        paths.extend(list(sessions_root.glob("*/*/tasks/*/*.md")))
+
+    tasks = _load_tasks_from_paths(paths)
     by_id = {t.id: t for t in tasks}
     ids = set(by_id.keys())
 
     issues: list[TaskAuditIssue] = []
+
+    # Duplicate IDs across roots are always suspicious (likely partial restores or manual edits).
+    id_to_paths: dict[str, list[str]] = {}
+    for t in tasks:
+        id_to_paths.setdefault(t.id, []).append(str(t.path))
+    for tid, tpaths in sorted(id_to_paths.items()):
+        uniq = sorted(set(tpaths))
+        if len(uniq) < 2:
+            continue
+        issues.append(
+            TaskAuditIssue(
+                code="duplicate_task_id",
+                severity="warning",
+                message="Multiple task files share the same task id; audit signals may be ambiguous.",
+                data={"taskId": tid, "paths": uniq},
+            )
+        )
 
     # --- Mentions without explicit links (depends_on/related/blocks) ---
     for t in tasks:
@@ -260,11 +287,13 @@ def audit_tasks(
             continue
 
         unordered_pairs: list[tuple[str, str]] = []
-        for i, a in enumerate(uniq):
-            for b in uniq[i + 1 :]:
-                if a in dep_closure.get(b, set()) or b in dep_closure.get(a, set()):
+        for i, task_a_id in enumerate(uniq):
+            for task_b_id in uniq[i + 1 :]:
+                if task_a_id in dep_closure.get(task_b_id, set()) or task_b_id in dep_closure.get(
+                    task_a_id, set()
+                ):
                     continue
-                unordered_pairs.append((a, b))
+                unordered_pairs.append((task_a_id, task_b_id))
 
         # If every overlap is explicitly ordered by depends_on, we don't treat it as
         # a competing-edit risk.
@@ -348,7 +377,13 @@ def audit_tasks(
 
     duplicates.sort(key=lambda d: d.score, reverse=True)
 
-    return TaskAuditReport(tasks=tasks, issues=issues, duplicates=duplicates)
+    return TaskAuditReport(
+        tasks=tasks,
+        issues=issues,
+        duplicates=duplicates,
+        include_session_tasks=bool(include_session_tasks),
+        tasks_roots_scanned=roots_scanned,
+    )
 
 
 __all__ = [

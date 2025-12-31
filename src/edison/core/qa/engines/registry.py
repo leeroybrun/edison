@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from .base import EngineConfig, ValidationResult
 from .cli import CLIEngine
@@ -112,6 +112,7 @@ class EngineRegistry:
             return None
 
         # Instantiate appropriate engine class
+        engine: CLIEngine | PalMCPEngine
         if engine_config.type == "delegated":
             engine = PalMCPEngine(engine_config, self.project_root)
         else:
@@ -134,8 +135,13 @@ class EngineRegistry:
                 "type": "cli",
                 "command": "codex",
                 "subcommand": "exec",
-                "output_flags": [],
-                "read_only_flags": [],
+                # Codex output parser expects JSONL events; request JSON output explicitly.
+                "output_flags": ["--json"],
+                # Run validators in a read-only sandbox to prevent accidental writes.
+                "read_only_flags": ["--sandbox", "read-only"],
+                # Feed the rendered prompt via stdin (Codex supports '-' prompt sentinel).
+                "prompt_mode": "stdin",
+                "stdin_prompt_arg": "-",
                 "response_parser": "codex",
             },
             "claude-cli": {
@@ -143,7 +149,9 @@ class EngineRegistry:
                 "command": "claude",
                 "subcommand": "-p",
                 "output_flags": ["--output-format", "json"],
-                "read_only_flags": ["--permission-mode", "plan"],
+                # Plan mode blocks Read/Bash tools, which prevents validators from reading diffs/evidence.
+                # Keep the run non-interactive while disallowing edits.
+                "read_only_flags": ["--permission-mode", "dontAsk", "--disallowed-tools", "Edit"],
                 "prompt_mode": "arg",
                 "response_parser": "claude",
             },
@@ -180,10 +188,10 @@ class EngineRegistry:
         }
 
         if engine_id in defaults:
-            return EngineConfig.from_dict(engine_id, defaults[engine_id])
+            return EngineConfig.from_dict(engine_id, cast(dict[str, Any], defaults[engine_id]))
         return None
 
-    def get_validator(self, validator_id: str) -> "ValidatorMetadata | None":
+    def get_validator(self, validator_id: str) -> ValidatorMetadata | None:
         """Get validator configuration by ID.
 
         Delegates to ValidatorRegistry for single source of truth.
@@ -216,7 +224,7 @@ class EngineRegistry:
         session_id: str,
         worktree_path: Path,
         round_num: int | None = None,
-        evidence_service: "EvidenceService | None" = None,
+        evidence_service: EvidenceService | None = None,
     ) -> ValidationResult:
         """Run a specific validator by ID.
 

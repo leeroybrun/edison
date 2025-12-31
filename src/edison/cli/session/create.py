@@ -19,6 +19,39 @@ from edison.core.session.core.naming import generate_session_id
 SUMMARY = "Create a new Edison session"
 
 
+def _strip_seq_suffix(session_id: str) -> str:
+    # Session ids are typically: {name}-pid-{pid}[-seq-{n}]
+    # When auto-selecting a unique id, treat the base as the prefix without any seq suffix.
+    import re
+
+    m = re.match(r"^(?P<base>.+)-seq-\d+$", session_id)
+    return m.group("base") if m else session_id
+
+
+def _pick_next_available_session_id(*, repo_root: str, preferred: str) -> str:
+    """Pick the next available session id by adding -seq-N when needed.
+
+    This is only used when the session id was inferred (not explicitly provided).
+    """
+    from pathlib import Path
+
+    from edison.core.session.persistence.repository import SessionRepository
+
+    repo = SessionRepository(project_root=Path(repo_root))
+    base = _strip_seq_suffix(preferred)
+
+    # Treat the base as seq=0, then try seq=1.. until free.
+    if not repo.exists(base):
+        return base
+
+    n = 1
+    while True:
+        candidate = f"{base}-seq-{n}"
+        if not repo.exists(candidate):
+            return candidate
+        n += 1
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
@@ -101,8 +134,21 @@ def main(args: argparse.Namespace) -> int:
         repo_root = get_repo_root(args)
         os.environ["AGENTS_PROJECT_ROOT"] = str(repo_root)
 
+        inferred = not bool(getattr(args, "session_id", None))
         raw = args.session_id or generate_session_id()
         session_id = validate_session_id(raw)
+
+        # If the session id was inferred and already exists, auto-select a unique -seq-N.
+        # Keep explicit --session-id collisions fail-closed.
+        if inferred:
+            try:
+                session_id = _pick_next_available_session_id(
+                    repo_root=str(repo_root),
+                    preferred=session_id,
+                )
+            except Exception:
+                # Best-effort: uniqueness selection should not prevent explicitly provided ids.
+                pass
 
         # Determine worktree creation
         create_wt = not args.no_worktree

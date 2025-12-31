@@ -654,7 +654,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             "All moves must go through guarded CLIs.",
         ],
         "recommendations": [
-            "Run 'edison session verify' periodically to detect metadata drift (manual edits)",
+            "Run 'edison session verify <session-id>' before closing to detect metadata drift (manual edits)",
             "Context7 enforcement cross-checks task metadata + git diff for accuracy",
         ],
     }

@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, OutputFormatter
+from edison.cli import OutputFormatter, add_json_flag
 from edison.core.config.domains.workflow import WorkflowConfig
 from edison.core.session import lifecycle as session_manager
 from edison.core.session.core.id import validate_session_id
@@ -57,6 +57,22 @@ def main(args: argparse.Namespace) -> int:
                     for detail in health.get("details", []):
                         formatter.text(f"  - {detail}")
                     formatter.text("\nUse --force to close anyway or fix the issues first.")
+                return 1
+
+        # Restore session-scoped records back to global queues before closing.
+        #
+        # This is part of the session lifecycle contract: the session tree provides
+        # isolation while active, and on close-out we restore all session-owned
+        # records to the global queues transactionally (FAIL-CLOSED by default).
+        try:
+            from edison.core.session.lifecycle.recovery import (
+                restore_records_to_global_transactional,
+            )
+
+            restore_records_to_global_transactional(session_id)
+        except Exception as e:
+            if not args.force:
+                formatter.error(e, error_code="restore_error")
                 return 1
 
         # Transition to closing

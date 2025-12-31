@@ -571,13 +571,14 @@ class CLIEngine:
         # Determine verdict from exit code and response
         response = parsed.get("response", "")
         error = parsed.get("error")
+        extracted_verdict = self._extract_verdict_from_response(response)
 
         if exit_code != 0:
             verdict = "error"
         elif error:
             verdict = "pending"  # Parser had issues
-        elif self._extract_verdict_from_response(response):
-            verdict = self._extract_verdict_from_response(response)
+        elif extracted_verdict is not None:
+            verdict = extracted_verdict
         else:
             verdict = "pending"  # Need manual review
 
@@ -621,26 +622,28 @@ class CLIEngine:
             if token.startswith("pend"):
                 return "pending"
 
-        # Check for explicit verdict indicators
-        if "approved" in response_lower or "approve" in response_lower:
-            if (
-                "not approved" in response_lower
-                or "cannot approve" in response_lower
-                or "can't approve" in response_lower
-                or "cant approve" in response_lower
-                or "can't be approved" in response_lower
-                or "cant be approved" in response_lower
-                or "can’t approve" in response_lower
-                or "can’t be approved" in response_lower
-                or "unable to approve" in response_lower
-            ):
-                return "reject"
-            return "approve"
-
-        if "rejected" in response_lower or "reject" in response_lower:
+        # Fail-closed heuristics:
+        # - Never infer "approve" from incidental language like "please approve" or "needs approval".
+        # - Only infer "reject"/"blocked" when the language is unambiguously negative.
+        if re.search(r"\bnot\s+approved\b", response_lower):
+            return "reject"
+        if re.search(r"\bunable\s+to\s+approve\b", response_lower):
+            return "reject"
+        if re.search(r"\bcannot\s+approve\b", response_lower):
+            return "reject"
+        if re.search(r"\bcan['’]t\s+approve\b", response_lower):
+            return "reject"
+        if re.search(r"\bcant\s+approve\b", response_lower):
+            return "reject"
+        if re.search(r"\bcan['’]t\s+be\s+approved\b", response_lower):
+            return "reject"
+        if re.search(r"\bcant\s+be\s+approved\b", response_lower):
             return "reject"
 
-        if "blocked" in response_lower or "blocking" in response_lower:
+        if re.search(r"\breject(?:ed)?\b", response_lower):
+            return "reject"
+
+        if re.search(r"\bblocked\b", response_lower):
             return "blocked"
 
         return None
