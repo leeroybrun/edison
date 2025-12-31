@@ -39,7 +39,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--round",
         type=int,
-        help="Validation round number (default: create new round)",
+        help="Validation round number (default: use current round; creates round-1 if none)",
+    )
+    parser.add_argument(
+        "--new-round",
+        action="store_true",
+        help="Create a new evidence round directory and run validators in it",
     )
     parser.add_argument(
         "--wave",
@@ -489,6 +494,42 @@ def _execute_with_executor(
         formatter.text(f"  Wave: {args.wave}")
     if extra_validators:
         formatter.text(f"  Extra validators: {', '.join(e['id'] for e in extra_validators)}")
+
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.qa.evidence import rounds as evidence_rounds
+
+    ev = EvidenceService(args.task_id, project_root=repo_root)
+
+    # Resolve the evidence round deterministically (and print it) so operators know where artifacts go.
+    round_num: int
+    if getattr(args, "new_round", False):
+        created = ev.create_next_round()
+        round_num = evidence_rounds.get_round_number(created)
+    elif args.round is not None:
+        round_num = int(args.round)
+        ev.ensure_round(round_num)
+    else:
+        current = ev.get_current_round()
+        if current is None:
+            created = ev.create_next_round()
+            round_num = evidence_rounds.get_round_number(created)
+        else:
+            round_num = int(current)
+
+    try:
+        from edison.core.utils.paths import PathResolver
+
+        project_root = PathResolver.resolve_project_root()
+        round_dir = ev.get_round_dir(round_num)
+        try:
+            display_round = str(round_dir.relative_to(project_root))
+        except Exception:
+            display_round = str(round_dir)
+    except Exception:
+        display_round = f"<evidence-root>/{args.task_id}/round-{round_num}"
+
+    formatter.text(f"  Round: {round_num}")
+    formatter.text(f"  Evidence: {display_round}")
     formatter.text("")
 
     # Execute using centralized executor
@@ -500,7 +541,8 @@ def _execute_with_executor(
         validators=args.validators,
         blocking_only=args.blocking_only,
         parallel=not args.sequential,
-        round_num=args.round,
+        round_num=round_num,
+        evidence_service=ev,
     )
 
     # ---------------------------------------------------------------------
@@ -514,10 +556,7 @@ def _execute_with_executor(
     # - Therefore: determine blocking validator IDs from the registry roster and
     #   verify per-validator reports in evidence are approved.
     # ---------------------------------------------------------------------
-    from edison.core.qa.evidence import EvidenceService
-
-    ev = EvidenceService(args.task_id, project_root=repo_root)
-    round_num = int(result.round_num or 0)
+    round_num = int(result.round_num or round_num or 0)
 
     validator_registry = executor.get_validator_registry()
 
@@ -618,7 +657,8 @@ def _execute_with_executor(
         formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
         formatter.text("")
         formatter.text("Next steps:")
-        formatter.text(f"  edison qa round {args.task_id} --status reject")
+        formatter.text(f"  edison qa round {args.task_id} --status reject  # Record outcome in QA history")
+        formatter.text(f"  edison qa validate {args.task_id} --execute --new-round  # Re-run in fresh evidence round")
     elif overall_approved:
         formatter.text("")
         formatter.text(f"All blocking validators approved and {ev.bundle_filename} was written. Next steps:")
