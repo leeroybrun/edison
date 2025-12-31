@@ -122,6 +122,16 @@ def main(args: argparse.Namespace) -> int:
         session = session_manager.get_session(session_id)
         worktree_path = session.get("git", {}).get("worktreePath")
 
+        # Get worktree pinning status (task 047)
+        from pathlib import Path
+
+        from edison.core.session.worktree.manager import get_worktree_pinning_status
+
+        pinning_status = get_worktree_pinning_status(
+            Path(worktree_path) if worktree_path else None,
+            session_id,
+        )
+
         # NOTE: Orchestrator launch is handled by `edison orchestrator start`.
         # `edison session create` is intentionally limited to creating the session record (+ optional worktree).
 
@@ -146,6 +156,9 @@ def main(args: argparse.Namespace) -> int:
                 "startPromptId": start_prompt_id,
                 "startPromptPath": prompt_path,
                 "startPrompt": prompt_text,
+                # Worktree pinning status (task 047)
+                "sessionIdFilePath": pinning_status["sessionIdFilePath"],
+                "worktreePinned": pinning_status["worktreePinned"],
             }
             formatter.json_output(output)
         else:
@@ -159,6 +172,12 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"  Branch: {session['git']['branchName']}")
             if session.get("git", {}).get("baseBranch"):
                 formatter.text(f"  Base: {session['git']['baseBranch']}")
+
+            # Show worktree pinning status (task 047)
+            if pinning_status["worktreePinned"]:
+                formatter.text(f"  Pinned: .session-id written to {pinning_status['sessionIdFilePath']}")
+            elif worktree_path:
+                formatter.text("  Pinned: No (worktree .session-id file not created)")
 
             _emit_worktree_instructions(
                 formatter, session_id=session_id, worktree_path=worktree_path

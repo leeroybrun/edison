@@ -1041,6 +1041,67 @@ def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) ->
         return
 
 
+def get_worktree_session_id_file_path(worktree_path: Path) -> Optional[Path]:
+    """Get the path to the `.session-id` file inside the worktree management dir.
+
+    Args:
+        worktree_path: Path to the worktree directory.
+
+    Returns:
+        Path to the `.session-id` file, or None if it cannot be computed.
+    """
+    try:
+        from edison.core.utils.paths import PathResolver
+        from edison.core.utils.paths.management import ProjectManagementPaths
+
+        repo_root = PathResolver.resolve_project_root()
+        mgmt_dir_name = ProjectManagementPaths(repo_root).get_management_root().name
+        return worktree_path / mgmt_dir_name / ".session-id"
+    except Exception:
+        return None
+
+
+def get_worktree_pinning_status(
+    worktree_path: Optional[Path], session_id: str
+) -> Dict[str, Any]:
+    """Get worktree pinning status for CLI output.
+
+    Args:
+        worktree_path: Path to the worktree directory (or None if no worktree).
+        session_id: The session ID to check for.
+
+    Returns:
+        Dict with:
+        - sessionIdFilePath: Path to the .session-id file (None if no worktree)
+        - worktreePinned: True if .session-id file exists and contains session_id
+    """
+    if worktree_path is None:
+        return {
+            "sessionIdFilePath": None,
+            "worktreePinned": False,
+        }
+
+    session_id_file = get_worktree_session_id_file_path(Path(worktree_path))
+    if session_id_file is None:
+        return {
+            "sessionIdFilePath": None,
+            "worktreePinned": False,
+        }
+
+    pinned = False
+    try:
+        if session_id_file.exists():
+            content = session_id_file.read_text(encoding="utf-8").strip()
+            pinned = content == session_id
+    except Exception:
+        pinned = False
+
+    return {
+        "sessionIdFilePath": str(session_id_file),
+        "worktreePinned": pinned,
+    }
+
+
 def _primary_head_marker(repo_dir: Path) -> str:
     """Return a stable marker for the primary worktree HEAD.
 
