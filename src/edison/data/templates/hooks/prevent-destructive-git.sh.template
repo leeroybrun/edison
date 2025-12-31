@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES - CAN BLOCK" if blocking else "NO" }}
+
+{% set mgmt_dir = global_config.get("project_management_dir") %}
+SESSION_FILE="{{ mgmt_dir }}/.session-id"
+
+# Parse input JSON (with timeout to prevent hanging)
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
+
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  exit 0
+fi
+
+COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
+if [[ -z "$COMMAND" ]]; then
+  exit 0
+fi
+
+{% set cfg = config if config is defined else {} %}
+{% set allow_env = cfg.get("allow_env", "EDISON_ALLOW_DESTRUCTIVE_GIT") %}
+{% set patterns = cfg.get("patterns", []) %}
+
+if [[ -n "${{ allow_env }}" && "${{ allow_env }}" != "0" ]]; then
+  exit 0
+fi
+
+MATCHED=""
+{% for p in patterns %}
+if [[ -z "$MATCHED" && "$COMMAND" == *"{{ p }}"* ]]; then
+  MATCHED="{{ p }}"
+fi
+{% endfor %}
+
+if [[ -z "$MATCHED" ]]; then
+  exit 0
+fi
+
+SESSION_ID=""
+if [[ -f "$SESSION_FILE" ]]; then
+  SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+fi
+
+echo ""
+echo "❌ BLOCKED: destructive git command detected"
+echo ""
+echo "Command:"
+echo "  $COMMAND"
+echo ""
+echo "Matched:"
+echo "  $MATCHED"
+echo ""
+echo "Edison policy: do NOT discard/revert 'unrelated' changes unless the user explicitly asked."
+echo "If you believe this is required, ask for approval and then re-run with:"
+echo "  export {{ allow_env }}=1"
+echo ""
+echo "Tip: If your goal is to validate/inspect, prefer:"
+echo "  git status --porcelain"
+echo "  git diff"
+echo ""
+
+# Emit audit event (best-effort, fail-open)
+if [[ -n "$SESSION_ID" ]]; then
+  edison audit event "hook.prevent-destructive-git.blocked" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "command=$COMMAND" 2>/dev/null || true
+fi
+
+exit 1
+

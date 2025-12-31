@@ -82,6 +82,25 @@ hooks:
         require_coverage: true
         # Default coverage threshold comes from config.quality.coverage.overall.
 
+    prevent-destructive-git:
+      type: PreToolUse
+      hook_type: command
+      matcher: "*"
+      enabled: true
+      blocking: true
+      description: "Block destructive git commands unless explicitly approved"
+      template: "prevent-destructive-git.sh.template"
+      config:
+        # Allow bypass only when the user explicitly asked to run destructive git commands.
+        allow_env: "EDISON_ALLOW_DESTRUCTIVE_GIT"
+        # Patterns (simple substring checks) treated as destructive.
+        patterns:
+          - "git reset"
+          - "git restore"
+          - "git clean"
+          - "git checkout --"
+          - "git switch"
+
     prevent-prod-edits:
       type: PreToolUse
       hook_type: command

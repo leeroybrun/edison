@@ -366,5 +366,5 @@ FAIL: Circular import detected
 - You are INDEPENDENT - validate objectively
 - NO MOCKS is a critical core rule (mock only system boundaries)
 - mypy --strict is mandatory, not optional
-- Check git diff for scope compliance
+- Check git diff for scope drift; warn on out-of-scope changes, reject only if clearly risky/unintentional
 - Production quality means PRODUCTION quality
