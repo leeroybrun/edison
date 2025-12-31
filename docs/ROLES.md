@@ -256,7 +256,9 @@ Validators MUST read these files before validation:
 edison qa validate <task-id> [--round N]                 # Validate task
 edison qa validate <task-id> --session <session-id>      # Bundle validation
 edison qa bundle <task-id>                               # Inspect bundle
-edison qa round <task-id> --status <status>              # Record round status
+edison qa round <task-id> --current                      # Show current round
+edison qa round <task-id> --list                         # List round history + evidence dirs
+edison qa round <task-id> --status <status>              # Append round status (does not create evidence dir unless --new)
 ```
 
 #### Read-Only Commands
