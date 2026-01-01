@@ -31,6 +31,8 @@ def _load_or_create_session(session_id: str) -> Dict[str, Any]:
         "id": sid,
         "state": initial_state,
         "meta": {},
+        "tasks": {},
+        "qa": {},
     }
 
 
@@ -98,6 +100,12 @@ def register_qa(
     
     # Update session activity log only (QA file updated by workflow)
     sess = _load_or_create_session(sid)
+    qa_index = sess.setdefault("qa", {})
+    if isinstance(qa_index, dict):
+        entry = qa_index.get(qa_id) if isinstance(qa_index.get(qa_id), dict) else {}
+        entry = dict(entry)
+        entry.update({"status": status, "taskId": task_id, "round": round_no})
+        qa_index[qa_id] = entry
     sess.setdefault("activityLog", []).append({
         "timestamp": now,
         "message": f"QA {qa_id} registered for task {task_id} with status {status}",

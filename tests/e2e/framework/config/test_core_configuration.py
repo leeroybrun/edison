@@ -116,7 +116,7 @@ def test_worktree_base_uses_project_name(tmp_path, monkeypatch):
 
 
 def test_worktree_base_defaults_to_project_name(tmp_path, monkeypatch):
-    """Worktree base falls back to ../{project}-worktrees when not configured."""
+    """Worktree base defaults to in-repo `.worktrees/` when not configured."""
     repo = _make_repo(tmp_path, "my-project")
     monkeypatch.chdir(repo)
     setup_project_root(monkeypatch, repo)
@@ -127,5 +127,5 @@ def test_worktree_base_defaults_to_project_name(tmp_path, monkeypatch):
     from tests.helpers import session as sessionlib
 
     base_dir = sessionlib._get_worktree_base()
-    expected = (repo.parent / "my-project-worktrees").resolve()
+    expected = (repo / ".worktrees").resolve()
     assert base_dir == expected

@@ -63,13 +63,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--takeover",
         action="store_true",
-        help="Allow taking over a task already claimed by another (inactive/expired) session (tasks only).",
+        help="(Deprecated) Alias for --reclaim (tasks only).",
+    )
+    parser.add_argument(
+        "--reclaim",
+        action="store_true",
+        help="Allow reclaiming a task already claimed by another session (tasks only).",
     )
     parser.add_argument(
         "--reason",
         type=str,
         default=None,
-        help="Reason for takeover (required with --takeover).",
+        help="Optional reason for reclaim/takeover (recorded in session history).",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -124,16 +129,55 @@ def main(args: argparse.Namespace) -> int:
             )
 
         if record_type == "task":
-            if bool(getattr(args, "takeover", False)) and not (str(getattr(args, "reason", "") or "").strip()):
-                raise ValueError("--takeover requires --reason")
+            reclaim = bool(getattr(args, "reclaim", False) or getattr(args, "takeover", False))
+            reclaim_reason = str(getattr(args, "reason", "") or "").strip() or None
+
+            # Pre-flight: if reclaiming from a non-expired session, surface a warning.
+            if reclaim:
+                try:
+                    existing = workflow.task_repo.get(record_id)
+                    other_sid = str(getattr(existing, "session_id", "") or "").strip() if existing else ""
+                    if other_sid and other_sid != session_id:
+                        from edison.core.session.lifecycle.recovery import is_session_expired
+                        from edison.core.session.persistence.repository import SessionRepository
+                        from edison.core.config.domains.session import SessionConfig
+                        from edison.core.utils.time import parse_iso8601, utc_now
+
+                        if not is_session_expired(other_sid, project_root=project_root):
+                            sess_repo = SessionRepository(project_root=project_root)
+                            other = sess_repo.get(other_sid)
+                            meta = (other.to_dict().get("meta") if other else {}) or {}
+                            now = utc_now(repo_root=project_root)
+                            ref = None
+                            for key in ("lastActive", "claimedAt", "createdAt"):
+                                raw = str(meta.get(key) or "").strip()
+                                if not raw:
+                                    continue
+                                try:
+                                    ref = parse_iso8601(raw, repo_root=project_root)
+                                    break
+                                except Exception:
+                                    continue
+                            age_hours = None
+                            if ref is not None:
+                                age_hours = max(0.0, (now - ref).total_seconds() / 3600.0)
+                            timeout_hours = int(SessionConfig(repo_root=project_root).get_recovery_config().get("timeoutHours") or 0)
+                            if age_hours is not None and not formatter.json_mode:
+                                print(
+                                    f"Warning: reclaiming task {record_id} from session '{other_sid}' even though session is only "
+                                    f"{age_hours:.2f} hours old (timeout {timeout_hours}h).",
+                                    file=sys.stderr,
+                                )
+                except Exception:
+                    pass
 
             # Claim task using entity-based workflow
             task_entity = workflow.claim_task(
                 record_id,
                 session_id,
                 owner=owner,
-                takeover=bool(getattr(args, "takeover", False)),
-                takeover_reason=str(getattr(args, "reason", "") or "").strip() or None,
+                takeover=reclaim,
+                takeover_reason=reclaim_reason,
             )
 
             # Optional post-claim transition to requested state

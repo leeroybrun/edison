@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-Open and follow: run `edison read VALIDATORS --type constitutions`
+{{include:constitutions/validators.md}}
 
 ---
 
@@ -187,6 +187,5 @@ git diff           # Unstaged changes
 - Production quality is the goal
 
 **Your validation ensures zero defects reach production.**
-
 
 

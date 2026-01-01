@@ -18,13 +18,16 @@ if _CORE_ROOT is None:
 CORE_ROOT = _CORE_ROOT
 
 from edison.core.task import TaskRepository, TaskQAWorkflow
+from edison.core.utils.text import parse_frontmatter
 
 
-def test_task_file_initialization(tmp_path):
+def test_task_file_initialization(tmp_path, monkeypatch):
     """Creates a task file in `.project/tasks/todo/` with markdown format."""
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    (tmp_path / ".project").mkdir(parents=True, exist_ok=True)
     task_id = 'T1001'
-    task_repo = TaskRepository()
-    workflow = TaskQAWorkflow()
+    task_repo = TaskRepository(project_root=tmp_path)
+    workflow = TaskQAWorkflow(project_root=tmp_path)
 
     # Clean up any existing task from previous runs
     if task_repo.exists(task_id):
@@ -40,6 +43,9 @@ def test_task_file_initialization(tmp_path):
 
     # Verify content (new format uses markdown with HTML comments)
     content = task_file.read_text(encoding='utf-8')
-    assert 'Status: todo' in content
+    assert task_file.parent.name == "todo"
+    fm = parse_frontmatter(content).frontmatter
+    assert fm.get("id") == task_id
+    assert fm.get("title") == "Demo"
     assert '# Demo' in content
     assert 'desc' in content

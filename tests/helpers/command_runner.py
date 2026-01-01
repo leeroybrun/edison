@@ -59,14 +59,13 @@ def run_script(
         if command == "track":
             # Load valid track subcommands from YAML config (NO hardcoded values)
             track_subcommands = set(load_track_subcommands())
-            if args and args[0] not in track_subcommands:
-                # Legacy behavior: "session heartbeat <session_id>" was already converted
-                # to command="track" with args=[session_id]
-                # We need to convert this to: heartbeat --task <session_id>
-                args = ["heartbeat", "--task"] + args
-            elif not args:
+            if not args:
                 # If no args, this is likely a malformed call
                 raise ValueError("session track requires a subcommand (start, heartbeat, complete, active)")
+            if args[0] not in track_subcommands:
+                raise ValueError(
+                    f"Invalid session track subcommand: {args[0]!r}. Valid: {', '.join(sorted(track_subcommands))}"
+                )
             # else: args already has the correct track subcommand structure
 
     if os.environ.get("DEBUG_CONTEXT7"):

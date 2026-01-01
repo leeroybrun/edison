@@ -4,6 +4,7 @@ import os
 import time
 import subprocess
 from pathlib import Path
+import sys
 
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
@@ -22,6 +23,12 @@ def run_cli(argv: list[str], *, cwd: Path, env: dict[str, str] | None = None) ->
     e = os.environ.copy()
     if env:
         e.update(env)
+
+    # Ensure subprocess can import in-repo `edison` package when executed from tmp dirs.
+    repo = repo_root()
+    src_root = repo / "src"
+    existing_py_path = e.get("PYTHONPATH", "")
+    e["PYTHONPATH"] = str(src_root) if not existing_py_path else os.pathsep.join([str(src_root), existing_py_path])
     return run_with_timeout(argv, cwd=cwd, env=e, capture_output=True, text=True)
 
 
@@ -51,8 +58,11 @@ def test_clear_locks_dry_run_lists_targets(project: tuple[Path, dict[str, str]])
     lock.write_text("pid=999999\nlockedAt=now\n")
     _touch_old(lock, minutes=120)
 
-    script = repo_root() / ".edison" / "core" / "scripts" / "recovery" / "clear-locks"
-    res = run_cli([str(script), "--dry-run", "--max-age", "60"], cwd=root, env=env)
+    res = run_cli(
+        [sys.executable, "-m", "edison", "session", "recovery", "clear-locks", "--dry-run", "--max-age", "60"],
+        cwd=root,
+        env=env,
+    )
     assert res.returncode == 0, res.stderr
     assert "stale" in res.stdout.lower()
     assert str(lock.relative_to(root)) in res.stdout
@@ -67,8 +77,11 @@ def test_clear_locks_force_removes_old_dead_locks(project: tuple[Path, dict[str,
     lock.write_text("pid=999999\nlockedAt=now\n")
     _touch_old(lock, minutes=90)
 
-    script = repo_root() / ".edison" / "core" / "scripts" / "recovery" / "clear-locks"
-    res = run_cli([str(script), "--force", "--max-age", "60"], cwd=root, env=env)
+    res = run_cli(
+        [sys.executable, "-m", "edison", "session", "recovery", "clear-locks", "--force", "--max-age", "60"],
+        cwd=root,
+        env=env,
+    )
     assert res.returncode == 0, res.stderr
     assert not lock.exists(), "--force should remove stale dead lock"
 
@@ -81,7 +94,10 @@ def test_clear_locks_preserves_active_pid(project: tuple[Path, dict[str, str]]):
     lock.write_text(f"pid={os.getpid()}\nlockedAt=now\n")
     _touch_old(lock, minutes=180)
 
-    script = repo_root() / ".edison" / "core" / "scripts" / "recovery" / "clear-locks"
-    res = run_cli([str(script), "--force", "--max-age", "60"], cwd=root, env=env)
+    res = run_cli(
+        [sys.executable, "-m", "edison", "session", "recovery", "clear-locks", "--force", "--max-age", "60"],
+        cwd=root,
+        env=env,
+    )
     assert res.returncode == 0, res.stderr
     assert lock.exists(), "Active PID lock must be preserved"

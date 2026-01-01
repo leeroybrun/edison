@@ -86,7 +86,7 @@ def worktree_health_check() -> Tuple[bool, List[str]]:
     try:
         cfg = _config().get_worktree_config()
         notes.append(f"baseDirectory: {cfg.get('baseDirectory')}")
-        notes.append(f"archiveDirectory: {cfg.get('archiveDirectory', '.worktrees/archive')}")
+        notes.append(f"archiveDirectory: {cfg.get('archiveDirectory', '.worktrees/_archived')}")
         if not cfg.get("enabled", False):
             ok = False
             notes.append("worktrees.enabled=false")

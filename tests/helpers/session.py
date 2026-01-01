@@ -30,7 +30,14 @@ from edison.core.session.persistence.database import (
 def ensure_session(session_id: str, state: str = "active") -> Path:
     """Ensure a session exists, creating it if necessary."""
     repo = SessionRepository()
-    return repo.ensure_session(session_id, state=state)
+    session_dir = repo.ensure_session(session_id, state=state)
+    # Make tests robust to re-runs where a prior session might be considered expired.
+    # `ensure_session` in tests means "usable now", so refresh lastActive.
+    sess = repo.get(session_id)
+    if sess is not None:
+        sess.metadata.touch()
+        repo.save(sess)
+    return session_dir
 
 
 def load_session(session_id: str, state: Optional[str] = None) -> Dict[str, Any]:

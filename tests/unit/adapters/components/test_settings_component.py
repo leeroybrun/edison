@@ -94,3 +94,22 @@ settings:
     assert "custom_test_permission" in result["permissions"]["allow"]
     # Bundled permissions should still be present
     assert any("Read" in p for p in result["permissions"]["allow"])
+
+
+def test_settings_composer_includes_core_tool_permissions(tmp_path: Path) -> None:
+    """Core settings should allow essential Claude tools for Edison workflows."""
+    ctx = _build_context(
+        tmp_path,
+        config={
+            "settings": {"claude": {"preserve_custom": False}},
+            "hooks": {"enabled": False},
+        },
+    )
+
+    composer = SettingsComposer(ctx)
+    result = composer.compose()
+
+    allow = result.get("permissions", {}).get("allow") or []
+    assert "Glob(./**)" in allow
+    assert "Grep(./**)" in allow
+    assert "Bash(edison:*)" in allow

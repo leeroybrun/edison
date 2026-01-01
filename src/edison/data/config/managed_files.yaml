@@ -10,6 +10,7 @@ managed_files:
       ensure_trailing_newline: true
       create: true
       ensure_lines:
+        - ".worktrees/"
         - ".edison/_generated/"
         - ".edison/config.local/"
         - ".project/sessions/"

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -43,6 +44,8 @@ def archive_worktree(session_id: str, worktree_path: Path, *, dry_run: bool = Fa
     ensure_directory(archive_full)
 
     archived_path = archive_full / session_id
+    if archived_path.exists():
+        archived_path = archive_full / f"{session_id}-{int(time.time())}"
 
     if dry_run:
         return archived_path
@@ -54,13 +57,9 @@ def archive_worktree(session_id: str, worktree_path: Path, *, dry_run: bool = Fa
         config = _config()
         timeout_health = config.get_worktree_timeout("health_check", 10)
         timeout_prune = config.get_worktree_timeout("prune", 10)
-        run_with_timeout(
-            ["git", "worktree", "remove", "--force", "--", str(archived_path)],
-            cwd=repo_dir,
-            check=False,
-            capture_output=True,
-            timeout=timeout_health
-        )
+        # The worktree has been moved, so git's administrative metadata still
+        # points at the original (now-missing) path. Prune cleans this up without
+        # deleting the archived directory.
         run_with_timeout(
             ["git", "worktree", "prune"],
             cwd=repo_dir,

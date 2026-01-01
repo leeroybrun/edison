@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 from tests.helpers.paths import get_repo_root
@@ -20,10 +21,18 @@ CORE_ROOT = _CORE_ROOT
 from tests.helpers.session import ensure_session
 from edison.core.task import TaskRepository, TaskQAWorkflow
 from edison.core.qa.workflow.repository import QARepository
+from edison.core.qa.evidence.service import EvidenceService
+from edison.core.registries.validators import ValidatorRegistry
+from edison.core.config.domains.qa import QAConfig
 
 
-def test_qa_checklist_and_validation_workflow(tmp_path):
+def test_qa_checklist_and_validation_workflow(tmp_path, monkeypatch):
     """Ensures QA brief pairing and state transitions across the QA pipeline."""
+    # Isolate this workflow to a temp project root so it doesn't depend on
+    # (or mutate) the developer's local `.project` state.
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    (tmp_path / ".project").mkdir(parents=True, exist_ok=True)
+
     sid = 'sess-qa-1'
     ensure_session(sid)
     task_id = 'T3001'
@@ -43,6 +52,34 @@ def test_qa_checklist_and_validation_workflow(tmp_path):
 
     # Claim then complete the task → QA goes waiting -> todo
     workflow.claim_task(task_id, sid)
+
+    # Completion is guarded by implementation-report evidence; seed minimal evidence for the test.
+    ev = EvidenceService(task_id, project_root=tmp_path)
+    ev.ensure_round(1)
+    ev.write_implementation_report({"summary": "E2E test implementation report"}, round_num=1)
+    ev.write_bundle({"approved": True, "summary": "E2E bundle approval"}, round_num=1)
+    round_dir = ev.get_round_dir(1)
+    for marker in (
+        "command-type-check.txt",
+        "command-lint.txt",
+        "command-test.txt",
+        "command-build.txt",
+    ):
+        (round_dir / marker).write_text("ok\n", encoding="utf-8")
+
+    # Seed minimal validator reports so QA can advance through done/validated in this test.
+    qa_cfg = QAConfig(repo_root=tmp_path)
+    registry = ValidatorRegistry(project_root=qa_cfg.repo_root)
+    roster = registry.build_execution_roster(task_id=task_id, session_id=sid, wave=None, extra_validators=None)
+    candidates = (roster.get("alwaysRequired") or []) + (roster.get("triggeredBlocking") or []) + (roster.get("triggeredOptional") or [])
+    for v in candidates:
+        if not isinstance(v, dict) or not v.get("blocking"):
+            continue
+        vid = str(v.get("id") or "").strip()
+        if not vid:
+            continue
+        ev.write_validator_report(vid, {"validatorId": vid, "verdict": "approve"}, round_num=1)
+
     workflow.complete_task(task_id, sid)
 
     # Progress QA: todo -> wip -> done -> validated

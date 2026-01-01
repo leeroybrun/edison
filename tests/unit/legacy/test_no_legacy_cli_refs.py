@@ -48,7 +48,7 @@ def _read_text(path: Path) -> str | None:
 
 
 def test_no_legacy_cli_references_in_src_edison() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     src_root = repo_root / "src" / "edison"
     assert src_root.exists(), "src/edison directory missing"
 

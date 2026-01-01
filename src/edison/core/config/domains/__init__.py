@@ -60,6 +60,7 @@ from .cli import CLIConfig
 from .json_io import JSONIOConfig
 from .context7 import Context7Config
 from .logging import LoggingConfig
+from .tdd import TDDConfig
 
 __all__: list[str] = [
     "PacksConfig",
@@ -80,4 +81,5 @@ __all__: list[str] = [
     "JSONIOConfig",
     "Context7Config",
     "LoggingConfig",
+    "TDDConfig",
 ]

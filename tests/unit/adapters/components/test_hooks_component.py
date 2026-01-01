@@ -122,3 +122,18 @@ def test_core_hook_templates_emit_audit_events(tmp_path: Path) -> None:
         content = scripts[hook_id].read_text(encoding="utf-8")
         assert "edison audit event" in content
         assert event_prefix in content
+
+
+def test_core_hooks_include_worktree_enforcement(tmp_path: Path) -> None:
+    ctx = _build_context(
+        tmp_path,
+        config={"hooks": {"enabled": True, "platforms": ["claude"]}},
+    )
+
+    composer = HookComposer(ctx)
+    scripts = composer.compose_hooks()
+
+    assert "enforce-worktree" in scripts
+    content = scripts["enforce-worktree"].read_text(encoding="utf-8")
+    assert "WORKTREE ENFORCEMENT" in content
+    assert "edison session detect" in content

@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, List
 
 from edison.core.config import ConfigManager
 from edison.core.utils.time import utc_timestamp
-from edison.core.task import TaskRepository, Task
+from edison.core.task import TaskQAWorkflow, TaskRepository, Task
 
 
 __all__ = ['get_role_mapping', 'map_role', 'route_task', 'delegate_task', 'aggregate_child_results']
@@ -90,43 +90,34 @@ def delegate_task(
     Returns:
         str: The child task identifier.
     """
-    repo = TaskRepository()
+    workflow = TaskQAWorkflow()
+    repo = workflow.task_repo
 
     # Create child task
-    task = Task.create(
-        task_id=f"task-delegated-{utc_timestamp().replace(':', '-').replace('.', '-')}",
+    nonce = os.urandom(4).hex()
+    task_id = f"task-delegated-{utc_timestamp().replace(':', '-').replace('.', '-')}-{nonce}"
+    task = workflow.create_task(
+        task_id,
         title=description,
         description=description,
         session_id=session_id,
-        state="pending",
+        parent_id=parent_task_id,
+        create_qa=False,
     )
-
-    if parent_task_id:
-        task.parent_id = parent_task_id
-        # Update parent's children list
-        parent = repo.get(parent_task_id)
-        if parent and task.id not in parent.children:
-            parent.children.append(task.id)
-            repo.save(parent)
-
-    repo.create(task)
-
-    # Store agent metadata (note: Task model doesn't have agent field,
-    # but this is for delegation tracking in tests)
-    # We'll use tags for this purpose
-    task.tags = [f"agent:{agent}", f"delegated_at:{utc_timestamp()}"]
+    task.delegated_to = agent
+    task.delegated_in_session = session_id
     repo.save(task)
 
     return task.id
 
 def _classify_status(status: str) -> str:
     """Normalize a raw task status to one of: success|failure|pending|in_progress."""
-    s = str(status or 'pending').lower()
-    if s in ('success', 'completed', 'ok', 'done'):
+    s = str(status or 'todo').lower()
+    # Edison uses workflow states for persistence. Map to status buckets used by
+    # delegation tests.
+    if s in ('validated', 'done'):
         return 'success'
-    if s in ('failure', 'failed', 'error'):
-        return 'failure'
-    if s in ('in_progress', 'wip', 'running'):
+    if s in ('wip',):
         return 'in_progress'
     return 'pending'
 
@@ -139,7 +130,15 @@ def _compute_child_status_summary(child_ids: List[str]) -> Dict[str, Any]:
     for cid in child_ids:
         try:
             task = repo.get(cid)
-            cls = _classify_status(task.state if task else 'pending')
+            if not task:
+                cls = 'pending'
+            else:
+                # A "failed" delegated task is represented as a completed task
+                # with an error-shaped result payload.
+                if _classify_status(task.state) == "success" and (task.result or "").startswith("Error:"):
+                    cls = "failure"
+                else:
+                    cls = _classify_status(task.state)
         except Exception:
             cls = 'pending'
         if cls == 'in_progress':
@@ -187,12 +186,7 @@ def aggregate_child_results(parent_task_id: str) -> Dict[str, Any]:
     if not parent:
         raise ValueError(f"Parent task not found: {parent_task_id}")
 
-    child_ids: List[str] = parent.children or []
+    child_ids: List[str] = parent.child_ids or []
     summary = _compute_child_status_summary(child_ids)
-
-    # Update parent state based on aggregation
-    if summary['status'] in ('completed', 'failure', 'partial_failure'):
-        parent.state = summary['status']
-        repo.save(parent)
 
     return {k: summary[k] for k in ('total', 'counts', 'status')}

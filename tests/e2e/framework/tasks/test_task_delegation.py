@@ -4,12 +4,11 @@ Tests cover:
 - Child task result tracking and aggregation
 - Agent tracking in delegation
 - Parent-child task linking
-- Session validation CLI
+- Configuration validation CLI (delegation-related)
 """
 import sys
 import os
 import json
-import subprocess
 from pathlib import Path
 from typing import Dict, Any
 
@@ -35,22 +34,21 @@ from edison.core.task import TaskRepository, Task
 from tests.helpers import delegation as _delegationlib  # type: ignore
 from tests.helpers.session import ensure_session
 from edison.core.utils.subprocess import run_with_timeout
+from edison.core.task import TaskQAWorkflow
 
 
 # Helper functions to replace legacy compat API
 def create_task_record(title: str, session_id: str, parent_task_id: str = None) -> str:
-    """Create a task record using TaskRepository."""
-    repo = TaskRepository()
-    task = Task.create(
+    """Create a task record via the canonical workflow layer (registers session links)."""
+    workflow = TaskQAWorkflow()
+    task = workflow.create_task(
         task_id=f"task-{os.urandom(4).hex()}",
         title=title,
         description="",
         session_id=session_id,
-        state="todo"
+        parent_id=parent_task_id,
+        create_qa=False,
     )
-    if parent_task_id:
-        task.parent_id = parent_task_id
-    repo.create(task)
     return task.id
 
 
@@ -67,7 +65,8 @@ def load_task_record(task_id: str) -> Dict[str, Any]:
         "status": task.state,
         "session_id": task.session_id,
         "parent_task_id": task.parent_id,
-        "child_tasks": []  # TODO: Implement child task tracking
+        "child_tasks": list(task.child_ids or []),
+        "agent": task.delegated_to,
     }
 
 
@@ -79,11 +78,26 @@ def set_task_result(task_id: str, status: str = None, result: Any = None, error:
         raise FileNotFoundError(f"Task record not found: {task_id}")
 
     if status:
-        task.state = status
+        # Test-friendly status surface (success/failure) maps to real Edison task states.
+        s = str(status).lower()
+        if s in ("success", "ok", "completed"):
+            task.state = "done"
+        elif s in ("failure", "failed", "error"):
+            task.state = "done"
+        elif s in ("in_progress", "wip", "running"):
+            task.state = "wip"
+        else:
+            task.state = "todo"
     if result is not None:
         task.result = str(result)
     if error is not None:
         task.result = f"Error: {error}"
+    if (task.state == "done") and (task.result is None):
+        if status and str(status).lower() in ("failure", "failed", "error"):
+            task.result = "Error: failure"
+        else:
+            # Avoid treating a done task with no result as a failure by default.
+            task.result = "ok"
 
     repo.save(task)
 
@@ -94,7 +108,7 @@ def set_task_result(task_id: str, status: str = None, result: Any = None, error:
     }
 
 
-def test_child_task_result_tracking(tmp_path):
+def test_child_task_result_tracking(tmp_path, isolated_project_env):
     """D5: Child task result tracking and aggregation surface exists and works minimally.
 
     RED phase: we expect this to fail until implementations are added in task/delegationlib.
@@ -124,7 +138,7 @@ def test_child_task_result_tracking(tmp_path):
     assert agg['status'] == 'partial_failure'
 
 
-def test_delegation_tracks_agent(tmp_path):
+def test_delegation_tracks_agent(tmp_path, isolated_project_env):
     """D5: Delegation records which agent executed each child task."""
     assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
 
@@ -137,7 +151,7 @@ def test_delegation_tracks_agent(tmp_path):
     assert child_rec.get('agent') == 'codex'
 
 
-def test_aggregate_child_results(tmp_path):
+def test_aggregate_child_results(tmp_path, isolated_project_env):
     """D5: Aggregation returns counts and overall status from real child results."""
     assert hasattr(_delegationlib, 'delegate_task'), "delegate_task function must exist"
     assert hasattr(_delegationlib, 'aggregate_child_results'), "aggregate_child_results function must exist"
@@ -160,47 +174,52 @@ def test_aggregate_child_results(tmp_path):
     assert agg['status'] == 'partial_failure'
 
 
-def test_delegation_validation_cli_missing_or_fails(tmp_path):
-    """D6: Delegation validation CLI enforces required fields.
+def test_delegation_validation_cli_missing_or_fails(tmp_path, isolated_project_env):
+    """D6: Delegation config validation fails for invalid project overrides.
 
-    RED phase behavior: until implemented, this should either not exist or fail.
-    When implemented, it should exit 0 for valid config and non-zero for invalid.
+    Edison centralizes validation under `edison config validate`.
     """
-    cli_path = Path('.agents/delegation/validate')
-    if not cli_path.exists():
-        pytest.fail("Delegation validator CLI `.agents/delegation/validate` is missing (D6)")
+    (tmp_path / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".edison" / "config" / "delegation.yaml").write_text(
+        "delegation: 123\n",
+        encoding="utf-8",
+    )
 
-    # Write an invalid config (missing required keys like roles)
-    cfg_path = Path('.agents/delegation/config.json')
-    cfg_path.parent.mkdir(parents=True, exist_ok=True)
-    cfg_path.write_text(json.dumps({"paths": {"docs": ".", "templates": "."}}), encoding='utf-8')
-
-    # Execute validator expecting non-zero
-    proc = run_with_timeout([str(cli_path)], capture_output=True, text=True)
-    assert proc.returncode != 0, "Validator should fail for missing required fields"
-    assert 'required' in (proc.stderr or proc.stdout).lower()
+    proc = run_with_timeout(
+        [sys.executable, "-m", "edison", "config", "validate", "--repo-root", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode != 0
+    assert "schema" in (proc.stderr or proc.stdout).lower()
 
 
-def test_delegation_validation_cli_passes_with_valid_config(tmp_path):
-    """D6: Validator succeeds on a well-formed config."""
-    cli_path = Path('.agents/delegation/validate')
-    if not cli_path.exists():
-        pytest.fail("Delegation validator CLI `.agents/delegation/validate` is missing (D6)")
+def test_delegation_validation_cli_passes_with_valid_config(tmp_path, isolated_project_env):
+    """D6: Validator succeeds on a well-formed delegation override."""
+    (tmp_path / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".edison" / "config" / "delegation.yaml").write_text(
+        "\n".join(
+            [
+                "delegation:",
+                "  implementers:",
+                "    primary: codex",
+                "    fallbackChain: [gemini, claude]",
+                "    maxFallbackAttempts: 3",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
-    # Restore a minimally valid config
-    cfg_path = Path('.agents/delegation/config.json')
-    cfg = {
-        "worktreeBase": "../{PROJECT_NAME}-worktrees",
-        "roles": {"validator": "validator-global-codex"},
-        "paths": {"docs": ".agents/delegation", "templates": ".edison/core/templates"}
-    }
-    cfg_path.write_text(json.dumps(cfg), encoding='utf-8')
-
-    proc = run_with_timeout([str(cli_path)], capture_output=True, text=True)
+    proc = run_with_timeout(
+        [sys.executable, "-m", "edison", "config", "validate", "--repo-root", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
     assert proc.returncode == 0, f"Expected validator to pass, got stderr: {proc.stderr} stdout: {proc.stdout}"
 
 
-def test_task_session_linking(tmp_path):
+def test_task_session_linking(tmp_path, isolated_project_env):
     """S1: Task records link to session (task side) and session lists task.
 
     Validates bidirectional linkage from the task perspective.
@@ -217,7 +236,7 @@ def test_task_session_linking(tmp_path):
     assert 'tasks' in sess and tid in sess['tasks']
 
 
-def test_delegate_task_updates_parent_child_tasks_list():
+def test_delegate_task_updates_parent_child_tasks_list(isolated_project_env):
     """TDD: delegate_task() must update parent's child_tasks list when creating a child.
 
     This is the core parent-child linking test that must pass.
@@ -229,16 +248,14 @@ def test_delegate_task_updates_parent_child_tasks_list():
     ensure_session(sid)
 
     # Create parent task
-    parent_id = "parent-task-001"
-    repo = TaskRepository()
-    parent_task = Task.create(
-        task_id=parent_id,
+    parent_id = f"parent-task-{os.urandom(4).hex()}"
+    parent_task = TaskQAWorkflow().create_task(
+        parent_id,
         title="Parent Task",
         description="",
         session_id=sid,
-        state="todo"
+        create_qa=False,
     )
-    repo.create(parent_task)
 
     # Delegate a child task
     child_id = _delegationlib.delegate_task(

@@ -467,7 +467,7 @@ def _resolve_meta_worktree_path(*, cfg: Dict[str, Any], repo_dir: Path) -> Path:
     Anchoring matches other worktree paths: relative paths are anchored to the repo root.
     """
     ss = _shared_state_cfg(cfg)
-    raw = ss.get("metaPathTemplate") or "../{PROJECT_NAME}-worktrees/_meta"
+    raw = ss.get("metaPathTemplate") or ".worktrees/_meta"
     substituted = ProjectConfig(repo_root=repo_dir).substitute_project_tokens(str(raw))
     p = Path(substituted)
     if p.is_absolute():

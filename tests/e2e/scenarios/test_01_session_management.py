@@ -58,7 +58,7 @@ def test_create_basic_session(project_dir: TestProjectDir):
     # Real session structure uses nested "meta" object
     assert "meta" in session_data, "Session should have meta object"
     assert session_data["meta"]["sessionId"] == session_id, "sessionId should match"
-    assert session_data["meta"]["status"] == "wip", "New sessions start in wip status"
+    assert session_data["meta"]["status"] == "active", "New sessions start in active status"
     assert "createdAt" in session_data["meta"], "Session should have createdAt timestamp"
 
     # Real session structure uses objects, NOT arrays for tasks/qa
@@ -168,7 +168,9 @@ def test_session_task_tracking(project_dir: TestProjectDir):
     assert_file_exists(task_path)
     from helpers.assertions import read_file
     task_content = read_file(task_path)
-    assert "**Owner:**" in task_content, "Task should have Owner field"
+    from edison.core.utils.text import parse_frontmatter
+    fm = parse_frontmatter(task_content).frontmatter
+    assert fm.get("owner"), "Task should have owner frontmatter"
 
 
 @pytest.mark.session
@@ -200,7 +202,7 @@ def test_session_status_command(project_dir: TestProjectDir):
 
     # Validate output contains session information
     assert_output_contains(status_result, session_id)
-    assert_output_contains(status_result, "wip")
+    assert_output_contains(status_result, "active")
 
 
 @pytest.mark.session

@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import argparse
+
+
+def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
+    """Best-effort classification of whether a CLI invocation mutates project state.
+
+    This is used by worktree enforcement and hooks:
+    - Read-only invocations should be allowed from the primary checkout.
+    - Mutating invocations should be blocked unless run inside the session worktree.
+    """
+    # Standard pattern: many commands expose a dry-run mode.
+    if bool(getattr(args, "dry_run", False)):
+        return False
+
+    # session status: read-only unless transitioning.
+    if command_name == "session status":
+        return bool(getattr(args, "status", None))
+
+    # task status: read-only unless transitioning.
+    if command_name == "task status":
+        return bool(getattr(args, "status", None))
+
+    # task split: read-only on dry-run, mutating otherwise.
+    if command_name == "task split":
+        return True
+
+    # qa validate: roster-only/dry-run are read-only. Execution/check-only writes evidence.
+    if command_name == "qa validate":
+        if bool(getattr(args, "check_only", False)):
+            return True
+        return bool(getattr(args, "execute", False))
+
+    # qa run: writes evidence.
+    if command_name == "qa run":
+        return True
+
+    # qa promote: transitions QA state.
+    if command_name == "qa promote":
+        return True
+
+    # session validate: currently read-only unless explicitly tracking scores.
+    if command_name == "session validate":
+        return bool(getattr(args, "track_scores", False))
+
+    # session track: only "active" is read-only; others write tracking artifacts.
+    if command_name == "session track":
+        sub = str(getattr(args, "subcommand", "") or "")
+        return sub in {"start", "heartbeat", "complete"}
+
+    # session next / verify are read-only by design.
+    if command_name in {"session next", "session verify"}:
+        return False
+
+    # Default for known-mutating commands.
+    if command_name in {
+        "session close",
+        "session complete",
+        "task claim",
+        "task mark-delegated",
+        "task link",
+        "qa bundle",
+    }:
+        return True
+
+    # Fallback: if a command exposes a `status` parameter and it is set, treat as mutating.
+    if getattr(args, "status", None):
+        return True
+
+    # Conservative default: treat unknown commands in the enforcement list as mutating.
+    return True
+
+
+__all__ = ["is_mutating_invocation"]
+

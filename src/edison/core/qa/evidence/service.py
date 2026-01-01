@@ -100,6 +100,32 @@ class EvidenceService:
         """
         return rounds.ensure_round_dir(self.evidence_root, round_num)
 
+    def ensure_required_evidence_files(self, round_dir: Path) -> list[Path]:
+        """Ensure required evidence marker files exist for a round.
+
+        These files are configured via `validation.evidence.requiredFiles` and are
+        used by task/QA guards to enforce evidence completeness. This method
+        creates empty placeholders for missing files (idempotent).
+        """
+        from edison.core.config.domains.qa import QAConfig
+
+        cfg = QAConfig(repo_root=self.project_root)
+        required = cfg.get_required_evidence_files()
+        created: list[Path] = []
+
+        round_dir.mkdir(parents=True, exist_ok=True)
+        for filename in required:
+            name = str(filename).strip()
+            if not name:
+                continue
+            path = round_dir / name
+            if path.exists():
+                continue
+            path.write_text("", encoding="utf-8")
+            created.append(path)
+
+        return created
+
     def get_current_round(self) -> Optional[int]:
         """Get the current round number."""
         latest = rounds.find_latest_round_dir(self.evidence_root)

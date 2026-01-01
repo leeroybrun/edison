@@ -55,6 +55,21 @@ def main(args: argparse.Namespace) -> int:
                     formatter.text("\nUse --force to complete anyway or fix the issues first.")
                 return 1
 
+        # Restore session-scoped records back to global queues before completing.
+        # This is part of the session lifecycle contract: the session tree provides
+        # isolation while active, and on close-out we restore all session-owned
+        # records to the global queues transactionally (FAIL-CLOSED by default).
+        try:
+            from edison.core.session.lifecycle.recovery import (
+                restore_records_to_global_transactional,
+            )
+
+            restore_records_to_global_transactional(session_id)
+        except Exception as e:
+            if not args.force:
+                formatter.error(e, error_code="restore_error")
+                return 1
+
         sess = session_manager.get_session(session_id)
         current_state = str(sess.get("state") or "")
 
@@ -62,13 +77,30 @@ def main(args: argparse.Namespace) -> int:
         closing_state = workflow.get_semantic_state("session", "closing")
         validated_state = workflow.get_semantic_state("session", "validated")
 
-        # Ensure we're in closing before marking validated (follow state machine ordering).
-        if current_state and current_state != closing_state and current_state != validated_state:
-            session_manager.transition_session(session_id, closing_state)
+        # When forced, bypass state-machine conditions/guards and directly persist
+        # the validated state (still recording a transition for auditability).
+        if args.force:
+            from edison.core.session.persistence.repository import SessionRepository
+            from edison.core.utils.paths import PathResolver
 
-        # Promote to validated (final close-out)
-        if current_state != validated_state:
-            session_manager.transition_session(session_id, validated_state)
+            repo = SessionRepository(project_root=PathResolver.resolve_project_root())
+            entity = repo.get_or_raise(session_id)
+            old = str(entity.state or "")
+            if old != validated_state:
+                try:
+                    entity.record_transition(old, validated_state, reason="cli-force-complete")
+                except Exception:
+                    pass
+                entity.state = validated_state
+                repo.save(entity)
+        else:
+            # Ensure we're in closing before marking validated (follow state machine ordering).
+            if current_state and current_state != closing_state and current_state != validated_state:
+                session_manager.transition_session(session_id, closing_state)
+
+            # Promote to validated (final close-out)
+            if current_state != validated_state:
+                session_manager.transition_session(session_id, validated_state)
 
         updated = session_manager.get_session(session_id)
         payload = {"sessionId": session_id, "status": validated_state, "session": updated}
@@ -90,9 +122,6 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-
-
-
 
 
 

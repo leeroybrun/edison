@@ -175,11 +175,17 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 
 
 def _marker_valid(text: str) -> bool:
-    # Keep validation intentionally permissive:
-    # - The workflow requires *evidence markers* to exist, not a rigid schema.
-    # - Validator processes may enforce richer content, but the state-machine guard
-    #   should fail only when the marker is missing/empty.
-    return bool(str(text).strip())
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+
+    lower = raw.lower()
+    has_topics = "topics:" in lower
+    has_retrieved_or_version = ("retrieved:" in lower) or ("version:" in lower)
+
+    # Minimal validation required by enforcement tests:
+    # marker must include topics and a retrieval date or version.
+    return bool(has_topics and has_retrieved_or_version)
 
 
 def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:

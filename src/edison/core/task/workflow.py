@@ -234,25 +234,19 @@ class TaskQAWorkflow:
             # FAIL-CLOSED by default: prevent claiming a task owned by another session.
             if not takeover:
                 raise PersistenceError(
-                    f"Task {task_id} is already claimed by '{task.session_id}' (cannot claim from '{session_id}')"
+                    f"Task {task_id} is already claimed by '{task.session_id}' (cannot claim from '{session_id}'). "
+                    "Use --reclaim to move it into the new session."
                 )
 
-            reason = (takeover_reason or "").strip()
-            if not reason:
-                raise PersistenceError(
-                    f"Cannot takeover task {task_id} from '{task.session_id}': missing takeover reason"
-                )
+            reason = (takeover_reason or "").strip() or "reclaimed"
 
             takeover_from = str(task.session_id)
             old = sess_repo.get(takeover_from)
             old_state = str(getattr(old, "state", "") or "").strip().lower() if old else ""
             old_expired = is_session_expired(takeover_from, project_root=self.project_root)
 
-            # Only allow takeovers when the previous session is not active (closing/validated/etc) OR expired OR missing.
-            if old and old_state == "active" and not old_expired:
-                raise PersistenceError(
-                    f"Cannot takeover task {task_id} from active session '{takeover_from}'"
-                )
+            # Reclaims are allowed even when the previous session is still active.
+            # The CLI is responsible for surfacing a warning when reclaiming from a non-expired session.
 
         workflow_config = WorkflowConfig()
         wip_state = workflow_config.get_semantic_state("task", "wip")
@@ -326,7 +320,7 @@ class TaskQAWorkflow:
 
         return task
 
-    def complete_task(self, task_id: str, session_id: str) -> Task:
+    def complete_task(self, task_id: str, session_id: str, *, enforce_tdd: bool = False) -> Task:
         """Complete a task (wip -> done transition).
 
         This workflow operation:
@@ -382,6 +376,8 @@ class TaskQAWorkflow:
             "project_root": self.project_root,
             # tasks/ready must enforce evidence requirements (command outputs, etc.)
             "enforce_evidence": True,
+            # tasks/ready can optionally enforce TDD readiness gates.
+            "enforce_tdd": bool(enforce_tdd),
             "entity_type": "task",
             "entity_id": task_id,
         }
@@ -488,6 +484,16 @@ class TaskQAWorkflow:
                 changed = True
             if changed:
                 self.qa_repo.save(qa)
+            if session_id:
+                from edison.core.session.persistence.graph import register_qa
+
+                register_qa(
+                    session_id,
+                    task_id,
+                    qa.id,
+                    status=qa.state,
+                    round_no=int(getattr(qa, "round", 1) or 1),
+                )
             return qa
 
         cfg = WorkflowConfig()

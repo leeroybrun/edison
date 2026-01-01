@@ -63,10 +63,12 @@ class TestTaskCreationRealCLI:
         task_path = project_dir.project_root / "tasks" / "todo" / actual_filename
         assert_file_exists(task_path)
 
-        # Validate file contents created by CLI (uses YAML frontmatter format)
-        # Format: YAML frontmatter with id, status, title
+        # Validate file contents created by CLI (uses YAML frontmatter format).
+        #
+        # NOTE: In Edison v2 the task state is derived from directory location
+        # (tasks/todo, tasks/wip, etc.) and is not stored as a `status:` field in
+        # frontmatter.
         assert_file_contains(task_path, f"id: {expected_id}")
-        assert_file_contains(task_path, "status: todo")
         assert_file_contains(task_path, "title:")
 
     def test_create_task_missing_required_arg_fails(self, project_dir: TestProjectDir):
@@ -156,23 +158,28 @@ class TestTaskStatusRealCLI:
             / session_id
             / "tasks"
             / "wip"
-            / f"task-{task_id}.md"
+            / f"{task_id}.md"
         )
         assert_file_exists(task_path)
 
-        # Real behavior: tasks/claim sets Owner to auto-detected owner (e.g., claude-pid-12345)
-        # not the --session value. The --session flag registers task in session JSON.
-        # Just validate that Owner field was set to SOMETHING
-        content = task_path.read_text()
-        assert "**Owner:**" in content, "Owner field should be present"
-        assert "**Owner:** _unassigned_" not in content, "Owner should be assigned after claim"
+        # Task claim stamps session ownership in frontmatter.
+        assert_file_contains(task_path, f"session_id: {session_id}")
 
     def test_move_task_to_wip(self, project_dir: TestProjectDir):
-        """✅ CORRECT: Move task to wip using real CLI."""
+        """✅ CORRECT: Start work by claiming task into a session (todo → wip)."""
         task_num = "153"
         wave = "wave1"
         slug = "status-test"
         task_id = f"{task_num}-{wave}-{slug}"
+        session_id = "test-session-status"
+
+        # Create session first (claiming is session-scoped in Edison v2).
+        session_result = run_script(
+            "session",
+            ["new", "--owner", "test", "--session-id", session_id, "--mode", "start"],
+            cwd=project_dir.tmp_path,
+        )
+        assert_command_success(session_result)
 
         # Create task
         run_script(
@@ -181,22 +188,26 @@ class TestTaskStatusRealCLI:
             cwd=project_dir.tmp_path,
         )
 
-        # Move to wip via real CLI
-        status_result = run_script(
-            "tasks/status",
-            [task_id, "--status", "wip"],
+        # Start work via real CLI (claim moves todo → session wip).
+        claim_result = run_script(
+            "tasks/claim",
+            [task_id, "--session", session_id],
             cwd=project_dir.tmp_path,
         )
 
-        # Validate move succeeded
-        assert_command_success(status_result)
-        assert_output_contains(status_result, "Status")
-        assert_output_contains(status_result, "wip")
+        # Validate claim succeeded
+        assert_command_success(claim_result)
 
-        # Validate task is now in wip/
-        # Filename is {task_id}.md (e.g., "153-wave1-status-test.md")
-        wip_dir = project_dir.project_root / "tasks" / "wip"
-        expected_file = wip_dir / f"{task_id}.md"
+        # Validate task is now in session wip/
+        expected_file = (
+            project_dir.project_root
+            / "sessions"
+            / "wip"
+            / session_id
+            / "tasks"
+            / "wip"
+            / f"{task_id}.md"
+        )
         assert_file_exists(expected_file)
 
         # Validate task is NOT in todo/

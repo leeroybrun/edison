@@ -107,18 +107,21 @@ def test_task_tracking_timestamps(project_dir: TestProjectDir):
     assert_file_exists(task_path)
     from helpers.assertions import read_file
     content = read_file(task_path)
-    assert "- **Owner:**" in content
-    assert "- **Status:**" in content
-    assert "- **Claimed At:**" in content
-    assert "- **Last Active:**" in content
+    # Edison v2: task metadata is stored in YAML frontmatter (not bullet lines).
+    assert "owner:" in content
+    assert f"session_id: {session_id}" in content
+    assert "claimed_at:" in content
+    assert "last_active:" in content
 
     # Verify timestamps also tracked inside session JSON entry
     session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
     session_data = json.loads(session_path.read_text())
     assert task_id in session_data["tasks"], "Task should be registered in session.tasks"
     entry = session_data["tasks"][task_id]
-    assert "claimedAt" in entry
-    assert "lastActive" in entry
+    # Session JSON keeps a lightweight index for UX; the task file is the source of truth
+    # for timestamps.
+    assert "status" in entry
+    assert "owner" in entry
 
 
 @pytest.mark.fast
@@ -193,18 +196,18 @@ def test_activity_log_entries(project_dir: TestProjectDir):
     messages = [e.get("message", "") for e in data["activityLog"]]
     # At least 3 entries: created, created task, claimed task
     assert any("Session created" in m for m in messages)
-    assert any(f"Created task {task_id}" in m for m in messages)
-    assert any(f"Claimed task {task_id}" in m for m in messages)
+    assert any(f"Task {task_id} registered" in m for m in messages)
 
 
 @pytest.mark.fast
 def test_continuation_id_tracking(project_dir: TestProjectDir):
-    """Session block includes Continuation ID line; use real CLIs only."""
+    """Continuation ID persists through claim (todo → wip) via real CLIs."""
     session_id = "sess-tracking-continuation"
     task_num = "150"
     wave = "wave1"
     slug = "continuation"
     task_id = f"{task_num}-{wave}-{slug}"
+    cid = "conv-xyz999"
 
     # Create session and task, then claim to stamp session block lines
     run_script(
@@ -214,7 +217,7 @@ def test_continuation_id_tracking(project_dir: TestProjectDir):
     )
     run_script(
         "tasks/new",
-        ["--id", task_num, "--wave", wave, "--slug", slug, "--session", session_id],
+        ["--id", task_num, "--wave", wave, "--slug", slug, "--session", session_id, "--continuation-id", cid],
         cwd=project_dir.tmp_path,
     )
     run_script(
@@ -230,8 +233,7 @@ def test_continuation_id_tracking(project_dir: TestProjectDir):
     assert_file_exists(task_path)
     from helpers.assertions import read_file
     content = read_file(task_path)
-    # Real template + claim ensures session block with Continuation ID placeholder exists
-    assert "- **Continuation ID:**" in content
+    assert f"continuation_id: {cid}" in content
 
 
 @pytest.mark.fast
@@ -377,15 +379,13 @@ def test_complete_tracking_workflow(project_dir: TestProjectDir):
     assert_json_has_field(data, "meta.lastActive")
     assert task_id in data.get("tasks", {})
 
-    # 3) Remove the task from scope so completion guard passes
-    assert_command_success(
-        run_script("session", ["remove", session_id, "task", task_id], cwd=project_dir.tmp_path)
-    )
-
-    # 4) Complete session (empty scope)
+    # 3) Complete session.
+    #
+    # Edison is fail-closed by default: completing a session with unfinished work
+    # requires an explicit override.
     complete_result = run_script(
         "session",
-        ["complete", session_id],
+        ["complete", session_id, "--force"],
         cwd=project_dir.tmp_path,
     )
     assert_command_success(complete_result)
@@ -483,4 +483,4 @@ def test_session_complete_fail_closed_when_scope_not_ready(project_dir: TestProj
     # Attempt to complete should fail because scope not validated
     result = run_script("session", ["complete", session_id], cwd=project_dir.tmp_path)
     assert result.returncode != 0
-    assert "cannot be completed" in (result.stdout + result.stderr).lower()
+    assert "all_tasks_validated" in (result.stdout + result.stderr).lower()

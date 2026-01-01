@@ -36,7 +36,7 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
                 "kind": "automation",
                 "recordId": task_id,
                 "message": f"Evidence dir missing: {evidence_rel}",
-                "fixCmd": ["mkdir", "-p", f"{evidence_rel}/round-1"],
+                "fixCmd": ["edison", "evidence", "init", task_id],
             }
         ]
     rounds = ev_svc.list_rounds()
@@ -46,7 +46,7 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
                 "kind": "automation",
                 "recordId": task_id,
                 "message": "No round-* directories present",
-                "fixCmd": ["mkdir", "-p", f"{evidence_rel}/round-1"],
+                "fixCmd": ["edison", "evidence", "init", task_id],
             }
         ]
     latest = rounds[-1]

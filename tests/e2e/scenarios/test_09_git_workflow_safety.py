@@ -17,7 +17,7 @@ from helpers.env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
 
-def _run_run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+def _run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
     return run_with_timeout(["git", *args], cwd=cwd, capture_output=True, text=True)
 
 

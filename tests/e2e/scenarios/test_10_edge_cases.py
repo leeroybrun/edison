@@ -117,6 +117,14 @@ def test_empty_evidence_directory(project_dir: TestProjectDir):
     num, wave, slug = "150", "wave1", "empty-evidence"
     task_id = f"{num}-{wave}-{slug}"
 
+    # QA must be attached to an existing task.
+    task = run_script(
+        "tasks/new",
+        ["--id", num, "--wave", wave, "--slug", slug],
+        cwd=project_dir.tmp_path,
+    )
+    assert_command_success(task)
+
     # Create QA (creates evidence root .project/qa/validation-evidence/<task_id>/)
     qa = run_script(
         "qa/new",

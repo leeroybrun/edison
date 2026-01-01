@@ -88,6 +88,7 @@ class Session:
     git: GitInfo = field(default_factory=GitInfo)
     activity_log: List[Dict[str, Any]] = field(default_factory=list)
     tasks: Dict[str, Any] = field(default_factory=dict)
+    qa: Dict[str, Any] = field(default_factory=dict)
     ready: bool = True
     
     def record_transition(
@@ -140,12 +141,14 @@ class Session:
         }
         
         data["git"] = self.git.to_dict()
-        
+
         if self.activity_log:
             data["activityLog"] = self.activity_log
 
-        if self.tasks:
-            data["tasks"] = self.tasks
+        # Optional, lightweight indexes for UX (not source of truth).
+        # Always include as objects for stable JSON shape.
+        data["tasks"] = self.tasks
+        data["qa"] = self.qa
         
         if self.state_history:
             data["stateHistory"] = [h.to_dict() for h in self.state_history]
@@ -184,6 +187,9 @@ class Session:
 
         tasks = data.get("tasks")
         tasks_index: Dict[str, Any] = tasks if isinstance(tasks, dict) else {}
+
+        qa = data.get("qa")
+        qa_index: Dict[str, Any] = qa if isinstance(qa, dict) else {}
         
         return cls(
             id=data.get("id", ""),
@@ -196,6 +202,7 @@ class Session:
             git=git,
             activity_log=data.get("activityLog", []),
             tasks=tasks_index,
+            qa=qa_index,
             ready=data.get("ready", True),
         )
     

@@ -91,6 +91,21 @@ def validate_transition(
     if from_state == to_state:
         return True, ""
 
+    # Structural-only validation when no context is provided.
+    # Many callers (and tests) use this to check adjacency in the configured
+    # state machine, not whether guards/conditions pass for a specific entity.
+    if context is None:
+        try:
+            from edison.core.config.domains.workflow import WorkflowConfig
+
+            wf = WorkflowConfig(repo_root=repo_root)
+            allowed = wf.get_transitions(entity_type).get(from_state, []) or []
+            if to_state in allowed:
+                return True, ""
+            return False, f"Invalid transition: {from_state} → {to_state}"
+        except Exception as e:
+            return False, str(e)
+
     # Delegate to StateValidator as the canonical validation entry point
     from edison.core.state.validator import StateValidator, MissingStateMachine
 
@@ -228,4 +243,3 @@ __all__ = [
     "validate_transition",
     "transition_entity",
 ]
-

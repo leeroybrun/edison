@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from edison.cli._mutability import is_mutating_invocation
 
 def _path_within(candidate: Path, parent: Path) -> bool:
     try:
@@ -27,13 +28,6 @@ def _extract_session_id_from_args(args: argparse.Namespace) -> str | None:
     if raw:
         return str(raw)
     return None
-
-
-def _is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
-    # Keep this minimal and conservative: only enforce for known mutating flags.
-    if command_name == "qa validate":
-        return bool(getattr(args, "execute", False) or getattr(args, "check_only", False))
-    return True
 
 
 def maybe_enforce_session_worktree(
@@ -74,7 +68,7 @@ def maybe_enforce_session_worktree(
         return None
 
     # Allow read-only invocations from the primary checkout.
-    if not _is_mutating_invocation(command_name, args):
+    if not is_mutating_invocation(command_name, args):
         return None
 
     target_raw = _extract_session_id_from_args(args) or detect_session_id(project_root=project_root)
@@ -102,6 +96,18 @@ def maybe_enforce_session_worktree(
     if _path_within(cwd, worktree_root) or _path_within(project_root, worktree_root):
         return None
 
+    archived_worktree_path: str | None = None
+    try:
+        if not worktree_root.exists():
+            from edison.core.session.worktree.config_helpers import _resolve_archive_directory
+
+            archive_dir = _resolve_archive_directory(wt_cfg, project_root)
+            candidate = (archive_dir / session_id).resolve()
+            if candidate.exists():
+                archived_worktree_path = str(candidate)
+    except Exception:
+        archived_worktree_path = None
+
     msg = (
         "WORKTREE ENFORCEMENT: this command must run inside the session worktree.\n"
         f"Command: {command_name}\n"
@@ -114,6 +120,9 @@ def maybe_enforce_session_worktree(
     )
 
     if json_mode:
+        hint = f"cd {worktree_root}"
+        if archived_worktree_path:
+            hint = f"edison git worktree-restore {session_id}"
         print(
             json.dumps(
                 {
@@ -121,8 +130,9 @@ def maybe_enforce_session_worktree(
                     "command": command_name,
                     "sessionId": session_id,
                     "worktreePath": str(worktree_root),
+                    "archivedWorktreePath": archived_worktree_path,
                     "message": "Command must run inside the session worktree.",
-                    "hint": f"cd {worktree_root}",
+                    "hint": hint,
                 }
             )
         )

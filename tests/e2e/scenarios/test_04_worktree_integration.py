@@ -30,7 +30,7 @@ from helpers.env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
 PROJECT_NAME = os.environ.get("PROJECT_NAME", "example-project")
-WORKTREE_ROOT_NAMES = {f"{PROJECT_NAME}-worktrees", ".worktrees"}
+WORKTREE_ROOT_NAMES = {".worktrees"}
 
 
 # ----------------------------------------------------------------------------
@@ -119,11 +119,10 @@ def test_create_worktree_for_session(project_dir: TestProjectDir):
     assert git_meta.get("branchName") == f"session/{session_id}"
     assert git_meta.get("baseBranch") == "main"
 
-    # Validate worktree directory exists and is under .../{PROJECT_NAME}-worktrees/{sessionId}
+    # Validate worktree directory exists and is under repo-root/.worktrees/{sessionId}
     wt = Path(git_meta["worktreePath"])  # absolute path
     assert_directory_exists(wt)
     assert wt.name == session_id
-    # Accept either configured baseDirectory or local .worktrees root
     assert wt.parent.name in WORKTREE_ROOT_NAMES
 
 

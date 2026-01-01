@@ -69,6 +69,29 @@ hooks:
 
     # ===== Guard Hooks (PreToolUse - CAN BLOCK) =====
 
+    enforce-worktree:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Write|Edit|Glob|Grep|Bash"
+      enabled: true
+      blocking: true
+      description: "Block tool use outside the active session worktree"
+      template: "enforce-worktree.sh.template"
+      config:
+        # Allow safe/required Bash prefixes even when not in the worktree.
+        allow_bash_prefixes:
+          - "edison"
+          - "uv run edison"
+          - "python -m edison"
+          - "python3 -m edison"
+        # Allow shell builtins / harmless reads to run so the agent can recover.
+        allow_bash_commands:
+          - "cd"
+          - "pwd"
+          - "ls"
+          - "cat"
+          - "echo"
+
     commit-guard:
       type: PreToolUse
       hook_type: command

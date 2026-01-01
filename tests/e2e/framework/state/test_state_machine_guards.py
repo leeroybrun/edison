@@ -22,12 +22,13 @@ EDISON_CONFIG_ROOT = get_data_path("config")
 
 
 def test_defaults_yaml_contains_state_machine():
-    """defaults.yaml must define statemachine for task and qa domains."""
+    """workflow.yaml must define statemachine for task and qa domains."""
     import yaml
-    cfg_path = EDISON_CONFIG_ROOT / "defaults.yaml"
+    cfg_path = EDISON_CONFIG_ROOT / "workflow.yaml"
     data = yaml.safe_load(cfg_path.read_text())
-    assert "statemachine" in data, "defaults.yaml missing 'statemachine' section"
-    sm = data["statemachine"]
+    assert "workflow" in data and isinstance(data["workflow"], dict)
+    assert "statemachine" in data["workflow"], "workflow.yaml missing 'workflow.statemachine' section"
+    sm = data["workflow"]["statemachine"]
     assert "task" in sm and "qa" in sm, "statemachine must include task and qa"
     for domain in ("task", "qa"):
         assert "states" in sm[domain], f"{domain} state machine incomplete"
@@ -87,12 +88,26 @@ def test_ready_requires_impl_report(tmp_path, isolated_project_env):
     )
     assert_command_success(res_new)
     task_id = "451-wave2-guards-ready"
-    # Prepare a minimal session to satisfy --session
-    (proj.project_root / "sessions" / "wip").mkdir(parents=True, exist_ok=True)
-    (proj.project_root / "sessions" / "wip" / "s-guards.json").write_text(json.dumps({
-        "meta": {"sessionId": "s-guards", "createdAt": "2025-01-01T00:00:00Z", "lastActive": "2025-01-01T00:00:00Z"},
-        "tasks": {}, "qa": {}, "activityLog": []
-    }, indent=2))
+    # Prepare a minimal session to satisfy --session (nested layout).
+    sess_dir = proj.project_root / "sessions" / "wip" / "s-guards"
+    sess_dir.mkdir(parents=True, exist_ok=True)
+    (sess_dir / "session.json").write_text(json.dumps({
+        "id": "s-guards",
+        "state": "active",
+        "phase": "implementation",
+        "meta": {
+            "sessionId": "s-guards",
+            "owner": "tester",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "lastActive": "2025-01-01T00:00:00Z",
+            "status": "active",
+        },
+        "ready": True,
+        "git": {"baseBranch": "main", "branchName": None, "worktreePath": None},
+        "activityLog": [],
+        "tasks": {},
+        "qa": {},
+    }, indent=2), encoding="utf-8")
 
     # Ready should fail when no implementation report exists
     res_ready = run_script(
@@ -103,7 +118,8 @@ def test_ready_requires_impl_report(tmp_path, isolated_project_env):
     assert_command_failure(res_ready)
     msg = (res_ready.stderr + res_ready.stdout)
     assert (
-        ("Implementation report required" in msg)
+        ("Implementation Report Markdown is required" in msg)
+        or ("Implementation report required" in msg)
         or ("guard fails closed" in msg.lower())
         or ("validators/config.json" in msg)  # legacy wording (backward-compatible)
         or ("config/validators.yml" in msg)   # new YAML-only path
@@ -133,7 +149,8 @@ def test_missing_status_line_fails_update(tmp_path, isolated_project_env):
         cwd=proj.tmp_path,
     )
     assert_command_failure(res)
-    assert "Could not find Status line" in (res.stderr + res.stdout)
+    # Edison v2 tasks require YAML frontmatter; malformed legacy bodies are rejected.
+    assert "missing YAML frontmatter" in (res.stderr + res.stdout)
 
 
 @pytest.mark.task
@@ -177,8 +194,8 @@ def test_validator_rejects_missing_current_status():
 @pytest.mark.fast
 def test_all_valid_adjacencies_allowed_by_validator():
     import yaml
-    cfg = yaml.safe_load((EDISON_CONFIG_ROOT / "defaults.yaml").read_text())
-    sm = cfg["statemachine"]
+    cfg = yaml.safe_load((EDISON_CONFIG_ROOT / "workflow.yaml").read_text())
+    sm = cfg["workflow"]["statemachine"]
     from edison.core import task
     for domain in ("task", "qa"):
         states = sm[domain]["states"]

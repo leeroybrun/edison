@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES - CAN BLOCK" if blocking else "NO" }}
+
+# This hook enforces that tool actions run from within the session worktree when one is present.
+
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool // ""' 2>/dev/null || echo "")
+
+case "$TOOL_NAME" in
+  Write|Edit|Glob|Grep|Bash) ;;
+  *) exit 0 ;;
+esac
+
+{% set cfg = config if config is defined else {} %}
+{% set allow_bash_prefixes = cfg.get("allow_bash_prefixes", []) %}
+{% set allow_bash_commands = cfg.get("allow_bash_commands", []) %}
+
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+  COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
+  if [[ -z "$COMMAND" ]]; then
+    exit 0
+  fi
+
+  # Allowlist specific safe bash commands/prefixes so agents can recover (e.g. run `edison session detect`).
+  {% for cmd in allow_bash_commands %}
+  if [[ "$COMMAND" == "{{ cmd }}" || "$COMMAND" == "{{ cmd }} "* ]]; then
+    exit 0
+  fi
+  {% endfor %}
+
+  {% for p in allow_bash_prefixes %}
+  if [[ "$COMMAND" == "{{ p }}" || "$COMMAND" == "{{ p }} "* ]]; then
+    exit 0
+  fi
+  {% endfor %}
+fi
+
+DETECTED_JSON=$(edison session detect --json 2>/dev/null || echo '{}')
+SESSION_ID=$(echo "$DETECTED_JSON" | jq -r '.sessionId // ""' 2>/dev/null || echo "")
+WORKTREE_PATH=$(echo "$DETECTED_JSON" | jq -r '.worktreePath // ""' 2>/dev/null || echo "")
+IN_WORKTREE=$(echo "$DETECTED_JSON" | jq -r '.inWorktree // false' 2>/dev/null || echo "false")
+ARCHIVED_PATH=$(echo "$DETECTED_JSON" | jq -r '.archivedWorktreePath // ""' 2>/dev/null || echo "")
+
+if [[ -z "$SESSION_ID" || -z "$WORKTREE_PATH" ]]; then
+  # No active session/worktree detected.
+  exit 0
+fi
+
+if [[ "$IN_WORKTREE" == "true" ]]; then
+  exit 0
+fi
+
+echo ""
+echo "❌ WORKTREE ENFORCEMENT: tool use blocked outside session worktree"
+echo ""
+echo "Session:"
+echo "  $SESSION_ID"
+echo ""
+echo "Expected worktree:"
+echo "  $WORKTREE_PATH"
+echo ""
+
+if [[ -n "$ARCHIVED_PATH" ]]; then
+  echo "Archived worktree detected:"
+  echo "  $ARCHIVED_PATH"
+  echo ""
+  echo "Restore it with:"
+  echo "  edison git worktree-restore $SESSION_ID"
+else
+  echo "Run:"
+  echo "  cd $WORKTREE_PATH"
+  echo "  export AGENTS_SESSION=$SESSION_ID"
+fi
+
+# Emit audit event (best-effort, fail-open)
+edison audit event "hook.enforce-worktree.blocked" \
+  --repo-root "$PWD" \
+  --session "$SESSION_ID" \
+  --field "hook_id={{ id }}" \
+  --field "tool=$TOOL_NAME" 2>/dev/null || true
+
+exit 1
+

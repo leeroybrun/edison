@@ -19,10 +19,11 @@ CORE_ROOT = _CORE_ROOT
 from tests.helpers.delegation import map_role, route_task, get_role_mapping
 def test_route_task_maps_role_correctly():
     """Routes a generic role and verifies target_role equals mapping result."""
-    mapping = get_role_mapping()
+    cfg = {"delegation": {"roleMapping": {"writer": "codex"}}}
+    mapping = get_role_mapping(cfg)
     generic = next(iter(mapping.keys()))
-    expected = map_role(generic)
-    env = route_task(generic)
+    expected = map_role(generic, cfg)
+    env = route_task(generic, cfg=cfg)
     assert env['target_role'] == expected
 
 

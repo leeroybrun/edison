@@ -4,6 +4,7 @@ import os
 import json
 import subprocess
 from pathlib import Path
+import sys
 
 import pytest
 from edison.core.utils.subprocess import run_with_timeout
@@ -22,6 +23,12 @@ def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> sub
     e = os.environ.copy()
     if env:
         e.update(env)
+
+    # Ensure subprocess can import in-repo `edison` package when executed from tmp dirs.
+    repo = repo_root()
+    src_root = repo / "src"
+    existing_py_path = e.get("PYTHONPATH", "")
+    e["PYTHONPATH"] = str(src_root) if not existing_py_path else os.pathsep.join([str(src_root), existing_py_path])
     return run_with_timeout(argv, cwd=cwd, env=e, capture_output=True, text=True)
 
 
@@ -49,8 +56,11 @@ def test_recover_validation_tx_dry_run_lists(project: tuple[Path, dict[str, str]
     root, env = project
     sid = "session-x"
     _make_incomplete_tx(root, sid)
-    script = repo_root() / ".edison" / "core" / "scripts" / "recovery" / "recover-validation-tx"
-    res = run([str(script), "--dry-run", "--session", sid], cwd=root, env=env)
+    res = run(
+        [sys.executable, "-m", "edison", "session", "recovery", "recover-validation-tx", "--dry-run", "--session", sid],
+        cwd=root,
+        env=env,
+    )
     assert res.returncode == 0, res.stderr
     assert "incomplete" in res.stdout.lower()
 
@@ -59,8 +69,11 @@ def test_recover_validation_tx_force_cleans(project: tuple[Path, dict[str, str]]
     root, env = project
     sid = "session-y"
     tx_dir = _make_incomplete_tx(root, sid)
-    script = repo_root() / ".edison" / "core" / "scripts" / "recovery" / "recover-validation-tx"
-    res = run([str(script), "--force", "--session", sid], cwd=root, env=env)
+    res = run(
+        [sys.executable, "-m", "edison", "session", "recovery", "recover-validation-tx", "--force", "--session", sid],
+        cwd=root,
+        env=env,
+    )
     assert res.returncode == 0, res.stderr
     # staging and snapshot gone
     assert not (tx_dir / "staging").exists()

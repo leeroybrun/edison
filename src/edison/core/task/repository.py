@@ -369,6 +369,7 @@ class TaskRepository(
             "claimed_at": task.claimed_at,
             "last_active": task.last_active,
             "continuation_id": task.continuation_id,
+            "result": task.result,
             "delegated_to": task.delegated_to,
             "delegated_in_session": task.delegated_in_session,
             "created_at": task.metadata.created_at,
@@ -492,6 +493,7 @@ class TaskRepository(
             claimed_at=fm.get("claimed_at"),
             last_active=fm.get("last_active"),
             continuation_id=fm.get("continuation_id"),
+            result=fm.get("result"),
             delegated_to=fm.get("delegated_to"),
             delegated_in_session=fm.get("delegated_in_session"),
         )

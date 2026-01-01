@@ -89,3 +89,92 @@ def test_dispatcher_blocks_session_scoped_commands_outside_worktree_when_enforce
     assert payload.get("command") == "session complete"
     assert payload.get("sessionId") == "sess-enforce"
     assert isinstance(payload.get("worktreePath"), str)
+
+
+def test_dispatcher_allows_readonly_session_status_outside_worktree_when_enforced(
+    isolated_project_env: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Read-only `session status` must not be blocked by worktree enforcement."""
+    cfg_dir = isolated_project_env / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "worktrees.yml").write_text(
+        yaml.safe_dump(
+            {
+                "worktrees": {
+                    "enabled": True,
+                    "baseBranchMode": "current",
+                    "baseBranch": None,
+                    "baseDirectory": str(tmp_path / "worktrees"),
+                    "archiveDirectory": str(tmp_path / "worktrees" / "_archived"),
+                    "branchPrefix": "session/",
+                    "enforcement": {"enabled": True, "commands": ["session status", "session complete"]},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    from helpers.cache_utils import reset_edison_caches
+
+    reset_edison_caches()
+
+    from edison.cli._dispatcher import main as cli_main
+
+    code = cli_main(["session", "create", "--session-id", "sess-status", "--owner", "tester", "--json"])
+    assert code == 0
+    _created = capsys.readouterr()
+
+    # Read-only status must not be blocked from the primary checkout.
+    code2 = cli_main(["session", "status", "sess-status", "--json"])
+    assert code2 == 0
+    payload = json.loads(capsys.readouterr().out or "{}")
+    assert payload.get("id") == "sess-status"
+
+
+def test_worktree_enforcement_is_archive_aware(
+    isolated_project_env: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """When a session worktree is archived, enforcement should guide restore (not dead `cd`)."""
+    cfg_dir = isolated_project_env / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "worktrees.yml").write_text(
+        yaml.safe_dump(
+            {
+                "worktrees": {
+                    "enabled": True,
+                    "baseBranchMode": "current",
+                    "baseBranch": None,
+                    "baseDirectory": str(tmp_path / "worktrees"),
+                    "archiveDirectory": str(tmp_path / "worktrees" / "_archived"),
+                    "branchPrefix": "session/",
+                    "enforcement": {"enabled": True, "commands": ["session complete"]},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    from helpers.cache_utils import reset_edison_caches
+
+    reset_edison_caches()
+
+    from edison.cli._dispatcher import main as cli_main
+
+    code = cli_main(["session", "create", "--session-id", "sess-arch", "--owner", "tester", "--json"])
+    assert code == 0
+    created = json.loads(capsys.readouterr().out or "{}")
+    wt = ((created.get("session") or {}).get("git") or {}).get("worktreePath")
+    assert isinstance(wt, str)
+
+    # Archive the worktree but keep the session record pointing at the original path.
+    from edison.core.session import worktree as worktree_lib
+
+    archived_path = worktree_lib.archive_worktree("sess-arch", Path(wt))
+    assert archived_path.exists()
+
+    code2 = cli_main(["session", "complete", "sess-arch", "--json"])
+    assert code2 == 2
+    payload = json.loads(capsys.readouterr().out or "{}")
+    assert payload.get("error") == "worktree_enforcement"
+    assert payload.get("sessionId") == "sess-arch"
+    assert payload.get("archivedWorktreePath") == str(archived_path.resolve())

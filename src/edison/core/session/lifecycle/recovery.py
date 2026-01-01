@@ -531,7 +531,7 @@ def detect_incomplete_transactions() -> List[Dict[str, Any]]:
     return incomplete
 
 
-def recover_incomplete_validation_transactions(session_id: str) -> int:
+def recover_incomplete_validation_transactions(session_id: str, *, dry_run: bool = False) -> int:
     """Recover incomplete validation transactions for a session.
 
     Scans for incomplete transactions in the session's transaction directory.
@@ -555,6 +555,24 @@ def recover_incomplete_validation_transactions(session_id: str) -> int:
 
     if not val_root.exists():
         return 0
+
+    if dry_run:
+        count = 0
+        for tx_dir in val_root.iterdir():
+            if not tx_dir.is_dir():
+                continue
+            meta_path = tx_dir / "meta.json"
+            if not meta_path.exists():
+                continue
+            try:
+                meta = io_read_json(meta_path)
+            except Exception:
+                continue
+            if meta.get("finalizedAt") or meta.get("abortedAt"):
+                continue
+            if meta.get("txId"):
+                count += 1
+        return count
 
     recovered = 0
     for tx_dir in val_root.iterdir():

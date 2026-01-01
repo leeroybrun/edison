@@ -66,8 +66,7 @@ def test_init_non_interactive_enable_worktrees_runs_meta_init(tmp_path: Path) ->
     )
     assert result.returncode == 0, f"Command failed:\n{result.stdout}\n{result.stderr}"
 
-    # Default meta path template: ../{PROJECT_NAME}-worktrees/_meta
-    meta_path = tmp_path / f"{project.name}-worktrees" / "_meta"
+    # Default meta path template: .worktrees/_meta
+    meta_path = project / ".worktrees" / "_meta"
     assert meta_path.exists(), f"Expected meta worktree at {meta_path}"
     assert (project / ".project" / "tasks").is_symlink()
-

@@ -170,6 +170,22 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         for t in session_tasks
     }
 
+    # Fail-open UX fallback: if task files are missing/unlinked, fall back to the
+    # lightweight `session.tasks` index so `session next` can still guide users.
+    if not tasks_map:
+        tasks_index = session.get("tasks") if isinstance(session, dict) else None
+        if isinstance(tasks_index, dict) and tasks_index:
+            for task_id, entry in tasks_index.items():
+                if not task_id or not isinstance(task_id, str):
+                    continue
+                e = entry if isinstance(entry, dict) else {}
+                status = e.get("status") or e.get("state") or infer_task_status(task_id)
+                tasks_map[task_id] = {
+                    "status": status,
+                    "parentId": e.get("parentId") if isinstance(e.get("parentId"), str) else None,
+                    "childIds": list(e.get("childIds") or []) if isinstance(e.get("childIds"), list) else [],
+                }
+
     similarity_index = None
 
     def _similar(title: str) -> list[dict[str, object]]:
@@ -447,6 +463,30 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 "taskId": task_id,
                 "suggestions": fus_cmds,
             })
+
+    # UX fallback: if no other task actions were produced, guide the user back to
+    # implementation work for tasks in semantic "wip".
+    if scope in (None, "tasks", "session"):
+        for task_id, task_entry in tasks_map.items():
+            if task_entry.get("status") != STATES["task"]["wip"]:
+                continue
+            already_has_task_action = any(
+                a.get("entity") == "task" and a.get("recordId") == task_id for a in actions
+            )
+            if already_has_task_action:
+                continue
+            actions.append(
+                {
+                    "id": "task.work",
+                    "entity": "task",
+                    "recordId": task_id,
+                    "cmd": ["edison", "task", "show", task_id],
+                    "rationale": "Continue implementation work for this task",
+                    "ruleRef": None,
+                    "ruleIds": [],
+                    "blocking": False,
+                }
+            )
 
     # Build bundles for roots if children ready
     bundle_ready_states = {STATES["task"]["done"], STATES["task"]["validated"]}

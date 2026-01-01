@@ -205,7 +205,45 @@ class SessionConfig(BaseDomainConfig):
                         cfg = deep_merge(cfg, wt)
         except Exception:
             pass
+
+        cfg = self._normalize_worktree_config(cfg)
         return cfg
+
+    def _normalize_worktree_config(self, cfg: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize worktree config to avoid contradictory/duplicated settings.
+
+        Edison supports both:
+        - `worktrees.baseDirectory` (directory convenience)
+        - `worktrees.pathTemplate` (full template)
+
+        The defaults include both for discoverability, but project overrides often
+        set only `baseDirectory`. When that happens we must derive a coherent
+        `pathTemplate`, otherwise worktrees may be created in the wrong location.
+        """
+        out = dict(cfg or {})
+
+        base_dir = out.get("baseDirectory")
+        path_template = out.get("pathTemplate")
+
+        # If a project overrides baseDirectory but leaves pathTemplate at the core default,
+        # treat pathTemplate as implicit and re-derive it from baseDirectory.
+        default_base_dir = ".worktrees"
+        default_path_template = ".worktrees/{sessionId}"
+
+        if isinstance(base_dir, str) and base_dir.strip():
+            normalized_base = base_dir.strip()
+            if isinstance(path_template, str) and path_template.strip():
+                normalized_template = path_template.strip()
+            else:
+                normalized_template = ""
+
+            if (not normalized_template) or (
+                normalized_template == default_path_template and normalized_base != default_base_dir
+            ):
+                rendered_base = normalized_base.rstrip("/")
+                out["pathTemplate"] = f"{rendered_base}/{{sessionId}}"
+
+        return out
 
     def get_worktree_timeout(self, key: str, default: int = 30) -> int:
         """Get timeout for worktree operations."""

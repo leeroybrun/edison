@@ -188,5 +188,7 @@ def test_all_git_commands_have_separator():
         must_contain('["git", "worktree", "add", "--"', worktree_src, "worktree module")
         must_contain('["git", "worktree", "remove", "--force", "--"', worktree_src, "worktree module")
 
-        # Clone paths include `--` before repo/path
-        must_contain('["git", "clone", "--local", "--no-hardlinks", "--"', worktree_src, "worktree module")
+        # If the worktree implementation uses clone, ensure it is safe (`--` separator).
+        # Worktrees can be created via `git worktree add` without cloning; in that case this check is irrelevant.
+        if '["git", "clone"' in worktree_src:
+            must_contain('["git", "clone", "--local", "--no-hardlinks", "--"', worktree_src, "worktree module")

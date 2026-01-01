@@ -104,8 +104,8 @@ def test_archival_listing_sorted_by_mtime(project_dir: TestProjectDir):
     # Prepare fake archive directory with 3 entries.
     #
     # The CLI subprocess forces PROJECT_NAME="example-project" for determinism (see helpers/command_runner.py),
-    # and core defaults place worktrees in a sibling directory: ../{PROJECT_NAME}-worktrees/_archived.
-    archive_root = project_dir.tmp_path.parent / "example-project-worktrees" / "_archived"
+    # and core defaults place worktrees under the repo root: .worktrees/_archived.
+    archive_root = project_dir.tmp_path / ".worktrees" / "_archived"
     archive_root.mkdir(parents=True, exist_ok=True)
     a = archive_root / "a"
     b = archive_root / "b"

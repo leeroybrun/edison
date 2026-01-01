@@ -117,6 +117,15 @@ path/to/existing/file.py
 
 <!-- /EXTENSIBLE: RelatedFiles -->
 
+<!-- EXTENSIBLE: PrimaryFiles -->
+## Primary Files / Areas
+
+Primary Files / Areas:
+<!-- Add one path per line -->
+- path/to/file.ext
+
+<!-- /EXTENSIBLE: PrimaryFiles -->
+
 <!-- EXTENSIBLE: Notes -->
 ## Notes
 

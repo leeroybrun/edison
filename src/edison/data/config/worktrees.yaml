@@ -5,10 +5,12 @@ worktrees:
   enabled: true
   baseBranchMode: "current"
   baseBranch: null
-  baseDirectory: "../{PROJECT_NAME}-worktrees"
-  archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
+  # Default: keep all session worktrees inside the repository so client tool
+  # permissions scoped to `./**` (e.g. Claude Code) can access them reliably.
+  baseDirectory: ".worktrees"
+  archiveDirectory: ".worktrees/_archived"
   branchPrefix: "session/"
-  pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  pathTemplate: ".worktrees/{sessionId}"
   sharedState:
     # Controls how `.project/*` and `.edison/_generated` are shared across session worktrees.
     # Git worktrees do not share untracked/ignored files, so a shared root keeps tasks/QA/session
@@ -20,7 +22,7 @@ worktrees:
     # - external: Use an explicit filesystem path (`externalPath`) as the shared root.
     mode: "meta"
     metaBranch: "edison-meta"
-    metaPathTemplate: "../{PROJECT_NAME}-worktrees/_meta"
+    metaPathTemplate: ".worktrees/_meta"
     # Additional repo-root relative paths to share via symlink into worktrees.
     #
     # This is intended for untracked "project meta" that should be shared across all

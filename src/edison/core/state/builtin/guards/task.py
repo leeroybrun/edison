@@ -100,7 +100,12 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
             packages = detect_packages(Path(task_path), session_dict)  # type: ignore[arg-type]
             missing = missing_packages(str(task_id), packages)
             if missing:
-                raise ValueError(f"Context7 evidence required: {', '.join(missing)}")
+                detected = ", ".join(sorted(packages)) if packages else "(none)"
+                missing_s = ", ".join(missing)
+                raise ValueError(
+                    "Context7 evidence required "
+                    f"(missing: {missing_s}; detected: {detected})"
+                )
     except ValueError:
         raise
     except Exception as e:
@@ -148,6 +153,85 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
             if missing_files:
                 raise ValueError(
                     f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
+                )
+
+        # Optional TDD readiness gates (used by `edison task ready`).
+        enforce_tdd = bool(ctx.get("enforce_tdd")) and not bool(
+            str(os.environ.get("DISABLE_TDD_ENFORCEMENT", "")).strip()
+        )
+        if enforce_tdd:
+            from edison.core.config.domains.tdd import TDDConfig
+            from edison.core.config.domains.qa import QAConfig
+            from edison.core.qa.evidence.command_evidence import verify_command_evidence_hmac
+            from edison.core.tdd.ready_gate import (
+                run_verification_script,
+                scan_for_blocked_test_tokens,
+                validate_command_evidence_exit_codes,
+                validate_tdd_evidence,
+            )
+
+            tdd_cfg = TDDConfig(repo_root=project_root_path)
+            required_files = QAConfig(repo_root=project_root_path).get_required_evidence_files()
+            tdd_round_dir = ev_svc.get_round_dir(latest)
+
+            # Exit code verification for command evidence (best-effort).
+            if enforce and bool(tdd_cfg.require_evidence):
+                validate_command_evidence_exit_codes(tdd_round_dir, required_files=required_files)
+
+            # HMAC verification is enabled when a key is present.
+            hmac_key = str(os.environ.get(tdd_cfg.hmac_key_env_var, "")).strip()
+            if hmac_key:
+                for name in required_files:
+                    ok, msg = verify_command_evidence_hmac(tdd_round_dir / str(name), hmac_key=hmac_key)
+                    if not ok:
+                        raise ValueError(msg)
+
+            # `.only` / focus token detection.
+            roots: list[Path] = []
+            if project_root_path is not None:
+                roots.append(project_root_path)
+            wt_raw = (session_dict or {}).get("git", {}).get("worktreePath") if session_dict else None
+            try:
+                wt = Path(str(wt_raw)).resolve() if wt_raw else None
+            except Exception:
+                wt = None
+            if wt and wt.exists():
+                roots.append(wt)
+
+            hits = scan_for_blocked_test_tokens(
+                roots=roots,
+                file_globs=tdd_cfg.test_file_globs,
+                blocked_tokens=tdd_cfg.blocked_test_tokens,
+            )
+            if hits:
+                path, token = hits[0]
+                raise ValueError(f"Blocked test token {token!r} detected in {path}")
+
+            # Optional project verification script (e.g., coverage thresholds).
+            script_rel = tdd_cfg.verification_script
+            if script_rel and project_root_path is not None:
+                script_path = Path(script_rel)
+                if not script_path.is_absolute():
+                    script_path = (project_root_path / script_path).resolve()
+                if script_path.exists() and os.access(script_path, os.X_OK):
+                    cp = run_verification_script(script_path, cwd=project_root_path)
+                    if cp.returncode != 0:
+                        out = ((cp.stdout or "") + "\n" + (cp.stderr or "")).strip()
+                        raise ValueError(
+                            "TDD verification script failed (coverage gate).\n"
+                            f"Script: {script_path}\n"
+                            f"{out}".strip()
+                        )
+
+            # Validate session-scoped TDD evidence when present.
+            sid = str(ctx.get("session_id") or (session_dict or {}).get("id") or "").strip()
+            if sid and project_root_path is not None:
+                validate_tdd_evidence(
+                    project_root=project_root_path,
+                    session_id=sid,
+                    task_id=str(task_id),
+                    enforce_red_green_refactor=bool(tdd_cfg.enforce_red_green_refactor),
+                    worktree_path=wt,
                 )
 
         return True

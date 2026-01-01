@@ -71,7 +71,7 @@ mappings:
     
   session/heartbeat:
     domain: session
-    command: track  # heartbeat is now track
+    command: heartbeat
     
   session/track:
     domain: session
@@ -149,11 +149,11 @@ mappings:
 session_subcommands:
   new: create
   status: status
-  complete: close
+  complete: complete
   next: next
   start: start
   close: close
-  heartbeat: track
+  heartbeat: heartbeat
   track: track
 
 # Track subcommands

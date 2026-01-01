@@ -1159,11 +1159,11 @@ Git worktree management for session isolation.
 ```yaml
 worktrees:
   enabled: true
-  baseBranch: "main"
-  baseDirectory: "../{PROJECT_NAME}-worktrees"
-  archiveDirectory: "../{PROJECT_NAME}-worktrees/_archived"
+  baseBranch: null
+  baseDirectory: ".worktrees"
+  archiveDirectory: ".worktrees/_archived"
   branchPrefix: "session/"
-  pathTemplate: "../{PROJECT_NAME}-worktrees/{sessionId}"
+  pathTemplate: ".worktrees/{sessionId}"
   sharedState:
     # Canonical list of meta-managed shared paths (single source of truth).
     # Includes `.project/*` management state and `.edison/_generated` by default.

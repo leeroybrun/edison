@@ -5,3 +5,22 @@ tdd:
   enforceRedGreenRefactor: true
   requireEvidence: true
   hmacValidation: false
+
+  # Scan these file globs for forbidden focus/skip tokens before allowing `task ready`.
+  # Globs are relative to the project root and any active session worktree.
+  testFileGlobs:
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/__tests__/**/*"
+
+  # Substrings (case-sensitive) that must never appear in committed test sources.
+  # Keep minimal: enforcement logic can evolve, but defaults must catch common footguns.
+  blockedTestTokens:
+    - ".only"
+
+  # Optional per-project TDD verification script (e.g., coverage thresholds).
+  # When present and executable, `edison task ready` must run it and fail if it exits non-zero.
+  verificationScript: "scripts/tdd-verification.sh"
+
+  # Evidence HMAC signing/verification is enabled when this env var is set.
+  hmacKeyEnvVar: "project_EVIDENCE_HMAC_KEY"
