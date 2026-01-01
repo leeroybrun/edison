@@ -126,7 +126,8 @@ class CLIEngine:
                 return (
                     False,
                     "disabled_by_config",
-                    "orchestration.allowCliEngines is false (or does not allow this engine id)",
+                    "orchestration.allowCliEngines is false (or does not allow this engine id). "
+                    "Set orchestration.allowCliEngines=true in .edison/config/orchestration.yaml to enable.",
                 )
         except Exception as exc:
             return False, "config_error", f"Failed to read orchestration.allowCliEngines: {exc}"

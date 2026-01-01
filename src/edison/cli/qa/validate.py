@@ -615,7 +615,7 @@ def _execute_with_executor(
 
             hint = ""
             if reason == "disabled_by_config":
-                hint = "disabled by config (set orchestration.allowCliEngines=true)"
+                hint = "disabled by config (set orchestration.allowCliEngines=true in .edison/config/orchestration.yaml)"
             elif reason == "binary_missing":
                 hint = f"command missing: {command}" if command else "command missing"
             elif reason == "config_error":

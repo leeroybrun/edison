@@ -182,33 +182,32 @@ class FileRepositoryMixin(Generic[T]):
         to_state: str,
     ) -> Path:
         """Move an entity file from one state directory to another.
-        
+
+        Uses git mv when available to preserve history in version control.
+
         Args:
             entity_id: Entity identifier
             from_state: Current state (source directory)
             to_state: Target state (destination directory)
-            
+
         Returns:
             New path after move
-            
+
         Raises:
             PersistenceError: If move fails
         """
         source = self._resolve_entity_path(entity_id, from_state)
         dest = self._resolve_entity_path(entity_id, to_state)
-        
+
         if not source.exists():
             raise PersistenceError(f"Source file not found: {source}")
-        
+
         try:
-            # Ensure destination directory exists
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Move file
-            source.rename(dest)
-            
-            return dest
-        except OSError as e:
+            # Use centralized safe_move_file which prefers git mv
+            from edison.core.utils.io import safe_move_file
+            project_root = getattr(self, "project_root", None)
+            return safe_move_file(source, dest, repo_root=project_root)
+        except Exception as e:
             raise PersistenceError(f"Cannot move {source} to {dest}: {e}")
     
     def _safe_move_file(
@@ -219,24 +218,26 @@ class FileRepositoryMixin(Generic[T]):
         create_parents: bool = True,
     ) -> Path:
         """Safely move a file with directory creation.
-        
+
+        Uses git mv when available to preserve history in version control.
+
         Args:
             source: Source path
             dest: Destination path
             create_parents: Create parent directories if needed
-            
+
         Returns:
             Destination path
-            
+
         Raises:
             PersistenceError: If move fails
         """
         try:
-            if create_parents:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-            source.rename(dest)
-            return dest
-        except OSError as e:
+            # Use centralized safe_move_file which prefers git mv
+            from edison.core.utils.io import safe_move_file
+            project_root = getattr(self, "project_root", None)
+            return safe_move_file(source, dest, repo_root=project_root)
+        except Exception as e:
             raise PersistenceError(f"Cannot move {source} to {dest}: {e}")
     
     def _list_files_in_state(self, state: str) -> List[Path]:
