@@ -260,6 +260,25 @@ class BaseRepository(BaseEntityManager[T]):
 
         entity = self.get_or_raise(entity_id)
         from_state = entity.state
+        ctx: Dict[str, Any] = dict(context or {})
+
+        # Unify transition context: always include the entity payload so actions/guards
+        # can access stable fields (and integration metadata) even when callers pass
+        # minimal context (e.g. CLI status command).
+        #
+        # Caller-provided fields win, but we preserve anything already under ctx[entity_type].
+        try:
+            payload = entity.to_dict() if hasattr(entity, "to_dict") else {"id": str(entity_id), "state": from_state}
+            existing = ctx.get(self.entity_type)
+            if isinstance(existing, dict):
+                merged = dict(payload)
+                merged.update(existing)
+                ctx[self.entity_type] = merged
+            elif self.entity_type not in ctx:
+                ctx[self.entity_type] = payload
+        except Exception:
+            # Best-effort only: never block transitions due to context enrichment.
+            pass
 
         # Use unified transition system with full validation and action execution
         try:
@@ -268,7 +287,7 @@ class BaseRepository(BaseEntityManager[T]):
                 entity_id=str(entity_id),
                 to_state=to_state,
                 current_state=from_state,
-                context=context,
+                context=ctx,
                 record_history=True,
                 repo_root=self.project_root,  # Pass project_root for guard context
             )

@@ -326,6 +326,26 @@ properties:
         type: object
       defaults:
         type: object
+      integrations:
+        type: object
+        properties:
+          externalSync:
+            type: object
+            properties:
+              enabled: { type: boolean, default: true }
+              onTaskValidated: { type: boolean, default: true }
+              speckit:
+                type: object
+                properties:
+                  markTaskCheckbox: { type: boolean, default: true }
+                additionalProperties: false
+              openspec:
+                type: object
+                properties:
+                  markAllCheckboxes: { type: boolean, default: true }
+                additionalProperties: false
+            additionalProperties: false
+        additionalProperties: false
       readiness:
         type: object
       similarity:

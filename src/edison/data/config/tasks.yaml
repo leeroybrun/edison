@@ -15,6 +15,16 @@ tasks:
     claimedPrefix: "  - **Claimed At:** "
     lastActivePrefix: "  - **Last Active:** "
     continuationPrefix: "  - **Continuation ID:** "
+  integrations:
+    # Optional external-source synchronization for imported tasks (fail-open).
+    # These hooks run via state-machine actions (workflow.statemachine.task.*.actions).
+    externalSync:
+      enabled: true
+      onTaskValidated: true
+      speckit:
+        markTaskCheckbox: true
+      openspec:
+        markAllCheckboxes: true
   similarity:
     # Deterministic duplicate/similarity detection used by:
     # - `edison session next` follow-up suggestions

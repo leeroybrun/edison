@@ -44,6 +44,7 @@ class Task:
         result: Task result/outcome (optional)
         delegated_to: Who the task was delegated to (optional)
         delegated_in_session: Session ID where delegation happened (optional)
+        integration: Optional integration metadata for external systems (optional)
     """
     id: str
     state: str
@@ -64,6 +65,7 @@ class Task:
     result: Optional[str] = None
     delegated_to: Optional[str] = None
     delegated_in_session: Optional[str] = None
+    integration: Dict[str, Any] = field(default_factory=dict)
     
     def record_transition(
         self,
@@ -144,6 +146,9 @@ class Task:
             data["delegated_to"] = self.delegated_to
         if self.delegated_in_session:
             data["delegated_in_session"] = self.delegated_in_session
+
+        if self.integration:
+            data["integration"] = self.integration
         
         return data
     
@@ -196,6 +201,7 @@ class Task:
             result=data.get("result"),
             delegated_to=data.get("delegated_to") or data.get("delegatedTo"),
             delegated_in_session=data.get("delegated_in_session") or data.get("delegatedInSession"),
+            integration=data.get("integration") or {},
         )
     
     @classmethod
@@ -255,4 +261,3 @@ class Task:
 __all__ = [
     "Task",
 ]
-

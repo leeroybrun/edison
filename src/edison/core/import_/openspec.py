@@ -17,6 +17,7 @@ from edison.core.entity import EntityMetadata
 from edison.core.import_.sync import SyncResult, sync_items_to_tasks
 from edison.core.task.models import Task
 from edison.core.task.repository import TaskRepository
+from edison.core.utils.paths import safe_relpath
 
 
 class OpenSpecImportError(Exception):
@@ -41,6 +42,7 @@ class OpenSpecChange:
     proposal_path: Path
     tasks_path: Path
     specs_dir: Path
+    design_path: Path
 
 
 def parse_openspec_source(source: Path) -> OpenSpecSource:
@@ -119,6 +121,7 @@ def _try_parse_change_dir(change_dir: Path) -> Optional[OpenSpecChange]:
         proposal_path=proposal,
         tasks_path=change_dir / "tasks.md",
         specs_dir=change_dir / "specs",
+        design_path=change_dir / "design.md",
     )
 
 
@@ -140,6 +143,16 @@ def generate_edison_task_from_openspec_change(
         title=title,
         description=description,
         tags=tags,
+        integration={
+            "kind": "openspec",
+            "openspec": {
+                "change_id": change.change_id,
+                "change_dir": safe_relpath(change.change_dir, project_root=project_root),
+                "proposal_md": safe_relpath(change.proposal_path, project_root=project_root),
+                "tasks_md": safe_relpath(change.tasks_path, project_root=project_root),
+                "design_md": safe_relpath(change.design_path, project_root=project_root),
+            },
+        },
         metadata=EntityMetadata.create(created_by="openspec-import"),
     )
 
@@ -157,17 +170,22 @@ def _extract_title_from_proposal(path: Path, *, fallback: str) -> str:
 
 def _render_task_description(change: OpenSpecChange, *, project_root: Path) -> str:
     def rel(p: Path) -> str:
-        try:
-            return str(p.relative_to(project_root))
-        except Exception:
-            return str(p)
+        return safe_relpath(p, project_root=project_root)
 
     lines: List[str] = [
         f"**OpenSpec Change**: `{rel(change.change_dir)}`",
         "",
-        "## Required Reading",
+        "## Workflow (MUST FOLLOW)",
+        "1. Confirm the change proposal is approved before implementation.",
+        "2. Read **Required Reading** below before editing code.",
+        "3. Implement the checklist in `tasks.md` sequentially; only mark items `- [x]` after they are truly complete.",
+        "4. Edison will attempt to sync source checkboxes when the task is marked `validated` (configurable).",
+        "",
+        "## Required Reading (MUST)",
         f"- `{rel(change.proposal_path)}`",
     ]
+    if change.design_path.exists():
+        lines.append(f"- `{rel(change.design_path)}`")
     if change.tasks_path.exists():
         lines.append(f"- `{rel(change.tasks_path)}`")
     if change.specs_dir.exists():
@@ -207,6 +225,7 @@ def sync_openspec_changes(
         )
         task.title = updated.title
         task.description = updated.description
+        task.integration = updated.integration
         for tag in updated.tags:
             if tag not in task.tags:
                 task.tags.append(tag)

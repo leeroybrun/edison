@@ -102,6 +102,9 @@ workflow:
             - to: validated
               guard: can_finish_task
               rules: [RULE.VALIDATION.FIRST]
+              actions:
+                - name: sync_external_task_sources
+                  when: after
               recommendations:
                 - id: task.validate
                   entity: task

@@ -54,8 +54,16 @@ Edison creates **one task per change-id**:
 - Description: links to the change folder plus `proposal.md`, `tasks.md` (if present), and `specs/` (if present)
 - Tags: `openspec`, `{prefix}`, `openspec-change`
 
+## Workflow Embedded in Imported Tasks
+
+Imported OpenSpec tasks include a workflow section aligned with OpenSpec’s “apply” stage:
+- Confirm the proposal is approved before implementation
+- Read `proposal.md`, `design.md` (if present), `tasks.md`, and `specs/` deltas
+- Implement `tasks.md` sequentially and only mark items complete once done
+- Run `openspec validate <change-id> --strict` to confirm formatting/structure
+- Edison can optionally auto-sync `tasks.md` checkboxes when the task is marked `validated`
+
 On re-sync:
 
 - Tasks are updated **only when in `todo`** (to preserve in-progress work).
 - Tasks missing from OpenSpec are flagged with `removed-from-openspec`.
-

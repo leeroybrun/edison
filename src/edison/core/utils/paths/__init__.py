@@ -31,6 +31,7 @@ from .resolver import (
     get_project_path,
     resolve_project_root,
 )
+from .rel import safe_relpath
 
 __all__ = [
     # resolver
@@ -39,6 +40,7 @@ __all__ = [
     "resolve_project_root",
     "get_project_path",
     "_PROJECT_ROOT_CACHE",
+    "safe_relpath",
     # management
     "ProjectManagementPaths",
     "get_management_paths",
@@ -52,6 +54,5 @@ __all__ = [
     "find_evidence_round",
     "list_evidence_rounds",
 ]
-
 
 

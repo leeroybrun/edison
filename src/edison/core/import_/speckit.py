@@ -22,6 +22,7 @@ from edison.core.import_.sync import SyncResult, sync_items_to_tasks
 from edison.core.task.models import Task
 from edison.core.task.repository import TaskRepository
 from edison.core.entity import EntityMetadata
+from edison.core.utils.paths import safe_relpath
 
 
 class SpecKitImportError(Exception):
@@ -65,6 +66,9 @@ class SpecKitFeature:
         has_plan: Whether plan.md exists
         has_data_model: Whether data-model.md exists
         has_contracts: Whether contracts/ directory exists
+        has_research: Whether research.md exists
+        has_quickstart: Whether quickstart.md exists
+        has_checklists: Whether checklists/ directory exists
     """
 
     name: str
@@ -74,6 +78,9 @@ class SpecKitFeature:
     has_plan: bool = False
     has_data_model: bool = False
     has_contracts: bool = False
+    has_research: bool = False
+    has_quickstart: bool = False
+    has_checklists: bool = False
 
 
 # =============================================================================
@@ -210,6 +217,9 @@ def parse_feature_folder(path: Path) -> SpecKitFeature:
         has_plan=(folder_path / "plan.md").exists(),
         has_data_model=(folder_path / "data-model.md").exists(),
         has_contracts=(folder_path / "contracts").is_dir(),
+        has_research=(folder_path / "research.md").exists(),
+        has_quickstart=(folder_path / "quickstart.md").exists(),
+        has_checklists=(folder_path / "checklists").is_dir(),
     )
 
 
@@ -222,6 +232,8 @@ def generate_edison_task(
     speckit_task: SpecKitTask,
     feature: SpecKitFeature,
     prefix: str,
+    *,
+    project_root: Path,
 ) -> Task:
     """Generate an Edison Task from a SpecKit task.
 
@@ -246,7 +258,7 @@ def generate_edison_task(
         tags.append(f"user-story-{story_num}")
 
     # Generate description with links
-    description = generate_task_description(speckit_task, feature)
+    description = generate_task_description(speckit_task, feature, project_root=project_root)
 
     return Task(
         id=task_id,
@@ -254,6 +266,14 @@ def generate_edison_task(
         title=speckit_task.description,
         description=description,
         tags=tags,
+        integration={
+            "kind": "speckit",
+            "speckit": {
+                "feature_dir": safe_relpath(feature.path, project_root=project_root),
+                "tasks_md": safe_relpath(feature.path / "tasks.md", project_root=project_root),
+                "task_id": speckit_task.id,
+            },
+        },
         metadata=EntityMetadata.create(created_by="speckit-import"),
     )
 
@@ -261,6 +281,8 @@ def generate_edison_task(
 def generate_task_description(
     speckit_task: SpecKitTask,
     feature: SpecKitFeature,
+    *,
+    project_root: Path,
 ) -> str:
     """Generate Edison task description with links to spec docs.
 
@@ -274,11 +296,11 @@ def generate_task_description(
     Returns:
         Markdown description with links
     """
-    # Get relative spec path for display
-    spec_path = f"specs/{feature.name}"
+    tasks_md_rel = safe_relpath(feature.path / "tasks.md", project_root=project_root)
+    plan_md_rel = safe_relpath(feature.path / "plan.md", project_root=project_root)
 
     lines = [
-        f"**SpecKit Source**: `{spec_path}/tasks.md` -> {speckit_task.id}",
+        f"**SpecKit Source**: `{tasks_md_rel}` -> {speckit_task.id}",
         f"**Feature**: {feature.name}",
     ]
 
@@ -298,27 +320,56 @@ def generate_task_description(
             f"`{speckit_task.target_file}`",
         ])
 
-    # Add required reading section with links to available docs
-    reading_links = []
+    # Workflow block (mirrors Spec Kit /speckit.implement intent, without replacing Edison workflow)
+    lines.extend(
+        [
+            "",
+            "## Workflow (MUST FOLLOW)",
+            "1. Read **Required Reading** below before editing code.",
+        ]
+    )
+    if feature.has_checklists:
+        lines.append(
+            f"2. Review `{safe_relpath(feature.path / 'checklists', project_root=project_root)}/` and ensure all checklists are complete before proceeding (or explicitly document why proceeding)."
+        )
+    else:
+        lines.append(
+            "2. If a `checklists/` directory exists for this feature, ensure all checklists are complete before proceeding (or explicitly document why proceeding)."
+        )
+    lines.append(
+        f"3. Keep `{tasks_md_rel}` in sync: mark `{speckit_task.id}` as completed (`- [x]`) when this task is complete. Edison will also attempt to sync this automatically when the task is marked `validated`."
+    )
+
+    # Add required reading section with links to available docs (tasks.md + plan.md are Spec Kit prerequisites)
+    reading_links = [f"- `{tasks_md_rel}`"]
+    if feature.has_plan:
+        reading_links.append(f"- `{plan_md_rel}`")
+    else:
+        reading_links.append(f"- `{plan_md_rel}` (MISSING: generate via Spec Kit /speckit.plan)")
+
     if feature.has_spec:
-        link = f"- `{spec_path}/spec.md`"
+        spec_md_rel = safe_relpath(feature.path / "spec.md", project_root=project_root)
+        link = f"- `{spec_md_rel}`"
         if speckit_task.user_story:
             link += f" -> User Story {speckit_task.user_story}"
         reading_links.append(link)
 
     if feature.has_data_model:
-        reading_links.append(f"- `{spec_path}/data-model.md`")
+        reading_links.append(f"- `{safe_relpath(feature.path / 'data-model.md', project_root=project_root)}`")
 
     if feature.has_contracts:
-        reading_links.append(f"- `{spec_path}/contracts/`")
+        reading_links.append(f"- `{safe_relpath(feature.path / 'contracts', project_root=project_root)}/`")
 
-    if feature.has_plan:
-        reading_links.append(f"- `{spec_path}/plan.md`")
+    if feature.has_research:
+        reading_links.append(f"- `{safe_relpath(feature.path / 'research.md', project_root=project_root)}`")
+
+    if feature.has_quickstart:
+        reading_links.append(f"- `{safe_relpath(feature.path / 'quickstart.md', project_root=project_root)}`")
 
     if reading_links:
         lines.extend([
             "",
-            "## Required Reading",
+            "## Required Reading (MUST)",
             "Before implementing this task, read:",
         ])
         lines.extend(reading_links)
@@ -376,20 +427,25 @@ def sync_speckit_feature(
 
     # Initialize repository
     task_repo = TaskRepository(project_root)
+    resolved_project_root = task_repo.project_root
 
     return sync_items_to_tasks(
         feature.tasks,
         task_repo=task_repo,
         item_key=lambda t: t.id,
-        build_task=lambda t: generate_edison_task(t, feature, prefix),
-        update_task=lambda task, t: _update_edison_task(task, t, feature),
+        build_task=lambda t: generate_edison_task(
+            t, feature, prefix, project_root=resolved_project_root
+        ),
+        update_task=lambda task, t: _update_edison_task(
+            task, t, feature, project_root=resolved_project_root
+        ),
         is_managed_task=lambda t: t.id.startswith(f"{prefix}-T"),
         task_key=lambda t: _extract_speckit_id(t.id, prefix),
         removed_tag="removed-from-spec",
         create_qa=create_qa,
         qa_created_by="speckit-import",
         dry_run=dry_run,
-        project_root=project_root,
+        project_root=resolved_project_root,
         updatable_states={"todo"},
     )
 
@@ -471,14 +527,31 @@ def _extract_speckit_id(edison_id: str, prefix: str) -> str:
     """
     return edison_id[len(prefix) + 1:]  # Skip "prefix-"
 
-def _update_edison_task(task: Task, speckit_task: SpecKitTask, feature: SpecKitFeature) -> None:
+def _update_edison_task(
+    task: Task,
+    speckit_task: SpecKitTask,
+    feature: SpecKitFeature,
+    *,
+    project_root: Path,
+) -> None:
     """Update an existing Edison task with new SpecKit data.
 
     Mutates the task in-place; caller is responsible for saving.
     """
     # Update title and description
     task.title = speckit_task.description
-    task.description = generate_task_description(speckit_task, feature)
+    task.description = generate_task_description(
+        speckit_task, feature, project_root=project_root
+    )
+
+    task.integration = {
+        "kind": "speckit",
+        "speckit": {
+            "feature_dir": safe_relpath(feature.path, project_root=project_root),
+            "tasks_md": safe_relpath(feature.path / "tasks.md", project_root=project_root),
+            "task_id": speckit_task.id,
+        },
+    }
 
     # Update tags
     if "speckit" not in task.tags:

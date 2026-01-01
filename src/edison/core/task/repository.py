@@ -375,6 +375,7 @@ class TaskRepository(
             "created_at": task.metadata.created_at,
             "updated_at": task.metadata.updated_at,
             "tags": task.tags if task.tags else None,
+            "integration": task.integration if getattr(task, "integration", None) else None,
         }
 
         yaml_header = format_frontmatter(frontmatter_data, exclude_none=True)
@@ -496,6 +497,7 @@ class TaskRepository(
             result=fm.get("result"),
             delegated_to=fm.get("delegated_to"),
             delegated_in_session=fm.get("delegated_in_session"),
+            integration=fm.get("integration") or {},
         )
 
 

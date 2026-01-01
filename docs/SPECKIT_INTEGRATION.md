@@ -196,6 +196,13 @@ Before implementing this task, read:
 - `specs/auth/contracts/`
 - `specs/auth/plan.md`
 
+## Workflow (MUST FOLLOW)
+Imported tasks include a workflow section that mirrors Spec Kit's `/speckit.implement` intent:
+- Read the required artifacts before editing code
+- Ensure any `checklists/` are complete before proceeding (or explicitly document why proceeding)
+- Keep the source `tasks.md` checkbox in sync as you complete work
+- Edison can optionally auto-sync the checkbox when the task is marked `validated`
+
 ## Original SpecKit Task
 > T012 [P] [US1] Create User model in src/models/user.py
 ```
