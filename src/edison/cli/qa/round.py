@@ -53,7 +53,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--new",
         action="store_true",
-        help="Create new evidence round directory",
+        help="Create new evidence round directory (round-N/); without this flag, only the QA record is updated",
     )
     parser.add_argument(
         "--list",
@@ -101,12 +101,13 @@ def main(args: argparse.Namespace) -> int:
                 "taskId": args.task_id,
                 "round": updated_qa.round,
                 "status": status,
+                "evidenceCreated": False,
             }
             formatter.json_output(result) if formatter.json_mode else formatter.text(
                 "\n".join(
                     [
                         f"Appended round {updated_qa.round} for {args.task_id}",
-                        "  Note: no evidence directory was created (use `edison qa round --new` to create round-N/)",
+                        "  (QA record only; no evidence dir created -- use `--new` to create)",
                     ]
                 )
             )
@@ -134,9 +135,17 @@ def main(args: argparse.Namespace) -> int:
             result = {
                 "created": str(round_path),
                 "round": round_num,
+                "evidenceCreated": True,
+                "evidencePath": str(round_path),
             }
             formatter.json_output(result) if formatter.json_mode else formatter.text(
-                f"Created round {round_num} for {args.task_id}\n  Path: {round_path}"
+                "\n".join(
+                    [
+                        f"Created round {round_num} for {args.task_id}",
+                        f"  Round: {round_num}",
+                        f"  Evidence: {round_path}",
+                    ]
+                )
             )
 
         elif args.list:

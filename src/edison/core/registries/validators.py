@@ -531,5 +531,101 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 result.append({"id": spec, "wave": self.default_wave})
         return result
 
+    def build_preset_roster(
+        self,
+        task_id: str,
+        session_id: Optional[str] = None,
+        preset_id: Optional[str] = None,
+        files: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        """Build execution roster using validation policy presets.
+
+        This method uses the ValidationPolicyResolver to determine which
+        validators to run based on preset configuration and file context.
+        It's the preferred method for preset-aware validation.
+
+        Args:
+            task_id: Task identifier
+            session_id: Optional session context
+            preset_id: Explicit preset ID (overrides inference)
+            files: Optional file list (auto-detected from task if not provided)
+
+        Returns:
+            Roster dict with:
+            - taskId: Task identifier
+            - sessionId: Session identifier (if provided)
+            - policy: Resolved validation policy info
+            - validators: List of validators for this preset
+            - evidenceRequired: List of required evidence files
+            - modifiedFiles: List of files triggering validators
+        """
+        from edison.core.context.files import FileContextService
+        from edison.core.qa.policy import ValidationPolicyResolver
+
+        # Get files if not provided
+        if files is None:
+            file_ctx_svc = FileContextService(project_root=self.project_root)
+            file_ctx = file_ctx_svc.get_for_task(task_id, session_id)
+            files = file_ctx.all_files
+
+        # Resolve policy
+        resolver = ValidationPolicyResolver(project_root=self.project_root)
+        policy = resolver.resolve(files=files, preset_id=preset_id, task_id=task_id)
+
+        # Get validator metadata for preset validators
+        preset_validators: list[dict[str, Any]] = []
+        for vid in policy.preset.validators:
+            v = self.get(vid)
+            if v:
+                preset_validators.append({
+                    "id": v.id,
+                    "name": v.name,
+                    "engine": v.engine,
+                    "wave": v.wave,
+                    "palRole": v.pal_role,
+                    "blocking": v.blocking,
+                    "context7Required": v.context7_required,
+                    "context7Packages": v.context7_packages,
+                    "focus": v.focus,
+                })
+
+        return {
+            "taskId": task_id,
+            "sessionId": session_id,
+            "policy": {
+                "presetId": policy.preset.id,
+                "presetName": policy.preset.name,
+                "isEscalated": policy.is_escalated,
+                "escalatedFrom": policy.escalated_from,
+                "escalationReason": policy.escalation_reason,
+            },
+            "validators": preset_validators,
+            "evidenceRequired": list(policy.preset.evidence_required),
+            "modifiedFiles": files,
+        }
+
+    def get_validators_for_preset(self, preset_id: str) -> list[ValidatorMetadata]:
+        """Get validators defined in a validation preset.
+
+        Args:
+            preset_id: Preset identifier (e.g., "quick", "standard")
+
+        Returns:
+            List of ValidatorMetadata for validators in the preset
+        """
+        from edison.core.qa.policy import PresetConfigLoader
+
+        loader = PresetConfigLoader(project_root=self.project_root)
+        preset = loader.get_preset(preset_id)
+        if not preset:
+            return []
+
+        result: list[ValidatorMetadata] = []
+        for vid in preset.validators:
+            v = self.get(vid)
+            if v:
+                result.append(v)
+        return result
+
 
 __all__ = ["ValidatorRegistry", "ValidatorMetadata"]

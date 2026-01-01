@@ -17,6 +17,72 @@ validation:
   # Defaults for validator assignment
   defaults:
     wave: comprehensive   # Default wave for validators without explicit wave assignment
+    preset: standard      # Default validation preset
+
+  # Validation presets - config-driven, pack-extensible
+  # Each preset defines a subset of validators and evidence requirements.
+  # Use "quick" for docs-only changes, "standard" for normal development,
+  # "comprehensive" for releases or critical changes.
+  presets:
+    quick:
+      name: "Quick Validation"
+      validators:
+        - global-codex
+      evidence_required: []
+      escalates_to: standard
+
+    standard:
+      name: "Standard Validation"
+      validators:
+        - global-codex
+        - global-claude
+      evidence_required:
+        - command-test.txt
+        - command-lint.txt
+      escalates_to: comprehensive
+
+    comprehensive:
+      name: "Comprehensive Validation"
+      validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+      evidence_required:
+        - command-test.txt
+        - command-lint.txt
+        - command-type-check.txt
+        - command-build.txt
+
+  # Escalation configuration - patterns that trigger preset escalation
+  escalation:
+    # Files matching these patterns escalate above 'quick' preset
+    code_patterns:
+      - "*.py"
+      - "*.ts"
+      - "*.tsx"
+      - "*.js"
+      - "*.jsx"
+      - "*.go"
+      - "*.rs"
+      - "*.java"
+    config_patterns:
+      - "pyproject.toml"
+      - "package.json"
+      - "tsconfig.json"
+      - "*.yaml"
+      - "*.yml"
+      - "Dockerfile"
+      - "docker-compose*.yml"
+    doc_patterns:
+      - "*.md"
+      - "*.rst"
+      - "*.txt"
+      - "docs/*"
+      - "docs/**/*"
+      - "README*"
+      - "CHANGELOG*"
+      - "LICENSE*"
 
   # Engine definitions (execution backends)
   # Each engine defines how to execute validators using that backend

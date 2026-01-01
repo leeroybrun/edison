@@ -135,20 +135,39 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         )
         if enforce:
             from edison.core.config.domains.qa import QAConfig
-            from edison.core.qa.evidence.analysis import list_evidence_files
+            from edison.core.tdd.ready_gate import (
+                validate_command_evidence_exit_codes,
+                format_evidence_error_message,
+            )
 
-            required = QAConfig(repo_root=project_root_path).get_required_evidence_files()
+            qa_config = QAConfig(repo_root=project_root_path)
+            required = qa_config.get_required_evidence_files()
             round_dir = ev_svc.get_round_dir(latest)
-            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
 
-            missing_files: list[str] = []
-            for pattern in required:
-                if not any(Path(name).match(pattern) for name in files):
-                    missing_files.append(str(pattern))
-            if missing_files:
-                raise ValueError(
-                    f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
+            # Get CI commands for actionable error messages
+            ci_commands: dict[str, str] = {}
+            try:
+                ci_section = qa_config.section.get("ci", {})
+                if isinstance(ci_section, dict):
+                    commands = ci_section.get("commands", {})
+                    if isinstance(commands, dict):
+                        ci_commands = {k: str(v) for k, v in commands.items() if v}
+            except Exception:
+                pass  # CI commands are optional for error messages
+
+            # Validate command evidence exit codes (FAIL-CLOSED)
+            errors = validate_command_evidence_exit_codes(
+                round_dir, required, ci_commands
+            )
+            if errors:
+                error_message = format_evidence_error_message(
+                    task_id=str(task_id),
+                    round_num=latest,
+                    round_dir=round_dir,
+                    errors=errors,
+                    ci_commands=ci_commands,
                 )
+                raise ValueError(error_message)
 
         return True
     except Exception:

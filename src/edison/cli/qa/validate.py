@@ -93,6 +93,12 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         default=4,
         help="Maximum parallel workers (default: 4)",
     )
+    parser.add_argument(
+        "--worktree-path",
+        type=str,
+        metavar="PATH",
+        help="Override worktree path for validation (advanced use: validate specific checkout)",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -488,7 +494,11 @@ def _execute_with_executor(
     extra_validators: list[dict[str, str]] | None = None,
 ) -> int:
     """Execute validators using the centralized executor."""
+    # Resolve worktree path: prefer explicit override, fallback to repo_root
+    worktree_path = Path(args.worktree_path) if getattr(args, "worktree_path", None) else repo_root
+
     formatter.text(f"Executing validators for {args.task_id}...")
+    formatter.text(f"  Worktree: {worktree_path}")
     formatter.text(f"  Mode: {'sequential' if args.sequential else f'parallel (max {args.max_workers} workers)'}")
     if args.wave:
         formatter.text(f"  Wave: {args.wave}")
@@ -536,7 +546,7 @@ def _execute_with_executor(
     result = executor.execute(
         task_id=args.task_id,
         session_id=session_id or "cli",
-        worktree_path=repo_root,
+        worktree_path=worktree_path,
         wave=args.wave,
         validators=args.validators,
         blocking_only=args.blocking_only,
@@ -673,7 +683,10 @@ def _execute_with_executor(
 
     # JSON output if requested
     if formatter.json_mode:
-        formatter.json_output(result.to_dict())
+        json_data = result.to_dict()
+        json_data["worktree_path"] = str(worktree_path)
+        json_data["evidence_path"] = display_round
+        formatter.json_output(json_data)
 
     return 0 if overall_approved else 1
 

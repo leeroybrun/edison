@@ -141,6 +141,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "jsonschema" },
     { name = "psutil" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 
@@ -165,6 +166,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "prompt-toolkit", marker = "extra == 'tui'", specifier = ">=3.0" },
     { name = "psutil", specifier = ">=5.9.0" },
+    { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
