@@ -68,6 +68,19 @@ exit 0
     )
     pnpm_path.chmod(0o755)
 
+def _install_failing_pnpm(bin_dir: Path) -> None:
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    pnpm_path = bin_dir / "pnpm"
+    pnpm_path.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+echo "$@" >> "${EDISON_TEST_PNPM_LOG}"
+exit 1
+""",
+        encoding="utf-8",
+    )
+    pnpm_path.chmod(0o755)
+
 
 def test_install_deps_uses_frozen_lockfile_for_pnpm(
     session_git_repo_path: Path,
@@ -110,3 +123,45 @@ def test_install_deps_uses_frozen_lockfile_for_pnpm(
         assert "install --frozen-lockfile" in recorded
     finally:
         worktree.cleanup_worktree(sid, wt_path, branch, delete_branch=True)
+
+
+def test_install_deps_fails_closed_when_install_command_fails(
+    session_git_repo_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (session_git_repo_path / "package.json").write_text('{"name":"x","private":true}\n', encoding="utf-8")
+    (session_git_repo_path / "pnpm-lock.yaml").write_text("lockfileVersion: 9.0\n", encoding="utf-8")
+    run_with_timeout(["git", "add", "package.json", "pnpm-lock.yaml"], cwd=session_git_repo_path, check=True)
+    run_with_timeout(["git", "commit", "-m", "add pnpm lockfile"], cwd=session_git_repo_path, check=True)
+
+    log_path = tmp_path / "pnpm.log"
+    log_path.write_text("", encoding="utf-8")
+    monkeypatch.setenv("EDISON_TEST_PNPM_LOG", str(log_path))
+
+    fake_bin = tmp_path / "bin"
+    _install_failing_pnpm(fake_bin)
+    monkeypatch.setenv("PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    base_branch = (
+        run_with_timeout(
+            ["git", "branch", "--show-current"],
+            cwd=session_git_repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        .stdout.strip()
+    )
+
+    sid = "install-deps-fails-closed"
+    expected_path, expected_branch = worktree.resolve_worktree_target(sid)
+    try:
+        with pytest.raises(RuntimeError) as excinfo:
+            worktree.create_worktree(sid, base_branch=base_branch, install_deps=True)
+        msg = str(excinfo.value)
+        assert "install" in msg.lower()
+        assert "exit" in msg.lower() or "returncode" in msg.lower()
+    finally:
+        if expected_path.exists():
+            worktree.cleanup_worktree(sid, expected_path, expected_branch, delete_branch=True)

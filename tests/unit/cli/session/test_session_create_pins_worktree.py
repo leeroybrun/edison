@@ -11,6 +11,7 @@ This test verifies:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -40,6 +41,26 @@ def _enable_worktrees(isolated_project_env: Path, tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def _install_fake_pnpm(bin_dir: Path) -> None:
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    pnpm_path = bin_dir / "pnpm"
+    pnpm_path.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+""",
+        encoding="utf-8",
+    )
+    pnpm_path.chmod(0o755)
+
+
+def _commit_lockfiles_for_pnpm(repo: Path) -> None:
+    (repo / "package.json").write_text('{"name":"x","private":true}\n', encoding="utf-8")
+    (repo / "pnpm-lock.yaml").write_text("lockfileVersion: 9.0\n", encoding="utf-8")
+    subprocess.check_call(["git", "add", "package.json", "pnpm-lock.yaml"], cwd=repo)
+    subprocess.check_call(["git", "commit", "-m", "add pnpm lockfile"], cwd=repo)
 
 
 class TestSessionCreateWorktreePinningJsonOutput:
@@ -198,6 +219,76 @@ class TestSessionCreateSessionIdFileExists:
     ) -> None:
         """After session create, .session-id file should exist in the worktree."""
         _enable_worktrees(isolated_project_env, tmp_path)
+
+
+class TestSessionCreateInstallDepsOutput:
+    def test_json_output_includes_deps_install_summary_when_enabled(
+        self,
+        isolated_project_env: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _enable_worktrees(isolated_project_env, tmp_path)
+        _commit_lockfiles_for_pnpm(isolated_project_env)
+
+        fake_bin = tmp_path / "bin"
+        _install_fake_pnpm(fake_bin)
+        monkeypatch.setenv("PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        from edison.cli._dispatcher import main as cli_main
+
+        code = cli_main(
+            [
+                "session",
+                "create",
+                "--session-id",
+                "test-session-install-deps-json",
+                "--owner",
+                "tester",
+                "--install-deps",
+                "--json",
+            ]
+        )
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out or "{}")
+
+        deps = payload.get("depsInstall")
+        assert isinstance(deps, dict)
+        assert deps.get("enabled") is True
+        assert "pnpm install --frozen-lockfile" in str(deps.get("command") or "")
+
+    def test_human_output_mentions_deps_install_when_enabled(
+        self,
+        isolated_project_env: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _enable_worktrees(isolated_project_env, tmp_path)
+        _commit_lockfiles_for_pnpm(isolated_project_env)
+
+        fake_bin = tmp_path / "bin"
+        _install_fake_pnpm(fake_bin)
+        monkeypatch.setenv("PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        from edison.cli._dispatcher import main as cli_main
+
+        code = cli_main(
+            [
+                "session",
+                "create",
+                "--session-id",
+                "test-session-install-deps-human",
+                "--owner",
+                "tester",
+                "--install-deps",
+            ]
+        )
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "deps" in captured.out.lower()
 
         from edison.cli._dispatcher import main as cli_main
 

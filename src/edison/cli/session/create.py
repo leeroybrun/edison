@@ -123,6 +123,50 @@ def _emit_worktree_instructions(
     formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
+def _resolve_install_cmd(cwd: "Path") -> list[str]:
+    # Mirror worktree manager selection: prefer immutable installs to avoid lockfile churn.
+    if (cwd / "pnpm-lock.yaml").exists():
+        return ["pnpm", "install", "--frozen-lockfile"]
+    if (cwd / "package-lock.json").exists():
+        return ["npm", "ci"]
+    if (cwd / "yarn.lock").exists():
+        return ["yarn", "install", "--immutable"]
+    if (cwd / "bun.lockb").exists() or (cwd / "bun.lock").exists():
+        return ["bun", "install", "--frozen-lockfile"]
+    return ["pnpm", "install"]
+
+
+def _deps_install_summary(
+    *,
+    repo_root: "Path",
+    worktree_path: str | None,
+    cli_install_deps: bool,
+    no_worktree: bool,
+) -> dict[str, object] | None:
+    if no_worktree or not worktree_path:
+        return None
+
+    enabled = False
+    try:
+        from edison.core.session._config import get_config as get_session_config
+
+        cfg = get_session_config(repo_root=repo_root).get_worktree_config()
+        enabled = bool(cfg.get("installDeps", False))
+    except Exception:
+        enabled = False
+
+    if cli_install_deps:
+        enabled = True
+
+    if not enabled:
+        return {"enabled": False, "command": None}
+
+    from pathlib import Path
+
+    cmd = _resolve_install_cmd(Path(worktree_path))
+    return {"enabled": True, "command": " ".join(cmd)}
+
+
 def main(args: argparse.Namespace) -> int:
     """Create a new session - delegates to core library."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
@@ -167,6 +211,12 @@ def main(args: argparse.Namespace) -> int:
         # Load session data for output
         session = session_manager.get_session(session_id)
         worktree_path = session.get("git", {}).get("worktreePath")
+        deps_install = _deps_install_summary(
+            repo_root=repo_root,
+            worktree_path=worktree_path,
+            cli_install_deps=bool(getattr(args, "install_deps", False)),
+            no_worktree=bool(getattr(args, "no_worktree", False)),
+        )
 
         # Get worktree pinning status (task 047)
         from pathlib import Path
@@ -211,6 +261,7 @@ def main(args: argparse.Namespace) -> int:
                 # Worktree pinning status (task 047)
                 "sessionIdFilePath": pinning_status["sessionIdFilePath"],
                 "worktreePinned": pinning_status["worktreePinned"],
+                "depsInstall": deps_install,
             }
             formatter.json_output(output)
         else:
@@ -224,6 +275,9 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"  Branch: {session['git']['branchName']}")
             if session.get("git", {}).get("baseBranch"):
                 formatter.text(f"  Base: {session['git']['baseBranch']}")
+
+            if isinstance(deps_install, dict) and deps_install.get("enabled") is True:
+                formatter.text(f"  Deps: {deps_install.get('command')}")
 
             # Show worktree pinning status (task 047)
             if pinning_status["worktreePinned"]:
