@@ -63,7 +63,7 @@ class ConstitutionRegistry(ComposableRegistry[str]):
         # Graceful fallback - if name isn't a valid role, rules will be empty
         rules: List[Dict[str, Any]] = []
         try:
-            from edison.core.rules.registry import get_rules_for_role
+            from edison.core.rules import get_rules_for_role
             # Normalize: agents -> agent, validators -> validator
             rule_role = name.rstrip("s") if name.endswith("s") else name
             # Pass packs to get fully composed rules with pack overlays

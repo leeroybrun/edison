@@ -30,7 +30,7 @@ class ValidatorPromptRegistry(ComposableRegistry[str]):
 
         rules: List[Dict[str, Any]] = []
         try:
-            from edison.core.rules.registry import get_rules_for_role
+            from edison.core.rules import get_rules_for_role
 
             rules = get_rules_for_role("validator", packs=packs)
         except (ValueError, ImportError):
@@ -41,4 +41,3 @@ class ValidatorPromptRegistry(ComposableRegistry[str]):
 
 
 __all__ = ["ValidatorPromptRegistry"]
-
