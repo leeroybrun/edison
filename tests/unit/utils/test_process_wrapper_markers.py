@@ -33,6 +33,7 @@ def _stable_process_config(monkeypatch: pytest.MonkeyPatch) -> None:
         "_load_llm_marker_map",
         lambda: {"happy": "happy", "codex": "codex", "claude": "claude"},
     )
+    monkeypatch.setattr(inspector, "_load_llm_cmdline_excludes", lambda: {"happy": [" index.mjs daemon "]})
     monkeypatch.setattr(inspector, "_load_edison_process_names", lambda: ["edison", "python"])
     monkeypatch.setattr(inspector, "_load_edison_script_markers", lambda: ["edison"])
 
@@ -66,3 +67,36 @@ def test_topmost_of_either_prefers_highest_match_llm_over_edison() -> None:
 
     name, pid = inspector._find_topmost_process_from(edison2)  # noqa: SLF001
     assert (name, pid) == ("codex", 100)
+
+
+def test_happy_daemon_is_not_used_as_topmost_process() -> None:
+    # edison (current) -> happy session -> happy daemon
+    daemon = _FakeProcess(
+        pid=10,
+        _name="node",
+        _cmdline=["node", "/opt/happy-cli/dist/index.mjs", "daemon", "start-sync"],
+        _parent=None,
+    )
+    happy_session = _FakeProcess(
+        pid=20,
+        _name="node",
+        _cmdline=[
+            "node",
+            "/opt/happy-cli/dist/index.mjs",
+            "codex",
+            "--happy-starting-mode",
+            "remote",
+            "--started-by",
+            "daemon",
+        ],
+        _parent=daemon,
+    )
+    current = _FakeProcess(
+        pid=30,
+        _name="edison",
+        _cmdline=["edison", "session", "status"],
+        _parent=happy_session,
+    )
+
+    name, pid = inspector._find_topmost_process_from(current)  # noqa: SLF001
+    assert (name, pid) == ("happy", 20)
