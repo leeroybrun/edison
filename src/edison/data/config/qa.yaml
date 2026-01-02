@@ -92,6 +92,13 @@ validation:
           - "app/**"
           - "apps/**"
           - "packages/**"
+          - "*.py"
+          - "*.ts"
+          - "*.tsx"
+          - "*.js"
+          - "*.jsx"
+          - "*.go"
+          - "*.rs"
         preset: standard
         priority: 30
 
