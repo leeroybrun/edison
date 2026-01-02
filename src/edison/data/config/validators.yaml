@@ -95,7 +95,7 @@ validation:
       timeout: 600
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     global-claude:
@@ -109,7 +109,7 @@ validation:
       timeout: 300
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     global-gemini:
@@ -137,7 +137,7 @@ validation:
       timeout: 600
       context7_required: false  # Auggie uses its own codebase context engine
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
     # Critical validators - cross-cutting (security/performance).
@@ -152,7 +152,7 @@ validation:
       timeout: 300
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
 
     performance:
@@ -166,7 +166,7 @@ validation:
       timeout: 300
       context7_required: true
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
 
     coderabbit:
@@ -180,7 +180,7 @@ validation:
       timeout: 600
       context7_required: false
       context7_packages: []
-      triggers: ["*"]
+      triggers: []
       focus: []
 
   # Wave definitions (execution groups)
