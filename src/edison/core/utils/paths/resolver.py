@@ -17,19 +17,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 
-
-class EdisonPathError(ValueError):
-    """Raised when path resolution fails.
-
-    This includes:
-    - Cannot resolve project root
-    - Project root resolves to .edison directory (invalid)
-    - Evidence directory not found
-    - Invalid session ID format
-    """
-
-    pass
-
+from .errors import EdisonPathError
 
 # Cache for project root to avoid repeated filesystem/git calls
 _PROJECT_ROOT_CACHE: Optional[Path] = None
@@ -107,16 +95,19 @@ def resolve_project_root() -> Path:
             _PROJECT_ROOT_CACHE = cwd
         return cwd
 
-    # With no environment override, reuse cached value only when it still
-    # looks like a valid project root (contains .project or .edison).
+    # With no environment override, reuse cached value only when the caller is
+    # still operating *inside* that project root. This keeps performance wins
+    # for repeated calls while preserving correctness for test suites (or other
+    # long-running processes) that chdir into other repositories.
     if _PROJECT_ROOT_CACHE is not None:
-        if (_PROJECT_ROOT_CACHE / project_management_dir_name).exists() or (
-            _PROJECT_ROOT_CACHE / project_config_dir_name
-        ).exists():
-            return _PROJECT_ROOT_CACHE
-        # Stale cache from a temp env-root without markers; discard and
-        # fall through to git-based detection.
-        _PROJECT_ROOT_CACHE = None
+        if cwd == _PROJECT_ROOT_CACHE or _PROJECT_ROOT_CACHE in cwd.parents:
+            if (_PROJECT_ROOT_CACHE / project_management_dir_name).exists() or (
+                _PROJECT_ROOT_CACHE / project_config_dir_name
+            ).exists():
+                return _PROJECT_ROOT_CACHE
+            # Stale cache from a temp env-root without markers; discard and
+            # fall through to git-based detection.
+            _PROJECT_ROOT_CACHE = None
 
     # Priority 2: Use git to discover the repository root.
     #
@@ -258,5 +249,3 @@ __all__ = [
     "get_project_path",
     "_PROJECT_ROOT_CACHE",
 ]
-
-

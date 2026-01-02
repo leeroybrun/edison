@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from .management import get_management_paths
-from .resolver import EdisonPathError, resolve_project_root
+from .errors import EdisonPathError
+from .resolver import resolve_project_root
 
 
 def _get_evidence_service(task_id: str):
@@ -82,7 +83,6 @@ __all__ = [
     "find_evidence_round",
     "list_evidence_rounds",
 ]
-
 
 
 

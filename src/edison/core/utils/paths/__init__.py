@@ -8,6 +8,7 @@ This package provides centralized path resolution:
 """
 from __future__ import annotations
 
+from .errors import EdisonPathError
 from .evidence import (
     find_evidence_round,
     list_evidence_rounds,
@@ -25,7 +26,6 @@ from .user import (
     get_user_config_dir,
 )
 from .resolver import (
-    EdisonPathError,
     PathResolver,
     _PROJECT_ROOT_CACHE,
     get_project_path,
@@ -54,5 +54,4 @@ __all__ = [
     "find_evidence_round",
     "list_evidence_rounds",
 ]
-
 
