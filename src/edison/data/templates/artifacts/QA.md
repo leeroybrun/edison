@@ -120,3 +120,29 @@ state_history: {{state_history}}
 
 <!-- /EXTENSIBLE: EvidenceLinks -->
 
+<!-- EXTENSIBLE: ApprovalStatus -->
+<!-- REQUIRED FILL: ApprovalStatus -->
+## Approval Status
+
+**Approved:** ❌ No
+**Approved By:**
+**Approval Date:**
+
+<<FILL: set approval status and approver/date>>
+
+<!-- /EXTENSIBLE: ApprovalStatus -->
+
+<!-- EXTENSIBLE: FollowUpTasks -->
+## Follow-up Tasks
+
+<!-- Tasks created as result of validation -->
+
+<!-- /EXTENSIBLE: FollowUpTasks -->
+
+<!-- EXTENSIBLE: Notes -->
+## Notes
+
+<!-- Additional notes from validation -->
+
+<!-- /EXTENSIBLE: Notes -->
+

@@ -80,16 +80,16 @@ path/to/existing/file.py
 
 ### RED Phase
 <!-- Link to failing test output -->
-- Test file: 
-- Output: 
+- Test file:
+- Output:
 
 ### GREEN Phase
 <!-- Link to passing test output -->
-- Output: 
+- Output:
 
 ### REFACTOR Phase
 <!-- Notes on refactoring performed -->
-- Notes: 
+- Notes:
 
 <!-- /EXTENSIBLE: TDDEvidence -->
 
@@ -117,4 +117,21 @@ path/to/existing/file.py
 <!-- List related files for context -->
 
 <!-- /EXTENSIBLE: RelatedFiles -->
+
+<!-- EXTENSIBLE: PrimaryFiles -->
+<!-- REQUIRED FILL: PrimaryFiles -->
+## Primary Files / Areas
+
+Primary Files / Areas:
+<!-- Add one path per line -->
+- <<FILL: path/to/file.ext>>
+
+<!-- /EXTENSIBLE: PrimaryFiles -->
+
+<!-- EXTENSIBLE: Notes -->
+## Notes
+
+<!-- Additional notes, context, or considerations -->
+
+<!-- /EXTENSIBLE: Notes -->
 
