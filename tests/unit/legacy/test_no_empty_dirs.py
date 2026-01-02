@@ -27,7 +27,7 @@ def _load_policy() -> tuple[list[Path], set[str]]:
     roots = policy.get("roots")
     assert roots, "Configure at least one root directory to scan"
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     root_paths = [repo_root / Path(root) for root in roots]
     for path in root_paths:
         assert path.exists(), f"Configured root does not exist: {path}"
@@ -60,7 +60,7 @@ def test_no_empty_directories_in_configured_roots() -> None:
     roots, allowed_markers = _load_policy()
 
     empty_dirs: list[str] = []
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
 
     for root in roots:
         for path in root.rglob("*"):
