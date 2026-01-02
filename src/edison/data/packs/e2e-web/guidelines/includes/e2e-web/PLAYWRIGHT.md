@@ -1,6 +1,8 @@
 # Playwright E2E (Web)
 
-<!-- SECTION: agent-patterns -->
+> Include-only guideline. Do not read directly; include specific parts via `include-section` (e.g. `{{include-section:packs/e2e-web/guidelines/includes/e2e-web/PLAYWRIGHT.md#agent-patterns}}`).
+
+<!-- section: agent-patterns -->
 ## Agent Patterns: Real, Unmocked E2E
 
 ### Test Like a User (Selectors)
@@ -47,9 +49,9 @@ For each user-visible change, ensure tests cover:
 - Enable traces on failure in CI.
 - Keep screenshots/videos on failure only; don’t generate noise for green runs.
 - When debugging: run single worker, headed, with slowMo only temporarily.
-<!-- /SECTION: agent-patterns -->
+<!-- /section: agent-patterns -->
 
-<!-- SECTION: test-architecture -->
+<!-- section: test-architecture -->
 ## Suggested E2E Test Architecture
 
 Recommended structure (adapt to project conventions):
@@ -74,9 +76,9 @@ Rules:
   - `workers: process.env.CI ? 1 : undefined`
   - `reporter: 'html'`
   - `use.trace: 'on-first-retry'`
-<!-- /SECTION: test-architecture -->
+<!-- /section: test-architecture -->
 
-<!-- SECTION: validator-protocol -->
+<!-- section: validator-protocol -->
 ## Validator Protocol: Browser Validation via Playwright MCP
 
 When validating UI changes:
@@ -93,4 +95,4 @@ When validating UI changes:
 If Playwright MCP tools are unavailable:
 - Fall back to running `playwright test` locally and reviewing traces/screenshots.
 - Report the missing tooling as a blocking setup issue when UI changes require browser validation.
-<!-- /SECTION: validator-protocol -->
+<!-- /section: validator-protocol -->

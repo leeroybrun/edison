@@ -1,24 +1,18 @@
 entries:
   - source: orchestrators/SESSION_WORKFLOW.md
     expected:
-      - ".edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md"
+      - "{{fn:project_config_dir}}/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md"
     forbidden:
       - ".edison/core/guidelines/"
   - source: agents/DELEGATION_AWARENESS.md
     expected:
-      - ".edison/_generated/AVAILABLE_AGENTS.md"
-      - ".edison/_generated/guidelines/shared/DELEGATION.md"
+      - "edison read AVAILABLE_AGENTS"
+      - "edison read DELEGATION --type guidelines/shared"
     forbidden:
       - ".edison/core/guidelines/"
   - source: agents/MANDATORY_WORKFLOW.md
     expected:
-      - ".edison/_generated/guidelines/agents/AGENT_WORKFLOW.md"
-      - ".edison/_generated/guidelines/agents/OUTPUT_FORMAT.md"
-      - ".edison/_generated/guidelines/orchestrators/SESSION_WORKFLOW.md"
-    forbidden:
-      - ".edison/core/guidelines/"
-  - source: agents/IMPORTANT_RULES.md
-    expected:
-      - ".edison/_generated/guidelines/includes/QUALITY.md"
+      - "{{fn:evidence_root}}/<task-id>/round-<N>/{{config.validation.artifactPaths.implementationReportFile}}"
+      - "edison read implementation-report.schema.yaml --type schemas/reports"
     forbidden:
       - ".edison/core/guidelines/"

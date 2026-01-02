@@ -94,8 +94,7 @@ SHARED_TOPICS = [
     "EPHEMERAL_SUMMARIES_POLICY",
     "GIT_WORKFLOW",
     "HONEST_STATUS",
-    "QUALITY",
-    "TDD",
+    "QUALITY_PATTERNS",
     "VALIDATION",
 ]
 
@@ -128,6 +127,7 @@ def test_condensed_and_extended_have_explicit_path_cross_links() -> None:
 def _resolve_guideline_target_path(reference: str, guidelines_root: Path) -> Path | None:
     prefixes = (
         ".edison/_generated/guidelines/",
+        "{{fn:project_config_dir}}/_generated/guidelines/",
         ".edison/core/guidelines/",  # legacy (should not be present in new guidelines)
     )
     for prefix in prefixes:

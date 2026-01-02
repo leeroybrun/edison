@@ -1,10 +1,10 @@
 # Orchestrator ⇄ Validator Runbook
 
-> Purpose: step-by-step guide for orchestrators to launch validators, read results, and drive rejection/escalation loops without hardcoded rosters. The active validator list, models, and trigger patterns are always in the dynamic roster (run `edison read AVAILABLE_VALIDATORS`).
+> Purpose: step-by-step guide for orchestrators to launch validators, read results, and drive rejection/escalation loops without hardcoded rosters. The active validator list, models, and trigger patterns are always in the dynamic roster (`AVAILABLE_VALIDATORS.md`; open it via `edison read AVAILABLE_VALIDATORS`).
 
 ## 0. Preconditions
 - Task is in `{{fn:task_state_dir("done")}}/`; QA brief is in `{{fn:qa_state_dir("wip")}}/` with the latest implementation evidence.
-- Open the current roster: run `edison read AVAILABLE_VALIDATORS` (never assume counts or names).
+- Open the current roster: `AVAILABLE_VALIDATORS.md` via `edison read AVAILABLE_VALIDATORS` (never assume counts or names).
 - Work from the correct session worktree and log actions in the session Activity Log.
 
 ## 1. Trigger validators

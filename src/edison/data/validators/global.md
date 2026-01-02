@@ -55,11 +55,16 @@ git diff           # Unstaged changes
 3. ✅ **Regression Risk**: Could changes break existing functionality?
 4. ✅ **Security Vulnerabilities**: Do changes introduce security holes?
 5. ✅ **Performance Impact**: Do changes affect performance?
+6. ✅ **Dependency Risk**: If `package.json` / lockfiles changed, did any vulnerable package **versions** change due to this task?
 
 **Scope Guidance (Important):**
 - Treat "extra/unrelated diffs" as a **warning**, not an automatic rejection.
 - Only **reject for scope drift** when the extra changes are clearly risky/unintentional (e.g., broad refactors, unrelated dependency/config churn, suspicious deletions, security-sensitive changes) or when they directly violate the task constraints.
 - Your goal is to prevent defects, not to punish multi-agent workflows where other work may exist in the checkout.
+
+**Dependency audit policy (change-aware):**
+- If `package.json` / lockfiles changed, assess dependency risk for the **delta introduced by this task**.
+- If lockfiles changed but vulnerable package **versions** did **not** change (normalization/reordering), do **not** reject solely on baseline audit findings; create follow-up tasks instead.
 
 ### Step 3: Run 10-Point Comprehensive Checklist
 
@@ -187,5 +192,4 @@ git diff           # Unstaged changes
 - Production quality is the goal
 
 **Your validation ensures zero defects reach production.**
-
 
