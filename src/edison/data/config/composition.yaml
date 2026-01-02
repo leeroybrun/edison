@@ -216,6 +216,31 @@ composition:
       filename_pattern: "{name}.md"
 
     # -------------------------------------------------------------------------
+    # TEMPLATES (Convenience read path for LLMs)
+    # -------------------------------------------------------------------------
+    templates_documents:
+      enabled: true
+      description: "Template documents for `edison read --type templates` (TASK.md, QA.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null
+      content_path: "templates/documents"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates"
+      filename_pattern: "{name}.md"
+
+    templates_reports:
+      enabled: true
+      description: "Report templates for `edison read --type templates` (IMPLEMENTATION_REPORT.md)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null
+      content_path: "templates/reports"
+      file_pattern: "*.md"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates"
+      filename_pattern: "{name}.md"
+
+    # -------------------------------------------------------------------------
     # ROSTERS (Data-driven documents)
     # -------------------------------------------------------------------------
     agent_roster:
