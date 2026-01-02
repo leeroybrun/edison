@@ -25,7 +25,7 @@ pal:
     clients:
       claude:
         command: "claude"
-        additional_args: ["--permission-mode", "acceptEdits", "--model", "sonnet"]
+        additional_args: ["--permission-mode", "acceptEdits", "--model", "opus", "--allowedTools", "mcp__playwright__*"]
         env: {}
       codex:
         command: "codex"
