@@ -131,15 +131,14 @@ def detect_session_id(
     if explicit:
         return validate_session_id(explicit)
 
-    # Priority 2: AGENTS_SESSION environment variable (canonical)
+    # Priority 2: AGENTS_SESSION environment variable (canonical).
     #
-    # Only treat it as a match when the session exists. This avoids stale
-    # environment variables forcing detection to a non-existent session.
+    # Do not require the session to already exist: callers may set AGENTS_SESSION
+    # before creating the session record, and higher-level workflows can enforce
+    # existence when needed.
     env_session = os.environ.get("AGENTS_SESSION")
     if env_session:
-        sid = validate_session_id(env_session)
-        if repo.exists(sid):
-            return sid
+        return validate_session_id(env_session)
 
     # Priority 3: Worktree session file (ONLY in linked worktrees - never primary checkout)
     # This prevents session ID leakage between sessions when running from primary checkout
