@@ -14,3 +14,4 @@ __pycache__/
 
 .edison/config.local/
 .DS_Store
+/artifacts
