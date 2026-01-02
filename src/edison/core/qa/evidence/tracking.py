@@ -146,6 +146,15 @@ def start_implementation(
 
     ev.write_implementation_report(report, round_num=resolved_round)
 
+    missing_required: list[str] = []
+    try:
+        from edison.core.artifacts import find_missing_required_sections
+
+        content = report_path.read_text(encoding="utf-8", errors="strict")
+        missing_required = find_missing_required_sections(content)
+    except Exception:
+        missing_required = []
+
     tr = report.get("tracking") if isinstance(report.get("tracking"), dict) else {}
     append_process_event(
         "process.started",
@@ -170,6 +179,7 @@ def start_implementation(
         "path": str(report_path),
         "runId": tr.get("runId"),
         "processId": tr.get("processId"),
+        "missingRequiredSections": missing_required,
     }
 
 
@@ -491,7 +501,12 @@ def complete(
             )
 
     if not updated:
-        raise RuntimeError("No tracking records found for this round")
+        expected = round_dir / ev.implementation_filename
+        raise RuntimeError(
+            "No tracking records found for this round.\n"
+            f"Expected implementation report with tracking payload: {expected}\n"
+            f"Fix: run `edison session track start --task {task_id} --type implementation --round {round_num}`."
+        )
 
     return {"taskId": task_id, "round": round_num, "updated": updated, "completedAt": now}
 

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edison.core.utils.io import write_json_atomic
+from edison.core.utils.text import parse_frontmatter, strip_frontmatter_block
+from edison.data import get_data_path
 from .._utils import get_qa_root_path
 from .exceptions import EvidenceError
 from . import rounds
@@ -207,11 +209,39 @@ class EvidenceService:
 
         try:
             # Always write to the configured report path.
-            write_structured_report(report_path, data)
+            body: str | None = None
+            if report_path.exists():
+                try:
+                    existing_doc = parse_frontmatter(report_path.read_text(encoding="utf-8", errors="strict"))
+                    if not str(existing_doc.content or "").strip():
+                        body = self._load_implementation_report_template()
+                except Exception:
+                    body = None
+            else:
+                body = self._load_implementation_report_template()
+
+            write_structured_report(report_path, data, body=body, preserve_existing_body=True)
         except Exception as e:
             raise EvidenceError(
                 f"Failed to write implementation report to {report_path}: {e}"
             ) from e
+
+    def _load_implementation_report_template(self) -> str:
+        """Load the composed implementation report template body (fallback to core)."""
+        try:
+            from edison.core.utils.paths.project import get_project_config_dir
+            from edison.core.utils.paths import PathResolver
+
+            repo_root = (self.project_root or PathResolver.resolve_project_root()).resolve()
+            project_cfg = get_project_config_dir(repo_root, create=False)
+            tpl_path = project_cfg / "_generated" / "templates" / "IMPLEMENTATION_REPORT.md"
+            if not tpl_path.exists():
+                tpl_path = get_data_path("templates") / "reports" / "IMPLEMENTATION_REPORT.md"
+            raw = tpl_path.read_text(encoding="utf-8", errors="strict")
+            return strip_frontmatter_block(raw)
+        except Exception:
+            # Fail-open: template is UX-only; evidence/report semantics come from YAML frontmatter.
+            return ""
 
     # -------------------------------------------------------------------------
     # Validator Report I/O (SINGLE SOURCE)

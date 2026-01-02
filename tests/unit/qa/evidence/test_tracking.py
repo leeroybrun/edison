@@ -13,6 +13,7 @@ def test_tracking_start_creates_implementation_report(isolated_project_env: Path
     assert info["taskId"] == "T-TRACK-1"
     assert info["type"] == "implementation"
     assert info["round"] == 1
+    assert info["missingRequiredSections"], "Expected required-fill report template to start incomplete"
 
     ev = EvidenceService("T-TRACK-1", project_root=isolated_project_env)
     data = ev.read_implementation_report(round_num=1)

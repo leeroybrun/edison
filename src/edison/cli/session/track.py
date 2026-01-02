@@ -157,9 +157,15 @@ def main(args: argparse.Namespace) -> int:
                     process_id=getattr(args, "process_id", None),
                 )
 
-            formatter.json_output(result) if formatter.json_mode else formatter.text(
-                f"Started {result['type']} tracking for {result['taskId']} (round {result['round']})"
-            )
+            if formatter.json_mode:
+                formatter.json_output(result)
+            else:
+                formatter.text(f"Started {result['type']} tracking for {result['taskId']} (round {result['round']})")
+                if result.get("path"):
+                    formatter.text(f"  Report: {result['path']}")
+                missing = result.get("missingRequiredSections") if isinstance(result, dict) else None
+                if isinstance(missing, list) and missing:
+                    formatter.text(f"  Required-fill: {', '.join([str(m) for m in missing])}")
 
         elif args.subcommand == "heartbeat":
             result = tracking.heartbeat(
@@ -202,10 +208,21 @@ def main(args: argparse.Namespace) -> int:
         elif args.subcommand == "active":
             active = tracking.list_active(project_root=repo_root)
             if formatter.json_mode:
-                formatter.json_output({"active": active, "count": len(active)})
+                from edison.core.qa._utils import get_evidence_base_path
+
+                formatter.json_output(
+                    {
+                        "active": active,
+                        "count": len(active),
+                        "evidenceBase": str(get_evidence_base_path(repo_root)),
+                    }
+                )
             else:
                 if not active:
-                    formatter.text("No active tracking sessions found")
+                    from edison.core.qa._utils import get_evidence_base_path
+
+                    base = get_evidence_base_path(repo_root)
+                    formatter.text(f"No active tracking sessions found (evidence base: {base})")
                 else:
                     for it in active:
                         kind = it.get("type")
