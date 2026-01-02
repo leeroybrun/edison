@@ -11,12 +11,14 @@ Supports launching different LLM CLIs with configurable prompt delivery:
 from __future__ import annotations
 
 import os
+import pty
 import random
 import shutil
 import socket
 import string
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -196,6 +198,9 @@ class OrchestratorLauncher:
         env.update({k: str(v) for k, v in profile_env.items()})
         env = self._apply_shims_to_env(env)
 
+        requires_tty = bool(profile.get("requires_tty", False))
+        use_pty = bool(requires_tty and (detach or not os.isatty(0)))
+
         cwd = profile.get("cwd")
         cwd_path: Path | None = None
         if cwd:
@@ -227,7 +232,7 @@ class OrchestratorLauncher:
 
         # Determine stdin handling based on prompt delivery method
         stdin_pipe: int | None = None
-        if prompt_method == "stdin" and prompt_text is not None:
+        if prompt_method == "stdin" and prompt_text is not None and not use_pty:
             stdin_pipe = subprocess.PIPE
 
         try:
@@ -276,31 +281,85 @@ class OrchestratorLauncher:
                 else:
                     raise OrchestratorConfigError(f"Unsupported prompt method '{prompt_method}'")
 
-            # Configure stdio based on detach mode
-            if detach:
-                # Background mode: redirect stdout to log file, use DEVNULL for stdin
-                # to prevent blocking on stdin reads
-                stdout_target = log_file or None
-                stderr_target = subprocess.STDOUT if log_file else None
-                # For background mode without prompt, use DEVNULL to prevent stdin blocking
-                if stdin_pipe is None:
-                    stdin_pipe = subprocess.DEVNULL
+            pty_master: int | None = None
+            pty_slave: int | None = None
+            if use_pty:
+                pty_master, pty_slave = pty.openpty()
+                pty_log_path = log_path
             else:
-                # Interactive mode: inherit terminal stdio (no redirection)
-                stdout_target = None
-                stderr_target = None
-                # For interactive mode without prompt via stdin, inherit stdin from terminal
-                # (stdin_pipe stays None to inherit)
+                pty_log_path = None
+
+            # Configure stdio based on detach mode
+            if use_pty and pty_slave is not None:
+                stdin_target: int | Any = pty_slave
+                stdout_target: int | Any = pty_slave
+                stderr_target: int | Any = pty_slave
+            else:
+                stdin_target = stdin_pipe
+                if detach:
+                    # Background mode: redirect stdout to log file, use DEVNULL for stdin
+                    # to prevent blocking on stdin reads
+                    stdout_target = log_file or None
+                    stderr_target = subprocess.STDOUT if log_file else None
+                    # For background mode without prompt, use DEVNULL to prevent stdin blocking
+                    if stdin_target is None:
+                        stdin_target = subprocess.DEVNULL
+                else:
+                    # Interactive mode: inherit terminal stdio (no redirection)
+                    stdout_target = None
+                    stderr_target = None
+                    # For interactive mode without prompt via stdin, inherit stdin from terminal
+                    # (stdin_target stays None to inherit)
+
+            def _start_pty_pump(master_fd: int, sink_path: Path | None) -> None:
+                def _pump() -> None:
+                    sink = None
+                    try:
+                        if sink_path is not None:
+                            sink = sink_path.open("a", encoding="utf-8")
+                        while True:
+                            try:
+                                data = os.read(master_fd, 4096)
+                            except OSError:
+                                break
+                            if not data:
+                                break
+                            if sink is not None:
+                                try:
+                                    sink.write(data.decode("utf-8", errors="replace"))
+                                    sink.flush()
+                                except Exception:
+                                    pass
+                    finally:
+                        if sink is not None:
+                            try:
+                                sink.flush()
+                                sink.close()
+                            except Exception:
+                                pass
+                        try:
+                            os.close(master_fd)
+                        except Exception:
+                            pass
+
+                threading.Thread(target=_pump, name="edison-orchestrator-pty-pump", daemon=True).start()
 
             process = subprocess.Popen(
                 [resolved_command, *args_list],
                 cwd=str(cwd_path) if cwd_path else None,
                 env=env,
-                stdin=stdin_pipe,
+                stdin=stdin_target,
                 stdout=stdout_target,
                 stderr=stderr_target,
                 text=True,
             )
+            if use_pty and pty_slave is not None:
+                try:
+                    os.close(pty_slave)
+                except Exception:
+                    pass
+                if pty_master is not None:
+                    _start_pty_pump(pty_master, pty_log_path)
             # Process events are the source of truth for the live process index (fail-open).
             try:
                 append_process_event(
@@ -334,7 +393,13 @@ class OrchestratorLauncher:
                 pass
 
             if prompt_text is not None and prompt_method == "stdin":
-                self._deliver_prompt_stdin(process, prompt_text)
+                if use_pty and pty_master is not None:
+                    try:
+                        os.write(pty_master, prompt_text.encode("utf-8"))
+                    except Exception:
+                        pass
+                else:
+                    self._deliver_prompt_stdin(process, prompt_text)
 
             if log_file:
                 try:

@@ -236,7 +236,13 @@ class CommandComposer(AdapterComponent):
         if Environment is not None:
             # Our templates use control blocks (`{% if ... %}`) on their own lines.
             # Without trimming, those lines become blank lines in rendered output.
-            env = Environment(trim_blocks=True, lstrip_blocks=True)
+            #
+            # Codex prompts use YAML frontmatter where delimiter lines (`---`) must
+            # remain isolated. Jinja's block trimming can glue delimiters onto the
+            # preceding line (e.g. `argument-hint: foo---`), producing invalid
+            # frontmatter. Disable trimming for Codex to keep it parseable.
+            trim = key != "codex"
+            env = Environment(trim_blocks=trim, lstrip_blocks=trim)
             template = env.from_string(template_text)
 
         results: dict[str, Path] = {}

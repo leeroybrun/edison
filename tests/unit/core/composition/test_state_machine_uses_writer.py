@@ -25,8 +25,9 @@ def test_generate_state_machine_uses_composition_file_writer(tmp_path):
 
     with patch.object(CompositionFileWriter, 'write_text', track_write_text):
         # Generate state machine doc
-        output_path = tmp_path / ".edison" / "_generated" / "STATE_MACHINE.md"
-        result_path = StateMachineGenerator(output_path, repo_root=tmp_path)
+        output_dir = tmp_path / ".edison" / "_generated"
+        generator = StateMachineGenerator(project_root=tmp_path)
+        result_path = generator.write(output_dir)
 
     # Verify that CompositionFileWriter.write_text was called
     assert len(write_calls) > 0, "CompositionFileWriter.write_text should be called by StateMachineGenerator"

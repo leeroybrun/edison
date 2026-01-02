@@ -113,8 +113,12 @@ class TestGuidelineCompositionE2E:
         )
 
         registry = GenericRegistry("guidelines", project_root=root)
-        text = registry.compose("shared/PRINCIPLES_REFERENCE", packs=[]) or ""
-        assert "Circular composed-include detected" in text
+        from edison.core.composition.core.errors import CompositionValidationError
+
+        with pytest.raises(CompositionValidationError) as excinfo:
+            registry.compose("shared/PRINCIPLES_REFERENCE", packs=[])
+
+        assert "Circular composed-include detected" in str(excinfo.value)
 
     def test_cli_composes_guidelines_to_generated_dir(self, isolated_project_env: Path) -> None:
         """

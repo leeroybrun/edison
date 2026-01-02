@@ -92,6 +92,18 @@ class ProjectConfig(BaseDomainConfig):
         except Exception:
             return None
 
+    def _explicit_owner(self) -> Optional[str]:
+        """Return explicitly configured owner (env/config) without inference."""
+        env_owner = os.environ.get("AGENTS_OWNER", "").strip()
+        if env_owner:
+            return env_owner
+
+        owner_raw = self.section.get("owner")
+        if isinstance(owner_raw, str) and owner_raw.strip():
+            return owner_raw.strip()
+
+        return None
+
     @cached_property
     def audit_terms(self) -> List[str]:
         """Get the list of audit terms.
@@ -114,8 +126,9 @@ class ProjectConfig(BaseDomainConfig):
         Returns:
             Owner string, git user name, or current username.
         """
-        if self.owner:
-            return self.owner
+        explicit = self._explicit_owner()
+        if explicit:
+            return explicit
 
         # Prefer git identity (stable) over process-name inference.
         try:

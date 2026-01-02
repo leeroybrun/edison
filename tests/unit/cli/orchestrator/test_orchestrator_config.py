@@ -33,6 +33,7 @@ def _write_schema(schemas_dir: Path) -> None:
                     "required": ["command"],
                     "properties": {
                         "command": {"type": "string"},
+                        "requires_tty": {"type": "boolean"},
                         "args": {"type": "array", "items": {"type": "string"}},
                         "cwd": {"type": "string"},
                         "type": {"type": "string"},

@@ -50,7 +50,7 @@ logging:
 
   orchestrator:
     enabled: true
-    capture_prompt: false
+    capture_prompt: true
     max_prompt_bytes: 10000
 
   guards:

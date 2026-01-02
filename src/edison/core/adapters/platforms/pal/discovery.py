@@ -141,29 +141,29 @@ class PalDiscoveryMixin:
         role_spec = self._get_role_spec(role)
         canonical = _canonical_role(role)
 
-        # Category-based filtering uses raw registries (which retain category).
-        core_registry = self.rules_registry.load_core_registry()
         ids_by_category: Dict[str, Set[str]] = {}
         ids_by_origin: Dict[str, Dict[str, Set[str]]] = {}
 
-        def _record_rules(registry: Dict[str, Any], origin: str) -> None:
-            for raw_rule in registry.get("rules", []) or []:
-                if not isinstance(raw_rule, dict):
-                    continue
-                rid = str(raw_rule.get("id") or "").strip()
-                if not rid:
-                    continue
-                category = str(raw_rule.get("category") or "").lower()
-                if not category:
-                    continue
-                ids_by_category.setdefault(category, set()).add(rid)
-                bucket = ids_by_origin.setdefault(origin, {})
-                bucket.setdefault(category, set()).add(rid)
+        def _origin_bucket(origin: str) -> str:
+            raw = (origin or "").strip()
+            if raw.startswith("pack:"):
+                return raw.split(":", 1)[1]
+            return raw or "unknown"
 
-        _record_rules(core_registry, "core")
-        for pack_name in packs:
-            pack_registry = self.rules_registry.load_pack_registry(pack_name)
-            _record_rules(pack_registry, pack_name)
+        for rid, rule in rules_map.items():
+            if not isinstance(rule, dict):
+                continue
+            category = str(rule.get("category") or "").strip().lower()
+            if not category:
+                continue
+            ids_by_category.setdefault(category, set()).add(rid)
+
+            origins = rule.get("origins") or []
+            if not isinstance(origins, list) or not origins:
+                origins = ["unknown"]
+            for o in origins:
+                bucket = _origin_bucket(str(o))
+                ids_by_origin.setdefault(bucket, {}).setdefault(category, set()).add(rid)
 
         # Config-driven rule category + pack filtering
         if role_spec is not None and isinstance(role_spec.get("rules"), list):
@@ -175,7 +175,9 @@ class PalDiscoveryMixin:
             selected_ids: Set[str] = set()
             for category in categories:
                 if packs_filter:
-                    # Always include core rules for the category, plus rules from configured packs.
+                    # Always include project/user rules, core rules, plus rules from configured packs.
+                    selected_ids.update(ids_by_origin.get("project", {}).get(category, set()))
+                    selected_ids.update(ids_by_origin.get("user", {}).get(category, set()))
                     selected_ids.update(ids_by_origin.get("core", {}).get(category, set()))
                     for pack_name in packs_filter:
                         selected_ids.update(ids_by_origin.get(pack_name, {}).get(category, set()))

@@ -155,6 +155,30 @@ def iter_yaml_files(dir_path: Path) -> list[Path]:
     yaml_files = list(d.glob("*.yaml"))
     return sorted([*yml_files, *yaml_files])
 
+def resolve_yaml_path(path: Path) -> Path:
+    """Resolve a YAML path that may be either ``.yml`` or ``.yaml``.
+
+    If ``path`` points to a ``.yml``/``.yaml`` file and the sibling with the other
+    extension exists, return the existing sibling. Preference is given to
+    ``.yaml`` when both exist.
+
+    If no existing candidate is found, returns ``path`` unchanged.
+    """
+    p = Path(path)
+    if p.suffix in {".yml", ".yaml"}:
+        base = p.with_suffix("")
+        original = p
+    else:
+        base = p
+        original = p
+
+    for ext in (".yaml", ".yml"):
+        candidate = base.with_suffix(ext)
+        if candidate.exists():
+            return candidate
+
+    return original
+
 
 __all__ = [
     "HAS_YAML",
@@ -163,7 +187,7 @@ __all__ = [
     "parse_yaml_string",
     "dump_yaml_string",
     "iter_yaml_files",
+    "resolve_yaml_path",
 ]
-
 
 

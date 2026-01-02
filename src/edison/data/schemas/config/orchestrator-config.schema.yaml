@@ -46,6 +46,11 @@ $defs:
       command:
         type: string
         description: Executable or script to run.
+      requires_tty:
+        type: boolean
+        description: >-
+          If true, Edison will ensure the orchestrator is launched with a TTY
+          (e.g., via a pseudo-terminal) when the current process has no TTY.
       args:
         type: array
         items:

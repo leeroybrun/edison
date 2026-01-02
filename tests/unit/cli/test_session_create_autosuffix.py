@@ -79,7 +79,11 @@ def test_session_create_explicit_existing_still_fails(isolated_project_env, monk
 
 
 def test_session_create_no_worktree_pins_session_id_file(isolated_project_env, monkeypatch, capsys):
-    """--no-worktree should still write the worktree-local .session-id file for this checkout."""
+    """--no-worktree must NOT pin `.session-id` in the primary checkout.
+
+    Pinning is reserved for linked worktrees to avoid leaking session scope into
+    the primary checkout.
+    """
     from pathlib import Path
 
     from edison.cli.session import create as create_cli
@@ -105,8 +109,9 @@ def test_session_create_no_worktree_pins_session_id_file(isolated_project_env, m
     assert out["session_id"] == "fixed-pid-pin"
 
     session_id_path = out.get("sessionIdFilePath")
-    assert session_id_path, "Expected sessionIdFilePath to be populated in --no-worktree mode"
-    session_id_file = Path(session_id_path)
-    assert session_id_file.exists()
-    assert session_id_file.read_text(encoding="utf-8").strip() == out["session_id"]
-    assert out.get("worktreePinned") is True
+    assert session_id_path is None, "sessionIdFilePath must be None in --no-worktree mode"
+    assert out.get("worktreePinned") is False
+
+    # Ensure we did not write the primary checkout's `.project/.session-id` file.
+    session_id_file = Path(isolated_project_env) / ".project" / ".session-id"
+    assert not session_id_file.exists()

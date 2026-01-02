@@ -240,6 +240,10 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
     num, wave, slug = "350", "wave1", "incomplete-evidence"
     task_id = f"{num}-{wave}-{slug}"
 
+    # QA must be attached to an existing task.
+    task = run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
+    assert_command_success(task)
+
     # Create QA to seed evidence root
     qa = run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
     assert_command_success(qa)
@@ -493,7 +497,8 @@ def test_session_invalid_state_directory(project_dir: TestProjectDir):
 
     status = run_script("session", ["status", session_id, "--json"], cwd=project_dir.tmp_path)
     assert_command_failure(status)
-    assert_error_contains(status, "not found")
+    # In JSON mode, CLI errors are emitted to stdout as machine-readable payloads.
+    assert_output_contains(status, "not found", in_stderr=False)
 
 
 @pytest.mark.edge_case

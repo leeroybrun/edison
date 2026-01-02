@@ -17,6 +17,7 @@ orchestrators:
       command: "codex"
       args: []
       cwd: "{session_worktree}"
+      requires_tty: true
       initial_prompt:
         enabled: true
         method: "arg"  # Use positional argument

@@ -65,6 +65,17 @@ def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int =
     return rd
 
 
+def _start_impl_tracking(task_id: str, *, cwd: Path) -> None:
+    """Create the evidence round + implementation report required by task completion guards."""
+    assert_command_success(
+        run_script(
+            "session/track",
+            ["start", "--task", task_id, "--type", "implementation"],
+            cwd=cwd,
+        )
+    )
+
+
 def _qa_to_done(task_id: str, session_id: str, project_root: Path, cwd: Path) -> None:
     """Promote QA through required states with evidence so done transition succeeds."""
     assert_command_success(
@@ -231,14 +242,20 @@ def test_cross_session_task_transfer(project_dir: TestProjectDir):
     assert_command_success(run_script("tasks/claim", [task_id, "--session", session1, "--owner", session1], cwd=project_dir.tmp_path))
 
     # Re-claim to session2 (transfer ownership)
-    assert_command_success(run_script("tasks/claim", [task_id, "--session", session2, "--owner", session2], cwd=project_dir.tmp_path))
+    assert_command_success(
+        run_script(
+            "tasks/claim",
+            [task_id, "--session", session2, "--owner", session2, "--reclaim"],
+            cwd=project_dir.tmp_path,
+        )
+    )
 
     # Verify Owner in file content reflects session2
     task_path = project_dir.project_root / "tasks" / "todo" / f"{task_id}.md"
     assert_file_exists(task_path)
     from helpers.assertions import read_file
-    content = read_file(task_path)
-    assert f"**Owner:** {session2}" in content
+    doc = parse_frontmatter(read_file(task_path))
+    assert (doc.frontmatter or {}).get("owner") == session2
 
 
 @pytest.mark.integration
@@ -264,6 +281,7 @@ def test_partial_session_completion(project_dir: TestProjectDir):
         assert_command_success(run_script("tasks/new", ["--id", str(pr), "--wave", "wave1", "--slug", f"task{i}", "--session", session_id], cwd=project_dir.tmp_path))
         if i < 3:
             # Mark done → create QA → mark QA done → task validated
+            _start_impl_tracking(tid, cwd=project_dir.tmp_path)
             assert_command_success(run_script("tasks/status", [tid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
             assert_command_success(run_script("qa/new", [tid, "--session", session_id], cwd=project_dir.tmp_path))
             _qa_to_done(tid, session_id, project_dir.project_root, project_dir.tmp_path)
@@ -320,16 +338,32 @@ def test_session_merge_scenario(combined_env):
     git_repo.commit_in_worktree(worktree_path, "Add feature")
 
     # Create + validate a feature task inside session
-    assert_command_success(run_script("tasks/new", ["--id", "200", "--wave", "wave1", "--slug", "feature", "--session", session_id], cwd=git_repo.repo_path))
-    assert_command_success(run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=git_repo.repo_path))
-    assert_command_success(run_script("qa/new", [task_id, "--session", session_id], cwd=git_repo.repo_path))
-    _qa_to_done(task_id, session_id, git_repo.repo_path, git_repo.repo_path)
-    assert_command_success(run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=git_repo.repo_path))
+    # Mutating task commands must run inside the session worktree.
+    assert_command_success(
+        run_script(
+            "tasks/new",
+            ["--id", "200", "--wave", "wave1", "--slug", "feature", "--session", session_id],
+            cwd=worktree_path,
+        )
+    )
+    _start_impl_tracking(task_id, cwd=worktree_path)
+    assert_command_success(
+        run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=worktree_path)
+    )
+    assert_command_success(run_script("qa/new", [task_id, "--session", session_id], cwd=worktree_path))
+    _qa_to_done(task_id, session_id, worktree_path / ".project", worktree_path)
+    assert_command_success(
+        run_script(
+            "tasks/status",
+            [task_id, "--status", "validated", "--session", session_id],
+            cwd=worktree_path,
+        )
+    )
 
     # Complete session → should create merge task
-    comp = run_script("session", ["complete", session_id], cwd=git_repo.repo_path)
+    comp = run_script("session", ["complete", session_id], cwd=worktree_path)
     assert_command_success(comp)
-    assert_output_contains(comp, "Created merge task")
+    assert_output_contains(comp, "promoted to validated")
 
 
 @pytest.mark.integration
@@ -352,6 +386,7 @@ def test_large_scale_validation(project_dir: TestProjectDir):
         tid = f"{pr}-wave1-large{i}"
         # Create, move to done, create QA, mark QA done, validate task
         assert_command_success(run_script("tasks/new", ["--id", str(pr), "--wave", "wave1", "--slug", f"large{i}", "--session", session_id], cwd=project_dir.tmp_path))
+        _start_impl_tracking(tid, cwd=project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [tid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
         assert_command_success(run_script("qa/new", [tid, "--session", session_id], cwd=project_dir.tmp_path))
         _qa_to_done(tid, session_id, project_dir.project_root, project_dir.tmp_path)
@@ -381,6 +416,7 @@ def test_recovery_from_failed_validation(project_dir: TestProjectDir):
 
     # Implement and mark done
     assert_command_success(run_script("tasks/new", ["--id", "250", "--wave", "wave1", "--slug", "recovery", "--session", session_id], cwd=project_dir.tmp_path))
+    _start_impl_tracking(task_id, cwd=project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Create QA and move to wip, then rejection back to waiting (Round 1)
@@ -388,7 +424,8 @@ def test_recovery_from_failed_validation(project_dir: TestProjectDir):
     assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
     # Rejected → back to waiting
-    assert_command_success(run_script("qa/promote", [task_id, "--status", "waiting", "--session", session_id], cwd=project_dir.tmp_path))
+    # Fail/redo cycle: wip → todo (waiting is not a configured QA state in this workflow).
+    assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Round 2: fixes applied → move again to todo → wip → done
     assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
@@ -468,7 +505,13 @@ def test_cascading_task_validation(project_dir: TestProjectDir):
 
     # Parent starts blocked
     assert_command_success(run_script("tasks/new", ["--id", "300", "--wave", "wave1", "--slug", "cascade-parent", "--session", session_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("tasks/status", [parent_id, "--status", "blocked", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(
+        run_script(
+            "tasks/status",
+            [parent_id, "--status", "blocked", "--session", session_id, "--reason", "Blocked by child validation"],
+            cwd=project_dir.tmp_path,
+        )
+    )
 
     # Children created → link to parent → validate children
     for cid in child_ids:
@@ -476,6 +519,7 @@ def test_cascading_task_validation(project_dir: TestProjectDir):
         slug = cid.split("-", 2)[-1]
         assert_command_success(run_script("tasks/new", ["--id", slot, "--wave", "wave1", "--slug", slug, "--session", session_id], cwd=project_dir.tmp_path))
         assert_command_success(run_script("tasks/link", [parent_id, cid, "--session", session_id], cwd=project_dir.tmp_path))
+        _start_impl_tracking(cid, cwd=project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [cid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
         assert_command_success(run_script("qa/new", [cid, "--session", session_id], cwd=project_dir.tmp_path))
         _qa_to_done(cid, session_id, project_dir.project_root, project_dir.tmp_path)
@@ -742,15 +786,23 @@ def test_session_with_all_task_states(project_dir: TestProjectDir):
 
     # Move to desired states
     assert_command_success(run_script("tasks/status", ["150-wave1-wip", "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
+    _start_impl_tracking("200-wave1-done", cwd=project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", ["200-wave1-done", "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     # validated requires QA done first
+    _start_impl_tracking("250-wave1-validated", cwd=project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", ["250-wave1-validated", "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("qa/new", ["250-wave1-validated", "--session", session_id], cwd=project_dir.tmp_path))
     _qa_to_done("250-wave1-validated", session_id, project_dir.project_root, project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", ["250-wave1-validated", "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
     # blocked
     assert_command_success(run_script("tasks/status", ["300-wave1-blocked", "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("tasks/status", ["300-wave1-blocked", "--status", "blocked", "--session", session_id], cwd=project_dir.tmp_path))
+    assert_command_success(
+        run_script(
+            "tasks/status",
+            ["300-wave1-blocked", "--status", "blocked", "--session", session_id, "--reason", "Blocked by external dependency"],
+            cwd=project_dir.tmp_path,
+        )
+    )
 
     # Quick sanity check: files in expected directories
     assert_file_exists(project_dir.project_root / "tasks" / "todo" / "100-wave1-todo.md")

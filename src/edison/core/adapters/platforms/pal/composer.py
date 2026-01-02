@@ -74,7 +74,12 @@ class PalComposerMixin:
                 rule_lines.append(f"- {label}")
         rules_block = "\n".join(rule_lines)
 
-        header_lines: List[str] = ["=== Edison / Pal Prompt ===", f"Role: {canonical_role}"]
+        header_lines: List[str] = [
+            "=== Edison / Pal MCP Prompt ===",
+            f"Model: {model_key}",
+            f"Role: {canonical_role}",
+            "Context window: Be concise and stay within the model limit.",
+        ]
 
         header = "\n".join(header_lines)
 

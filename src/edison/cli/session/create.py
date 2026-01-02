@@ -176,10 +176,10 @@ def main(args: argparse.Namespace) -> int:
             get_worktree_pinning_status,
         )
 
-        # Even in --no-worktree mode, pin the current checkout so session context
-        # can be auto-resolved without manual file edits.
-        pinning_root = Path(worktree_path) if worktree_path else Path(repo_root)
-        if not worktree_path:
+        # Pin session ID only inside the created worktree.
+        # Primary checkout must never be pinned via `.project/.session-id`.
+        pinning_root = Path(worktree_path) if worktree_path else None
+        if pinning_root is not None:
             ensure_worktree_session_id_file(worktree_path=pinning_root, session_id=session_id)
 
         pinning_status = get_worktree_pinning_status(pinning_root, session_id)

@@ -281,6 +281,26 @@ def _print_next_steps(formatter: OutputFormatter, config_root: Path) -> None:
 def main(args: argparse.Namespace) -> int:
     """Initialize Edison in the given project directory."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
+
+    # E2E tests may invoke init.main() with a partial argparse.Namespace. Normalize
+    # missing options to their CLI defaults so main() remains robust.
+    defaults: dict[str, object] = {
+        "advanced": False,
+        "force": False,
+        "merge": False,
+        "reconfigure": False,
+        "non_interactive": False,
+        "skip_mcp": False,
+        "mcp_script": False,
+        "skip_compose": False,
+        "enable_worktrees": False,
+        "disable_worktrees": False,
+        "skip_worktree_meta_init": False,
+    }
+    for key, value in defaults.items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
     project_root = Path(args.project_path).expanduser().resolve()
 
     # CI / subprocess safety: if stdin is not interactive, default to non-interactive

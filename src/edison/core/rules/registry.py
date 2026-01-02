@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from edison.core.composition.core.sections import SectionParser
 from edison.core.utils.paths import EdisonPathError, PathResolver
-from edison.core.utils.io import read_yaml
+from edison.core.utils.io import read_yaml, resolve_yaml_path
 
 from edison.core.composition.core.errors import AnchorNotFoundError, RulesCompositionError
 from edison.data import get_data_path
@@ -205,6 +205,7 @@ class RulesRegistry:
     # ------------------------------------------------------------------
     def _load_yaml(self, path: Path, *, required: bool) -> Dict[str, Any]:
         """Load and validate rules YAML file."""
+        path = resolve_yaml_path(path)
         try:
             data = self._load_yaml_file(path, required=required)
         except FileNotFoundError:

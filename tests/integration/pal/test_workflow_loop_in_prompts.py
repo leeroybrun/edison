@@ -66,4 +66,4 @@ class TestPalPrompts:
 
         content = (pal_prompts_dir / "default.txt").read_text(encoding="utf-8")
         # Header is composed by PalComposerMixin; keep this as a loose sanity check.
-        assert "=== Edison / Pal Prompt ===" in content
+        assert "=== Edison / Pal MCP Prompt ===" in content

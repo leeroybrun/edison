@@ -74,11 +74,14 @@ class TestPalAdapterUnit:
 
     def _write_guidelines_with_packs_and_overlays(self, root: Path) -> None:
         """Create guidelines across bundled + packs to exercise mapping engine."""
+        # Core guidelines are bundled (edison.data). Create NEW project guidelines
+        # under `.edison/guidelines/` and extend existing bundled guidelines via
+        # `.edison/guidelines/overlays/`.
+
         core_dir = root / ".edison" / "guidelines"
         core_dir.mkdir(parents=True, exist_ok=True)
         (core_dir / "api-design.md").write_text("CORE-API-DESIGN\n", encoding="utf-8")
         (core_dir / "validation.md").write_text("CORE-VALIDATION\n", encoding="utf-8")
-        (core_dir / "error-handling.md").write_text("CORE-ERROR-HANDLING\n", encoding="utf-8")
         (core_dir / "other.md").write_text("CORE-OTHER\n", encoding="utf-8")
 
         fastify_dir = root / ".edison" / "packs" / "fastify" / "guidelines"
@@ -96,10 +99,10 @@ class TestPalAdapterUnit:
             "prisma-SCHEMA-DESIGN\n", encoding="utf-8"
         )
 
-        project_guides = root / ".edison" / "guidelines"
-        project_guides.mkdir(parents=True, exist_ok=True)
-        (project_guides / "api-design.md").write_text(
-            "PROJECT-API-DESIGN-OVERLAY\n", encoding="utf-8"
+        project_overlays = root / ".edison" / "guidelines" / "overlays"
+        project_overlays.mkdir(parents=True, exist_ok=True)
+        (project_overlays / "error-handling.md").write_text(
+            "PROJECT-ERROR-HANDLING-OVERLAY\n", encoding="utf-8"
         )
 
     def _write_rules_registry(self, root: Path) -> None:
@@ -217,12 +220,15 @@ class TestPalAdapterUnit:
         adapter = PalAdapter(project_root=root)
 
         all_rules = adapter.get_applicable_rules("default")
-        assert {r["id"] for r in all_rules} == {
+        # Default role should include our project-defined rules, but may also include
+        # additional Edison/bundled rules (the adapter merges multiple registries).
+        all_ids = {r["id"] for r in all_rules}
+        assert {
             "RULE.REVIEW.VALIDATION",
             "RULE.REVIEW.IMPLEMENTATION",
             "RULE.PLANNING.DELEGATION",
             "RULE.PLANNING.SESSION",
-        }
+        } <= all_ids
 
         review_rules = adapter.get_applicable_rules("codereviewer")
         review_ids = {r["id"] for r in review_rules}

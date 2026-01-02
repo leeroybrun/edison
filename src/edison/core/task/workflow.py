@@ -277,7 +277,7 @@ class TaskQAWorkflow:
             t.session_id = session_id
             t.claimed_at = t.claimed_at or now
             t.last_active = now
-            if owner and not (t.metadata.created_by or "").strip():
+            if owner:
                 t.metadata.created_by = owner
 
         # Validate transition, execute actions, record history, and persist.

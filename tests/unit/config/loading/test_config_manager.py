@@ -54,7 +54,10 @@ def test_load_and_validate_schema() -> None:
     mgr = ConfigManager(ROOT)
     cfg = mgr.load_config(validate=True)
     assert "validation" in cfg and "delegation" in cfg
-    b = cfg.get("validation", {}).get("blocking_validators", [])  # type: ignore[assignment]
+    presets = (cfg.get("validation", {}) or {}).get("presets", {})  # type: ignore[assignment]
+    assert isinstance(presets, dict)
+    standard = presets.get("standard", {}) if isinstance(presets, dict) else {}
+    b = (standard or {}).get("blocking_validators", [])
     assert isinstance(b, list) and len(b) >= 2
 
 
