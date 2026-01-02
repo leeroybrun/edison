@@ -130,15 +130,17 @@ def _validate_positive(name: str, value: float) -> None:
 def get_file_locking_config(repo_root: Optional[Path] = None) -> Dict[str, Any]:
     """Return the resolved file locking configuration.
 
-    When ``repo_root`` is omitted, this uses the current working directory as the
-    repo_root for config loading (core defaults + any local overrides), avoiding
-    project-root auto-detection which can recurse into subprocess helpers.
+    When ``repo_root`` is omitted, this resolves the active project root and
+    loads config from there. This keeps behavior consistent in long-running
+    processes and test suites that use isolated temp projects.
     """
     # Lazy import to avoid circular dependency
     from edison.core.config import ConfigManager
+    from edison.core.utils.paths import resolve_project_root
 
-    mgr = ConfigManager(repo_root=(Path.cwd().resolve() if repo_root is None else Path(repo_root).resolve()))
-    repo_key = str(mgr.repo_root)
+    resolved_root = resolve_project_root() if repo_root is None else Path(repo_root).resolve()
+    mgr = ConfigManager(repo_root=resolved_root)
+    repo_key = str(resolved_root)
 
     with _FILE_LOCK_CONFIG_MUTEX:
         cached = _FILE_LOCK_CONFIG_CACHE.get(repo_key)
@@ -186,7 +188,8 @@ def file_lock(target: Path, timeout: float = 10.0) -> Iterator[Path]:
     """Create an exclusive lock for the target using sidecar .lock file.
     
     This is a simplified wrapper around acquire_file_lock that yields the
-    target path on success and raises SystemExit on timeout.
+    target path on success and raises SystemExit when the lock cannot be
+    acquired within timeout.
     
     Args:
         target: File path to lock
@@ -198,11 +201,15 @@ def file_lock(target: Path, timeout: float = 10.0) -> Iterator[Path]:
     Raises:
         SystemExit: If lock cannot be acquired within timeout
     """
+    lock_cm = acquire_file_lock(Path(target), timeout=timeout)
     try:
-        with acquire_file_lock(Path(target), timeout=timeout):
-            yield target
+        lock_cm.__enter__()
     except LockTimeoutError as e:
         raise SystemExit(f"File is locked: {target}") from e
+    try:
+        yield target
+    finally:
+        lock_cm.__exit__(None, None, None)
 
 
 def safe_move_file(src: Path, dest: Path, repo_root: Optional[Path] = None) -> Path:
@@ -280,5 +287,3 @@ def write_text_locked(path: Path, content: str) -> None:
         f.write(content)
 
     atomic_write(target, _writer, lock_cm=file_lock(target))
-
-

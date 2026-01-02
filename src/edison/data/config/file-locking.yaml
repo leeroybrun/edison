@@ -2,6 +2,6 @@
 # Advisory file lock settings for concurrent access
 
 file_locking:
-  timeout_seconds: 10.0
-  poll_interval_seconds: 0.1
+  timeout_seconds: 1.0
+  poll_interval_seconds: 0.05
   fail_open: false
