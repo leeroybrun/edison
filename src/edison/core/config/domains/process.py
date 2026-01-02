@@ -22,6 +22,7 @@ DEFAULT_LLM_MARKER_MAP = {
     "aider": "aider",
     "opencode": "opencode",
 }
+DEFAULT_LLM_CMDLINE_EXCLUDES: dict[str, list[str]] = {}
 
 
 class ProcessConfig(BaseDomainConfig):
@@ -94,6 +95,31 @@ class ProcessConfig(BaseDomainConfig):
         return dict(DEFAULT_LLM_MARKER_MAP)
 
     @cached_property
+    def llm_cmdline_excludes(self) -> dict[str, list[str]]:
+        """Get wrapper-specific cmdline substrings to exclude from LLM detection.
+
+        Returns:
+            Dict mapping canonical wrapper name -> list of cmdline substrings. If any
+            substring matches the full cmdline, that process is NOT treated as an LLM wrapper.
+        """
+        raw = self.section.get("llm_cmdline_excludes")
+        if not isinstance(raw, dict):
+            return dict(DEFAULT_LLM_CMDLINE_EXCLUDES)
+
+        out: dict[str, list[str]] = {}
+        for k, v in raw.items():
+            key = str(k).strip().lower()
+            if not key:
+                continue
+            if isinstance(v, list):
+                patterns = [str(p).strip().lower() for p in v if str(p).strip()]
+            else:
+                patterns = []
+            if patterns:
+                out[key] = patterns
+        return out or dict(DEFAULT_LLM_CMDLINE_EXCLUDES)
+
+    @cached_property
     def edison_processes(self) -> list[str]:
         """Get list of Edison process patterns.
 
@@ -138,6 +164,10 @@ class ProcessConfig(BaseDomainConfig):
         """Get marker -> canonical wrapper name mapping."""
         return self.llm_marker_map
 
+    def get_llm_cmdline_excludes(self) -> dict[str, list[str]]:
+        """Get wrapper-specific cmdline substrings to exclude from LLM detection."""
+        return self.llm_cmdline_excludes
+
     def get_edison_processes(self) -> list[str]:
         """Get list of Edison process patterns."""
         return self.edison_processes
@@ -153,4 +183,5 @@ __all__ = [
     "DEFAULT_EDISON_NAMES",
     "DEFAULT_LLM_SCRIPT_MARKERS",
     "DEFAULT_LLM_MARKER_MAP",
+    "DEFAULT_LLM_CMDLINE_EXCLUDES",
 ]

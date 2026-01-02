@@ -127,16 +127,19 @@ def detect_session_id(
     root = Path(project_root).resolve() if project_root is not None else resolve_project_root()
     repo = SessionRepository(project_root=root)
 
-    # Priority 1: Explicit parameter (must exist)
+    # Priority 1: Explicit parameter (validated only; existence is enforced by require_session_id)
     if explicit:
-        sid = validate_session_id(explicit)
-        return sid if repo.exists(sid) else None
+        return validate_session_id(explicit)
 
     # Priority 2: AGENTS_SESSION environment variable (canonical)
+    #
+    # Only treat it as a match when the session exists. This avoids stale
+    # environment variables forcing detection to a non-existent session.
     env_session = os.environ.get("AGENTS_SESSION")
     if env_session:
         sid = validate_session_id(env_session)
-        return sid if repo.exists(sid) else None
+        if repo.exists(sid):
+            return sid
 
     # Priority 3: Worktree session file (ONLY in linked worktrees - never primary checkout)
     # This prevents session ID leakage between sessions when running from primary checkout

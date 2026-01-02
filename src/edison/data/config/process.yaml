@@ -34,6 +34,17 @@ process:
     aider: aider
     opencode: opencode
 
+  # Optional: exclude certain cmdlines from being treated as an LLM wrapper match.
+  # This is useful for wrapper daemons that are long-lived across multiple sessions.
+  #
+  # Values are substring-matched against the full, lowercased cmdline string.
+  llm_cmdline_excludes:
+    # Happy runs a long-lived daemon (e.g. `... index.mjs daemon start-sync`) that
+    # should not be used as the session identifier because it is shared across
+    # multiple Happy sessions on the same machine.
+    happy:
+      - " index.mjs daemon "
+
   # Edison process patterns
   edison_processes:
     - edison

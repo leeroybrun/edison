@@ -59,6 +59,17 @@ def _load_llm_marker_map() -> dict[str, str]:
         }
 
 
+def _load_llm_cmdline_excludes() -> dict[str, list[str]]:
+    """Load wrapper-specific cmdline substrings to exclude from LLM detection."""
+    try:
+        from edison.core.config.domains.process import ProcessConfig
+        from edison.core.utils.paths import PathResolver
+
+        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_cmdline_excludes()
+    except Exception:
+        return {}
+
+
 def _load_edison_process_names() -> list[str]:
     """Load Edison process names from configuration with safe defaults."""
     try:
@@ -95,19 +106,30 @@ def _is_edison_script(cmdline: list[str]) -> bool:
 def _match_llm_wrapper(name: str, cmdline: list[str]) -> str | None:
     """Return canonical wrapper name if this process appears to be an LLM wrapper."""
     llm_names = [n.strip().lower() for n in _load_llm_process_names() if str(n).strip()]
-    if name in llm_names:
-        return name
-
     cmdline_str = " ".join(cmdline).lower()
-    markers = [m.strip().lower() for m in _load_llm_script_markers() if str(m).strip()]
-    marker_map = {
-        str(k).strip().lower(): str(v).strip().lower()
-        for k, v in _load_llm_marker_map().items()
-    }
-    for marker in markers:
-        if marker and marker in cmdline_str:
-            return marker_map.get(marker, marker)
-    return None
+
+    candidate: str | None = None
+    if name in llm_names:
+        candidate = name
+    else:
+        markers = [m.strip().lower() for m in _load_llm_script_markers() if str(m).strip()]
+        marker_map = {
+            str(k).strip().lower(): str(v).strip().lower()
+            for k, v in _load_llm_marker_map().items()
+        }
+        for marker in markers:
+            if marker and marker in cmdline_str:
+                candidate = marker_map.get(marker, marker)
+                break
+
+    if not candidate:
+        return None
+
+    excludes = _load_llm_cmdline_excludes().get(candidate, [])
+    if excludes and any(str(x).strip().lower() in cmdline_str for x in excludes if str(x).strip()):
+        return None
+
+    return candidate
 
 
 def is_process_alive(pid: int) -> bool:
