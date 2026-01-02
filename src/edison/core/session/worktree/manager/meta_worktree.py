@@ -14,7 +14,7 @@ from edison.core.config.domains.project import ProjectConfig
 from edison.core.utils.git.worktree import get_worktree_parent, is_worktree_registered
 from edison.core.utils.subprocess import run_with_timeout
 
-from .._utils import get_repo_dir
+from ..._utils import get_repo_dir
 from .shared_config import shared_state_cfg
 
 
@@ -163,4 +163,3 @@ __all__ = [
     "ensure_meta_worktree_checkout",
     "resolve_meta_worktree_path",
 ]
-

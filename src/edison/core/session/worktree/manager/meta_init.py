@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.subprocess import run_with_timeout
 
-from .._utils import get_repo_dir
+from ..._utils import get_repo_dir
 from ..config_helpers import _config
 from .meta_setup import ensure_checkout_git_excludes
 from .meta_status import ensure_meta_worktree
@@ -106,4 +106,3 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
 
 
 __all__ = ["initialize_meta_shared_state"]
-

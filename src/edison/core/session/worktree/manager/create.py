@@ -12,7 +12,7 @@ from edison.core.utils.git.worktree import get_existing_worktree_path, get_workt
 from edison.core.utils.io import ensure_directory
 from edison.core.utils.subprocess import run_with_timeout
 
-from .._utils import get_repo_dir
+from ..._utils import get_repo_dir
 from ..config_helpers import _config, _resolve_archive_directory, _resolve_worktree_target
 from .meta_setup import ensure_checkout_git_excludes
 from .post_install import _run_post_install_commands

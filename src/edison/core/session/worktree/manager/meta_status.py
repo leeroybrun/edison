@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from edison.core.utils.git.worktree import get_worktree_parent, is_worktree_registered
 
-from .._utils import get_repo_dir
+from ..._utils import get_repo_dir
 from ..config_helpers import _config
 from .meta_setup import ensure_meta_worktree_setup
 from .meta_worktree import ensure_meta_worktree_checkout, resolve_meta_worktree_path
@@ -73,4 +73,3 @@ def ensure_meta_worktree(*, repo_dir: Optional[Path] = None, dry_run: bool = Fal
 
 
 __all__ = ["ensure_meta_worktree", "get_meta_worktree_status"]
-

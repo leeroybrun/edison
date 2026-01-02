@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from edison.core.utils.git.worktree import get_worktree_parent, is_worktree_registered
 from edison.core.utils.subprocess import run_with_timeout
 
-from .._utils import get_repo_dir
+from ..._utils import get_repo_dir
 from ..config_helpers import _config
 from .meta_init import initialize_meta_shared_state
 from .meta_setup import ensure_meta_worktree_setup
@@ -259,4 +259,3 @@ def recreate_meta_shared_state(
 
 
 __all__ = ["recreate_meta_shared_state"]
-
