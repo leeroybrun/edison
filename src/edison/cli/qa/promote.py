@@ -17,6 +17,17 @@ from edison.core.state.transitions import validate_transition
 
 SUMMARY = "Promote QA brief between states"
 
+def _parse_transition_spec(spec: str) -> tuple[str, str] | None:
+    s = str(spec or "").strip()
+    if not s or "→" not in s:
+        return None
+    left, right = s.split("→", 1)
+    left = left.strip()
+    right = right.strip()
+    if not left or not right:
+        return None
+    return (left, right)
+
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
@@ -175,7 +186,50 @@ def main(args: argparse.Namespace) -> int:
             context=context,
             reason="cli-qa-promote",
         )
-        
+
+        # Lifecycle sync: when QA is approved (done → validated), also promote the
+        # task (done → validated) according to workflow.validationLifecycle.onApprove.
+        #
+        # This keeps the filesystem state tree coherent with the configured lifecycle.
+        task_sync = {"attempted": False, "promoted": False}
+        task_sync_error: str | None = None
+        try:
+            on_approve = cfg.get_lifecycle_transition("onApprove") or {}
+            qa_spec = _parse_transition_spec(str(on_approve.get("qaState") or ""))
+            task_spec = _parse_transition_spec(str(on_approve.get("taskState") or ""))
+
+            if qa_spec and task_spec and old_state == qa_spec[0] and str(args.status) == qa_spec[1]:
+                task_sync["attempted"] = True
+
+                task_repo = get_repository("task", project_root=repo_root)
+                task_entity = task_repo.get(task_id)
+                if not task_entity:
+                    raise ValueError(f"Task not found: {task_id}")
+
+                from_task, to_task = task_spec
+                if task_entity.state == to_task:
+                    task_sync["promoted"] = True
+                elif task_entity.state != from_task:
+                    raise ValueError(
+                        "QA was promoted to validated, but task state is inconsistent.\n"
+                        f"Task: {task_id}\n"
+                        f"Expected task state: {from_task} (or already {to_task})\n"
+                        f"Actual task state: {task_entity.state}"
+                    )
+                else:
+                    task_context = dict(context)
+                    task_context["entity_type"] = "task"
+                    task_context["entity_id"] = task_id
+                    task_repo.transition(
+                        task_id,
+                        to_task,
+                        context=task_context,
+                        reason="workflow.validationLifecycle.onApprove",
+                    )
+                    task_sync["promoted"] = True
+        except Exception as e:
+            task_sync_error = str(e)
+
         result = {
             "task_id": task_id,
             "qa_id": qa_id,
@@ -183,7 +237,19 @@ def main(args: argparse.Namespace) -> int:
             "old_status": old_state,
             "new_status": args.status,
             "promoted": True,
+            "taskSync": task_sync,
         }
+
+        # If QA promotion succeeded but task sync failed, return non-zero so
+        # orchestrators/LLMs do not silently proceed with inconsistent state.
+        if task_sync.get("attempted") and not task_sync.get("promoted"):
+            raise RuntimeError(
+                "QA was promoted, but task lifecycle sync failed.\n"
+                f"Task: {task_id}\n"
+                f"QA: {qa_id}\n"
+                "Fix: run `edison task status <task-id> --status validated` (or the configured target state).\n"
+                f"Details: {task_sync_error or 'unknown error'}"
+            )
 
         formatter.json_output(result) if formatter.json_mode else formatter.text(
             f"Promoted {qa_id}: {old_state} -> {args.status}"

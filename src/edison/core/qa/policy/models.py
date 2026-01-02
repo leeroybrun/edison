@@ -28,15 +28,17 @@ class ValidationPreset:
     name: str
     validators: list[str]
     required_evidence: list[str]
-    blocking_validators: list[str] = field(default_factory=list)
+    blocking_validators: Optional[list[str]] = None
     description: str = ""
 
     def __post_init__(self) -> None:
         """Set defaults after initialization."""
-        # If blocking_validators not provided, default to all validators
-        if not self.blocking_validators:
-            # Use object.__setattr__ since dataclass is frozen
+        # If blocking_validators is not provided (None), default to all validators.
+        # An explicit empty list is valid (advisory-only preset).
+        if self.blocking_validators is None:
             object.__setattr__(self, "blocking_validators", list(self.validators))
+        else:
+            object.__setattr__(self, "blocking_validators", list(self.blocking_validators))
 
 
 @dataclass(frozen=True, slots=True)

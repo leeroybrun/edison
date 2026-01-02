@@ -99,10 +99,14 @@ def validate_transition(
             from edison.core.config.domains.workflow import WorkflowConfig
 
             wf = WorkflowConfig(repo_root=repo_root)
+            try:
+                wf.get_states(entity_type)
+            except ValueError:
+                return False, f"State machine not configured for entity '{entity_type}'"
             allowed = wf.get_transitions(entity_type).get(from_state, []) or []
             if to_state in allowed:
                 return True, ""
-            return False, f"Invalid transition: {from_state} → {to_state}"
+            return False, f"Invalid transition: {from_state} → {to_state} (not allowed)"
         except Exception as e:
             return False, str(e)
 

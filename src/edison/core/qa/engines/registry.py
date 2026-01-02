@@ -289,9 +289,26 @@ class EngineRegistry:
             error="Engine not available",
         )
 
-    # NOTE: build_execution_roster() has been removed.
-    # Use ValidatorRegistry.build_execution_roster() directly as the single source of truth.
-    # Access via: self._validator_registry.build_execution_roster(...)
+    def build_execution_roster(
+        self,
+        task_id: str,
+        *,
+        session_id: str | None = None,
+        wave: str | None = None,
+        extra_validators: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Build a validator execution roster for a task.
+
+        This is a thin delegation wrapper for backward compatibility with
+        call sites that already depend on EngineRegistry. The single source
+        of truth remains ValidatorRegistry.build_execution_roster().
+        """
+        return self._validator_registry.build_execution_roster(
+            task_id,
+            session_id=session_id,
+            wave=wave,
+            extra_validators=extra_validators,
+        )
 
 
 __all__ = ["EngineRegistry"]
