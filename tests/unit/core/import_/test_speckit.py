@@ -321,7 +321,7 @@ class TestGenerateEdisonTask:
         (feature_dir / "tasks.md").write_text("- [ ] T001 Create User model")
 
         feature = parse_feature_folder(feature_dir)
-        task = generate_edison_task(feature.tasks[0], feature, prefix="auth")
+        task = generate_edison_task(feature.tasks[0], feature, prefix="auth", project_root=tmp_path)
 
         assert task.id == "auth-T001"
         assert task.title == "Create User model"
@@ -342,7 +342,7 @@ class TestGenerateEdisonTask:
         )
 
         feature = parse_feature_folder(feature_dir)
-        task = generate_edison_task(feature.tasks[0], feature, prefix="auth")
+        task = generate_edison_task(feature.tasks[0], feature, prefix="auth", project_root=tmp_path)
 
         assert task.id == "auth-T012"
         assert "user-story-1" in task.tags
@@ -364,12 +364,13 @@ class TestGenerateEdisonTask:
         (feature_dir / "data-model.md").write_text("# Data Model")
 
         feature = parse_feature_folder(feature_dir)
-        task = generate_edison_task(feature.tasks[0], feature, prefix="auth")
+        task = generate_edison_task(feature.tasks[0], feature, prefix="auth", project_root=tmp_path)
 
         # Check description contains links
         assert "specs/auth/spec.md" in task.description
         assert "specs/auth/plan.md" in task.description
         assert "specs/auth/data-model.md" in task.description
+        assert "specs/auth/tasks.md" in task.description
         assert "User Story US1" in task.description
         assert "src/models/user.py" in task.description
 
@@ -406,7 +407,7 @@ class TestGenerateTaskDescription:
             completed=False,
         )
 
-        description = generate_task_description(task, feature)
+        description = generate_task_description(task, feature, project_root=tmp_path)
 
         # Check structure
         assert "**SpecKit Source**:" in description
@@ -417,7 +418,9 @@ class TestGenerateTaskDescription:
         assert "**User Story**: US2" in description
         assert "## Implementation Target" in description
         assert "`src/services/payment.py`" in description
-        assert "## Required Reading" in description
+        assert "## Workflow (MUST FOLLOW)" in description
+        assert "## Required Reading (MUST)" in description
+        assert "specs/payment/tasks.md" in description
         assert "specs/payment/spec.md" in description
         assert "specs/payment/plan.md" in description
         assert "specs/payment/data-model.md" in description
@@ -447,13 +450,14 @@ class TestGenerateTaskDescription:
             completed=False,
         )
 
-        description = generate_task_description(task, feature)
+        description = generate_task_description(task, feature, project_root=tmp_path)
 
-        # Should not include links to missing docs
+        # Should not include links to missing optional docs (spec/data-model/contracts)
         assert "spec.md" not in description
-        assert "plan.md" not in description
         assert "data-model.md" not in description
         assert "contracts/" not in description
+        # plan.md is required by Spec Kit workflow and is referenced (may be missing)
+        assert "plan.md" in description
         # Should still have basic structure
         assert "**SpecKit Source**:" in description
         assert "## Original SpecKit Task" in description
@@ -556,6 +560,50 @@ class TestSyncSpecKitFeature:
         task_dir = repo_env / ".project" / "tasks" / "todo"
         assert (task_dir / "auth-T001.md").exists()
         assert (task_dir / "auth-T002.md").exists()
+
+    def test_sync_sets_depends_on_for_execution_order(self, repo_env: Path):
+        """Sync sets depends_on to enforce SpecKit execution order (+ [P] waves + phases)."""
+        from edison.core.import_.speckit import sync_speckit_feature, parse_feature_folder
+        from edison.core.task.repository import TaskRepository
+
+        feature_dir = repo_env / "specs" / "auth"
+        feature_dir.mkdir(parents=True)
+        (feature_dir / "tasks.md").write_text(
+            """
+## Phase 1: Setup
+
+- [ ] T001 Setup project
+- [ ] T002 [P] Create A in src/a.py
+- [ ] T003 [P] Create B in src/b.py
+- [ ] T004 Configure A in src/a.py
+
+## Phase 2: Foundational
+
+- [ ] T010 [P] Add C in src/c.py
+- [ ] T011 Add D in src/d.py
+"""
+        )
+
+        feature = parse_feature_folder(feature_dir)
+        sync_speckit_feature(feature, prefix="auth", project_root=repo_env, create_qa=False)
+
+        task_repo = TaskRepository(repo_env)
+        t1 = task_repo.get("auth-T001")
+        t2 = task_repo.get("auth-T002")
+        t3 = task_repo.get("auth-T003")
+        t4 = task_repo.get("auth-T004")
+        t10 = task_repo.get("auth-T010")
+        t11 = task_repo.get("auth-T011")
+
+        assert t1 is not None and t2 is not None and t3 is not None
+        assert t4 is not None and t10 is not None and t11 is not None
+
+        assert t1.depends_on == []
+        assert t2.depends_on == ["auth-T001"]
+        assert t3.depends_on == ["auth-T001"]
+        assert t4.depends_on == ["auth-T001", "auth-T002", "auth-T003"]
+        assert t10.depends_on == ["auth-T001", "auth-T002", "auth-T003", "auth-T004"]
+        assert t11.depends_on == ["auth-T001", "auth-T002", "auth-T003", "auth-T004", "auth-T010"]
 
     def test_sync_updates_existing_tasks(self, repo_env: Path):
         """Re-sync updates task metadata when changed."""

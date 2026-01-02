@@ -234,6 +234,7 @@ def generate_edison_task(
     prefix: str,
     *,
     project_root: Path,
+    depends_on: Optional[list[str]] = None,
 ) -> Task:
     """Generate an Edison Task from a SpecKit task.
 
@@ -266,6 +267,7 @@ def generate_edison_task(
         title=speckit_task.description,
         description=description,
         tags=tags,
+        depends_on=list(depends_on or []),
         integration={
             "kind": "speckit",
             "speckit": {
@@ -429,15 +431,29 @@ def sync_speckit_feature(
     task_repo = TaskRepository(project_root)
     resolved_project_root = task_repo.project_root
 
+    depends_map = _compute_speckit_depends_on(feature.tasks)
+    edison_depends = {
+        tid: [f"{prefix}-{dep}" for dep in deps]
+        for tid, deps in depends_map.items()
+    }
+
     return sync_items_to_tasks(
         feature.tasks,
         task_repo=task_repo,
         item_key=lambda t: t.id,
         build_task=lambda t: generate_edison_task(
-            t, feature, prefix, project_root=resolved_project_root
+            t,
+            feature,
+            prefix,
+            project_root=resolved_project_root,
+            depends_on=edison_depends.get(t.id, []),
         ),
         update_task=lambda task, t: _update_edison_task(
-            task, t, feature, project_root=resolved_project_root
+            task,
+            t,
+            feature,
+            project_root=resolved_project_root,
+            depends_on=edison_depends.get(t.id, []),
         ),
         is_managed_task=lambda t: t.id.startswith(f"{prefix}-T"),
         task_key=lambda t: _extract_speckit_id(t.id, prefix),
@@ -533,6 +549,7 @@ def _update_edison_task(
     feature: SpecKitFeature,
     *,
     project_root: Path,
+    depends_on: list[str],
 ) -> None:
     """Update an existing Edison task with new SpecKit data.
 
@@ -552,10 +569,69 @@ def _update_edison_task(
             "task_id": speckit_task.id,
         },
     }
+    task.depends_on = list(depends_on or [])
 
     # Update tags
     if "speckit" not in task.tags:
         task.tags.append("speckit")
+
+
+def _compute_speckit_depends_on(tasks: list[SpecKitTask]) -> dict[str, list[str]]:
+    """Compute dependency ordering from SpecKit tasks.md.
+
+    Spec Kit's execution flow is primarily order- and phase-driven, with `[P]` marking
+    tasks that can run in parallel *within the current phase*.
+
+    Edison uses `depends_on` to enforce claim order. This mapping is a conservative
+    approximation of Spec Kit's intent:
+    - Phase-by-phase: any task in a later phase depends on all tasks in the previous phase.
+    - Within a phase:
+      - Non-[P] tasks depend on all prior tasks in the phase (sequential barrier).
+      - [P] tasks depend on the most recent sequential barrier task (and the phase gate).
+    - File conflicts: if a [P] task targets a file already targeted in the current wave,
+      treat it as non-parallel for ordering purposes.
+    """
+    deps: dict[str, list[str]] = {}
+
+    wave: list[SpecKitTask] = []
+    wave_files: set[str] = set()
+    barrier_id: str | None = None
+    phase_gate: list[str] = []
+    current_phase: str | None = None
+
+    for task in tasks:
+        if current_phase is None:
+            current_phase = task.phase
+        elif task.phase != current_phase:
+            # Close previous phase: next phase tasks must wait for all prior tasks.
+            phase_gate = [t.id for t in wave]
+            wave = []
+            wave_files = set()
+            barrier_id = None
+            current_phase = task.phase
+
+        is_parallel = bool(task.parallel)
+        if is_parallel and task.target_file and task.target_file in wave_files:
+            is_parallel = False
+
+        if is_parallel:
+            d = list(phase_gate)
+            if barrier_id:
+                d.append(barrier_id)
+            deps[task.id] = d
+            wave.append(task)
+            if task.target_file:
+                wave_files.add(task.target_file)
+        else:
+            d = list(phase_gate) + [t.id for t in wave]
+            deps[task.id] = d
+            wave.append(task)
+            if task.target_file:
+                wave_files.add(task.target_file)
+            barrier_id = task.id
+
+    # Within the first phase, phase_gate is empty; deps already computed.
+    return deps
 
 
 __all__ = [
