@@ -9,7 +9,7 @@ from edison.data import get_data_path
 def test_templates_type_exists_and_legacy_types_removed(isolated_project_env: Path) -> None:
     manager = ComposableTypesManager(project_root=isolated_project_env)
 
-    assert manager.get_type("templates") is not None
+    assert manager.get_type("artifacts") is not None
     assert manager.get_type("documents") is None
     assert manager.get_type("templates_documents") is None
     assert manager.get_type("templates_reports") is None
@@ -18,7 +18,7 @@ def test_templates_type_exists_and_legacy_types_removed(isolated_project_env: Pa
 def test_compose_templates_writes_artifact_files(isolated_project_env: Path) -> None:
     # Bundled templates live under templates/artifacts/ so the templates root can
     # contain non-artifact templates (commands, hooks, etc.) without being
-    # accidentally composed into `.edison/_generated/templates/`.
+    # accidentally composed into `.edison/_generated/templates/artifacts/`.
     assert (get_data_path("templates") / "artifacts" / "TASK.md").exists()
     assert (get_data_path("templates") / "artifacts" / "QA.md").exists()
     assert (get_data_path("templates") / "artifacts" / "IMPLEMENTATION_REPORT.md").exists()
@@ -28,7 +28,7 @@ def test_compose_templates_writes_artifact_files(isolated_project_env: Path) -> 
 
     manager = ComposableTypesManager(project_root=isolated_project_env)
 
-    manager.write_type("templates")
+    manager.write_type("artifacts")
 
     generated_root = (
         isolated_project_env / ".edison" / "_generated" / "templates" / "artifacts"

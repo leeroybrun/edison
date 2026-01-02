@@ -108,13 +108,15 @@ After initialization, compose all prompts, guidelines, and constitutions:
 # Compose everything
 edison compose all
 
-# Or compose specific types
-edison compose agents
-edison compose validators
-edison compose guidelines
-edison compose constitutions
-edison compose start
-edison compose coderabbit
+# Or compose specific types (via flags on `compose all`)
+edison compose all --agents
+edison compose all --validators
+edison compose all --guidelines
+edison compose all --constitutions
+edison compose all --start
+edison compose all --roots
+edison compose all --schemas
+edison compose all --artifacts
 ```
 
 ### Create and Work on Tasks

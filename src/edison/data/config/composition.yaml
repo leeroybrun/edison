@@ -13,10 +13,11 @@
 #     adapters: Platform adapter configurations (claude, cursor, pal, etc.)
 #
 # Usage:
-#   edison compose agents        # Compose only agents
-#   edison compose roots         # Compose root entry points
-#   edison compose all           # Compose everything
-#   edison compose all --claude  # Compose + sync to Claude
+#   edison compose all              # Compose everything
+#   edison compose all --agents     # Compose only agents
+#   edison compose all --roots      # Compose root entry points (AGENTS.md/CLAUDE.md)
+#   edison compose all --artifacts  # Compose artifact templates (TASK/QA/Report)
+#   edison compose all --claude     # Compose + sync to Claude
 # =============================================================================
 
 composition:
@@ -204,7 +205,7 @@ composition:
     # -------------------------------------------------------------------------
     # TEMPLATES (Task/QA/Report scaffolds)
     # -------------------------------------------------------------------------
-    templates:
+    artifacts:
       enabled: true
       description: "Artifact templates (TASK.md, QA.md, IMPLEMENTATION_REPORT.md)"
       composition_mode: section_merge

@@ -43,6 +43,7 @@ def args() -> Namespace:
     a.roots = False
     a.schemas = False
     a.documents = False
+    a.artifacts = False
     a.dry_run = False
     a.json = False
     a.claude = False
@@ -50,6 +51,7 @@ def args() -> Namespace:
     a.pal = False
     a.coderabbit = False
     a.all_adapters = False
+    a.no_adapters = False
     a.atomic_generated = False
     a.clean_generated = False
     a.profile = False
@@ -98,3 +100,21 @@ def test_compose_all_removes_legacy_unprefixed_validator_prompt_files(tmp_path: 
     assert (legacy_dir / "validator-test-val.txt").exists()
     # ...and legacy file should be gone to avoid ambiguity.
     assert not legacy_file.exists()
+
+
+def test_compose_all_documents_flag_is_alias_for_artifacts(tmp_path: Path, args: Namespace) -> None:
+    """
+    `--documents` is a deprecated alias for the artifact templates type.
+
+    We keep it for backward compatibility, but it must behave like a per-type
+    selection (i.e., not a full compose).
+    """
+    _setup_minimal_project(tmp_path)
+    args.project_root = str(tmp_path)
+
+    args.documents = True
+    args.atomic_generated = True  # only valid for full compose
+    args.no_adapters = True
+
+    # If --documents is treated as a per-type selection, atomic-generated should error.
+    assert main(args) == 1

@@ -44,7 +44,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         ("--cursor-rules", "Only compose Cursor IDE rules (.mdc files)"),
         ("--roots", "Only compose root entry files (AGENTS.md, CLAUDE.md)"),
         ("--schemas", "Only compose JSON schemas"),
-        ("--documents", "Only compose document templates"),
+        ("--artifacts", "Only compose artifact templates (Task/QA/Report scaffolds)"),
+        ("--documents", "DEPRECATED: alias for --artifacts"),
     ]:
         parser.add_argument(flag, action="store_true", help=help_text)
     
@@ -134,6 +135,12 @@ def main(args: argparse.Namespace) -> int:
 
                 # Enabled types + request selection
                 enabled_types = {t.name for t in types_manager.get_enabled_types()}
+
+                # Back-compat aliases for renamed content-types.
+                # Keep old CLI flags working even when the underlying config key changes.
+                if bool(getattr(args, "documents", False)) and not bool(getattr(args, "artifacts", False)):
+                    setattr(args, "artifacts", True)
+
                 requested_types: set[str] = set()
                 for type_cfg in types_manager.get_all_types():
                     attr_name = type_cfg.cli_flag.replace("-", "_")
