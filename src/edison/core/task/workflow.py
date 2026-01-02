@@ -216,18 +216,18 @@ class TaskQAWorkflow:
             SessionRepository as _SessionRepository,
         )
 
-        sess_repo = _SessionRepository(project_root=self.project_root)
-        if not sess_repo.exists(session_id):
-            raise PersistenceError(f"Session not found: {session_id}")
-        if is_session_expired(session_id, project_root=self.project_root):
-            raise PersistenceError(
-                f"Session {session_id} is expired; run `edison session cleanup-expired` or create a new session."
-            )
-
         # 1. Load task
         task = self.task_repo.get(task_id)
         if not task:
             raise PersistenceError(f"Task not found: {task_id}")
+
+        sess_repo = _SessionRepository(project_root=self.project_root)
+        if sess_repo.exists(session_id) and is_session_expired(
+            session_id, project_root=self.project_root
+        ):
+            raise PersistenceError(
+                f"Session {session_id} is expired; run `edison session cleanup-expired` or create a new session."
+            )
 
         takeover_from: str | None = None
         if task.session_id and str(task.session_id) != str(session_id):
@@ -238,17 +238,30 @@ class TaskQAWorkflow:
                     "Use --reclaim to move it into the new session."
                 )
 
-            reason = (takeover_reason or "").strip() or "reclaimed"
-
             takeover_from = str(task.session_id)
+            reason = (takeover_reason or "").strip()
+            if not reason:
+                raise PersistenceError(
+                    "Takeover requires an explicit reason (use --reclaim-reason)."
+                )
+
             old = sess_repo.get(takeover_from)
-            old_state = str(getattr(old, "state", "") or "").strip().lower() if old else ""
+            if old is None:
+                raise PersistenceError(f"Session not found: {takeover_from}")
+
+            workflow_cfg = WorkflowConfig(repo_root=self.project_root)
+            active_state = workflow_cfg.get_initial_state("session")
+            old_state = str(getattr(old, "state", "") or "").strip()
             old_expired = is_session_expired(takeover_from, project_root=self.project_root)
 
-            # Reclaims are allowed even when the previous session is still active.
-            # The CLI is responsible for surfacing a warning when reclaiming from a non-expired session.
+            # Active old sessions must block takeovers; only inactive/expired sessions are eligible.
+            if not old_expired and old_state == active_state:
+                raise PersistenceError(
+                    f"Task {task_id} is already claimed by active session '{takeover_from}'. "
+                    "Resolve the old session or wait for it to expire before reclaiming."
+                )
 
-        workflow_config = WorkflowConfig()
+        workflow_config = WorkflowConfig(repo_root=self.project_root)
         wip_state = workflow_config.get_semantic_state("task", "wip")
 
         # Build context for guards - include proposed session_id for guard evaluation.
