@@ -60,8 +60,18 @@ def list_start_prompts(project_root: Path) -> List[str]:
 
 
 def read_start_prompt(project_root: Path, prompt_id: str) -> str:
-    """Read a start prompt by id (accepts with/without START_ prefix)."""
-    return find_start_prompt_path(project_root, prompt_id).read_text(encoding="utf-8", errors="strict")
+    """Read a start prompt by id (accepts with/without START_ prefix).
+
+    Start prompts are authored as Edison templates (includes, include-section,
+    config vars, functions, etc.). In fully composed projects, prompts are
+    materialized under `<project>/<project-config-dir>/_generated/start/`.
+
+    However tests and new repos may not have those generated artifacts yet. To
+    keep behavior consistent, always run the template engine at read-time.
+    """
+    path = find_start_prompt_path(project_root, prompt_id)
+    raw = path.read_text(encoding="utf-8", errors="strict")
+    return _render_start_prompt(project_root, raw, prompt_id=prompt_id)
 
 
 def find_start_prompt_path(project_root: Path, prompt_id: str) -> Path:
@@ -93,3 +103,49 @@ __all__ = [
     "find_start_prompt_path",
     "read_start_prompt",
 ]
+
+
+def _render_start_prompt(project_root: Path, raw: str, *, prompt_id: str) -> str:
+    """Render a START_* prompt through the TemplateEngine.
+
+    This is intentionally side-effect free (no materialization).
+    """
+    # Load config (core + project overlays) and active packs so that:
+    # - {{config.*}} resolves consistently with other composition surfaces
+    # - {{fn:*}} loads any pack/project function overrides
+    from edison.core.config import ConfigManager
+
+    cfg_mgr = ConfigManager(repo_root=project_root)
+    cfg = cfg_mgr.load_config(validate=False, include_packs=False)
+    packs_section = cfg.get("packs", {}) or {}
+    active = packs_section.get("active", []) or []
+    packs = [str(p) for p in active if p] if isinstance(active, list) else []
+
+    # Resolve includes against the composed view (core → packs → user → project).
+    from edison.core.composition.includes import ComposedIncludeProvider
+    from edison.core.composition.registries._types_manager import ComposableTypesManager
+    from edison.core.composition.engine import TemplateEngine
+    from edison.data import get_data_path as _get_data_path
+
+    types_manager = ComposableTypesManager(project_root=project_root)
+    include_provider = ComposedIncludeProvider(
+        types_manager=types_manager,
+        packs=tuple(packs),
+        materialize=False,
+    ).build()
+
+    engine = TemplateEngine(
+        config=cfg,
+        packs=packs,
+        project_root=project_root,
+        source_dir=Path(_get_data_path("")),
+        include_provider=include_provider,
+        strip_section_markers=True,
+    )
+
+    rendered, _report = engine.process(
+        raw,
+        entity_name=_normalize_prompt_id(prompt_id),
+        entity_type="start",
+    )
+    return rendered

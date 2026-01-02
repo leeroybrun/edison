@@ -34,3 +34,21 @@ def test_read_start_prompt_errors_with_available_list(tmp_path: Path) -> None:
         read_start_prompt(project_root, "NOPE")
 
     assert "BAR" in str(exc.value)
+
+
+def test_read_start_prompt_processes_includes_and_functions_when_not_generated(
+    isolated_project_env: Path,
+) -> None:
+    """When .edison/_generated/start is missing, read_start_prompt() should still render templates."""
+    from edison.core.session.start_prompts import read_start_prompt
+
+    content = read_start_prompt(isolated_project_env, "NEW_SESSION")
+
+    assert content.startswith("# START_NEW_SESSION")
+    # Includes from the bundled START template should be expanded.
+    assert "{{include:" not in content
+    assert "{{include-section:" not in content
+    # Functions inside included guidelines must be resolved (e.g. paths helpers).
+    assert "{{fn:" not in content
+    assert "Worktree Confinement (CRITICAL)" in content
+    assert ".project/" in content
