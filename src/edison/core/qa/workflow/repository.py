@@ -142,7 +142,7 @@ class QARepository(
         if not has_frontmatter(content):
             raise PersistenceError(
                 f"QA file at {path} is missing YAML frontmatter. "
-                "Restore the file from the composed template (.edison/_generated/templates/QA.md) "
+                "Restore the file from the composed template (.edison/_generated/templates/artifacts/QA.md) "
                 "or recreate the QA via `edison qa new <task-id>`."
             )
 

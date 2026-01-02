@@ -212,7 +212,7 @@ composition:
       registry: null  # Use GenericRegistry
       content_path: "templates/artifacts"
       file_pattern: "*.md"
-      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates/artifacts"
       filename_pattern: "{name}.md"
 
     # -------------------------------------------------------------------------

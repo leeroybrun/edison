@@ -30,7 +30,9 @@ def test_compose_templates_writes_artifact_files(isolated_project_env: Path) -> 
 
     manager.write_type("templates")
 
-    generated_root = isolated_project_env / ".edison" / "_generated" / "templates"
+    generated_root = (
+        isolated_project_env / ".edison" / "_generated" / "templates" / "artifacts"
+    )
 
     task_tpl = generated_root / "TASK.md"
     qa_tpl = generated_root / "QA.md"
@@ -40,8 +42,9 @@ def test_compose_templates_writes_artifact_files(isolated_project_env: Path) -> 
     assert qa_tpl.exists()
     assert impl_tpl.exists()
 
-    # Exclude non-artifact markdown from the generated templates output.
-    assert not (generated_root / "README.md").exists()
+    # Generated artifacts are kept under a stable subdir, so they don't mix with
+    # other generated template-y outputs now or in the future.
+    assert not (isolated_project_env / ".edison" / "_generated" / "templates" / "README.md").exists()
 
     assert "<!-- REQUIRED FILL: AcceptanceCriteria -->" in task_tpl.read_text(encoding="utf-8")
     assert "<!-- REQUIRED FILL: ValidationDimensions -->" in qa_tpl.read_text(encoding="utf-8")

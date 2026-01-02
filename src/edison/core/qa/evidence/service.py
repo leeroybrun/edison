@@ -234,7 +234,7 @@ class EvidenceService:
 
             repo_root = (self.project_root or PathResolver.resolve_project_root()).resolve()
             project_cfg = get_project_config_dir(repo_root, create=False)
-            tpl_path = project_cfg / "_generated" / "templates" / "IMPLEMENTATION_REPORT.md"
+            tpl_path = project_cfg / "_generated" / "templates" / "artifacts" / "IMPLEMENTATION_REPORT.md"
             if not tpl_path.exists():
                 tpl_path = get_data_path("templates") / "artifacts" / "IMPLEMENTATION_REPORT.md"
             raw = tpl_path.read_text(encoding="utf-8", errors="strict")
