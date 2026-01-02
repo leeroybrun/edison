@@ -83,6 +83,17 @@ def main(args: argparse.Namespace) -> int:
         formatter.json_output(result) if formatter.json_mode else formatter.text(
             f"QA ready: {qa_id} ({qa.state})\n  @{rel_path}"
         )
+        if not formatter.json_mode:
+            try:
+                from edison.core.artifacts import format_required_fill_next_steps_for_file
+
+                hint = format_required_fill_next_steps_for_file(qa_path, display_path=str(rel_path))
+                if hint:
+                    formatter.text("")
+                    formatter.text(hint)
+            except Exception:
+                # Fail-open: post-create UX helpers must not break QA creation.
+                pass
 
         return 0
 

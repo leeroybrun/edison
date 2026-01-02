@@ -200,6 +200,32 @@ def main(args: argparse.Namespace) -> int:
             "count": len(created),
         }) if formatter.json_mode else formatter.text(result_text)
 
+        if created and not formatter.json_mode:
+            try:
+                from edison.core.artifacts import format_required_fill_next_steps_for_file
+
+                for fu in created:
+                    followup_id = fu.get("id") if isinstance(fu, dict) else None
+                    if not followup_id:
+                        continue
+                    try:
+                        followup_path = task_repo.get_path(str(followup_id))
+                        rel_path = (
+                            followup_path.relative_to(project_root)
+                            if followup_path.is_relative_to(project_root)
+                            else followup_path
+                        )
+                        hint = format_required_fill_next_steps_for_file(
+                            followup_path, display_path=str(rel_path)
+                        )
+                        if hint:
+                            formatter.text("")
+                            formatter.text(hint)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+
         return 0
 
     except Exception as e:

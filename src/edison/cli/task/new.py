@@ -169,6 +169,18 @@ def main(args: argparse.Namespace) -> int:
                     formatter.text(f"- {m.task_id}: {round(m.score, 2)} — {m.title}")
                 formatter.text("")
             formatter.text(f"Created task: {task_entity.id} ({task_entity.state})\n  @{rel_path}")
+            try:
+                from edison.core.artifacts import format_required_fill_next_steps_for_file
+
+                hint = format_required_fill_next_steps_for_file(task_path, display_path=str(rel_path))
+                if hint:
+                    # Keep stdout stable for scripts/tests that parse the created path.
+                    # UX hints are still valuable, but they should not be interleaved with
+                    # stdout payloads.
+                    print(f"\n{hint}", file=sys.stderr)
+            except Exception:
+                # Fail-open: post-create UX helpers must not break task creation.
+                pass
 
         return 0
 

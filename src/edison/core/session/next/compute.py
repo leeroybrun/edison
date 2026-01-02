@@ -186,6 +186,44 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "childIds": list(e.get("childIds") or []) if isinstance(e.get("childIds"), list) else [],
                 }
 
+    # Required-fill reminders: for tasks that declare REQUIRED FILL markers, prompt
+    # the orchestrator/LLM to complete them before starting implementation work.
+    try:
+        from edison.core.artifacts import find_missing_required_sections
+
+        todo_state = STATES["task"]["todo"]
+        wip_state = STATES["task"]["wip"]
+
+        for task_id, entry in tasks_map.items():
+            status = entry.get("status") if isinstance(entry, dict) else None
+            if status not in (todo_state, wip_state):
+                continue
+
+            try:
+                path = task_repo.get_path(task_id)
+                content = path.read_text(encoding="utf-8", errors="strict")
+            except Exception:
+                continue
+
+            missing = find_missing_required_sections(content)
+            if not missing:
+                continue
+
+            actions.append(
+                {
+                    "id": "task.fill_required_sections",
+                    "entity": "task",
+                    "recordId": task_id,
+                    "cmd": ["edison", "task", "show", task_id],
+                    "rationale": f"Task is missing required sections: {', '.join(missing)}",
+                    "blocking": True,
+                    "missingRequiredSections": missing,
+                }
+            )
+    except Exception:
+        # Fail-open: session-next must not crash due to required-fill helpers/config.
+        pass
+
     similarity_index = None
 
     def _similar(title: str) -> list[dict[str, object]]:

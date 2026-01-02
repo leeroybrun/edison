@@ -1,0 +1,8 @@
+artifacts:
+  requiredFill:
+    marker:
+      prefix: "<!-- REQUIRED FILL:"
+      suffix: "-->"
+    # If this token prefix appears anywhere in a REQUIRED section, the section is unfilled.
+    placeholderTokenPrefix: "<<FILL"
+

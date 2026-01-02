@@ -29,27 +29,28 @@ model: {{model}}
 <!-- /EXTENSIBLE: Summary -->
 
 <!-- EXTENSIBLE: ProblemStatement -->
+<!-- REQUIRED FILL: ProblemStatement -->
 ## Problem Statement
 
-<!-- Describe the problem being solved -->
+<<FILL: describe the problem being solved>>
 
 <!-- /EXTENSIBLE: ProblemStatement -->
 
 <!-- EXTENSIBLE: Objectives -->
+<!-- REQUIRED FILL: Objectives -->
 ## Objectives
 
 <!-- List specific, measurable objectives with checkboxes -->
-- [ ] Objective 1
-- [ ] Objective 2
+- [ ] <<FILL: objective>>
 
 <!-- /EXTENSIBLE: Objectives -->
 
 <!-- EXTENSIBLE: AcceptanceCriteria -->
+<!-- REQUIRED FILL: AcceptanceCriteria -->
 ## Acceptance Criteria
 
 <!-- List specific criteria that must be met for task completion -->
-- [ ] Criterion 1
-- [ ] Criterion 2
+- [ ] <<FILL: acceptance criterion>>
 
 <!-- /EXTENSIBLE: AcceptanceCriteria -->
 
@@ -118,11 +119,12 @@ path/to/existing/file.py
 <!-- /EXTENSIBLE: RelatedFiles -->
 
 <!-- EXTENSIBLE: PrimaryFiles -->
+<!-- REQUIRED FILL: PrimaryFiles -->
 ## Primary Files / Areas
 
 Primary Files / Areas:
 <!-- Add one path per line -->
-- path/to/file.ext
+- <<FILL: path/to/file.ext>>
 
 <!-- /EXTENSIBLE: PrimaryFiles -->
 
