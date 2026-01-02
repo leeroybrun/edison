@@ -25,15 +25,19 @@ def test_missing_evidence_blockers_uses_config(isolated_project_env: Path):
     # Create custom config with custom required files
     config_dir = isolated_project_env / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "custom-validators.yaml"
+    config_file = config_dir / "qa.yaml"
     config_file.write_text("""
 validation:
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
+  evidence:
+    requiredFiles:
+      - command-type-check.txt
+      - command-lint.txt
+      - command-test.txt
+      - command-build.txt
 """)
+
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
 
     # Act - use real EvidenceService and QAConfig
     blockers = missing_evidence_blockers(task_id)
@@ -94,13 +98,14 @@ def test_missing_evidence_blockers_custom_files_in_config(isolated_project_env: 
     # Create custom config with different required files
     config_dir = isolated_project_env / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "custom-validators.yaml"
+    config_file = config_dir / "qa.yaml"
     config_file.write_text("""
 validation:
-  requiredEvidenceFiles:
-    - custom-check.txt
-    - custom-test.txt
-    - custom-build.txt
+  evidence:
+    requiredFiles:
+      - custom-check.txt
+      - custom-test.txt
+      - custom-build.txt
 """)
 
     # Clear config cache to ensure our custom config is loaded
@@ -227,12 +232,13 @@ def test_qa_config_real_behavior(isolated_project_env: Path):
     # Create custom config
     config_dir = isolated_project_env / ".edison" / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "test-qa.yaml"
+    config_file = config_dir / "qa.yaml"
     config_file.write_text("""
 validation:
-  requiredEvidenceFiles:
-    - custom-file-1.txt
-    - custom-file-2.txt
+  evidence:
+    requiredFiles:
+      - custom-file-1.txt
+      - custom-file-2.txt
   execution:
     mode: parallel
     concurrency: 8
@@ -253,7 +259,7 @@ validation:
     # Verify validation config is accessible
     validation_config = qa_config.get_validation_config()
     assert isinstance(validation_config, dict)
-    assert "requiredEvidenceFiles" in validation_config
+    assert "evidence" in validation_config
 
 
 def test_missing_evidence_blockers_multiple_rounds(isolated_project_env: Path):
