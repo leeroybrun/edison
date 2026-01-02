@@ -280,7 +280,7 @@ class RegistryError(CompositionError):
     pass
 
 
-class RulesCompositionError(RegistryError):
+class RulesCompositionError(RuntimeError, RegistryError):
     """Raised when rule registry loading or composition fails."""
 
     pass

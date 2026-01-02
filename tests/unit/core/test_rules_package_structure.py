@@ -1,11 +1,12 @@
 """
-Test that rules.py has been split into a rules/ package.
+Test that rules.py has been split into a rules/ package and owns rule composition.
 
 This test ensures the new package structure is in place and all
 public symbols are still accessible via edison.core.rules imports.
 """
 from __future__ import annotations
 
+import importlib
 import pytest
 from pathlib import Path
 
@@ -64,20 +65,20 @@ def test_rules_package_exports_error_classes():
 def test_rules_package_module_files_exist():
     """Verify all expected module files exist in the rules/ package.
 
-    Note: registry.py, helpers.py, and file_patterns.py have been moved to
-    composition/registries/ for architectural coherence. The rules package
-    now only contains runtime enforcement components.
+    RulesRegistry is a rules-domain service and must live under edison.core.rules.
     """
     from edison.core import rules
 
     package_path = Path(rules.__file__).parent
 
-    # Check all expected module files exist (runtime components only)
+    # Check all expected module files exist (minimum contract)
     expected_files = {
         '__init__.py',
         'engine.py',
+        'context.py',
         'models.py',
         'errors.py',
+        'checker.py',
         'checkers.py',
     }
 
@@ -86,12 +87,16 @@ def test_rules_package_module_files_exist():
     missing = expected_files - existing_files
     assert not missing, f"Missing expected module files: {missing}"
 
-    # Verify composition components are in their new location
-    from edison.core.composition.registries import rules as rules_registry
-    from edison.core.composition.registries import file_patterns as file_patterns_module
-    assert rules_registry.RulesRegistry is not None
-    assert rules_registry.compose_rules is not None
-    assert file_patterns_module.FilePatternRegistry is not None
+    # Registry is a subpackage (not a single file) to avoid `registry_*.py` prefix spam.
+    registry_pkg = package_path / "registry"
+    assert registry_pkg.is_dir(), "Expected rules/registry to be a directory"
+    assert (registry_pkg / "__init__.py").is_file(), "Expected rules/registry/__init__.py to exist"
+
+
+def test_no_back_compat_rules_registry_under_composition_registries() -> None:
+    """RulesRegistry must not be available under composition registries."""
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("edison.core.composition.registries.rules")
 
 
 def test_no_legacy_rules_py_file():
@@ -111,7 +116,8 @@ def test_module_files_under_500_loc():
 
     package_path = Path(rules.__file__).parent
 
-    for module_file in package_path.glob('*.py'):
+    module_files = list(package_path.glob('*.py')) + list((package_path / "registry").glob("*.py"))
+    for module_file in module_files:
         if module_file.name.startswith('__'):
             continue
 

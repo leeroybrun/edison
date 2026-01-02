@@ -79,7 +79,7 @@ def __getattr__(name: str):
     
     # Rules are now in core.rules
     rules_imports = {
-        "get_rules_for_role": ("edison.core.rules.registry", "get_rules_for_role"),
+        "get_rules_for_role": ("edison.core.rules", "get_rules_for_role"),
     }
 
     # IDE composition classes (from adapters.components and adapters.platforms)

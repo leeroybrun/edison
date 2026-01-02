@@ -4,8 +4,8 @@ These tests verify the APIs for loading and filtering rules by role
 from the bundled registry data.
 
 Note: The role-based APIs have been moved from RulesEngine to
-edison.core.composition.registries.rules for architectural coherence.
-They are still accessible via edison.core.rules for convenience.
+edison.core.rules.registry for architectural coherence.
+They are accessible via edison.core.rules for convenience imports.
 """
 from __future__ import annotations
 

@@ -848,7 +848,7 @@ def main(argv: list[str] | None = None) -> int:
                 rules_map: dict[str, dict[str, Any]] = {}
                 if project_root is not None:
                     try:
-                        from edison.core.rules.registry import RulesRegistry
+                        from edison.core.rules import RulesRegistry
 
                         packs = _get_active_packs_fast(project_root)
                         registry = RulesRegistry(project_root=project_root)

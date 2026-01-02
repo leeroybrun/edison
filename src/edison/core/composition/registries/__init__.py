@@ -5,7 +5,7 @@ Most content types use GenericRegistry via configuration.
 
 Special registries:
 - ConstitutionRegistry: Needs get_context_vars() for rules/reads injection
-- RulesRegistry: Domain service for rules (moved to core/rules/registry.py)
+- RulesRegistry: Domain service for rules (moved to core/rules/registry/)
 - SchemaRegistry: Schema composition (YAML; JSON Schema expressed in YAML)
 
 For entity metadata lookup, use core.registries instead:
@@ -36,7 +36,7 @@ from ..core.errors import (
     RulesCompositionError,
 )
 
-# Note: RulesRegistry has been moved to core/rules/registry.py
+# Note: RulesRegistry has been moved to core/rules/registry/
 # Import directly from there: from edison.core.rules import RulesRegistry
 
 __all__ = [
