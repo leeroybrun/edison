@@ -10,52 +10,30 @@ validation:
     quick:
       name: quick
       description: "Minimal validation for documentation-only changes"
-      validators:
-        - global-codex
+      # Presets are additive on top of the always_run global validators and the
+      # global baseline evidence (validation.evidence.requiredFiles).
+      validators: []
       required_evidence: []
-      blocking_validators:
-        - global-codex
 
     # Standard preset: full validation for code changes
     standard:
       name: standard
       description: "Standard validation for code changes"
       validators:
-        - global-codex
-        - global-claude
         - security
         - performance
-      required_evidence:
-        - command-type-check.txt
-        - command-lint.txt
-        - command-test.txt
-        - command-build.txt
-      blocking_validators:
-        - global-codex
-        - global-claude
-        - security
+      required_evidence: []
 
     # Strict preset: comprehensive validation with all validators
     strict:
       name: strict
       description: "Comprehensive validation for critical changes"
       validators:
-        - global-codex
-        - global-claude
         - global-gemini
         - security
         - performance
         - coderabbit
-      required_evidence:
-        - command-type-check.txt
-        - command-lint.txt
-        - command-test.txt
-        - command-build.txt
-      blocking_validators:
-        - global-codex
-        - global-claude
-        - security
-        - performance
+      required_evidence: []
 
   # Preset inference rules - determine preset from file patterns
   # Higher priority rules take precedence when files match multiple patterns

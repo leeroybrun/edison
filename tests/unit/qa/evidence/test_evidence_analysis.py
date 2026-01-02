@@ -28,12 +28,13 @@ def test_missing_evidence_blockers_uses_config(isolated_project_env: Path):
     config_file = config_dir / "qa.yaml"
     config_file.write_text("""
 validation:
-  evidence:
-    requiredFiles:
-      - command-type-check.txt
-      - command-lint.txt
-      - command-test.txt
-      - command-build.txt
+  presets:
+    standard:
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
 """)
 
     from edison.core.config.cache import clear_all_caches
@@ -55,7 +56,7 @@ validation:
 
 
 def test_missing_evidence_blockers_uses_fallback_defaults(isolated_project_env: Path):
-    """Test that missing_evidence_blockers uses fallback defaults if config not available."""
+    """Test that missing_evidence_blockers uses bundled preset defaults by default."""
     # Setup
     task_id = "test-task-002"
 
@@ -67,7 +68,7 @@ def test_missing_evidence_blockers_uses_fallback_defaults(isolated_project_env: 
 
     # Create no evidence files - this will trigger the missing files blocker
 
-    # Act - Real config will use defaults from bundled validators.yaml
+    # Act - Real config will use defaults from bundled config
     blockers = missing_evidence_blockers(task_id)
 
     # Assert - should use default values from bundled config
@@ -101,11 +102,12 @@ def test_missing_evidence_blockers_custom_files_in_config(isolated_project_env: 
     config_file = config_dir / "qa.yaml"
     config_file.write_text("""
 validation:
-  evidence:
-    requiredFiles:
-      - custom-check.txt
-      - custom-test.txt
-      - custom-build.txt
+  presets:
+    standard:
+      required_evidence:
+        - custom-check.txt
+        - custom-test.txt
+        - custom-build.txt
 """)
 
     # Clear config cache to ensure our custom config is loaded
@@ -282,6 +284,23 @@ def test_missing_evidence_blockers_multiple_rounds(isolated_project_env: Path):
 
     # Round 2 has only one file - this should be checked
     (round_2 / "command-type-check.txt").write_text("type check output")
+
+    # Make required evidence deterministic for this test (preset-aware)
+    config_dir = isolated_project_env / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "qa.yaml"
+    config_file.write_text("""
+validation:
+  presets:
+    standard:
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+""")
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
 
     # Act
     blockers = missing_evidence_blockers(task_id)

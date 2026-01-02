@@ -7,7 +7,6 @@ SUMMARY: List tasks ready to be claimed or mark task as ready (complete)
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 
 from edison.cli import (
@@ -36,7 +35,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--run",
         action="store_true",
-        help="(Optional) Generate/update trusted command evidence files for the current round before gating.",
+        help="DEPRECATED: Use `edison evidence capture <task>` instead (this flag no longer runs automation).",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -62,30 +61,14 @@ def main(args: argparse.Namespace) -> int:
             )
 
             if bool(getattr(args, "run", False)):
-                from edison.core.config.domains.qa import QAConfig
-                from edison.core.config.domains.tdd import TDDConfig
-                from edison.core.qa.evidence import EvidenceService
-                from edison.core.qa.evidence.command_evidence import write_command_evidence
-
-                tdd_cfg = TDDConfig(repo_root=project_root)
-                hmac_key = str(
-                    (tdd_cfg.hmac_key_env_var and (os.environ.get(tdd_cfg.hmac_key_env_var) or "")) or ""
-                ).strip()
-
-                ev = EvidenceService(record_id, project_root=project_root)
-                round_dir = ev.ensure_round(None)
-                required = QAConfig(repo_root=project_root).get_required_evidence_files()
-
-                round_dir.mkdir(parents=True, exist_ok=True)
-                for name in required:
-                    p = round_dir / str(name)
-                    write_command_evidence(
-                        p,
-                        runner="tasks/ready",
-                        cmd="echo ok",
-                        exit_code=1,
-                        hmac_key=hmac_key or None,
-                    )
+                raise ValueError(
+                    "`edison task ready --run` is no longer supported.\n"
+                    "Use:\n"
+                    "  - `edison evidence init <task>`\n"
+                    "  - `edison evidence capture <task>`\n"
+                    "  - `edison evidence status <task>`\n"
+                    "Then review the evidence output and re-run `edison task ready <task>`."
+                )
 
             # Use TaskQAWorkflow.complete_task() to move from wip -> done
             workflow = TaskQAWorkflow(project_root=project_root)

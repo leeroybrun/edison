@@ -51,13 +51,29 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
         ]
     latest = rounds[-1]
 
-    # Load required evidence files from config
-    qa_config = QAConfig()
-    required_files = qa_config.get_required_evidence_files()
+    # Preset-aware required evidence (single source via policy resolver).
+    try:
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+        resolver = ValidationPolicyResolver(project_root=project_root)
+        policy = resolver.resolve_for_task(task_id)
+        required_files = list(policy.required_evidence or [])
+    except Exception:
+        # Fail-open here: session next should remain usable even if policy inference fails.
+        # Guards remain fail-closed and will still enforce at the transition point.
+        qa_config = QAConfig()
+        required_files = qa_config.get_required_evidence_files()
 
     needed = set(required_files)
-    present = {p.name for p in latest.iterdir() if p.is_file()}
-    missing = sorted(needed - present)
+    try:
+        files = {str(p.relative_to(latest)) for p in list_evidence_files(latest)}
+    except Exception:
+        files = {p.name for p in latest.iterdir() if p.is_file()}
+
+    missing: list[str] = []
+    for pattern in required_files:
+        if not any(Path(name).match(str(pattern)) for name in files):
+            missing.append(str(pattern))
     if not missing:
         return []
     return [

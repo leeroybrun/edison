@@ -28,6 +28,7 @@ metadata:
 
 - **Accessibility is correctness**: semantic markup and keyboard support are non-negotiable.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (UI)**: do not add interactivity/state without a clear need; keep interactive boundaries minimal.
 
 ## Role

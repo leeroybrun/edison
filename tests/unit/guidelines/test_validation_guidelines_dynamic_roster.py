@@ -57,7 +57,7 @@ def test_validation_awareness_describes_tiered_architecture() -> None:
     awareness = get_data_path("guidelines") / "agents" / "VALIDATION_AWARENESS.md"
     content = awareness.read_text(encoding="utf-8").lower()
 
-    for tier in ("global", "critical", "specialized"):
+    for tier in ("global", "critical", "comprehensive"):
         assert tier in content, (
             f"VALIDATION_AWARENESS.md must describe the {tier} validator tier"
         )

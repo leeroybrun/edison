@@ -29,6 +29,7 @@ metadata:
 - **Review-only**: provide feedback; do not implement fixes.
 - **TDD enforcement**: verify RED → GREEN → REFACTOR evidence; reject missing evidence.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (review)**: “approve without reading”; ignoring scope/role boundaries; weakening tests to get green.
 
 ## Role

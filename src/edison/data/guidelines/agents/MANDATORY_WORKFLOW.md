@@ -27,17 +27,34 @@ You should receive from the orchestrator:
 
 If the task is missing acceptance criteria or scope boundaries, stop and ask for them.
 
-#### Phase 1: Implement (TDD + Context7)
+#### Phase 1: Implement (TDD + Context7 + Evidence)
 
 1. **Start tracking (MANDATORY)**:
 
 {{include-section:guidelines/includes/TRACKING.md#agent-tracking}}
 
    - This establishes the canonical tracking metadata for the current round.
-2. Read requirements and locate existing patterns in the codebase.
-3. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
-4. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
-5. Run the project’s automation suite (type-check, lint, test, build or equivalent). Capture outputs as evidence files **using the filenames from merged config** (required: {{fn:required_evidence_files("inline")}}).
+
+2. **Initialize evidence round (MANDATORY)**:
+   ```bash
+   edison evidence init <task-id>
+   ```
+   - Creates the round directory structure for capturing evidence
+   - Do this BEFORE starting implementation
+
+3. Read requirements and locate existing patterns in the codebase.
+
+4. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
+
+5. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
+
+6. **Run and capture evidence as you work (MANDATORY)**:
+   - After each GREEN phase, run `edison evidence capture <task-id>` (captures preset-required evidence; config-driven)
+   - **FIX any failures before proceeding** - evidence must show passing commands
+   - For targeted reruns: `edison evidence capture <task-id> --only <name>` (alias: `--command <name>`)
+   - Check status: `edison evidence status <task-id>`
+
+**Critical**: Evidence is NOT just for recording—it proves you ran commands and fixed issues. If you capture a failing run, fix and re-capture until `exitCode: 0` before handoff.
 
 #### Phase 2: Produce the Implementation Report (required)
 
@@ -71,11 +88,11 @@ edison task status <task-id>
 
 > Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa promote`, `edison qa bundle`, `edison qa validate`.
 
-## Evidence Required (minimum)
+## Evidence Required
 
-- Implementation report (`{{config.validation.artifactPaths.implementationReportFile}}`) exists for the latest round.
-- Automation evidence files exist per project config (required: {{fn:required_evidence_files("inline")}}).
-- Context7 markers exist for any required packages (if applicable).
+Before handoff: `edison evidence status <task-id>`
+
+All command evidence must show `exitCode: 0`. Run commands, fix failures, then capture.
 
 ## Critical Rules
 

@@ -36,11 +36,10 @@ class TestPresetConfigLoading:
         assert "quick" in presets
         quick = presets["quick"]
         assert quick.name == "quick"
-        # Quick preset should only require global-codex validator
-        assert "global-codex" in quick.validators
-        # Quick preset should not require automation evidence files
-        assert "command-test.txt" not in quick.required_evidence
-        assert "command-lint.txt" not in quick.required_evidence
+        # Quick preset does not add validators beyond always_run globals.
+        assert quick.validators == []
+        # Preset required_evidence is additive; baseline evidence is configured elsewhere.
+        assert quick.required_evidence == []
 
     def test_loads_bundled_standard_preset(self, tmp_path: Path, monkeypatch):
         """Core bundled config must include a 'standard' preset."""
@@ -56,9 +55,10 @@ class TestPresetConfigLoading:
         assert "standard" in presets
         standard = presets["standard"]
         assert standard.name == "standard"
-        # Standard preset should require full automation evidence
-        assert "command-test.txt" in standard.required_evidence or \
-               any("command-" in f for f in standard.required_evidence)
+        # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
+        assert "security" in standard.validators
+        assert "performance" in standard.validators
+        assert standard.required_evidence == []
 
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""

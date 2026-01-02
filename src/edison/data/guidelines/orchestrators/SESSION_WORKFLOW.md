@@ -174,10 +174,12 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 2. **Sub-agent will handle:**
    - ✅ Calling `edison session track start` (their mandatory first step)
+   - ✅ Initializing evidence round: `edison evidence init <task-id>`
    - ✅ Following TDD (RED → GREEN → REFACTOR)
    - ✅ Querying Context7 for post-training packages
    - ✅ Filling implementation report as they work
-   - ✅ Running automation commands (type-check, lint, test, build)
+   - ✅ Running and capturing evidence: `edison evidence capture <task-id>` (preset-required; config-driven)
+   - ✅ Fixing any failures before proceeding (evidence must show passing commands)
    - ✅ Calling `edison session track complete` (their mandatory last step)
 
 3. **Monitor progress:**
@@ -188,6 +190,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 4. **When sub-agent reports back:**
    - Review their implementation report at `{{fn:evidence_root}}/<task-id>/round-1/{{config.validation.artifactPaths.implementationReportFile}}`
+   - Verify evidence is complete: `edison evidence status <task-id>`
    - Check for blockers, follow-ups, completion status
    - Store `continuation_id` in task file and session record
 
@@ -199,7 +202,10 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 1. **YOU must follow the agent constitution (run `edison read AGENTS --type constitutions`):**
    - Call `edison session track start --task <id> --type implementation --model claude`
-   - Follow TDD, query Context7, fill report, run automation
+   - Initialize evidence: `edison evidence init <task-id>`
+   - Follow TDD, query Context7, fill report
+   - Run and capture evidence: `edison evidence capture <task-id>`
+   - Fix any failures before proceeding
    - Call `edison session track complete`
 
 2. **This is the SAME process sub-agents follow** - you get no shortcuts!
@@ -230,8 +236,12 @@ edison task ready <task-id> --session <session-id>
 This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
 - ✅ The latest round contains a non-empty implementation report (`{{config.validation.artifactPaths.implementationReportFile}}`; config-driven)
 - ✅ Automation evidence files exist per project config (required: {{fn:required_evidence_files("inline")}})
+- ✅ All evidence files show `exitCode: 0` (commands must pass, not just be recorded)
 - ✅ Any required Context7 markers exist for Context7‑detected packages in scope (per merged config)
+- ✅ Before session close: satisfy configured session-close evidence (`edison evidence capture <task-id> --session-close`), then review outputs (`edison evidence show ...`)
 - ✅ QA brief is ready to move `{{fn:semantic_state("qa","waiting")}} → {{fn:semantic_state("qa","todo")}}` once the task is `{{fn:semantic_state("task","done")}}`
+
+{{include-section:guidelines/includes/CONTEXT7.md#orchestrator}}
 
 <!-- section: RULE.PARALLEL.PROMOTE_PARENT_AFTER_CHILDREN -->
 Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every child task in the session scope is `{{fn:semantic_states("task","done,validated","pipe")}}`.

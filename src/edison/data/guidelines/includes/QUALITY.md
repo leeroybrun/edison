@@ -57,10 +57,10 @@
 ### Verification Commands
 Before marking any task as ready, run:
 ```bash
-# Verify all automation passes
-{{fn:ci_command("type-check")}} && {{fn:ci_command("lint")}} && {{fn:ci_command("test")}} && {{fn:ci_command("build")}}
+edison evidence capture <task-id>
+edison evidence status <task-id>
 ```
-All must pass with zero warnings.
+All required evidence must be present and show `exitCode: 0`.
 <!-- /section: agent-checklist -->
 
 <!-- section: validator-checklist -->

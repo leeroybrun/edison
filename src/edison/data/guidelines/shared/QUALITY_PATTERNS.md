@@ -74,7 +74,7 @@
 A task moves to `{{fn:task_state_dir("validated")}}/` only when:
 1) Implementation is complete and documented in the task file.
 2) Tests for new/changed code are present and passing.
-3) Automation (type-check, lint, test, build or project equivalent) succeeds.
+3) Required automation evidence succeeds (config-driven for the task’s validation preset).
 4) All blocking validators approve and QA sits in `{{fn:qa_state_dir("validated")}}/` (or project-equivalent state).
 5) Task and QA documents are up to date with status, findings, and evidence links.
 
@@ -83,10 +83,11 @@ A task moves to `{{fn:task_state_dir("validated")}}/` only when:
 Before marking any task as ready, run:
 
 ```bash
-{{fn:ci_command("type-check")}} && {{fn:ci_command("lint")}} && {{fn:ci_command("test")}} && {{fn:ci_command("build")}}
+edison evidence capture <task-id>
+edison evidence status <task-id>
 ```
 
-All must pass with zero warnings.
+All required evidence must be present and show `exitCode: 0`.
 
 ## No-Mock Policy
 

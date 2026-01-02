@@ -9,6 +9,7 @@ All guards follow the FAIL-CLOSED principle:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from edison.core.state.builtin.utils import get_task_id_from_context
@@ -133,8 +134,8 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         return False  # FAIL-CLOSED
 
     try:
-        from edison.core.config.domains.qa import QAConfig
         from edison.core.qa.evidence import EvidenceService, read_validator_reports
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
         # Check for validator reports
         v = read_validator_reports(str(task_id))
@@ -144,25 +145,44 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
                 "No validator reports found; run `edison qa validate <task> --execute` first."
             )
 
-        # Also check required evidence files exist
-        qa_config = QAConfig()
-        ev = EvidenceService(str(task_id), project_root=qa_config.repo_root)
+        # Also check required evidence exists (preset-aware, includes global baseline).
+        ev = EvidenceService(str(task_id))
         round_num = ev.get_current_round()
         if round_num is None:
             raise ValueError(
                 "Missing evidence: no round-* evidence directory found; run `edison qa validate <task> --execute --new-round`."
             )
         round_dir = ev.get_round_dir(round_num)
-        required = qa_config.get_required_evidence_files()
-        present = (
-            {p.name for p in round_dir.iterdir() if p.is_file()} if round_dir.exists() else set()
+
+        session_obj = ctx.get("session")
+        session_id = None
+        if isinstance(session_obj, Mapping):
+            session_id = session_obj.get("id")
+        session_id = str(ctx.get("session_id") or session_id or "").strip() or None
+
+        policy = ValidationPolicyResolver(project_root=ev.project_root).resolve_for_task(
+            str(task_id),
+            session_id=session_id,
         )
-        missing = sorted({str(r) for r in required} - present)
-        if missing:
+        required = list(policy.required_evidence or [])
+
+        try:
+            from edison.core.qa.evidence.analysis import list_evidence_files
+
+            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
+        except Exception:
+            files = {p.name for p in round_dir.iterdir() if p.is_file()} if round_dir.exists() else set()
+
+        missing_patterns: list[str] = []
+        for pattern in required:
+            if not any(Path(name).match(str(pattern)) for name in files):
+                missing_patterns.append(str(pattern))
+
+        if missing_patterns:
             expected_report = round_dir / ev.implementation_filename
             raise ValueError(
                 "Guard 'has_validator_reports' blocked transition.\n"
-                f"Missing evidence in {round_dir.name}: {', '.join(missing)}\n"
+                f"Missing evidence in {round_dir.name}: {', '.join(missing_patterns)}\n"
                 f"Expected implementation report: {expected_report}"
             )
 
@@ -234,7 +254,6 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.config.domains.qa import QAConfig
-        from edison.core.context.files import FileContextService
         from edison.core.qa.evidence import read_validator_reports
         from edison.core.registries.validators import ValidatorRegistry
 
@@ -248,14 +267,22 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
         if isinstance(session_obj, Mapping):
             session_id = session_obj.get("id")
 
-        file_ctx = FileContextService(project_root=qa_config.repo_root).get_for_task(
+        roster = registry.build_execution_roster(
             task_id=str(task_id),
             session_id=str(ctx.get("session_id") or session_id or ""),
+            wave=None,
+            extra_validators=None,
         )
-        always_run, triggered_blocking, triggered_optional = registry.get_triggered_validators(
-            files=file_ctx.all_files
-        )
-        expected_ids = {v.id for v in (always_run + triggered_blocking + triggered_optional)}
+        expected_ids = {
+            str(v.get("id"))
+            for v in (
+                (roster.get("alwaysRequired") or [])
+                + (roster.get("triggeredBlocking") or [])
+                + (roster.get("triggeredOptional") or [])
+                + (roster.get("extraAdded") or [])
+            )
+            if isinstance(v, Mapping) and v.get("id")
+        }
 
         v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])

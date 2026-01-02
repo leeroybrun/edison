@@ -41,6 +41,23 @@ def main(args: argparse.Namespace) -> int:
         round_dir = svc.ensure_round(round_num)
         svc.update_metadata(round_num)
 
+        # Ensure an implementation report exists (do not create placeholder command evidence).
+        try:
+            existing = svc.read_implementation_report(round_num)
+        except Exception:
+            existing = {}
+        if not existing:
+            svc.write_implementation_report(
+                {
+                    "taskId": task_id,
+                    "round": int(round_num),
+                    "completionStatus": "partial",
+                    "followUpTasks": [],
+                    "notesForValidator": "",
+                },
+                round_num=round_num,
+            )
+
         payload = {
             "taskId": task_id,
             "round": round_num,
@@ -62,4 +79,3 @@ if __name__ == "__main__":
     register_args(parser)
     args = parser.parse_args()
     sys.exit(main(args))
-

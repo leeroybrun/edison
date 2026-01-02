@@ -28,16 +28,32 @@ def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
     """
     task_id = _get_task_id(ctx)
     if not task_id:
-        return True  # Allow if no task context (flexibility)
+        return False  # FAIL-CLOSED: cannot verify evidence without task context
 
     try:
-        from edison.core.qa.evidence import missing_evidence_blockers
-        blockers = missing_evidence_blockers(str(task_id))
-        return len(blockers) == 0
-    except Exception:
-        pass
+        from edison.core.qa.evidence import EvidenceService
+        from edison.core.qa.evidence.analysis import has_required_evidence as has_required
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-    return True  # Default to True for flexibility
+        ev = EvidenceService(str(task_id))
+        round_dir = ev.get_current_round_dir()
+        if round_dir is None:
+            return False
+
+        session_obj = ctx.get("session")
+        session_id = None
+        if isinstance(session_obj, Mapping):
+            session_id = session_obj.get("id")
+        session_id = str(ctx.get("session_id") or session_id or "").strip() or None
+
+        policy = ValidationPolicyResolver(project_root=ev.project_root).resolve_for_task(
+            str(task_id),
+            session_id=session_id,
+        )
+        required = list(policy.required_evidence or [])
+        return has_required(round_dir, required)
+    except Exception:
+        return False  # FAIL-CLOSED
 
 
 def has_bundle_approval(ctx: Mapping[str, Any]) -> bool:

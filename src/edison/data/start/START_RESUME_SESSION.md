@@ -23,6 +23,7 @@ edison session next {{session_id}}
 2. ✅ Check session state: `edison session status`
 3. ✅ Review in-progress tasks: `edison task list --status=wip`
 4. ✅ Check for blocked tasks: `edison task list --status=blocked`
+5. ✅ Check evidence status: `edison evidence status <task-id>` for in-progress tasks
 
 {{include:start/includes/TASK_PLANNING.md}}
 
@@ -49,6 +50,9 @@ edison session next
 - Tasks marked wip remain yours
 - QA briefs in progress remain assigned
 - Validators may need re-running if state is unclear
+- Check evidence status before marking tasks ready
+
+{{include:start/includes/EVIDENCE_COMMANDS.md}}
 
 {{include:start/includes/SESSION_STATE_MACHINE.md}}
 

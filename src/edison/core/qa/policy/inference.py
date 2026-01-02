@@ -144,10 +144,11 @@ class PresetInference:
             PresetInferenceResult with the inferred preset and metadata
         """
         if not changed_files:
-            # No files changed - use minimal validation
+            # Fail-closed: if we cannot determine changed files, do NOT silently
+            # downgrade validation/evidence requirements.
             return PresetInferenceResult(
-                preset_name="quick",
-                confidence="high",
+                preset_name="standard",
+                confidence="low",
             )
 
         # Load custom rules or use defaults

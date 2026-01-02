@@ -145,6 +145,70 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
                 failures.append(msg)
                 health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "not_approved"})
 
+    # Session-close evidence requirements (config-driven, fail-closed).
+    try:
+        from edison.core.config.domains.qa import QAConfig
+        from edison.core.qa.evidence.command_evidence import parse_command_evidence
+
+        qa_cfg = QAConfig()
+        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
+        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
+        required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
+
+        if required_close:
+            # For each required evidence file, accept success from any task in the session.
+            missing_close: list[str] = []
+            for filename in required_close:
+                found_ok = False
+                for task in session_tasks:
+                    ev_svc = qa_evidence.EvidenceService(task.id)
+                    rd = ev_svc.get_current_round_dir()
+                    if rd is None:
+                        continue
+                    p = rd / filename
+                    if not p.exists():
+                        continue
+                    parsed = parse_command_evidence(p)
+                    if parsed is None:
+                        continue
+                    try:
+                        if int(parsed.get("exitCode", 1)) == 0:
+                            found_ok = True
+                            break
+                    except Exception:
+                        continue
+                if not found_ok:
+                    missing_close.append(filename)
+
+            if missing_close:
+                # Deterministic suggestion: use the first task id in the session as the anchor.
+                anchor = sorted([t.id for t in session_tasks if t and t.id])[:1]
+                anchor_id = anchor[0] if anchor else "<task-id>"
+                msg = (
+                    "Session-close evidence missing: "
+                    + ", ".join(missing_close)
+                    + f". Capture + review session-close evidence (config-driven) using:\n  edison evidence init {anchor_id}\n  edison evidence capture {anchor_id} --session-close"
+                )
+                failures.append(msg)
+                health["categories"]["missingEvidence"].append(
+                    {"taskId": anchor_id, "file": ", ".join(missing_close), "kind": "sessionClose"}
+                )
+                health["details"].append(
+                    {
+                        "kind": "sessionCloseEvidence",
+                        "missing": list(missing_close),
+                        "suggested": [
+                            f"edison evidence init {anchor_id}",
+                            f"edison evidence capture {anchor_id} --session-close",
+                            f"edison evidence show {anchor_id} --command <name>",
+                            "Review evidence output and fix failures before closing.",
+                        ],
+                    }
+                )
+    except Exception:
+        # Fail-open: session close evidence is additive; core state invariants and QA approval still apply.
+        pass
+
     plan = compute_next(session_id, scope="session", limit=0)
     if plan.get("blockers") or plan.get("reportsMissing"):
         failures.append("Unresolved blockers or missing reports remain; resolve automation/evidence before closing.")

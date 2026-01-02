@@ -53,7 +53,9 @@
 ## Verification Protocol
 
 - Require an implementation report per delegation; reject incomplete reports.
-- Re-run the listed commands (tests/lint/typecheck) locally; add missing automation if absent.
+- **Verify evidence is complete**: Run `edison evidence status <task-id>` to confirm all required evidence exists.
+- **Verify all commands passed**: All evidence files must show `exitCode: 0`. Failing evidence means the agent did not complete properly.
+- Re-run the listed commands (tests/lint/typecheck) locally if evidence is suspect; add missing automation if absent.
 - Diff review: confirm requirements met, no hardcoded values, config wired to YAML, and no legacy paths remain.
 - Validate integration: run minimal end-to-end path if feasible; ensure artifacts land in expected directories.
 - Record verdict and evidence in the session Activity Log and QA bundle before promotion.

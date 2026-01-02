@@ -28,6 +28,7 @@ metadata:
 
 - **Determinism**: tests must be reliable and isolated.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (tests)**: flaky sleeps/timeouts; mocking internal modules; removing tests to get green.
 
 ## Role

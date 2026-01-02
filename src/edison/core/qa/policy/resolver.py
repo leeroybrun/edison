@@ -97,6 +97,40 @@ class ValidationPolicyResolver:
         Raises:
             ValueError: If explicit preset_name is unknown
         """
+        def _with_base_evidence(preset: ValidationPreset) -> ValidationPreset:
+            """Return a preset whose required_evidence includes the global baseline evidence.
+
+            Baseline evidence comes from validation.evidence.requiredFiles (QAConfig) and is
+            always required for a validation round. Preset required_evidence is additive.
+            """
+            base: list[str] = []
+            try:
+                from edison.core.config.domains.qa import QAConfig
+
+                base = QAConfig(repo_root=self.project_root).get_required_evidence_files()
+            except Exception:
+                base = []
+
+            merged: list[str] = []
+            seen: set[str] = set()
+            for item in list(base or []) + list(preset.required_evidence or []):
+                s = str(item).strip()
+                if s and s not in seen:
+                    seen.add(s)
+                    merged.append(s)
+
+            # Avoid re-allocating when unchanged.
+            if merged == list(preset.required_evidence or []):
+                return preset
+
+            return ValidationPreset(
+                name=preset.name,
+                validators=list(preset.validators or []),
+                required_evidence=merged,
+                blocking_validators=list(preset.blocking_validators or []),
+                description=str(getattr(preset, "description", "") or ""),
+            )
+
         # Get changed files for the task
         changed_files = self._get_changed_files(task_id, session_id)
 
@@ -110,7 +144,7 @@ class ValidationPolicyResolver:
                     f"Unknown preset '{preset_name}'. Available presets: {available}"
                 )
             return ValidationPolicy(
-                preset=preset,
+                preset=_with_base_evidence(preset),
                 task_id=task_id,
                 changed_files=changed_files,
                 inferred_preset_name=preset_name,
@@ -135,7 +169,7 @@ class ValidationPolicyResolver:
                 )
 
         return ValidationPolicy(
-            preset=preset,
+            preset=_with_base_evidence(preset),
             task_id=task_id,
             changed_files=changed_files,
             inferred_preset_name=result.preset_name,

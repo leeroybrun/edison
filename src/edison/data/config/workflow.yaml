@@ -165,7 +165,7 @@ workflow:
               guard: has_validator_reports
               conditions:
                 - name: has_required_evidence
-                  error: "Required evidence files missing (type-check, lint, test, build)"
+                  error: "Required evidence files missing (per validation preset)"
               rules: [RULE.EVIDENCE.ROUND_COMMANDS_REQUIRED, RULE.VALIDATION.WAVES_SEQUENCE]
               recommendations:
                 - id: qa.promote.done

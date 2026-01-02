@@ -103,30 +103,30 @@ class EvidenceService:
         return rounds.ensure_round_dir(self.evidence_root, round_num)
 
     def ensure_required_evidence_files(self, round_dir: Path) -> list[Path]:
-        """Ensure required evidence marker files exist for a round.
+        """Return paths for required evidence files for a round.
 
-        These files are configured via `validation.evidence.requiredFiles` and are
-        used by task/QA guards to enforce evidence completeness. This method
-        creates empty placeholders for missing files (idempotent).
+        IMPORTANT: This must NOT create placeholder evidence files.
+        Evidence is only valid when produced by real runners (e.g. `edison evidence capture`)
+        and should never be fabricated just to satisfy “file exists” checks.
         """
-        from edison.core.config.domains.qa import QAConfig
+        try:
+            from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-        cfg = QAConfig(repo_root=self.project_root)
-        required = cfg.get_required_evidence_files()
-        created: list[Path] = []
+            policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
+                self.task_id
+            )
+            required = list(policy.required_evidence or [])
+        except Exception:
+            from edison.core.config.domains.qa import QAConfig
 
-        round_dir.mkdir(parents=True, exist_ok=True)
+            cfg = QAConfig(repo_root=self.project_root)
+            required = cfg.get_required_evidence_files()
+        out: list[Path] = []
         for filename in required:
             name = str(filename).strip()
-            if not name:
-                continue
-            path = round_dir / name
-            if path.exists():
-                continue
-            path.write_text("", encoding="utf-8")
-            created.append(path)
-
-        return created
+            if name:
+                out.append(round_dir / name)
+        return out
 
     def get_current_round(self) -> Optional[int]:
         """Get the current round number."""

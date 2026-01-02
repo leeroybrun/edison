@@ -19,7 +19,7 @@ def test_validation_doc_includes_batched_parallel_execution_model():
         "Batched Parallel Execution Model",
         "Wave 1: Global Validators",
         "Wave 2: Critical Validators",
-        "Wave 3: Specialized Validators",
+        "Wave 3: Comprehensive Validators",
     ):
         assert label in content, f"Missing wave diagram element: {label}"
 
@@ -40,11 +40,11 @@ def test_validation_doc_describes_round_rejection_cycle_and_limits():
     for marker in (
         "Round N Rejection Cycle",
         "Round 1: Initial Validation",
-        "Task returns to WIP",
+        'Task returns to {{fn:semantic_state("task","wip")}}',
         "Round 2: Re-validation",
     ):
         assert marker in content, f"Missing rejection cycle element: {marker}"
 
     # Maximum rounds configuration reference
     assert "validation.maxRounds" in content, "Missing maximum rounds config reference"
-    assert "default: 3" in content, "Missing default max rounds value"
+    assert "default: {{config.validation.maxRounds}}" in content, "Missing default max rounds template value"

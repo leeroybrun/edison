@@ -5,7 +5,7 @@ Run after implementation is complete and before a task can advance beyond `{{fn:
 
 ## Validation Checklist (fail-closed)
 - Build the triggered validator roster from the merged `validation.validators` config (core → packs → user → project) and the task/session file context (git diff + primary files).
-- Automation passing for the round (type-check, lint, test, build or project equivalent).
+- Automation evidence passing for the round (config-driven; see required evidence for the task’s validation preset).
 - QA brief exists in `qa/{{fn:semantic_states("qa","waiting,todo,wip","brace")}}` with roster, commands, expected results, and evidence links; never duplicate QA files.
 - Bundle manifest generated before launching validators (see Bundle section).
 - Context7 refreshed for every Context7-detected package; add `context7-<pkg>.txt` markers per package in the round evidence directory.
@@ -22,10 +22,10 @@ edison qa validate <task-id> --session <session-id> --dry-run
 
 **Global (blocking):** all global validators in the roster always run first and must approve.
 **Critical (blocking):** every critical validator in the roster is blocking for promotion.
-**Specialized (triggered, blocking if `blocksOnFail=true`):** driven by file triggers in the active validator roster (run `edison read AVAILABLE_VALIDATORS`); the active set is listed in `AVAILABLE_VALIDATORS.md`.
-**Specialized (triggered, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
+**Comprehensive (triggered, specialized):** driven by file triggers in the active validator roster (run `edison read AVAILABLE_VALIDATORS`); the active set is listed in `AVAILABLE_VALIDATORS.md`.
+**Comprehensive (triggered, specialized, blocking if `blocking=true`):** driven by validator `triggers` patterns in merged config and the task/session file context.
 
-Wave order (mandatory): Global → Critical → Specialized (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
+Wave order (mandatory): Global → Critical → Comprehensive (triggered). Launch in parallel per wave up to the configured cap; batch overflow.
 
 ## Batched Parallel Execution Model
 
@@ -49,7 +49,7 @@ Validators run in waves for efficiency and fast feedback:
 └─────────────────────────────────────────────────────────────┘
                           ↓ (if pass)
 ┌─────────────────────────────────────────────────────────────┐
-│ Wave 3: Specialized Validators (Parallel, Pattern-Triggered)│
+│ Wave 3: Comprehensive Validators (Parallel, Pattern-Triggered)│
 │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐    │
 │ │ <v-a>  │ │ <v-b>  │ │ <v-c>  │ │ <v-d>  │ │ <v-e>  │    │
 │ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘    │
@@ -68,7 +68,7 @@ Validators run in waves for efficiency and fast feedback:
 - Must fix ALL critical issues before re-validation
 - No partial approvals
 
-**Specialized Validators:**
+**Comprehensive Validators:**
 - Only triggered if relevant files changed
 - Failures are advisory unless configured as blocking
 - Can proceed with warnings noted
@@ -128,6 +128,7 @@ Repeat until APPROVE or escalate
 - Assign a single QA owner; multiple validators may run, but one owner curates the QA brief.
 - Name evidence clearly (e.g., `validator-<id>-report.md`, {{fn:required_evidence_files("inline")}}, `{{config.validation.artifactPaths.bundleSummaryFile}}`).
 - Validator reports must record the model used and it must match the config.
+- Evidence must be reviewed, not just generated: if a captured command fails, fix and re-run until `exitCode: 0`. Before session close, satisfy any configured `validation.sessionClose.*` evidence requirements.
 
 ## Parent vs Child Tasks (Parallel Implementation)
 

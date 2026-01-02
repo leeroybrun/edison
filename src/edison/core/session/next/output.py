@@ -169,6 +169,33 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                         )
                         lines.append(f"        {rel['note']}")
 
+            # Show task start checklist if present
+            if a.get("checklist"):
+                checklist = a["checklist"]
+                items = checklist.get("items", [])
+                if items:
+                    has_blockers = checklist.get("hasBlockers", False)
+                    blocker_icon = "🚫" if has_blockers else "✅"
+                    lines.append(f"\n   {blocker_icon} TASK START CHECKLIST:")
+                    for item in items:
+                        severity = item.get("severity", "info")
+                        status = item.get("status", "unknown")
+                        title = item.get("title", "Unknown")
+                        if status == "ok":
+                            icon = "✅"
+                        elif severity == "blocker":
+                            icon = "🚫"
+                        elif severity == "warning":
+                            icon = "⚠️"
+                        else:
+                            icon = "ℹ️"
+                        lines.append(f"      {icon} {title}")
+                        if item.get("rationale") and status != "ok":
+                            lines.append(f"         {item['rationale']}")
+                        if item.get("suggestedCommands") and status != "ok":
+                            for cmd in item["suggestedCommands"][:3]:
+                                lines.append(f"         -> {cmd}")
+
             lines.append("")  # Blank line between actions
 
     # Show blockers
@@ -188,7 +215,20 @@ def format_human_readable(payload: dict[str, Any]) -> str:
             if r.get("validatorId"):
                 lines.append(f"     Validator: {r['validatorId']}")
             if r.get("packages"):
-                lines.append(f"     Packages: {', '.join(r['packages'])}")
+                lines.append(f"     Packages (missing): {', '.join(r['packages'])}")
+            if r.get("invalidMarkers"):
+                invalid = r.get("invalidMarkers") or []
+                if isinstance(invalid, list) and invalid:
+                    lines.append("     Packages (invalid markers):")
+                    for inv in invalid[:5]:
+                        if not isinstance(inv, dict):
+                            continue
+                        pkg = inv.get("package") or "unknown"
+                        missing_fields = inv.get("missing_fields") or inv.get("missingFields") or []
+                        if isinstance(missing_fields, list) and missing_fields:
+                            lines.append(f"       - {pkg} (missing: {', '.join([str(x) for x in missing_fields])})")
+                        else:
+                            lines.append(f"       - {pkg}")
             if r.get("suggested"):
                 lines.append("     Suggested fix:")
                 for s in r["suggested"]:

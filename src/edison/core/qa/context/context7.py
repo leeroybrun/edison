@@ -175,17 +175,127 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 
 
 def _marker_valid(text: str) -> bool:
+    # Prefer machine-parseable YAML frontmatter when present. Fall back to a
+    # permissive non-empty check for legacy/plain markers.
     raw = str(text or "").strip()
     if not raw:
         return False
+    if raw.startswith("---"):
+        fm = _parse_marker_frontmatter(raw)
+        return not bool(_validate_marker_fields(fm))
+    return True
 
-    lower = raw.lower()
-    has_topics = "topics:" in lower
-    has_retrieved_or_version = ("retrieved:" in lower) or ("version:" in lower)
 
-    # Minimal validation required by enforcement tests:
-    # marker must include topics and a retrieval date or version.
-    return bool(has_topics and has_retrieved_or_version)
+# Required fields for a valid Context7 marker (frontmatter keys).
+REQUIRED_MARKER_FIELDS = ["libraryId", "topics"]
+
+
+def _parse_marker_frontmatter(text: str) -> Dict[str, Any]:
+    """Parse YAML frontmatter from a Context7 marker file."""
+    import yaml
+
+    text = str(text or "").strip()
+    if not text.startswith("---"):
+        return {}
+    parts = text.split("---", 2)
+    if len(parts) < 2:
+        return {}
+    try:
+        frontmatter = yaml.safe_load(parts[1])
+        return frontmatter if isinstance(frontmatter, dict) else {}
+    except (yaml.YAMLError, Exception):
+        return {}
+
+
+def _validate_marker_fields(frontmatter: Dict[str, Any]) -> List[str]:
+    """Return required marker fields missing from frontmatter."""
+    missing: List[str] = []
+    for field in REQUIRED_MARKER_FIELDS:
+        val = frontmatter.get(field)
+        if val is None or (isinstance(val, (str, list)) and not val):
+            missing.append(field)
+    return missing
+
+
+def classify_marker(round_dir: Path, package: str) -> Dict[str, Any]:
+    """Classify a single Context7 marker as missing, invalid, or valid."""
+    marker_txt = round_dir / f"context7-{package}.txt"
+    marker_md = round_dir / f"context7-{package}.md"
+
+    if marker_txt.exists():
+        marker_path = marker_txt
+    elif marker_md.exists():
+        marker_path = marker_md
+    else:
+        return {
+            "status": "missing",
+            "package": package,
+            "path_checked": str(marker_txt),
+        }
+
+    try:
+        content = marker_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning("Failed to read marker file %s: %s", marker_path, e)
+        return {
+            "status": "invalid",
+            "package": package,
+            "missing_fields": REQUIRED_MARKER_FIELDS[:],
+            "error": str(e),
+        }
+
+    if not content.strip():
+        return {"status": "invalid", "package": package, "missing_fields": REQUIRED_MARKER_FIELDS[:]}
+
+    # Backward compatibility: legacy/plain markers are accepted as "valid" as
+    # long as they are non-empty. Prefer YAML frontmatter validation when present.
+    if not content.lstrip().startswith("---"):
+        return {"status": "valid", "package": package}
+
+    fm = _parse_marker_frontmatter(content)
+    missing_fields = _validate_marker_fields(fm)
+    if missing_fields:
+        return {"status": "invalid", "package": package, "missing_fields": missing_fields}
+
+    return {"status": "valid", "package": package}
+
+
+def classify_packages(round_dir: Path, packages: List[str]) -> Dict[str, Any]:
+    """Classify multiple Context7 packages at once."""
+    missing: List[str] = []
+    invalid: List[Dict[str, Any]] = []
+    valid: List[str] = []
+
+    for pkg in packages:
+        res = classify_marker(round_dir, pkg)
+        status = res.get("status")
+        if status == "missing":
+            missing.append(pkg)
+        elif status == "invalid":
+            invalid.append(
+                {
+                    "package": pkg,
+                    "missing_fields": res.get("missing_fields", []),
+                }
+            )
+        else:
+            valid.append(pkg)
+
+    return {"missing": missing, "invalid": invalid, "valid": valid, "evidence_dir": str(round_dir)}
+
+
+def missing_packages_detailed(task_id: str, packages: Iterable[str]) -> Dict[str, Any]:
+    """Return detailed classification for required packages."""
+    pkgs = sorted({_normalize(p) for p in packages})
+    if not pkgs:
+        return {"missing": [], "invalid": [], "valid": [], "evidence_dir": None}
+
+    ev_svc = EvidenceService(task_id)
+    rd = ev_svc.get_current_round_dir()
+    if rd is None:
+        return {"missing": pkgs, "invalid": [], "valid": [], "evidence_dir": None}
+
+    return classify_packages(rd, pkgs)
 
 
 def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:
@@ -199,25 +309,20 @@ def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:
     if rd is None:
         return pkgs
 
-    missing: List[str] = []
+    out: List[str] = []
     for pkg in pkgs:
-        marker_txt = rd / f"context7-{pkg}.txt"
-        marker_md = rd / f"context7-{pkg}.md"
-        path = marker_txt if marker_txt.exists() else marker_md if marker_md.exists() else None
-        if not path:
-            missing.append(pkg)
-            continue
-        try:
-            if not _marker_valid(path.read_text()):
-                missing.append(pkg)
-        except (FileNotFoundError, OSError, UnicodeDecodeError) as e:
-            logger.warning("Failed to read marker file %s: %s", path, e)
-            missing.append(pkg)
-    return missing
+        res = classify_marker(rd, pkg)
+        if res.get("status") != "valid":
+            out.append(pkg)
+    return out
 
 
 __all__ = [
     "load_validator_config",
     "detect_packages",
     "missing_packages",
+    "classify_marker",
+    "classify_packages",
+    "missing_packages_detailed",
+    "REQUIRED_MARKER_FIELDS",
 ]

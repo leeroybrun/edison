@@ -120,7 +120,6 @@ def start_implementation(
         raise ValueError("round_num must be >= 1")
     round_dir = ev.ensure_round(resolved_round)
     ev.update_metadata(round_num=resolved_round)
-    ev.ensure_required_evidence_files(round_dir)
 
     report_path = round_dir / ev.implementation_filename
     existing = ev.read_implementation_report(round_num=resolved_round)

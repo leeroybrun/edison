@@ -40,4 +40,20 @@ If the change touches any configured post-training package, refresh docs via Con
 <!-- section: orchestrator -->
 ### Knowledge Refresh Enforcement
 If a task touches configured post-training packages, ensure the assigned agent refreshes Context7 docs and produces the required evidence markers before `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}`.
+
+### Context7 Error Handling
+When `edison task ready` fails with Context7 errors:
+1. Review the error message—it shows detected packages and missing markers
+2. Check if detection is correct: `edison config show context7 --format yaml`
+3. If correct: have the agent create Context7 evidence markers
+4. If false positive: use `--skip-context7` bypass with justification
+
+### Bypass Flag (`--skip-context7`)
+For verified false positives only:
+```bash
+edison task ready <task-id> --skip-context7
+```
+- Prints a loud warning to stderr
+- Records audit trace in session tracking
+- Should be rare—most Context7 detections are legitimate
 <!-- /section: orchestrator -->

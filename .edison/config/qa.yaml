@@ -1,0 +1,32 @@
+# Edison project-specific QA overrides.
+#
+# This file intentionally contains Edison-repo conventions (e.g. a full-suite
+# session-close requirement). Downstream projects using Edison should define
+# their own validation presets/evidence requirements here as needed.
+
+validation:
+  # Deep preset used for session-close verification in the Edison repo.
+  presets:
+    deep:
+      name: deep
+      description: "Deep validation required before session close (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test-full.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - security
+
+  # Session-close evidence requirement for the Edison repo.
+  sessionClose:
+    requiredEvidenceFiles:
+      - "command-test-full.txt"
+

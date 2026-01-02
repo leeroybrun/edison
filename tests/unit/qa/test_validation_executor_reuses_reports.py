@@ -34,7 +34,7 @@ def test_validation_executor_reuses_existing_validator_report(tmp_path) -> None:
     result = executor.execute(
         task_id=task_id,
         session_id=session_id,
-        wave="critical",
+        wave="global",
         validators=["global-codex"],
         parallel=False,
         round_num=round_num,
@@ -48,7 +48,6 @@ def test_validation_executor_reuses_existing_validator_report(tmp_path) -> None:
     assert result.passed_count == 1
     assert result.failed_count == 0
     assert result.pending_count == 0
-
 
 
 

@@ -62,10 +62,8 @@ After the frontmatter, include a short Markdown body for humans. For example:
 ## Evidence
 | Check | Command | Status |
 |-------|---------|--------|
-| Type Check | {{fn:ci_command("type-check")}} | ✅ PASS / ❌ FAIL |
-| Lint | {{fn:ci_command("lint")}} | ✅ PASS / ❌ FAIL |
-| Tests | {{fn:ci_command("test")}} | ✅ PASS / ❌ FAIL |
-| Build | {{fn:ci_command("build")}} | ✅ PASS / ❌ FAIL / N/A |
+| Command Evidence | <configured CI command> | ✅ PASS / ❌ FAIL / N/A |
+| Context7 Markers | context7-*.txt | ✅ PRESENT / ❌ MISSING / N/A |
 
 Reference the round evidence files (command-*.txt, context7-*.txt, validator-*-report.md, etc).
 

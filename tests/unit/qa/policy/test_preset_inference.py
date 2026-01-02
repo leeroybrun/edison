@@ -117,8 +117,8 @@ class TestPresetInference:
 
         assert result.preset_name == "standard"
 
-    def test_empty_file_list_returns_quick(self, tmp_path: Path, monkeypatch):
-        """Empty file list should return 'quick' preset (defensive default)."""
+    def test_empty_file_list_returns_standard(self, tmp_path: Path, monkeypatch):
+        """Empty file list should return 'standard' preset (fail-closed default)."""
         repo = create_repo_with_git(tmp_path)
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()
@@ -128,7 +128,7 @@ class TestPresetInference:
         inference = PresetInference(project_root=repo)
         result = inference.infer_preset([])
 
-        assert result.preset_name == "quick"
+        assert result.preset_name == "standard"
 
 
 @pytest.mark.qa

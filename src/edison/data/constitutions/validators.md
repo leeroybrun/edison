@@ -74,6 +74,14 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/VALIDA
 
 ---
 
+## Evidence Verification (CRITICAL)
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#principles}}
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#validator-check}}
+
+---
+
 ## Pack Extensions
 
 <!-- section: pack-constitution -->

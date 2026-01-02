@@ -28,6 +28,7 @@ metadata:
 
 - **Safety-first**: migrations must be production-safe and reversible where feasible.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (DB)**: destructive migrations without an explicit plan; unindexed hot queries; changing schema without updating tests and evidence.
 
 ## Role

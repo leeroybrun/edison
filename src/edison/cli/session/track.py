@@ -141,6 +141,19 @@ def main(args: argparse.Namespace) -> int:
                     run_id=getattr(args, "run_id", None),
                     process_id=getattr(args, "process_id", None),
                 )
+                # Compute task start checklist for implementation work (early surfacing).
+                try:
+                    from edison.core.workflow.checklists.task_start import TaskStartChecklistEngine
+
+                    engine = TaskStartChecklistEngine()
+                    checklist_result = engine.compute(
+                        task_id=str(args.task),
+                        session_id=None,
+                    )
+                    result["checklist"] = checklist_result.to_dict()
+                except Exception:
+                    # Fail-open: tracking must work even if checklist fails.
+                    pass
             else:
                 if not getattr(args, "validator", None):
                     raise ValueError("--validator is required for type=validation")
@@ -166,6 +179,20 @@ def main(args: argparse.Namespace) -> int:
                 missing = result.get("missingRequiredSections") if isinstance(result, dict) else None
                 if isinstance(missing, list) and missing:
                     formatter.text(f"  Required-fill: {', '.join([str(m) for m in missing])}")
+
+                checklist = result.get("checklist", {}) if isinstance(result, dict) else {}
+                if isinstance(checklist, dict) and checklist.get("items"):
+                    formatter.text("\nTask Start Checklist:")
+                    for item in checklist["items"]:
+                        severity = item.get("severity", "info")
+                        status = item.get("status", "unknown")
+                        title = item.get("title", "Unknown")
+                        icon = "!" if severity == "blocker" and status != "ok" else "-"
+                        status_icon = "[OK]" if status == "ok" else f"[{str(status).upper()}]"
+                        formatter.text(f"  {icon} {status_icon} {title}")
+                        if item.get("suggestedCommands") and status != "ok":
+                            for cmd in item["suggestedCommands"]:
+                                formatter.text(f"      -> {cmd}")
 
         elif args.subcommand == "heartbeat":
             result = tracking.heartbeat(

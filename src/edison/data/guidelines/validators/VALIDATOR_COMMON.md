@@ -64,23 +64,15 @@ git diff           # Unstaged changes
 
 #### Run Verification Commands
 
-Validators should run domain-specific verification commands and save output to evidence files. Examples:
+Validators should capture the configured evidence for the task’s validation preset (config-driven):
 
 ```bash
-# Type checking
-{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
-
-# Linting
-{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
-
-# Testing
-{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
-
-# Build
-{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1
+edison evidence status <task-id>   # Confirm what’s required + what’s missing
+edison evidence capture <task-id>  # Run and capture required command evidence
+edison evidence show <task-id> --command <name>  # Review output for debugging
 ```
 
-**All evidence files must be created BEFORE validation begins.**
+**Evidence must be reviewed, not just generated:** if a captured run fails, fix and re-capture until `exitCode: 0`.
 
 ### Step 3: Run Domain-Specific Checks
 

@@ -48,22 +48,23 @@ class TestPolicyResolver:
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
 
-        # Create evidence directory with implementation report listing docs files
-        evidence_dir = repo / ".project" / "evidence" / "T001" / "round-1"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        (evidence_dir / "implementation-report.md").write_text("""---
-filesModified:
-  - docs/README.md
-  - docs/api.md
----
-# Implementation Report
-Changed documentation files.
-""")
-
         setup_project_root(monkeypatch, repo)
         reset_edison_caches()
 
         create_task_file(repo, "T001", state="wip", title="Docs Update")
+
+        # Create evidence directory with implementation report listing docs files
+        from edison.core.qa.evidence import EvidenceService
+
+        ev = EvidenceService("T001", project_root=repo)
+        ev.ensure_round(1)
+        ev.write_implementation_report(
+            {
+                "summary": "Changed documentation files.",
+                "filesModified": ["docs/README.md", "docs/api.md"],
+            },
+            round_num=1,
+        )
 
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
@@ -111,8 +112,8 @@ Changed documentation files.
 class TestPolicyValidatorFiltering:
     """Tests for filtering validators based on policy."""
 
-    def test_quick_preset_filters_to_global_codex_only(self, tmp_path: Path, monkeypatch):
-        """Quick preset should only include global-codex validator."""
+    def test_quick_preset_adds_no_extra_validators(self, tmp_path: Path, monkeypatch):
+        """Quick preset should not add any extra validators beyond always_run globals."""
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
         setup_project_root(monkeypatch, repo)
@@ -125,9 +126,8 @@ class TestPolicyValidatorFiltering:
         resolver = ValidationPolicyResolver(project_root=repo)
         policy = resolver.resolve_for_task("T001", preset_name="quick")
 
-        # Quick preset should only have global-codex as blocking
-        assert "global-codex" in policy.preset.validators
-        assert policy.preset.blocking_validators == ["global-codex"]
+        assert policy.preset.validators == []
+        assert policy.preset.blocking_validators == []
 
     def test_standard_preset_includes_more_validators(self, tmp_path: Path, monkeypatch):
         """Standard preset includes more validators than quick."""
@@ -152,8 +152,8 @@ class TestPolicyValidatorFiltering:
 class TestPolicyEvidenceRequirements:
     """Tests for evidence requirements from policy."""
 
-    def test_quick_preset_minimal_evidence(self, tmp_path: Path, monkeypatch):
-        """Quick preset requires only implementation report."""
+    def test_quick_preset_includes_baseline_evidence(self, tmp_path: Path, monkeypatch):
+        """Quick preset still requires the global baseline automation evidence (fail-closed)."""
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
         setup_project_root(monkeypatch, repo)
@@ -166,12 +166,11 @@ class TestPolicyEvidenceRequirements:
         resolver = ValidationPolicyResolver(project_root=repo)
         policy = resolver.resolve_for_task("T001", preset_name="quick")
 
-        # Quick should NOT require automation command files
         evidence = policy.required_evidence
-        assert "command-test.txt" not in evidence
-        assert "command-lint.txt" not in evidence
-        assert "command-type-check.txt" not in evidence
-        assert "command-build.txt" not in evidence
+        assert "command-type-check.txt" in evidence
+        assert "command-lint.txt" in evidence
+        assert "command-test.txt" in evidence
+        assert "command-build.txt" in evidence
 
     def test_standard_preset_requires_automation_evidence(self, tmp_path: Path, monkeypatch):
         """Standard preset requires automation command evidence."""

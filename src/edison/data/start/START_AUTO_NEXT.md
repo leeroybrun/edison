@@ -23,6 +23,8 @@ You are auto-starting work as an **ORCHESTRATOR**.
    Start implementation immediately.
    Delegate to sub-agents as needed.
 
+{{include:start/includes/EVIDENCE_COMMANDS.md}}
+
 ## Selection Priority
 1. P1 (Critical) tasks first
 2. Tasks with no blockers

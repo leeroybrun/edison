@@ -224,6 +224,19 @@ class ValidationExecutor:
 
         # Get waves to execute
         waves_to_run = self._get_waves_to_run(wave)
+        wave_cfg_by_name: dict[str, dict[str, Any]] = {}
+        try:
+            from edison.core.config.domains.qa import QAConfig
+
+            qa_cfg = QAConfig(repo_root=self.project_root)
+            for wcfg in qa_cfg.get_waves():
+                if not isinstance(wcfg, dict):
+                    continue
+                name = str(wcfg.get("name") or "").strip()
+                if name:
+                    wave_cfg_by_name[name] = wcfg
+        except Exception:
+            wave_cfg_by_name = {}
 
         # Execute each wave
         result = ExecutionResult(
@@ -232,7 +245,21 @@ class ValidationExecutor:
             round_num=round_num,
         )
 
+        previous_wave_passed = True
         for wave_name in waves_to_run:
+            wcfg = wave_cfg_by_name.get(str(wave_name), {}) or {}
+
+            requires_prev = bool(wcfg.get("requires_previous_pass"))
+            if requires_prev and not previous_wave_passed:
+                logger.warning(
+                    f"Skipping wave '{wave_name}' because previous wave did not pass "
+                    "(requires_previous_pass=true)."
+                )
+                break
+
+            execution_mode = str(wcfg.get("execution") or "").strip().lower()
+            parallel_for_wave = parallel and execution_mode != "sequential"
+
             wave_result = self._execute_wave(
                 wave=wave_name,
                 task_id=task_id,
@@ -240,7 +267,7 @@ class ValidationExecutor:
                 worktree_path=worktree,
                 validators_filter=validators,
                 blocking_only=blocking_only,
-                parallel=parallel,
+                parallel=parallel_for_wave,
                 round_num=round_num,
                 evidence_service=evidence_service,
                 extra_validators=extra_validators,
@@ -256,8 +283,12 @@ class ValidationExecutor:
             # Track delegated validators
             result.delegated_validators.extend(wave_result.delegated_blocking)
 
-            # Stop on blocking failure if needed
-            if not wave_result.blocking_passed:
+            previous_wave_passed = wave_result.blocking_passed
+
+            continue_on_fail = bool(wcfg.get("continue_on_fail", False))
+
+            # Stop on blocking failure unless config says to continue.
+            if not wave_result.blocking_passed and not continue_on_fail:
                 logger.warning(
                     f"Wave '{wave_name}' has blocking failures, "
                     f"stopping execution: {wave_result.blocking_failed}"
@@ -334,29 +365,26 @@ class ValidationExecutor:
         if validators_filter:
             validators = [v for v in validators if v.id in validators_filter]
         else:
-            # Auto-trigger mode: run only always_run + triggered validators for this task.
-            from edison.core.context.files import FileContextService
-
-            file_ctx = FileContextService(project_root=self.project_root).get_for_task(
+            # Auto mode: delegate roster selection to ValidatorRegistry, which applies:
+            # - always_run globals
+            # - preset-selected validators (policy)
+            # - file-triggered validators
+            roster = registry.build_execution_roster(
                 task_id=task_id,
                 session_id=session_id,
-            )
-            always_run, triggered_blocking, triggered_optional = registry.get_triggered_validators(
-                files=file_ctx.all_files,
                 wave=wave,
+                extra_validators=extra_validators,
             )
-            expected_ids = {v.id for v in (always_run + triggered_blocking + triggered_optional)}
-
-            # Apply orchestrator-requested extra validators for this wave.
-            if extra_validators:
-                for ev in extra_validators:
-                    if not isinstance(ev, dict):
-                        continue
-                    if str(ev.get("wave") or "") != str(wave):
-                        continue
-                    vid = ev.get("id")
-                    if vid:
-                        expected_ids.add(str(vid))
+            expected_ids = {
+                str(v.get("id"))
+                for v in (
+                    (roster.get("alwaysRequired") or [])
+                    + (roster.get("triggeredBlocking") or [])
+                    + (roster.get("triggeredOptional") or [])
+                    + (roster.get("extraAdded") or [])
+                )
+                if isinstance(v, dict) and v.get("id")
+            }
 
             validators = [v for v in validators if v.id in expected_ids]
 

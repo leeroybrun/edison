@@ -28,6 +28,7 @@ metadata:
 
 - **Security-first**: validate all untrusted input and enforce auth/authorization by default.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (API)**: do not mock internal business logic/data/auth layers; assert real behavior and outcomes.
 
 ## Role

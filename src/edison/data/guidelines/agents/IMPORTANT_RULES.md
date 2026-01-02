@@ -295,17 +295,12 @@ grep -r "TODO\|FIXME" <source_directory>
 # Check for debug logs (adjust pattern for your logging framework)
 grep -r "<debug_log_pattern>" <source_directory>
 
-# Type check (command varies by language/framework)
-{{fn:ci_command("type-check")}}
+# Capture configured evidence (preferred; config-driven per validation preset)
+edison evidence capture <task-id>
+edison evidence status <task-id>
 
-# Lint (command varies by language/framework)
-{{fn:ci_command("lint")}}
-
-# Run all tests
-{{fn:ci_command("test")}}
-
-# Build (catches many issues)
-{{fn:ci_command("build")}}
+# Review the output for a specific command evidence file
+edison evidence show <task-id> --command <name>
 ```
 
 ## References

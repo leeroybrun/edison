@@ -138,11 +138,17 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         enforce = bool(ctx.get("enforce_evidence")) or bool(
             os.environ.get("ENFORCE_TASK_STATUS_EVIDENCE")
         )
+        required: list[str] = []
         if enforce:
-            from edison.core.config.domains.qa import QAConfig
             from edison.core.qa.evidence.analysis import list_evidence_files
+            from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-            required = QAConfig(repo_root=project_root_path).get_required_evidence_files()
+            sid = str((session_dict or {}).get("id") or (session_dict or {}).get("sessionId") or "").strip() or None
+            policy = ValidationPolicyResolver(project_root=project_root_path).resolve_for_task(
+                str(task_id),
+                session_id=sid,
+            )
+            required = list(policy.required_evidence or [])
             round_dir = ev_svc.get_round_dir(latest)
             files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
 
@@ -161,7 +167,6 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         )
         if enforce_tdd:
             from edison.core.config.domains.tdd import TDDConfig
-            from edison.core.config.domains.qa import QAConfig
             from edison.core.qa.evidence.command_evidence import verify_command_evidence_hmac
             from edison.core.tdd.ready_gate import (
                 run_verification_script,
@@ -171,7 +176,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
             )
 
             tdd_cfg = TDDConfig(repo_root=project_root_path)
-            required_files = QAConfig(repo_root=project_root_path).get_required_evidence_files()
+            required_files = list(required or [])
             tdd_round_dir = ev_svc.get_round_dir(latest)
 
             # Exit code verification for command evidence (best-effort).

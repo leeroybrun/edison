@@ -71,6 +71,14 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHES
 
 ---
 
+## Evidence Orchestration (CRITICAL)
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#principles}}
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#orchestrator-verify}}
+
+---
+
 ## Pack Extensions
 
 <!-- section: pack-constitution -->

@@ -40,10 +40,14 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 
 {{include:start/includes/SESSION_STATE_MACHINE.md}}
 
+{{include:start/includes/EVIDENCE_COMMANDS.md}}
+
 ## Key Commands
 ```bash
 edison session create [--session-id <id>]  # Create a new session record (optional worktree; ID auto-infers if omitted)
 edison session status        # Check session status
 edison task ready            # List ready tasks
 edison task claim <id>       # Claim a task
+edison evidence init <id>    # Initialize evidence round
+edison evidence status <id>  # Check evidence completeness
 ```

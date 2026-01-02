@@ -71,6 +71,14 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/AGENTS
 
 ---
 
+## Evidence Workflow (CRITICAL)
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#principles}}
+
+{{include-section:guidelines/includes/EVIDENCE_WORKFLOW.md#agent-execution}}
+
+---
+
 ## Pack Extensions
 
 <!-- section: pack-constitution -->

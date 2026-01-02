@@ -445,11 +445,27 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 # Find related tasks for context
                 related = find_related_in_session(session_id, task_id)
 
-                actions.append({
+                # Compute task start checklist for this wip task (early surfacing).
+                task_checklist = None
+                try:
+                    from edison.core.workflow.checklists.task_start import TaskStartChecklistEngine
+
+                    engine = TaskStartChecklistEngine()
+                    checklist_result = engine.compute(task_id=task_id, session_id=session_id)
+                    task_checklist = checklist_result.to_dict()
+                except Exception:
+                    # Fail-open: session next must remain usable even if checklist fails.
+                    pass
+
+                action_data = {
                     **basic_hint,
-                    "delegationDetails": enhanced_hint,  # NEW: Detailed reasoning
-                    "relatedTasks": related,  # NEW: Parent/child/sibling context
-                })
+                    "delegationDetails": enhanced_hint,
+                    "relatedTasks": related,
+                }
+                if task_checklist:
+                    action_data["checklist"] = task_checklist
+
+                actions.append(action_data)
 
     # Follow-ups suggestions (claim vs create-only)
     wip_done_states = {STATES["task"]["wip"], STATES["task"]["done"]}
@@ -718,6 +734,57 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 guard_obj["message"] = msg
             a["guard"] = guard_obj
 
+    # Session-close evidence (surface early; do not wait until close-time failure).
+    session_close_evidence: dict[str, Any] = {"required": [], "missing": []}
+    try:
+        from edison.core.config.domains.qa import QAConfig
+        from edison.core.qa.evidence.command_evidence import parse_command_evidence
+        from edison.core.qa.evidence.service import EvidenceService
+
+        qa_cfg = QAConfig()
+        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
+        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
+        required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
+        session_close_evidence["required"] = list(required_close)
+
+        if required_close and session_tasks:
+            missing_close: list[str] = []
+            for filename in required_close:
+                ok = False
+                for t in session_tasks:
+                    rd = EvidenceService(t.id).get_current_round_dir()
+                    if not rd:
+                        continue
+                    p = rd / filename
+                    if not p.exists():
+                        continue
+                    parsed = parse_command_evidence(p)
+                    if parsed is None:
+                        continue
+                    try:
+                        if int(parsed.get("exitCode", 1)) == 0:
+                            ok = True
+                            break
+                    except Exception:
+                        continue
+                if not ok:
+                    missing_close.append(filename)
+            session_close_evidence["missing"] = missing_close
+    except Exception:
+        session_close_evidence = {"required": [], "missing": []}
+
+    recommendations_list = [
+        "Run 'edison session verify <session-id>' before closing to detect metadata drift (manual edits)",
+        "Context7 enforcement cross-checks task metadata + git diff for accuracy",
+    ]
+    if session_close_evidence.get("missing"):
+        anchor = sorted([t.id for t in session_tasks if t and t.id])[:1]
+        anchor_id = anchor[0] if anchor else "<task-id>"
+        recommendations_list.append(
+            "Before session close: satisfy required session-close evidence (config-driven) "
+            f"by running `edison evidence capture {anchor_id} --session-close`, then review outputs via `edison evidence show`."
+        )
+
     return {
         "context": _build_context_payload(session_id),
         "sessionId": session_id,
@@ -727,14 +794,12 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         "reportsMissing": reports_missing,
         "followUpsPlan": followups_plan,
         "rulesEngine": rules_engine_summary,  # Context-aware rules (git diff + config)
+        "sessionCloseEvidence": session_close_evidence,
         "rules": [
             "Use bundle-first validation; keep one QA per task.",
             "All moves must go through guarded CLIs.",
         ],
-        "recommendations": [
-            "Run 'edison session verify <session-id>' before closing to detect metadata drift (manual edits)",
-            "Context7 enforcement cross-checks task metadata + git diff for accuracy",
-        ],
+        "recommendations": recommendations_list,
     }
 
 

@@ -351,18 +351,47 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         file_ctx = file_ctx_svc.get_for_task(task_id, session_id)
         files = file_ctx.all_files
 
-        # Get triggered validators
-        always_run, triggered_blocking, triggered_optional = self.get_triggered_validators(
-            files, wave
-        )
+        # Resolve validation policy (preset) to include any preset-selected validators
+        # in addition to always_run + pattern-triggered validators.
+        preset_name = ""
+        preset_selected: list[ValidatorMetadata] = []
+        preset_missing: list[str] = []
+        try:
+            from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+            policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
+                task_id,
+                session_id=session_id,
+            )
+            preset_name = str(policy.preset.name or "")
+            for vid in policy.validators:
+                v = self.get(vid)
+                if not v:
+                    preset_missing.append(str(vid))
+                    continue
+                if wave and v.wave != wave:
+                    continue
+                preset_selected.append(v)
+        except Exception:
+            # Fail-open for roster building: fall back to legacy always_run/trigger behavior.
+            preset_name = ""
+            preset_selected = []
+            preset_missing = []
+
+        # Get always_run + pattern-triggered validators (legacy behavior)
+        always_run, triggered_blocking, triggered_optional = self.get_triggered_validators(files, wave)
+
+        # De-dupe: a preset may include global validators which are already always_run.
+        always_run_ids = {v.id for v in always_run}
+        preset_selected = [v for v in preset_selected if v.id not in always_run_ids]
 
         # Build skipped list (validators that didn't trigger)
         skipped: list[dict[str, Any]] = []
-        triggered_ids = {v.id for v in always_run + triggered_blocking + triggered_optional}
+        selected_ids = {v.id for v in (always_run + preset_selected + triggered_blocking + triggered_optional)}
         for v in self.get_all():
             if wave and v.wave != wave:
                 continue
-            if v.id not in triggered_ids:
+            if v.id not in selected_ids:
                 skipped.append({
                     "id": v.id,
                     "name": v.name,
@@ -374,17 +403,26 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         extra_added: list[dict[str, Any]] = []
         if extra_validators:
             for ev in extra_validators:
-                v = self.get(ev["id"])
-                if v and ev["id"] not in triggered_ids:
-                    wave = ev.get("wave", self.default_wave)
+                vid = str(ev.get("id") or "").strip()
+                if not vid:
+                    continue
+                v = self.get(vid)
+                if not v:
+                    continue
+
+                target_wave = str(ev.get("wave") or self.default_wave)
+                if wave and v.wave != wave and target_wave != wave:
+                    continue
+
+                if vid not in selected_ids:
                     extra_added.append({
                         "id": v.id,
-                        "wave": wave,
+                        "wave": target_wave,
                         "name": v.name,
                         "engine": v.engine,
                         "palRole": v.pal_role,
                         "blocking": v.blocking,
-                        "reason": f"Added by orchestrator (wave: {wave})",
+                        "reason": f"Added by orchestrator (wave: {target_wave})",
                         "addedByOrchestrator": True,
                     })
 
@@ -409,6 +447,9 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             _to_entry(v, f"{v.wave.title()} validator (always runs)")
             for v in always_run
         ]
+        preset_entries = [
+            _to_entry(v, f"Included by preset '{preset_name}'") for v in preset_selected
+        ]
         triggered_blocking_entries = [
             _to_entry(v, self._build_trigger_reason(files, v.triggers))
             for v in triggered_blocking
@@ -420,14 +461,16 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
 
         total_blocking = (
             len(always_required_entries)
+            + len([v for v in preset_entries if v.get("blocking")])
             + len(triggered_blocking_entries)
         )
 
-        return {
+        payload: dict[str, Any] = {
             "taskId": task_id,
             "sessionId": session_id,
+            "preset": preset_name,
             "modifiedFiles": files,
-            "alwaysRequired": always_required_entries,
+            "alwaysRequired": always_required_entries + preset_entries,
             "triggeredBlocking": triggered_blocking_entries,
             "triggeredOptional": triggered_optional_entries,
             "extraAdded": extra_added,
@@ -435,6 +478,9 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             "totalBlocking": total_blocking,
             "decisionPoints": self._build_decision_points(files, skipped, extra_added),
         }
+        if preset_missing:
+            payload["missingPresetValidators"] = sorted(set(preset_missing))
+        return payload
 
     def _build_trigger_reason(self, files: list[str], triggers: list[str]) -> str:
         """Build human-readable trigger reason.

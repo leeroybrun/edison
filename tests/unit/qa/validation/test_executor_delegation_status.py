@@ -14,7 +14,7 @@ def test_executor_does_not_require_delegation_for_non_blocking_validators(
     result = executor.execute(
         task_id="9002-delegated-nonblocking",
         session_id="sess-1",
-        wave="critical",
+        wave="comprehensive",
         validators=["coderabbit"],
         parallel=False,
     )
@@ -22,4 +22,3 @@ def test_executor_does_not_require_delegation_for_non_blocking_validators(
     # Coderabbit is non-blocking; even if it must be delegated, we should not require it.
     assert result.delegated_validators == []
     assert result.to_dict()["status"] == "completed"
-

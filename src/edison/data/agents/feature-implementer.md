@@ -28,6 +28,7 @@ metadata:
 
 - **End-to-end completeness**: do not ship partial flows; integrate backend + frontend + tests.
 {{include-section:guidelines/includes/IMPORTANT_RULES.md#agents-common}}
+- **Validation roster is dynamic**: never hardcode validator counts; refer to `AVAILABLE_VALIDATORS.md` for the current roster and waves.
 - **Anti-patterns (E2E)**: bypassing validation/auth boundaries; “green by weakening tests”; shipping partial flows.
 
 ## Role
