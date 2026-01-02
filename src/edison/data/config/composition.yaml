@@ -202,40 +202,15 @@ composition:
       filename_pattern: "{name}.yaml"
 
     # -------------------------------------------------------------------------
-    # DOCUMENTS (Task/QA templates)
+    # TEMPLATES (Task/QA/Report scaffolds)
     # -------------------------------------------------------------------------
-    documents:
+    templates:
       enabled: true
-      description: "Document templates (TASK.md, QA.md)"
+      description: "Artifact templates (TASK.md, QA.md, IMPLEMENTATION_REPORT.md)"
       composition_mode: section_merge
       dedupe: false
       registry: null  # Use GenericRegistry
-      content_path: "templates/documents"
-      file_pattern: "*.md"
-      output_path: "{{PROJECT_EDISON_DIR}}/_generated/documents"
-      filename_pattern: "{name}.md"
-
-    # -------------------------------------------------------------------------
-    # TEMPLATES (Convenience read path for LLMs)
-    # -------------------------------------------------------------------------
-    templates_documents:
-      enabled: true
-      description: "Template documents for `edison read --type templates` (TASK.md, QA.md)"
-      composition_mode: section_merge
-      dedupe: false
-      registry: null
-      content_path: "templates/documents"
-      file_pattern: "*.md"
-      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates"
-      filename_pattern: "{name}.md"
-
-    templates_reports:
-      enabled: true
-      description: "Report templates for `edison read --type templates` (IMPLEMENTATION_REPORT.md)"
-      composition_mode: section_merge
-      dedupe: false
-      registry: null
-      content_path: "templates/reports"
+      content_path: "templates/artifacts"
       file_pattern: "*.md"
       output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates"
       filename_pattern: "{name}.md"

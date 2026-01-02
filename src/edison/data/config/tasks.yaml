@@ -3,10 +3,10 @@ tasks:
     root: "{PROJECT_MANAGEMENT_DIR}/tasks"
     qaRoot: "{PROJECT_MANAGEMENT_DIR}/qa"
     metaRoot: "{PROJECT_MANAGEMENT_DIR}/tasks/meta"
-    # Document templates are composed into `{PROJECT_CONFIG_DIR}/_generated/documents/`.
+    # Artifact templates are composed into `{PROJECT_CONFIG_DIR}/_generated/templates/`.
     # Task/QA creation should source templates from there for pack/project overlays.
-    template: "{PROJECT_CONFIG_DIR}/_generated/documents/TASK.md"
-    qaTemplate: "{PROJECT_CONFIG_DIR}/_generated/documents/QA.md"
+    template: "{PROJECT_CONFIG_DIR}/_generated/templates/TASK.md"
+    qaTemplate: "{PROJECT_CONFIG_DIR}/_generated/templates/QA.md"
     evidenceSubdir: "validation-evidence"
   defaults:
     ownerPrefix: "- **Owner:** "
