@@ -4,6 +4,7 @@ You are starting a fresh work session as an **ORCHESTRATOR**.
 
 {{include:start/includes/WORKTREE_CONFINEMENT.md}}
 {{include-section:guidelines/includes/EXECUTION_WRAPPER.md#principles}}
+{{include-section:guidelines/includes/ORCHESTRATION_GATES.md#start-bootstrap}}
 
 ## Immediate Actions
 

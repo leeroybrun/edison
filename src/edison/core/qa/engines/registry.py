@@ -225,6 +225,7 @@ class EngineRegistry:
         worktree_path: Path,
         round_num: int | None = None,
         evidence_service: EvidenceService | None = None,
+        timeout: int | None = None,
     ) -> ValidationResult:
         """Run a specific validator by ID.
 
@@ -237,6 +238,7 @@ class EngineRegistry:
             worktree_path: Path to git worktree
             round_num: Optional validation round number
             evidence_service: Optional evidence service
+            timeout: Override timeout for this validator (seconds)
 
         Returns:
             ValidationResult from the validator
@@ -261,6 +263,7 @@ class EngineRegistry:
                 worktree_path=worktree_path,
                 round_num=round_num,
                 evidence_service=evidence_service,
+                timeout=timeout,
             )
 
         # Try fallback engine
@@ -278,6 +281,7 @@ class EngineRegistry:
                     worktree_path=worktree_path,
                     round_num=round_num,
                     evidence_service=evidence_service,
+                    timeout=timeout,
                 )
 
         # No engine available

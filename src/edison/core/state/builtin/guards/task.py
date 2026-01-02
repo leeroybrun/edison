@@ -87,20 +87,64 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
             project_root_path = None
 
     # Context7 enforcement (must surface a useful error message).
+    # Check if Context7 checks should be skipped (explicit bypass)
+    skip_context7 = bool(ctx.get("skip_context7"))
+
     try:
         session = ctx.get("session")
         session_dict = session if isinstance(session, Mapping) else None
 
-        from edison.core.qa.context import detect_packages, missing_packages
+        from edison.core.qa.context import detect_packages, missing_packages_detailed
         from edison.core.task.repository import TaskRepository
+        from edison.core.qa.evidence import EvidenceService
 
         task_repo = TaskRepository(project_root=project_root_path)
-        task_path = task_repo._find_entity_path(str(task_id))  # type: ignore[attr-defined]
-        if task_path:
+        task_path = task_repo._find_entity_path(str(task_id))
+        if task_path and not skip_context7:
             packages = detect_packages(Path(task_path), session_dict)  # type: ignore[arg-type]
-            missing = missing_packages(str(task_id), packages)
-            if missing:
-                raise ValueError(f"Context7 evidence required: {', '.join(missing)}")
+            detailed = missing_packages_detailed(str(task_id), packages)
+
+            missing_pkgs = detailed.get("missing", [])
+            invalid_markers = detailed.get("invalid", [])
+            evidence_dir = detailed.get("evidence_dir")
+
+            if missing_pkgs or invalid_markers:
+                # Build a detailed, actionable error message
+                lines: list[str] = ["Context7 evidence requirements not met:"]
+
+                if evidence_dir:
+                    lines.append(f"  Evidence directory: {evidence_dir}")
+
+                if missing_pkgs:
+                    lines.append(f"  Missing markers: {', '.join(missing_pkgs)}")
+
+                if invalid_markers:
+                    for inv in invalid_markers:
+                        pkg = inv.get("package", "unknown")
+                        missing_fields = inv.get("missing_fields", [])
+                        lines.append(
+                            f"  Invalid marker '{pkg}': missing required fields {missing_fields}"
+                        )
+
+                lines.append("")
+                lines.append("To view current Context7 configuration:")
+                lines.append("  edison config show context7 --format yaml")
+                lines.append("")
+                lines.append("To modify or disable Context7 requirements, edit:")
+                lines.append("  .edison/config/context7.yaml")
+                lines.append("")
+                lines.append("To save Context7 evidence:")
+                for pkg in missing_pkgs:
+                    lines.append(
+                        f"  edison evidence context7 save {task_id} {pkg} --library-id /<org>/{pkg} --topics <topics>"
+                    )
+                for inv in invalid_markers:
+                    pkg = inv.get("package", "unknown")
+                    lines.append(
+                        f"  edison evidence context7 save {task_id} {pkg} --library-id /<org>/{pkg} --topics <topics>"
+                    )
+
+                raise ValueError("\n".join(lines))
     except ValueError:
         raise
     except Exception as e:

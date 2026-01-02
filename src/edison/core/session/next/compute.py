@@ -391,11 +391,26 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                 # Find related tasks for context
                 related = find_related_in_session(session_id, task_id)
 
-                actions.append({
+                # Compute task start checklist for this wip task
+                task_checklist = None
+                try:
+                    from edison.core.workflow.checklists.task_start import TaskStartChecklistEngine
+                    engine = TaskStartChecklistEngine()
+                    checklist_result = engine.compute(task_id=task_id, session_id=session_id)
+                    task_checklist = checklist_result.to_dict()
+                except Exception:
+                    # Fail-open: session next must remain usable even if checklist fails
+                    pass
+
+                action_data = {
                     **basic_hint,
-                    "delegationDetails": enhanced_hint,  # NEW: Detailed reasoning
-                    "relatedTasks": related,  # NEW: Parent/child/sibling context
-                })
+                    "delegationDetails": enhanced_hint,  # Detailed reasoning
+                    "relatedTasks": related,  # Parent/child/sibling context
+                }
+                if task_checklist:
+                    action_data["checklist"] = task_checklist  # Task start checklist
+
+                actions.append(action_data)
 
     # Follow-ups suggestions (claim vs create-only)
     wip_done_states = {STATES["task"]["wip"], STATES["task"]["done"]}

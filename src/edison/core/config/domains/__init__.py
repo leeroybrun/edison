@@ -18,6 +18,7 @@ Available domain configs:
 - CLIConfig: CLI output formatting and display settings
 - JSONIOConfig: JSON I/O formatting and encoding settings
 - Context7Config: Context7 package detection and aliases
+- CIConfig: CI command configuration (type-check, lint, test, build)
 
 Note: AdaptersConfig has been removed. Use CompositionConfig.adapters instead.
 
@@ -60,6 +61,7 @@ from .cli import CLIConfig
 from .json_io import JSONIOConfig
 from .context7 import Context7Config
 from .logging import LoggingConfig
+from .ci import CIConfig
 
 __all__: list[str] = [
     "PacksConfig",
@@ -80,4 +82,5 @@ __all__: list[str] = [
     "JSONIOConfig",
     "Context7Config",
     "LoggingConfig",
+    "CIConfig",
 ]

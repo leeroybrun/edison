@@ -5,15 +5,14 @@ validation:
   execution:
     timeout: 900  # Allow slower CLI validators during local iteration
 
-  # Temporary overrides for faster Edison iteration:
-  # - Keep only `global-claude` (blocking) + `global-codex` (advisory) enabled by default.
-  # - Disable other always-run validators until session-close validation bundles are implemented.
+  # Both global-claude and global-codex are blocking validators.
+  # Other validators disabled until session-close validation bundles are implemented.
   #
   # NOTE: This uses the v2 validator schema keys consumed by ValidatorRegistry/EngineRegistry.
   validators:
     global-codex:
       always_run: true
-      blocking: false
+      blocking: true
       triggers: ["*"]
       timeout: 900
     global-claude:
@@ -78,6 +77,7 @@ validation:
   # Edison-specific blocking validators
   blocking_validators:
     - global-claude
+    - global-codex
 
   # Approval criteria for Edison project
   approvalCriteria:

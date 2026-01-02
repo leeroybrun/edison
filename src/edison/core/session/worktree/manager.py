@@ -23,6 +23,12 @@ def _shared_state_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
+def _is_share_evidence_root_enabled(cfg: Dict[str, Any]) -> bool:
+    """Check if shareEvidenceRoot is enabled in config."""
+    ss = _shared_state_cfg(cfg)
+    return bool(ss.get("shareEvidenceRoot", False))
+
+
 def _parse_shared_paths(cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
     """Parse `worktrees.sharedState.sharedPaths` into a normalized list of dicts."""
     ss = _shared_state_cfg(cfg)
@@ -698,6 +704,13 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
         scope="primary",
     )
 
+    # If shareEvidenceRoot is enabled, ensure evidence root is symlinked to shared location.
+    _ensure_shared_evidence_root(
+        checkout_path=primary_repo_dir,
+        repo_dir=primary_repo_dir,
+        cfg=cfg,
+    )
+
     _ensure_checkout_git_excludes(checkout_path=primary_repo_dir, cfg=cfg, scope="primary")
 
     # Apply excludes to all non-primary/non-meta worktrees as "session" checkouts.
@@ -736,6 +749,7 @@ def initialize_meta_shared_state(*, repo_dir: Optional[Path] = None, dry_run: bo
                 )
                 session_shared_updated += su
                 session_shared_skipped_tracked += ss_tracked
+                _ensure_shared_evidence_root(checkout_path=p, repo_dir=p, cfg=cfg)
                 _ensure_checkout_git_excludes(checkout_path=p, cfg=cfg, scope="session")
                 session_updated += 1
     except Exception:
@@ -1015,6 +1029,84 @@ def _ensure_shared_paths_in_checkout(
     return updated, skipped_tracked
 
 
+def _ensure_shared_evidence_root(
+    *,
+    checkout_path: Path,
+    repo_dir: Path,
+    cfg: Dict[str, Any],
+) -> bool:
+    """Ensure evidence root is symlinked to the shared location when shareEvidenceRoot is enabled.
+
+    This creates a symlink from `<checkout>/.project/qa/validation-evidence` to the
+    shared root's equivalent location, ensuring evidence written in any worktree is
+    visible from all others.
+
+    This function is idempotent and handles the following scenarios:
+    - If .project/qa is already symlinked (via sharedPaths), no additional symlink is needed
+    - If .project/qa is NOT symlinked, creates a direct symlink for the evidence directory
+
+    Args:
+        checkout_path: Path to the checkout (primary or session worktree)
+        repo_dir: Repository directory
+        cfg: Worktree configuration
+
+    Returns:
+        True if a symlink was created or updated, False otherwise
+    """
+    if not _is_share_evidence_root_enabled(cfg):
+        return False
+
+    try:
+        from edison.core.config.domains.task import TaskConfig
+        from edison.core.utils.paths.management import ProjectManagementPaths
+
+        # Get the evidence subdir name from config
+        primary_repo_dir = get_worktree_parent(repo_dir) or repo_dir
+        task_cfg = TaskConfig(repo_root=primary_repo_dir)
+        evidence_subdir = task_cfg.evidence_subdir()
+
+        # Get the management dir name
+        mgmt_paths = ProjectManagementPaths(primary_repo_dir)
+        mgmt_dir_name = mgmt_paths.get_management_root().name
+
+        # Resolve the shared root
+        shared_root = _resolve_shared_root(repo_dir=repo_dir, cfg=cfg)
+
+        # Build the evidence path relative to the checkout
+        # Pattern: .project/qa/validation-evidence
+        rel_evidence_path = Path(mgmt_dir_name) / "qa" / evidence_subdir
+
+        # Check if this path is tracked (git-controlled) in the checkout
+        if _path_is_tracked(checkout_path=checkout_path, rel_path=str(rel_evidence_path)):
+            return False
+
+        link = checkout_path / rel_evidence_path
+        target = shared_root / rel_evidence_path
+
+        # If the parent QA directory is already a symlink pointing to the shared root,
+        # the evidence directory is automatically shared via that parent symlink.
+        # In this case, no additional symlink is needed.
+        qa_dir = checkout_path / mgmt_dir_name / "qa"
+        if qa_dir.is_symlink():
+            try:
+                qa_target = shared_root / mgmt_dir_name / "qa"
+                if qa_dir.resolve() == qa_target.resolve():
+                    # Parent QA is already symlinked to shared - evidence is already shared
+                    return False
+            except Exception:
+                pass
+
+        return _ensure_symlink_with_merge(
+            link=link,
+            target=target,
+            item_type="dir",
+            merge_existing=True,
+        )
+    except Exception:
+        # Fail closed: do not block worktree creation, but also do not create symlink
+        return False
+
+
 def _ensure_worktree_session_id_file(*, worktree_path: Path, session_id: str) -> None:
     """Ensure `<project-management-dir>/.session-id` exists inside the worktree.
 
@@ -1252,6 +1344,11 @@ def create_worktree(
                 cfg=config,
                 scope="primary",
             )
+            _ensure_shared_evidence_root(
+                checkout_path=primary_repo_dir,
+                repo_dir=primary_repo_dir,
+                cfg=config,
+            )
             _ensure_checkout_git_excludes(checkout_path=primary_repo_dir, cfg=config, scope="primary")
         except Exception:
             return
@@ -1269,6 +1366,7 @@ def create_worktree(
         resolved = existing_wt.resolve()
         if not dry_run:
             _ensure_shared_paths_in_checkout(checkout_path=resolved, repo_dir=repo_dir, cfg=config, scope="session")
+            _ensure_shared_evidence_root(checkout_path=resolved, repo_dir=repo_dir, cfg=config)
             _ensure_worktree_session_id_file(worktree_path=resolved, session_id=session_id)
             _ensure_checkout_git_excludes(checkout_path=resolved, cfg=config, scope="session")
             _maybe_align_primary_shared_state()
@@ -1479,6 +1577,7 @@ def create_worktree(
         raise RuntimeError(f"Worktree health checks failed: {e}")
 
     _ensure_shared_paths_in_checkout(checkout_path=worktree_path, repo_dir=repo_dir, cfg=config, scope="session")
+    _ensure_shared_evidence_root(checkout_path=worktree_path, repo_dir=repo_dir, cfg=config)
     _ensure_worktree_session_id_file(worktree_path=worktree_path, session_id=session_id)
     _ensure_checkout_git_excludes(checkout_path=worktree_path, cfg=config, scope="session")
     _maybe_align_primary_shared_state()

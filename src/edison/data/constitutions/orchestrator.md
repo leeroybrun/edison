@@ -59,6 +59,12 @@ This file is located at: `{{PROJECT_EDISON_DIR}}/_generated/constitutions/ORCHES
 
 ---
 
+## Orchestration Gates (Durable)
+
+{{include-section:guidelines/includes/ORCHESTRATION_GATES.md#orchestrator-session-long}}
+
+---
+
 {{include-section:guidelines/includes/TDD.md#orchestrator-verify}}
 
 ---

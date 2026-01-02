@@ -22,6 +22,32 @@ if TYPE_CHECKING:
     from edison.core.registries.validators import ValidatorMetadata
 
 
+# Default Edison session environment variables that should be scrubbed from
+# validator subprocesses (validators should be reproducible from repo state).
+DEFAULT_DENYLIST_VARS: list[str] = [
+    "AGENTS_SESSION",
+    "EDISON_SESSION_ID",
+    "PAL_WORKING_DIR",
+    "EDISON_ACTOR_ID",
+    "EDISON_ACTOR_ROLE",
+]
+
+
+@dataclass
+class EnvPolicy:
+    """Environment variable policy for subprocess execution.
+
+    Policies:
+    - inherit: Pass through all env vars from parent process
+    - denylist: Pass through all except configured denylist (default)
+    - clean: Start with minimal env (PATH, HOME only), add configured allowlist
+    """
+
+    mode: str = "denylist"  # "inherit" | "denylist" | "clean"
+    denylist: list[str] = field(default_factory=list)
+    allowlist: list[str] = field(default_factory=list)
+
+
 @dataclass
 class EngineConfig:
     """Configuration for a validator execution engine.
@@ -41,6 +67,7 @@ class EngineConfig:
     prompt_mode: str = "file"  # file | arg | stdin
     prompt_flag: str = ""  # used when prompt_mode == "file"
     stdin_prompt_arg: str = "-"  # used when prompt_mode == "stdin" (when CLI needs a sentinel)
+    env_policy: EnvPolicy | None = None
 
     @classmethod
     def from_dict(cls, engine_id: str, data: dict[str, Any]) -> EngineConfig:
@@ -51,6 +78,9 @@ class EngineConfig:
         pre_flags = data.get("pre_flags", data.get("preFlags", []))
         if not isinstance(pre_flags, list):
             pre_flags = []
+
+        # Parse envPolicy configuration
+        env_policy = cls._parse_env_policy(data.get("envPolicy"))
 
         return cls(
             id=engine_id,
@@ -65,6 +95,47 @@ class EngineConfig:
             prompt_mode=str(prompt_mode or "file"),
             prompt_flag=str(prompt_flag or ""),
             stdin_prompt_arg=str(stdin_prompt_arg or "-"),
+            env_policy=env_policy,
+        )
+
+    @classmethod
+    def _parse_env_policy(cls, policy_data: dict[str, Any] | None) -> EnvPolicy:
+        """Parse envPolicy configuration.
+
+        Args:
+            policy_data: Raw envPolicy dict from config
+
+        Returns:
+            EnvPolicy instance with defaults applied
+        """
+        if policy_data is None:
+            # Default: denylist mode with Edison session vars
+            return EnvPolicy(
+                mode="denylist",
+                denylist=list(DEFAULT_DENYLIST_VARS),
+                allowlist=[],
+            )
+
+        mode = policy_data.get("mode", "denylist")
+        custom_denylist = policy_data.get("denylist", [])
+        allowlist = policy_data.get("allowlist", [])
+
+        # For denylist mode, extend (not replace) defaults
+        if mode == "denylist":
+            combined_denylist = list(DEFAULT_DENYLIST_VARS)
+            for var in custom_denylist:
+                if var not in combined_denylist:
+                    combined_denylist.append(var)
+            return EnvPolicy(
+                mode="denylist",
+                denylist=combined_denylist,
+                allowlist=[],
+            )
+
+        return EnvPolicy(
+            mode=mode,
+            denylist=list(custom_denylist) if custom_denylist else [],
+            allowlist=list(allowlist) if allowlist else [],
         )
 
 
@@ -190,7 +261,9 @@ class EngineProtocol(Protocol):
 
 
 __all__ = [
+    "DEFAULT_DENYLIST_VARS",
     "EngineConfig",
     "EngineProtocol",
+    "EnvPolicy",
     "ValidationResult",
 ]

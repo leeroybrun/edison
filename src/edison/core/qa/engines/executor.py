@@ -22,6 +22,7 @@ from .registry import EngineRegistry
 
 if TYPE_CHECKING:
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.registries.validators import ValidatorMetadata, ValidatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,35 @@ class ValidationExecutor:
         self.max_workers = max_workers
         self._registry = EngineRegistry(project_root=project_root)
 
+    def _get_effective_timeout(
+        self,
+        validator_timeout: int,
+        override_timeout: int | None,
+        timeout_multiplier: float | None,
+    ) -> int:
+        """Get the effective timeout for a validator.
+
+        Priority order:
+        1. override_timeout (CLI --timeout flag)
+        2. validator_timeout * timeout_multiplier (CLI --timeout-multiplier flag)
+        3. validator_timeout (config default)
+
+        Args:
+            validator_timeout: Default timeout from validator config
+            override_timeout: Explicit override from CLI (--timeout)
+            timeout_multiplier: Multiplier for default timeout (--timeout-multiplier)
+
+        Returns:
+            Effective timeout in seconds
+        """
+        if override_timeout is not None:
+            return override_timeout
+
+        if timeout_multiplier is not None:
+            return int(validator_timeout * timeout_multiplier)
+
+        return validator_timeout
+
     def execute(
         self,
         task_id: str,
@@ -186,6 +216,8 @@ class ValidationExecutor:
         round_num: int | None = None,
         evidence_service: EvidenceService | None = None,
         extra_validators: list[dict[str, str]] | None = None,
+        timeout: int | None = None,
+        timeout_multiplier: float | None = None,
     ) -> ExecutionResult:
         """Execute validators for a task.
 
@@ -201,6 +233,8 @@ class ValidationExecutor:
             evidence_service: Evidence service for saving results
             extra_validators: Extra validators to add (from orchestrator)
                 Each item: {"id": "validator-id", "wave": "wave-name"}
+            timeout: Override timeout for all validators (seconds)
+            timeout_multiplier: Multiply default validator timeouts by this factor
 
         Returns:
             ExecutionResult with all wave and validator results
@@ -244,6 +278,8 @@ class ValidationExecutor:
                 round_num=round_num,
                 evidence_service=evidence_service,
                 extra_validators=extra_validators,
+                timeout=timeout,
+                timeout_multiplier=timeout_multiplier,
             )
 
             result.waves.append(wave_result)
@@ -299,6 +335,8 @@ class ValidationExecutor:
         round_num: int | None,
         evidence_service: EvidenceService,
         extra_validators: list[dict[str, str]] | None = None,
+        timeout: int | None = None,
+        timeout_multiplier: float | None = None,
     ) -> WaveResult:
         """Execute all validators in a wave.
 
@@ -312,6 +350,9 @@ class ValidationExecutor:
             parallel: Run validators in parallel
             round_num: Validation round number
             evidence_service: Evidence service
+            extra_validators: Extra validators to add (from orchestrator)
+            timeout: Override timeout for all validators (seconds)
+            timeout_multiplier: Multiply default validator timeouts by this factor
 
         Returns:
             WaveResult with all validator results
@@ -454,6 +495,8 @@ class ValidationExecutor:
                 worktree_path=worktree_path,
                 round_num=round_num,
                 evidence_service=evidence_service,
+                timeout=timeout,
+                timeout_multiplier=timeout_multiplier,
             )
         else:
             results = self._execute_sequential(
@@ -463,12 +506,19 @@ class ValidationExecutor:
                 worktree_path=worktree_path,
                 round_num=round_num,
                 evidence_service=evidence_service,
+                timeout=timeout,
+                timeout_multiplier=timeout_multiplier,
             )
 
         wave_result.validators.extend(results)
 
         # Run delegated validators (always sequential, generates instructions)
         for config in delegated:
+            effective_timeout = self._get_effective_timeout(
+                validator_timeout=config.timeout,
+                override_timeout=timeout,
+                timeout_multiplier=timeout_multiplier,
+            )
             result = self._registry.run_validator(
                 validator_id=config.id,
                 task_id=task_id,
@@ -476,6 +526,7 @@ class ValidationExecutor:
                 worktree_path=worktree_path,
                 round_num=round_num,
                 evidence_service=evidence_service,
+                timeout=effective_timeout,
             )
             wave_result.validators.append(result)
             self._persist_validator_report(
@@ -490,7 +541,7 @@ class ValidationExecutor:
         for config in validators_in_wave:
             if config.blocking:
                 # Find result for this validator
-                result = next(
+                validator_result: ValidationResult | None = next(
                     (r for r in wave_result.validators if r.validator_id == config.id),
                     None,
                 )
@@ -498,21 +549,23 @@ class ValidationExecutor:
                 #
                 # Pending (delegated) validators are not failures, but they still
                 # mean the blocking bar has NOT been met yet.
-                if result is None or result.verdict != "approve":
+                if validator_result is None or validator_result.verdict != "approve":
                     wave_result.blocking_passed = False
-                    if result is not None and result.verdict != "pending":
+                    if validator_result is not None and validator_result.verdict != "pending":
                         wave_result.blocking_failed.append(config.id)
 
         return wave_result
 
     def _execute_parallel(
         self,
-        validators: list,
+        validators: "list[ValidatorMetadata]",
         task_id: str,
         session_id: str,
         worktree_path: Path,
         round_num: int | None,
         evidence_service: EvidenceService,
+        timeout: int | None = None,
+        timeout_multiplier: float | None = None,
     ) -> list[ValidationResult]:
         """Execute validators in parallel.
 
@@ -523,6 +576,8 @@ class ValidationExecutor:
             worktree_path: Path to git worktree
             round_num: Validation round number
             evidence_service: Evidence service
+            timeout: Override timeout for all validators (seconds)
+            timeout_multiplier: Multiply default validator timeouts by this factor
 
         Returns:
             List of ValidationResult objects
@@ -541,6 +596,11 @@ class ValidationExecutor:
                     worktree_path=worktree_path,
                     round_num=round_num,
                     evidence_service=evidence_service,
+                    timeout=self._get_effective_timeout(
+                        validator_timeout=config.timeout,
+                        override_timeout=timeout,
+                        timeout_multiplier=timeout_multiplier,
+                    ),
                 ): config
                 for config in validators
             }
@@ -581,12 +641,14 @@ class ValidationExecutor:
 
     def _execute_sequential(
         self,
-        validators: list,
+        validators: "list[ValidatorMetadata]",
         task_id: str,
         session_id: str,
         worktree_path: Path,
         round_num: int | None,
         evidence_service: EvidenceService,
+        timeout: int | None = None,
+        timeout_multiplier: float | None = None,
     ) -> list[ValidationResult]:
         """Execute validators sequentially.
 
@@ -597,6 +659,8 @@ class ValidationExecutor:
             worktree_path: Path to git worktree
             round_num: Validation round number
             evidence_service: Evidence service
+            timeout: Override timeout for all validators (seconds)
+            timeout_multiplier: Multiply default validator timeouts by this factor
 
         Returns:
             List of ValidationResult objects
@@ -605,6 +669,11 @@ class ValidationExecutor:
 
         for config in validators:
             try:
+                effective_timeout = self._get_effective_timeout(
+                    validator_timeout=config.timeout,
+                    override_timeout=timeout,
+                    timeout_multiplier=timeout_multiplier,
+                )
                 result = self._registry.run_validator(
                     validator_id=config.id,
                     task_id=task_id,
@@ -612,6 +681,7 @@ class ValidationExecutor:
                     worktree_path=worktree_path,
                     round_num=round_num,
                     evidence_service=evidence_service,
+                    timeout=effective_timeout,
                 )
                 results.append(result)
                 logger.info(f"Validator '{config.id}' completed: {result.verdict}")

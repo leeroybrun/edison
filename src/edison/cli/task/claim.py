@@ -35,6 +35,92 @@ def _detect_strict_guard_wrappers(project_root: Path) -> bool:
     )
 
 
+def _build_delegation_suggestion(
+    task_id: str, task_title: str, project_root: Path
+) -> dict[str, Any]:
+    """Build delegation suggestion based on task patterns and available Pal models.
+
+    Returns a dict with:
+        - suggested: bool (True if a suggestion was found)
+        - model: str | None (suggested model name if any)
+        - role: str | None (suggested role if any)
+        - note: str (human-readable note about the suggestion)
+    """
+    suggestion: dict[str, Any] = {
+        "suggested": False,
+        "model": None,
+        "role": None,
+        "note": "No specific delegation pattern matched. Use orchestrator judgment.",
+    }
+
+    # Try to detect patterns from task title/id
+    title_lower = task_title.lower()
+    id_lower = task_id.lower()
+
+    # Pattern matching for common task types
+    if any(kw in title_lower or kw in id_lower for kw in ["test", "tdd", "spec"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-test-engineer",
+            "note": "Task appears test-related. Consider delegating to test-engineer role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["api", "endpoint", "route"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-api-builder",
+            "note": "Task appears API-related. Consider delegating to api-builder role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["component", "ui", "view"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-component-builder",
+            "note": "Task appears UI-related. Consider delegating to component-builder role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["database", "schema", "migration"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-database-architect",
+            "note": "Task appears database-related. Consider delegating to database-architect role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["python", "py"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-python-developer",
+            "note": "Task appears Python-related. Consider delegating to python-developer role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["review", "audit"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-code-reviewer",
+            "note": "Task appears review-related. Consider delegating to code-reviewer role.",
+        }
+    elif any(kw in title_lower or kw in id_lower for kw in ["feature", "implement"]):
+        suggestion = {
+            "suggested": True,
+            "model": None,
+            "role": "agent-feature-implementer",
+            "note": "Task appears feature-related. Consider delegating to feature-implementer role.",
+        }
+
+    return suggestion
+
+
+def _build_next_commands(session_id: str, record_type: str) -> list[str]:
+    """Build list of next commands to run after claim."""
+    commands = [
+        f"edison session next {session_id}",
+    ]
+    if record_type == "task":
+        commands.append(f"edison session track start {session_id}")
+    return commands
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     parser.add_argument(
@@ -70,6 +156,13 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         type=str,
         default=None,
         help="Reason for takeover (required with --takeover).",
+    )
+    parser.add_argument(
+        "--show-delegation",
+        action="store_true",
+        default=False,
+        dest="show_delegation",
+        help="Show delegation suggestion based on task patterns and available models",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -153,21 +246,62 @@ def main(args: argparse.Namespace) -> int:
 
             effective_owner = (task_entity.metadata.created_by or owner or "").strip() or "_unassigned_"
 
-            formatter.json_output({
-                "status": "claimed",
-                "record_id": record_id,
-                "record_type": record_type,
-                "session_id": session_id,
-                "owner": effective_owner,
-                "state": task_entity.state,
-                "strict_wrappers": strict_wrappers,
-            }) if formatter.json_mode else formatter.text(
-                f"Claimed task {record_id}\n"
-                f"Session: {session_id}\n"
-                f"Owner: {effective_owner}\n"
-                f"Status: {task_entity.state}"
-                + (f"\nStrict Wrappers → {'yes' if strict_wrappers else 'no'}" if debug_wrappers else "")
-            )
+            # Build next commands and optional delegation suggestion
+            next_commands = _build_next_commands(session_id, record_type)
+            show_delegation = getattr(args, "show_delegation", False)
+
+            if formatter.json_mode:
+                output_data: dict[str, Any] = {
+                    "status": "claimed",
+                    "record_id": record_id,
+                    "record_type": record_type,
+                    "session_id": session_id,
+                    "owner": effective_owner,
+                    "state": task_entity.state,
+                    "strict_wrappers": strict_wrappers,
+                    "nextCommands": next_commands,
+                }
+                if show_delegation:
+                    output_data["delegationSuggestion"] = _build_delegation_suggestion(
+                        record_id, task_entity.title or "", project_root
+                    )
+                formatter.json_output(output_data)
+            else:
+                # Build text output with Next block and delegation reminder
+                text_lines = [
+                    f"Claimed task {record_id}",
+                    f"Session: {session_id}",
+                    f"Owner: {effective_owner}",
+                    f"Status: {task_entity.state}",
+                ]
+                if debug_wrappers:
+                    text_lines.append(f"Strict Wrappers → {'yes' if strict_wrappers else 'no'}")
+
+                # Add Next block
+                text_lines.append("")
+                text_lines.append("Next:")
+                for cmd in next_commands:
+                    text_lines.append(f"  {cmd}")
+
+                # Add delegation reminder
+                text_lines.append("")
+                text_lines.append("Consider: delegate to a specialized agent or implement directly with track.")
+
+                # Add delegation suggestion if --show-delegation
+                if show_delegation:
+                    suggestion = _build_delegation_suggestion(
+                        record_id, task_entity.title or "", project_root
+                    )
+                    text_lines.append("")
+                    text_lines.append("Delegation Suggestion:")
+                    if suggestion["suggested"]:
+                        if suggestion["role"]:
+                            text_lines.append(f"  Role: {suggestion['role']}")
+                        if suggestion["model"]:
+                            text_lines.append(f"  Model: {suggestion['model']}")
+                    text_lines.append(f"  Note: {suggestion['note']}")
+
+                formatter.text("\n".join(text_lines))
         else:
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)
@@ -216,21 +350,38 @@ def main(args: argparse.Namespace) -> int:
 
             effective_owner = (getattr(qa, "validator_owner", None) or getattr(getattr(qa, "metadata", None), "created_by", None) or owner or "").strip() or "_unassigned_"
 
-            formatter.json_output({
-                "status": "claimed",
-                "record_id": record_id,
-                "record_type": record_type,
-                "session_id": session_id,
-                "owner": effective_owner,
-                "state": qa.state,
-                "strict_wrappers": strict_wrappers,
-            }) if formatter.json_mode else formatter.text(
-                f"Claimed QA {record_id}\n"
-                f"Session: {session_id}\n"
-                f"Owner: {effective_owner}\n"
-                f"Status: {qa.state}"
-                + (f"\nStrict Wrappers → {'yes' if strict_wrappers else 'no'}" if debug_wrappers else "")
-            )
+            # Build next commands for QA
+            next_commands = _build_next_commands(session_id, record_type)
+
+            if formatter.json_mode:
+                formatter.json_output({
+                    "status": "claimed",
+                    "record_id": record_id,
+                    "record_type": record_type,
+                    "session_id": session_id,
+                    "owner": effective_owner,
+                    "state": qa.state,
+                    "strict_wrappers": strict_wrappers,
+                    "nextCommands": next_commands,
+                })
+            else:
+                # Build text output with Next block
+                text_lines = [
+                    f"Claimed QA {record_id}",
+                    f"Session: {session_id}",
+                    f"Owner: {effective_owner}",
+                    f"Status: {qa.state}",
+                ]
+                if debug_wrappers:
+                    text_lines.append(f"Strict Wrappers → {'yes' if strict_wrappers else 'no'}")
+
+                # Add Next block
+                text_lines.append("")
+                text_lines.append("Next:")
+                for cmd in next_commands:
+                    text_lines.append(f"  {cmd}")
+
+                formatter.text("\n".join(text_lines))
 
         return 0
 

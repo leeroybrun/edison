@@ -124,6 +124,12 @@ worktrees:
     commitGuard:
       enabled: true
       allowPrefixes: []
+    # When true, ensures `.project/qa/validation-evidence/` resolves to a
+    # single canonical location shared across primary checkout, session
+    # worktrees, and meta worktree. This prevents "missing evidence" errors
+    # when operators write evidence in one worktree but run guards from another.
+    # Default: false (for backward compatibility).
+    shareEvidenceRoot: false
   installDeps: false
   postInstallCommands: []
   enableDatabaseIsolation: false

@@ -22,6 +22,105 @@ if TYPE_CHECKING:
     pass
 
 
+def build_context7_status(task_id: str, session_id: str | None) -> dict[str, Any]:
+    """Build detailed Context7 status for a task.
+
+    This function surfaces Context7 requirements early (during wip status)
+    by distinguishing between missing markers and invalid markers.
+
+    Args:
+        task_id: Task identifier
+        session_id: Session identifier (used for validator roster building)
+
+    Returns:
+        Dict with:
+        - missing: List of packages with no marker file
+        - invalid: List of dicts with package and missing_fields
+        - valid: List of packages with valid markers
+        - evidence_dir: The round directory that was checked
+        - required_packages: All packages that require Context7 evidence
+        - suggested_commands: CLI commands to fix issues
+    """
+    from edison.core.qa.context.context7 import (
+        classify_packages,
+        REQUIRED_MARKER_FIELDS,
+    )
+    from edison.core.qa.evidence import EvidenceService
+
+    result: dict[str, Any] = {
+        "missing": [],
+        "invalid": [],
+        "valid": [],
+        "evidence_dir": None,
+        "required_packages": [],
+        "suggested_commands": [],
+    }
+
+    # Get required packages from validator roster
+    required_pkgs: set[str] = set()
+    try:
+        from edison.core.registries.validators import ValidatorRegistry
+
+        registry = ValidatorRegistry()
+        roster = registry.build_execution_roster(task_id, session_id=session_id)
+        validators_in_roster = (
+            roster.get("alwaysRequired", [])
+            + roster.get("triggeredBlocking", [])
+            + roster.get("triggeredOptional", [])
+        )
+        for v in validators_in_roster:
+            if not isinstance(v, dict):
+                continue
+            if v.get("context7Required") and isinstance(v.get("context7Packages"), list):
+                required_pkgs |= {
+                    str(p).strip()
+                    for p in v.get("context7Packages")
+                    if p and str(p).strip() and str(p).strip() != "+"
+                }
+    except Exception:
+        pass
+
+    result["required_packages"] = sorted(required_pkgs)
+
+    if not required_pkgs:
+        return result
+
+    # Get evidence round directory
+    ev_svc = EvidenceService(task_id)
+    rd = ev_svc.get_current_round_dir()
+
+    if rd is None:
+        result["missing"] = sorted(required_pkgs)
+        result["suggested_commands"] = [
+            f"edison evidence init {task_id}",
+            "edison evidence context7 template <package>",
+        ]
+        return result
+
+    result["evidence_dir"] = str(rd)
+
+    # Classify all required packages
+    classification = classify_packages(rd, sorted(required_pkgs))
+    result["missing"] = classification["missing"]
+    result["invalid"] = classification["invalid"]
+    result["valid"] = classification["valid"]
+
+    # Generate suggested commands for missing/invalid packages
+    suggested: list[str] = []
+    all_problematic = set(classification["missing"])
+    for inv in classification["invalid"]:
+        all_problematic.add(inv["package"])
+
+    for pkg in sorted(all_problematic):
+        suggested.append(f"edison evidence context7 template {pkg}")
+        suggested.append(
+            f"edison evidence context7 save {task_id} {pkg} --library-id /<org>/{pkg} --topics <topics>"
+        )
+
+    result["suggested_commands"] = suggested
+    return result
+
+
 def infer_task_status(task_id: str) -> str:
     """Infer task status from filesystem location."""
     try:
@@ -195,56 +294,32 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
             pass
 
         # Context7 markers expected for validators that require Context7 for this task
+        # Now uses detailed classification (missing vs invalid)
         try:
-            from edison.core.registries.validators import ValidatorRegistry
+            ctx7_status = build_context7_status(task_id, session_id)
+            missing_pkgs = ctx7_status.get("missing", [])
+            invalid_markers = ctx7_status.get("invalid", [])
+            evidence_dir = ctx7_status.get("evidence_dir")
+            suggested = ctx7_status.get("suggested_commands", [])
 
-            registry = ValidatorRegistry()
-            roster = registry.build_execution_roster(task_id, session_id=session_id)
-            validators_in_roster = (
-                roster.get("alwaysRequired", [])
-                + roster.get("triggeredBlocking", [])
-                + roster.get("triggeredOptional", [])
-            )
-            required_pkgs: set[str] = set()
-            for v in validators_in_roster:
-                if not isinstance(v, dict):
-                    continue
-                if v.get("context7Required") and isinstance(v.get("context7Packages"), list):
-                    required_pkgs |= {
-                        str(p).strip()
-                        for p in v.get("context7Packages")
-                        if p and str(p).strip() and str(p).strip() != "+"
-                    }
-
-            if required_pkgs:
-                ev_svc_ctx7 = EvidenceService(task_id)
-                latest_round_ctx7 = ev_svc_ctx7.get_current_round()
-                latest = (
-                    ev_svc_ctx7.get_evidence_root() / f"round-{latest_round_ctx7}"
-                    if latest_round_ctx7 is not None
-                    else None
-                )
-                missing_pkgs = sorted(
-                    p
-                    for p in required_pkgs
-                    if not latest
-                    or (
-                        not (latest / f"context7-{p}.txt").exists()
-                        and not (latest / f"context7-{p}.md").exists()
-                    )
-                )
-                if missing_pkgs:
-                    reports_missing.append(
-                        {
-                            "taskId": task_id,
-                            "type": "context7",
-                            "packages": missing_pkgs,
-                            "suggested": [
-                                "Write context7-<package>.txt in latest round with topics and doc references",
-                                "Add a note in the task file documenting Context7 usage",
-                            ],
-                        }
-                    )
+            # Only add entry if there are issues
+            if missing_pkgs or invalid_markers:
+                entry: dict[str, Any] = {
+                    "taskId": task_id,
+                    "type": "context7",
+                    "packages": missing_pkgs,
+                    "suggested": suggested if suggested else [
+                        "Write context7-<package>.txt in latest round with topics and doc references",
+                        "Add a note in the task file documenting Context7 usage",
+                    ],
+                }
+                # Include invalid markers for detailed reporting
+                if invalid_markers:
+                    entry["invalidMarkers"] = invalid_markers
+                # Include evidence directory for actionable messages
+                if evidence_dir:
+                    entry["evidenceDir"] = evidence_dir
+                reports_missing.append(entry)
         except Exception:
             pass
 

@@ -102,12 +102,32 @@ Safety notes:
 
 Safety note: Edison intentionally **skips symlinking** a sharedPath if that path is tracked in the checkout. This prevents “tracked directory replaced by symlink” surprises.
 
+## Context compaction and worktree awareness
+
+During long sessions, LLM context compaction can cause agents to lose track of which worktree they're operating in. Edison addresses this through:
+
+1. **Durable worktree gates**: The `ORCHESTRATION_GATES.md#orchestrator-session-long` section includes worktree discipline rules that are re-loaded after compaction.
+
+2. **Session context command**: `edison session context` outputs current worktree path as part of session state.
+
+3. **MANDATORY compaction reminder**: The pre-compaction hook outputs a directive to re-read the constitution, which re-establishes worktree awareness.
+
+**After compaction, verify worktree:**
+```bash
+# Check current session and worktree
+edison session context
+
+# Confirm worktree location
+pwd
+git worktree list
+```
+
 ## Troubleshooting checklist
 
 - `edison git worktree-meta-init --json` shows counts for:
   - `shared_paths_*_updated`
   - `shared_paths_*_skipped_tracked`
-- If `*_skipped_tracked > 0`, remove that path from the code branch first (it’s still tracked).
+- If `*_skipped_tracked > 0`, remove that path from the code branch first (it's still tracked).
 - `ls -la <path>` should show symlinks in primary/session worktrees for shared state.
 - `git worktree list` should show `_meta` and your session worktrees.
 

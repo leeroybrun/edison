@@ -169,6 +169,34 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                         )
                         lines.append(f"        {rel['note']}")
 
+            # Show task start checklist if present
+            if a.get("checklist"):
+                checklist = a["checklist"]
+                items = checklist.get("items", [])
+                if items:
+                    has_blockers = checklist.get("hasBlockers", False)
+                    blocker_icon = "🚫" if has_blockers else "✅"
+                    lines.append(f"\n   {blocker_icon} TASK START CHECKLIST:")
+                    for item in items:
+                        severity = item.get("severity", "info")
+                        status = item.get("status", "unknown")
+                        title = item.get("title", "Unknown")
+                        # Determine icon based on severity and status
+                        if status == "ok":
+                            icon = "✅"
+                        elif severity == "blocker":
+                            icon = "🚫"
+                        elif severity == "warning":
+                            icon = "⚠️"
+                        else:
+                            icon = "ℹ️"
+                        lines.append(f"      {icon} {title}")
+                        if item.get("rationale") and status != "ok":
+                            lines.append(f"         {item['rationale']}")
+                        if item.get("suggestedCommands") and status != "ok":
+                            for cmd in item["suggestedCommands"][:3]:  # Show max 3 commands
+                                lines.append(f"         -> {cmd}")
+
             lines.append("")  # Blank line between actions
 
     # Show blockers
@@ -184,15 +212,44 @@ def format_human_readable(payload: dict[str, Any]) -> str:
     if _section_enabled(output_cfg, "reportsMissing", default=True) and payload.get("reportsMissing"):
         lines.append("⚠️  MISSING REPORTS:")
         for r in payload["reportsMissing"]:
-            lines.append(f"   - Task {r['taskId']}: Missing {r['type']} report")
-            if r.get("validatorId"):
-                lines.append(f"     Validator: {r['validatorId']}")
-            if r.get("packages"):
-                lines.append(f"     Packages: {', '.join(r['packages'])}")
-            if r.get("suggested"):
-                lines.append("     Suggested fix:")
-                for s in r["suggested"]:
-                    lines.append(f"       - {s}")
+            report_type = r.get("type", "unknown")
+
+            # Enhanced Context7 display with missing vs invalid distinction
+            if report_type == "context7":
+                missing_pkgs = r.get("packages", [])
+                invalid_markers = r.get("invalidMarkers", [])
+                evidence_dir = r.get("evidenceDir")
+
+                lines.append(f"   - Task {r['taskId']}: Context7 evidence issues")
+
+                if evidence_dir:
+                    lines.append(f"     Evidence directory: {evidence_dir}")
+
+                if missing_pkgs:
+                    lines.append(f"     Missing markers: {', '.join(missing_pkgs)}")
+
+                if invalid_markers:
+                    lines.append("     Invalid markers:")
+                    for inv in invalid_markers:
+                        pkg = inv.get("package", "unknown")
+                        missing_fields = inv.get("missing_fields", [])
+                        lines.append(f"       - {pkg}: missing required fields {missing_fields}")
+
+                if r.get("suggested"):
+                    lines.append("     Fix with:")
+                    for s in r["suggested"]:
+                        lines.append(f"       {s}")
+            else:
+                # Default display for other report types
+                lines.append(f"   - Task {r['taskId']}: Missing {report_type} report")
+                if r.get("validatorId"):
+                    lines.append(f"     Validator: {r['validatorId']}")
+                if r.get("packages"):
+                    lines.append(f"     Packages: {', '.join(r['packages'])}")
+                if r.get("suggested"):
+                    lines.append("     Suggested fix:")
+                    for s in r["suggested"]:
+                        lines.append(f"       - {s}")
         lines.append("")
 
     # Show recommendations

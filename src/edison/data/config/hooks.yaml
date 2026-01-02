@@ -198,11 +198,11 @@ hooks:
       hook_type: command
       enabled: true
       blocking: false
-      description: "Remind agent to re-read constitution after context compaction"
+      description: "MANDATORY reminder to re-read constitution after context compaction"
       template: "compaction-reminder.sh.template"
       config:
         default_role: "agents"
-        message_template: "⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
+        message_template: "MANDATORY: Context compacted. Re-read your constitution NOW: run `edison read {ROLE} --type constitutions`"
         notify: true
 
     # ===== Stop Hooks =====

@@ -679,6 +679,14 @@ properties:
                   type: string
                 default: []
             additionalProperties: false
+          shareEvidenceRoot:
+            type: boolean
+            description: >
+              When true, ensures `.project/qa/validation-evidence/` resolves to a
+              single canonical location shared across primary checkout, session
+              worktrees, and meta worktree. This prevents "missing evidence" errors
+              when operators write evidence in one worktree but run guards from another.
+            default: false
         additionalProperties: false
       installDeps:
         type: boolean

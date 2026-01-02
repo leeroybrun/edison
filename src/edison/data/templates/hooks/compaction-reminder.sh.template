@@ -26,7 +26,7 @@ command -v edison >/dev/null 2>&1 && _edison_audit_event "hook.compaction-remind
 
 # Configuration from hooks.yaml
 ROLE="{{ cfg.get('default_role', 'agents') }}"
-MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'Context compacted. Re-read your constitution: run `edison read {ROLE} --type constitutions`.') }}"
+MESSAGE_TEMPLATE="{{ cfg.get('message_template', 'MANDATORY: Context compacted. Re-read your constitution NOW: run `edison read {ROLE} --type constitutions`') }}"
 NOTIFY="{{ cfg.get('notify', True) }}"
 
 # Expand {ROLE} placeholder in message template

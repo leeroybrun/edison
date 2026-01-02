@@ -65,6 +65,7 @@ class PalMCPEngine:
         worktree_path: Path,
         round_num: int | None = None,
         evidence_service: "EvidenceService | None" = None,
+        timeout: int | None = None,
     ) -> ValidationResult:
         """Generate delegation instructions for the validator.
 
@@ -75,10 +76,13 @@ class PalMCPEngine:
             worktree_path: Path to git worktree
             round_num: Optional validation round number
             evidence_service: Optional evidence service
+            timeout: Ignored for delegated engine (included for API consistency)
 
         Returns:
             ValidationResult with delegation instructions
         """
+        # Note: timeout is ignored for delegated engine - delegation instructions
+        # are generated immediately without subprocess execution.
         logger.info(
             f"Generating delegation instructions for validator '{validator.id}'"
         )

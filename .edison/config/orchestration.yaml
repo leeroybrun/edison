@@ -1,0 +1,6 @@
+# Orchestration Configuration
+# Enable external validators for proper validation workflow
+
+orchestration:
+  # Allow Edison to execute external CLI validator engines (codex/claude/gemini/etc)
+  allowCliEngines: true

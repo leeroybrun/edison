@@ -326,7 +326,13 @@ class TaskQAWorkflow:
 
         return task
 
-    def complete_task(self, task_id: str, session_id: str) -> Task:
+    def complete_task(
+        self,
+        task_id: str,
+        session_id: str,
+        *,
+        skip_context7: bool = False,
+    ) -> Task:
         """Complete a task (wip -> done transition).
 
         This workflow operation:
@@ -339,6 +345,7 @@ class TaskQAWorkflow:
         Args:
             task_id: Task identifier
             session_id: Session completing the task
+            skip_context7: If True, bypass Context7 evidence checks (leaves audit trace)
 
         Returns:
             Updated Task entity
@@ -384,6 +391,8 @@ class TaskQAWorkflow:
             "enforce_evidence": True,
             "entity_type": "task",
             "entity_id": task_id,
+            # Allow bypassing Context7 checks (explicit opt-in, leaves audit trace)
+            "skip_context7": skip_context7,
         }
         from edison.core.utils.time import utc_timestamp
 

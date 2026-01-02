@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
@@ -182,6 +182,199 @@ def _marker_valid(text: str) -> bool:
     return bool(str(text).strip())
 
 
+# Required fields for a valid Context7 marker
+REQUIRED_MARKER_FIELDS = ["libraryId", "topics"]
+
+
+def _parse_marker_frontmatter(text: str) -> Dict[str, Any]:
+    """Parse YAML frontmatter from a Context7 marker file.
+
+    Args:
+        text: Full content of the marker file
+
+    Returns:
+        Dict with parsed frontmatter fields, or empty dict if parsing fails
+    """
+    import yaml
+
+    text = text.strip()
+    if not text.startswith("---"):
+        return {}
+
+    parts = text.split("---", 2)
+    if len(parts) < 2:
+        return {}
+
+    try:
+        frontmatter = yaml.safe_load(parts[1])
+        return frontmatter if isinstance(frontmatter, dict) else {}
+    except (yaml.YAMLError, Exception):
+        return {}
+
+
+def _validate_marker_fields(frontmatter: Dict[str, Any]) -> List[str]:
+    """Check which required fields are missing from marker frontmatter.
+
+    Args:
+        frontmatter: Parsed frontmatter dict
+
+    Returns:
+        List of missing field names
+    """
+    missing: List[str] = []
+    for field in REQUIRED_MARKER_FIELDS:
+        val = frontmatter.get(field)
+        if val is None or (isinstance(val, (str, list)) and not val):
+            missing.append(field)
+    return missing
+
+
+def classify_marker(round_dir: Path, package: str) -> Dict[str, Any]:
+    """Classify a single Context7 marker as missing, invalid, or valid.
+
+    Args:
+        round_dir: Path to the evidence round directory
+        package: Package name to check
+
+    Returns:
+        Dict with classification result:
+        - status: "missing" | "invalid" | "valid"
+        - package: The package name
+        - path_checked: Path that was checked (for missing markers)
+        - missing_fields: List of missing required fields (for invalid markers)
+    """
+    marker_txt = round_dir / f"context7-{package}.txt"
+    marker_md = round_dir / f"context7-{package}.md"
+
+    # Check which file exists
+    if marker_txt.exists():
+        marker_path = marker_txt
+    elif marker_md.exists():
+        marker_path = marker_md
+    else:
+        return {
+            "status": "missing",
+            "package": package,
+            "path_checked": str(marker_txt),
+        }
+
+    # Read and validate content
+    try:
+        content = marker_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning("Failed to read marker file %s: %s", marker_path, e)
+        return {
+            "status": "invalid",
+            "package": package,
+            "missing_fields": REQUIRED_MARKER_FIELDS[:],
+            "error": str(e),
+        }
+
+    # Empty file is invalid
+    if not content.strip():
+        return {
+            "status": "invalid",
+            "package": package,
+            "missing_fields": REQUIRED_MARKER_FIELDS[:],
+        }
+
+    # Parse frontmatter and check required fields
+    frontmatter = _parse_marker_frontmatter(content)
+    missing_fields = _validate_marker_fields(frontmatter)
+
+    if missing_fields:
+        return {
+            "status": "invalid",
+            "package": package,
+            "missing_fields": missing_fields,
+        }
+
+    return {
+        "status": "valid",
+        "package": package,
+    }
+
+
+def classify_packages(round_dir: Path, packages: List[str]) -> Dict[str, Any]:
+    """Classify multiple Context7 packages at once.
+
+    Args:
+        round_dir: Path to the evidence round directory
+        packages: List of package names to check
+
+    Returns:
+        Dict with classification results:
+        - missing: List of package names that are missing
+        - invalid: List of dicts with package and missing_fields
+        - valid: List of package names that are valid
+        - evidence_dir: The round directory that was checked
+    """
+    missing: List[str] = []
+    invalid: List[Dict[str, Any]] = []
+    valid: List[str] = []
+
+    for pkg in packages:
+        result = classify_marker(round_dir, pkg)
+        status = result["status"]
+
+        if status == "missing":
+            missing.append(pkg)
+        elif status == "invalid":
+            invalid.append({
+                "package": pkg,
+                "missing_fields": result.get("missing_fields", []),
+            })
+        else:
+            valid.append(pkg)
+
+    return {
+        "missing": missing,
+        "invalid": invalid,
+        "valid": valid,
+        "evidence_dir": str(round_dir),
+    }
+
+
+def missing_packages_detailed(task_id: str, packages: Iterable[str]) -> Dict[str, Any]:
+    """Return detailed classification of packages lacking valid Context7 markers.
+
+    Unlike missing_packages() which returns only a list, this function
+    distinguishes between truly missing markers and invalid markers.
+
+    Args:
+        task_id: Task identifier
+        packages: Iterable of package names to check
+
+    Returns:
+        Dict with:
+        - missing: List of packages with no marker file
+        - invalid: List of dicts with package and missing_fields
+        - valid: List of packages with valid markers
+        - evidence_dir: The round directory that was checked
+    """
+    pkgs = sorted({_normalize(p) for p in packages})
+    if not pkgs:
+        return {
+            "missing": [],
+            "invalid": [],
+            "valid": [],
+            "evidence_dir": None,
+        }
+
+    ev_svc = EvidenceService(task_id)
+    rd = ev_svc.get_current_round_dir()
+
+    if rd is None:
+        return {
+            "missing": pkgs,
+            "invalid": [],
+            "valid": [],
+            "evidence_dir": None,
+        }
+
+    return classify_packages(rd, pkgs)
+
+
 def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:
     """Return the list of packages lacking valid Context7 markers."""
     pkgs = sorted({_normalize(p) for p in packages})
@@ -214,4 +407,8 @@ __all__ = [
     "load_validator_config",
     "detect_packages",
     "missing_packages",
+    "classify_marker",
+    "classify_packages",
+    "missing_packages_detailed",
+    "REQUIRED_MARKER_FIELDS",
 ]

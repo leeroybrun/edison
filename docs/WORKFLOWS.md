@@ -13,6 +13,7 @@ Complete guide to Edison's operational workflows, from session creation through 
 5. [TDD Workflow](#tdd-workflow)
 6. [Delegation Workflow](#delegation-workflow)
 7. [Error Recovery](#error-recovery)
+8. [Context Compaction](#context-compaction)
 
 ---
 
@@ -1263,6 +1264,56 @@ edison session status <session-id> --set active
 # OR
 edison session close <session-id>
 ```
+
+---
+
+## Context Compaction
+
+Handling LLM context window compaction during long sessions.
+
+### What is Context Compaction?
+
+When a Claude Code session exceeds its context window, the conversation history is compacted to free up space. This can cause loss of context about:
+- Current task state
+- Session identity
+- Delegation decisions
+- Worktree location
+
+### Compaction Handling
+
+Edison uses **durable orchestration gates** to survive compaction:
+
+1. **Pre-Compaction Hook**: Before compaction occurs, Edison injects a MANDATORY reminder to re-read the constitution.
+
+2. **Durable Gates in Constitution**: The ORCHESTRATOR constitution includes key orchestration rules (delegation-first, tracking requirements, worktree discipline) that are re-loaded after compaction.
+
+3. **Session Context Command**: `edison session context` outputs minimal session state to help re-orient after compaction.
+
+### Post-Compaction Recovery
+
+When you see the compaction reminder:
+
+```bash
+# MANDATORY: Re-read your constitution
+edison read ORCHESTRATOR --type constitutions
+
+# Verify session state
+edison session status
+
+# Check current context
+edison session context
+```
+
+### Key Compaction-Durable Gates
+
+From `ORCHESTRATION_GATES.md`:
+- **Delegation-first**: Do not implement directly; break work into tasks and delegate
+- **Session tracking**: Use `edison session status` to understand current state
+- **Worktree discipline**: All session work must happen in the session worktree
+
+These gates are included in both:
+- The full ORCHESTRATOR constitution (`#orchestrator-session-long` section)
+- Start prompts (`#start-bootstrap` section - minimal bootstrap)
 
 ---
 

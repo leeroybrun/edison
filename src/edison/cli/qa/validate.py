@@ -99,6 +99,18 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         metavar="PATH",
         help="Override worktree path for validation (advanced use: validate specific checkout)",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Override timeout for all validators (seconds)",
+    )
+    parser.add_argument(
+        "--timeout-multiplier",
+        type=float,
+        default=None,
+        help="Multiply default validator timeouts by this factor",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -553,6 +565,8 @@ def _execute_with_executor(
         parallel=not args.sequential,
         round_num=round_num,
         evidence_service=ev,
+        timeout=getattr(args, "timeout", None),
+        timeout_multiplier=getattr(args, "timeout_multiplier", None),
     )
 
     # ---------------------------------------------------------------------

@@ -141,6 +141,18 @@ def main(args: argparse.Namespace) -> int:
                     run_id=getattr(args, "run_id", None),
                     process_id=getattr(args, "process_id", None),
                 )
+                # Compute task start checklist for implementation work
+                try:
+                    from edison.core.workflow.checklists.task_start import TaskStartChecklistEngine
+                    engine = TaskStartChecklistEngine()
+                    checklist_result = engine.compute(
+                        task_id=str(args.task),
+                        session_id=result.get("sessionId"),
+                    )
+                    result["checklist"] = checklist_result.to_dict()
+                except Exception:
+                    # Fail-open: tracking must work even if checklist fails
+                    pass
             else:
                 if not getattr(args, "validator", None):
                     raise ValueError("--validator is required for type=validation")
@@ -157,9 +169,26 @@ def main(args: argparse.Namespace) -> int:
                     process_id=getattr(args, "process_id", None),
                 )
 
-            formatter.json_output(result) if formatter.json_mode else formatter.text(
-                f"Started {result['type']} tracking for {result['taskId']} (round {result['round']})"
-            )
+            if formatter.json_mode:
+                formatter.json_output(result)
+            else:
+                formatter.text(
+                    f"Started {result['type']} tracking for {result['taskId']} (round {result['round']})"
+                )
+                # Show checklist items in human-readable format
+                checklist = result.get("checklist", {})
+                if checklist.get("items"):
+                    formatter.text("\nTask Start Checklist:")
+                    for item in checklist["items"]:
+                        severity = item.get("severity", "info")
+                        status = item.get("status", "unknown")
+                        title = item.get("title", "Unknown")
+                        icon = "!" if severity == "blocker" and status != "ok" else "-"
+                        status_icon = "[OK]" if status == "ok" else f"[{status.upper()}]"
+                        formatter.text(f"  {icon} {status_icon} {title}")
+                        if item.get("suggestedCommands") and status != "ok":
+                            for cmd in item["suggestedCommands"]:
+                                formatter.text(f"      -> {cmd}")
 
         elif args.subcommand == "heartbeat":
             result = tracking.heartbeat(

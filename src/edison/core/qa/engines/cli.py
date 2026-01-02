@@ -80,6 +80,42 @@ class CLIEngine:
         # Ensure parsers are loaded
         ensure_parsers_loaded(project_root)
 
+    def _build_subprocess_env(self, project_root: Path) -> dict[str, str]:
+        """Build environment variables for subprocess execution.
+
+        Applies the configured envPolicy to control which env vars are passed
+        to the validator subprocess.
+
+        Args:
+            project_root: Project root path (for PATH augmentation)
+
+        Returns:
+            Dict of environment variables for subprocess
+        """
+        policy = self.config.env_policy
+
+        if policy is None or policy.mode == "inherit":
+            # inherit: pass all env vars
+            return dict(os.environ)
+
+        if policy.mode == "denylist":
+            # denylist: pass all except configured vars
+            env = dict(os.environ)
+            for var in policy.denylist:
+                env.pop(var, None)
+            return env
+
+        if policy.mode == "clean":
+            # clean: start with minimal env, add only allowlist
+            clean_env: dict[str, str] = {}
+            for var in policy.allowlist:
+                if var in os.environ:
+                    clean_env[var] = os.environ[var]
+            return clean_env
+
+        # Fallback: inherit mode if unknown mode
+        return dict(os.environ)
+
     @property
     def command(self) -> str:
         """Get the base command."""
@@ -156,6 +192,7 @@ class CLIEngine:
         worktree_path: Path,
         round_num: int | None = None,
         evidence_service: EvidenceService | None = None,
+        timeout: int | None = None,
     ) -> ValidationResult:
         """Execute the validator CLI and return results.
 
@@ -166,18 +203,16 @@ class CLIEngine:
             worktree_path: Path to git worktree to analyze
             round_num: Optional validation round number
             evidence_service: Optional evidence service for saving output
+            timeout: Override timeout for this validator (seconds).
+                     If None, uses validator.timeout from config.
 
         Returns:
             ValidationResult with verdict and findings
         """
         start_time = time.time()
 
-        env = dict(os.environ)
-        # Prevent Edison/session context from leaking into validator runs (validators should be reproducible
-        # from the repo state alone, not dependent on the operator's active session).
-        env.pop("AGENTS_SESSION", None)
-        env.pop("EDISON_SESSION_ID", None)
-        env.pop("PAL_WORKING_DIR", None)
+        # Build subprocess environment using config-driven policy
+        env = self._build_subprocess_env(worktree_path)
 
         # Make common repo-local tool shims available (uv/mypy/ruff/pytest, node tools, etc).
         try:
@@ -241,6 +276,9 @@ class CLIEngine:
         )
         logger.debug(f"Full command: {' '.join(cmd_parts[:5])}...")
 
+        # Use override timeout if provided, otherwise fall back to validator config
+        effective_timeout = timeout if timeout is not None else validator.timeout
+
         try:
             # Execute subprocess
             result = run_ci_command_from_string(
@@ -248,7 +286,7 @@ class CLIEngine:
                 extra_args=cmd_parts[1:],
                 cwd=worktree_path,
                 env=env,
-                timeout=validator.timeout,
+                timeout=effective_timeout,
                 capture_output=True,
                 text=True,
                 check=False,
