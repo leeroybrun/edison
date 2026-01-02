@@ -189,5 +189,3 @@ __all__ = [
     "iter_yaml_files",
     "resolve_yaml_path",
 ]
-
-
