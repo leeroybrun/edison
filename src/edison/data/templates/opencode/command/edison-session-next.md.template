@@ -1,0 +1,11 @@
+---
+description: Show Edison next steps for current session
+agent: build
+---
+Run `edison session next` to see recommended actions for the current session.
+
+```bash
+edison session next
+```
+
+After reviewing the output, follow the recommended actions in order of priority.

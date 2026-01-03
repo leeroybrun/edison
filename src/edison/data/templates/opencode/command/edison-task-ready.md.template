@@ -1,0 +1,11 @@
+---
+description: Mark an Edison task as ready for QA
+agent: build
+---
+Mark a task as done and ready for validation. Pass the task ID as an argument.
+
+```bash
+edison task ready $ARGUMENTS
+```
+
+Ensure all tests pass and evidence is captured before marking ready.
