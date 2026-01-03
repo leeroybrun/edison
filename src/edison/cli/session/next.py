@@ -41,6 +41,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         choices=["tasks", "qa", "session"],
         help="Restrict planning to a specific domain",
     )
+    parser.add_argument(
+        "--completion-only",
+        action="store_true",
+        help="Return only {sessionId, completion, continuation} (useful for hooks/plugins)",
+    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -67,6 +72,8 @@ def main(args: argparse.Namespace) -> int:
             fwd_argv.extend(["--limit", str(args.limit)])
         if args.scope:
             fwd_argv.extend(["--scope", args.scope])
+        if getattr(args, "completion_only", False):
+            fwd_argv.append("--completion-only")
         if getattr(args, "json", False):
             fwd_argv.append("--json")
         if getattr(args, "repo_root", None):

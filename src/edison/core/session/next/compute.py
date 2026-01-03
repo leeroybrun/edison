@@ -117,6 +117,218 @@ def _build_action_from_recommendation(
 import argparse
 
 
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list_str(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    for v in value:
+        if isinstance(v, str) and v.strip():
+            out.append(v.strip())
+    return out
+
+
+def _compute_completion(
+    *,
+    tasks_map: dict[str, Any],
+    blockers: list[dict[str, Any]],
+    reports_missing: list[dict[str, Any]],
+    completion_policy: str,
+    states: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    """Compute deterministic completion state from session-scope tasks and blockers.
+
+    Fail-open requirement: callers should wrap this in a try/except and degrade to
+    a conservative incomplete state if exceptions occur.
+    """
+    reasons: list[dict[str, Any]] = []
+
+    if not tasks_map:
+        reasons.append(
+            {
+                "code": "no_tasks",
+                "message": "No tasks found for this session (task files are the source of truth).",
+            }
+        )
+
+    if blockers:
+        reasons.append(
+            {
+                "code": "blockers",
+                "message": "Blockers exist; resolve blockers before session can be considered complete.",
+                "count": len(blockers),
+            }
+        )
+
+    if reports_missing:
+        reasons.append(
+            {
+                "code": "reports_missing",
+                "message": "Required reports/evidence are missing; capture evidence and write reports before completion.",
+                "count": len(reports_missing),
+            }
+        )
+
+    validated = states["task"]["validated"]
+    done = states["task"]["done"]
+
+    # Root tasks are those with no parent in session scope.
+    root_ids: list[str] = []
+    for task_id, entry in tasks_map.items():
+        parent_id = _safe_dict(entry).get("parentId")
+        if not isinstance(parent_id, str) or parent_id not in tasks_map:
+            root_ids.append(task_id)
+
+    non_root_ids = [tid for tid in tasks_map.keys() if tid not in set(root_ids)]
+
+    policy = str(completion_policy or "parent_validated_children_done")
+
+    if policy == "all_tasks_validated":
+        not_validated = [tid for tid, e in tasks_map.items() if _safe_dict(e).get("status") != validated]
+        if not_validated:
+            reasons.append(
+                {
+                    "code": "tasks_not_validated",
+                    "message": "All tasks must be validated under this completion policy.",
+                    "taskIds": sorted(not_validated),
+                }
+            )
+    else:
+        # Default policy: parent_validated_children_done
+        roots_not_validated = [
+            tid for tid in root_ids if _safe_dict(tasks_map.get(tid)).get("status") != validated
+        ]
+        if roots_not_validated:
+            reasons.append(
+                {
+                    "code": "root_tasks_not_validated",
+                    "message": "Root tasks must be validated before the session is considered complete.",
+                    "taskIds": sorted(roots_not_validated),
+                }
+            )
+
+        children_not_done = [
+            tid
+            for tid in non_root_ids
+            if _safe_dict(tasks_map.get(tid)).get("status") not in (done, validated)
+        ]
+        if children_not_done:
+            reasons.append(
+                {
+                    "code": "child_tasks_not_done",
+                    "message": "Child tasks must be done (or validated) before the session is considered complete.",
+                    "taskIds": sorted(children_not_done),
+                }
+            )
+
+        policy = "parent_validated_children_done"
+
+    is_complete = len(reasons) == 0
+    return {
+        "policy": policy,
+        "isComplete": is_complete,
+        "reasonsIncomplete": reasons if not is_complete else [],
+    }
+
+
+def _compute_continuation(
+    *,
+    session: dict[str, Any],
+    session_id: str,
+    continuation_cfg: dict[str, Any],
+    context_window_cfg: dict[str, Any],
+    completion: dict[str, Any],
+    actions: list[dict[str, Any]],
+    blockers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compute continuation mode/shouldContinue/prompt for clients (OpenCode/Claude hooks/etc)."""
+    cont_cfg = _safe_dict(continuation_cfg)
+    cw_cfg = _safe_dict(context_window_cfg)
+    meta = _safe_dict(session.get("meta"))
+    meta_cont = _safe_dict(meta.get("continuation"))
+
+    enabled = bool(cont_cfg.get("enabled", True))
+    if "enabled" in meta_cont:
+        enabled = bool(meta_cont.get("enabled"))
+
+    default_mode = str(cont_cfg.get("defaultMode") or "soft")
+    mode = str(meta_cont.get("mode") or default_mode)
+    if not enabled:
+        mode = "off"
+
+    budgets = _safe_dict(cont_cfg.get("budgets"))
+    max_iterations = int(meta_cont.get("maxIterations") or budgets.get("maxIterations") or 3)
+    cooldown_seconds = int(meta_cont.get("cooldownSeconds") or budgets.get("cooldownSeconds") or 15)
+    stop_on_blocked = bool(meta_cont.get("stopOnBlocked") if "stopOnBlocked" in meta_cont else budgets.get("stopOnBlocked", True))
+
+    is_complete = bool(_safe_dict(completion).get("isComplete"))
+    should_continue = enabled and mode != "off" and not is_complete
+    if should_continue and stop_on_blocked and blockers:
+        should_continue = False
+
+    # Deterministic "next blocking action" extraction (for prompt injection).
+    next_blocking_cmd = ""
+    for a in actions:
+        if not isinstance(a, dict):
+            continue
+        if not a.get("blocking"):
+            continue
+        cmd = a.get("cmd")
+        if isinstance(cmd, list) and cmd:
+            next_blocking_cmd = " ".join([str(x) for x in cmd if str(x)])
+            break
+
+    template = str(_safe_dict(_safe_dict(cont_cfg.get("templates")).get("continuationPrompt") or {}).get("value") or "")
+    # Back-compat: core YAML stores templates as plain strings.
+    if not template:
+        template = str(_safe_dict(cont_cfg.get("templates")).get("continuationPrompt") or "")
+    if not template:
+        template = "Continue working until the Edison session is complete.\nUse the loop driver: `edison session next {sessionId}`"
+
+    prompt = ""
+    if should_continue:
+        prompt = str(template).format(sessionId=session_id)
+        if next_blocking_cmd:
+            prompt = prompt.rstrip() + f"\nNext blocking action: `{next_blocking_cmd}`\n"
+
+        try:
+            reminders = _safe_dict(cw_cfg.get("reminders"))
+            reminders_enabled = bool(reminders.get("enabled", True))
+            if reminders_enabled:
+                cwam_rules = get_rules_for_context("context_window")
+                if cwam_rules:
+                    guidance = str(_safe_dict(cwam_rules[0]).get("guidance") or "").strip()
+                    first_line = guidance.splitlines()[0].strip() if guidance else ""
+                    if first_line:
+                        prompt = prompt.rstrip() + f"\nCWAM: {first_line}\n"
+        except Exception:
+            pass
+
+    return {
+        "enabled": enabled,
+        "mode": mode,
+        "shouldContinue": bool(should_continue),
+        "prompt": prompt,
+        "loopDriver": ["edison", "session", "next", session_id],
+        "budgets": {
+            "maxIterations": max_iterations,
+            "cooldownSeconds": cooldown_seconds,
+            "stopOnBlocked": stop_on_blocked,
+        },
+    }
+
+
+def _reduce_payload_to_completion_only(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sessionId": payload.get("sessionId"),
+        "completion": payload.get("completion") or {},
+        "continuation": payload.get("continuation") or {},
+    }
+
+
 def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, Any]:
     """Compute next recommended actions for a session.
 
@@ -667,6 +879,54 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
     # Build reportsMissing list for visibility
     reports_missing = build_reports_missing(session)
 
+    # Completion + continuation contract (client-consumable FC/RL backbone).
+    completion: dict[str, Any]
+    continuation: dict[str, Any]
+    try:
+        from edison.core.config import ConfigManager
+
+        full_cfg = ConfigManager().load_config(validate=False)
+        cont_cfg = _safe_dict(_safe_dict(full_cfg).get("continuation"))
+        cw_cfg = _safe_dict(_safe_dict(full_cfg).get("context_window"))
+        completion_policy = str(cont_cfg.get("completionPolicy") or "parent_validated_children_done")
+
+        completion = _compute_completion(
+            tasks_map=tasks_map,
+            blockers=blockers,
+            reports_missing=reports_missing,
+            completion_policy=completion_policy,
+            states=STATES,
+        )
+
+        continuation = _compute_continuation(
+            session=session if isinstance(session, dict) else {},
+            session_id=session_id,
+            continuation_cfg=cont_cfg,
+            context_window_cfg=cw_cfg,
+            completion=completion,
+            actions=actions,
+            blockers=blockers,
+        )
+    except Exception as exc:
+        completion = {
+            "policy": "unknown",
+            "isComplete": False,
+            "reasonsIncomplete": [
+                {
+                    "code": "completion_error",
+                    "message": f"Completion computation failed; treating session as incomplete: {exc}",
+                }
+            ],
+        }
+        continuation = {
+            "enabled": False,
+            "mode": "off",
+            "shouldContinue": False,
+            "prompt": "",
+            "loopDriver": ["edison", "session", "next", session_id],
+            "budgets": {},
+        }
+
     # Phase 1B: context-aware rules + guard previews via RulesEngine.
     rules_engine_summary: dict[str, Any] = {}
     engine = None
@@ -789,6 +1049,8 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         "context": _build_context_payload(session_id),
         "sessionId": session_id,
         "summary": "Next actions computed",
+        "completion": completion,
+        "continuation": continuation,
         "actions": actions,
         "blockers": blockers,
         "reportsMissing": reports_missing,
@@ -823,6 +1085,11 @@ def main() -> None:  # CLI facade for direct execution
     parse_common_args(parser)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--scope", choices=["tasks", "qa", "session"])
+    parser.add_argument(
+        "--completion-only",
+        action="store_true",
+        help="Return only {sessionId, completion, continuation} (useful for hooks/plugins)",
+    )
     args = parser.parse_args()
     session_id = validate_session_id(args.session_id)
 
@@ -841,6 +1108,9 @@ def main() -> None:  # CLI facade for direct execution
 
     with SessionContext.in_session_worktree(session_id):
         payload = compute_next(session_id, args.scope, limit)
+
+    if getattr(args, "completion_only", False):
+        payload = _reduce_payload_to_completion_only(payload)
 
     if args.json:
         print(output_json(payload))
