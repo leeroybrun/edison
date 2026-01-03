@@ -263,7 +263,7 @@ edison.data/
 │   ├── commands.yaml      # Slash command templates
 │   ├── hooks.yaml         # Git hook templates
 │   ├── orchestrator.yaml  # Orchestrator configuration
-│   ├── qa.yaml            # QA configuration
+│   ├── validation.yaml    # Validation configuration (presets, engines, validators, evidence)
 │   ├── session.yaml       # Session configuration
 │   ├── tasks.yaml         # Task configuration
 │   └── ...                # 40+ configuration files
@@ -817,7 +817,7 @@ Agents are defined in `edison.data/agents/`:
 
 ### Validator Configuration
 
-Validators are configured in `validators.yaml` with:
+Validators are configured in `validation.yaml` with:
 - **Engines**: CLI execution backends (codex-cli, claude-cli, gemini-cli, auggie-cli, coderabbit-cli, pal-mcp)
 - **Validators**: Flat list with engine references, prompts, and execution parameters
 - **Waves**: Execution groups (critical, comprehensive) with ordering and failure behavior
@@ -963,7 +963,7 @@ Edison uses a **layered configuration system**:
 - `workflow.yaml`: Workflow rules and timeouts
 - `composition.yaml`: Composition settings
 - `orchestrator.yaml`: Orchestrator configuration
-- `qa.yaml`: QA configuration (validator rosters, evidence rules)
+- `validation.yaml`: Validation configuration (presets, engines, validators, evidence)
 - `session.yaml`: Session configuration
 - `tasks.yaml`: Task configuration
 - `commands.yaml`: Slash command templates
@@ -1157,7 +1157,7 @@ EdisonError (base)
 ### Adding New Validators
 
 1. Create validator prompt: `.edison/validators/my-validator.md`
-2. Add to roster: `.edison/config/qa.yaml`
+2. Add to roster: `.edison/config/validation.yaml`
 3. Recompose: `edison compose all`
 
 ### Adding New Rules

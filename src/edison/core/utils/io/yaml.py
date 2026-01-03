@@ -147,13 +147,22 @@ def iter_yaml_files(dir_path: Path) -> list[Path]:
     """Return YAML files in ``dir_path`` in deterministic order.
 
     Includes both ``*.yml`` and ``*.yaml``.
+
+    When both ``<name>.yaml`` and ``<name>.yml`` exist, this prefers ``.yaml`` and
+    returns only the ``.yaml`` path to avoid competing/duplicated config loads.
     """
     d = Path(dir_path)
     if not d.exists():
         return []
-    yml_files = list(d.glob("*.yml"))
-    yaml_files = list(d.glob("*.yaml"))
-    return sorted([*yml_files, *yaml_files])
+    yml_files = {p.stem: p for p in d.glob("*.yml")}
+    yaml_files = {p.stem: p for p in d.glob("*.yaml")}
+
+    out: list[Path] = []
+    for stem in sorted(set(yml_files.keys()) | set(yaml_files.keys())):
+        preferred = yaml_files.get(stem) or yml_files.get(stem)
+        if preferred is not None:
+            out.append(preferred)
+    return out
 
 def resolve_yaml_path(path: Path) -> Path:
     """Resolve a YAML path that may be either ``.yml`` or ``.yaml``.

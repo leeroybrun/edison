@@ -67,7 +67,7 @@ Session state names map to on-disk directories as follows:
 - [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (run `edison read OUTPUT_FORMAT --type guidelines/agents`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
-- [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
+- [ ] ALL blocking validators launched (global + critical + triggered comprehensive with `blocking=true`).
 - [ ] Validators run in batched waves up to concurrency cap; verdicts recorded in QA docs.
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `{{fn:task_state_dir("wip")}}/` and QA in `{{fn:qa_state_dir("waiting")}}/`. Follow-up tasks created immediately.
@@ -275,7 +275,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 - ❌ Treating optional validators as "good enough"
 
 **REQUIRED:**
-- ✅ Launch ALL blocking validators (global + critical + triggered specialized with `blocksOnFail=true`)
+- ✅ Launch ALL blocking validators (global + critical + triggered comprehensive with `blocking=true`)
 - ✅ Use DIFFERENT models for validation than implementation (if possible)
 - ✅ Launch validators via delegation (Pal MCP) so they run independently
 - ✅ Wait for ALL blocking validators to complete before making approval decision
@@ -327,7 +327,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 <validator-cli> --model <model> --role validator-performance --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 ```
 
-#### Wave 3: Specialized Validators (TRIGGERED, BLOCKING IF `blocksOnFail=true`)
+#### Wave 3: Comprehensive Validators (TRIGGERED, BLOCKING IF `blocking=true`)
 
 **Only launch if file patterns match** (session next shows which are triggered):
 
@@ -431,7 +431,7 @@ edison session verify <session-id>
    - ⚠️ `blocked` - Validator couldn't complete (missing evidence, etc.)
 
 3. **Aggregate blocking validators:**
-   - ALL blocking validators (global + critical + specialized with `blocksOnFail=true`) MUST approve
+   - ALL blocking validators (global + critical + comprehensive with `blocking=true`) MUST approve
    - If ANY blocking validator rejects, task is REJECTED
    - If ANY blocking validator is blocked, task is BLOCKED (fix and re-run)
 

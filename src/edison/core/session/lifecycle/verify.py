@@ -145,17 +145,15 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
                 failures.append(msg)
                 health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "not_approved"})
 
-    # Session-close evidence requirements (config-driven, fail-closed).
+    # Session-close evidence requirements (explicit preset, fail-closed).
     try:
-        from edison.core.config.domains.qa import QAConfig
         from edison.core.qa.evidence.command_evidence import parse_command_evidence
+        from edison.core.qa.policy.session_close import get_session_close_policy
 
-        qa_cfg = QAConfig()
-        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
-        required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
+        policy = get_session_close_policy()
+        required_close = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
 
-        if required_close:
+        if required_close and session_tasks:
             # For each required evidence file, accept success from any task in the session.
             missing_close: list[str] = []
             for filename in required_close:

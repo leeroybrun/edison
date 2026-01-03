@@ -33,6 +33,7 @@ class ValidatorMetadata:
     engine: str
     wave: str
     triggers: list[str] = field(default_factory=list)
+    enabled: bool = True
     blocking: bool = True
     always_run: bool = False
     fallback_engine: str = ""
@@ -150,6 +151,14 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             ValidatorMetadata instance
         """
         validator_id = entry.get("id", "")
+        enabled_raw = entry.get("enabled", True)
+        enabled = bool(enabled_raw) if isinstance(enabled_raw, bool) else str(enabled_raw).strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+            "",
+        }
 
         triggers_raw = entry.get("triggers", [])
         triggers: list[str] = []
@@ -165,6 +174,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             engine=entry.get("engine", ""),
             wave=entry.get("wave", ""),
             triggers=triggers,
+            enabled=enabled,
             blocking=entry.get("blocking", True),
             always_run=entry.get("always_run", False),
             fallback_engine=entry.get("fallback_engine", ""),
@@ -303,6 +313,8 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         for v in self.get_all():
             if wave and v.wave != wave:
                 continue
+            if not getattr(v, "enabled", True):
+                continue
             if v.always_run:
                 always_run.append(v)
             elif v.triggers and match_patterns(files, v.triggers):
@@ -319,6 +331,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         session_id: Optional[str] = None,
         wave: Optional[str] = None,
         extra_validators: Optional[list[dict[str, str]]] = None,
+        preset_name: Optional[str] = None,
     ) -> dict[str, Any]:
         """Build execution roster for validation.
 
@@ -353,17 +366,20 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
 
         # Resolve validation policy (preset) to include any preset-selected validators
         # in addition to always_run + pattern-triggered validators.
-        preset_name = ""
+        selected_preset_name = ""
         preset_selected: list[ValidatorMetadata] = []
         preset_missing: list[str] = []
+        preset_blocking_ids: set[str] = set()
         try:
             from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
             policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
                 task_id,
                 session_id=session_id,
+                preset_name=preset_name,
             )
-            preset_name = str(policy.preset.name or "")
+            selected_preset_name = str(policy.preset.name or "")
+            preset_blocking_ids = {str(v) for v in (policy.blocking_validators or []) if str(v)}
             for vid in policy.validators:
                 v = self.get(vid)
                 if not v:
@@ -374,9 +390,10 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 preset_selected.append(v)
         except Exception:
             # Fail-open for roster building: fall back to legacy always_run/trigger behavior.
-            preset_name = ""
+            selected_preset_name = ""
             preset_selected = []
             preset_missing = []
+            preset_blocking_ids = set()
 
         # Get always_run + pattern-triggered validators (legacy behavior)
         always_run, triggered_blocking, triggered_optional = self.get_triggered_validators(files, wave)
@@ -390,6 +407,8 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         selected_ids = {v.id for v in (always_run + preset_selected + triggered_blocking + triggered_optional)}
         for v in self.get_all():
             if wave and v.wave != wave:
+                continue
+            if not getattr(v, "enabled", True):
                 continue
             if v.id not in selected_ids:
                 skipped.append({
@@ -448,7 +467,11 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             for v in always_run
         ]
         preset_entries = [
-            _to_entry(v, f"Included by preset '{preset_name}'") for v in preset_selected
+            {
+                **_to_entry(v, f"Included by preset '{selected_preset_name}'"),
+                "blocking": v.id in preset_blocking_ids,
+            }
+            for v in preset_selected
         ]
         triggered_blocking_entries = [
             _to_entry(v, self._build_trigger_reason(files, v.triggers))
@@ -468,7 +491,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         payload: dict[str, Any] = {
             "taskId": task_id,
             "sessionId": session_id,
-            "preset": preset_name,
+            "preset": selected_preset_name,
             "modifiedFiles": files,
             "alwaysRequired": always_required_entries + preset_entries,
             "triggeredBlocking": triggered_blocking_entries,

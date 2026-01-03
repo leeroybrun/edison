@@ -19,7 +19,7 @@ class PresetConfigLoader:
     Presets are loaded from validation.presets section in the merged config.
     The config is layered: bundled defaults -> packs -> project overrides.
 
-    Example config (qa.yaml):
+    Example config (validation.yaml):
         validation:
           presets:
             quick:
@@ -141,18 +141,20 @@ class PresetConfigLoader:
             required_evidence = []
         required_evidence = [str(e) for e in required_evidence if e]
 
-        blocking_validators = config.get("blocking_validators", [])
-        if not isinstance(blocking_validators, list):
-            blocking_validators = []
-        blocking_validators = [str(v) for v in blocking_validators if v]
-
         description = str(config.get("description", ""))
+        blocking_present = "blocking_validators" in config
+        raw_blocking = config.get("blocking_validators") if blocking_present else None
+        if raw_blocking is None and not blocking_present:
+            blocking_validators = None
+        else:
+            blocking_validators = raw_blocking if isinstance(raw_blocking, list) else []
+            blocking_validators = [str(v) for v in blocking_validators if v]
 
         return ValidationPreset(
             name=name,
             validators=validators,
             required_evidence=required_evidence,
-            blocking_validators=blocking_validators if blocking_validators else validators,
+            blocking_validators=blocking_validators,
             description=description,
         )
 

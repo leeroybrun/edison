@@ -49,7 +49,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--wave",
         type=str,
-        help="Specific wave to validate (e.g., critical, comprehensive)",
+        help="Specific wave to validate (e.g., global, critical, comprehensive)",
     )
     parser.add_argument(
         "--validators",
@@ -90,8 +90,8 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-workers",
         type=int,
-        default=4,
-        help="Maximum parallel workers (default: 4)",
+        default=None,
+        help="Maximum parallel workers (default: from config)",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -116,10 +116,20 @@ def main(args: argparse.Namespace) -> int:
         if args.execute and args.check_only:
             raise ValueError("Pass only one of --execute or --check-only")
 
+        # Resolve max workers from config when not explicitly provided.
+        max_workers = getattr(args, "max_workers", None)
+        if max_workers is None:
+            try:
+                from edison.core.config.domains.qa import QAConfig
+
+                max_workers = QAConfig(repo_root=repo_root).get_max_concurrent_validators()
+            except Exception:
+                max_workers = 4
+
         # Create executor (centralized in core)
         executor = ValidationExecutor(
             project_root=repo_root,
-            max_workers=args.max_workers,
+            max_workers=int(max_workers),
         )
         # Use ValidatorRegistry (single source of truth) for roster building
         validator_registry = executor.get_validator_registry()

@@ -742,8 +742,10 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         from edison.core.qa.evidence.service import EvidenceService
 
         qa_cfg = QAConfig()
-        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
+        from edison.core.qa.policy.session_close import get_session_close_policy
+
+        policy = get_session_close_policy(project_root=qa_cfg.repo_root)
+        required_close = list(policy.required_evidence or [])
         required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
         session_close_evidence["required"] = list(required_close)
 

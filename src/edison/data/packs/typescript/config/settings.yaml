@@ -1,0 +1,25 @@
+# TypeScript pack: Claude Code settings overlays
+#
+# Purpose: avoid background-agent permission auto-denials for common TS/JS dev tools.
+# Uses array append semantics (first element "+") so it extends core settings.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(pnpm install:*)"
+        - "Bash(pnpm test:*)"
+        - "Bash(pnpm lint:*)"
+        - "Bash(pnpm typecheck:*)"
+        - "Bash(pnpm build:*)"
+        - "Bash(pnpm format:*)"
+        - "Bash(pnpm exec:*)"
+        - "Bash(npm ci:*)"
+        - "Bash(npm install:*)"
+        - "Bash(npm test:*)"
+        - "Bash(npx:*)"
+        - "Bash(node:*)"
+        - "Bash(tsc:*)"
+        - "Bash(eslint:*)"
+        - "Bash(prettier:*)"

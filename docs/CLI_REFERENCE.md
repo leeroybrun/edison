@@ -288,6 +288,7 @@ edison session create --session-id <id> [options]
 | `--session-id`, `--id` | Session identifier (required, e.g., `sess-001`) |
 | `--owner` | Session owner (default: `system`) |
 | `--mode` | Session mode (default: `start`) |
+| `--worktree` | Explicitly enable worktree creation (default behavior; accepted for compatibility) |
 | `--no-worktree` | Skip worktree creation |
 | `--install-deps` | Install dependencies in worktree (if creating worktree) |
 | `--json` | Output as JSON |
@@ -307,6 +308,9 @@ edison session create --session-id sess-001
 
 # Create session without worktree
 edison session create --id sess-001 --no-worktree
+
+# Create session with worktree (explicit; same as default)
+edison session create --id sess-001 --worktree
 
 # Create session with dependencies installed
 edison session create --id sess-001 --install-deps
@@ -3193,7 +3197,7 @@ my-project/
 │   │   ├── database.yml          # Database config
 │   │   ├── worktrees.yml         # Worktree settings
 │   │   ├── tdd.yml               # TDD settings
-│   │   ├── qa.yml                # QA configuration
+│   │   ├── validation.yaml       # Validation configuration
 │   │   ├── mcp.yml               # MCP servers
 │   │   └── ...
 │   ├── _generated/               # Generated artifacts

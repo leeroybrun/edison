@@ -1,0 +1,12 @@
+# Tailwind pack: Claude Code settings overlays
+#
+# Purpose: allow tailwindcss CLI commands without interactive permission prompts.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(tailwindcss:*)"
+        - "Bash(pnpm tailwindcss:*)"
+        - "Bash(npx tailwindcss:*)"

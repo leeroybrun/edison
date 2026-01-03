@@ -27,6 +27,4 @@ validation:
 
   # Session-close evidence requirement for the Edison repo.
   sessionClose:
-    requiredEvidenceFiles:
-      - "command-test-full.txt"
-
+    preset: deep

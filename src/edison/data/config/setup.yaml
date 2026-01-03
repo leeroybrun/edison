@@ -203,9 +203,9 @@ discovery:
 
   # Validators from bundled + packs
   validators:
-    bundled_config: "edison.data/config/validators.yaml"
-    bundled_pack_pattern: "edison.data/packs/*/config/validators.yml"
-    project_pack_pattern: ".edison/packs/*/config/validators.yml"
+    bundled_config: "edison.data/config/validation.yaml"
+    bundled_pack_pattern: "edison.data/packs/*/config/validation.yaml"
+    project_pack_pattern: ".edison/packs/*/config/validation.yaml"
 
   # Agents from bundled + packs
   agents:

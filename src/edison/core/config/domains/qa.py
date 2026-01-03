@@ -23,7 +23,7 @@ class QAConfig(BaseDomainConfig):
     - ``orchestration`` (validator concurrency, timeouts)
 
     Edison historically used ``qa`` as a nested config key; the current config
-    layout is top-level and file-oriented (e.g., ``config/validators.yaml``).
+    layout is top-level and file-oriented (e.g., ``config/validation.yaml``).
     """
 
     def _config_section(self) -> str:
@@ -84,7 +84,7 @@ class QAConfig(BaseDomainConfig):
         if not session_id:
             raise RuntimeError(
                 "validation.defaultSessionId missing in configuration; "
-                "define it in qa.yaml or <project-config-dir>/config/qa.yaml"
+                "define it in validation.yaml or <project-config-dir>/config/validation.yaml"
             )
         return str(session_id)
 
@@ -109,9 +109,9 @@ class QAConfig(BaseDomainConfig):
         if not files:
             # Fail closed: evidence requirements must be explicitly configured.
             raise RuntimeError(
-                "Required evidence files missing in configuration; "
-                "define validation.evidence.requiredFiles in qa.yaml "
-                "(or override in <project-config-dir>/config/qa.yaml)"
+                    "Required evidence files missing in configuration; "
+                    "define validation.evidence.requiredFiles in validation.yaml "
+                    "(or override in <project-config-dir>/config/validation.yaml)"
             )
         if not isinstance(files, list):
             raise RuntimeError(
@@ -139,7 +139,7 @@ class QAConfig(BaseDomainConfig):
 
         raise RuntimeError(
             "Required evidence files resolved to an empty list; "
-            "set validation.evidence.requiredFiles in qa.yaml"
+            "set validation.evidence.requiredFiles in validation.yaml"
         )
 
     def get_max_concurrent_validators(self) -> int:
@@ -155,7 +155,7 @@ class QAConfig(BaseDomainConfig):
         if value is None:
             raise RuntimeError(
                 "orchestration.maxConcurrentAgents missing in configuration; "
-                "define it in qa.yaml or <project-config-dir>/config/qa.yaml"
+                "define it under orchestration.maxConcurrentAgents in config YAML"
             )
         return int(value)
 

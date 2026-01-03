@@ -76,7 +76,6 @@ def build_config_dict(context: Dict[str, Any]) -> Dict[str, Any]:
         "database": context.get("database", ""),
         "auth": {"provider": context.get("auth_provider", "")},
         "orchestrators": context.get("orchestrators") or [],
-        "validators": {"enabled": context.get("validators") or []},
         "agents": {"enabled": context.get("agents") or []},
         "worktrees": worktrees_cfg,
         "workflow": {

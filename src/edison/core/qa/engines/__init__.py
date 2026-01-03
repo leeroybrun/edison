@@ -48,7 +48,7 @@ For single validator execution:
     )
 
 Configuration:
-    Engines and validators are configured in validators.yaml:
+    Engines and validators are configured in validation.yaml:
 
     validation:
       engines:
@@ -95,4 +95,3 @@ __all__ = [
     "EngineConfig",
     "EngineProtocol",
 ]
-

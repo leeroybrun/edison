@@ -285,18 +285,19 @@ edison qa run <validator-name> --task <task-id>
 ```yaml
 # From orchestration.yaml
 orchestration:
-  allowCliEngines: false
+  allowCliEngines: true
   tracking:
     activeStaleSeconds: 120
     processEventsJsonl: "{PROJECT_MANAGEMENT_DIR}/logs/edison/process-events.jsonl"
 
-# From qa.yaml
+# From validation.yaml
 validation:
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
+  evidence:
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
 ```
 
 ---
@@ -630,38 +631,44 @@ ValidationExecutor (core/qa/engines/executor.py)
 
 **Engine configuration:**
 ```yaml
-# From validators.yaml
-engines:
-  codex-cli:
-    type: cli
-    command: codex
-    subcommand: exec
-    response_parser: codex
+# From validation.yaml
+validation:
+  engines:
+    codex-cli:
+      type: cli
+      command: codex
+      subcommand: exec
+      response_parser: codex
 
-  pal-mcp:
-    type: delegated
-    description: "Generate delegation instructions for orchestrator"
+    pal-mcp:
+      type: delegated
+      description: "Generate delegation instructions for orchestrator"
 
-validators:
-  global-codex:
-    name: "Global Validator (Codex)"
-    engine: codex-cli
-    fallback_engine: pal-mcp
-    prompt: "_generated/validators/global.md"
-    wave: critical
-    always_run: true
-    blocking: true
+  validators:
+    global-codex:
+      name: "Global Validator (Codex)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: true
+      blocking: true
 
-waves:
-  - name: critical
-    validators: [global-codex, global-claude, security]
-    execution: parallel
-    continue_on_fail: false
+  waves:
+    - name: global
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: false
 
-  - name: comprehensive
-    validators: [react, nextjs, api]
-    execution: parallel
-    requires_previous_pass: true
+    - name: critical
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: true
+
+    - name: comprehensive
+      execution: parallel
+      continue_on_fail: true
+      requires_previous_pass: true
 ```
 
 ---
@@ -1221,7 +1228,7 @@ find .project/sessions/_tx/ -mtime +1 -delete
 transaction:
   minDiskHeadroom: 5242880  # 5MB
 
-# From qa.yaml
+# From validation.yaml
 transaction:
   maxAgeHours: 24
   autoCleanup: true
@@ -1335,7 +1342,7 @@ For each task validation round:
 
 - **Workflow & State Machine:** `src/edison/data/config/workflow.yaml`
 - **Session:** `src/edison/data/config/session.yaml`
-- **QA:** `src/edison/data/config/qa.yaml`
+- **Validation:** `src/edison/data/config/validation.yaml`
 - **TDD:** `src/edison/data/config/tdd.yaml`
 - **Delegation:** `src/edison/data/config/delegation.yaml`
 - **Guards:** `src/edison/data/guards/`

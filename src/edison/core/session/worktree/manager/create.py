@@ -15,11 +15,12 @@ from edison.core.utils.subprocess import run_with_timeout
 from ..._utils import get_repo_dir
 from ..config_helpers import _config, _resolve_archive_directory, _resolve_worktree_target
 from .meta_setup import ensure_checkout_git_excludes
-from .post_install import _run_post_install_commands
 from .refs import _primary_head_marker, _resolve_start_ref, resolve_worktree_base_ref
 from .session_id import _ensure_worktree_session_id_file
 from .shared_config import shared_state_cfg
 from .shared_paths import ensure_shared_paths_in_checkout
+from .deps import maybe_install_deps_and_post_install
+from .health import validate_worktree_checkout
 
 __all__ = [
     "create_worktree",
@@ -197,140 +198,15 @@ def create_worktree(
     if last_err is not None:
         raise RuntimeError(f"Failed to create worktree after retries: {last_err}")
 
-    def _resolve_install_cmd(cwd: Path) -> list[str]:
-        if (cwd / "pnpm-lock.yaml").exists():
-            return ["pnpm", "install", "--frozen-lockfile"]
-        if (cwd / "package-lock.json").exists():
-            return ["npm", "ci"]
-        if (cwd / "yarn.lock").exists():
-            return ["yarn", "install", "--immutable"]
-        if (cwd / "bun.lockb").exists() or (cwd / "bun.lock").exists():
-            return ["bun", "install", "--frozen-lockfile"]
-        return ["pnpm", "install"]
-
-    def _resolve_fallback_install_cmd(cwd: Path) -> list[str] | None:
-        if (cwd / "pnpm-lock.yaml").exists():
-            return ["pnpm", "install"]
-        if (cwd / "package-lock.json").exists():
-            return ["npm", "install"]
-        if (cwd / "yarn.lock").exists():
-            return ["yarn", "install"]
-        if (cwd / "bun.lockb").exists() or (cwd / "bun.lock").exists():
-            return ["bun", "install"]
-        return None
-
-    def _tail(text: str, n: int = 25) -> str:
-        lines = (text or "").splitlines()
-        return "\n".join(lines[-n:])
-
-    def _run_install(cmd: list[str]) -> subprocess.CompletedProcess[str]:
-        try:
-            return cast(
-                subprocess.CompletedProcess[str],
-                run_with_timeout(
-                    cmd,
-                    cwd=worktree_path,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=t_install,
-                ),
-            )
-        except FileNotFoundError as e:
-            bin_name = str(cmd[0]) if cmd else "unknown"
-            raise RuntimeError(
-                "Dependency install failed in worktree (command not found).\n"
-                f"  cwd: {worktree_path}\n"
-                f"  cmd: {' '.join(cmd)}\n"
-                f"  missing: {bin_name}\n"
-                "Fix: install the required package manager (pnpm/npm/yarn/bun), "
-                "or set `worktrees.installDeps: false` in your project config."
-            ) from e
-        except Exception as e:
-            raise RuntimeError(
-                "Dependency install failed in worktree (runner error).\n"
-                f"  cwd: {worktree_path}\n"
-                f"  cmd: {' '.join(cmd)}\n"
-                f"  error: {e}"
-            ) from e
-
-    def _ensure_install_ok(result: subprocess.CompletedProcess[str], *, cmd: list[str]) -> None:
-        if result.returncode == 0:
-            return
-        raise RuntimeError(
-            "Dependency install failed in worktree.\n"
-            f"  cwd: {worktree_path}\n"
-            f"  cmd: {' '.join(cmd)}\n"
-            f"  exit: {result.returncode}\n"
-            f"  stdout (tail):\n{_tail(result.stdout)}\n"
-            f"  stderr (tail):\n{_tail(result.stderr)}"
-        )
-
-    install_flag = config.get("installDeps", False) if install_deps is None else bool(install_deps)
-    fallback_cmd = _resolve_fallback_install_cmd(worktree_path)
-    used_fallback = False
-
-    if install_flag:
-        install_cmd = _resolve_install_cmd(worktree_path)
-        result = _run_install(install_cmd)
-        if result.returncode != 0 and fallback_cmd:
-            used_fallback = True
-            fallback_result = _run_install(fallback_cmd)
-            _ensure_install_ok(fallback_result, cmd=fallback_cmd)
-        else:
-            _ensure_install_ok(result, cmd=install_cmd)
-
-    post_install = config.get("postInstallCommands", []) or []
-    if isinstance(post_install, list) and post_install:
-        commands = [str(c) for c in post_install if str(c).strip()]
-        try:
-            _run_post_install_commands(worktree_path=worktree_path, commands=commands, timeout=t_install)
-        except Exception:
-            if fallback_cmd and not used_fallback:
-                used_fallback = True
-                fallback_result = _run_install(fallback_cmd)
-                _ensure_install_ok(fallback_result, cmd=fallback_cmd)
-                _run_post_install_commands(
-                    worktree_path=worktree_path, commands=commands, timeout=t_install
-                )
-            else:
-                raise
+    maybe_install_deps_and_post_install(
+        worktree_path=worktree_path,
+        config=config,
+        install_deps_override=install_deps,
+        timeout=t_install,
+    )
 
     try:
-        hc1 = run_with_timeout(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            cwd=worktree_path,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=t_health,
-        )
-        hc2 = run_with_timeout(
-            ["git", "branch", "--show-current"],
-            cwd=worktree_path,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=t_health,
-        )
-        if (hc1.stdout or "").strip() != "true" or (hc2.stdout or "").strip() != branch_name:
-            raise RuntimeError("Worktree health check failed")
-
-        git_file = worktree_path / ".git"
-        if not git_file.exists():
-            raise RuntimeError("Worktree missing .git metadata")
-        if not git_file.is_file():
-            raise RuntimeError("Expected a git worktree (.git must be a file), but got a non-worktree checkout")
-
-        content = git_file.read_text(encoding="utf-8", errors="ignore")
-        if "gitdir:" not in content:
-            raise RuntimeError("Worktree .git file is missing gitdir pointer")
-        target_raw = content.split("gitdir:", 1)[1].strip()
-        target_path = Path(target_raw)
-        if not target_path.is_absolute():
-            target_path = (worktree_path / target_path).resolve()
-        if not target_path.exists():
-            raise RuntimeError(f"Worktree .git pointer is invalid: {target_raw}")
+        validate_worktree_checkout(worktree_path=worktree_path, branch_name=branch_name, timeout=t_health)
     except Exception as e:
         raise RuntimeError(f"Worktree health checks failed: {e}")
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
 from edison.core.exceptions import SessionError
@@ -72,6 +73,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Session mode (default: start)",
     )
     parser.add_argument(
+        "--worktree",
+        action="store_true",
+        help="Explicitly enable worktree creation (default behavior; accepted for compatibility)",
+    )
+    parser.add_argument(
         "--no-worktree",
         action="store_true",
         help="Skip worktree creation",
@@ -123,7 +129,7 @@ def _emit_worktree_instructions(
     formatter.text("  Do all code changes inside the session worktree directory only.")
 
 
-def _resolve_install_cmd(cwd: "Path") -> list[str]:
+def _resolve_install_cmd(cwd: Path) -> list[str]:
     # Mirror worktree manager selection: prefer immutable installs to avoid lockfile churn.
     if (cwd / "pnpm-lock.yaml").exists():
         return ["pnpm", "install", "--frozen-lockfile"]
@@ -138,7 +144,7 @@ def _resolve_install_cmd(cwd: "Path") -> list[str]:
 
 def _deps_install_summary(
     *,
-    repo_root: "Path",
+    repo_root: Path,
     worktree_path: str | None,
     cli_install_deps: bool,
     no_worktree: bool,

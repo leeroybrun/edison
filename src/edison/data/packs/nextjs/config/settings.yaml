@@ -1,0 +1,12 @@
+# Next.js pack: Claude Code settings overlays
+#
+# Purpose: allow Next.js CLI commands without interactive permission prompts.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(next:*)"
+        - "Bash(pnpm next:*)"
+        - "Bash(npx next:*)"

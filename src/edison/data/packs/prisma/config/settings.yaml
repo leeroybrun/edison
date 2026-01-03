@@ -1,0 +1,12 @@
+# Prisma pack: Claude Code settings overlays
+#
+# Purpose: allow prisma CLI commands without interactive permission prompts.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(prisma:*)"
+        - "Bash(pnpm prisma:*)"
+        - "Bash(npx prisma:*)"

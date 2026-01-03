@@ -1,7 +1,7 @@
 """Engine registry for the unified validator engine system.
 
 This module provides the EngineRegistry class which:
-- Loads engine configurations from validators.yaml
+    - Loads engine configurations from validation.yaml
 - Instantiates appropriate engine classes (CLIEngine, PalMCPEngine)
 - Handles fallback logic when primary engines are unavailable
 - Delegates to ValidatorRegistry for roster building

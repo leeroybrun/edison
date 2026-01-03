@@ -68,7 +68,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers --import-mode=importlib"
+norecursedirs = ["helpers"]
 markers = [
     "integration: Integration tests (multiple components working together)",
     "e2e: End-to-end tests (full system tests)",

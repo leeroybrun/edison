@@ -57,7 +57,12 @@ def _json_writer(data: Any, cfg: Dict[str, Any]) -> Callable[[Any], None]:
 _MISSING = object()  # Sentinel for unset default
 
 
-def read_json(file_path: Path | str, *, default: Any = _MISSING) -> Any:
+def read_json(
+    file_path: Path | str,
+    *,
+    default: Any = _MISSING,
+    _missing: object = _MISSING,
+) -> Any:
     """Read JSON with shared lock.
 
     Args:
@@ -74,7 +79,7 @@ def read_json(file_path: Path | str, *, default: Any = _MISSING) -> Any:
     path = Path(file_path)
     cfg = _cfg()
     if not path.exists():
-        if default is not _MISSING:
+        if default is not _missing:
             return default
         raise FileNotFoundError(f"JSON file not found: {path}")
 
@@ -162,6 +167,5 @@ __all__ = [
     "write_json_atomic",
     "update_json",
 ]
-
 
 

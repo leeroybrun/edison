@@ -15,4 +15,3 @@ triggers:
 provides:
   validators:
     - validators/auth-security.md
-  agents: []

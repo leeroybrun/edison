@@ -1,6 +1,7 @@
 .project/
 .worktrees/
 __pycache__/
+.venv/
 .env
 .pytest_cache/
 .mcp.json
@@ -15,3 +16,4 @@ __pycache__/
 .edison/config.local/
 .DS_Store
 /artifacts
+/.pytest-logs

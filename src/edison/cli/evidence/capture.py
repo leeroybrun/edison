@@ -39,7 +39,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session-close",
         action="store_true",
-        help="Run only commands needed to satisfy validation.sessionClose.requiredEvidenceFiles (config-driven).",
+        help="Run only commands needed to satisfy the configured session-close validation preset (validation.sessionClose.preset).",
     )
     parser.add_argument(
         "--command",
@@ -159,11 +159,11 @@ def main(args: argparse.Namespace) -> int:
 
             required_files: list[str] = []
             if session_close:
-                close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-                required_files = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
-                if not isinstance(required_files, list):
-                    required_files = []
-                required_files = [str(x).strip() for x in required_files if str(x).strip()]
+                from edison.core.qa.policy.session_close import get_session_close_policy
+
+                policy = get_session_close_policy(project_root=project_root)
+                resolved_preset = policy.preset.name
+                required_files = list(policy.required_evidence or [])
             else:
                 resolver = ValidationPolicyResolver(project_root=project_root)
                 policy = resolver.resolve_for_task(task_id, preset_name=str(preset_name).strip() if preset_name else None)
@@ -187,7 +187,7 @@ def main(args: argparse.Namespace) -> int:
                     if required_commandish:
                         raise RuntimeError(
                             "No configured CI commands match the required command evidence files for this run. "
-                            "Check `validation.presets.*.required_evidence` (or `validation.sessionClose.requiredEvidenceFiles`) "
+                            "Check `validation.presets.*.required_evidence` (or the preset configured by `validation.sessionClose.preset`) "
                             "and `validation.evidence.files`/`ci.commands` mappings. "
                             f"Missing command evidence targets: {', '.join(required_commandish)}"
                         )

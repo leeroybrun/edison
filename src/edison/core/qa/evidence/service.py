@@ -109,18 +109,10 @@ class EvidenceService:
         Evidence is only valid when produced by real runners (e.g. `edison evidence capture`)
         and should never be fabricated just to satisfy “file exists” checks.
         """
-        try:
-            from edison.core.qa.policy.resolver import ValidationPolicyResolver
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-            policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
-                self.task_id
-            )
-            required = list(policy.required_evidence or [])
-        except Exception:
-            from edison.core.config.domains.qa import QAConfig
-
-            cfg = QAConfig(repo_root=self.project_root)
-            required = cfg.get_required_evidence_files()
+        policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(self.task_id)
+        required = list(policy.required_evidence or [])
         out: list[Path] = []
         for filename in required:
             name = str(filename).strip()
@@ -161,10 +153,6 @@ class EvidenceService:
         """
         round_dir = self.ensure_round(round_num)
         bundle_path = round_dir / self.bundle_filename
-        if not bundle_path.exists() and self.bundle_filename != "bundle-approved.md":
-            legacy = round_dir / "bundle-approved.md"
-            if legacy.exists():
-                bundle_path = legacy
 
         return read_structured_report(bundle_path)
 

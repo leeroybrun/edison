@@ -238,7 +238,7 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
 
     FAIL-CLOSED: Returns False if wave requirements aren't met.
 
-    This enforces the wave configuration from validators.yaml:
+    This enforces the wave configuration from validation.yaml:
     - Critical wave must pass before comprehensive wave runs
     - All validators in a wave must pass for wave to pass
 

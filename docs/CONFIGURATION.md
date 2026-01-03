@@ -405,7 +405,7 @@ export EDISON_SESSION__WORKTREE__TIMEOUTS__INSTALL=600
 
 ---
 
-### validators.yaml
+### validation.yaml
 
 Validation framework configuration with engines, validators, and execution waves.
 
@@ -423,18 +423,15 @@ validation:
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
 
-  # Required evidence files
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
-
   # Execution settings
   execution:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators
     timeout: 300          # per-validator timeout in seconds
+
+  # Defaults for validator assignment
+  defaults:
+    wave: comprehensive   # default wave for validators without explicit wave
 
   # Engine definitions (execution backends)
   engines:
@@ -442,6 +439,10 @@ validation:
       type: cli
       command: "codex"
       subcommand: "exec"
+      output_flags: ["--json"]
+      read_only_flags: ["--sandbox", "read-only"]
+      prompt_mode: stdin
+      stdin_prompt_arg: "-"
       response_parser: codex
 
     claude-cli:
@@ -449,7 +450,8 @@ validation:
       command: "claude"
       subcommand: "-p"
       output_flags: ["--output-format", "json"]
-      read_only_flags: ["--permission-mode", "plan"]
+      # Keep non-interactive and read-only-ish; validators need Read/Bash, but not edits.
+      read_only_flags: ["--permission-mode", "dontAsk", "--disallowed-tools", "Edit"]
       response_parser: claude
 
     gemini-cli:
@@ -484,57 +486,65 @@ validation:
       engine: codex-cli
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
-      wave: critical
+      wave: global
       always_run: true
       blocking: true
-      timeout: 300
+      timeout: 600
       context7_required: true
-      context7_packages: [next, react, typescript]
+      context7_packages: []
+      triggers: []
 
     global-claude:
       name: "Global Validator (Claude)"
       engine: claude-cli
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
-      wave: critical
+      wave: global
       always_run: true
       blocking: true
       context7_required: true
-      context7_packages: [next, react, typescript]
+      context7_packages: []
+      triggers: []
 
     security:
       name: "Security Validator"
       engine: codex-cli
       fallback_engine: pal-mcp
-      prompt: "critical/security.md"
+      prompt: "_generated/validators/critical/security.md"
       wave: critical
       always_run: false
       blocking: true
       context7_required: true
-      context7_packages: [next, zod]
+      context7_packages: []
+      triggers: []
       focus: [authentication, authorization, input-validation]
 
+    # Example pack/project validator (typically added via packs or project overrides)
     react:
       name: "React Validator"
       engine: codex-cli
       fallback_engine: pal-mcp
-      prompt: "specialized/react.md"
+      prompt: "_generated/validators/react.md"
       wave: comprehensive
       always_run: false
       blocking: false
       triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+      context7_required: true
       context7_packages: [react]
 
   # Wave definitions (execution groups)
   waves:
-    - name: critical
-      validators: [global-codex, global-claude, global-gemini, security, performance]
+    - name: global
       execution: parallel
       continue_on_fail: false
       requires_previous_pass: false
 
+    - name: critical
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: true
+
     - name: comprehensive
-      validators: [react, nextjs, api, prisma, testing]
       execution: parallel
       continue_on_fail: true
       requires_previous_pass: true
@@ -544,7 +554,7 @@ validation:
 
 - **Engines**: Define execution backends (CLI tools or delegation)
 - **Validators**: Reference engines with fallback support
-- **Waves**: Group validators for ordered execution
+- **Waves**: Define execution order and wave-level behavior (parallel/sequential, stop/continue)
 - **palRole**: Automatically inferred as `validator-{id}` (no explicit config needed)
 
 **Common Overrides**:
@@ -1094,34 +1104,65 @@ export EDISON_TDD__ENFORCE_RED_GREEN_REFACTOR=false
 
 ---
 
-### qa.yaml
+### validation.yaml (Presets & Evidence)
 
 Quality assurance and validation workflow configuration.
 
 ```yaml
-version: "1.0.0"
-
 validation:
+  presets:
+    quick:
+      name: quick
+      description: "Minimal validation for documentation-only changes"
+      validators: []
+      required_evidence: []
+
+    standard:
+      name: standard
+      description: "Standard validation for code changes"
+      validators: [security, performance]
+      required_evidence: []
+
+    strict:
+      name: strict
+      description: "Comprehensive validation for critical changes"
+      validators: [global-gemini, security, performance, coderabbit]
+      required_evidence: []
+
+  presetInference:
+    rules:
+      - patterns: ["docs/**", "*.md", "**/*.md", "LICENSE", "LICENSE.*", "CHANGELOG*"]
+        preset: quick
+        priority: 10
+
+      - patterns: ["pyproject.toml", "package.json", "*.yaml", "*.yml", ".github/**"]
+        preset: standard
+        priority: 20
+
+  fileContext:
+    ignorePatterns:
+      - "{PROJECT_MANAGEMENT_DIR}/**"
+      - "{PROJECT_CONFIG_DIR}/_generated/**"
+
   defaultSessionId: "validation-session"
 
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
-
   evidence:
-    minRequiredFiles: 4
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
     patterns:
       - "command-*.txt"
+      - "command-coderabbit.txt"
       - "context7-*.md"
       - "context7-*.txt"
       - "validator-*-report.md"
-      - "validator-*-report.json" # legacy
-
-  transaction:
-    maxAgeHours: 24
-    autoCleanup: true
+    files:
+      type-check: "command-type-check.txt"
+      lint: "command-lint.txt"
+      test: "command-test.txt"
+      build: "command-build.txt"
 ```
 
 ---
@@ -1133,8 +1174,8 @@ Multi-agent orchestration and process tracking configuration.
 ```yaml
 orchestration:
   # Whether Edison may execute external CLI validator engines (codex/claude/gemini/etc).
-  # Default is false for safety and determinism; projects may override.
-  allowCliEngines: false
+  # Default is true in core; projects may override.
+  allowCliEngines: true
 
   tracking:
     # Staleness threshold for "active" runs (seconds since lastActive heartbeat).
@@ -1536,7 +1577,7 @@ Project-specific overrides are placed in `.edison/config/`.
 .edison/
 ├── config/
 │   ├── delegation.yaml      # Override delegation rules
-│   ├── validators.yaml      # Override validator config
+│   ├── validation.yaml      # Override validation config
 │   ├── composition.yaml     # Override composition settings
 │   ├── session.yaml         # Override session settings
 │   ├── mcp.yml             # Override MCP servers
@@ -1574,7 +1615,7 @@ delegation:
       confidence: high
 ```
 
-**`.edison/config/validators.yaml`**:
+**`.edison/config/validation.yaml`**:
 
 ```yaml
 # Disable a validator
@@ -1640,27 +1681,25 @@ worktrees:
 
 ### Example 3: Add Custom Validator
 
-**`.edison/config/validators.yaml`**:
+**`.edison/config/validation.yaml`**:
 
 ```yaml
 validation:
-  roster:
-    specialized:
-      - id: custom-accessibility
-        name: Accessibility Validator
-        model: claude
-        interface: Task
-        role: code-reviewer
-        palRole: validator-accessibility
-        specFile: specialized/accessibility.md
-        triggers: ["**/*.tsx", "**/*.jsx"]
-        alwaysRun: false
-        priority: 3
-        context7Required: false
-        blocksOnFail: false
+  validators:
+    custom-accessibility:
+      name: "Accessibility Validator"
+      engine: claude-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/comprehensive/accessibility.md"
+      wave: comprehensive
+      blocking: false
+      always_run: false
+      triggers: ["**/*.tsx", "**/*.jsx"]
+      context7_required: false
+      context7_packages: []
 ```
 
-Then create `.edison/validators/specialized/accessibility.md`:
+Then create `.edison/validators/comprehensive/accessibility.md` and regenerate outputs:
 
 ```markdown
 # Accessibility Validator
@@ -1731,7 +1770,7 @@ export EDISON_VALIDATION__EXECUTION__MODE=sequential
 export EDISON_VALIDATION__EXECUTION__CONCURRENCY=1
 ```
 
-**Via Project Config** (`.edison/config/validators.yaml`):
+**Via Project Config** (`.edison/config/validation.yaml`):
 
 ```yaml
 validation:
@@ -1830,14 +1869,13 @@ These are automatically resolved when configuration is loaded.
 |------|---------|-------------|
 | `workflow.yaml` | Workflow & State machines | Task/QA/Session states, transitions, lifecycle |
 | `session.yaml` | Session management | Paths, recovery, worktrees, timeouts |
-| `validators.yaml` | Validation framework | Validator roster, execution, dimensions |
+| `validation.yaml` | Validation framework | Presets, engines, validators, evidence, waves |
 | `delegation.yaml` | Agent delegation | File patterns, task types, model preferences |
 | `composition.yaml` | Prompt composition | Content types, outputs, deduplication |
 | `constitution.yaml` | Role requirements | Mandatory reads per role |
 | `commands.yaml` | IDE commands | Slash command generation |
 | `models.yaml` | Model capabilities | Model strengths, costs, rate limits |
 | `tdd.yaml` | TDD enforcement | Red-Green-Refactor, evidence |
-| `qa.yaml` | QA workflow | Evidence files, orchestration |
 | `worktrees.yaml` | Worktree management | Branch prefix, cleanup, paths |
 | `hooks.yaml` | Claude Code hooks | Context injection, guards, validation |
 | `mcp.yaml` | MCP servers | Server definitions, setup |

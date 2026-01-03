@@ -1,3 +1,4 @@
+## Pack validation overlay (canonical filename: validation.yaml)
 validation:
   validators:
     database:
@@ -18,5 +19,4 @@ validation:
         - "db/**/*"
         - "**/*.sql"
       focus: []
-
 

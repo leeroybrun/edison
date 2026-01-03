@@ -59,10 +59,8 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
         policy = resolver.resolve_for_task(task_id)
         required_files = list(policy.required_evidence or [])
     except Exception:
-        # Fail-open here: session next should remain usable even if policy inference fails.
-        # Guards remain fail-closed and will still enforce at the transition point.
-        qa_config = QAConfig()
-        required_files = qa_config.get_required_evidence_files()
+        # Fail-open: session next should remain usable even if policy inference fails.
+        required_files = []
 
     needed = set(required_files)
     try:

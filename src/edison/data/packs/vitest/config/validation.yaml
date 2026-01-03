@@ -1,3 +1,4 @@
+## Pack validation overlay (canonical filename: validation.yaml)
 validation:
   validators:
     testing:
@@ -15,5 +16,4 @@ validation:
         - "**/*.test.*"
         - "**/*.spec.*"
       focus: []
-
 

@@ -1,4 +1,10 @@
+# Validation Configuration (presets + engines + validators + evidence)
+#
+# Single source of truth for Edison validation behavior.
+# All validation-related configuration MUST live under this file’s `validation:` tree.
+
 validation:
+  # Dimension weights (used by scoring/reporting)
   dimensions:
     functionality: 30
     reliability: 25
@@ -9,6 +15,7 @@ validation:
   cache:
     directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
 
+  # Execution defaults for validator engines
   execution:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators when mode=parallel
@@ -19,14 +26,21 @@ validation:
     wave: comprehensive   # Default wave for validators without explicit wave assignment
 
   # Engine definitions (execution backends)
-  # Each engine defines how to execute validators using that backend
   engines:
     codex-cli:
       type: cli
       command: "codex"
       # Note: shell_environment_policy.inherit=all provides full env for dev tools (uv, mypy, ruff).
       # We explicitly exclude session-related vars to prevent test interference.
-      pre_flags: ["--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "shell_environment_policy.inherit=all", "-c", "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"]
+      pre_flags:
+        - "--ask-for-approval"
+        - "never"
+        - "--sandbox"
+        - "workspace-write"
+        - "-c"
+        - "shell_environment_policy.inherit=all"
+        - "-c"
+        - "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: []
@@ -78,10 +92,6 @@ validation:
       description: "Generate delegation instructions for orchestrator"
 
   # Flat validator definitions
-  # Each validator references an engine and optionally a fallback.
-  #
-  # Core is technology-agnostic: only cross-cutting validators live here.
-  # Packs/projects may add additional validators via config overlays.
   validators:
     # Global validators - always run, use same prompt with different models
     global-codex:
@@ -118,7 +128,7 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: global
-      always_run: true
+      always_run: false
       blocking: false  # Non-blocking, consensus reinforcement
       timeout: 300
       context7_required: true
@@ -132,7 +142,7 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: global
-      always_run: true
+      always_run: false
       blocking: false  # Non-blocking, additional AI perspective
       timeout: 600
       context7_required: false  # Auggie uses its own codebase context engine
@@ -145,7 +155,7 @@ validation:
       name: "Security Validator"
       engine: codex-cli
       fallback_engine: pal-mcp
-      prompt: "_generated/validators/security.md"
+      prompt: "_generated/validators/critical/security.md"
       wave: critical
       always_run: false
       blocking: true
@@ -159,7 +169,7 @@ validation:
       name: "Performance Validator"
       engine: codex-cli
       fallback_engine: pal-mcp
-      prompt: "_generated/validators/performance.md"
+      prompt: "_generated/validators/critical/performance.md"
       wave: critical
       always_run: false
       blocking: true
@@ -173,7 +183,7 @@ validation:
       name: "CodeRabbit AI Review"
       engine: coderabbit-cli
       fallback_engine: pal-mcp
-      prompt: "_generated/validators/coderabbit.md"
+      prompt: "_generated/validators/critical/coderabbit.md"
       wave: comprehensive
       always_run: false
       blocking: false
@@ -184,7 +194,6 @@ validation:
       focus: []
 
   # Wave definitions (execution groups)
-  # Waves define the order and behavior of validator execution
   waves:
     - name: global
       execution: parallel
@@ -206,8 +215,132 @@ validation:
     bundleSummaryFile: "bundle-summary.md"
     implementationReportFile: "implementation-report.md"
 
-  # Approval criteria (documentation only; logic uses `blocking` and the roster)
-  approvalCriteria:
-    globalWave: "All blocking validators in the global wave MUST approve."
-    criticalWave: "All blocking validators in the critical wave MUST approve."
-    comprehensiveWave: "Triggered validators run in comprehensive wave; blocking validators MUST approve; non-blocking are advisory."
+  # Validation presets - config-driven, pack-extensible
+  presets:
+    # Quick preset: minimal validation for docs-only changes
+    quick:
+      name: quick
+      description: "Minimal validation for documentation-only changes"
+      validators: []
+      required_evidence: []
+      blocking_validators: []
+
+    # Standard preset: default validation for code changes
+    standard:
+      name: standard
+      description: "Standard validation for code changes"
+      validators:
+        - security
+        - performance
+      required_evidence: []
+      blocking_validators:
+        - security
+        - performance
+
+    # Strict preset: heavier validation for high-risk changes
+    strict:
+      name: strict
+      description: "Comprehensive validation for critical changes"
+      validators:
+        - global-gemini
+        - security
+        - performance
+        - coderabbit
+      required_evidence:
+        - "command-type-check.txt"
+        - "command-lint.txt"
+        - "command-test-full.txt"
+        - "command-build.txt"
+      # Strict preset keeps critical validators blocking; additional global checks are advisory.
+      blocking_validators:
+        - security
+        - performance
+
+  # Preset inference rules - determine preset from file patterns
+  presetInference:
+    rules:
+      - patterns:
+          - "docs/**"
+          - "*.md"
+          - "**/*.md"
+          - "LICENSE"
+          - "LICENSE.*"
+          - "CHANGELOG*"
+        preset: quick
+        priority: 10
+
+      - patterns:
+          - "pyproject.toml"
+          - "package.json"
+          - "*.yaml"
+          - "*.yml"
+          - ".github/**"
+          - "Makefile"
+          - "Dockerfile"
+          - "docker-compose*.yml"
+        preset: standard
+        priority: 20
+
+      - patterns:
+          - "src/**"
+          - "lib/**"
+          - "app/**"
+          - "apps/**"
+          - "packages/**"
+        preset: standard
+        priority: 30
+
+      - patterns:
+          - "tests/**"
+          - "test/**"
+          - "**/*_test.*"
+          - "**/*.test.*"
+          - "**/*.spec.*"
+        preset: standard
+        priority: 25
+
+  # File context settings (used for validator triggering and rules routing).
+  fileContext:
+    ignorePatterns:
+      - "{PROJECT_MANAGEMENT_DIR}/**"
+      - "{PROJECT_CONFIG_DIR}/_generated/**"
+
+  # Session ID to use for validation transactions when no active session exists
+  defaultSessionId: "validation-session"
+
+  # Evidence collection settings
+  evidence:
+    # Baseline required evidence files for a validation round.
+    # Presets may override by setting `presets.<name>.required_evidence`.
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
+
+    # File patterns that should be collected as evidence
+    patterns:
+      - "command-*.txt"
+      - "command-coderabbit.txt"
+      - "context7-*.md"
+      - "context7-*.txt"
+      - "validator-*-report.md"
+    # Canonical mapping for evidence filenames referenced in prompts/guides.
+    files:
+      type-check: "command-type-check.txt"
+      lint: "command-lint.txt"
+      test: "command-test.txt"
+      test-full: "command-test-full.txt"
+      build: "command-build.txt"
+
+  # Session close requirements (explicit preset; NOT inferred).
+  sessionClose:
+    preset: strict
+
+  # Policy cap for QA re-validation loops.
+  maxRounds: 3
+
+  # Transaction settings
+  transaction:
+    maxAgeHours: 24
+    autoCleanup: true

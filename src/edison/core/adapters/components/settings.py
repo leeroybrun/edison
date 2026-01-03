@@ -129,6 +129,44 @@ class SettingsComposer(AdapterComponent):
 
         claude_cfg = self._claude_config()
 
+        def _merge_permissions_union(
+            merged: Dict[str, Any], *, baseline: Dict[str, Any], existing: Dict[str, Any]
+        ) -> Dict[str, Any]:
+            """Merge permissions lists as a union when preserving custom settings.
+
+            Claude permissions lists default to full replacement on deep merge. When
+            `preserve_custom` is enabled, we still want new Edison-provided allow/deny/ask
+            entries (from core/packs/project config) to show up, especially for background
+            agents that can't interactively approve commands.
+
+            Strategy:
+            - Keep the user's existing list order.
+            - Append any missing baseline entries (deduped).
+            """
+            merged_perms = merged.get("permissions")
+            baseline_perms = baseline.get("permissions")
+            existing_perms = existing.get("permissions")
+
+            if not isinstance(merged_perms, dict) or not isinstance(baseline_perms, dict) or not isinstance(existing_perms, dict):
+                return merged
+
+            for key in ("allow", "deny", "ask"):
+                merged_list = merged_perms.get(key)
+                baseline_list = baseline_perms.get(key)
+                existing_list = existing_perms.get(key)
+
+                if not (isinstance(merged_list, list) and isinstance(baseline_list, list) and isinstance(existing_list, list)):
+                    continue
+
+                out: List[Any] = list(existing_list)
+                for item in baseline_list:
+                    if item not in out:
+                        out.append(item)
+                merged_perms[key] = out
+
+            merged["permissions"] = merged_perms
+            return merged
+
         # If file exists and preserve_custom is enabled, merge with existing
         if target.exists():
             # Always backup before modifying
@@ -142,7 +180,8 @@ class SettingsComposer(AdapterComponent):
                 # Merge composed settings INTO existing (existing takes precedence)
                 # This preserves user customizations
                 if claude_cfg.get("preserve_custom", True):
-                    settings = deep_merge(settings, existing)
+                    merged = deep_merge(settings, existing)
+                    settings = _merge_permissions_union(merged, baseline=settings, existing=existing)
 
         write_json_atomic(target, settings, indent=2)
         return target
