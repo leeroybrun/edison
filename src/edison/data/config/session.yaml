@@ -53,6 +53,7 @@ session:
       footerTemplate: "═══ End of Next Steps ═══"
       sections:
         context: { enabled: true }
+        completion: { enabled: true }
         rules: { enabled: true }
         actions: { enabled: true }
         blockers: { enabled: true }

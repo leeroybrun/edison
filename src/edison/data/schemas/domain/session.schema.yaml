@@ -89,6 +89,32 @@ properties:
         - owner
         - custom
         description: Naming strategy used for session ID
+      continuation:
+        type: object
+        description: Per-session continuation settings (overrides config defaults)
+        properties:
+          mode:
+            type: string
+            enum:
+            - off
+            - soft
+            - hard
+            description: Continuation enforcement mode for this session
+          enabled:
+            type: boolean
+            description: Optional explicit enable/disable override for this session
+          maxIterations:
+            type: integer
+            minimum: 1
+            description: Optional max iteration budget override for this session
+          cooldownSeconds:
+            type: integer
+            minimum: 0
+            description: Optional cooldown override between continuation injections
+          stopOnBlocked:
+            type: boolean
+            description: Optional override to stop continuation when session is blocked
+        additionalProperties: false
     additionalProperties: false
   phase:
     type: string

@@ -198,6 +198,31 @@ rules:
     Parallelize when it improves throughput:
     - Split work into independent slices (API/UI/DB/tests) when coupling is low.
     - Respect the configured concurrency cap; batch overflow instead of over-assigning.
+
+- id: RULE.CONTEXT.CWAM_REASSURANCE
+  title: Context window anxiety management (CWAM)
+  category: context
+  blocking: false
+  severity: info
+  applies_to: [agent, orchestrator, validator]
+  contexts: [context_window]
+  guidance: |
+    Keep working methodically and protect context:
+    - Prefer small, deterministic steps over rushing.
+    - Avoid pasting large logs; summarize and reference artifacts by path.
+    - If approaching limits, follow the project's compaction/recovery guidance.
+
+- id: RULE.CONTINUATION.NO_IDLE_UNTIL_COMPLETE
+  title: Do not stop early; continue until the session is complete
+  category: session
+  blocking: false
+  severity: warning
+  applies_to: [agent, orchestrator]
+  contexts: [continuation]
+  guidance: |
+    When continuation is enabled and work remains:
+    - Continue iterating until Edison reports the session complete.
+    - Use the loop driver: `edison session next <session-id>`
     - Keep validators independent from implementers.
 
     Reference: `guidelines/orchestrators/DELEGATION.md`

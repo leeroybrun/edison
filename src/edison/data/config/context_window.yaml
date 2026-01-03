@@ -1,0 +1,16 @@
+# Edison Context Window Anxiety Management (CWAM)
+# Guidance and safeguards for context limits (compaction, truncation, reminders).
+
+context_window:
+  enabled: true
+
+  reminders:
+    enabled: true
+
+  # Output truncation is primarily implemented in OpenCode via plugin hooks (task 040).
+  truncation:
+    enabled: false
+    maxChars: 20000
+    headerLines: 30
+    notice: "[truncated by Edison]"
+
