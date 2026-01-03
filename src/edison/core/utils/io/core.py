@@ -14,7 +14,7 @@ import os
 import tempfile
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any, Callable, ContextManager, Optional, TextIO, Union
+from typing import Any, Callable, ContextManager, Optional, TextIO, Union, cast
 
 PathLike = Union[str, Path]
 
@@ -101,7 +101,7 @@ def atomic_write(
             ) as f:
                 tmp_path = Path(f.name)
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                write_fn(f)
+                write_fn(cast(TextIO, f))
                 f.flush()
                 os.fsync(f.fileno())
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
@@ -224,6 +224,5 @@ __all__ = [
     "write_text",
     "ensure_lines_present",
 ]
-
 
 
