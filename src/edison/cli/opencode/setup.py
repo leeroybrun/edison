@@ -59,7 +59,17 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Generate all OpenCode artifacts (plugin, agents, commands)",
+        help="Generate all OpenCode artifacts (plugin, agents, commands, config, deps)",
+    )
+    parser.add_argument(
+        "--config",
+        action="store_true",
+        help="Generate opencode.json project config in repo root",
+    )
+    parser.add_argument(
+        "--plugin-deps",
+        action="store_true",
+        help="Generate .opencode/package.json for plugin dependencies",
     )
     add_force_flag(parser)
     add_dry_run_flag(parser)
@@ -127,6 +137,32 @@ def _collect_command_changes(repo_root: Path) -> list[dict[str, str]]:
     return changes
 
 
+def _render_config_template(*, repo_root: Path) -> str:
+    """Render the opencode.json config template."""
+    template = data_read_text("templates", "opencode/opencode.json.template")
+    return render_template_text(template, {"repo_root": str(repo_root)})
+
+
+def _render_package_template(*, repo_root: Path) -> str:
+    """Render the .opencode/package.json template."""
+    template = data_read_text("templates", "opencode/package.json.template")
+    return render_template_text(template, {"repo_root": str(repo_root)})
+
+
+def _collect_config_changes(repo_root: Path) -> list[dict[str, str]]:
+    """Collect changes for opencode.json config."""
+    target = repo_root / "opencode.json"
+    desired = _render_config_template(repo_root=repo_root)
+    return [_compute_change(target, desired)]
+
+
+def _collect_plugin_deps_changes(repo_root: Path) -> list[dict[str, str]]:
+    """Collect changes for .opencode/package.json."""
+    target = repo_root / ".opencode" / "package.json"
+    desired = _render_package_template(repo_root=repo_root)
+    return [_compute_change(target, desired)]
+
+
 def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
@@ -140,8 +176,11 @@ def main(args: argparse.Namespace) -> int:
         gen_all = bool(getattr(args, "all", False))
         gen_agents = gen_all or bool(getattr(args, "agents", False))
         gen_commands = gen_all or bool(getattr(args, "commands", False))
-        # Plugin is always generated unless only --agents or --commands is specified
-        gen_plugin = gen_all or (not gen_agents and not gen_commands)
+        gen_config = gen_all or bool(getattr(args, "config", False))
+        gen_plugin_deps = gen_all or bool(getattr(args, "plugin_deps", False))
+        # Plugin is always generated unless only specific flags are specified
+        explicit_flags = gen_agents or gen_commands or gen_config or gen_plugin_deps
+        gen_plugin = gen_all or not explicit_flags
 
         # Collect all changes
         all_changes: list[dict[str, str]] = []
@@ -151,6 +190,10 @@ def main(args: argparse.Namespace) -> int:
             all_changes.extend(_collect_agent_changes(repo_root))
         if gen_commands:
             all_changes.extend(_collect_command_changes(repo_root))
+        if gen_config:
+            all_changes.extend(_collect_config_changes(repo_root))
+        if gen_plugin_deps:
+            all_changes.extend(_collect_plugin_deps_changes(repo_root))
 
         # Filter to only changes that need writing (for output)
         changes_for_output = [

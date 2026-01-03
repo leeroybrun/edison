@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "name": "opencode-edison-plugins",
+  "description": "Edison-generated OpenCode plugin dependencies",
+  "type": "module"
+}

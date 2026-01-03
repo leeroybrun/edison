@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/schemas/opencode.json",
+  "plugins": {
+    "directory": ".opencode/plugin"
+  },
+  "agents": {
+    "directory": ".opencode/agent"
+  },
+  "commands": {
+    "directory": ".opencode/command"
+  }
+}
