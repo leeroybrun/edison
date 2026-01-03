@@ -1,16 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
+
 import yaml
-import pytest
 
 from edison.data import get_data_path
-
-
-def _read_head(path: Path, lines: int = 12) -> str:
-    text = path.read_text(encoding="utf-8")
-    return "\n".join(text.splitlines()[:lines])
 
 
 def test_core_guideline_filenames_unique_case_insensitive() -> None:
@@ -49,43 +43,6 @@ def test_core_guideline_filenames_unique_case_insensitive() -> None:
             "consolidate these into a single canonical file: "
             f"{duplicates}"
         )
-
-
-@pytest.mark.skip(reason="Project-specific test - no extended/condensed split in package data")
-def test_core_guidelines_and_extended_guides_have_strict_cross_links() -> None:
-    """
-    FINDING-0XY: Unclear contract between condensed vs extended guides.
-
-    This test is now project-specific and has been skipped.
-    Guidelines in package data use a different organization structure.
-    """
-    pass
-
-
-def _extract_markdown_paths(text: str) -> list[str]:
-    """Return all referenced .md paths from inline code or markdown links."""
-    paths: set[str] = set()
-
-    # Backticked paths like `.edison/core/guidelines/DELEGATION.md`
-    for match in re.findall(r"`([^`]+?\.md)`", text):
-        paths.add(match.strip())
-
-    # Markdown links like [link](docs/archive/agents/CODEX_DELEGATION_GUIDE.md)
-    for match in re.findall(r"\[[^\]]*]\(([^)]+?\.md)\)", text):
-        paths.add(match.strip())
-
-    return sorted(paths)
-
-
-@pytest.mark.skip(reason="Project-specific test - references external project paths")
-def test_reference_guides_do_not_point_to_missing_markdown_files() -> None:
-    """
-    Reference guides must not point to non-existent .md files.
-
-    This test is now project-specific and has been skipped.
-    It checks for references to project-specific paths.
-    """
-    pass
 
 
 SHARED_TOPICS = [

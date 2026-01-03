@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
-import pytest
+from pathlib import Path
 
 from edison.data import get_data_path
-
 
 FILLER_PATTERNS = [
     re.compile(r"Additional note \d+:", re.IGNORECASE),
@@ -53,13 +51,4 @@ def test_guidelines_have_no_additional_note_filler() -> None:
     )
 
 
-@pytest.mark.skip(reason="Project-specific test - guidelines moved to package data")
-def test_known_misplaced_topics_do_not_exist_anymore() -> None:
-    """
-    FINDING-0XY.1.5: Known misplaced topics must be removed from core.
-
-    This test is now project-specific and has been skipped.
-    Guidelines are now bundled in edison.data.guidelines.
-    """
-    pass
 
