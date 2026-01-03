@@ -76,10 +76,11 @@ def format_human_readable(payload: dict[str, Any]) -> str:
         if not is_complete:
             reasons = comp.get("reasonsIncomplete") or []
             if isinstance(reasons, list) and reasons:
-                # Keep it short: show up to 3 actionable reason messages.
+                # Limit from config (session.yaml next.output.maxReasonsShown)
+                max_reasons = int(output_cfg.get("maxReasonsShown", 0)) or len(reasons)
                 shown = 0
                 for r in reasons:
-                    if shown >= 3:
+                    if shown >= max_reasons:
                         break
                     if isinstance(r, dict) and r.get("message"):
                         lines.append(f"  - {r['message']}")

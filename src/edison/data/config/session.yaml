@@ -51,6 +51,8 @@ session:
     output:
       headerTemplate: "═══ Session {sessionId} – Next Steps ═══"
       footerTemplate: "═══ End of Next Steps ═══"
+      # Maximum number of incomplete reasons to show in output
+      maxReasonsShown: 3
       sections:
         context: { enabled: true }
         completion: { enabled: true }

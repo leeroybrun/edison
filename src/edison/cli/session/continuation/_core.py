@@ -3,9 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
-def _safe_dict(value: object) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
+from edison.core.utils.config import safe_dict as _safe_dict
 
 
 @dataclass(frozen=True)
@@ -16,16 +14,21 @@ class ContinuationView:
 
 
 def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continuation: dict[str, Any] | None) -> ContinuationView:
+    """Compute continuation view from config and session overrides.
+
+    All default values come from continuation.yaml config - no hardcoded fallbacks.
+    Config provides: enabled, defaultMode, budgets.{maxIterations,cooldownSeconds,stopOnBlocked}
+    """
     cfg = _safe_dict(continuation_cfg)
     budgets = _safe_dict(cfg.get("budgets"))
 
     defaults = {
-        "enabled": bool(cfg.get("enabled", True)),
-        "mode": str(cfg.get("defaultMode") or "soft"),
+        "enabled": bool(cfg.get("enabled")),
+        "mode": str(cfg.get("defaultMode")),
         "budgets": {
-            "maxIterations": int(budgets.get("maxIterations") or 3),
-            "cooldownSeconds": int(budgets.get("cooldownSeconds") or 15),
-            "stopOnBlocked": bool(budgets.get("stopOnBlocked", True)),
+            "maxIterations": int(budgets.get("maxIterations")),
+            "cooldownSeconds": int(budgets.get("cooldownSeconds")),
+            "stopOnBlocked": bool(budgets.get("stopOnBlocked")),
         },
     }
 

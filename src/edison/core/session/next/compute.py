@@ -48,6 +48,7 @@ from edison.core.session.next.utils import (
 )
 from edison.core.utils.cli.arguments import parse_common_args
 from edison.core.utils.cli.output import output_json
+from edison.core.utils.config import safe_dict as _safe_dict
 from edison.core.utils.io import read_json as io_read_json
 
 load_session = session_manager.get_session
@@ -115,10 +116,6 @@ def _build_action_from_recommendation(
 
 # Import build_validation_bundle from graph module (will be migrated)
 import argparse
-
-
-def _safe_dict(value: object) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
 
 
 def _safe_list_str(value: object) -> list[str]:
@@ -250,19 +247,21 @@ def _compute_continuation(
     meta = _safe_dict(session.get("meta"))
     meta_cont = _safe_dict(meta.get("continuation"))
 
-    enabled = bool(cont_cfg.get("enabled", True))
+    # Values come from config (continuation.yaml) - no hardcoded fallbacks.
+    # Config provides: enabled, defaultMode, budgets.{maxIterations,cooldownSeconds,stopOnBlocked}
+    enabled = bool(cont_cfg.get("enabled"))
     if "enabled" in meta_cont:
         enabled = bool(meta_cont.get("enabled"))
 
-    default_mode = str(cont_cfg.get("defaultMode") or "soft")
+    default_mode = str(cont_cfg.get("defaultMode"))
     mode = str(meta_cont.get("mode") or default_mode)
     if not enabled:
         mode = "off"
 
     budgets = _safe_dict(cont_cfg.get("budgets"))
-    max_iterations = int(meta_cont.get("maxIterations") or budgets.get("maxIterations") or 3)
-    cooldown_seconds = int(meta_cont.get("cooldownSeconds") or budgets.get("cooldownSeconds") or 15)
-    stop_on_blocked = bool(meta_cont.get("stopOnBlocked") if "stopOnBlocked" in meta_cont else budgets.get("stopOnBlocked", True))
+    max_iterations = int(meta_cont.get("maxIterations") or budgets.get("maxIterations"))
+    cooldown_seconds = int(meta_cont.get("cooldownSeconds") or budgets.get("cooldownSeconds"))
+    stop_on_blocked = bool(meta_cont.get("stopOnBlocked") if "stopOnBlocked" in meta_cont else budgets.get("stopOnBlocked"))
 
     is_complete = bool(_safe_dict(completion).get("isComplete"))
     should_continue = enabled and mode != "off" and not is_complete
@@ -281,12 +280,10 @@ def _compute_continuation(
             next_blocking_cmd = " ".join([str(x) for x in cmd if str(x)])
             break
 
-    template = str(_safe_dict(_safe_dict(cont_cfg.get("templates")).get("continuationPrompt") or {}).get("value") or "")
-    # Back-compat: core YAML stores templates as plain strings.
-    if not template:
-        template = str(_safe_dict(cont_cfg.get("templates")).get("continuationPrompt") or "")
-    if not template:
-        template = "Continue working until the Edison session is complete.\nUse the loop driver: `edison session next {sessionId}`"
+    # Template comes from config (continuation.yaml templates.continuationPrompt).
+    # Config stores templates as plain strings - no legacy object format.
+    templates = _safe_dict(cont_cfg.get("templates"))
+    template = str(templates.get("continuationPrompt") or "")
 
     prompt = ""
     if should_continue:

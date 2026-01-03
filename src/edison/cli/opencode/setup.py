@@ -21,23 +21,26 @@ from edison.cli import (
 from edison.core.utils.io import ensure_directory, write_text
 from edison.core.utils.text import render_template_text
 from edison.data import read_text as data_read_text
+from edison.data import read_yaml as data_read_yaml
 
 SUMMARY = "Generate project-local OpenCode plugin artifacts for Edison"
 
-# Agent templates to generate
-AGENT_TEMPLATES = [
-    "edison-orchestrator",
-    "edison-agent",
-    "edison-validator",
-]
 
-# Command templates to generate
-COMMAND_TEMPLATES = [
-    "edison-session-next",
-    "edison-session-status",
-    "edison-task-claim",
-    "edison-task-ready",
-]
+def _get_opencode_config() -> dict:
+    """Load OpenCode configuration from YAML."""
+    return data_read_yaml("config", "opencode.yaml").get("opencode", {})
+
+
+def _get_agent_templates() -> list[str]:
+    """Get agent template names from config."""
+    cfg = _get_opencode_config()
+    return list(cfg.get("agentTemplates", []))
+
+
+def _get_command_templates() -> list[str]:
+    """Get command template names from config."""
+    cfg = _get_opencode_config()
+    return list(cfg.get("commandTemplates", []))
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -119,7 +122,7 @@ def _collect_agent_changes(repo_root: Path) -> list[dict[str, str]]:
     """Collect changes for all agent files."""
     changes = []
     agent_dir = repo_root / ".opencode" / "agent"
-    for name in AGENT_TEMPLATES:
+    for name in _get_agent_templates():
         target = agent_dir / f"{name}.md"
         desired = _render_agent_template(name, repo_root=repo_root)
         changes.append(_compute_change(target, desired))
@@ -130,7 +133,7 @@ def _collect_command_changes(repo_root: Path) -> list[dict[str, str]]:
     """Collect changes for all command files."""
     changes = []
     cmd_dir = repo_root / ".opencode" / "command"
-    for name in COMMAND_TEMPLATES:
+    for name in _get_command_templates():
         target = cmd_dir / f"{name}.md"
         desired = _render_command_template(name, repo_root=repo_root)
         changes.append(_compute_change(target, desired))
