@@ -174,20 +174,8 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
     return packages
 
 
-def _marker_valid(text: str) -> bool:
-    # Prefer machine-parseable YAML frontmatter when present. Fall back to a
-    # permissive non-empty check for legacy/plain markers.
-    raw = str(text or "").strip()
-    if not raw:
-        return False
-    if raw.startswith("---"):
-        fm = _parse_marker_frontmatter(raw)
-        return not bool(_validate_marker_fields(fm))
-    return True
-
-
 # Required fields for a valid Context7 marker (frontmatter keys).
-REQUIRED_MARKER_FIELDS = ["libraryId", "topics"]
+REQUIRED_MARKER_FIELDS = ["libraryId", "topics", "queriedAt"]
 
 
 def _parse_marker_frontmatter(text: str) -> Dict[str, Any]:
@@ -247,10 +235,9 @@ def classify_marker(round_dir: Path, package: str) -> Dict[str, Any]:
     if not content.strip():
         return {"status": "invalid", "package": package, "missing_fields": REQUIRED_MARKER_FIELDS[:]}
 
-    # Backward compatibility: legacy/plain markers are accepted as "valid" as
-    # long as they are non-empty. Prefer YAML frontmatter validation when present.
+    # Edison markers must be machine-parseable; non-frontmatter markers are invalid.
     if not content.lstrip().startswith("---"):
-        return {"status": "valid", "package": package}
+        return {"status": "invalid", "package": package, "missing_fields": REQUIRED_MARKER_FIELDS[:]}
 
     fm = _parse_marker_frontmatter(content)
     missing_fields = _validate_marker_fields(fm)
