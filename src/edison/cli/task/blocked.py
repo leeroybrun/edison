@@ -9,8 +9,14 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root, resolve_session_id
-from edison.core.task import normalize_record_id
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    resolve_existing_task_id,
+    resolve_session_id,
+)
 
 SUMMARY = "List todo tasks blocked by unmet dependencies (and explain why)"
 
@@ -45,8 +51,8 @@ def main(args: argparse.Namespace) -> int:
         evaluator = TaskReadinessEvaluator(project_root=project_root)
 
         if getattr(args, "record_id", None):
-            record_id = normalize_record_id("task", args.record_id)
-            r = evaluator.evaluate_task(record_id)
+            task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
+            r = evaluator.evaluate_task(task_id)
             blocked = [b.to_dict() for b in r.blocked_by]
             unmet = [
                 {
@@ -65,9 +71,12 @@ def main(args: argparse.Namespace) -> int:
                 "blockedBy": blocked,
                 "unmetDependencies": unmet,
             }
-            formatter.json_output(payload) if formatter.json_mode else formatter.text(
-                f"{record_id} is {'READY' if r.ready else 'BLOCKED'}"
-            )
+            if formatter.json_mode:
+                formatter.json_output(payload)
+            else:
+                readiness = "NOT BLOCKED" if r.ready else "BLOCKED"
+                reason = "dependencies satisfied" if r.ready else "unmet dependencies"
+                formatter.text(f"{task_id}: {readiness} ({reason}; state={r.task.state})")
             return 0
 
         blocked = evaluator.list_blocked_tasks(session_id=session_id)
