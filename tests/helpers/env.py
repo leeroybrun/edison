@@ -409,18 +409,25 @@ class TestGitRepo:
 
     __test__ = False  # Tell pytest this is not a test class
 
-    def __init__(self, tmp_path: Path):
+    def __init__(self, tmp_path: Path, *, init_repo: bool = True):
         """Initialize test git repository.
 
         Args:
             tmp_path: pytest tmp_path fixture (temporary directory)
+            init_repo: When False, assumes the repository already exists at tmp_path
+                (i.e. `.git/` is present) and skips `git init` + initial commit.
         """
         self.repo_path = tmp_path
         self.worktrees_path = tmp_path / ".worktrees"
         self.worktrees_path.mkdir(exist_ok=True)
 
-        # Initialize git repo
-        self._init_repo()
+        if init_repo:
+            self._init_repo()
+        else:
+            if not (self.repo_path / ".git").exists():
+                raise ValueError(
+                    f"init_repo=False but no git repository found at {self.repo_path}"
+                )
 
     def _init_repo(self) -> None:
         """Initialize git repository with main branch."""
@@ -429,6 +436,20 @@ class TestGitRepo:
             cwd=self.repo_path,
             check=True,
             capture_output=True
+        )
+
+        # Configure identity for commits in test repos to be hermetic.
+        run_with_timeout(
+            ["git", "config", "--local", "user.email", "test@example.com"],
+            cwd=self.repo_path,
+            check=True,
+            capture_output=True,
+        )
+        run_with_timeout(
+            ["git", "config", "--local", "user.name", "Test User"],
+            cwd=self.repo_path,
+            check=True,
+            capture_output=True,
         )
 
         # Disable commit signing in test repos (prevents SSH signing errors)

@@ -365,6 +365,16 @@ def _isolated_project_template_dir(tmp_path_factory: pytest.TempPathFactory) -> 
     return template_root
 
 
+@pytest.fixture(scope="session")
+def _git_repo_template_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Session-scoped initialized git repo used as a fast copy template for E2E tests."""
+    from helpers.env import TestGitRepo
+
+    template_root = tmp_path_factory.mktemp("edison-git-template")
+    TestGitRepo(template_root, init_repo=True)
+    return template_root
+
+
 @pytest.fixture(autouse=True)
 def _reset_global_project_root_cache(tmp_path: Path) -> None:
     """Ensure all global caches are fresh for each test."""
@@ -471,7 +481,7 @@ def git_repo(tmp_path: Path):
 
 
 @pytest.fixture
-def combined_env(tmp_path: Path, repo_root: Path):
+def combined_env(tmp_path: Path, repo_root: Path, _git_repo_template_dir: Path):
     """Combined fixture with both TestProjectDir and TestGitRepo.
 
     Useful for tests that need both project structure and git operations.
@@ -483,7 +493,10 @@ def combined_env(tmp_path: Path, repo_root: Path):
     git_root.mkdir(parents=True, exist_ok=True)
     proj_root.mkdir(parents=True, exist_ok=True)
 
-    git_repo = TestGitRepo(git_root)
+    # Copy a session-scoped initialized git repo template (git init + initial commit)
+    # instead of re-initializing for every test.
+    _copy_tree_contents(_git_repo_template_dir, git_root)
+    git_repo = TestGitRepo(git_root, init_repo=False)
     project_dir = TestProjectDir(proj_root, repo_root)
     return project_dir, git_repo
 

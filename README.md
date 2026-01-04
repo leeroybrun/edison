@@ -687,6 +687,10 @@ pytest -m e2e                  # End-to-end tests
 pytest -m fast                 # Fast unit tests
 pytest -m "not slow"           # Skip slow tests
 
+# Parallelize slow suite (recommended for development; requires `pip install -e \".[dev]\"`)
+scripts/test-slow
+pytest -m slow -n auto
+
 # Run specific test file
 pytest tests/unit/test_session.py
 
