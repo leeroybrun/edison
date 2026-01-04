@@ -90,6 +90,20 @@ class ProjectManagementPaths:
         )
         return (self.repo_root / str(base)).resolve()
 
+    def get_management_root_unresolved(self) -> Path:
+        """Get the management directory path without resolving symlinks.
+
+        This is primarily useful for user-facing output where we want paths like
+        `.project/...` instead of a dereferenced worktree/meta path.
+        """
+        base = (
+            self._config.get("project_management_dir")
+            or self._config.get("management_dir")
+            or self._config.get("paths", {}).get("management_dir")  # type: ignore[union-attr]
+            or ".project"
+        )
+        return (self.repo_root / str(base)).expanduser()
+
     def get_tasks_root(self) -> Path:
         """Get tasks directory ({management_root}/tasks)."""
         return self.get_management_root() / "tasks"
@@ -135,7 +149,6 @@ def get_management_paths(repo_root: Optional[Path] = None) -> ProjectManagementP
 
 
 __all__ = ["ProjectManagementPaths", "get_management_paths"]
-
 
 
 

@@ -38,7 +38,7 @@ class TestPresetConfigLoading:
         assert quick.name == "quick"
         # Quick preset does not add validators beyond always_run globals.
         assert quick.validators == []
-        # Preset required_evidence is additive; baseline evidence is configured elsewhere.
+        # Quick preset explicitly requires no evidence.
         assert quick.required_evidence == []
 
     def test_loads_bundled_standard_preset(self, tmp_path: Path, monkeypatch):
@@ -58,7 +58,7 @@ class TestPresetConfigLoading:
         # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
         assert "security" in standard.validators
         assert "performance" in standard.validators
-        assert standard.required_evidence == []
+        assert standard.required_evidence is None
 
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""

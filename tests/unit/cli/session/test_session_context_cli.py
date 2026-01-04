@@ -51,8 +51,8 @@ def test_session_context_cli_can_append_memory_hits_when_enabled(
     monkeypatch.setenv("PATH", os.pathsep.join([str(bin_dir), os.environ.get("PATH", "")]))
 
     # Enable memory + context injection via project overrides.
-    from tests.helpers.io_utils import write_yaml
     from tests.helpers.cache_utils import reset_edison_caches
+    from tests.helpers.io_utils import write_yaml
 
     cfg_dir = isolated_project_env / ".edison" / "config"
     write_yaml(

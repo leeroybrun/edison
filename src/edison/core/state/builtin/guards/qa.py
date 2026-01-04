@@ -44,6 +44,25 @@ def can_validate_qa(ctx: Mapping[str, Any]) -> bool:
         from edison.core.qa.evidence import EvidenceService
         from edison.core.registries.validators import ValidatorRegistry
 
+        # Bundle-aware fast path: when a bundle summary is emitted for this task
+        # using the new schema (rootTask + scope), treat `approved=true` with an
+        # empty missing list as sufficient evidence of blocking validator approval.
+        try:
+            bundle = EvidenceService(str(task_id), project_root=QAConfig().repo_root).read_bundle()
+            if isinstance(bundle, Mapping) and bundle.get("approved") is True:
+                if bundle.get("rootTask") and bundle.get("scope"):
+                    missing = bundle.get("missing") or []
+                    if isinstance(missing, list) and any(missing):
+                        raise ValueError(
+                            "Bundle NOT approved (missing or failing blocking reports): "
+                            + ", ".join(sorted({str(m) for m in missing if m}))
+                        )
+                    return True
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
         qa_config = QAConfig()
         registry = ValidatorRegistry(project_root=qa_config.repo_root)
 
@@ -137,6 +156,24 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         from edison.core.qa.evidence import EvidenceService, read_validator_reports
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
+        # Bundle-aware fast path: if the task has an approved bundle summary in the
+        # new schema, treat it as sufficient for promotion even when per-task
+        # validator report files are absent (validators were executed at bundle root).
+        try:
+            ev = EvidenceService(str(task_id))
+            bundle = ev.read_bundle()
+            if isinstance(bundle, Mapping) and bundle.get("approved") is True:
+                if bundle.get("rootTask") and bundle.get("scope"):
+                    missing = bundle.get("missing") or []
+                    validators = bundle.get("validators") or []
+                    if (isinstance(missing, list) and any(missing)) or not (isinstance(validators, list) and validators):
+                        raise ValueError("Bundle summary present but incomplete for promotion (missing/validators).")
+                    return True
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
         # Check for validator reports
         v = read_validator_reports(str(task_id))
         reports = v.get("reports", [])
@@ -146,7 +183,6 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
             )
 
         # Also check required evidence exists (preset-aware, includes global baseline).
-        ev = EvidenceService(str(task_id))
         round_num = ev.get_current_round()
         if round_num is None:
             raise ValueError(
@@ -258,6 +294,23 @@ def has_all_waves_passed(ctx: Mapping[str, Any]) -> bool:
         from edison.core.registries.validators import ValidatorRegistry
 
         qa_config = QAConfig()
+
+        # Bundle-aware fast path: accept an approved bundle summary in the new schema
+        # when it includes a validators list and no missing items.
+        try:
+            from edison.core.qa.evidence import EvidenceService
+
+            ev = EvidenceService(str(task_id), project_root=qa_config.repo_root)
+            bundle = ev.read_bundle()
+            if isinstance(bundle, Mapping) and bundle.get("approved") is True:
+                if bundle.get("rootTask") and bundle.get("scope"):
+                    missing = bundle.get("missing") or []
+                    validators = bundle.get("validators") or []
+                    if isinstance(validators, list) and validators and (not isinstance(missing, list) or not any(missing)):
+                        return True
+        except Exception:
+            pass
+
         waves = qa_config.get_waves()
 
         registry = ValidatorRegistry(project_root=qa_config.repo_root)

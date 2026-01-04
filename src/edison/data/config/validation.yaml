@@ -51,11 +51,19 @@ validation:
     claude-cli:
       type: cli
       command: "claude"
-      subcommand: "-p"
+      pre_flags: ["-p"]
       output_flags: ["--output-format", "json"]
-      # Plan mode blocks Read/Bash tools, which prevents validators from reading diffs/evidence.
-      # Keep Claude non-interactive while disallowing edits.
-      read_only_flags: ["--permission-mode", "dontAsk", "--disallowed-tools", "Edit"]
+      # Validator prompts rely on `git status`/`git diff` + reading evidence files.
+      # `dontAsk` causes silent denials in `--print` mode. Use bypassPermissions + a tight
+      # tool allowlist so validators can run non-interactively without edit capabilities.
+      #
+      # IMPORTANT: `--allowed-tools/--disallowed-tools` are variadic; we pass them as
+      # `--flag=value` so they don't greedily consume the positional prompt argument.
+      read_only_flags:
+        - "--permission-mode"
+        - "bypassPermissions"
+        - "--allowed-tools=Bash(git:*),Read"
+        - "--disallowed-tools=Edit"
       response_parser: claude
       prompt_mode: arg
 
@@ -232,7 +240,6 @@ validation:
       validators:
         - security
         - performance
-      required_evidence: []
       blocking_validators:
         - security
         - performance

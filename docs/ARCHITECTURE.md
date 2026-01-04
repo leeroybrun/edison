@@ -39,7 +39,8 @@ edison.cli/
 │   ├── waves.py           # Plan parallelizable task waves (depends_on)
 │   ├── blocked.py         # Explain todo tasks blocked by depends_on
 │   ├── relate.py          # Link related tasks (non-blocking)
-│   ├── ready.py           # Mark task ready for QA
+│   ├── ready.py           # List ready-to-claim tasks (legacy completion alias)
+│   ├── done.py            # Complete task (wip→done)
 │   ├── status.py          # Show task status
 │   └── split.py           # Split task into subtasks
 ├── qa/                     # QA and validation commands
@@ -703,7 +704,7 @@ states:
 
 Guards are enforced by CLI commands:
 - `edison task claim` checks `can_start_task` guard
-- `edison task ready` checks `can_finish_task` guard
+- `edison task done` checks `can_finish_task` guard
 - `edison qa promote` checks QA-specific guards
 
 ### Rule System
@@ -751,7 +752,7 @@ Edison has two types of rules:
      │ todo→wip │       │ wip→done │      │ No action│
      └─────┬────┘       └─────┬────┘      └──────────┘
            │                  │
-           │ edison task      │ edison task ready
+           │ edison task      │ edison task done
            │ claim T-001      │ T-001
            ↓                  ↓
      ┌──────────┐       ┌──────────┐
@@ -1008,7 +1009,8 @@ Edison generates IDE-specific configuration files for Claude, Cursor, and Pal.
 - `.claude/settings.json`: Claude-specific settings
 - `.claude/commands/`: Slash commands for Claude
   - `edison.task-claim.md`: Claim a task
-  - `edison.task-ready.md`: Mark task ready
+  - `edison.task-ready.md`: List ready-to-claim tasks
+  - `edison.task-done.md`: Complete a task (wip→done)
   - `edison.qa-validate.md`: Validate a task
   - `edison.session-next.md`: Compute next actions
 

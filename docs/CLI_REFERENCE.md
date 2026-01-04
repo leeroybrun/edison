@@ -340,6 +340,33 @@ edison session create --id sess-001 --json
 
 ---
 
+### session list - List Sessions
+
+List sessions across states.
+
+```bash
+edison session list [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--status <state>` | Filter by session status/state (accepts semantic state like `active` or directory alias like `wip`) |
+| `--owner <owner>` | Filter by session owner |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+edison session list
+edison session list --status wip
+edison session list --status active
+```
+
+---
+
 ### session status - Display Session Status
 
 Display the current status and metadata of a session.
@@ -1121,9 +1148,12 @@ edison task waves --cap 2 --json
 
 ---
 
-### task ready - Mark Task Ready
+### task ready - List Ready Tasks
 
-List tasks ready to be claimed (in `todo` state) or mark a task as ready/complete (move from `wip` to `done`).
+List tasks ready to be claimed (in `todo` state).
+
+Note: `edison task ready <task-id>` is a deprecated compatibility alias for task completion.
+Prefer `edison task done <task-id>`.
 
 ```bash
 edison task ready [record_id] [options]
@@ -1131,7 +1161,7 @@ edison task ready [record_id] [options]
 
 **Arguments:**
 
-- `record_id` - Task ID to mark as ready (optional, if omitted lists all ready tasks)
+- `record_id` - (Deprecated) Task ID to complete (optional; omit to list ready tasks)
 
 **Options:**
 
@@ -1144,8 +1174,6 @@ edison task ready [record_id] [options]
 **When to Use:**
 
 - Listing available work
-- Completing task implementation
-- Moving task from wip to done
 
 **Examples:**
 
@@ -1153,8 +1181,8 @@ edison task ready [record_id] [options]
 # List all ready tasks (in todo state)
 edison task ready
 
-# Mark task as complete (wip → done)
-edison task ready 150-auth-feature --session sess-001
+# Mark task as complete (wip → done) (preferred)
+edison task done 150-auth-feature --session sess-001
 
 # List ready tasks as JSON
 edison task ready --json
@@ -1163,13 +1191,50 @@ edison task ready --json
 **Without record_id:**
 Lists all tasks in `todo` state that are ready to be claimed.
 
-**With record_id:**
-Marks the task as ready/complete by moving it from `wip` to `done` state.
+**With record_id (deprecated):**
+Completes the task by delegating to `edison task done`.
 
 **Exit Codes:**
 
 - `0` - Success
 - `1` - Error (task not found, invalid state, etc.)
+
+---
+
+### task done - Complete Task
+
+Complete a task by moving it from `wip` to `done` with guard enforcement (evidence, Context7 when detected, and TDD readiness gates).
+
+```bash
+edison task done <task-id> [options]
+```
+
+**Arguments:**
+
+- `task-id` - Task ID to complete (supports unique prefix shorthand like `12007`)
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--session` | Session completing the task (required) |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+# Complete a task
+edison task done 150-auth-feature --session sess-001
+
+# Complete a task using shorthand (unique prefix)
+edison task done 150 --session sess-001
+```
+
+**Exit Codes:**
+
+- `0` - Success
+- `1` - Error (blocked by guards, not found, ambiguous shorthand, etc.)
 
 ---
 
@@ -3050,8 +3115,8 @@ edison session track start --task 100-auth-feature --type implementation
 # 9. Complete tracking
 edison session track complete --task 100-auth-feature
 
-# 10. Mark task ready (wip → done)
-edison task ready 100-auth-feature --session sess-001
+# 10. Mark task done (wip → done)
+edison task done 100-auth-feature --session sess-001
 
 # 11. Create QA brief
 edison qa new 100-auth-feature
@@ -3087,7 +3152,7 @@ edison task claim 100-my-task --session work-001
 # ... do work ...
 
 # Complete and validate
-edison task ready 100-my-task --session work-001
+edison task done 100-my-task --session work-001
 edison qa validate 100-my-task
 edison session close work-001
 ```

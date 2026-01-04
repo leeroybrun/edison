@@ -56,7 +56,24 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
         resolver = ValidationPolicyResolver(project_root=project_root)
-        policy = resolver.resolve_for_task(task_id)
+        # IMPORTANT: if there is no implementation report yet, do not infer the preset
+        # from arbitrary git status dirt (which may include project scaffolding).
+        # Fail closed to the configured default preset, or "standard" if none.
+        preset_override: str | None = None
+        try:
+            report = ev_svc.read_implementation_report()
+        except Exception:
+            report = None
+
+        if not report:
+            try:
+                configured_default = QAConfig(repo_root=project_root).validation_config.get("defaultPreset")
+                configured_default = str(configured_default).strip() if configured_default else ""
+            except Exception:
+                configured_default = ""
+            preset_override = configured_default or "standard"
+
+        policy = resolver.resolve_for_task(task_id, preset_name=preset_override)
         required_files = list(policy.required_evidence or [])
     except Exception:
         # Fail-open: session next should remain usable even if policy inference fails.

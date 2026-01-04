@@ -76,7 +76,7 @@ def test_dispatcher_blocks_session_scoped_commands_outside_worktree_when_enforce
 
     # Running a session-scoped command from the primary checkout should be blocked.
     code2 = cli_main(["session", "next", "sess-enforce", "--json"])
-    captured = capsys.readouterr()
+    capsys.readouterr()
     # `session next` is read-only and should NOT be blocked (even when enforcement is enabled).
     assert code2 == 0
 

@@ -1,7 +1,7 @@
 """
 Edison task ready command.
 
-SUMMARY: List tasks ready to be claimed or mark task as ready (complete)
+SUMMARY: List tasks ready to be claimed (completion moved to `task done`)
 """
 
 from __future__ import annotations
@@ -16,9 +16,9 @@ from edison.cli import (
     get_repo_root,
     resolve_session_id,
 )
-from edison.core.task import TaskQAWorkflow, normalize_record_id
+from edison.core.task import TaskQAWorkflow
 
-SUMMARY = "List tasks ready to be claimed or mark task as ready (complete)"
+SUMMARY = "List tasks ready to be claimed (completion moved to `task done`)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -26,11 +26,20 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "record_id",
         nargs="?",
-        help="Task ID to mark as ready/complete (if omitted, lists all ready tasks)",
+        help="(Deprecated) Task ID to complete (use `edison task done <task>`). If omitted, lists ready tasks.",
     )
     parser.add_argument(
         "--session",
         help="Filter by session",
+    )
+    parser.add_argument(
+        "--skip-context7",
+        action="store_true",
+        help="DEPRECATED path: bypass Context7 checks (requires --skip-context7-reason). Prefer `edison task done`.",
+    )
+    parser.add_argument(
+        "--skip-context7-reason",
+        help="DEPRECATED path: justification for Context7 bypass.",
     )
     parser.add_argument(
         "--run",
@@ -51,13 +60,16 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
 
         if args.record_id:
-            # Ready/complete a specific task (move from wip -> done)
-            record_id = normalize_record_id("task", args.record_id)
-
             session_id = resolve_session_id(
                 project_root=project_root,
                 explicit=args.session,
                 required=True,
+            )
+
+            print(
+                "DEPRECATED: `edison task ready <task>` completes tasks. "
+                "Use `edison task done <task>` instead.",
+                file=sys.stderr,
             )
 
             if bool(getattr(args, "run", False)):
@@ -67,19 +79,44 @@ def main(args: argparse.Namespace) -> int:
                     "  - `edison evidence init <task>`\n"
                     "  - `edison evidence capture <task>`\n"
                     "  - `edison evidence status <task>`\n"
-                    "Then review the evidence output and re-run `edison task ready <task>`."
+                    "Then review the evidence output and run `edison task done <task>`."
                 )
 
-            # Use TaskQAWorkflow.complete_task() to move from wip -> done
-            workflow = TaskQAWorkflow(project_root=project_root)
-            task_entity = workflow.complete_task(record_id, session_id, enforce_tdd=True)
+            # Back-compat alias: delegate to task done, but keep legacy output shape.
+            from edison.cli._utils import resolve_existing_task_id
 
-            formatter.json_output({
+            record_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
+            skip_context7 = bool(getattr(args, "skip_context7", False))
+            skip_context7_reason = str(getattr(args, "skip_context7_reason", "") or "").strip()
+            if skip_context7 and not skip_context7_reason:
+                raise ValueError("--skip-context7 requires --skip-context7-reason")
+            if (not skip_context7) and skip_context7_reason:
+                raise ValueError("--skip-context7-reason requires --skip-context7")
+            if skip_context7:
+                print(
+                    f"WARNING: bypassing Context7 checks for task {record_id} ({skip_context7_reason})",
+                    file=sys.stderr,
+                )
+            workflow = TaskQAWorkflow(project_root=project_root)
+            task_entity = workflow.complete_task(
+                record_id,
+                session_id,
+                enforce_tdd=True,
+                skip_context7=skip_context7,
+                skip_context7_reason=skip_context7_reason,
+            )
+
+            payload = {
                 "record_id": record_id,
                 "ready": True,
                 "state": task_entity.state,
                 "session_id": session_id,
-            }) if formatter.json_mode else formatter.text(
+            }
+            if skip_context7:
+                payload["skip_context7"] = True
+                payload["skip_context7_reason"] = skip_context7_reason
+
+            formatter.json_output(payload) if formatter.json_mode else formatter.text(
                 f"Task {record_id} marked as ready (moved to {task_entity.state})."
             )
             return 0

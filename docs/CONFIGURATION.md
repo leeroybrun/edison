@@ -1104,6 +1104,36 @@ export EDISON_TDD__ENFORCE_RED_GREEN_REFACTOR=false
 
 ---
 
+### ci.yaml (CI Commands)
+
+Commands Edison can run to generate *trusted* command evidence.
+
+Used by:
+- `edison evidence capture <task-id>` (preferred) to generate `command-*.txt` evidence files
+
+```yaml
+ci:
+  commands:
+    type-check: "./.venv/bin/mypy --strict src/"
+    lint: "./.venv/bin/ruff check src/ tests/"
+    test: "./.venv/bin/pytest -q tests/"
+    build: "./.venv/bin/python -m build"
+```
+
+**Environment variables**
+
+If a CI command needs env vars (e.g. auth URLs/secrets) to run in your repo, encode them in the command string (or export them in your shell before running evidence capture). Example:
+
+```yaml
+ci:
+  commands:
+    build: "BETTER_AUTH_URL=http://localhost BETTER_AUTH_SECRET=dummy pnpm build"
+```
+
+Never commit real secrets into repo configuration.
+
+---
+
 ### validation.yaml (Presets & Evidence)
 
 Quality assurance and validation workflow configuration.
@@ -1121,13 +1151,13 @@ validation:
       name: standard
       description: "Standard validation for code changes"
       validators: [security, performance]
-      required_evidence: []
+      # Omit `required_evidence` to inherit baseline `validation.evidence.requiredFiles`.
 
     strict:
       name: strict
       description: "Comprehensive validation for critical changes"
       validators: [global-gemini, security, performance, coderabbit]
-      required_evidence: []
+      # Omit `required_evidence` to inherit baseline `validation.evidence.requiredFiles`.
 
   presetInference:
     rules:
@@ -1164,6 +1194,12 @@ validation:
       test: "command-test.txt"
       build: "command-build.txt"
 ```
+
+**`required_evidence` semantics**
+
+- Omitted (`null` / missing key): inherit `validation.evidence.requiredFiles`
+- Empty list (`[]`): explicitly require no evidence (useful for docs-only presets)
+- Non-empty list: explicit required evidence list for the preset
 
 ---
 

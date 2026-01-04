@@ -245,6 +245,25 @@ class FileContextService:
         except Exception:
             pass
 
+        # Task-scoped fallback: use the task's declared scope (Primary Files / Areas)
+        # when implementation report doesn't list changed files.
+        try:
+            from edison.core.task import TaskRepository
+            from edison.core.qa._utils import parse_primary_files
+
+            repo = TaskRepository(project_root=self.project_root)
+            task_path = repo.get_path(task_id)
+            raw = task_path.read_text(encoding="utf-8", errors="ignore")
+            primary = self._filter_files(parse_primary_files(raw))
+            if primary:
+                return FileContext(
+                    all_files=self._dedupe_preserve(primary),
+                    modified=list(primary),
+                    source="task_spec",
+                )
+        except Exception:
+            pass
+
         # Fall back to git diff
         return self.get_for_session(session_id) if session_id else self.get_current()
 

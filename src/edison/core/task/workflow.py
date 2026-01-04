@@ -113,6 +113,7 @@ class TaskQAWorkflow:
         todo_state = WorkflowConfig().get_semantic_state("task", "todo")
 
         resolved_parent_id: str | None = None
+        parent_exists = False
         if parent_id:
             raw_parent = str(parent_id).strip()
             if not raw_parent:
@@ -123,11 +124,13 @@ class TaskQAWorkflow:
                 parent = self.task_repo.get(raw_parent)
                 if parent:
                     resolved_parent_id = parent.id
+                    parent_exists = True
                 else:
                     prefix = f"{raw_parent}-"
                     matches = [t.id for t in self.task_repo.find_all() if t.id.startswith(prefix)]
                     if len(matches) == 1:
                         resolved_parent_id = matches[0]
+                        parent_exists = True
                     elif len(matches) > 1:
                         raise PersistenceError(
                             f"Ambiguous parent_id '{raw_parent}' (matches {len(matches)} tasks). "
@@ -145,25 +148,31 @@ class TaskQAWorkflow:
             session_id=session_id,
             owner=owner,
             state=todo_state,
-            parent_id=resolved_parent_id,
+            # For existing parents, persist the relationship via TaskRelationshipService
+            # after the task is created (keeps mutation logic centralized).
+            parent_id=None if parent_exists else resolved_parent_id,
             continuation_id=continuation_id,
         )
 
         # Persist task
         self.task_repo.save(task)
 
-        # Persist parent/child links in task frontmatter (single source of truth).
-        # When parent_id is provided but the parent does not exist yet, we still
-        # record parent_id on the child (so follow-up linking is retained) and
-        # skip updating the parent file.
-        if resolved_parent_id:
+        # Persist parent/child links via the canonical relationship service.
+        # When parent_id is provided but the parent does not exist yet, keep the
+        # forward-linking parent_id value on the child only (no inverse update).
+        if resolved_parent_id and parent_exists:
             if str(resolved_parent_id).strip() == str(task_id).strip():
                 raise PersistenceError("Cannot set a task as its own parent")
-            parent = self.task_repo.get(resolved_parent_id)
-            if parent:
-                if task_id not in parent.child_ids:
-                    parent.child_ids.append(task_id)
-                self.task_repo.save(parent)
+            from edison.core.task.relationships.service import TaskRelationshipService
+
+            TaskRelationshipService(project_root=self.project_root).add(
+                task_id=task.id,
+                rel_type="parent",
+                target_id=str(resolved_parent_id),
+            )
+            refreshed = self.task_repo.get(task.id)
+            if refreshed:
+                task = refreshed
 
         # Register task in session if session_id provided
         if session_id:
@@ -328,12 +337,28 @@ class TaskQAWorkflow:
             except Exception:
                 pass
 
-        # 5. Move QA file
-        self._move_qa_to_session(task_id, session_id)
+        # 5. Ensure QA exists and is session-linked at the moment the task enters wip.
+        # This prevents "QA discovered too late" workflows and keeps claim as the
+        # canonical pairing point between tasks and QA.
+        self.ensure_qa(
+            task_id=task_id,
+            session_id=session_id,
+            validator_owner=None,
+            created_by=task.metadata.created_by if getattr(task, "metadata", None) else None,
+            title=f"QA for {task.id}: {task.title}",
+        )
 
         return task
 
-    def complete_task(self, task_id: str, session_id: str, *, enforce_tdd: bool = False) -> Task:
+    def complete_task(
+        self,
+        task_id: str,
+        session_id: str,
+        *,
+        enforce_tdd: bool = False,
+        skip_context7: bool = False,
+        skip_context7_reason: str | None = None,
+    ) -> Task:
         """Complete a task (wip -> done transition).
 
         This workflow operation:
@@ -381,12 +406,15 @@ class TaskQAWorkflow:
             pass
 
         # Build context for guards like 'can_finish_task' (checks implementation report)
+        ctx7_reason = str(skip_context7_reason or "").strip()
         context = {
             "task": task.to_dict(),
             "task_id": task_id,
             "session": session_obj,
             "session_id": session_id,
             "project_root": self.project_root,
+            "skip_context7": bool(skip_context7),
+            "skip_context7_reason": ctx7_reason if skip_context7 else "",
             # tasks/ready must enforce evidence requirements (command outputs, etc.)
             "enforce_evidence": True,
             # tasks/ready can optionally enforce TDD readiness gates.
@@ -399,12 +427,17 @@ class TaskQAWorkflow:
         def _mutate(t: Task) -> None:
             t.last_active = utc_timestamp()
 
+        transition_reason = "completed"
+        if skip_context7:
+            safe_reason = " ".join(ctx7_reason.split())
+            transition_reason = f"completed (context7 bypass: {safe_reason})" if safe_reason else "completed (context7 bypass)"
+
         try:
             task = self.task_repo.transition(
                 task_id,
                 done_state,
                 context=context,
-                reason="completed",
+                reason=transition_reason,
                 mutate=_mutate,
             )
         except Exception as e:

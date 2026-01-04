@@ -3,7 +3,7 @@ Edison task link command.
 
 SUMMARY: Link parent-child tasks
 
-Links are stored in task entities (parent_id, child_ids fields),
+Links are stored in task entities (canonical `relationships:` edges),
 NOT in session JSON. This is the single source of truth.
 """
 
@@ -59,7 +59,7 @@ def main(args: argparse.Namespace) -> int:
         parent_id = normalize_record_id("task", args.parent_id)
         child_id = normalize_record_id("task", args.child_id)
 
-        # Get both tasks using repository
+        # Get both tasks using repository (for graph validation).
         task_repo = TaskRepository(project_root=project_root)
         parent_task = task_repo.get(parent_id)
         child_task = task_repo.get(child_id)
@@ -70,14 +70,13 @@ def main(args: argparse.Namespace) -> int:
             raise ValueError(f"Child task not found: {child_id}")
 
         if args.unlink:
-            # Remove link from both tasks
-            if child_id in parent_task.child_ids:
-                parent_task.child_ids.remove(child_id)
-            child_task.parent_id = None
-            
-            # Save updated tasks
-            task_repo.save(parent_task)
-            task_repo.save(child_task)
+            from edison.core.task.relationships.service import TaskRelationshipService
+
+            TaskRelationshipService(project_root=project_root).remove(
+                task_id=child_id,
+                rel_type="parent",
+                target_id=parent_id,
+            )
             
             result = {
                 "action": "unlink",
@@ -123,17 +122,14 @@ def main(args: argparse.Namespace) -> int:
                     break
                 cur = task_repo.get(pid)
 
-            # Create link - update both task entities
-            # Update parent's child_ids
-            if child_id not in parent_task.child_ids:
-                parent_task.child_ids.append(child_id)
-            
-            # Update child's parent_id
-            child_task.parent_id = parent_id
-            
-            # Save updated tasks
-            task_repo.save(parent_task)
-            task_repo.save(child_task)
+            from edison.core.task.relationships.service import TaskRelationshipService
+
+            TaskRelationshipService(project_root=project_root).add(
+                task_id=child_id,
+                rel_type="parent",
+                target_id=parent_id,
+                force=bool(getattr(args, "force", False)),
+            )
 
             # Output result
             result = {

@@ -99,8 +99,8 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
         round_num=1,
     )
 
-    from edison.core.registries.validators import ValidatorRegistry
     from edison.cli.qa import validate as validate_cli
+    from edison.core.registries.validators import ValidatorRegistry
 
     args = argparse.Namespace(
         task_id="T001",
@@ -125,9 +125,12 @@ def test_bundle_approval_ignores_validator_filter(isolated_project_env: Path) ->
         session_id=None,
         validator_registry=ValidatorRegistry(project_root=repo),
         round_num=1,
+        root_task_id="T001",
+        scope_used="task",
+        cluster_task_ids=["T001"],
+        manifest_tasks=[{"taskId": "T001"}],
     )
 
     assert approved is False
     assert bundle.get("approved") is False
     assert cluster_missing.get("T001") and "v2" in cluster_missing["T001"]
-

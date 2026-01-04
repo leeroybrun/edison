@@ -30,6 +30,7 @@ from edison.core.config.domains import TaskConfig
 from edison.core.utils.time import utc_timestamp
 
 from .models import Task
+from .relationships.codec import decode_frontmatter_relationships, encode_task_relationships
 
 
 class TaskRepository(
@@ -353,6 +354,7 @@ class TaskRepository(
         """Serialize a task as Markdown with YAML frontmatter.
 
         - State is NOT stored in frontmatter (derived from directory).
+        - Relationships are stored in canonical `relationships:` format (legacy fields are not written).
         - Body is preserved on saves; template is only used on creation.
         """
         # Build frontmatter data (exclude None values)
@@ -361,11 +363,7 @@ class TaskRepository(
             "title": task.title,
             "owner": task.metadata.created_by,
             "session_id": task.session_id,
-            "parent_id": task.parent_id,
-            "child_ids": task.child_ids if task.child_ids else None,
-            "depends_on": task.depends_on if task.depends_on else None,
-            "blocks_tasks": task.blocks_tasks if task.blocks_tasks else None,
-            "related": task.related if getattr(task, "related", None) else None,
+            "relationships": encode_task_relationships(task) or None,
             "claimed_at": task.claimed_at,
             "last_active": task.last_active,
             "continuation_id": task.continuation_id,
@@ -450,6 +448,8 @@ class TaskRepository(
         doc = parse_frontmatter(content)
         fm = doc.frontmatter
 
+        relationships, derived = decode_frontmatter_relationships(fm)
+
         # Extract title from frontmatter or markdown heading
         title = fm.get("title", "")
         if not title:
@@ -486,11 +486,11 @@ class TaskRepository(
             session_id=fm.get("session_id"),
             metadata=metadata,
             tags=fm.get("tags", []) or [],
-            parent_id=fm.get("parent_id"),
-            child_ids=fm.get("child_ids", []) or [],
-            depends_on=fm.get("depends_on", []) or [],
-            blocks_tasks=fm.get("blocks_tasks", []) or [],
-            related=fm.get("related", []) or fm.get("related_tasks", []) or [],
+            parent_id=derived.get("parent_id"),
+            child_ids=derived.get("child_ids", []) or [],
+            depends_on=derived.get("depends_on", []) or [],
+            blocks_tasks=derived.get("blocks_tasks", []) or [],
+            related=derived.get("related", []) or [],
             claimed_at=fm.get("claimed_at"),
             last_active=fm.get("last_active"),
             continuation_id=fm.get("continuation_id"),
@@ -498,6 +498,7 @@ class TaskRepository(
             delegated_to=fm.get("delegated_to"),
             delegated_in_session=fm.get("delegated_in_session"),
             integration=fm.get("integration") or {},
+            relationships=relationships,
         )
 
 

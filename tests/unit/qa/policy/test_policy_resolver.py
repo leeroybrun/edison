@@ -152,8 +152,8 @@ class TestPolicyValidatorFiltering:
 class TestPolicyEvidenceRequirements:
     """Tests for evidence requirements from policy."""
 
-    def test_quick_preset_includes_baseline_evidence(self, tmp_path: Path, monkeypatch):
-        """Quick preset still requires the global baseline automation evidence (fail-closed)."""
+    def test_quick_preset_requires_no_evidence(self, tmp_path: Path, monkeypatch):
+        """Quick preset explicitly disables required evidence."""
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
         setup_project_root(monkeypatch, repo)
@@ -166,11 +166,7 @@ class TestPolicyEvidenceRequirements:
         resolver = ValidationPolicyResolver(project_root=repo)
         policy = resolver.resolve_for_task("T001", preset_name="quick")
 
-        evidence = policy.required_evidence
-        assert "command-type-check.txt" in evidence
-        assert "command-lint.txt" in evidence
-        assert "command-test.txt" in evidence
-        assert "command-build.txt" in evidence
+        assert policy.required_evidence == []
 
     def test_standard_preset_requires_automation_evidence(self, tmp_path: Path, monkeypatch):
         """Standard preset requires automation command evidence."""

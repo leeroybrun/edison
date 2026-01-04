@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.text import parse_frontmatter, has_frontmatter
 from edison.core.config.domains import TaskConfig
+from edison.core.task.relationships.codec import decode_frontmatter_relationships
 
 
 @dataclass
@@ -236,16 +237,17 @@ class TaskIndex:
         for path, fm in self.scan_all_task_files():
             if fm.get("session_id") == session_id:
                 state = path.parent.name
+                _rels, derived = decode_frontmatter_relationships(fm)
                 results.append(TaskSummary(
                     id=fm.get("id", path.stem),
                     path=path,
                     state=state,
                     session_id=session_id,
-                    parent_id=fm.get("parent_id"),
-                    child_ids=fm.get("child_ids", []) or [],
-                    depends_on=fm.get("depends_on", []) or [],
-                    blocks_tasks=fm.get("blocks_tasks", []) or [],
-                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
+                    parent_id=derived.get("parent_id"),
+                    child_ids=derived.get("child_ids", []) or [],
+                    depends_on=derived.get("depends_on", []) or [],
+                    blocks_tasks=derived.get("blocks_tasks", []) or [],
+                    related=derived.get("related", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))
@@ -292,16 +294,17 @@ class TaskIndex:
         
         for path, fm in self.scan_all_task_files():
             if path.parent.name == state:
+                _rels, derived = decode_frontmatter_relationships(fm)
                 results.append(TaskSummary(
                     id=fm.get("id", path.stem),
                     path=path,
                     state=state,
                     session_id=fm.get("session_id"),
-                    parent_id=fm.get("parent_id"),
-                    child_ids=fm.get("child_ids", []) or [],
-                    depends_on=fm.get("depends_on", []) or [],
-                    blocks_tasks=fm.get("blocks_tasks", []) or [],
-                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
+                    parent_id=derived.get("parent_id"),
+                    child_ids=derived.get("child_ids", []) or [],
+                    depends_on=derived.get("depends_on", []) or [],
+                    blocks_tasks=derived.get("blocks_tasks", []) or [],
+                    related=derived.get("related", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))
@@ -386,17 +389,18 @@ class TaskIndex:
             
             state = path.parent.name
             task_id = fm.get("id", path.stem)
-            
+
+            _rels, derived = decode_frontmatter_relationships(fm)
             summary = TaskSummary(
                 id=task_id,
                 path=path,
                 state=state,
                 session_id=fm.get("session_id"),
-                parent_id=fm.get("parent_id"),
-                child_ids=fm.get("child_ids", []) or [],
-                depends_on=fm.get("depends_on", []) or [],
-                blocks_tasks=fm.get("blocks_tasks", []) or [],
-                related=fm.get("related", []) or fm.get("related_tasks", []) or [],
+                parent_id=derived.get("parent_id"),
+                child_ids=derived.get("child_ids", []) or [],
+                depends_on=derived.get("depends_on", []) or [],
+                blocks_tasks=derived.get("blocks_tasks", []) or [],
+                related=derived.get("related", []) or [],
                 owner=fm.get("owner"),
                 title=fm.get("title"),
             )
@@ -431,16 +435,17 @@ class TaskIndex:
         for path, fm in self.scan_all_task_files():
             if not fm.get("session_id"):
                 state = path.parent.name
+                _rels, derived = decode_frontmatter_relationships(fm)
                 results.append(TaskSummary(
                     id=fm.get("id", path.stem),
                     path=path,
                     state=state,
                     session_id=None,
-                    parent_id=fm.get("parent_id"),
-                    child_ids=fm.get("child_ids", []) or [],
-                    depends_on=fm.get("depends_on", []) or [],
-                    blocks_tasks=fm.get("blocks_tasks", []) or [],
-                    related=fm.get("related", []) or fm.get("related_tasks", []) or [],
+                    parent_id=derived.get("parent_id"),
+                    child_ids=derived.get("child_ids", []) or [],
+                    depends_on=derived.get("depends_on", []) or [],
+                    blocks_tasks=derived.get("blocks_tasks", []) or [],
+                    related=derived.get("related", []) or [],
                     owner=fm.get("owner"),
                     title=fm.get("title"),
                 ))

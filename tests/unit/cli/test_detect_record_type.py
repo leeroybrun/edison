@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from edison.cli._utils import detect_record_type
 
 

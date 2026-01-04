@@ -6,8 +6,9 @@ Following STRICT TDD - tests written FIRST, implementation second.
 from __future__ import annotations
 
 import argparse
-import pytest
 from pathlib import Path
+
+import pytest
 
 from tests.helpers.fixtures import create_repo_with_git
 from tests.helpers.io_utils import write_yaml
@@ -217,8 +218,9 @@ class TestImportSpeckitCommand:
 
     def test_main_json_output(self, repo_env: Path, capsys):
         """Command outputs JSON when --json flag is set."""
-        from edison.cli.import_.speckit import main, register_args
         import json
+
+        from edison.cli.import_.speckit import main, register_args
 
         feature_dir = repo_env / "specs" / "auth"
         feature_dir.mkdir(parents=True)

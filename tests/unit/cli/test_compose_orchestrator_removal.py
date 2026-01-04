@@ -5,13 +5,15 @@ This test verifies that:
 2. The compose_all check doesn't reference orchestrator
 3. Constitutions are generated instead of orchestrator manifest
 """
-import pytest
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from argparse import Namespace, ArgumentParser
+
+import pytest
+import yaml
+
 from edison.cli.compose.all import main, register_args
 from edison.core.utils.paths.project import get_project_config_dir
 from tests.conftest import REPO_ROOT
-import yaml
 
 
 def _setup_minimal_edison_structure(repo_root: Path) -> None:
@@ -238,7 +240,7 @@ def test_compose_all_without_orchestrator_flag(tmp_path, real_args):
 
     assert constitutions_dir.exists(), f"Constitutions directory should exist at {constitutions_dir}"
     assert orchestrators_constitution.exists(), \
-        f"ORCHESTRATOR.md constitution should exist as replacement for orchestrator manifest"
+        "ORCHESTRATOR.md constitution should exist as replacement for orchestrator manifest"
 
     # Verify orchestrator-manifest.json is NOT generated (deprecated)
     manifest_file = config_dir / "_generated" / "orchestrator-manifest.json"

@@ -9,7 +9,13 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    get_repository,
+)
 
 SUMMARY = "List tasks across queues"
 
@@ -82,9 +88,20 @@ def main(args: argparse.Namespace) -> int:
             if session_id:
                 list_text += f"\n  (session filter: {session_id})"
         else:
-            list_text = f"Found {len(entities)} {args.type}(s):\n" + "\n".join(
-                f"  {entity.id} [{entity.state}]" for entity in entities
-            )
+            lines = []
+            any_session_scoped = False
+            for entity in entities:
+                sess = getattr(entity, "session_id", None)
+                if sess:
+                    any_session_scoped = True
+                suffix = f" (session={sess})" if sess else ""
+                lines.append(f"  {entity.id} [{entity.state}]{suffix}")
+
+            list_text = f"Found {len(entities)} {args.type}(s):\n" + "\n".join(lines)
+            if any_session_scoped:
+                list_text += (
+                    "\nNote: session-scoped records are stored under `.project/sessions/<state>/<session-id>/...`."
+                )
 
         if formatter.json_mode:
             records = []

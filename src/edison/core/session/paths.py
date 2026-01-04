@@ -13,6 +13,25 @@ from edison.core.utils.paths import PathResolver
 from .core.layout import get_session_base_path
 
 
+def _get_session_state_dirs(*, project_root: Path) -> List[Path]:
+    """Return configured session state directories for a project root.
+
+    IMPORTANT: This function MUST respect an explicit project_root. It must not
+    rely on global cached path helpers that derive their own root, otherwise
+    session discovery breaks in multi-repo contexts (tests, worktrees, meta repos).
+    """
+    from edison.core.config.domains.session import SessionConfig
+
+    cfg = SessionConfig(repo_root=project_root)
+    sessions_root = (project_root / cfg.get_session_root_path()).resolve()
+    states_map = cfg.get_session_states()
+
+    dirs: List[Path] = []
+    for dirname in states_map.values():
+        dirs.append((sessions_root / dirname).resolve())
+    return dirs
+
+
 def get_session_bases(
     session_id: Optional[str] = None,
     project_root: Optional[Path] = None,
@@ -38,11 +57,10 @@ def get_session_bases(
         # Find specific session directory
         bases = get_session_bases(session_id="sess-123")
     """
-    # Lazy import to avoid circular dependency
-    from edison.core.task.paths import get_session_dirs
-
     project_root = project_root or PathResolver.resolve_project_root()
     bases: List[Path] = []
+
+    session_state_dirs = _get_session_state_dirs(project_root=project_root)
 
     if session_id:
         # Specific session lookup
@@ -85,12 +103,12 @@ def get_session_bases(
             _add(primary / session_id)
 
         # Add standard session directories
-        for sess_dir in get_session_dirs().values():
+        for sess_dir in session_state_dirs:
             _add((sess_dir / session_id).resolve())
 
     else:
         # Discovery mode - find all sessions
-        for sess_dir in get_session_dirs().values():
+        for sess_dir in session_state_dirs:
             if not sess_dir.exists():
                 continue
             try:
@@ -150,9 +168,6 @@ def resolve_session_record_path(
         )
         # Returns: <project-management-dir>/sessions/wip/sess-123/tasks/todo/T-001.md
     """
-    # Lazy import to avoid circular dependency
-    from edison.core.task.paths import get_session_dirs
-
     project_root = project_root or PathResolver.resolve_project_root()
     session_base: Optional[Path] = None
 
@@ -173,7 +188,7 @@ def resolve_session_record_path(
     # 2. If not found, search standard directories
     if not session_base:
         # Use config-driven session state directories
-        for sess_dir in get_session_dirs().values():
+        for sess_dir in _get_session_state_dirs(project_root=project_root):
             candidate = sess_dir / session_id
             if candidate.exists():
                 session_base = candidate
@@ -182,12 +197,13 @@ def resolve_session_record_path(
     # 3. Default to active session state using config-driven path resolution
     if not session_base:
         # Use config-driven path resolution
-        from edison.core.utils.paths import get_management_paths
         from edison.core.config.domains.session import SessionConfig
-        mgmt = get_management_paths(project_root)
-        states_map = SessionConfig().get_session_states()
+
+        cfg = SessionConfig(repo_root=project_root)
+        states_map = cfg.get_session_states()
         active_dir = states_map.get("active", "wip")
-        session_base = mgmt.get_session_state_dir(active_dir) / session_id
+        sessions_root = (project_root / cfg.get_session_root_path()).resolve()
+        session_base = sessions_root / active_dir / session_id
 
     # Ensure we target the specific session directory
     if session_base.name != session_id:

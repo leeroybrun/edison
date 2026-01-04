@@ -12,6 +12,10 @@ def test_evidence_init_creates_round_and_metadata(
 ) -> None:
     task_id = "task-evidence-init-001"
 
+    from edison.core.task.workflow import TaskQAWorkflow
+
+    TaskQAWorkflow(isolated_project_env).create_task(task_id=task_id, title="Test", create_qa=False)
+
     from edison.cli.evidence.init import main as init_main
 
     args = argparse.Namespace(
@@ -30,4 +34,3 @@ def test_evidence_init_creates_round_and_metadata(
     evidence_root = isolated_project_env / ".project" / "qa" / "validation-evidence" / task_id
     assert (evidence_root / "round-1").exists()
     assert (evidence_root / "metadata.json").exists()
-

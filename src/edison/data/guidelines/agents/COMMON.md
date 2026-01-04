@@ -21,14 +21,14 @@ Use this roster instead of repeating the table in each agent file:
 - Tracking (mandatory): run `edison read MANDATORY_WORKFLOW --type guidelines/agents` (includes the canonical tracking commands).
 - `edison config show <domain> --format yaml` - Inspect merged config (read-only)
 
-> Orchestrator-only (do not run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa new`, `edison qa promote`, `edison qa bundle`, `edison qa validate`, `edison session next`, `edison git worktree-*`, `edison compose all`.
+> Orchestrator-only (do not run unless explicitly told): `edison task claim`, `edison task done` (and legacy `edison task ready <task>`), `edison qa new`, `edison qa promote`, `edison qa bundle`, `edison qa validate`, `edison session next`, `edison git worktree-*`, `edison compose all`.
 
 {{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#agent-git-safety}}
 
 {{include-section:guidelines/includes/GIT_WORKTREE_SAFETY.md#worktree-confinement}}
 
 ### Context7 Tools
-- Context7 package detection (automatic in `edison task ready`)
+- Context7 package detection (automatic in `edison task done`)
 - HMAC evidence stamping (when enabled in config)
 
 ### Validation Tools

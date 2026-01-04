@@ -20,6 +20,8 @@ from ._utils import (
     get_repo_root,
     detect_record_type,
     get_repository,
+    resolve_existing_task_id,
+    format_display_path,
     resolve_session_id,
 )
 
@@ -35,5 +37,7 @@ __all__ = [
     "get_repo_root",
     "detect_record_type",
     "get_repository",
+    "resolve_existing_task_id",
+    "format_display_path",
     "resolve_session_id",
 ]

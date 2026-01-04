@@ -136,10 +136,15 @@ class PresetConfigLoader:
             validators = []
         validators = [str(v) for v in validators if v]
 
-        required_evidence = config.get("required_evidence", [])
-        if not isinstance(required_evidence, list):
-            required_evidence = []
-        required_evidence = [str(e) for e in required_evidence if e]
+        required_present = "required_evidence" in config
+        raw_required = config.get("required_evidence") if required_present else None
+        if raw_required is None and not required_present:
+            required_evidence = None
+        else:
+            required_evidence = raw_required if isinstance(raw_required, list) else []
+            required_evidence = [str(e) for e in required_evidence if e]
+
+        stale_evidence = str(config.get("stale_evidence", "warn") or "warn").strip().lower()
 
         description = str(config.get("description", ""))
         blocking_present = "blocking_validators" in config
@@ -154,6 +159,7 @@ class PresetConfigLoader:
             name=name,
             validators=validators,
             required_evidence=required_evidence,
+            stale_evidence=stale_evidence,
             blocking_validators=blocking_validators,
             description=description,
         )

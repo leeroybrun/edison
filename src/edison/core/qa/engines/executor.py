@@ -186,6 +186,7 @@ class ValidationExecutor:
         round_num: int | None = None,
         evidence_service: EvidenceService | None = None,
         extra_validators: list[dict[str, str]] | None = None,
+        preset_name: str | None = None,
     ) -> ExecutionResult:
         """Execute validators for a task.
 
@@ -201,6 +202,7 @@ class ValidationExecutor:
             evidence_service: Evidence service for saving results
             extra_validators: Extra validators to add (from orchestrator)
                 Each item: {"id": "validator-id", "wave": "wave-name"}
+            preset_name: Validation preset name override (applies in auto-mode when validators are not explicitly provided)
 
         Returns:
             ExecutionResult with all wave and validator results
@@ -271,6 +273,7 @@ class ValidationExecutor:
                 round_num=round_num,
                 evidence_service=evidence_service,
                 extra_validators=extra_validators,
+                preset_name=preset_name,
             )
 
             result.waves.append(wave_result)
@@ -330,6 +333,7 @@ class ValidationExecutor:
         round_num: int | None,
         evidence_service: EvidenceService,
         extra_validators: list[dict[str, str]] | None = None,
+        preset_name: str | None = None,
     ) -> WaveResult:
         """Execute all validators in a wave.
 
@@ -374,6 +378,7 @@ class ValidationExecutor:
                 session_id=session_id,
                 wave=wave,
                 extra_validators=extra_validators,
+                preset_name=preset_name,
             )
             expected_ids = {
                 str(v.get("id"))

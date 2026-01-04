@@ -31,7 +31,7 @@ edison evidence status <task-id>            # Check what's missing
    edison evidence capture <task-id>
    ```
 4. `edison evidence status <task-id>` - Verify all evidence captured
-5. `edison task ready <task-id>` - Mark complete
+5. `edison task done <task-id>` - Mark complete (preferred; `task ready <task-id>` is deprecated)
 
 **Critical:** Evidence must show `exitCode: 0` before you proceed to guarded transitions.
 Do not skip commands. Do not fabricate evidence. If you capture a failing run, fix and re-capture.
@@ -64,7 +64,7 @@ edison evidence status <task-id>  # Verify completeness
 - All commands must show `exitCode: 0`
 - If missing: have agent run commands and capture
 
-**If `task ready` fails:** Agent must fix issues, not bypass.
+**If `task done` fails:** Agent must fix issues, not bypass.
 <!-- /section: orchestrator-verify -->
 
 <!-- section: context7-bypass -->
@@ -73,7 +73,7 @@ edison evidence status <task-id>  # Verify completeness
 `--skip-context7` bypasses Context7 checks for **verified false positives only**.
 
 ```bash
-edison task ready <task-id> --skip-context7  # Logs audit trace
+edison task done <task-id> --skip-context7 --skip-context7-reason "verified false positive: <why>"
 ```
 
 Use ONLY when detection is wrong. Never use to skip required evidence.

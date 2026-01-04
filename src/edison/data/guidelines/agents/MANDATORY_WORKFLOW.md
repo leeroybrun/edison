@@ -86,7 +86,7 @@ Agents are generally **read-only** on task/session orchestration:
 edison task status <task-id>
 ```
 
-> Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa promote`, `edison qa bundle`, `edison qa validate`.
+> Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task done` (and legacy `edison task ready <task>`), `edison qa promote`, `edison qa bundle`, `edison qa validate`.
 
 ## Evidence Required
 

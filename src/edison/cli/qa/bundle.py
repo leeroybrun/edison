@@ -27,6 +27,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Root task identifier for the cluster to validate",
     )
     parser.add_argument(
+        "--scope",
+        choices=["auto", "hierarchy", "bundle"],
+        help="Cluster selection scope (default: config or auto)",
+    )
+    parser.add_argument(
         "--session",
         type=str,
         help="Session ID for context (recommended). If omitted, uses current session if available.",
@@ -56,18 +61,23 @@ def main(args: argparse.Namespace) -> int:
 
         manifest = build_validation_manifest(
             args.task_id,
+            scope=getattr(args, "scope", None),
             project_root=repo_root,
             session_id=session_id,
         )
 
-        ev = EvidenceService(args.task_id, project_root=repo_root)
+        root_task = str(manifest.get("rootTask") or args.task_id)
+        scope_used = str(manifest.get("scope") or "").strip() or "hierarchy"
+
+        ev = EvidenceService(root_task, project_root=repo_root)
         round_dir = ev.ensure_round()
         round_num = rounds.get_round_number(round_dir)
 
         # Persist a draft bundle summary with per-task approvals defaulting to false.
         bundle_data = {
-            "taskId": args.task_id,
-            "rootTask": args.task_id,
+            "taskId": root_task,
+            "rootTask": root_task,
+            "scope": scope_used,
             "round": round_num,
             "approved": False,
             "generatedAt": utc_timestamp(),
