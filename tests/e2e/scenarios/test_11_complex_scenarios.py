@@ -241,11 +241,24 @@ def test_cross_session_task_transfer(project_dir: TestProjectDir):
     assert_command_success(run_script("tasks/new", ["--id", "150", "--wave", "wave1", "--slug", "transfer", "--session", session1], cwd=project_dir.tmp_path))
     assert_command_success(run_script("tasks/claim", [task_id, "--session", session1, "--owner", session1], cwd=project_dir.tmp_path))
 
+    # Reclaim is only allowed when the original session is inactive/expired.
+    # Simulate an expired session by aging lastActive beyond the configured timeout.
+    from datetime import datetime, timezone, timedelta
+    import json
+
+    session1_json = project_dir.project_root / "sessions" / "wip" / session1 / "session.json"
+    data = json.loads(session1_json.read_text(encoding="utf-8"))
+    meta = data.setdefault("meta", {})
+    old_time = (datetime.now(timezone.utc) - timedelta(hours=10)).isoformat().replace("+00:00", "Z")
+    meta["createdAt"] = old_time
+    meta["lastActive"] = old_time
+    session1_json.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
     # Re-claim to session2 (transfer ownership)
     assert_command_success(
         run_script(
             "tasks/claim",
-            [task_id, "--session", session2, "--owner", session2, "--reclaim"],
+            [task_id, "--session", session2, "--owner", session2, "--reclaim", "--reason", "transfer ownership"],
             cwd=project_dir.tmp_path,
         )
     )
