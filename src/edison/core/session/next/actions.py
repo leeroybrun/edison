@@ -198,6 +198,8 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
     qa_todo = workflow_cfg.get_semantic_state("qa", "todo")
     qa_active_states = {qa_wip, qa_todo}
 
+    task_validated = workflow_cfg.get_semantic_state("task", "validated")
+
     reports_missing: list[dict[str, Any]] = []
 
     # Get tasks from TaskRepository instead of session JSON
@@ -215,7 +217,7 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
         task_id = task.id
         # Validator reports expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
-        if qstat in qa_active_states:
+        if qstat in qa_active_states and getattr(task, "state", None) != task_validated:
             v = read_validator_reports(task_id)
             have = {
                 str(r.get("validatorId") or r.get("validator_id") or r.get("id") or "")
