@@ -12,20 +12,23 @@ Use Context7 to refresh your knowledge **before** implementing or validating whe
 <!-- /section: workflow -->
 
 <!-- section: agent -->
+## Context7 Knowledge Refresh (MANDATORY)
+
 ### Resolve Library ID
 Use Context7 to resolve the canonical library ID:
 ```
-mcp__context7__resolve_library_id({ libraryName: "<package-name>" })
+mcp__context7__resolve-library-id({
+  libraryName: "<package-name>",
+  query: "<what you are trying to do>"
+})
 ```
 
 ### Get Current Documentation
 Fetch up-to-date docs before coding or reviewing:
 ```
-mcp__context7__get_library_docs({
-  context7CompatibleLibraryID: "/<org>/<library>",
-  mode: "code",
-  topic: "<relevant-topic>",
-  page: 1
+mcp__context7__query-docs({
+  libraryId: "/<org>/<library>",
+  query: "<relevant-topic>"
 })
 ```
 

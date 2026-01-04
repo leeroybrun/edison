@@ -2,6 +2,7 @@
 name: component-builder
 description: "UI component specialist for accessible, responsive interfaces"
 model: claude
+palRole: "{{project.palRoles.component-builder}}"
 allowed_tools:
   - Read
   - Edit
@@ -15,6 +16,8 @@ metadata:
   version: "2.0.0"
   last_updated: "2025-12-03"
 ---
+
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
 
 # Agent: Component Builder
 

@@ -7,3 +7,10 @@ project:
   pythonVersion: "3.12"
   sourceDir: "src/edison"
   testsDir: "tests"
+  palRoles:
+    api-builder: "api-builder"
+    component-builder: "component-builder"
+    database-architect: "database-architect"
+    code-reviewer: "code-reviewer"
+    test-engineer: "test-engineer"
+    feature-implementer: "feature-implementer"

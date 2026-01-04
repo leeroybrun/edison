@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
 import pytest
 import yaml
@@ -182,52 +181,32 @@ def test_component_builder_has_server_client_examples() -> None:
 
 
 def _extract_context7_section(content: str, path: Path) -> str:
-    heading = "## Context7 Knowledge Refresh (MANDATORY)"
-    assert heading in content, f"{path} missing Context7 refresh heading"
-    start = content.index(heading)
-    return content[start:]
+    canonical = "{{include-section:guidelines/includes/CONTEXT7.md#agent}}"
+    assert canonical in content, f"{path} missing canonical Context7 include-section directive"
+    return canonical
 
 
 @pytest.mark.parametrize("agent_name,spec", AGENT_SPECS.items())
 def test_agents_include_context7_examples(agent_name: str, spec: dict) -> None:
-    """T-020: Agents must include Context7 usage examples tailored to their domain."""
+    """T-020: Agents must reference the canonical Context7 workflow section.
+
+    This test intentionally avoids asserting exact headings/phrasing to keep prompts
+    easy to evolve; it only enforces the structural include contract.
+    """
     agents_dir = get_data_path("agents")
     path = agents_dir / spec["filename"]
     content = path.read_text(encoding="utf-8")
 
-    heading = "## Context7 Knowledge Refresh (MANDATORY)"
-    agent_heading = "# Agent:"
-
-    assert heading in content, f"{path} missing Context7 Knowledge Refresh section"
-    assert agent_heading in content, f"{path} missing Agent heading"
-    assert content.index(heading) < content.index(agent_heading), \
-        f"{path} Context7 section must appear immediately after frontmatter and before the Agent heading"
-
-    section = _extract_context7_section(content, path)
-
-    # Allow canonical include-section directive (single source of truth).
     canonical = "{{include-section:guidelines/includes/CONTEXT7.md#agent}}"
-    if canonical in section:
-        include_path = get_data_path("guidelines/includes", "CONTEXT7.md")
-        inc = include_path.read_text(encoding="utf-8")
-        m = re.search(
-            r"<!--\s*section:\s*agent\s*-->\n(.+?)\n<!--\s*/section:\s*agent\s*-->",
-            inc,
-            flags=re.S | re.I,
-        )
-        assert m, "Canonical CONTEXT7 include section 'agent' missing"
-        section = section.replace(canonical, m.group(1).strip())
+    _extract_context7_section(content, path)
 
-    assert "Resolve Library ID" in section, f"{path} missing resolve step heading"
-    assert "mcp__context7__resolve_library_id" in section, \
-        f"{path} missing resolve_library_id example"
-    assert "libraryName" in section, f"{path} resolve example missing libraryName"
 
-    assert "Get Current Documentation" in section, f"{path} missing docs retrieval heading"
-    assert "mcp__context7__get_library_docs" in section, \
-        f"{path} missing get_library_docs example"
-    assert "context7CompatibleLibraryID" in section, \
-        f"{path} get-library-docs example missing context7CompatibleLibraryID"
+def test_context7_include_agent_section_has_tool_contract() -> None:
+    include_path = get_data_path("guidelines/includes", "CONTEXT7.md")
+    inc = include_path.read_text(encoding="utf-8")
 
-    assert "config/context7.yaml" in section, \
-        f"{path} must point to config/context7.yaml for versions"
+    assert "<!-- section: agent -->" in inc
+    assert "<!-- /section: agent -->" in inc
+    assert "mcp__context7__resolve-library-id" in inc
+    assert "mcp__context7__query-docs" in inc
+    assert "{{fn:project_config_dir}}/config/context7.yaml" in inc

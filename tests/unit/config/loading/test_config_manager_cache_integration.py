@@ -41,13 +41,10 @@ def test_config_manager_load_config_is_centrally_cached(tmp_path: Path) -> None:
 
 
 def test_get_cached_config_default_repo_root_key_tracks_resolved_project_root(tmp_path: Path) -> None:
-    """`get_cached_config(repo_root=None)` must not collapse multiple projects into one cache entry.
-
-    The config cache key must reflect the resolved project root (via PathResolver)
+    """`get_cached_config(repo_root=None)` must not collapse multiple projects into one cache entry.    The config cache key must reflect the resolved project root (via PathResolver)
     so switching `AGENTS_PROJECT_ROOT` within a single process yields distinct configs.
     """
     import os
-
     clear_all_caches()
     old_env = os.environ.get("AGENTS_PROJECT_ROOT")
     try:
@@ -55,7 +52,6 @@ def test_get_cached_config_default_repo_root_key_tracks_resolved_project_root(tm
         root2 = tmp_path / "proj2"
         (root1 / ".edison" / "config").mkdir(parents=True, exist_ok=True)
         (root2 / ".edison" / "config").mkdir(parents=True, exist_ok=True)
-
         (root1 / ".edison" / "config" / "project.yaml").write_text(
             "project:\n  name: one\n", encoding="utf-8"
         )

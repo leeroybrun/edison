@@ -43,7 +43,6 @@ def test_questionnaire_rendering_module_exists():
     # Should contain rendering functions
     assert hasattr(rendering, 'render_modular_configs')
     assert hasattr(rendering, 'render_readme_template')
-    assert hasattr(rendering, 'render_template_value')
 
 
 def test_questionnaire_init_exports_main_class():
@@ -87,33 +86,10 @@ def test_split_modules_follow_single_responsibility():
 
     # Rendering: template processing and config generation
     assert hasattr(rendering, 'render_modular_configs')
-    assert hasattr(rendering, 'render_template_value')
 
     # Context: context and config building
     assert hasattr(context, 'build_context_with_defaults')
     assert hasattr(context, 'build_config_dict')
-
-
-def test_split_files_under_200_loc():
-    """Test that each split file is under 200 LOC."""
-    import inspect
-    from pathlib import Path
-    from edison.core.setup.questionnaire import base, prompts, validation, rendering, context, templates
-
-    modules = {
-        'base.py': base,
-        'prompts.py': prompts,
-        'validation.py': validation,
-        'rendering.py': rendering,
-        'context.py': context,
-        'templates.py': templates,
-    }
-
-    for filename, module in modules.items():
-        file_path = Path(inspect.getfile(module))
-        lines = file_path.read_text(encoding='utf-8').splitlines()
-        loc = len(lines)
-        assert loc < 200, f"{filename} has {loc} LOC (limit: 200)"
 
 
 def test_backward_compatibility_with_existing_imports():

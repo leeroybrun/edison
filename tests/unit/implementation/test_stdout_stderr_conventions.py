@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 import unittest
@@ -39,7 +40,7 @@ class TestStdErrConventions(unittest.TestCase):
     def test_implementation_report_print_path_stdout_only(self) -> None:
         task_id = "stderr-conventions-1"
         res = self._run([
-            "python3", "-m", "edison",
+            sys.executable, "-m", "edison",
             "session", "track", "start",
             "--task", task_id,
             "--type", "implementation",

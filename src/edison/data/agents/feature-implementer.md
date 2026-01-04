@@ -2,6 +2,7 @@
 name: feature-implementer
 description: "Full-stack feature implementer delivering end-to-end product experiences"
 model: claude
+palRole: "{{project.palRoles.feature-implementer}}"
 allowed_tools:
   - Read
   - Edit
@@ -15,6 +16,8 @@ metadata:
   version: "2.0.0"
   last_updated: "2025-12-03"
 ---
+
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
 
 # Agent: Feature Implementer
 
