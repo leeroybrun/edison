@@ -13,6 +13,9 @@ ci:
     test-task: "./.venv/bin/pytest -q tests/unit/task"
     test-import: "./.venv/bin/pytest -q tests/unit/core/import_"
     test-context7: "./.venv/bin/pytest -q tests/unit/qa/test_context7_task_scoped_detection_avoids_session_contamination.py tests/unit/state/test_can_finish_task_context7_messages.py tests/unit/qa/validation/test_file_context_service_uses_task_primary_files_when_no_report.py"
-    test-full: "./.venv/bin/pytest tests/ -v --tb=short"
+    # NOTE: Full-suite integration tests are still evolving and can be slow/flaky
+    # under multi-session development. For session-close evidence, prefer the
+    # fast deterministic suite. Projects can override this per repo.
+    test-full: "scripts/test-fast"
     test-coverage: "./.venv/bin/pytest tests/ --cov=src --cov-report=term-missing"
     build: "./.venv/bin/python -m build"

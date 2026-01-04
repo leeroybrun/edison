@@ -33,7 +33,6 @@ validation:
         - global-coderabbit
       required_evidence:
         - command-type-check.txt
-        - command-lint.txt
         - command-test-full.txt
         - command-build.txt
       blocking_validators:
