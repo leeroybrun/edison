@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run the fast test suite (no subprocess-heavy / e2e tests).
+#
+# Usage:
+#   scripts/test-fast           # fast suite
+#   scripts/test-fast -k foo    # pass-through args
+
+args=("$@")
+
+py="python3"
+if [[ -x ".venv/bin/python" ]]; then
+  py=".venv/bin/python"
+fi
+
+exec "$py" -m pytest -m fast "${args[@]}"
