@@ -9,6 +9,7 @@ applies_when:
 validation_criteria:
   - "New tests fail when the targeted defect or gap is present and pass after fixes."
   - "Tests are deterministic, isolated, and avoid external dependencies except sanctioned fixtures."
+  - "Tests validate executable behavior; do not add tests that hard-pin default config values or enforce exact doc/template wording/format."
   - "Coverage improves on high-risk areas (boundary conditions, error paths, security/permissions)."
   - "CI execution time remains within budget; heavy suites are batched or parametrized appropriately."
 delegation_guidance:

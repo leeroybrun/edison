@@ -120,7 +120,7 @@ Edison respects the following environment variables for configuration:
 
 - `EDISON_<section>__<key>` - Override any config value using double underscore notation
   - Example: `EDISON_database__url` overrides `database.url` in config
-  - Example: `EDISON_tdd_enforceRedGreenRefactor=false` disables TDD enforcement
+  - Example: `EDISON_tdd_enforceRedGreenRefactor=false` disables TDD enforcement (use only for exceptional bootstrapping/emergency recovery; never to bypass tests for executable behavior changes)
   - Example: `EDISON_paths__project_config_dir=custom` sets custom config directory
   - Example: `EDISON_paths__user_config_dir=~/.edison` sets the user config directory
 

@@ -187,6 +187,7 @@ mcp__context7__get-library-docs       # Fetch documentation
    - Implement code to pass test (GREEN)
    - Refactor for quality (REFACTOR)
    - Never skip this cycle
+   - Scope: applies to executable behavior changes; content-only Markdown/YAML/template edits do not require new tests, but must not be used to bypass TDD when code changes
 
 2. **Use Context7 for Post-Training Packages**
    - Query Context7 BEFORE coding

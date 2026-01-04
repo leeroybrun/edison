@@ -189,12 +189,14 @@ Every validator MUST perform these universal checks:
 - ✅ Tests use real behavior (NO MOCKS per CLAUDE.md)
 - ✅ Tests cover edge cases
 - ✅ Test suite passes with 100% pass rate
+- ✅ Tests assert behavior (avoid brittle tests that hard-pin default config values or enforce exact Markdown wording/format/length)
 
 **Fail if**:
 - New code without tests
 - Mock usage detected (violates NO MOCKS rule)
 - TDD order not followed
 - Tests don't cover edge cases
+- Tests were added/changed primarily to enforce specific default configuration values or doc/template wording (brittle content gates)
 
 ---
 

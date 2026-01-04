@@ -1845,6 +1845,8 @@ tdd:
   requireEvidence: false
 ```
 
+**Warning:** Disabling TDD enforcement is intended only for exceptional bootstrapping or emergency recovery. Do not use this to bypass required tests for executable behavior changes. Content-only Markdown/YAML/template edits should not require disabling TDD enforcement.
+
 ---
 
 ### Example 8: Custom Project Config Directory

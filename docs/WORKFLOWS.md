@@ -845,6 +845,11 @@ Action required: Add refactor phase evidence showing code cleanup
 
 Test-Driven Development enforcement with RED→GREEN→REFACTOR cycle.
 
+**Scope note (to prevent brittle “content gates”):**
+- TDD applies to changes that add/modify executable behavior (production code, CLI behavior, validators, config-loading logic).
+- Content-only edits (Markdown/YAML/templates) do not require *new* tests, but must not be bundled with behavior changes.
+- Avoid tests that hard-pin default config values or enforce exact doc/template wording/format/length; tests should assert behavior.
+
 ### Phase 1: RED (Write Failing Test)
 
 **Objective:** Write a test that fails because the feature doesn't exist yet.
