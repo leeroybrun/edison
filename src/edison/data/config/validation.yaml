@@ -143,7 +143,7 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: global
-      always_run: true
+      always_run: false
       blocking: false  # Non-blocking, additional AI perspective
       timeout: 600
       context7_required: false  # Auggie uses its own codebase context engine
