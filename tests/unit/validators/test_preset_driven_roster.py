@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import yaml
+
 from edison.core.qa.evidence import EvidenceService
 from edison.core.registries.validators import ValidatorRegistry
 from tests.helpers.env_setup import setup_project_root
@@ -56,3 +58,69 @@ def test_source_preset_includes_critical_validators(tmp_path, monkeypatch) -> No
     assert "security" in ids
     assert "performance" in ids
 
+
+def test_default_preset_overrides_inference(tmp_path, monkeypatch) -> None:
+    setup_project_root(monkeypatch, tmp_path)
+    task_id = "T-default-preset-1"
+    _seed_impl_report(tmp_path, task_id, ["src/app.py"])
+
+    cfg_dir = tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "validation.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "validation": {
+                    "defaultPreset": "custom-minimal",
+                    "presets": {
+                        "custom-minimal": {
+                            "name": "custom-minimal",
+                            # Intentionally empty: roster should still include always-run globals,
+                            # but should NOT include standard preset validators.
+                            "validators": [],
+                            "required_evidence": [],
+                            "blocking_validators": [],
+                        },
+                    },
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
+    ids = _roster_ids(roster)
+
+    # With defaultPreset set, we should NOT infer standard preset validators.
+    assert "security" not in ids
+    assert "performance" not in ids
+
+
+def test_disabled_validator_is_excluded_from_roster(tmp_path, monkeypatch) -> None:
+    setup_project_root(monkeypatch, tmp_path)
+    task_id = "T-disabled-validator-1"
+    _seed_impl_report(tmp_path, task_id, ["src/app.py"])
+
+    cfg_dir = tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "validation.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "validation": {
+                    "validators": {
+                        # These are always_run in core config; project should be able to disable them.
+                        "global-auggie": {"enabled": False},
+                        "global-gemini": {"enabled": False},
+                    },
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    roster = ValidatorRegistry(project_root=tmp_path).build_execution_roster(task_id)
+    ids = _roster_ids(roster)
+
+    assert "global-auggie" not in ids
+    assert "global-gemini" not in ids

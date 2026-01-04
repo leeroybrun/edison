@@ -136,7 +136,8 @@ def test_worktree_create_fails_when_worktrees_disabled(tmp_path: Path) -> None:
     ]
     result = _run_cli("edison.cli.git.worktree_create", args, repo)
     assert result.returncode != 0
-    err = json.loads(result.stderr)
+    # In JSON mode, Edison writes machine-readable payloads (including errors) to stdout.
+    err = json.loads(result.stdout)
     assert err["error"] == "worktree_create_error"
 
 
@@ -200,7 +201,8 @@ def test_worktree_create_fails_fast_when_session_already_linked_to_other_worktre
     ]
     result = _run_cli("edison.cli.git.worktree_create", args, repo)
     assert result.returncode != 0
-    err = json.loads(result.stderr)
+    # In JSON mode, Edison writes machine-readable payloads (including errors) to stdout.
+    err = json.loads(result.stdout)
     assert err["error"] == "worktree_create_error"
 
     # `--force` allows overriding the linkage check.

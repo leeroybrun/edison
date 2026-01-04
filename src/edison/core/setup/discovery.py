@@ -204,7 +204,14 @@ class SetupDiscovery:
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
         from edison.core.utils.io import read_json
-        return read_json(path, default={})
+        import json
+
+        try:
+            return read_json(path, default={})
+        except json.JSONDecodeError:
+            # Setup discovery must be fail-open: corrupt JSON (e.g., partially edited package.json)
+            # should behave like "missing" for migration/detection purposes.
+            return {}
 
     def _extract_ids(self, path: Path) -> List[str]:
         """Extract IDs from a YAML file."""

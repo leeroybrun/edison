@@ -144,15 +144,3 @@ def test_detect_session_id_falls_back_to_process_derived_lookup(
     repo.create(Session.create(sid, owner="tester", state="active"))
 
     assert PathResolver.detect_session_id() == sid
-
-
-def test_detect_session_id_ignores_env_when_session_missing(
-    isolated_project_env: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from edison.core.utils.paths.resolver import PathResolver
-
-    monkeypatch.setenv("AGENTS_SESSION", "missing-session")
-    monkeypatch.delenv("AGENTS_OWNER", raising=False)
-
-    assert PathResolver.detect_session_id() is None

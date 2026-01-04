@@ -211,6 +211,33 @@ class TestSessionCreateWorktreePinningHumanOutput:
         )
 
 
+class TestSessionCreateWorktreeFlagCompatibility:
+    def test_session_create_accepts_worktree_flag(
+        self, isolated_project_env: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _enable_worktrees(isolated_project_env, tmp_path)
+
+        from edison.cli._dispatcher import main as cli_main
+
+        code = cli_main(
+            [
+                "session",
+                "create",
+                "--session-id",
+                "test-session-worktree-flag",
+                "--owner",
+                "tester",
+                "--worktree",
+                "--json",
+            ]
+        )
+        captured = capsys.readouterr()
+
+        assert code == 0
+        payload = json.loads(captured.out or "{}")
+        assert payload.get("session", {}).get("git", {}).get("worktreePath") is not None
+
+
 class TestSessionCreateSessionIdFileExists:
     """Test that .session-id file is actually created in the worktree."""
 

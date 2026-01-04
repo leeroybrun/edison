@@ -149,6 +149,14 @@ def test_fast_command_resolution_supports_tasks_domain_alias() -> None:
     assert spec["command"] == "waves"
 
 
+def test_fast_command_resolution_supports_pack_domain_alias() -> None:
+    spec = _resolve_fast_command_module(["pack", "status"])
+    assert spec is not None
+    assert spec["module"].endswith(".component.status")
+    assert spec["domain"] == "component"
+    assert spec["command"] == "status"
+
+
 def test_build_parser_accepts_import_domain_alias() -> None:
     from edison.cli.import_.speckit import main as import_speckit_main
 
@@ -163,6 +171,14 @@ def test_build_parser_accepts_tasks_domain_alias() -> None:
     parser = build_parser()
     args = parser.parse_args(["tasks", "waves", "--json"])
     assert args._func is task_waves_main
+
+
+def test_build_parser_accepts_pack_domain_alias() -> None:
+    from edison.cli.component.status import main as component_status_main
+
+    parser = build_parser()
+    args = parser.parse_args(["pack", "status"])
+    assert args._func is component_status_main
 
 
 def test_cli_rules_precheck_detects_core_rule_for_task_claim(tmp_path: Path) -> None:
