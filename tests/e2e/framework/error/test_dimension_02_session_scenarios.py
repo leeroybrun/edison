@@ -138,6 +138,10 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
     run_edison(session_scenario_env, ["qa", "validate", task_id, "--session", sid, "--execute"])
     run_edison(session_scenario_env, ["qa", "promote", task_id, "--status", "done", "--session", sid])
 
+    # Session close verification requires session-close command evidence.
+    run_edison(session_scenario_env, ["evidence", "init", task_id])
+    run_edison(session_scenario_env, ["evidence", "capture", task_id, "--session-close"])
+
     # Close session: verification triggers restore to global + transition to closing (done dir)
     run_edison(session_scenario_env, ["session", "close", sid])
 

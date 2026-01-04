@@ -229,7 +229,7 @@ def recreate_meta_shared_state(
         timeout=int(_config().get_worktree_timeout("health_check", 10)),
     )
     run_with_timeout(
-        ["git", "worktree", "add", str(meta_path), branch],
+        ["git", "worktree", "add", "--", str(meta_path), branch],
         cwd=primary_repo_dir,
         capture_output=True,
         text=True,

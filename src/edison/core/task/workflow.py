@@ -242,7 +242,7 @@ class TaskQAWorkflow:
             reason = (takeover_reason or "").strip()
             if not reason:
                 raise PersistenceError(
-                    "Takeover requires an explicit reason (use --reclaim-reason)."
+                    "Takeover requires an explicit reason (use --reason)."
                 )
 
             old = sess_repo.get(takeover_from)

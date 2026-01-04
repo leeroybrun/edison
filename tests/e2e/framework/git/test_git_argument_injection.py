@@ -161,7 +161,8 @@ def test_all_git_commands_have_separator():
     # Check both old monolithic and new modular structure
     worktree_files = []
     if worktree_path.is_dir():
-        worktree_files = list(worktree_path.glob("*.py"))
+        # Worktree implementation is modular; include nested modules too.
+        worktree_files = list(worktree_path.rglob("*.py"))
     else:
         # Fallback to single file
         worktree_py = REPO_ROOT / "src" / "edison" / "core" / "session" / "worktree.py"

@@ -481,6 +481,9 @@ def test_session_complete_fail_closed_when_scope_not_ready(project_dir: TestProj
     assert_command_success(run_script("session", ["new", "--owner", "test", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path))
     assert_command_success(run_script("tasks/new", ["--id", "180", "--wave", "wave1", "--slug", "incomplete", "--session", session_id], cwd=project_dir.tmp_path))
     # Attempt to complete should fail because scope not validated
-    result = run_script("session", ["complete", session_id], cwd=project_dir.tmp_path)
+    result = run_script("session", ["complete", session_id, "--json"], cwd=project_dir.tmp_path)
     assert result.returncode != 0
-    assert "all_tasks_validated" in (result.stdout + result.stderr).lower()
+    payload = json.loads(result.stdout or "{}")
+    health = payload.get("health") or {}
+    details = health.get("details") or []
+    assert any(isinstance(d, dict) and d.get("kind") == "allTasksValidated" for d in details)

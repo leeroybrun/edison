@@ -4,6 +4,7 @@ TDD: enforce --reclaim for cross-session moves and surface timeout warning.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -12,6 +13,7 @@ import textwrap
 from pathlib import Path
 import unittest
 import sys
+from datetime import datetime, timedelta, timezone
 from edison.core.utils.subprocess import run_with_timeout
 from edison.core.utils.text import format_frontmatter
 from tests.helpers.paths import get_repo_root, get_core_root
@@ -112,7 +114,17 @@ class TestCrossSessionClaim(E2ETestCase):
         self._seed_task(task_id)
         self.run_cli("task", "claim", task_id, "--session", session_a)
 
-        res = self.run_cli("task", "claim", task_id, "--session", session_b, "--reclaim", check=False)
+        res = self.run_cli(
+            "task",
+            "claim",
+            task_id,
+            "--session",
+            session_b,
+            "--reclaim",
+            "--reason",
+            "test",
+            check=False,
+        )
         # Should proceed (non-zero allowed before fix; after fix it may succeed) but must include warning about timeout
         self.assertIn("timeout", res.stderr.lower())
         self.assertIn("session is only", res.stderr.lower())
@@ -130,7 +142,26 @@ class TestCrossSessionClaim(E2ETestCase):
         b_path = self._path_in_session_tasks(session_b, task_id)
         self.assertFalse(b_path.exists(), "Not yet in session B")
 
-        res = self.run_cli("task", "claim", task_id, "--session", session_b, "--reclaim")
+        # Reclaim is allowed only when the original session is inactive/expired.
+        # Simulate an expired session by aging lastActive beyond the configured timeout.
+        session_json = self.temp_root / ".project" / "sessions" / "wip" / session_a / "session.json"
+        data = json.loads(session_json.read_text(encoding="utf-8"))
+        meta = data.setdefault("meta", {})
+        old_time = (datetime.now(timezone.utc) - timedelta(hours=10)).isoformat()
+        meta["createdAt"] = old_time
+        meta["lastActive"] = old_time
+        session_json.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+        res = self.run_cli(
+            "task",
+            "claim",
+            task_id,
+            "--session",
+            session_b,
+            "--reclaim",
+            "--reason",
+            "test",
+        )
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertTrue(b_path.exists(), "Task should move to session B after reclaim")
 

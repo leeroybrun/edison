@@ -52,7 +52,7 @@ def test_task_claim_work_complete_flow(tmp_path, isolated_project_env):
 
     # Create required implementation evidence before finishing.
     from edison.core.qa.evidence import tracking
-    tracking.start_implementation(task_id, project_root=tmp_path, round_num=1, model="test")
+    tracking.start_implementation(task_id, project_root=isolated_project_env, round_num=1, model="test")
 
     # Complete task (moves to session done)
     workflow.complete_task(task_id, sid)
