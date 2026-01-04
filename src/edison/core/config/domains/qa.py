@@ -102,10 +102,6 @@ class QAConfig(BaseDomainConfig):
         if isinstance(evidence, dict):
             files = evidence.get("requiredFiles")
 
-        # Backward compatibility (legacy location).
-        if not files:
-            files = self.validation_config.get("requiredEvidenceFiles")
-
         if not files:
             # Fail closed: evidence requirements must be explicitly configured.
             raise RuntimeError(
