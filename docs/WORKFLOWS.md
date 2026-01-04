@@ -663,6 +663,9 @@ validation:
       wave: comprehensive
       # NEW: declare required MCP servers for this validator
       mcp_servers: [playwright]
+      # Optional: ensure a project web server is reachable for browser validation.
+      # Configure `web_server` (url + start/stop commands) to let Edison start it when needed.
+      web_server: {}
 
   waves:
     - name: global

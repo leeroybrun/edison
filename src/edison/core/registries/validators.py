@@ -43,6 +43,9 @@ class ValidatorMetadata:
     context7_packages: list[str] = field(default_factory=list)
     focus: list[str] = field(default_factory=list)
     mcp_servers: list[str] = field(default_factory=list)
+    # Optional validator-specific runtime dependencies.
+    # Currently used by browser E2E validators to ensure a web server is reachable.
+    web_server: dict[str, Any] | None = None
 
     @property
     def pal_role(self) -> str:
@@ -179,6 +182,11 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 if s:
                     mcp_servers.append(s)
 
+        raw_web_server = entry.get("web_server", entry.get("webServer"))
+        web_server: dict[str, Any] | None = None
+        if isinstance(raw_web_server, dict):
+            web_server = dict(raw_web_server)
+
         return ValidatorMetadata(
             id=validator_id,
             name=entry.get("name", validator_id.replace("-", " ").title()),
@@ -195,6 +203,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             context7_packages=entry.get("context7_packages", []),
             focus=entry.get("focus", []),
             mcp_servers=mcp_servers,
+            web_server=web_server,
         )
 
     def _load_all(self) -> dict[str, ValidatorMetadata]:

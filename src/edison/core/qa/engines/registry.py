@@ -248,30 +248,30 @@ class EngineRegistry:
         if not validator:
             raise ValueError(f"Validator '{validator_id}' not found")
 
+        web_handle = None
+        web_cfg = None
+        try:
+            from edison.core.qa.web_server import WebServerConfig, ensure_web_server
+
+            web_cfg = WebServerConfig.from_raw(getattr(validator, "web_server", None))
+            if web_cfg is not None:
+                web_handle = ensure_web_server(web_cfg, worktree_path=worktree_path)
+        except Exception as exc:
+            return ValidationResult(
+                validator_id=validator_id,
+                verdict="blocked",
+                summary=f"Pre-validation web server check failed: {exc}",
+                error=str(exc),
+            )
+
         # Get primary engine
         engine = self._get_or_create_engine(validator.engine)
 
-        # Check if primary engine can execute
-        if engine and engine.can_execute():
-            logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
-            return engine.run(
-                validator=validator,
-                task_id=task_id,
-                session_id=session_id,
-                worktree_path=worktree_path,
-                round_num=round_num,
-                evidence_service=evidence_service,
-            )
-
-        # Try fallback engine
-        if validator.fallback_engine:
-            fallback = self._get_or_create_engine(validator.fallback_engine)
-            if fallback and fallback.can_execute():
-                logger.info(
-                    f"Primary engine '{validator.engine}' unavailable, "
-                    f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
-                )
-                return fallback.run(
+        try:
+            # Check if primary engine can execute
+            if engine and engine.can_execute():
+                logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
+                return engine.run(
                     validator=validator,
                     task_id=task_id,
                     session_id=session_id,
@@ -280,14 +280,39 @@ class EngineRegistry:
                     evidence_service=evidence_service,
                 )
 
-        # No engine available
-        logger.error(f"No available engine for validator '{validator_id}'")
-        return ValidationResult(
-            validator_id=validator_id,
-            verdict="blocked",
-            summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
-            error="Engine not available",
-        )
+            # Try fallback engine
+            if validator.fallback_engine:
+                fallback = self._get_or_create_engine(validator.fallback_engine)
+                if fallback and fallback.can_execute():
+                    logger.info(
+                        f"Primary engine '{validator.engine}' unavailable, "
+                        f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
+                    )
+                    return fallback.run(
+                        validator=validator,
+                        task_id=task_id,
+                        session_id=session_id,
+                        worktree_path=worktree_path,
+                        round_num=round_num,
+                        evidence_service=evidence_service,
+                    )
+
+            # No engine available
+            logger.error(f"No available engine for validator '{validator_id}'")
+            return ValidationResult(
+                validator_id=validator_id,
+                verdict="blocked",
+                summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
+                error="Engine not available",
+            )
+        finally:
+            if web_handle is not None and web_cfg is not None and web_cfg.stop_after:
+                try:
+                    from edison.core.qa.web_server import stop_web_server
+
+                    stop_web_server(web_handle, worktree_path=worktree_path)
+                except Exception:
+                    pass
 
     def build_execution_roster(
         self,

@@ -443,6 +443,17 @@ class CLIEngine:
             f"- Round: {round_num if round_num is not None else 'N/A'}",
             f"- Worktree: {worktree_path}",
         ]
+        try:
+            raw_web = getattr(validator, "web_server", None)
+            if isinstance(raw_web, dict):
+                url = str(raw_web.get("url", raw_web.get("base_url", raw_web.get("baseUrl"))) or "").strip()
+                if url:
+                    prelude_lines.append(f"- Web Server URL: {url}")
+                health = str(raw_web.get("healthcheck_url", raw_web.get("healthcheckUrl", raw_web.get("healthcheck"))) or "").strip()
+                if health:
+                    prelude_lines.append(f"- Web Server Probe: {health}")
+        except Exception:
+            pass
         if round_dir:
             prelude_lines.append(f"- Evidence Round Dir: {round_dir}")
         if bundle_path:

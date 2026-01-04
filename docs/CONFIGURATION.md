@@ -548,6 +548,25 @@ validation:
       context7_packages: ["+", "playwright"]
       # NEW: required MCP servers for this validator (engine must support injection).
       mcp_servers: ["playwright"]
+      # Optional: ensure a project web server is reachable for this validator.
+      # If `ensure_running` is true and the server is not reachable, Edison will:
+      # - start it using `start_command` (if provided), wait for readiness, then run the validator
+      # - stop it afterwards *only if Edison started it*
+      web_server:
+        ensure_running: true
+        url: "http://127.0.0.1:3000"
+        # Optional: use a dedicated health endpoint for readiness checks
+        healthcheck_url: "http://127.0.0.1:3000/healthz"
+        # Optional: how to start/stop the server (project-specific)
+        start_command: "pnpm dev --port 3000"
+        # If omitted, Edison terminates the process group it started.
+        stop_command: ""
+        # Optional: run commands from a repo-relative directory and env.
+        cwd: "."
+        env: { NODE_ENV: "test" }
+        startup_timeout_seconds: 60
+        shutdown_timeout_seconds: 10
+        stop_after: true
 
   # Wave definitions (execution groups)
   waves:
