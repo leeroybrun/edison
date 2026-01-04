@@ -458,7 +458,7 @@ def test_recovery_from_failed_validation(project_dir: TestProjectDir):
     # Round 2: fixes applied → move again to todo → wip → done
     assert_command_success(run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
-    _seed_validation_evidence(project_dir.project_root, task_id, round_num=2)
+    _seed_validation_evidence(project_dir.tmp_path, task_id, round_num=2)
     assert_command_success(run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
 
