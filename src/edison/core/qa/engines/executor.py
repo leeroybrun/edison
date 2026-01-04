@@ -388,6 +388,27 @@ class ValidationExecutor:
 
             validators = [v for v in validators if v.id in expected_ids]
 
+            # Extra validators may request execution in a specific wave via [WAVE:]VALIDATOR syntax.
+            # If the requested wave differs from the validator's configured wave, it will not appear
+            # in `registry.get_by_wave(wave)` above. Add those explicitly here for this wave.
+            from dataclasses import replace
+
+            extra_added = roster.get("extraAdded") or []
+            for entry in extra_added:
+                if not isinstance(entry, dict):
+                    continue
+                vid = str(entry.get("id") or "").strip()
+                target_wave = str(entry.get("wave") or "").strip()
+                if not vid or target_wave != wave:
+                    continue
+                if any(v.id == vid for v in validators):
+                    continue
+                cfg = registry.get(vid)
+                if cfg is None:
+                    continue
+                # Explicit operator/orchestrator request overrides configured wave membership.
+                validators.append(replace(cfg, wave=wave))
+
         if blocking_only:
             validators = [v for v in validators if v.blocking]
 

@@ -1541,12 +1541,13 @@ edison qa validate 150-auth-feature --add-validators critical:react comprehensiv
 Validators are automatically selected based on:
 1. **Always-run validators**: `always_run: true` in config
 2. **File pattern triggers**: Match modified files against trigger patterns
+3. **Preset policy**: Validators included by the resolved preset (explicit, `validation.defaultPreset`, or inferred via `validation.presetInference`)
 
 **Adding Extra Validators (Orchestrator Feature):**
 
 Orchestrators can ADD validators that weren't auto-triggered:
 - Use `--add-validators react api` to add validators (default wave: `comprehensive`)
-- Use `--add-validators critical:react` to specify a wave with the `[WAVE:]VALIDATOR` syntax
+- Use `--add-validators critical:react` to specify a wave with the `[WAVE:]VALIDATOR` syntax (overrides the validator’s configured wave for execution ordering)
 - Cannot remove auto-detected validators (only add)
 
 The CLI shows "ORCHESTRATOR DECISION POINTS" when validators might be relevant

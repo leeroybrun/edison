@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from edison.core.config import ConfigManager
 from edison.core.entity.base import EntityId
@@ -130,7 +130,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     @property
     def default_wave(self) -> str:
         """Get the default wave for validators without explicit wave assignment.
-        
+
         Reads from validation.defaults.wave config. Falls back to "comprehensive"
         if not configured.
         """
@@ -309,7 +309,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     def get_triggered_validators(
         self,
         files: list[str],
-        wave: Optional[str] = None,
+        wave: str | None = None,
     ) -> tuple[list[ValidatorMetadata], list[ValidatorMetadata], list[ValidatorMetadata]]:
         """Return (always_run, triggered_blocking, triggered_optional) validators.
 
@@ -349,10 +349,10 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     def build_execution_roster(
         self,
         task_id: str,
-        session_id: Optional[str] = None,
-        wave: Optional[str] = None,
-        extra_validators: Optional[list[dict[str, str]]] = None,
-        preset_name: Optional[str] = None,
+        session_id: str | None = None,
+        wave: str | None = None,
+        extra_validators: list[dict[str, str]] | None = None,
+        preset_name: str | None = None,
     ) -> dict[str, Any]:
         """Build execution roster for validation.
 
