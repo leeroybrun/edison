@@ -1,0 +1,12 @@
+# Edison project-specific orchestration overrides.
+#
+# In the Edison repo we intentionally allow executing a small allowlist of CLI
+# engines for validators (Codex, Claude, CodeRabbit) so `edison qa validate --execute`
+# can run end-to-end in local sessions.
+
+orchestration:
+  allowCliEngines:
+    - codex-cli
+    - claude-cli
+    - coderabbit-cli
+

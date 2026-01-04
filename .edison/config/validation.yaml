@@ -15,6 +15,7 @@ validation:
         - global-claude
         - security
         - performance
+        - coderabbit
       required_evidence:
         - command-type-check.txt
         - command-lint.txt
