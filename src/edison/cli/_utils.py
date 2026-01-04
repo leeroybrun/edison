@@ -31,6 +31,40 @@ def get_repo_root(args: argparse.Namespace) -> Path:
     return resolve_project_root()
 
 
+def resolve_existing_task_id(*, project_root: Path, raw_task_id: str) -> str:
+    """Resolve a user-provided task identifier to an existing canonical task id.
+
+    Supports shorthand numeric/prefix forms (e.g. "123" -> "123-something") when
+    there is exactly one matching task.
+
+    Raises:
+        ValueError: If no task matches, or if shorthand is ambiguous.
+    """
+    from edison.core.task.repository import TaskRepository
+
+    raw = str(raw_task_id).strip()
+    if not raw:
+        raise ValueError("Task id is required")
+
+    repo = TaskRepository(project_root=project_root)
+
+    exact = repo.get(raw)
+    if exact is not None:
+        return exact.id
+
+    # Shorthand: resolve "123" -> unique "123-*" task id when possible.
+    prefix = f"{raw}-"
+    matches = [t.id for t in repo.find_all() if t.id.startswith(prefix)]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            f"Ambiguous task id '{raw}' (matches {len(matches)} tasks). Use the full task ID."
+        )
+
+    raise ValueError(f"Task '{raw}' not found")
+
+
 def detect_record_type(record_id: str) -> str:
     """Auto-detect record type from ID format.
 
@@ -124,6 +158,7 @@ def resolve_session_id(
 
 __all__ = [
     "get_repo_root",
+    "resolve_existing_task_id",
     "detect_record_type",
     "get_repository",
     "normalize_record_id",
