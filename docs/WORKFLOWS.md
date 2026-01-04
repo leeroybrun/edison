@@ -191,11 +191,11 @@ edison session track processes --json
 
 ---
 
-#### d. Mark Ready
+#### d. Mark Done
 
 ```bash
-# Mark task as ready for validation
-edison task ready <task-id>
+# Mark task as done (ready for validation)
+edison task done <task-id>
 ```
 
 **State transition:** `wip` → `done`
@@ -451,7 +451,7 @@ edison task new --id <id> --title <title>
 edison task claim <task-id> --session <session-id>
 
 # Mark ready (wip → done)
-edison task ready <task-id>
+edison task done <task-id>
 
 # Check status
 edison task status <task-id>
@@ -592,20 +592,22 @@ Detailed validation process with evidence collection and consensus.
 └── context7-*.md             # Context7 documentation
 ```
 
-**Evidence commands:**
+**Preferred evidence command (trusted runner):**
+
 ```bash
-# Tests
-npm test 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-test.txt
+# Ensure a round exists (session tracking will also do this).
+edison evidence init <task-id>
 
-# Linting
-npm run lint 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-lint.txt
+# Run only the required CI commands for the task's inferred preset and capture trusted evidence.
+edison evidence capture <task-id>
 
-# Type checking
-npm run type-check 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-type-check.txt
-
-# Build
-npm run build 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-build.txt
+# Or run a subset explicitly:
+edison evidence capture <task-id> --only test --only lint
 ```
+
+Notes:
+- `edison evidence capture` runs `ci.commands.*` from `.edison/config/ci.yaml`.
+- If a command needs environment variables, set them in `ci.commands.<name>` (or export them in your shell) so evidence capture can run successfully.
 
 ---
 
@@ -929,13 +931,13 @@ tdd:
   hmacValidation: false
 ```
 
-**Guards at `task ready` gate:**
+**Guards at `task done` gate:**
 - RED evidence present
 - GREEN evidence present
 - REFACTOR evidence present (or explicit waiver)
 - Timestamp order: RED < GREEN < REFACTOR
 - Exit codes correct (RED: non-zero, GREEN: zero, REFACTOR: zero)
-- No `.only` in test files (blocks ready)
+- No `.only` in test files (blocks completion)
 
 **Waiver for REFACTOR:**
 ```bash
@@ -951,7 +953,7 @@ echo "No refactoring required - code already optimal" > \
 **Automatic checks:**
 ```bash
 # Edison validates TDD compliance
-edison task ready <task-id>
+edison task done <task-id>
 ```
 
 **Validation logic:**
@@ -1310,7 +1312,7 @@ edison session track start --task T-001 --type implementation
 
 **Complete and validate task:**
 ```bash
-edison task ready T-001
+edison task done T-001
 edison qa new T-001
 edison qa validate T-001
 edison qa promote --task T-001 --to validated

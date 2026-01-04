@@ -136,21 +136,20 @@ class PresetConfigLoader:
             validators = []
         validators = [str(v) for v in validators if v]
 
-        required_evidence_present = "required_evidence" in config
         required_evidence: list[str] | None
-        if not required_evidence_present:
+        required_present = "required_evidence" in config
+        if not required_present:
             required_evidence = None
         else:
             raw_required = config.get("required_evidence")
-            if raw_required is None:
-                required_evidence = []
-            elif not isinstance(raw_required, list):
+            if raw_required is None or not isinstance(raw_required, list):
                 # Fail-closed: config is invalid if key is present but not a list.
                 raise ValueError(
                     f"Preset '{name}' has invalid required_evidence (expected list, got {type(raw_required).__name__})"
                 )
-            else:
-                required_evidence = [str(e) for e in raw_required if e]
+            required_evidence = [str(e) for e in raw_required if e]
+
+        stale_evidence = str(config.get("stale_evidence", "warn") or "warn").strip().lower()
 
         description = str(config.get("description", ""))
         blocking_present = "blocking_validators" in config
@@ -165,6 +164,7 @@ class PresetConfigLoader:
             name=name,
             validators=validators,
             required_evidence=required_evidence,
+            stale_evidence=stale_evidence,
             blocking_validators=blocking_validators,
             description=description,
         )

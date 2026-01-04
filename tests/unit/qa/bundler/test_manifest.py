@@ -50,8 +50,13 @@ def test_build_validation_manifest_includes_descendants(isolated_project_env: Pa
 
     from edison.core.qa.bundler.manifest import build_validation_manifest
 
-    manifest = build_validation_manifest("T-PARENT", project_root=isolated_project_env)
+    manifest = build_validation_manifest(
+        "T-PARENT",
+        scope="hierarchy",
+        project_root=isolated_project_env,
+    )
     assert manifest["rootTask"] == "T-PARENT"
+    assert manifest["scope"] == "hierarchy"
 
     task_ids = {t["taskId"] for t in (manifest.get("tasks") or [])}
     assert task_ids == {"T-PARENT", "T-CHILD"}

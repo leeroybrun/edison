@@ -17,15 +17,16 @@ The checklist model provides:
 
 from __future__ import annotations
 
-from edison.core.workflow.checklists.task_start import (
-    ChecklistItem,
-    ChecklistResult,
-    TaskStartChecklistEngine,
-)
+from edison.core.workflow.checklists.qa_validate_preflight import QAValidatePreflightChecklistEngine
+from edison.core.workflow.checklists.session_close_preflight import SessionClosePreflightChecklistEngine
+from edison.core.workflow.checklists.session_start import SessionStartChecklistEngine
+from edison.core.workflow.checklists.task_start import ChecklistItem, ChecklistResult, TaskStartChecklistEngine
 
 __all__ = [
     "ChecklistItem",
     "ChecklistResult",
+    "QAValidatePreflightChecklistEngine",
+    "SessionClosePreflightChecklistEngine",
+    "SessionStartChecklistEngine",
     "TaskStartChecklistEngine",
 ]
-

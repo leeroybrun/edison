@@ -1,9 +1,11 @@
-import pytest
+from argparse import Namespace
 from pathlib import Path
+
+import pytest
+
 from edison.cli.compose.all import main
 from edison.core.composition import get_rules_for_role
 from edison.core.utils.paths.project import get_project_config_dir
-from argparse import Namespace
 
 
 def _setup_minimal_edison_structure(repo_root: Path, validator_id: str = "test-val") -> None:

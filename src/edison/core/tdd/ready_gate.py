@@ -1,4 +1,4 @@
-"""TDD readiness gate checks used by `edison task ready`.
+"""TDD readiness gate checks used by `edison task done` (and legacy `edison task ready <task>`).
 
 This module is intentionally small and deterministic:
 - No network access
@@ -171,4 +171,3 @@ __all__ = [
     "validate_tdd_evidence",
     "validate_command_evidence_exit_codes",
 ]
-

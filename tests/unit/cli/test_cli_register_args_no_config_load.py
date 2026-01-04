@@ -23,7 +23,7 @@ def test_register_args_does_not_load_config(isolated_project_env: Path, module_p
     clear_all_caches()
 
     module = importlib.import_module(module_path)
-    register_args = getattr(module, "register_args")
+    register_args = module.register_args
 
     parser = argparse.ArgumentParser()
     register_args(parser)

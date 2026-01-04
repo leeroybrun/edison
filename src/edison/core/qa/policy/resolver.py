@@ -98,10 +98,13 @@ class ValidationPolicyResolver:
             ValueError: If explicit preset_name is unknown
         """
         def _resolve_required_evidence(preset: ValidationPreset) -> ValidationPreset:
-            """Apply baseline required evidence when a preset does not specify any.
+            """Apply baseline required evidence when a preset does not specify it.
 
             Baseline evidence comes from `validation.evidence.requiredFiles`.
-            If a preset specifies `required_evidence` (including an empty list), it is treated as an explicit override.
+            `required_evidence` semantics:
+              - None: inherit baseline
+              - []: explicitly none
+              - [...]: explicit override
             """
             if preset.required_evidence is not None:
                 return preset
@@ -115,13 +118,11 @@ class ValidationPolicyResolver:
                 base = []
 
             required = [str(x).strip() for x in list(base or []) if str(x).strip()]
-            if required == list(preset.required_evidence or []):
-                return preset
-
             return ValidationPreset(
                 name=preset.name,
                 validators=list(preset.validators or []),
                 required_evidence=required,
+                stale_evidence=str(getattr(preset, "stale_evidence", "warn") or "warn"),
                 blocking_validators=list(preset.blocking_validators or []),
                 description=str(getattr(preset, "description", "") or ""),
             )
@@ -183,7 +184,8 @@ class ValidationPolicyResolver:
                 preset = ValidationPreset(
                     name="standard",
                     validators=["global-codex"],
-                    required_evidence=[],
+                    required_evidence=None,
+                    stale_evidence="warn",
                     blocking_validators=["global-codex"],
                 )
 

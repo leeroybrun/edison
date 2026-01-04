@@ -19,12 +19,10 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 
 from edison.core.context.files import FileContextService
 from edison.core.utils.paths import PathResolver
-from edison.core.utils.paths import get_management_paths
 from edison.core.utils.patterns import matches_any_pattern
 from edison.core.qa.evidence import EvidenceService
 from edison.core.config.domains.context7 import Context7Config
 from edison.core.utils.text.frontmatter import parse_frontmatter
-from edison.core.utils.git.diff import get_changed_files
 
 logger = logging.getLogger(__name__)
 
@@ -72,82 +70,22 @@ def _extract_task_id(task_path: Path) -> str:
     return task_path.stem
 
 
-def _parse_primary_files(task_path: Path) -> List[str]:
-    """Parse "Primary Files / Areas" from a task markdown file.
+def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> tuple[List[str], bool]:
+    """Gather file paths (relative) that might imply Context7 packages.
 
-    Extracts bullet-list items under the "## Primary Files / Areas" section.
-    Returns repo-relative paths suitable for trigger matching.
+    Returns (candidates, used_fallback_heuristic).
     """
     try:
-        text = task_path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
-        return []
+        task_id = _extract_task_id(task_path)
+        session_id = str((session or {}).get("id") or (session or {}).get("sessionId") or "").strip() or None
 
-    lines = text.splitlines()
-    start_idx: int | None = None
-    for i, line in enumerate(lines):
-        if line.strip().lower().startswith("## primary files"):
-            start_idx = i + 1
-            break
-
-    if start_idx is None:
-        return []
-
-    out: List[str] = []
-    for line in lines[start_idx:]:
-        s = line.strip()
-        if s.startswith("## "):
-            break
-        if not s.startswith("- "):
-            continue
-        item = s[2:].strip()
-        if not item or "<<fill:" in item.lower() or item.startswith("<<"):
-            continue
-        out.append(item)
-    return out
-
-
-def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[str]:
-    """Gather file paths (relative) that might imply Context7 packages."""
-    candidates: List[str] = []
-    candidates.extend(_parse_primary_files(task_path))
-
-    # If the task exists in <project-management-dir>/tasks across states, inspect those copies too.
-    try:
-        from edison.core.config.domains.workflow import WorkflowConfig
-        
-        root = _project_root()
-        mgmt_paths = get_management_paths(root)
-        for base in (mgmt_paths.get_tasks_root(),):
-            for state in WorkflowConfig().get_states("task"):
-                path = base / state / task_path.name
-                if path.exists():
-                    candidates.extend(_parse_primary_files(path))
-    except (FileNotFoundError, OSError, RuntimeError) as e:
-        logger.debug("Failed to scan task states: %s", e)
-
-    # Worktree scan (session-aware)
-    try:
-        wt_raw = (session or {}).get("git", {}).get("worktreePath") or ""
-        base_branch = (
-            (session or {}).get("git", {}).get("baseBranch")
-            or (session or {}).get("git", {}).get("base_branch")
-            or "main"
-        )
-        wt_path = Path(wt_raw) if isinstance(wt_raw, (str, Path)) else Path("")
-        if wt_path.exists():
-            diff_files: List[Path] = []
-            try:
-                diff_files = get_changed_files(wt_path, base_branch=str(base_branch), session_id=None)
-            except Exception as e:
-                logger.debug("Failed to get changed files from worktree: %s", e)
-                diff_files = []
-            if diff_files:
-                candidates.extend([p.as_posix() for p in diff_files])
-    except (OSError, ValueError, RuntimeError) as e:
-        logger.debug("Failed to scan worktree for candidate files: %s", e)
-
-    return candidates
+        ctx = FileContextService(project_root=_project_root()).get_for_task(task_id, session_id=session_id)
+        candidates = [str(p) for p in (ctx.all_files or []) if str(p).strip()]
+        used_fallback = ctx.source not in {"implementation_report", "task_spec"}
+        return candidates, used_fallback
+    except Exception as e:
+        logger.debug("Failed to collect candidate files for Context7 detection: %s", e)
+        return [], True
 
 
 def _normalize(pkg: str) -> str:
@@ -160,28 +98,42 @@ def _normalize(pkg: str) -> str:
     return pkg
 
 
+def _detect_packages_from_candidates(candidates: Iterable[str], triggers: Dict[str, List[str]]) -> Set[str]:
+    packages: Set[str] = set()
+    for rel in candidates:
+        rel_s = str(rel or "").strip()
+        if not rel_s:
+            continue
+        for pkg, pats in triggers.items():
+            raw_pkg = str(pkg or "").strip()
+            if raw_pkg == "+" or not raw_pkg:
+                continue
+            if matches_any_pattern(rel_s, pats):
+                packages.add(_normalize(raw_pkg))
+    return packages
+
+
 def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
     """Detect which post-training packages are implicated by file patterns/content."""
     triggers = _load_triggers()
-    packages: Set[str] = set()
 
-    candidates = _collect_candidate_files(task_path, session)
+    candidates, _used_fallback = _collect_candidate_files(task_path, session)
     if os.environ.get("DEBUG_CONTEXT7"):
         print(f"[CTX7] candidates={candidates}", file=sys.stderr)
-    for rel in candidates:
-        for pkg, pats in triggers.items():
-            if matches_any_pattern(rel, pats):
-                packages.add(_normalize(pkg))
+    packages = _detect_packages_from_candidates(candidates, triggers)
 
     # Content-based detection using configured patterns
     try:
-        wt_raw = (session or {}).get("git", {}).get("worktreePath") or ""
-        wt_path = Path(wt_raw) if isinstance(wt_raw, (str, Path)) else Path("")
+        wt_raw = (session or {}).get("git", {}).get("worktreePath")
+        wt_path = Path(wt_raw) if isinstance(wt_raw, (str, Path)) and str(wt_raw).strip() else _project_root()
         if wt_path.exists():
             ctx7_cfg = Context7Config()
             content_detection = ctx7_cfg.get_content_detection()
 
             for pkg, detection_cfg in content_detection.items():
+                raw_pkg = str(pkg or "").strip()
+                if raw_pkg == "+" or not raw_pkg:
+                    continue
                 file_patterns = detection_cfg.get("filePatterns", [])
                 search_patterns = detection_cfg.get("searchPatterns", [])
 
@@ -201,7 +153,7 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
                         content = file_path.read_text(encoding="utf-8")
                         for search_pattern in search_patterns:
                             if re.search(search_pattern, content):
-                                packages.add(_normalize(pkg))
+                                packages.add(_normalize(raw_pkg))
                                 break
                     except (OSError, UnicodeDecodeError) as e:
                         logger.debug("Failed to read file %s for content detection: %s", file_path, e)
@@ -212,6 +164,27 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
     return packages
 
 
+def detect_packages_detailed(task_path: Path, session: Optional[Dict]) -> Dict[str, Any]:
+    """Detect packages and return a detailed detection trace."""
+    candidates, used_fallback = _collect_candidate_files(task_path, session)
+    packages = _detect_packages_from_candidates(candidates, _load_triggers())
+    return {
+        "packages": sorted(packages),
+        "candidates": list(candidates),
+        "usedFallback": bool(used_fallback),
+    }
+
+
+def _marker_valid(text: str) -> bool:
+    # Prefer machine-parseable YAML frontmatter when present. Fall back to a
+    # permissive non-empty check for legacy/plain markers.
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    if raw.startswith("---"):
+        fm = _parse_marker_frontmatter(raw)
+        return not bool(_validate_marker_fields(fm))
+    return True
 # Required fields for a valid Context7 marker (frontmatter keys).
 REQUIRED_MARKER_FIELDS = ["libraryId", "topics", "queriedAt"]
 
@@ -345,6 +318,7 @@ def missing_packages(task_id: str, packages: Iterable[str]) -> List[str]:
 __all__ = [
     "load_validator_config",
     "detect_packages",
+    "detect_packages_detailed",
     "missing_packages",
     "classify_marker",
     "classify_packages",

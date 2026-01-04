@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Display evidence content for review/debugging"
 
@@ -37,7 +38,8 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
     try:
         project_root = get_repo_root(args)
-        task_id = str(args.task_id)
+        raw_task_id = str(args.task_id)
+        task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
         round_num = getattr(args, "round_num", None)
         filename = getattr(args, "filename", None)
         command_name = getattr(args, "command_name", None)
@@ -125,4 +127,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

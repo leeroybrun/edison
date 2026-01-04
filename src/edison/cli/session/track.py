@@ -7,10 +7,33 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Track implementation/validation work with heartbeats"
+
+def _best_effort_task_id(*, project_root: Path, raw_task_id: str) -> str:
+    """Resolve a task id when possible, but do not hard-fail for missing tasks.
+
+    Tracking operations can be useful even when the task markdown file is missing
+    (e.g. debugging a dangling evidence directory). For start, we require the
+    task to exist; for heartbeat/complete we resolve when possible and otherwise
+    fall back to the normalized raw token.
+    """
+    from edison.cli._utils import normalize_record_id
+
+    token = normalize_record_id("task", raw_task_id)
+
+    # If the user provided a "full-looking" id already, don't block on existence.
+    if "-" in token:
+        return token
+
+    try:
+        return resolve_existing_task_id(project_root=project_root, raw_task_id=token)
+    except Exception:
+        return token
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -131,9 +154,10 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.qa.evidence import tracking
 
         if args.subcommand == "start":
+            resolved_task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=str(args.task))
             if args.type == "implementation":
                 result = tracking.start_implementation(
-                    str(args.task),
+                    resolved_task_id,
                     project_root=repo_root,
                     model=getattr(args, "model", None),
                     round_num=getattr(args, "round", None),
@@ -147,7 +171,7 @@ def main(args: argparse.Namespace) -> int:
 
                     engine = TaskStartChecklistEngine()
                     checklist_result = engine.compute(
-                        task_id=str(args.task),
+                        task_id=resolved_task_id,
                         session_id=None,
                     )
                     result["checklist"] = checklist_result.to_dict()
@@ -160,7 +184,7 @@ def main(args: argparse.Namespace) -> int:
                 if not getattr(args, "model", None):
                     raise ValueError("--model is required for type=validation")
                 result = tracking.start_validation(
-                    str(args.task),
+                    resolved_task_id,
                     project_root=repo_root,
                     validator_id=str(args.validator),
                     model=str(args.model),
@@ -195,8 +219,9 @@ def main(args: argparse.Namespace) -> int:
                                 formatter.text(f"      -> {cmd}")
 
         elif args.subcommand == "heartbeat":
+            resolved_task_id = _best_effort_task_id(project_root=repo_root, raw_task_id=str(args.task))
             result = tracking.heartbeat(
-                str(args.task),
+                resolved_task_id,
                 project_root=repo_root,
                 validator_id=getattr(args, "validator", None),
                 run_id=getattr(args, "run_id", None),
@@ -208,9 +233,10 @@ def main(args: argparse.Namespace) -> int:
             )
 
         elif args.subcommand == "complete":
+            resolved_task_id = _best_effort_task_id(project_root=repo_root, raw_task_id=str(args.task))
             if getattr(args, "validator", None):
                 result = tracking.complete_validation(
-                    str(args.task),
+                    resolved_task_id,
                     project_root=repo_root,
                     validator_id=str(args.validator),
                     round_num=getattr(args, "round", None),
@@ -222,7 +248,7 @@ def main(args: argparse.Namespace) -> int:
                 )
             else:
                 result = tracking.complete(
-                    str(args.task),
+                    resolved_task_id,
                     project_root=repo_root,
                     implementation_status=str(getattr(args, "status", "complete")),
                     run_id=getattr(args, "run_id", None),

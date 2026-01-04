@@ -74,10 +74,10 @@ Validators run in waves for efficiency and fast feedback:
 - Can proceed with warnings noted
 
 ## Bundle-first rule
-Before any validator wave, run the guarded bundle helper (`edison qa bundle <root-task>`). Paste the manifest into the QA brief. Validators must load only what the bundle lists.
+Before any validator wave, run the guarded bundle helper (`edison qa bundle <task> --scope auto`). Paste the manifest into the QA brief. Validators must load only what the bundle lists.
 
 ### Bundle approval marker
-- Generate bundle manifest with `edison qa bundle <root-task>`; paste into QA before any validator runs.
+- Generate bundle manifest with `edison qa bundle <task> --scope auto`; paste into QA before any validator runs.
 - After all blocking validators approve, produce `{{config.validation.artifactPaths.bundleSummaryFile}}` in the round evidence directory (guards enforce its presence). Promotion `qa {{fn:semantic_state("qa","wip")}}→{{fn:semantic_state("qa","done")}}` and `task {{fn:semantic_state("task","done")}}→{{fn:semantic_state("task","validated")}}` is blocked until `approved=true` in this file.
 - QA promotion guards (`edison qa promote` and `edison qa promote <task-id> --status validated`) now enforce both bundle manifest + `{{config.validation.artifactPaths.bundleSummaryFile}}` existence.
 
@@ -130,19 +130,20 @@ Repeat until APPROVE or escalate
 - Validator reports must record the model used and it must match the config.
 - Evidence must be reviewed, not just generated: if a captured command fails, fix and re-run until `exitCode: 0`. Before session close, satisfy any configured `validation.sessionClose.*` evidence requirements.
 
-## Parent vs Child Tasks (Parallel Implementation)
+## Hierarchy vs Validation Bundles
 
-Bundle validation (cluster): Validators MUST review the entire cluster - the parent task + parent QA and all child tasks + their QA - using the bundle manifest from `edison qa bundle`.
+Edison supports two distinct ways to define a validation “cluster”:
+- **Hierarchy (`--scope hierarchy`)**: the root task plus all descendants via parent/child links (decomposition/follow-up structure).
+- **Validation bundle (`--scope bundle`)**: the root task plus all tasks with `bundle_root == <root>` (validation grouping, independent of hierarchy).
+- **Auto (`--scope auto`)**: prefers `bundle` when bundle members exist; otherwise falls back to `hierarchy` when descendants exist; otherwise validates a single task.
 
-- Run the unified validator: `edison qa validate <parent> --session <sid>`.
-- It writes a single `{{config.validation.artifactPaths.bundleSummaryFile}}` under the parent's evidence directory with:
-  - `approved` (overall cluster decision)
-  - `tasks[]` array with per-task `approved` booleans for every task in the bundle (parent and children).
-- QA promotion rules:
-  - Parent QA `wip->done` requires the parent-level `{{config.validation.artifactPaths.bundleSummaryFile}}` with `approved=true`.
-  - Child QA `wip->done` is permitted when the parent's `{{config.validation.artifactPaths.bundleSummaryFile}}` exists and the child's entry shows `approved=true` (no duplicate per-child validation required). If no parent is present, fall back to single-task validation.
+Bundle validation (cluster): Validators MUST review the entire cluster using the bundle manifest from `edison qa bundle ... --scope <scope>`.
 
-Child tasks (owned by implementers) produce their own implementation evidence and can have their QA promoted to `done` when their blocking validators approve. Validators may mark some children approved and others not; the bundle captures per-task approvals. The parent cannot complete until every child in the bundle is approved.
+- Run: `edison qa validate <task> --scope <auto|hierarchy|bundle> --session <sid> --execute`
+- Evidence anchor: validators execute once at the **resolved root task**, and write `{{config.validation.artifactPaths.bundleSummaryFile}}` under the root’s round evidence directory.
+- For bundle members: Edison mirrors the bundle summary into each member’s evidence round directory so per-task promotion checks remain deterministic and task-local.
+
+Task-level evidence remains per task (implementation reports, command evidence, Context7 markers). Bundle validation is about *validator execution + approval aggregation*, not about collapsing implementation evidence.
 
 Session completion enforces: parent is `{{fn:task_state_dir("validated")}}/` with QA in `{{fn:semantic_states("qa","done,validated","pipe")}}`; children are `{{fn:semantic_state("task","validated")}}` (preferred) or `{{fn:semantic_state("task","done")}}` if explicitly staged for a follow-up round; child QA is `{{fn:semantic_states("qa","done,validated","pipe")}}` (preferred). Use bundle validation to converge children to validated where possible.
 

@@ -5,27 +5,63 @@
 # their own validation presets/evidence requirements here as needed.
 
 validation:
+  # Fast preset used by default for per-task iteration in the Edison repo.
+  defaultPreset: fast
+
   # Deep preset used for session-close verification in the Edison repo.
   presets:
-    deep:
-      name: deep
-      description: "Deep validation required before session close (Edison repo)"
+    fast:
+      name: fast
+      description: "Fast per-task validation for iteration (Edison repo)"
       validators:
         - global-codex
         - global-claude
-        - security
-        - performance
-        - coderabbit
-      required_evidence:
-        - command-type-check.txt
-        - command-lint.txt
-        - command-test-full.txt
-        - command-build.txt
+        - global-coderabbit
+      # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
         - global-codex
         - global-claude
-        - security
+
+	    deep:
+	      name: deep
+	      description: "Deep validation required before session close (Edison repo)"
+	      validators:
+	        - global-codex
+	        - global-claude
+	        - security
+	        - performance
+	        - global-coderabbit
+	      required_evidence:
+	        - command-type-check.txt
+	        - command-lint.txt
+	        - command-test-full.txt
+	        - command-build.txt
+	      blocking_validators:
+	        - global-codex
+	        - global-claude
+	        - security
+
+  validators:
+    global-coderabbit:
+      name: "CodeRabbit AI Review (Global)"
+      engine: coderabbit-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/coderabbit.md"
+      wave: global
+      always_run: false
+      blocking: false
+      timeout: 600
+      context7_required: false
+      context7_packages: []
+      triggers: []
+      focus: []
 
   # Session-close evidence requirement for the Edison repo.
   sessionClose:
     preset: deep
+
+  # Per-task baseline evidence should be high-signal but fast enough to run often.
+  # Deep validation (type-check, full tests, build) is reserved for session close.
+  evidence:
+    requiredFiles:
+      - command-test.txt

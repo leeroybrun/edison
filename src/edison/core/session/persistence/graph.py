@@ -120,19 +120,14 @@ def link_tasks(session_id: str, parent_id: str, child_id: str) -> None:
     Session ID is validated but not used (kept for API compatibility).
     """
     validate_session_id(session_id)  # Validate but don't use
-    task_repo = TaskRepository()
-    
-    parent = task_repo.get(parent_id)
-    child = task_repo.get(child_id)
-    
-    if parent:
-        if child_id not in parent.child_ids:
-            parent.child_ids.append(child_id)
-            task_repo.save(parent)
-    
-    if child:
-        child.parent_id = parent_id
-        task_repo.save(child)
+    from edison.core.task.relationships.service import TaskRelationshipService
+
+    TaskRelationshipService().add(
+        task_id=str(child_id),
+        rel_type="parent",
+        target_id=str(parent_id),
+        force=True,
+    )
 
 
 def create_merge_task(session_id: str, branch_name: str, base_branch: str) -> str:

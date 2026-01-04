@@ -1,13 +1,10 @@
 """Validation bundle manifest builder.
 
-This module builds a cluster manifest for validation, rooted at a parent task.
-It is intentionally independent of session persistence (session JSON is not a
-source of truth for task/QA relationships).
+This module builds a cluster manifest for validation (task + QA + evidence dirs).
 
-Sources of truth:
-- Task/QA files (TaskRepository / QARepository)
-- Parent/child relationships from task frontmatter (TaskIndex)
-- Evidence directories (EvidenceService)
+IMPORTANT:
+- Hierarchy bundles (parent/child) and validation bundles (bundle_root) are distinct.
+- Cluster selection is centralized in `edison.core.qa.bundler.cluster`.
 """
 from __future__ import annotations
 
@@ -20,48 +17,27 @@ from edison.core.task import TaskIndex, TaskRepository
 from edison.core.qa.workflow.repository import QARepository
 from edison.core.qa.evidence import EvidenceService
 from edison.core.utils.paths import PathResolver
-
-
-def _cluster_task_ids(root_task: str, *, graph) -> List[str]:
-
-    queue: List[str] = [str(root_task)]
-    seen: set[str] = set()
-    ordered: List[str] = []
-
-    while queue:
-        tid = str(queue.pop(0))
-        if tid in seen:
-            continue
-        seen.add(tid)
-        ordered.append(tid)
-
-        summary = graph.tasks.get(tid)
-        children: set[str] = set(graph.get_children(tid))
-        if summary:
-            children.update([str(c) for c in (summary.child_ids or []) if c])
-
-        for child_id in sorted(children):
-            if child_id not in seen:
-                queue.append(child_id)
-
-    return ordered
+from edison.core.qa.bundler.cluster import select_cluster
 
 
 def build_validation_manifest(
     root_task: str,
     *,
+    scope: str | None = None,
     project_root: Optional[Path] = None,
     session_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build a validation bundle manifest for a task hierarchy."""
+    """Build a validation bundle manifest for a task cluster."""
     project_root = project_root or PathResolver.resolve_project_root()
 
     task_repo = TaskRepository(project_root=project_root)
     qa_repo = QARepository(project_root=project_root)
 
+    selection = select_cluster(str(root_task), scope=scope, project_root=project_root)
+
     index = TaskIndex(project_root=project_root)
     graph = index.get_task_graph(session_id=session_id)
-    cluster_ids = _cluster_task_ids(str(root_task), graph=graph)
+    cluster_ids = list(selection.task_ids)
 
     tasks_payload: List[Dict[str, Any]] = []
     for task_id in cluster_ids:
@@ -108,7 +84,8 @@ def build_validation_manifest(
         )
 
     manifest: Dict[str, Any] = {
-        "rootTask": str(root_task),
+        "rootTask": str(selection.root_task_id),
+        "scope": str(selection.scope.value),
         "generatedAt": utc_timestamp(),
         "tasks": tasks_payload,
     }

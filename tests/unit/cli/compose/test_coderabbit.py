@@ -8,10 +8,8 @@ import json
 import os
 import subprocess
 import sys
-from argparse import Namespace
 from pathlib import Path
 
-import pytest
 import yaml
 
 

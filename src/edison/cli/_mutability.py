@@ -22,6 +22,14 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
     if command_name == "task status":
         return bool(getattr(args, "status", None))
 
+    # task ready: listing is read-only; legacy completion (with record_id) is mutating.
+    if command_name == "task ready":
+        return bool(getattr(args, "record_id", None))
+
+    # task done: completes a task (wip->done).
+    if command_name == "task done":
+        return True
+
     # task split: read-only on dry-run, mutating otherwise.
     if command_name == "task split":
         return True
@@ -58,6 +66,7 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
         "session close",
         "session complete",
         "task claim",
+        "task done",
         "task mark-delegated",
         "task link",
         "qa bundle",
@@ -73,4 +82,3 @@ def is_mutating_invocation(command_name: str, args: argparse.Namespace) -> bool:
 
 
 __all__ = ["is_mutating_invocation"]
-

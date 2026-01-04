@@ -11,12 +11,14 @@ import os
 import sys
 
 from edison.cli import (
+    OutputFormatter,
     add_json_flag,
     add_repo_root_flag,
-    OutputFormatter,
-    get_repo_root,
     detect_record_type,
+    format_display_path,
+    get_repo_root,
     get_repository,
+    resolve_existing_task_id,
     resolve_session_id,
 )
 
@@ -64,14 +66,13 @@ def main(args: argparse.Namespace) -> int:
     """Task status - delegates to core library using entity-based API."""
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
-
     try:
         # Resolve project root
         project_root = get_repo_root(args)
 
         # Lazy imports to keep CLI startup fast.
-        from edison.core.task import normalize_record_id
         from edison.core.state.transitions import validate_transition
+        from edison.core.task import normalize_record_id
 
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
@@ -98,8 +99,12 @@ def main(args: argparse.Namespace) -> int:
                     f"Invalid status for {domain}: {args.status}. Valid values: {', '.join(valid)}"
                 )
 
-        # Normalize the record ID
-        record_id = normalize_record_id(record_type, args.record_id)
+        # Normalize/resolve the record ID.
+        # Tasks support shorthand resolution (e.g., "12007" -> "12007-wave8-...").
+        if record_type == "task":
+            record_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
+        else:
+            record_id = normalize_record_id(record_type, args.record_id)
 
         # Get entity using repository
         repo = get_repository(record_type, project_root=project_root)
@@ -284,6 +289,29 @@ def main(args: argparse.Namespace) -> int:
 
         else:
             # Show current status
+            path_display = ""
+            evidence_root_display = ""
+            try:
+                entity_path = repo.get_path(entity.id)
+                path_display = format_display_path(project_root=project_root, path=entity_path)
+            except Exception:
+                path_display = ""
+
+            try:
+                from edison.core.qa.evidence import EvidenceService
+
+                evidence_task_id = ""
+                if record_type == "task":
+                    evidence_task_id = str(entity.id)
+                elif record_type == "qa":
+                    evidence_task_id = str(getattr(entity, "task_id", "") or "").strip()
+
+                if evidence_task_id:
+                    evidence_root = EvidenceService(evidence_task_id, project_root=project_root).get_evidence_root()
+                    evidence_root_display = format_display_path(project_root=project_root, path=evidence_root)
+            except Exception:
+                evidence_root_display = ""
+
             status_text = f"Task: {record_id}\n"
             status_text += f"Type: {record_type or 'task'}\n"
             status_text += f"Status: {entity.state}"
@@ -291,6 +319,10 @@ def main(args: argparse.Namespace) -> int:
                 status_text += f"\nTitle: {entity.title}"
             if entity.session_id:
                 status_text += f"\nSession: {entity.session_id}"
+            if path_display:
+                status_text += f"\nPath: {path_display}"
+            if evidence_root_display:
+                status_text += f"\nEvidence: {evidence_root_display}"
 
             formatter.json_output({
                 "record_id": record_id,
@@ -298,6 +330,8 @@ def main(args: argparse.Namespace) -> int:
                 "status": entity.state,
                 "title": getattr(entity, "title", ""),
                 "session_id": entity.session_id,
+                "path": path_display,
+                "evidenceRoot": evidence_root_display,
                 "metadata": {
                     "created_by": entity.metadata.created_by if entity.metadata else None,
                     "created_at": str(entity.metadata.created_at) if entity.metadata else None,

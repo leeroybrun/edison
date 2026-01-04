@@ -17,7 +17,9 @@ from edison.cli import (
     add_json_flag,
     add_repo_root_flag,
     detect_record_type,
+    format_display_path,
     get_repo_root,
+    resolve_existing_task_id,
     resolve_session_id,
 )
 
@@ -100,8 +102,15 @@ def main(args: argparse.Namespace) -> int:
         # Determine record type (from arg or auto-detect)
         record_type = args.type or detect_record_type(args.record_id)
 
-        # Normalize the record ID
-        record_id = normalize_record_id(record_type, args.record_id)
+        # Normalize/resolve record id.
+        #
+        # Tasks frequently use shorthand like "12007" and expect it to resolve to
+        # "12007-wave8-...". QA ids are already derived from full task ids and are
+        # not eligible for shorthand resolution here.
+        if record_type == "task":
+            record_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
+        else:
+            record_id = normalize_record_id(record_type, args.record_id)
 
         # Get or auto-detect session
         session_id = resolve_session_id(
@@ -132,15 +141,19 @@ def main(args: argparse.Namespace) -> int:
             reclaim = bool(getattr(args, "reclaim", False) or getattr(args, "takeover", False))
             reclaim_reason = str(getattr(args, "reason", "") or "").strip() or None
 
+            qa_repo = QARepository(project_root=project_root)
+            qa_id = f"{record_id}-qa"
+            qa_existed_before = qa_repo.get(qa_id) is not None
+
             # Pre-flight: if reclaiming from a non-expired session, surface a warning.
             if reclaim:
                 try:
                     existing = workflow.task_repo.get(record_id)
                     other_sid = str(getattr(existing, "session_id", "") or "").strip() if existing else ""
                     if other_sid and other_sid != session_id:
+                        from edison.core.config.domains.session import SessionConfig
                         from edison.core.session.lifecycle.recovery import is_session_expired
                         from edison.core.session.persistence.repository import SessionRepository
-                        from edison.core.config.domains.session import SessionConfig
                         from edison.core.utils.time import parse_iso8601, utc_now
 
                         if not is_session_expired(other_sid, project_root=project_root):
@@ -197,21 +210,59 @@ def main(args: argparse.Namespace) -> int:
 
             effective_owner = (task_entity.metadata.created_by or owner or "").strip() or "_unassigned_"
 
-            formatter.json_output({
-                "status": "claimed",
-                "record_id": record_id,
-                "record_type": record_type,
-                "session_id": session_id,
-                "owner": effective_owner,
-                "state": task_entity.state,
-                "strict_wrappers": strict_wrappers,
-            }) if formatter.json_mode else formatter.text(
-                f"Claimed task {record_id}\n"
-                f"Session: {session_id}\n"
-                f"Owner: {effective_owner}\n"
-                f"Status: {task_entity.state}"
-                + (f"\nStrict Wrappers → {'yes' if strict_wrappers else 'no'}" if debug_wrappers else "")
+            from edison.core.qa.evidence import EvidenceService
+            from edison.core.qa.workflow.next_steps import (
+                build_qa_next_steps_payload,
+                format_qa_next_steps_text,
             )
+
+            task_path = workflow.task_repo.get_path(task_entity.id)
+            task_path_display = format_display_path(project_root=project_root, path=task_path)
+
+            evidence_root = EvidenceService(task_entity.id, project_root=project_root).get_evidence_root()
+            evidence_root_display = format_display_path(project_root=project_root, path=evidence_root)
+
+            qa = qa_repo.get(qa_id)
+            qa_path_display = ""
+            qa_state = "unknown"
+            if qa:
+                qa_state = str(qa.state)
+                qa_path = qa_repo.get_path(qa_id)
+                qa_path_display = format_display_path(project_root=project_root, path=qa_path)
+
+            qa_payload = build_qa_next_steps_payload(
+                qa_id=qa_id,
+                qa_state=qa_state,
+                qa_path=qa_path_display,
+                created=not qa_existed_before,
+            )
+
+            if formatter.json_mode:
+                out = {
+                    "status": "claimed",
+                    "record_id": record_id,
+                    "record_type": record_type,
+                    "session_id": session_id,
+                    "owner": effective_owner,
+                    "state": task_entity.state,
+                    "strict_wrappers": strict_wrappers,
+                    "path": task_path_display,
+                    "evidenceRoot": evidence_root_display,
+                }
+                out.update(qa_payload)
+                formatter.json_output(out)
+            else:
+                formatter.text(
+                    f"Claimed task {record_id}\n"
+                    f"Session: {session_id}\n"
+                    f"Owner: {effective_owner}\n"
+                    f"Status: {task_entity.state}\n"
+                    f"Path: {task_path_display}\n"
+                    f"Evidence: {evidence_root_display}"
+                    + (f"\nStrict Wrappers → {'yes' if strict_wrappers else 'no'}" if debug_wrappers else "")
+                )
+                formatter.text("")
+                formatter.text(format_qa_next_steps_text(qa_payload))
         else:
             qa_repo = QARepository(project_root=project_root)
             qa = qa_repo.get(record_id)
@@ -260,6 +311,17 @@ def main(args: argparse.Namespace) -> int:
 
             effective_owner = (getattr(qa, "validator_owner", None) or getattr(getattr(qa, "metadata", None), "created_by", None) or owner or "").strip() or "_unassigned_"
 
+            from edison.core.qa.evidence import EvidenceService
+
+            qa_path = qa_repo.get_path(record_id)
+            qa_path_display = format_display_path(project_root=project_root, path=qa_path)
+
+            evidence_root_display = ""
+            task_id = str(getattr(qa, "task_id", "") or "").strip()
+            if task_id:
+                evidence_root = EvidenceService(task_id, project_root=project_root).get_evidence_root()
+                evidence_root_display = format_display_path(project_root=project_root, path=evidence_root)
+
             formatter.json_output({
                 "status": "claimed",
                 "record_id": record_id,
@@ -268,11 +330,15 @@ def main(args: argparse.Namespace) -> int:
                 "owner": effective_owner,
                 "state": qa.state,
                 "strict_wrappers": strict_wrappers,
+                "path": qa_path_display,
+                "evidenceRoot": evidence_root_display,
             }) if formatter.json_mode else formatter.text(
                 f"Claimed QA {record_id}\n"
                 f"Session: {session_id}\n"
                 f"Owner: {effective_owner}\n"
-                f"Status: {qa.state}"
+                f"Status: {qa.state}\n"
+                f"Path: {qa_path_display}"
+                + (f"\nEvidence: {evidence_root_display}" if evidence_root_display else "")
                 + (f"\nStrict Wrappers → {'yes' if strict_wrappers else 'no'}" if debug_wrappers else "")
             )
 

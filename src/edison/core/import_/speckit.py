@@ -234,7 +234,6 @@ def generate_edison_task(
     prefix: str,
     *,
     project_root: Path,
-    depends_on: Optional[list[str]] = None,
 ) -> Task:
     """Generate an Edison Task from a SpecKit task.
 
@@ -267,7 +266,6 @@ def generate_edison_task(
         title=speckit_task.description,
         description=description,
         tags=tags,
-        depends_on=list(depends_on or []),
         integration={
             "kind": "speckit",
             "speckit": {
@@ -437,7 +435,7 @@ def sync_speckit_feature(
         for tid, deps in depends_map.items()
     }
 
-    return sync_items_to_tasks(
+    result = sync_items_to_tasks(
         feature.tasks,
         task_repo=task_repo,
         item_key=lambda t: t.id,
@@ -446,14 +444,12 @@ def sync_speckit_feature(
             feature,
             prefix,
             project_root=resolved_project_root,
-            depends_on=edison_depends.get(t.id, []),
         ),
         update_task=lambda task, t: _update_edison_task(
             task,
             t,
             feature,
             project_root=resolved_project_root,
-            depends_on=edison_depends.get(t.id, []),
         ),
         is_managed_task=lambda t: t.id.startswith(f"{prefix}-T"),
         task_key=lambda t: _extract_speckit_id(t.id, prefix),
@@ -464,6 +460,50 @@ def sync_speckit_feature(
         project_root=resolved_project_root,
         updatable_states={"todo"},
     )
+
+    if not dry_run:
+        _sync_relationship_depends_on(
+            task_ids=sorted(set(result.created + result.updated)),
+            prefix=prefix,
+            depends_on_map=edison_depends,
+            project_root=resolved_project_root,
+        )
+
+    return result
+
+
+def _sync_relationship_depends_on(
+    *,
+    task_ids: list[str],
+    prefix: str,
+    depends_on_map: dict[str, list[str]],
+    project_root: Path,
+) -> None:
+    """Set `depends_on` relationships for SpecKit-managed tasks.
+
+    SpecKit ordering is expressed in Edison as `depends_on` edges. We persist both:
+    - `depends_on` edges on the dependent task
+    - inverse `blocks` edges on the dependency task
+
+    This uses the relationship service so invariants are enforced centrally.
+    """
+    from edison.core.task.relationships.service import TaskRelationshipService
+
+    svc = TaskRelationshipService(project_root=project_root)
+
+    for task_id in task_ids:
+        task = svc.repo.get(task_id)
+        if not task:
+            continue
+
+        speckit_id = _extract_speckit_id(task_id, prefix)
+        desired = depends_on_map.get(speckit_id, [])
+
+        # Replace (override) existing dependencies to match SpecKit ordering.
+        for dep in list(task.depends_on or []):
+            svc.remove(task_id=task_id, rel_type="depends_on", target_id=dep)
+        for dep in desired:
+            svc.add(task_id=task_id, rel_type="depends_on", target_id=dep)
 
 
 # =============================================================================
@@ -549,7 +589,6 @@ def _update_edison_task(
     feature: SpecKitFeature,
     *,
     project_root: Path,
-    depends_on: list[str],
 ) -> None:
     """Update an existing Edison task with new SpecKit data.
 
@@ -569,7 +608,6 @@ def _update_edison_task(
             "task_id": speckit_task.id,
         },
     }
-    task.depends_on = list(depends_on or [])
 
     # Update tags
     if "speckit" not in task.tags:

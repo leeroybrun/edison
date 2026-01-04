@@ -152,8 +152,8 @@ class TestPolicyValidatorFiltering:
 class TestPolicyEvidenceRequirements:
     """Tests for evidence requirements from policy."""
 
-    def test_quick_preset_can_explicitly_require_no_evidence(self, tmp_path: Path, monkeypatch):
-        """A preset with `required_evidence: []` must be treated as an explicit override (no evidence required)."""
+    def test_quick_preset_requires_no_evidence(self, tmp_path: Path, monkeypatch):
+        """Quick preset explicitly disables required evidence (`required_evidence: []`)."""
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
         setup_project_root(monkeypatch, repo)

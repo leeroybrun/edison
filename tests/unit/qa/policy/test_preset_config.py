@@ -22,6 +22,44 @@ from tests.helpers.io_utils import write_yaml
 class TestPresetConfigLoading:
     """Tests for loading preset configuration from YAML."""
 
+    def test_loads_bundled_quick_preset(self, tmp_path: Path, monkeypatch):
+        """Core bundled config must include a 'quick' preset."""
+        repo = create_repo_with_git(tmp_path)
+        setup_project_root(monkeypatch, repo)
+        reset_edison_caches()
+
+        from edison.core.qa.policy.config import PresetConfigLoader
+
+        loader = PresetConfigLoader(project_root=repo)
+        presets = loader.load_presets()
+
+        assert "quick" in presets
+        quick = presets["quick"]
+        assert quick.name == "quick"
+        # Quick preset does not add validators beyond always_run globals.
+        assert quick.validators == []
+        # Quick preset explicitly requires no evidence.
+        assert quick.required_evidence == []
+
+    def test_loads_bundled_standard_preset(self, tmp_path: Path, monkeypatch):
+        """Core bundled config must include a 'standard' preset."""
+        repo = create_repo_with_git(tmp_path)
+        setup_project_root(monkeypatch, repo)
+        reset_edison_caches()
+
+        from edison.core.qa.policy.config import PresetConfigLoader
+
+        loader = PresetConfigLoader(project_root=repo)
+        presets = loader.load_presets()
+
+        assert "standard" in presets
+        standard = presets["standard"]
+        assert standard.name == "standard"
+        # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
+        assert "security" in standard.validators
+        assert "performance" in standard.validators
+        assert standard.required_evidence is None
+
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""
         repo = create_repo_with_git(tmp_path)

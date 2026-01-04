@@ -27,6 +27,7 @@ from .worktree import (
     list_worktrees,
 )
 from .status import get_status
+from .fingerprint import compute_repo_fingerprint
 
 __all__ = [
     # repository
@@ -47,7 +48,8 @@ __all__ = [
     "get_changed_files",
     # status
     "get_status",
+    # fingerprint
+    "compute_repo_fingerprint",
 ]
-
 
 

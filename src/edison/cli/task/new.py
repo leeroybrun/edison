@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root
+from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, format_display_path
 from edison.core.task.manager import TaskManager
 
 SUMMARY = "Create a new task file using the project template"
@@ -144,7 +144,27 @@ def main(args: argparse.Namespace) -> int:
 
         # Get task file path (relative to project root for portability)
         task_path = manager._repo.get_path(task_entity.id)
-        rel_path = task_path.relative_to(repo_root) if task_path.is_relative_to(repo_root) else task_path
+        rel_path = format_display_path(project_root=repo_root, path=task_path)
+
+        qa_id = f"{task_entity.id}-qa"
+        qa_payload = None
+        try:
+            from edison.core.qa.workflow.repository import QARepository
+            from edison.core.qa.workflow.next_steps import build_qa_next_steps_payload, format_qa_next_steps_text
+
+            qa_repo = QARepository(project_root=repo_root)
+            qa = qa_repo.get(qa_id)
+            if qa:
+                qa_path = qa_repo.get_path(qa_id)
+                qa_path_display = format_display_path(project_root=repo_root, path=qa_path)
+                qa_payload = build_qa_next_steps_payload(
+                    qa_id=qa.id,
+                    qa_state=str(qa.state),
+                    qa_path=qa_path_display,
+                    created=True,
+                )
+        except Exception:
+            qa_payload = None
 
         result = {
             "status": "created",
@@ -153,6 +173,8 @@ def main(args: argparse.Namespace) -> int:
             "title": task_entity.title,
             "path": str(rel_path),
         }
+        if qa_payload:
+            result.update(qa_payload)
 
         if duplicates:
             result["duplicates"] = [
@@ -169,6 +191,12 @@ def main(args: argparse.Namespace) -> int:
                     formatter.text(f"- {m.task_id}: {round(m.score, 2)} — {m.title}")
                 formatter.text("")
             formatter.text(f"Created task: {task_entity.id} ({task_entity.state})\n  @{rel_path}")
+            if qa_payload:
+                try:
+                    # Keep stdout stable for scripts/tests that parse the created path.
+                    print(f"\n{format_qa_next_steps_text(qa_payload)}", file=sys.stderr)
+                except Exception:
+                    pass
             try:
                 from edison.core.artifacts import format_required_fill_next_steps_for_file
 

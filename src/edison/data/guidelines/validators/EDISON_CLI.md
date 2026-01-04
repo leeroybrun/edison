@@ -16,15 +16,16 @@ This guide covers CLI commands for validators who review implementation work, ru
 ### Run Validation
 
 ```bash
-edison qa validate <task-id> [--round <N>] [--session <session-id>] [--execute]
+edison qa validate <task-id> [--scope <auto|hierarchy|bundle>] [--round <N>] [--session <session-id>] [--execute]
 ```
 
 **Purpose**: Validate validator reports for a task or bundle
 **When to use**: After implementation is complete and task is in `{{fn:semantic_state("task","done")}}` state
 
 **Options:**
+- `--scope`: Validation cluster selection (default: config or `auto`)
 - `--round`: Round number (defaults to latest)
-- `--session`: Session ID for bundle mode (validates children)
+- `--session`: Session context (optional; used for worktree-aware file context when available)
 - `--execute`: Execute validators and write reports (otherwise shows roster)
 
 **Example:**
@@ -35,8 +36,11 @@ edison qa validate TASK-123
 # Validate specific round
 edison qa validate TASK-123 --round 2
 
-# Bundle mode (validate children in session)
-edison qa validate TASK-123 --session sess-001
+# Validate a hierarchy cluster (root + descendants)
+edison qa validate TASK-123 --scope hierarchy
+
+# Validate a bundle_root cluster (root + bundle_root members)
+edison qa validate TASK-123 --scope bundle
 ```
 
 **Input location**: `{{fn:evidence_root}}/<task-id>/round-N/`
@@ -63,10 +67,10 @@ edison qa status --json
 ### Create Validation Bundle
 
 ```bash
-edison qa bundle <task-id>
+edison qa bundle <task-id> [--scope <auto|hierarchy|bundle>]
 ```
 
-**Purpose**: Inspect evidence paths and child tasks before validation
+**Purpose**: Inspect evidence paths and cluster tasks before validation
 **When to use**: Before running validation, to understand scope
 
 **Example:**
@@ -76,7 +80,7 @@ edison qa bundle TASK-123
 
 **Output:**
 - Evidence directory structure
-- Child task list
+- Cluster task list (resolved root + members)
 - Required validators
 - Existing reports
 
@@ -197,15 +201,11 @@ edison qa round TASK-123 --status approve
 ### Bundle Validation (Multiple Tasks)
 
 ```bash
-# 1. Check bundle scope
-edison qa bundle TASK-123 --session sess-001
+# 1. Inspect cluster selection
+edison qa bundle TASK-123 --scope auto
 
-# Shows parent task + child tasks in session
-
-# 2. Validate all tasks in bundle
-edison qa validate TASK-123 --session sess-001
-
-# Validates parent + all children
+# 2. Validate the resolved cluster (runs once at root)
+edison qa validate TASK-123 --scope auto --execute
 
 # 3. Output: {{config.validation.artifactPaths.bundleSummaryFile}}
 # Contains aggregated validation status for all tasks

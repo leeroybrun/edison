@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers.fixtures import create_task_file, create_qa_file
+from tests.helpers.fixtures import create_qa_file, create_task_file
 
 
 def _parse_json_stdout(capsys: pytest.CaptureFixture[str]) -> dict:

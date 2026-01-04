@@ -54,6 +54,7 @@ def main(args: argparse.Namespace) -> int:
             task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.record_id))
             r = evaluator.evaluate_task(task_id)
             blocked = [b.to_dict() for b in r.blocked_by]
+            is_blocked = bool(blocked)
             unmet = [
                 {
                     "id": b.get("dependencyId"),
@@ -67,15 +68,21 @@ def main(args: argparse.Namespace) -> int:
                 "id": r.task.id,
                 "title": r.task.title or "",
                 "state": r.task.state,
+                # `ready` means "ready to claim" (only meaningful for todo tasks).
                 "ready": r.ready,
+                # `blocked` is the dependency-blocked signal for this command.
+                "blocked": is_blocked,
                 "blockedBy": blocked,
                 "unmetDependencies": unmet,
             }
             if formatter.json_mode:
                 formatter.json_output(payload)
             else:
-                readiness = "NOT BLOCKED" if r.ready else "BLOCKED"
-                reason = "dependencies satisfied" if r.ready else "unmet dependencies"
+                readiness = "BLOCKED" if is_blocked else "NOT BLOCKED"
+                if is_blocked:
+                    reason = "unmet dependencies"
+                else:
+                    reason = "dependency blocking applies to todo tasks only" if r.task.state != evaluator.todo_state() else "dependencies satisfied"
                 formatter.text(f"{task_id}: {readiness} ({reason}; state={r.task.state})")
             return 0
 

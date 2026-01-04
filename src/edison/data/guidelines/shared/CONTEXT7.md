@@ -39,6 +39,6 @@ For agent-specific workflow integration (tracking, evidence directories, and con
 <!-- /section: RULE.CONTEXT7.EVIDENCE_REQUIRED -->
 
 ## Auto-detection & enforcement
-- `edison task ready` auto-detects Context7‑detected packages from the git diff and blocks readiness if matching markers are absent.
-- State machine guards reuse the detection results; you cannot bypass Context7 by skipping the ready step.
+- `edison task done` auto-detects Context7‑detected packages from the git diff and blocks completion if matching markers are absent.
+- State machine guards reuse the detection results; you cannot bypass Context7 by skipping the done step.
 - Use `--session <id>` so detection runs against the correct session worktree.

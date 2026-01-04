@@ -218,10 +218,10 @@ edison task status TASK-123 --json
 
 ---
 
-### Task Ready (Promote to Done)
+### Task Done (Promote to Done)
 
 ```bash
-edison task ready <task-id> [--session <session-id>]
+edison task done <task-id> [--session <session-id>]
 ```
 
 **Purpose**: Move task from `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}` with evidence checks
@@ -235,7 +235,7 @@ edison task ready <task-id> [--session <session-id>]
 
 **Example:**
 ```bash
-edison task ready TASK-123 --session sess-001
+edison task done TASK-123 --session sess-001
 ```
 
 **Effects:**
@@ -488,7 +488,7 @@ edison session next sess-001
 edison task status TASK-123
 
 # 2. Promote to done
-edison task ready TASK-123 --session sess-001
+edison task done TASK-123 --session sess-001
 
 # 3. Start validation
 edison qa promote TASK-123 --status {{fn:semantic_state("qa","todo")}}

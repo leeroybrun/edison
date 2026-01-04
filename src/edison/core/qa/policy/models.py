@@ -19,7 +19,13 @@ class ValidationPreset:
     Attributes:
         name: Unique preset identifier (e.g., "quick", "standard", "strict")
         validators: List of validator IDs to include in this preset
-        required_evidence: List of evidence file patterns required for this preset
+        required_evidence: Evidence file patterns required for this preset.
+            - None: inherit baseline from `validation.evidence.requiredFiles`
+            - []: explicitly no required evidence
+            - [...]: explicit override list
+        stale_evidence: How to treat stale evidence relative to current repo state:
+            - "warn" (default): warn-only; does not block
+            - "block": stale evidence is treated as blocking/missing
         blocking_validators: List of validator IDs that must pass (blocks promotion).
             Defaults to all validators in the preset if not specified.
         description: Optional human-readable description
@@ -27,15 +33,18 @@ class ValidationPreset:
 
     name: str
     validators: list[str]
-    # When None, the preset does not specify evidence requirements and the resolver
-    # will apply the global baseline evidence requirements from config.
-    # When a list (including []), it is treated as an explicit override.
     required_evidence: Optional[list[str]] = None
+    stale_evidence: str = "warn"
     blocking_validators: Optional[list[str]] = None
     description: str = ""
 
     def __post_init__(self) -> None:
         """Set defaults after initialization."""
+        normalized = str(getattr(self, "stale_evidence", "") or "warn").strip().lower()
+        if normalized not in {"warn", "block"}:
+            normalized = "warn"
+        object.__setattr__(self, "stale_evidence", normalized)
+
         # If blocking_validators is not provided (None), default to all validators.
         # An explicit empty list is valid (advisory-only preset).
         if self.blocking_validators is None:
