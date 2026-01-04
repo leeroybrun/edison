@@ -1,7 +1,7 @@
-"""Context7 evidence guard must ignore the '+' sentinel in context7_packages.
+"""Context7 evidence guard must ignore the '+' sentinel in Context7 triggers.
 
-P0: Some pack validator configs use context7_packages like ['+', 'next'].
-The '+' entry is not a real package and must not require a marker file like
+P0: Some historical configs used '+' as a sentinel. If a project mistakenly
+includes '+' in Context7 triggers, it must NOT require a marker file like
 context7-+.txt.
 """
 
@@ -78,9 +78,20 @@ def repo_env(tmp_path: Path, monkeypatch) -> Path:
                         "blocking": True,
                         "always_run": False,
                         "triggers": ["apps/api/**/*"],
-                        "context7_required": True,
-                        "context7_packages": ["+", "fastify"],
                     }
+                }
+            }
+        },
+    )
+
+    write_yaml(
+        cfg_dir / "context7.yaml",
+        {
+            "context7": {
+                "triggers": {
+                    "+": ["apps/api/**/*"],
+                    "fastify": ["apps/api/**/*"],
+                    "react": ["apps/dashboard/**/*"],
                 }
             }
         },
@@ -143,4 +154,3 @@ filesChanged:
     pkgs = ctx7_missing[0].get("packages") or []
     assert "fastify" in pkgs
     assert "+" not in pkgs
-

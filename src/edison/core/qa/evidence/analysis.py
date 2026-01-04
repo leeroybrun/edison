@@ -56,11 +56,27 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
         resolver = ValidationPolicyResolver(project_root=project_root)
-        policy = resolver.resolve_for_task(task_id)
+
+        # If we don't have an implementation report yet, do NOT infer from the current
+        # worktree status (which may include unrelated untracked files). Fail-closed to
+        # a stable preset so evidence blockers remain deterministic.
+        report_path = latest / ev_svc.implementation_filename
+        fallback_preset = str(QAConfig(repo_root=project_root).validation_config.get("defaultPreset") or "").strip()
+        if not fallback_preset:
+            fallback_preset = "standard"
+
+        if report_path.exists():
+            policy = resolver.resolve_for_task(task_id)
+        else:
+            policy = resolver.resolve_for_task(task_id, preset_name=fallback_preset)
+
         required_files = list(policy.required_evidence or [])
     except Exception:
-        # Fail-open: session next should remain usable even if policy inference fails.
-        required_files = []
+        # Fail-closed: if policy resolution fails, require baseline evidence.
+        try:
+            required_files = QAConfig(repo_root=project_root).get_required_evidence_files()
+        except Exception:
+            required_files = []
 
     needed = set(required_files)
     try:

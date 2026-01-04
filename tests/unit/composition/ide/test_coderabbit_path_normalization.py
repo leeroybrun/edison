@@ -163,8 +163,6 @@ def test_bundled_data_structure_uses_config_directory(tmp_path: Path) -> None:
                 assert len(coderabbit_files) == 0, (
                     f"Found coderabbit files in {pack_dir.name}/configs/: {coderabbit_files}. Should be in {pack_dir.name}/config/"
                 )
-
-
 def test_coderabbit_composer_loads_company_pack_config(tmp_path: Path) -> None:
     """Company-layer packs should contribute coderabbit.yaml when active."""
     company_dir = tmp_path / "company-layer"

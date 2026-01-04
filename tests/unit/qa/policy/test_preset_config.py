@@ -58,7 +58,8 @@ class TestPresetConfigLoading:
         # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
         assert "security" in standard.validators
         assert "performance" in standard.validators
-        assert standard.required_evidence == []
+        # Standard preset intentionally omits required_evidence so the resolver can apply baseline evidence.
+        assert standard.required_evidence is None
 
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""

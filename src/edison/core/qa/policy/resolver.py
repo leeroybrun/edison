@@ -101,10 +101,9 @@ class ValidationPolicyResolver:
             """Apply baseline required evidence when a preset does not specify any.
 
             Baseline evidence comes from `validation.evidence.requiredFiles`.
-            If a preset defines `required_evidence`, it is treated as an explicit override.
+            If a preset specifies `required_evidence` (including an empty list), it is treated as an explicit override.
             """
-            explicit = [str(x).strip() for x in list(preset.required_evidence or []) if str(x).strip()]
-            if explicit:
+            if preset.required_evidence is not None:
                 return preset
 
             base: list[str] = []

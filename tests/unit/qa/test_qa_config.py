@@ -72,14 +72,16 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
                     "maintainability": 15,
                     "performance": 10,
                 },
-                "roster": {
-                    "global": [
-                        {
-                            "id": "global-codex",
-                            "name": "Codex Global",
-                            "model": "codex",
-                        }
-                    ],
+                # Modern validator config lives under `validation.validators` (flat map keyed by id).
+                "validators": {
+                    "global-codex": {
+                        "name": "Codex Global",
+                        "engine": "codex-cli",
+                        "fallback_engine": "pal-mcp",
+                        "wave": "global",
+                        "always_run": True,
+                        "blocking": True,
+                    }
                 },
             },
         },
@@ -98,7 +100,7 @@ def test_qa_config_class_provides_validation_config(tmp_path: Path, monkeypatch)
     assert validation["dimensions"]["functionality"] == 30
     assert validation["dimensions"]["reliability"] == 25
     assert validation["dimensions"]["security"] == 20
-    assert "roster" in validation
+    assert "validators" in validation
 
 @pytest.mark.qa
 def test_qa_config_class_provides_max_concurrent_validators(tmp_path: Path, monkeypatch):

@@ -27,7 +27,10 @@ class ValidationPreset:
 
     name: str
     validators: list[str]
-    required_evidence: list[str]
+    # When None, the preset does not specify evidence requirements and the resolver
+    # will apply the global baseline evidence requirements from config.
+    # When a list (including []), it is treated as an explicit override.
+    required_evidence: Optional[list[str]] = None
     blocking_validators: Optional[list[str]] = None
     description: str = ""
 
@@ -72,7 +75,7 @@ class ValidationPolicy:
     @property
     def required_evidence(self) -> list[str]:
         """Return the list of required evidence files from the preset."""
-        return self.preset.required_evidence
+        return list(self.preset.required_evidence or [])
 
     @property
     def validators(self) -> list[str]:

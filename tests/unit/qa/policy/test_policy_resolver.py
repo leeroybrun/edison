@@ -152,8 +152,8 @@ class TestPolicyValidatorFiltering:
 class TestPolicyEvidenceRequirements:
     """Tests for evidence requirements from policy."""
 
-    def test_quick_preset_includes_baseline_evidence(self, tmp_path: Path, monkeypatch):
-        """Quick preset still requires the global baseline automation evidence (fail-closed)."""
+    def test_quick_preset_can_explicitly_require_no_evidence(self, tmp_path: Path, monkeypatch):
+        """A preset with `required_evidence: []` must be treated as an explicit override (no evidence required)."""
         repo = create_repo_with_git(tmp_path)
         create_project_structure(repo)
         setup_project_root(monkeypatch, repo)
@@ -166,11 +166,8 @@ class TestPolicyEvidenceRequirements:
         resolver = ValidationPolicyResolver(project_root=repo)
         policy = resolver.resolve_for_task("T001", preset_name="quick")
 
-        evidence = policy.required_evidence
-        assert "command-type-check.txt" in evidence
-        assert "command-lint.txt" in evidence
-        assert "command-test.txt" in evidence
-        assert "command-build.txt" in evidence
+        # The bundled `quick` preset declares `required_evidence: []` and should remain empty.
+        assert policy.required_evidence == []
 
     def test_standard_preset_requires_automation_evidence(self, tmp_path: Path, monkeypatch):
         """Standard preset requires automation command evidence."""
@@ -191,6 +188,42 @@ class TestPolicyEvidenceRequirements:
         # Check that at least some automation evidence is required
         automation_files = [f for f in evidence if f.startswith("command-")]
         assert len(automation_files) > 0
+
+    def test_baseline_evidence_applies_when_preset_does_not_specify_required_evidence(self, tmp_path: Path, monkeypatch):
+        """If a preset omits required_evidence, baseline requiredFiles must be applied (fail-closed)."""
+        repo = create_repo_with_git(tmp_path)
+        create_project_structure(repo)
+
+        # Override presets to add a preset without `required_evidence` key.
+        config_dir = repo / ".edison" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        write_yaml(config_dir / "validation.yaml", {
+            "validation": {
+                "presets": {
+                    "baseline-only": {
+                        "name": "baseline-only",
+                        "validators": [],
+                        # NOTE: intentionally omit required_evidence
+                    },
+                },
+            },
+        })
+
+        setup_project_root(monkeypatch, repo)
+        reset_edison_caches()
+
+        create_task_file(repo, "T001", state="wip", title="Baseline Evidence Only")
+
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+        resolver = ValidationPolicyResolver(project_root=repo)
+        policy = resolver.resolve_for_task("T001", preset_name="baseline-only")
+
+        evidence = policy.required_evidence
+        assert "command-type-check.txt" in evidence
+        assert "command-lint.txt" in evidence
+        assert "command-test.txt" in evidence
+        assert "command-build.txt" in evidence
 
 
 @pytest.mark.qa

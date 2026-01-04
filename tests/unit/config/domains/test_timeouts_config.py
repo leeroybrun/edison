@@ -38,24 +38,19 @@ def _write_timeouts_config(
 
 
 def test_timeouts_defaults_present_in_config(isolated_project_env: Path) -> None:
-    """ConfigManager should expose timeout defaults from defaults.yaml."""
+    """ConfigManager should expose timeout defaults from bundled configuration."""
     cfg = ConfigManager(isolated_project_env).load_config(validate=False)
     timeouts = cfg.get("timeouts") or {}
 
-    assert timeouts.get("git_operations_seconds") == 60.0
-    assert timeouts.get("db_operations_seconds") == 30.0
-    assert timeouts.get("json_io_lock_seconds") == 5.0
+    # Avoid pinning specific numeric defaults (these are product decisions).
+    for key in ("git_operations_seconds", "db_operations_seconds", "json_io_lock_seconds"):
+        assert key in timeouts
+        assert isinstance(timeouts[key], (int, float))
+        assert float(timeouts[key]) > 0
 
 
 def test_timeouts_env_overrides_defaults(monkeypatch, isolated_project_env: Path) -> None:
     """Environment variables must override YAML timeout defaults."""
-    base_cfg = ConfigManager(isolated_project_env).load_config(validate=False)
-    base_timeouts = base_cfg.get("timeouts") or {}
-
-    assert base_timeouts.get("git_operations_seconds") == 60.0
-    assert base_timeouts.get("db_operations_seconds") == 30.0
-    assert base_timeouts.get("json_io_lock_seconds") == 5.0
-
     monkeypatch.setenv("EDISON_timeouts__git_operations_seconds", "12.5")
     monkeypatch.setenv("EDISON_timeouts__db_operations_seconds", "45.0")
     monkeypatch.setenv("EDISON_timeouts__json_io_lock_seconds", "7.25")
