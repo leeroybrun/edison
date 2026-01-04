@@ -438,6 +438,10 @@ validation:
     codex-cli:
       type: cli
       command: "codex"
+      # Optional: enable per-invocation MCP server injection for this CLI.
+      # When set AND a validator declares `mcp_servers`, Edison injects the required
+      # MCP servers into the invocation (Codex uses `-c mcp_servers.*=...`).
+      mcp_override_style: "codex_config"
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: ["--sandbox", "read-only"]
@@ -531,6 +535,19 @@ validation:
       triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
       context7_required: true
       context7_packages: [react]
+
+    # Example validator that requires a specific MCP server (e.g., Playwright)
+    browser-e2e:
+      name: "Browser E2E Validator (Playwright MCP)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/browser-e2e.md"
+      wave: comprehensive
+      timeout: 1800
+      context7_required: true
+      context7_packages: ["+", "playwright"]
+      # NEW: required MCP servers for this validator (engine must support injection).
+      mcp_servers: ["playwright"]
 
   # Wave definitions (execution groups)
   waves:
@@ -1115,19 +1132,24 @@ validation:
       name: quick
       description: "Minimal validation for documentation-only changes"
       validators: []
+      # Explicitly no required evidence for docs-only changes.
       required_evidence: []
 
     standard:
       name: standard
       description: "Standard validation for code changes"
       validators: [security, performance]
-      required_evidence: []
+      # NOTE: omit `required_evidence` to inherit the baseline requiredFiles below.
 
     strict:
       name: strict
       description: "Comprehensive validation for critical changes"
       validators: [global-gemini, security, performance, coderabbit]
-      required_evidence: []
+      required_evidence:
+        - "command-type-check.txt"
+        - "command-lint.txt"
+        - "command-test-full.txt"
+        - "command-build.txt"
 
   presetInference:
     rules:
@@ -1341,6 +1363,14 @@ mcp:
         - "@modelcontextprotocol/server-sequential-thinking"
       env: {}
 ```
+
+**MCP Servers and External CLIs**
+
+- `mcp.yaml` is Edison’s single source of truth for MCP server definitions (core + packs + project overrides).
+- `edison mcp configure` can generate a project `.mcp.json` for clients that support project-scoped MCP config.
+- Some CLIs (notably Codex CLI) do **not** read a project `.mcp.json`. For these, Edison can inject MCP servers per invocation when:
+  1) the agent/validator declares required servers (`mcp_servers`), and
+  2) the engine/client enables injection (`mcp_override_style`).
 
 **Project Override Example** (`.edison/config/mcp.yml`):
 
@@ -1620,11 +1650,9 @@ delegation:
 ```yaml
 # Disable a validator
 validation:
-  roster:
-    specialized:
-      - id: react
-        name: React Validator
-        enabled: false  # Disable React validator
+  validators:
+    react:
+      enabled: false
 ```
 
 **`.edison/config/session.yaml`**:

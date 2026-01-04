@@ -31,6 +31,7 @@ pal:
         command: "codex"
         additional_args: ["--json"]
         env: {}
+        mcp_override_style: "codex_config"
       gemini:
         command: "gemini"
         additional_args: ["--yolo"]

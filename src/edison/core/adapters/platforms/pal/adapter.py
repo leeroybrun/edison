@@ -293,6 +293,16 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
                     validator_roles.append((p.stem, f"../systemprompts/clink/project/{p.name}"))
 
             if isinstance(clients_spec, dict):
+                # Build a merged MCP server catalog once; role injection uses it.
+                from edison.core.mcp.config import build_mcp_servers
+                from edison.core.mcp.injection import build_mcp_cli_overrides
+                from edison.core.registries.agents import AgentRegistry
+                from edison.core.registries.validators import ValidatorRegistry
+
+                _target_path, mcp_servers, _setup = build_mcp_servers(self.project_root)
+                agent_registry = AgentRegistry(project_root=self.project_root)
+                validator_registry = ValidatorRegistry(project_root=self.project_root)
+
                 for client_name, spec in clients_spec.items():
                     if not isinstance(spec, dict):
                         continue
@@ -301,6 +311,10 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
                         continue
                     additional_args = spec.get("additional_args") or []
                     env = spec.get("env") or {}
+                    override_style = str(spec.get("mcp_override_style") or "").strip()
+                    if not override_style and str(client_name).strip().lower() == "codex":
+                        # Safe default: Codex supports `-c mcp_servers.*` overrides.
+                        override_style = "codex_config"
 
                     roles: Dict[str, Any] = {}
                     # Builtin roles map to Edison-generated shared prompt files `<role>.txt`.
@@ -314,7 +328,25 @@ class PalAdapter(PalDiscoveryMixin, PalComposerMixin, PalSyncMixin, PlatformAdap
                         }
                     # Project agent + validator roles
                     for role_name, prompt_path in [*agent_roles, *validator_roles]:
-                        roles[role_name] = {"prompt_path": prompt_path, "role_args": []}
+                        required_mcp: list[str] = []
+                        if role_name.startswith(agent_prefix):
+                            agent_id = role_name[len(agent_prefix) :]
+                            agent_meta = agent_registry.get(agent_id)
+                            required_mcp = list(agent_meta.mcp_servers) if agent_meta else []
+                        elif role_name.startswith(validator_prefix):
+                            validator_id = role_name[len(validator_prefix) :]
+                            val_meta = validator_registry.get(validator_id)
+                            required_mcp = list(val_meta.mcp_servers) if val_meta else []
+
+                        role_args: list[str] = []
+                        if override_style and required_mcp:
+                            role_args = build_mcp_cli_overrides(
+                                override_style,
+                                mcp_servers,
+                                required_servers=required_mcp,
+                            )
+
+                        roles[role_name] = {"prompt_path": prompt_path, "role_args": role_args}
 
                     payload = {
                         "name": str(client_name),

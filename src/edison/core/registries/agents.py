@@ -5,7 +5,7 @@ This is separate from composition - it only reads metadata, not composed content
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +26,7 @@ class AgentMetadata:
     type: str  # implementer, orchestrator, reviewer, etc.
     model: str  # codex, claude, etc.
     description: str
+    mcp_servers: list[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -111,6 +112,19 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
             return doc.frontmatter
         except Exception:
             return {}
+
+    def _extract_mcp_servers(self, fm: Dict[str, Any]) -> list[str]:
+        raw = fm.get("mcp_servers")
+        if raw is None and isinstance(fm.get("mcp"), dict):
+            raw = (fm.get("mcp") or {}).get("servers")
+
+        servers: list[str] = []
+        if isinstance(raw, list):
+            for v in raw:
+                s = str(v).strip()
+                if s:
+                    servers.append(s)
+        return servers
     
     def _load_all(self) -> Dict[str, AgentMetadata]:
         """Load all agent metadata (cached).
@@ -129,10 +143,11 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
                 type=fm.get("type", "implementer"),
                 model=fm.get("model", "codex"),
                 description=fm.get("description", ""),
+                mcp_servers=self._extract_mcp_servers(fm),
             )
         
         return self._cache
-    
+
     def exists(self, entity_id: EntityId) -> bool:
         """Check if an agent exists.
         

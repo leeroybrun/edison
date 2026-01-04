@@ -639,6 +639,8 @@ validation:
       command: codex
       subcommand: exec
       response_parser: codex
+      # Optional: per-invocation MCP injection for CLIs that don't read `.mcp.json`
+      mcp_override_style: codex_config
 
     pal-mcp:
       type: delegated
@@ -653,6 +655,14 @@ validation:
       wave: global
       always_run: true
       blocking: true
+
+    browser-e2e:
+      name: "Browser E2E Validator (Playwright MCP)"
+      engine: codex-cli
+      prompt: "_generated/validators/browser-e2e.md"
+      wave: comprehensive
+      # NEW: declare required MCP servers for this validator
+      mcp_servers: [playwright]
 
   waves:
     - name: global
@@ -670,6 +680,10 @@ validation:
       continue_on_fail: true
       requires_previous_pass: true
 ```
+
+**MCP injection (Codex CLI / PAL)**
+
+- When a validator declares `mcp_servers`, Edison can inject those servers into the invoked CLI command (e.g. Codex via `-c mcp_servers.<name>.*=...`) as long as the engine/client enables `mcp_override_style`.
 
 ---
 
@@ -701,11 +715,13 @@ edison qa validate <task-id> --add-validators critical:react comprehensive:api -
 
 **Validator Auto-Detection:**
 
-Validators are selected based on file pattern triggers:
+Validators are selected based on:
 1. Modified files are detected from git diff or implementation report
-2. Each validator's `triggers` patterns are matched against modified files
-3. Matching validators are included in the roster
-4. Orchestrator can ADD extra validators that weren't auto-detected
+2. **Always-run validators** (`always_run: true`) are always included
+3. **Preset policy validators** are included by the resolved preset (explicit, `validation.defaultPreset`, or inferred via `validation.presetInference`)
+4. Each validator's `triggers` patterns are matched against modified files
+5. Matching validators are included in the roster
+6. Orchestrator can ADD extra validators that weren't auto-detected (and may force wave ordering via `[WAVE:]VALIDATOR`)
 
 **Trigger patterns example:**
 ```yaml

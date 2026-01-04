@@ -42,6 +42,7 @@ class ValidatorMetadata:
     context7_required: bool = False
     context7_packages: list[str] = field(default_factory=list)
     focus: list[str] = field(default_factory=list)
+    mcp_servers: list[str] = field(default_factory=list)
 
     @property
     def pal_role(self) -> str:
@@ -168,6 +169,16 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 if s:
                     triggers.append(s)
 
+        raw_mcp = entry.get("mcp_servers")
+        if raw_mcp is None and isinstance(entry.get("mcp"), dict):
+            raw_mcp = (entry.get("mcp") or {}).get("servers")
+        mcp_servers: list[str] = []
+        if isinstance(raw_mcp, list):
+            for v in raw_mcp:
+                s = str(v).strip()
+                if s:
+                    mcp_servers.append(s)
+
         return ValidatorMetadata(
             id=validator_id,
             name=entry.get("name", validator_id.replace("-", " ").title()),
@@ -183,6 +194,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             context7_required=entry.get("context7_required", False),
             context7_packages=entry.get("context7_packages", []),
             focus=entry.get("focus", []),
+            mcp_servers=mcp_servers,
         )
 
     def _load_all(self) -> dict[str, ValidatorMetadata]:
@@ -366,34 +378,28 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
 
         # Resolve validation policy (preset) to include any preset-selected validators
         # in addition to always_run + pattern-triggered validators.
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
         selected_preset_name = ""
         preset_selected: list[ValidatorMetadata] = []
         preset_missing: list[str] = []
         preset_blocking_ids: set[str] = set()
-        try:
-            from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-            policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
-                task_id,
-                session_id=session_id,
-                preset_name=preset_name,
-            )
-            selected_preset_name = str(policy.preset.name or "")
-            preset_blocking_ids = {str(v) for v in (policy.blocking_validators or []) if str(v)}
-            for vid in policy.validators:
-                v = self.get(vid)
-                if not v:
-                    preset_missing.append(str(vid))
-                    continue
-                if wave and v.wave != wave:
-                    continue
-                preset_selected.append(v)
-        except Exception:
-            # Fail-open for roster building: fall back to legacy always_run/trigger behavior.
-            selected_preset_name = ""
-            preset_selected = []
-            preset_missing = []
-            preset_blocking_ids = set()
+        policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
+            task_id,
+            session_id=session_id,
+            preset_name=preset_name,
+        )
+        selected_preset_name = str(policy.preset.name or "")
+        preset_blocking_ids = {str(v) for v in (policy.blocking_validators or []) if str(v)}
+        for vid in policy.validators:
+            v = self.get(vid)
+            if not v:
+                preset_missing.append(str(vid))
+                continue
+            if wave and v.wave != wave:
+                continue
+            preset_selected.append(v)
 
         # Get always_run + pattern-triggered validators (legacy behavior)
         always_run, triggered_blocking, triggered_optional = self.get_triggered_validators(files, wave)

@@ -6,6 +6,7 @@ validation:
       engine: codex-cli
       fallback_engine: pal-mcp
       prompt: "_generated/validators/browser-e2e.md"
+      mcp_servers: ["playwright"]
       wave: comprehensive
       always_run: false
       blocking: true
