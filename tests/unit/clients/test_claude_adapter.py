@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from edison.core.adapters import ClaudeAdapter
 from edison.core.adapters import load_schema
@@ -44,15 +45,13 @@ class TestClaudeAdapterUnit:
         assert claude_agent in changed
         content = claude_agent.read_text(encoding="utf-8")
 
-        # Frontmatter metadata (YAML format with --- delimiters)
-        assert content.startswith("---\nname: feature-implementer")
-        assert "description: Full-stack feature orchestrator." in content
-        # Body still contains key sections from Edison agent
-        assert "# Agent: feature-implementer" in content
-        assert "## Role" in content
-        assert "## Tools" in content
-        assert "## Guidelines" in content
-        assert "## Workflows" in content
+        # Parse YAML frontmatter (avoid asserting on specific markdown headings/phrasing).
+        assert content.startswith("---\n")
+        _, fm_text, body = content.split("---", 2)
+        frontmatter = yaml.safe_load(fm_text)
+        assert frontmatter["name"] == "feature-implementer"
+        assert frontmatter["description"] == "Full-stack feature orchestrator."
+        assert body.strip()
 
         # Source remains untouched
         assert src.read_text(encoding="utf-8").startswith("# Agent: feature-implementer")

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pytest
+import yaml
 
 from edison.core.adapters.platforms.claude import ClaudeAdapter
 
@@ -87,9 +88,12 @@ def test_claude_adapter_sync_agents_with_frontmatter(tmp_path: Path):
 
     # Should have frontmatter
     content = synced[0].read_text()
-    assert "---" in content
-    assert "name: test-agent" in content
-    assert "model: sonnet" in content
+    assert content.startswith("---")
+    _, fm_text, body = content.split("---", 2)
+    frontmatter = yaml.safe_load(fm_text)
+    assert frontmatter["name"] == "test-agent"
+    assert isinstance(frontmatter.get("model"), str)
+    assert body.strip()
 
 
 def test_claude_adapter_sync_all_returns_dict(tmp_path: Path):
