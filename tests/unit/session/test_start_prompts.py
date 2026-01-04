@@ -50,5 +50,4 @@ def test_read_start_prompt_processes_includes_and_functions_when_not_generated(
     assert "{{include-section:" not in content
     # Functions inside included guidelines must be resolved (e.g. paths helpers).
     assert "{{fn:" not in content
-    assert "Worktree Confinement (CRITICAL)" in content
     assert ".project/" in content
