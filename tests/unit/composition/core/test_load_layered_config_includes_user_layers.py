@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from edison.core.composition.core.base import CompositionBase
@@ -8,6 +9,7 @@ from edison.core.composition.core.base import CompositionBase
 def test_load_layered_config_includes_user_and_user_pack_layers(isolated_project_env: Path) -> None:
     """CompositionBase layered YAML loading must include user + user-pack layers."""
     root = isolated_project_env
+    user_root = Path(os.environ["EDISON_paths__user_config_dir"]).resolve()
 
     # Activate a pack so pack directories are considered.
     project_cfg_dir = root / ".edison" / "config"
@@ -15,7 +17,7 @@ def test_load_layered_config_includes_user_and_user_pack_layers(isolated_project
     (project_cfg_dir / "packs.yaml").write_text("packs:\n  active:\n    - p1\n", encoding="utf-8")
 
     # User pack layer (~/.edison/packs/<pack>/config/foo.yaml)
-    user_pack_cfg = root / ".edison-user" / "packs" / "p1" / "config"
+    user_pack_cfg = user_root / "packs" / "p1" / "config"
     user_pack_cfg.mkdir(parents=True, exist_ok=True)
     (user_pack_cfg / "foo.yaml").write_text(
         "marker:\n  source: user_pack\n  user_pack: true\n",
@@ -31,7 +33,7 @@ def test_load_layered_config_includes_user_and_user_pack_layers(isolated_project
     )
 
     # User layer (~/.edison/config/foo.yaml)
-    user_cfg_dir = root / ".edison-user" / "config"
+    user_cfg_dir = user_root / "config"
     user_cfg_dir.mkdir(parents=True, exist_ok=True)
     (user_cfg_dir / "foo.yaml").write_text(
         "marker:\n  source: user\n  user: true\n",
@@ -52,4 +54,3 @@ def test_load_layered_config_includes_user_and_user_pack_layers(isolated_project
     assert loaded["marker"]["user"] is True
     assert loaded["marker"]["project"] is True
     assert loaded["marker"]["source"] == "project"
-

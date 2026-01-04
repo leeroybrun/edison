@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 import functools
 import shutil
+import json
 from typing import Callable, Any, Tuple, Type, Optional, Dict
 from pathlib import Path
 import logging
@@ -177,6 +178,19 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
     from edison.core.session.persistence.repository import SessionRepository
     from edison.core.config.domains.workflow import WorkflowConfig
 
+    # Preserve any unknown/extra fields in the raw session JSON. The canonical
+    # Session model intentionally enforces a schema and may drop extra keys;
+    # recovery should not lose data.
+    raw_json_path = rec_dir / "session.json"
+    raw_data: Dict[str, Any] = {}
+    if raw_json_path.exists():
+        try:
+            loaded = io_utils.read_json(raw_json_path, default={})
+            if isinstance(loaded, dict):
+                raw_data = loaded
+        except Exception:
+            raw_data = {}
+
     repo = SessionRepository()
     active_state = WorkflowConfig().get_semantic_state("session", "active")
     updated = repo.transition(
@@ -184,5 +198,31 @@ def resume_from_recovery(recovery_dir: Path) -> Path:
         active_state,
         context={"session_id": sid, "session": (repo.get(sid).to_dict() if repo.get(sid) else {})},
     )
+
+    session_dir = repo.get_session_json_path(updated.id).parent
+
+    # Best-effort merge raw extras back into the transitioned JSON.
+    try:
+        updated_json_path = session_dir / "session.json"
+        updated_data = io_utils.read_json(updated_json_path, default={})
+        if isinstance(updated_data, dict) and raw_data:
+            def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+                out: Dict[str, Any] = dict(base)
+                for k, v in overlay.items():
+                    if (
+                        k in out
+                        and isinstance(out.get(k), dict)
+                        and isinstance(v, dict)
+                    ):
+                        out[k] = _deep_merge(out[k], v)  # type: ignore[arg-type]
+                    else:
+                        out[k] = v
+                return out
+
+            merged = _deep_merge(raw_data, updated_data)
+            updated_json_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    except Exception:
+        pass
+
     # Return the session directory containing session.json.
-    return repo.get_session_json_path(updated.id).parent
+    return session_dir

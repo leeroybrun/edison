@@ -103,14 +103,15 @@ def pytest_collection_modifyitems(config, items):  # type: ignore[no-untyped-def
             item.add_marker(pytest.mark.requires_git)
             item.add_marker(pytest.mark.requires_subprocess)
 
-            # Worktree tests that install dependencies are inherently slow and
-            # can be non-deterministic (network, package managers). Keep them
-            # out of the default "fast" suite.
-            if "install_deps" in nodeid or "install-deps" in nodeid:
-                is_slow = True
+            # Worktree tests run git operations and are a major contributor to
+            # runtime. Keep them out of the default "fast" suite.
+            is_slow = True
 
         if "/unit/cli/" in nodeid:
             item.add_marker(pytest.mark.requires_subprocess)
+            # CLI tests tend to invoke subprocesses and are a major contributor
+            # to suite time. Keep them out of the default "fast" suite.
+            is_slow = True
 
         if "/unit/cli/session/test_session_create_" in nodeid:
             is_slow = True
@@ -388,13 +389,17 @@ def isolated_project_env(tmp_path, monkeypatch, _isolated_project_template_dir: 
     CRITICAL: All tests MUST use this fixture to avoid
     creating .edison/.project during tests.
     """
-    _copy_tree_contents(_isolated_project_template_dir, tmp_path)
+    # Keep the "repo root" separate from the per-test temp root so auxiliary
+    # paths (like the forced user config dir) do not pollute the git working tree.
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    _copy_tree_contents(_isolated_project_template_dir, repo_root)
     # Set environment variable and change to tmp directory
-    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(repo_root))
     # Ensure config resolves `.edison/` inside this isolated repo.
     # Some developer environments set this override; tests must be deterministic.
     monkeypatch.delenv("EDISON_paths__project_config_dir", raising=False)
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.chdir(repo_root)
 
     # Ensure PathResolver uses this isolated root for the duration of the test
     try:
@@ -415,11 +420,11 @@ def isolated_project_env(tmp_path, monkeypatch, _isolated_project_template_dir: 
             import importlib
             mod = importlib.import_module(mod_name)
             if hasattr(mod, '_REPO_ROOT_OVERRIDE'):
-                mod._REPO_ROOT_OVERRIDE = tmp_path  # type: ignore[attr-defined]
+                mod._REPO_ROOT_OVERRIDE = repo_root  # type: ignore[attr-defined]
         except Exception:
             pass
 
-    yield tmp_path
+    yield repo_root
 
     # Reset cache so other tests do not accidentally reuse this root
     try:

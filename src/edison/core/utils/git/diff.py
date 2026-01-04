@@ -40,16 +40,26 @@ def is_clean_working_tree(start_path: Optional[Path | str] = None) -> bool:
     Returns:
         bool: True if the working tree is clean.
     """
-    from edison.core.utils.subprocess import run_with_timeout
+    import subprocess
+
+    from edison.core.utils.subprocess import configured_timeout
 
     repo_root = get_repo_root(start_path)
-    result = run_with_timeout(
+
+    # IMPORTANT: Avoid `run_with_timeout` here. Git status is a read-only probe,
+    # and must not create `.project/logs` via subprocess audit logging.
+    timeout = configured_timeout(
+        ["git", "status", "--porcelain"],
+        timeout_type="git_operations",
+        cwd=repo_root,
+    )
+    result = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=repo_root,
         capture_output=True,
         text=True,
         check=True,
-        timeout_type="git_operations",
+        timeout=timeout,
     )
     return (result.stdout or "").strip() == ""
 
@@ -108,7 +118,6 @@ __all__ = [
     "is_clean_working_tree",
     "get_changed_files",
 ]
-
 
 
 

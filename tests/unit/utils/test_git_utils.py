@@ -9,6 +9,11 @@ import pytest
 
 @pytest.fixture()
 def git_module(isolated_project_env: Path, monkeypatch):
+    # Ensure git utils resolve repo root to the isolated project, not the
+    # primary checkout running the test suite.
+    monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(isolated_project_env))
+    monkeypatch.chdir(isolated_project_env)
+
     # Commit initial content so worktree operations are allowed.
     subprocess.run(["git", "add", "-A"], cwd=isolated_project_env, check=True)
     subprocess.run(["git", "commit", "-m", "init"], cwd=isolated_project_env, check=True)
