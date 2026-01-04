@@ -7,6 +7,11 @@
 
 Test-Driven Development is NON-NEGOTIABLE for all implementation work.
 
+### Scope: What Requires TDD (and what does not)
+- **Requires TDD**: Any change that adds/changes executable behavior (production source code, CLIs, validators, state machines, config-loading/merging logic).
+- **Does not require new tests**: Content-only edits to Markdown/YAML/templates (e.g., docs, templates, default config values) *when no executable behavior changes*.
+- **No bundling**: Do not hide behavior changes inside a “content-only” change. If you touched production code, you must follow TDD.
+
 ### The RED-GREEN-REFACTOR Cycle
 - **RED**: Write a failing test first and confirm it fails for the right reason
 - **GREEN**: Add the minimum code required to make the test pass—no extras
@@ -33,6 +38,9 @@ If implementation exists before the test:
 - Test names describe behavior + expected outcome (avoid `test1`, `works`).
 - Assert on observable outcomes (return values, state changes, HTTP responses), not internal call sequences.
 - Tests should be deterministic and isolated (no shared global state, no ordering reliance).
+- Avoid brittle “content policing” tests (e.g., pinning default config values or exact Markdown wording/format/length).
+
+{{include-section:guidelines/includes/TEST_SUITES.md#suite-selection}}
 
 ### Guardrails
 - No `.skip` / `.todo` / `.only` (or equivalents) committed
@@ -53,6 +61,7 @@ Commits MUST include explicit markers to document TDD compliance:
 
 #### 1. RED Phase: Write Tests First
 Write tests BEFORE any implementation code. Tests MUST fail initially.
+If the change is truly content-only (Markdown/YAML/templates) and no executable behavior is changed, do not add tests that pin content; just run the relevant existing checks.
 
 **Verify RED Phase**:
 ```bash
@@ -149,6 +158,7 @@ Improve code quality while keeping tests passing.
 - [ ] Tests exist in appropriate test directory
 - [ ] Test file created BEFORE implementation (check git history)
 - [ ] Tests cover the requirements specified in task
+- [ ] Tests validate behavior (avoid hard-pinning default config values or enforcing exact Markdown wording/format/length)
 
 ### Red Phase Evidence
 - [ ] Sub-agent showed tests failing initially
@@ -174,6 +184,7 @@ Improve code quality while keeping tests passing.
 - Tests primarily assert on call counts/spies instead of observable behavior
 - Coverage below threshold with no justification
 - Tests removed to make suite pass
+- Tests added/modified to enforce specific default config values or doc/template wording (brittle content gates)
 
 🟡 **Needs Review:**
 - Coverage just barely meets threshold
@@ -265,8 +276,6 @@ Return:
 `)
 ```
 <!-- /section: orchestrator-verify -->
-
-
 
 
 
