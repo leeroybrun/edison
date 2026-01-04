@@ -471,13 +471,17 @@ def project_dir(tmp_path: Path, repo_root: Path):
 
 
 @pytest.fixture
-def git_repo(tmp_path: Path):
+def git_repo(tmp_path: Path, _git_repo_template_dir: Path):
     """Create isolated git repository for testing.
 
     Uses TestGitRepo helper for worktree-capable git operations.
     """
     from helpers.env import TestGitRepo
-    return TestGitRepo(tmp_path)
+
+    # Copy a session-scoped initialized git repo template (git init + initial commit)
+    # instead of re-initializing for every test.
+    _copy_tree_contents(_git_repo_template_dir, tmp_path)
+    return TestGitRepo(tmp_path, init_repo=False)
 
 
 @pytest.fixture
