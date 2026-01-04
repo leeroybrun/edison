@@ -50,6 +50,11 @@ def reset_config_cache() -> None:
     """
     _get_config_for_root.cache_clear()
 
+# Back-compat: some call sites (and tests) expect `get_config.cache_clear()`.
+# Our caching is implemented on `_get_config_for_root` to ensure we key by repo root,
+# but we still expose the convenient attribute.
+setattr(get_config, "cache_clear", reset_config_cache)
+
 # Keep session config singleton coherent with the centralized config cache.
 # This ensures `edison.core.config.cache.clear_all_caches()` is sufficient.
 from edison.core.config.cache import register_cache_clearer
@@ -58,5 +63,4 @@ register_cache_clearer("session._config.get_config", reset_config_cache)
 
 
 __all__ = ["get_config", "reset_config_cache"]
-
 

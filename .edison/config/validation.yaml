@@ -22,24 +22,24 @@ validation:
         - global-codex
         - global-claude
 
-	    deep:
-	      name: deep
-	      description: "Deep validation required before session close (Edison repo)"
-	      validators:
-	        - global-codex
-	        - global-claude
-	        - security
-	        - performance
-	        - global-coderabbit
-	      required_evidence:
-	        - command-type-check.txt
-	        - command-lint.txt
-	        - command-test-full.txt
-	        - command-build.txt
-	      blocking_validators:
-	        - global-codex
-	        - global-claude
-	        - security
+    deep:
+      name: deep
+      description: "Deep validation required before session close (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+        - global-coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test-full.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - security
 
   validators:
     global-coderabbit:

@@ -70,22 +70,73 @@ def _extract_task_id(task_path: Path) -> str:
     return task_path.stem
 
 
-def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> tuple[List[str], bool]:
+def _parse_primary_files(task_path: Path) -> List[str]:
+    """Parse "Primary Files / Areas" from a task markdown file.
+
+    This is intentionally tolerant: some tasks may be incomplete or missing
+    frontmatter, but still declare their scope in the body.
+    """
+    try:
+        text = task_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return []
+
+    lines = text.splitlines()
+    start_idx: int | None = None
+    for i, line in enumerate(lines):
+        if line.strip().lower().startswith("## primary files"):
+            start_idx = i + 1
+            break
+
+    if start_idx is None:
+        return []
+
+    out: List[str] = []
+    for line in lines[start_idx:]:
+        s = line.strip()
+        if s.startswith("## "):
+            break
+        if not s.startswith("- "):
+            continue
+        item = s[2:].strip()
+        if not item or "<<fill:" in item.lower() or item.startswith("<<"):
+            continue
+        out.append(item)
+    return out
+
+
+def _collect_candidate_files_with_trace(task_path: Path, session: Optional[Dict]) -> tuple[List[str], bool]:
     """Gather file paths (relative) that might imply Context7 packages.
 
     Returns (candidates, used_fallback_heuristic).
     """
+    candidates: List[str] = []
+    used_fallback = True
+
+    primary = _parse_primary_files(task_path)
+    if primary:
+        candidates.extend(primary)
+        used_fallback = False
+
     try:
         task_id = _extract_task_id(task_path)
         session_id = str((session or {}).get("id") or (session or {}).get("sessionId") or "").strip() or None
 
         ctx = FileContextService(project_root=_project_root()).get_for_task(task_id, session_id=session_id)
-        candidates = [str(p) for p in (ctx.all_files or []) if str(p).strip()]
-        used_fallback = ctx.source not in {"implementation_report", "task_spec"}
+        for p in (ctx.all_files or []):
+            s = str(p).strip()
+            if s and s not in candidates:
+                candidates.append(s)
+        used_fallback = used_fallback or (ctx.source not in {"implementation_report", "task_spec"})
         return candidates, used_fallback
     except Exception as e:
         logger.debug("Failed to collect candidate files for Context7 detection: %s", e)
-        return [], True
+        return candidates, used_fallback
+
+
+def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[str]:
+    candidates, _used_fallback = _collect_candidate_files_with_trace(task_path, session)
+    return candidates
 
 
 def _normalize(pkg: str) -> str:
@@ -117,7 +168,7 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
     """Detect which post-training packages are implicated by file patterns/content."""
     triggers = _load_triggers()
 
-    candidates, _used_fallback = _collect_candidate_files(task_path, session)
+    candidates, _used_fallback = _collect_candidate_files_with_trace(task_path, session)
     if os.environ.get("DEBUG_CONTEXT7"):
         print(f"[CTX7] candidates={candidates}", file=sys.stderr)
     packages = _detect_packages_from_candidates(candidates, triggers)
@@ -166,7 +217,7 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 
 def detect_packages_detailed(task_path: Path, session: Optional[Dict]) -> Dict[str, Any]:
     """Detect packages and return a detailed detection trace."""
-    candidates, used_fallback = _collect_candidate_files(task_path, session)
+    candidates, used_fallback = _collect_candidate_files_with_trace(task_path, session)
     packages = _detect_packages_from_candidates(candidates, _load_triggers())
     return {
         "packages": sorted(packages),

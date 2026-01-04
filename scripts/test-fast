@@ -7,15 +7,13 @@ set -euo pipefail
 #   scripts/test-fast           # fast suite
 #   scripts/test-fast -k foo    # pass-through args
 
-args=("$@")
-
 py="python3"
 if [[ -x ".venv/bin/python" ]]; then
   py=".venv/bin/python"
 fi
 
 has_n_flag=0
-for a in "${args[@]}"; do
+for a in "$@"; do
   if [[ "$a" == "-n" || "$a" == "--numprocesses" || "$a" == "--dist" ]]; then
     has_n_flag=1
     break
@@ -24,8 +22,8 @@ done
 
 if [[ "$has_n_flag" -eq 0 ]]; then
   if "$py" -c "import xdist" >/dev/null 2>&1; then
-    exec "$py" -m pytest -m fast -n auto --dist loadfile "${args[@]}"
+    exec "$py" -m pytest -m fast -n auto --dist loadfile "$@"
   fi
 fi
 
-exec "$py" -m pytest -m fast "${args[@]}"
+exec "$py" -m pytest -m fast "$@"

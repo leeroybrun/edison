@@ -517,7 +517,19 @@ def test_qa_bundle_outputs_manifest(tmp_path: Path):
     # register tasks in session graph
     from edison.core.session import graph as session_graph
     os.environ["AGENTS_PROJECT_ROOT"] = str(root)
+    # Session graph linking updates task files; ensure the tasks exist.
+    tasks_done = root / ".project" / "tasks" / "done"
+    tasks_done.mkdir(parents=True, exist_ok=True)
+    (tasks_done / "150-wave1-demo.md").write_text(
+        "---\nid: \"150-wave1-demo\"\ntitle: \"Demo Task\"\nstate: \"done\"\n---\n\n# Demo Task\n",
+        encoding="utf-8",
+    )
+    (tasks_done / "150.1-wave1-child.md").write_text(
+        "---\nid: \"150.1-wave1-child\"\ntitle: \"Child Task\"\nstate: \"done\"\n---\n\n# Child Task\n",
+        encoding="utf-8",
+    )
     session_graph.register_task("s1", "150-wave1-demo", owner="alice", status="done")
+    session_graph.register_task("s1", "150.1-wave1-child", owner="alice", status="done")
     session_graph.link_tasks("s1", "150-wave1-demo", "150.1-wave1-child")
 
     result = run("qa", "bundle", ["150-wave1-demo", "--session", "s1", "--json"], env)

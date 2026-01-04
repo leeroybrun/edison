@@ -13,6 +13,28 @@ from edison.core.utils.paths import PathResolver
 from .core.layout import get_session_base_path
 
 
+def _resolve_sessions_root(*, project_root: Path) -> Path:
+    """Resolve the sessions root, honoring custom management_dir when unconfigured.
+
+    SessionConfig is the canonical source of truth, but bundled defaults commonly
+    point at `.project/sessions`. When a project sets `management_dir` via
+    `config.yml` without overriding `session.paths.root`, we still want sessions
+    to live under the configured management root (tests and multi-repo usage).
+    """
+    from edison.core.config.domains.session import SessionConfig
+    from edison.core.utils.paths.management import get_management_paths
+
+    cfg = SessionConfig(repo_root=project_root)
+    configured_rel = str(cfg.get_session_root_path())
+    configured_abs = (project_root / configured_rel).resolve()
+
+    bundled_default_abs = (project_root / ".project" / "sessions").resolve()
+    if configured_abs == bundled_default_abs:
+        return get_management_paths(project_root).get_sessions_root().resolve()
+
+    return configured_abs
+
+
 def _get_session_state_dirs(*, project_root: Path) -> List[Path]:
     """Return configured session state directories for a project root.
 
@@ -23,7 +45,7 @@ def _get_session_state_dirs(*, project_root: Path) -> List[Path]:
     from edison.core.config.domains.session import SessionConfig
 
     cfg = SessionConfig(repo_root=project_root)
-    sessions_root = (project_root / cfg.get_session_root_path()).resolve()
+    sessions_root = _resolve_sessions_root(project_root=project_root)
     states_map = cfg.get_session_states()
 
     dirs: List[Path] = []
@@ -202,7 +224,7 @@ def resolve_session_record_path(
         cfg = SessionConfig(repo_root=project_root)
         states_map = cfg.get_session_states()
         active_dir = states_map.get("active", "wip")
-        sessions_root = (project_root / cfg.get_session_root_path()).resolve()
+        sessions_root = _resolve_sessions_root(project_root=project_root)
         session_base = sessions_root / active_dir / session_id
 
     # Ensure we target the specific session directory
