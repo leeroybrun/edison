@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
@@ -151,18 +152,24 @@ print("PASS")
 def test_confirm_rejects_negative_response(cli_module, tmp_path: Path):
     """Test that confirm returns False for 'n' via subprocess."""
     test_script = tmp_path / "test_confirm_no.py"
-    test_script.write_text("""
-import sys
-from tests.helpers.paths import get_repo_root
-sys.path.insert(0, str(get_repo_root() / "src"))
+    test_script.write_text(
+        dedent(
+            """
+            import os
+            import sys
 
-from edison.core.utils.cli.output import confirm
+            sys.path.insert(0, os.environ["EDISON_TEST_SRC"])
 
-# Test 'n' input
-result = confirm("Continue?")
-assert result is False, f"Expected False for 'n', got {{result}}"
-print("PASS")
-""")
+            from edison.core.utils.cli.output import confirm
+
+            # Test 'n' input
+            result = confirm("Continue?")
+            assert result is False, f"Expected False for 'n', got {result}"
+            print("PASS")
+            """
+        ).lstrip(),
+        encoding="utf-8",
+    )
 
     result = subprocess.run(
         [sys.executable, str(test_script)],
@@ -170,7 +177,10 @@ print("PASS")
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"AGENTS_PROJECT_ROOT": str(tmp_path)}
+        env={
+            "AGENTS_PROJECT_ROOT": str(tmp_path),
+            "EDISON_TEST_SRC": str(Path(__file__).resolve().parents[3] / "src"),
+        },
     )
 
     assert result.returncode == 0, f"Script failed: {result.stderr}"
