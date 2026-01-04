@@ -15,15 +15,16 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
+from edison.core.context.files import FileContextService
 from edison.core.utils.paths import PathResolver
 from edison.core.utils.paths import get_management_paths
 from edison.core.utils.patterns import matches_any_pattern
 from edison.core.qa.evidence import EvidenceService
-from edison.core.utils.git import get_changed_files
-from edison.core.qa._utils import parse_primary_files
 from edison.core.config.domains.context7 import Context7Config
+from edison.core.utils.text.frontmatter import parse_frontmatter
+from edison.core.utils.git.diff import get_changed_files
 
 logger = logging.getLogger(__name__)
 
@@ -54,19 +55,56 @@ def _project_root() -> Path:
     return PathResolver.resolve_project_root()
 
 
-def _parse_primary_files(task_path: Path) -> List[str]:
-    """Extract Primary Files / Areas list from a task markdown file.
+def _extract_task_id(task_path: Path) -> str:
+    """Extract the canonical task id from a task markdown file.
 
-    This is a thin wrapper around the shared parse_primary_files() utility
-    that handles reading the file content from a Path object.
+    Falls back to filename stem for robustness.
     """
     try:
-        text = task_path.read_text(errors="ignore")
-    except (FileNotFoundError, OSError) as e:
-        logger.debug("Failed to read task file %s: %s", task_path, e)
+        text = task_path.read_text(encoding="utf-8", errors="ignore")
+        doc = parse_frontmatter(text)
+        raw = doc.frontmatter.get("id")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    except Exception as e:
+        logger.debug("Failed to extract task id from %s: %s", task_path, e)
+
+    return task_path.stem
+
+
+def _parse_primary_files(task_path: Path) -> List[str]:
+    """Parse "Primary Files / Areas" from a task markdown file.
+
+    Extracts bullet-list items under the "## Primary Files / Areas" section.
+    Returns repo-relative paths suitable for trigger matching.
+    """
+    try:
+        text = task_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
         return []
 
-    return parse_primary_files(text)
+    lines = text.splitlines()
+    start_idx: int | None = None
+    for i, line in enumerate(lines):
+        if line.strip().lower().startswith("## primary files"):
+            start_idx = i + 1
+            break
+
+    if start_idx is None:
+        return []
+
+    out: List[str] = []
+    for line in lines[start_idx:]:
+        s = line.strip()
+        if s.startswith("## "):
+            break
+        if not s.startswith("- "):
+            continue
+        item = s[2:].strip()
+        if not item or "<<fill:" in item.lower() or item.startswith("<<"):
+            continue
+        out.append(item)
+    return out
 
 
 def _collect_candidate_files(task_path: Path, session: Optional[Dict]) -> List[str]:

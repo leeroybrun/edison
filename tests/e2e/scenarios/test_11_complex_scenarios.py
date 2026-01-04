@@ -37,28 +37,43 @@ from helpers.command_runner import (
 from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
-def _seed_validation_evidence(project_root: Path, task_id: str, round_num: int = 1) -> Path:
+def _seed_validation_evidence(repo_root: Path, task_id: str, round_num: int = 1) -> Path:
     """Create minimal validation evidence required for qa/promote and validation guards."""
-    rd = project_root / "qa" / "validation-evidence" / task_id / f"round-{round_num}"
-    rd.mkdir(parents=True, exist_ok=True)
+    from edison.core.qa.evidence import EvidenceService
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+
+    ev = EvidenceService(task_id=task_id, project_root=repo_root)
+    rd = ev.ensure_round(round_num)
 
     for fname in [
         "command-type-check.txt",
         "command-lint.txt",
         "command-test.txt",
+        "command-test-full.txt",
         "command-build.txt",
     ]:
-        (rd / fname).write_text("ok\n")
+        name = fname.removeprefix("command-").removesuffix(".txt")
+        write_command_evidence(
+            path=rd / fname,
+            task_id=task_id,
+            round_num=round_num,
+            command_name=name,
+            command="echo ok",
+            cwd=str(repo_root),
+            exit_code=0,
+            output="ok\n",
+            runner="edison-tests",
+        )
 
-    (rd / "implementation-report.md").write_text(
+    (rd / ev.implementation_filename).write_text(
         format_frontmatter({"taskId": task_id, "round": round_num, "completionStatus": "complete"}) + "\n",
         encoding="utf-8",
     )
-    (rd / "bundle-summary.md").write_text(
+    (rd / ev.bundle_filename).write_text(
         format_frontmatter({"taskId": task_id, "round": round_num, "approved": True}) + "\n",
         encoding="utf-8",
     )
-    (rd / "validator-main-report.md").write_text(
+    (ev.get_validator_report_path(rd, "main")).write_text(
         format_frontmatter({"taskId": task_id, "round": round_num, "validatorId": "main", "verdict": "approve"}) + "\n",
         encoding="utf-8",
     )
@@ -76,7 +91,7 @@ def _start_impl_tracking(task_id: str, *, cwd: Path) -> None:
     )
 
 
-def _qa_to_done(task_id: str, session_id: str, project_root: Path, cwd: Path) -> None:
+def _qa_to_done(task_id: str, session_id: str, repo_root: Path, cwd: Path) -> None:
     """Promote QA through required states with evidence so done transition succeeds."""
     assert_command_success(
         run_script("qa/promote", [task_id, "--status", "todo", "--session", session_id], cwd=cwd)
@@ -84,7 +99,7 @@ def _qa_to_done(task_id: str, session_id: str, project_root: Path, cwd: Path) ->
     assert_command_success(
         run_script("qa/promote", [task_id, "--status", "wip", "--session", session_id], cwd=cwd)
     )
-    _seed_validation_evidence(project_root, task_id)
+    _seed_validation_evidence(repo_root, task_id)
     assert_command_success(
         run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=cwd)
     )
@@ -297,7 +312,7 @@ def test_partial_session_completion(project_dir: TestProjectDir):
             _start_impl_tracking(tid, cwd=project_dir.tmp_path)
             assert_command_success(run_script("tasks/status", [tid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
             assert_command_success(run_script("qa/new", [tid, "--session", session_id], cwd=project_dir.tmp_path))
-            _qa_to_done(tid, session_id, project_dir.project_root, project_dir.tmp_path)
+            _qa_to_done(tid, session_id, project_dir.tmp_path, project_dir.tmp_path)
             assert_command_success(run_script("tasks/status", [tid, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
             completed.append(tid)
         else:
@@ -364,7 +379,7 @@ def test_session_merge_scenario(combined_env):
         run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=worktree_path)
     )
     assert_command_success(run_script("qa/new", [task_id, "--session", session_id], cwd=worktree_path))
-    _qa_to_done(task_id, session_id, worktree_path / ".project", worktree_path)
+    _qa_to_done(task_id, session_id, worktree_path, worktree_path)
     assert_command_success(
         run_script(
             "tasks/status",
@@ -402,7 +417,7 @@ def test_large_scale_validation(project_dir: TestProjectDir):
         _start_impl_tracking(tid, cwd=project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [tid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
         assert_command_success(run_script("qa/new", [tid, "--session", session_id], cwd=project_dir.tmp_path))
-        _qa_to_done(tid, session_id, project_dir.project_root, project_dir.tmp_path)
+        _qa_to_done(tid, session_id, project_dir.tmp_path, project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [tid, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
         task_ids.append(tid)
 
@@ -535,7 +550,7 @@ def test_cascading_task_validation(project_dir: TestProjectDir):
         _start_impl_tracking(cid, cwd=project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [cid, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
         assert_command_success(run_script("qa/new", [cid, "--session", session_id], cwd=project_dir.tmp_path))
-        _qa_to_done(cid, session_id, project_dir.project_root, project_dir.tmp_path)
+        _qa_to_done(cid, session_id, project_dir.tmp_path, project_dir.tmp_path)
         assert_command_success(run_script("tasks/status", [cid, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Unblock parent → move to wip
@@ -805,7 +820,7 @@ def test_session_with_all_task_states(project_dir: TestProjectDir):
     _start_impl_tracking("250-wave1-validated", cwd=project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", ["250-wave1-validated", "--status", "done", "--session", session_id], cwd=project_dir.tmp_path))
     assert_command_success(run_script("qa/new", ["250-wave1-validated", "--session", session_id], cwd=project_dir.tmp_path))
-    _qa_to_done("250-wave1-validated", session_id, project_dir.project_root, project_dir.tmp_path)
+    _qa_to_done("250-wave1-validated", session_id, project_dir.tmp_path, project_dir.tmp_path)
     assert_command_success(run_script("tasks/status", ["250-wave1-validated", "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
     # blocked
     assert_command_success(run_script("tasks/status", ["300-wave1-blocked", "--status", "wip", "--session", session_id], cwd=project_dir.tmp_path))
