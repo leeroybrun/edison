@@ -3,15 +3,16 @@
 Provides read-only access to agent metadata from YAML frontmatter.
 This is separate from composition - it only reads metadata, not composed content.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from edison.core.entity.base import EntityId
 from edison.core.composition.core.paths import CompositionPathResolver
 from edison.core.config.domains.packs import PacksConfig
+from edison.core.entity.base import EntityId
 from edison.core.packs.paths import iter_pack_dirs
 from edison.core.utils.text import parse_frontmatter
 
@@ -21,51 +22,51 @@ from ._base import BaseRegistry
 @dataclass
 class AgentMetadata:
     """Agent metadata extracted from YAML frontmatter."""
-    
+
     name: str
     type: str  # implementer, orchestrator, reviewer, etc.
     model: str  # codex, claude, etc.
     description: str
     mcp_servers: list[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
 
 class AgentRegistry(BaseRegistry[AgentMetadata]):
     """Registry for agent metadata.
-    
+
     Reads agent metadata from YAML frontmatter in agent markdown files.
     Does NOT compose agents - use GenericRegistry for composition.
-    
+
     Example:
         registry = AgentRegistry(project_root)
         agents = registry.get_all()
         for agent in agents:
             print(f"{agent.name}: {agent.description}")
     """
-    
+
     entity_type: str = "agent"
-    
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+
+    def __init__(self, project_root: Path | None = None) -> None:
         """Initialize agent registry.
-        
+
         Args:
             project_root: Project root directory. Auto-detected if not provided.
         """
         super().__init__(project_root)
         self._resolver = CompositionPathResolver(self.project_root, "agents")
-        self._cache: Optional[Dict[str, AgentMetadata]] = None
-    
-    def _discover_agents(self) -> Dict[str, Path]:
+        self._cache: dict[str, AgentMetadata] | None = None
+
+    def _discover_agents(self) -> dict[str, Path]:
         """Discover all agent files.
-        
+
         Returns:
             Dict mapping agent name to file path
         """
-        agents: Dict[str, Path] = {}
-        
+        agents: dict[str, Path] = {}
+
         # Core agents from bundled data
         core_dir = self._resolver.core_dir / "agents"
         if core_dir.exists():
@@ -94,15 +95,29 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
         if project_agents_dir.exists():
             for path in project_agents_dir.glob("*.md"):
                 agents.setdefault(path.stem, path)
-        
+
+        # Apply enable/disable filtering (project config), if present.
+        try:
+            from edison.core.config.domains.agents import AgentsConfig
+
+            cfg = AgentsConfig(repo_root=self.project_root)
+            allow = set(cfg.enabled_allowlist)
+            deny = set(cfg.disabled)
+            if allow:
+                agents = {k: v for k, v in agents.items() if k in allow}
+            elif deny:
+                agents = {k: v for k, v in agents.items() if k not in deny}
+        except Exception:
+            pass
+
         return agents
-    
-    def _read_frontmatter(self, path: Path) -> Dict[str, Any]:
+
+    def _read_frontmatter(self, path: Path) -> dict[str, Any]:
         """Extract YAML frontmatter from an agent file.
-        
+
         Args:
             path: Path to agent markdown file
-            
+
         Returns:
             Frontmatter dict or empty dict if not found
         """
@@ -113,7 +128,7 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
         except Exception:
             return {}
 
-    def _extract_mcp_servers(self, fm: Dict[str, Any]) -> list[str]:
+    def _extract_mcp_servers(self, fm: dict[str, Any]) -> list[str]:
         raw = fm.get("mcp_servers")
         if raw is None and isinstance(fm.get("mcp"), dict):
             raw = (fm.get("mcp") or {}).get("servers")
@@ -125,16 +140,16 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
                 if s:
                     servers.append(s)
         return servers
-    
-    def _load_all(self) -> Dict[str, AgentMetadata]:
+
+    def _load_all(self) -> dict[str, AgentMetadata]:
         """Load all agent metadata (cached).
-        
+
         Returns:
             Dict mapping agent name to metadata
         """
         if self._cache is not None:
             return self._cache
-        
+
         self._cache = {}
         for name, path in self._discover_agents().items():
             fm = self._read_frontmatter(path)
@@ -145,42 +160,42 @@ class AgentRegistry(BaseRegistry[AgentMetadata]):
                 description=fm.get("description", ""),
                 mcp_servers=self._extract_mcp_servers(fm),
             )
-        
+
         return self._cache
 
     def exists(self, entity_id: EntityId) -> bool:
         """Check if an agent exists.
-        
+
         Args:
             entity_id: Agent name
-            
+
         Returns:
-            True if agent exists
+            True if agent exists.
         """
         return entity_id in self._load_all()
-    
-    def get(self, entity_id: EntityId) -> Optional[AgentMetadata]:
+
+    def get(self, entity_id: EntityId) -> AgentMetadata | None:
         """Get agent metadata by name.
-        
+
         Args:
             entity_id: Agent name
-            
+
         Returns:
             AgentMetadata if found, None otherwise
         """
         return self._load_all().get(entity_id)
-    
-    def get_all(self) -> List[AgentMetadata]:
+
+    def get_all(self) -> list[AgentMetadata]:
         """Get all agent metadata.
-        
+
         Returns:
             List of all agent metadata, sorted by name
         """
         return sorted(self._load_all().values(), key=lambda a: a.name)
-    
-    def list_names(self) -> List[str]:
+
+    def list_names(self) -> list[str]:
         """List all agent names.
-        
+
         Returns:
             Sorted list of agent names
         """

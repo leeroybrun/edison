@@ -9,6 +9,7 @@ This module provides the EngineRegistry class which:
 NOTE: ValidatorRegistry is THE single source of truth for validator metadata.
 This module only handles engine instantiation and execution.
 """
+
 from __future__ import annotations
 
 import logging
@@ -84,9 +85,7 @@ class EngineRegistry:
         if isinstance(engines, dict):
             for engine_id, engine_data in engines.items():
                 if isinstance(engine_data, dict):
-                    self._engine_configs[engine_id] = EngineConfig.from_dict(
-                        engine_id, engine_data
-                    )
+                    self._engine_configs[engine_id] = EngineConfig.from_dict(engine_id, engine_data)
 
         logger.debug(f"Loaded {len(self._engine_configs)} engines")
 
@@ -247,6 +246,32 @@ class EngineRegistry:
         validator = self.get_validator(validator_id)
         if not validator:
             raise ValueError(f"Validator '{validator_id}' not found")
+
+        # Fail closed when a validator declares required configuration and it is missing.
+        #
+        # This avoids running pack-provided validators (e.g. browser E2E) when the
+        # project has not configured their prerequisites yet.
+        try:
+            from edison.core.components.service import ComponentService
+
+            status = ComponentService(repo_root=worktree_path).get_status("validator", validator_id)
+            if status.missing_required_config:
+                missing = ", ".join(status.missing_required_config)
+                msg = (
+                    f"Validator '{validator_id}' is not configured; missing required config: {missing}. "
+                    f"Run `edison validator configure {validator_id}` (and ensure any required packs are enabled), "
+                    "then re-run validation."
+                )
+                return ValidationResult(
+                    validator_id=validator_id,
+                    verdict="blocked",
+                    summary=msg,
+                    error=msg,
+                )
+        except Exception:
+            # Best-effort guard: if the component status check fails unexpectedly,
+            # do not block validator execution.
+            pass
 
         web_handle = None
         web_cfg = None

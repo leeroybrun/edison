@@ -23,6 +23,8 @@ DOMAIN_ALIASES: dict[str, list[str]] = {
     "import_": ["import"],
     # Plural UX convenience: `edison tasks …` as alias for `edison task …`.
     "task": ["tasks"],
+    # Unified component manager: provide convenience aliases per component kind.
+    "component": ["pack", "packs", "validator", "validators", "adapter", "adapters", "agent", "agents"],
 }
 
 

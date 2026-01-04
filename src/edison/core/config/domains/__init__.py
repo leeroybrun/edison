@@ -41,6 +41,7 @@ Usage:
 from __future__ import annotations
 
 from .packs import PacksConfig
+from .agents import AgentsConfig
 from .composition import (
     CompositionConfig,
     ContentTypeConfig,
@@ -63,6 +64,7 @@ from .logging import LoggingConfig
 from .tdd import TDDConfig
 
 __all__: list[str] = [
+    "AgentsConfig",
     "PacksConfig",
     "CompositionConfig",
     "ContentTypeConfig",
