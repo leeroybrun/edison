@@ -54,6 +54,33 @@ def test_task_claim_work_complete_flow(tmp_path, isolated_project_env):
     from edison.core.qa.evidence import tracking
     tracking.start_implementation(task_id, project_root=isolated_project_env, round_num=1, model="test")
 
+    # Satisfy evidence requirements enforced by task completion guards.
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.service import EvidenceService
+    from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+    ev = EvidenceService(task_id, project_root=isolated_project_env)
+    round_dir = ev.get_round_dir(1)
+    policy = ValidationPolicyResolver(project_root=isolated_project_env).resolve_for_task(task_id, session_id=sid)
+    for pattern in policy.required_evidence or []:
+        name = str(pattern).strip()
+        if not name.startswith("command-") or not name.endswith(".txt"):
+            continue
+        path = round_dir / name
+        if path.exists():
+            continue
+        write_command_evidence(
+            path=path,
+            task_id=task_id,
+            round_num=1,
+            command_name=name.removeprefix("command-").removesuffix(".txt"),
+            command="echo ok",
+            cwd=str(isolated_project_env),
+            exit_code=0,
+            output="ok\n",
+            runner="edison-tests",
+        )
+
     # Complete task (moves to session done)
     workflow.complete_task(task_id, sid)
     done_path = task_repo._find_entity_path(task_id)
