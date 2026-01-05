@@ -184,33 +184,15 @@ def main(args: argparse.Namespace) -> int:
         manifest_tasks = list(manifest.get("tasks") or [])
         cluster_task_ids = [str(t.get("taskId") or "") for t in manifest_tasks if isinstance(t, dict) and t.get("taskId")]
 
-        # Resolve preset name deterministically.
-        #
-        # In the Edison repo, `validation.sessionClose.preset` is a stricter "deep" preset
-        # that we want by default when actually executing validators. Roster-only and
-        # check-only flows should remain fast by default.
-        preset_name = getattr(args, "preset", None)
-        if args.execute and not preset_name:
-            try:
-                from edison.core.config.domains.qa import QAConfig
-
-                session_close = QAConfig(repo_root=repo_root).validation_config.get("sessionClose", {}) or {}
-                if isinstance(session_close, dict):
-                    candidate = str(session_close.get("preset") or "").strip()
-                    if candidate:
-                        preset_name = candidate
-            except Exception:
-                pass
-
         # Build validator roster for display
         roster = validator_registry.build_execution_roster(
             task_id=args.task_id,
             session_id=session_id,
             wave=args.wave,
             extra_validators=extra_validators,
-            preset_name=preset_name,
+            preset_name=getattr(args, "preset", None),
         )
-        preset_used = str(roster.get("preset") or preset_name or "").strip()
+        preset_used = str(roster.get("preset") or getattr(args, "preset", None) or "").strip()
 
         if args.blocking_only:
             roster["triggeredOptional"] = []
@@ -275,7 +257,7 @@ def main(args: argparse.Namespace) -> int:
                         session_id=session_id,
                         wave=args.wave,
                         extra_validators=extra_validators,
-                        preset_name=preset_name,
+                        preset_name=getattr(args, "preset", None),
                     )
                     candidates = (r.get("alwaysRequired", []) or []) + (r.get("triggeredBlocking", []) or [])
                     if not bool(getattr(args, "blocking_only", False)):
