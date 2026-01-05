@@ -320,10 +320,29 @@ class CLIEngine:
         Returns:
             List of command parts
         """
+        def _format_parts(parts: list[str]) -> list[str]:
+            """Format flag parts using a minimal template context.
+
+            Supports `{worktree_path}` (and `{worktree}` as an alias) so config can
+            inject worktree-aware flags without hardcoding per-validator logic.
+            """
+            formatted: list[str] = []
+            for p in parts:
+                if "{" not in p:
+                    formatted.append(p)
+                    continue
+                try:
+                    formatted.append(
+                        p.format(worktree_path=str(worktree_path), worktree=str(worktree_path))
+                    )
+                except Exception:
+                    formatted.append(p)
+            return formatted
+
         cmd: list[str] = [self.command]
 
         # Some CLIs (e.g., Codex) require global flags before the subcommand.
-        cmd.extend(self.config.pre_flags)
+        cmd.extend(_format_parts(self.config.pre_flags))
 
         # Add subcommand if configured
         if self.config.subcommand:
@@ -339,10 +358,10 @@ class CLIEngine:
                 prompt_args = []
 
         # Add output format flags
-        cmd.extend(self.config.output_flags)
+        cmd.extend(_format_parts(self.config.output_flags))
 
         # Add read-only flags
-        cmd.extend(self.config.read_only_flags)
+        cmd.extend(_format_parts(self.config.read_only_flags))
 
         if prompt_args is not None:
             cmd.extend(prompt_args)
@@ -572,7 +591,7 @@ class CLIEngine:
         # Determine verdict from exit code and response
         response = parsed.get("response", "")
         error = parsed.get("error")
-        extracted_verdict = self._extract_verdict_from_response(response)
+        extracted_verdict = self._extract_verdict_from_response(response, validator_id=validator.id)
 
         if exit_code != 0:
             verdict = "error"
@@ -595,7 +614,7 @@ class CLIEngine:
             context7_packages=validator.context7_packages,
         )
 
-    def _extract_verdict_from_response(self, response: str) -> str | None:
+    def _extract_verdict_from_response(self, response: str, *, validator_id: str | None = None) -> str | None:
         """Try to extract verdict from response text.
 
         Looks for common patterns like "APPROVED", "REJECTED", etc.
@@ -646,6 +665,17 @@ class CLIEngine:
 
         if re.search(r"\bblocked\b", response_lower):
             return "blocked"
+
+        # CodeRabbit CLI ("coderabbit review --prompt-only") outputs plain text with
+        # per-file findings. Treat any reported finding types as a rejection.
+        #
+        # The CLI output may not include the literal word "coderabbit", so gate
+        # these heuristics on the validator id instead of response contents.
+        if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
+            # Treat "potential_issue"/"bug"/security/perf as blocking; allow pure refactor suggestions.
+            if re.search(r"\btype:\s*(potential_issue|bug|security_issue|performance_issue)\b", response_lower):
+                return "reject"
+            return "approve"
 
         return None
 

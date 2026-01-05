@@ -35,3 +35,31 @@ def test_verdict_extraction_handles_cant_be_approved_variants() -> None:
 def test_verdict_extraction_does_not_treat_approval_requests_as_approval() -> None:
     e = _engine()
     assert e._extract_verdict_from_response("Please approve exiting plan mode.") is None
+
+
+def test_verdict_extraction_handles_coderabbit_plain_text_reviews() -> None:
+    e = _engine()
+    # Do not infer CodeRabbit verdicts for non-CodeRabbit validators.
+    assert e._extract_verdict_from_response("Review completed ✔\n") is None
+
+    assert (
+        e._extract_verdict_from_response(
+            "Review completed ✔\n",
+            validator_id="coderabbit",
+        )
+        == "approve"
+    )
+    assert (
+        e._extract_verdict_from_response(
+            "Type: potential_issue\n\nReview completed ✔\n",
+            validator_id="coderabbit",
+        )
+        == "reject"
+    )
+    assert (
+        e._extract_verdict_from_response(
+            "Type: refactor_suggestion\n\nReview completed ✔\n",
+            validator_id="coderabbit",
+        )
+        == "approve"
+    )

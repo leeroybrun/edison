@@ -59,3 +59,37 @@ def test_cli_engine_places_prompt_arg_immediately_after_dash_subcommand() -> Non
 
     cmd = engine._build_command(validator, Path("/tmp"), prompt_args=["PROMPT"])
     assert cmd[:5] == ["gemini", "-p", "PROMPT", "--output-format", "json"]
+
+
+def test_cli_engine_build_command_includes_coderabbit_cwd_flag() -> None:
+    """CodeRabbit CLI expects an explicit --cwd when running inside git worktrees.
+
+    Some CLIs search for a `.git/` directory (not a `.git` file), which can cause them
+    to accidentally operate on the parent repository rather than the active worktree.
+    """
+    cfg = EngineConfig.from_dict(
+        "coderabbit-cli",
+        {
+            "type": "cli",
+            "command": "coderabbit",
+            "subcommand": "review",
+            "read_only_flags": ["--prompt-only", "--cwd", "{worktree_path}"],
+            "prompt_flag": "--config",
+            "response_parser": "coderabbit",
+        },
+    )
+    engine = CLIEngine(cfg)
+    validator = ValidatorMetadata(
+        id="coderabbit",
+        name="CodeRabbit",
+        engine="coderabbit-cli",
+        wave="comprehensive",
+    )
+
+    cmd = engine._build_command(
+        validator,
+        Path("/tmp/worktree"),
+        prompt_args=["--config", "PROMPT.md"],
+    )
+
+    assert cmd[:5] == ["coderabbit", "review", "--prompt-only", "--cwd", "/tmp/worktree"]

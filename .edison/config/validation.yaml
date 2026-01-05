@@ -1,0 +1,34 @@
+# Project-level validation overrides.
+#
+# This repository has large prompt + workspace footprints, so the defaults can
+# time out for otherwise healthy bundles. These overrides raise timeouts and
+# ensure the session's required validators run as blocking checks.
+
+validation:
+  execution:
+    # Codex/Claude validator prompts can be large; the default 300s causes false
+    # negatives (timeouts) on healthy bundles.
+    timeout: 1200
+
+  validators:
+    global-codex:
+      blocking: true
+      always_run: false
+      timeout: 1200
+    global-claude:
+      blocking: true
+      always_run: false
+      timeout: 1200
+    global-gemini:
+      blocking: false
+      always_run: false
+    security:
+      blocking: false
+      timeout: 1200
+    performance:
+      blocking: false
+      timeout: 1200
+    coderabbit:
+      blocking: true
+      always_run: true
+      timeout: 1800

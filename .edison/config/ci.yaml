@@ -3,10 +3,12 @@
 ci:
   commands:
     # NOTE: Edison currently does not enforce strict static typing across the full codebase.
-    # The type-check command is therefore a fast, deterministic syntax check.
-    type-check: "UV_CACHE_DIR=.uv-cache uv run python -m compileall src/edison"
-    # NOTE: Keep lint non-disruptive until ruff rules are fully adopted repo-wide.
-    lint: "UV_CACHE_DIR=.uv-cache uv run python -m compileall src/edison tests"
+    # The type-check command is therefore an incremental check: a fast, deterministic syntax check
+    # plus targeted mypy coverage for critical/typed subsystems (expanded over time).
+    type-check: "UV_CACHE_DIR=.uv-cache uv run python -m compileall src/edison && UV_CACHE_DIR=.uv-cache uv run mypy --follow-imports=skip --ignore-missing-imports src/edison/core/exceptions.py src/edison/core/vendors"
+    # NOTE: Keep lint incremental until ruff rules are fully adopted repo-wide.
+    # Run ruff on the subsystems that are already ruff-clean to prevent baseline noise.
+    lint: "UV_CACHE_DIR=.uv-cache uv run python -m compileall src/edison tests && UV_CACHE_DIR=.uv-cache uv run ruff check src/edison/core/vendors"
     format: "UV_CACHE_DIR=.uv-cache uv run ruff format src/ tests/"
     format-check: "UV_CACHE_DIR=.uv-cache uv run ruff format --check src/ tests/"
     # The Edison repo contains large E2E suites; the standard per-task test run
