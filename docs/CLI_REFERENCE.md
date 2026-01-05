@@ -404,6 +404,12 @@ edison session status
 edison session status sess-001 --json
 ```
 
+**Notes:**
+
+- JSON output includes `tasks` / `qa` computed from the session directory layout.
+  The directory layout is the source of truth for task/QA state.
+- Use `edison session show <session-id>` to inspect the raw `session.json` persisted on disk.
+
 **Output:**
 
 ```
@@ -1218,6 +1224,8 @@ edison task done <task-id> [options]
 | Option | Description |
 |--------|-------------|
 | `--session` | Session completing the task (required) |
+| `--skip-context7` | Bypass Context7 checks for verified false positives only (requires `--skip-context7-reason`) |
+| `--skip-context7-reason <text>` | Justification for Context7 bypass (required when `--skip-context7` is set) |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1230,6 +1238,12 @@ edison task done 150-auth-feature --session sess-001
 # Complete a task using shorthand (unique prefix)
 edison task done 150 --session sess-001
 ```
+
+**Bundle note (recommended for small related tasks):**
+
+- If the task is a bundle member (via `bundle_root`) and the bundle root has an **approved** bundle summary,
+  Edison can accept required command evidence from the **bundle root round** to avoid redundant evidence files
+  for each member task.
 
 **Exit Codes:**
 

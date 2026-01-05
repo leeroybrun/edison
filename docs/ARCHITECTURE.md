@@ -640,18 +640,28 @@ class Repository(Protocol):
 
 ### Session-Scoped Entities
 
-Tasks and QA records are scoped to sessions:
+Tasks and QA records are scoped to sessions and persisted as **Markdown files**
+in a directory-based state machine. The directory layout is the **single source
+of truth** for state (not a JSON index).
 
 ```
-.edison/sessions/{session-id}/
-├── session.json           # Session entity
+.project/sessions/<state>/<session-id>/
+├── session.json                 # Session entity (metadata + activity log; not a task index)
 ├── tasks/
-│   ├── T-001.json        # Task entity
-│   └── T-002.json
+│   ├── <state>/
+│   │   ├── <task-id>.md        # Task entity
+│   │   └── ...
+│   └── ...
 └── qa/
-    ├── T-001-qa.json     # QA entity
-    └── T-002-qa.json
+    ├── <state>/
+    │   ├── <task-id>-qa.md     # QA entity
+    │   └── ...
+    └── ...
 ```
+
+Notes:
+- `edison session status --json` reports `tasks` / `qa` by **scanning the directories** above.
+- `edison session show` prints the raw `session.json` on disk for recovery/debugging.
 
 ---
 
