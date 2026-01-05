@@ -6,12 +6,10 @@ not in the session JSON.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from pathlib import Path
 
-from ...task import TaskManager, TaskRepository
 from ...utils.time import utc_timestamp as io_utc_timestamp
-from edison.core.utils.paths import PathResolver
 from ..core.id import validate_session_id
 from .repository import SessionRepository
 
@@ -55,23 +53,18 @@ def register_task(
 ) -> None:
     """Register a task event in the session.
 
-    The task file remains the single source of truth, but we keep a small
-    `session.tasks` index for UX (fast session status rendering) and an
-    activity log for auditability.
+    Session JSON is session-scoped metadata only. Tasks/QAs are persisted as
+    files in `.project/tasks/...` and `.project/qa/...` and are the single
+    source of truth.
+
+    This function intentionally does NOT write any task fields into session.json
+    to avoid drift (tasks may be edited/moved by multiple agents and sessions).
     """
     sid = validate_session_id(session_id)
     now = io_utc_timestamp()
     
-    # Update session index + activity log (task file updated by workflow)
+    # Activity log only (task file updated by workflow).
     sess = _load_or_create_session(sid)
-    tasks = sess.setdefault("tasks", {})
-    if isinstance(tasks, dict):
-        entry = tasks.get(task_id) if isinstance(tasks.get(task_id), dict) else {}
-        entry = dict(entry)
-        entry.update({"status": status, "owner": owner})
-        if qa_id:
-            entry["qaId"] = qa_id
-        tasks[task_id] = entry
     sess.setdefault("activityLog", []).append({
         "timestamp": now,
         "message": f"Task {task_id} registered with status {status}",
@@ -93,19 +86,14 @@ def register_qa(
     are updated directly by TaskQAWorkflow. This function only logs
     the activity in the session for audit purposes.
     
-    The QA file is the single source of truth for QA metadata.
+    The QA file is the single source of truth for QA metadata. Session JSON must
+    not store QA indexes (prevents drift and stale state).
     """
     sid = validate_session_id(session_id)
     now = io_utc_timestamp()
     
-    # Update session activity log only (QA file updated by workflow)
+    # Activity log only (QA file updated by workflow).
     sess = _load_or_create_session(sid)
-    qa_index = sess.setdefault("qa", {})
-    if isinstance(qa_index, dict):
-        entry = qa_index.get(qa_id) if isinstance(qa_index.get(qa_id), dict) else {}
-        entry = dict(entry)
-        entry.update({"status": status, "taskId": task_id, "round": round_no})
-        qa_index[qa_id] = entry
     sess.setdefault("activityLog", []).append({
         "timestamp": now,
         "message": f"QA {qa_id} registered for task {task_id} with status {status}",
@@ -141,8 +129,8 @@ def create_merge_task(session_id: str, branch_name: str, base_branch: str) -> st
         f"- **Base:** {base_branch}\\n"
     )
     
-    # Create task file using TaskManager
-    task_mgr = TaskManager()
-    task_mgr.create_task(task_id, title, description=desc, session_id=session_id)
+    from edison.core.task import TaskManager
+
+    TaskManager().create_task(task_id, title, description=desc, session_id=session_id)
     
     return task_id

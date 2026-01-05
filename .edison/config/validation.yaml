@@ -54,6 +54,11 @@ validation:
       engine: claude-cli
       timeout: 300
 
+    # The global validator prompt is intentionally large (constitution + checklist + stack overlays).
+    # 300s is frequently too low for remote model execution; avoid false negatives due to timeouts.
+    global-claude:
+      timeout: 900
+
     global-coderabbit:
       name: "CodeRabbit AI Review (Global)"
       engine: coderabbit-cli

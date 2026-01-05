@@ -152,13 +152,9 @@ def test_session_task_tracking(project_dir: TestProjectDir):
     )
     assert_command_success(claim_result)
 
-    # Verify task was registered in session JSON
+    # Session JSON is not a task index; directory structure is the source of truth.
     session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
-    session_data = json.loads(session_path.read_text())
-
-    # Real sessions use tasks as dict, keyed by task ID
-    assert "tasks" in session_data, "Session should have tasks object"
-    assert task_id in session_data["tasks"], f"Task {task_id} should be registered in session"
+    assert_file_exists(session_path)
 
     # Verify session-scoped task file has Owner field set (claimed under session → tasks/wip)
     task_path = (
@@ -277,11 +273,6 @@ def test_session_qa_tracking(project_dir: TestProjectDir):
     qa_path = project_dir.project_root / "qa" / "waiting" / f"{task_id}-qa.md"
     assert_file_exists(qa_path)
 
-    # Verify QA was registered in session JSON
+    # Session JSON is not a QA index; directory structure is the source of truth.
     session_path = project_dir.project_root / "sessions" / "wip" / session_id / "session.json"
-    session_data = json.loads(session_path.read_text())
-
-    # Real sessions use qa as dict, keyed by QA ID
-    assert "qa" in session_data, "Session should have qa object"
-    qa_id = f"{task_id}-qa"
-    assert qa_id in session_data["qa"], f"QA {qa_id} should be registered in session"
+    assert_file_exists(session_path)

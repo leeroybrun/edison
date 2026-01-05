@@ -51,7 +51,26 @@ def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
             session_id=session_id,
         )
         required = list(policy.required_evidence or [])
-        return has_required(round_dir, required)
+        if has_required(round_dir, required):
+            return True
+
+        # Bundle-aware fallback: allow the bundle root's evidence to satisfy the
+        # per-task required evidence check when the member has an approved bundle
+        # summary. This avoids requiring redundant command evidence on every
+        # bundle member while remaining fail-closed when the root evidence is absent.
+        try:
+            bundle = ev.read_bundle()
+            if isinstance(bundle, Mapping) and bundle.get("approved") is True:
+                root_task = str(bundle.get("rootTask") or "").strip()
+                if root_task and root_task != str(task_id) and bundle.get("scope"):
+                    root_ev = EvidenceService(root_task, project_root=ev.project_root)
+                    root_round = root_ev.get_current_round_dir()
+                    if root_round is not None and has_required(root_round, required):
+                        return True
+        except Exception:
+            pass
+
+        return False
     except Exception:
         return False  # FAIL-CLOSED
 

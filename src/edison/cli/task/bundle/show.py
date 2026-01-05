@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
-from edison.core.task import normalize_record_id
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Show the resolved bundle root and members for a task"
 
@@ -26,7 +26,7 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         project_root = get_repo_root(args)
-        task_id = normalize_record_id("task", str(args.task_id))
+        task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=str(args.task_id))
 
         from edison.core.qa.bundler.cluster import select_cluster
 
@@ -59,4 +59,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

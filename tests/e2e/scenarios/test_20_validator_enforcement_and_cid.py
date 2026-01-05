@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pytest
+import yaml
 
 from helpers.env import TestProjectDir
 from helpers.command_runner import run_script, assert_command_success
@@ -41,12 +42,75 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
     validators (as determined by the registry/roster) gate bundle approval.
     """
     task_id = "200-wave1-enforcement"
+    cfg_dir = project_dir.tmp_path / ".edison" / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    (cfg_dir / "validation.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "validation": {
+                    "defaultPreset": "strict",
+                    "evidence": {"requiredFiles": []},
+                    "presets": {
+                        "strict": {
+                            "name": "strict",
+                            "validators": ["v1", "v2", "v3", "v4"],
+                            "blocking_validators": ["v1", "v2", "v3", "v4"],
+                            "required_evidence": [],
+                        }
+                    },
+                    "validators": {
+                        # Disable bundled always-run validators to keep the roster deterministic.
+                        "global-codex": {"enabled": False},
+                        "global-claude": {"enabled": False},
+                        "v1": {
+                            "name": "V1",
+                            "engine": "codex-cli",
+                            "fallback_engine": "pal-mcp",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "v2": {
+                            "name": "V2",
+                            "engine": "codex-cli",
+                            "fallback_engine": "pal-mcp",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "v3": {
+                            "name": "V3",
+                            "engine": "codex-cli",
+                            "fallback_engine": "pal-mcp",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                        "v4": {
+                            "name": "V4",
+                            "engine": "codex-cli",
+                            "fallback_engine": "pal-mcp",
+                            "wave": "critical",
+                            "always_run": False,
+                            "blocking": True,
+                            "triggers": [],
+                        },
+                    },
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
     ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
 
     # Provide only a subset of blocking reports (approve)
-    _write_validator_report(ev, "global-codex", "codex", verdict="approve")
-    _write_validator_report(ev, "global-claude", "claude", verdict="approve")
+    _write_validator_report(ev, "v1", "codex", verdict="approve")
+    _write_validator_report(ev, "v2", "claude", verdict="approve")
 
     # Compute approval from existing evidence (no validator execution) → must fail due to
     # missing blocking approvals (e.g. security/performance).
@@ -58,8 +122,8 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
     assert res_fail.returncode != 0, f"Expected failure, got stdout:\n{res_fail.stdout}\nstderr:\n{res_fail.stderr}"
 
     # Now add the remaining core blocking reports and re-run → succeed
-    _write_validator_report(ev, "security", "codex", verdict="approve")
-    _write_validator_report(ev, "performance", "codex", verdict="approve")
+    _write_validator_report(ev, "v3", "codex", verdict="approve")
+    _write_validator_report(ev, "v4", "codex", verdict="approve")
 
     res_ok = run_script(
         "validators/validate",
