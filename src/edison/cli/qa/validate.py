@@ -163,14 +163,33 @@ def main(args: argparse.Namespace) -> int:
         manifest_tasks = list(manifest.get("tasks") or [])
         cluster_task_ids = [str(t.get("taskId") or "") for t in manifest_tasks if isinstance(t, dict) and t.get("taskId")]
 
+        # Resolve preset name deterministically.
+        #
+        # In the Edison repo, `validation.sessionClose.preset` is a stricter "deep" preset
+        # that we want by default when actually executing validators. Roster-only and
+        # check-only flows should remain fast by default.
+        preset_name = getattr(args, "preset", None)
+        if args.execute and not preset_name:
+            try:
+                from edison.core.config.domains.qa import QAConfig
+
+                session_close = QAConfig(repo_root=repo_root).validation_config.get("sessionClose", {}) or {}
+                if isinstance(session_close, dict):
+                    candidate = str(session_close.get("preset") or "").strip()
+                    if candidate:
+                        preset_name = candidate
+            except Exception:
+                preset_name = preset_name
+
         # Build validator roster for display
         roster = validator_registry.build_execution_roster(
             task_id=args.task_id,
             session_id=session_id,
             wave=args.wave,
             extra_validators=extra_validators,
-            preset_name=getattr(args, "preset", None),
+            preset_name=preset_name,
         )
+        preset_used = str(roster.get("preset") or preset_name or "").strip()
 
         if args.blocking_only:
             roster["triggeredOptional"] = []
@@ -235,7 +254,7 @@ def main(args: argparse.Namespace) -> int:
                         session_id=session_id,
                         wave=args.wave,
                         extra_validators=extra_validators,
-                        preset_name=getattr(args, "preset", None),
+                        preset_name=preset_name,
                     )
                     candidates = (r.get("alwaysRequired", []) or []) + (r.get("triggeredBlocking", []) or [])
                     if not bool(getattr(args, "blocking_only", False)):
@@ -258,6 +277,7 @@ def main(args: argparse.Namespace) -> int:
                 scope_used=scope_used,
                 cluster_task_ids=cluster_task_ids,
                 manifest_tasks=manifest_tasks,
+                preset_used=preset_used,
                 validators_override=validators_override,
             )
 
@@ -289,15 +309,9 @@ def main(args: argparse.Namespace) -> int:
                 manifest_tasks=manifest_tasks,
                 preset_used=str(roster.get("preset") or getattr(args, "preset", "") or "").strip(),
             )
+
             # Write bundle summary at root and mirror into each member evidence dir.
             root_ev.write_bundle(bundle_data, round_num=round_num)
-            for tid in cluster_task_ids:
-                try:
-                    member_ev = EvidenceService(str(tid), project_root=repo_root)
-                    member_ev.ensure_round(round_num)
-                    member_ev.write_bundle({**bundle_data, "taskId": str(tid)}, round_num=round_num)
-                except Exception:
-                    continue
 
             if formatter.json_mode:
                 formatter.json_output(
@@ -309,7 +323,9 @@ def main(args: argparse.Namespace) -> int:
                         "missing": bundle_data.get("missing") or [],
                         "cluster_missing": cluster_missing,
                         "checklist": preflight_checklist,
-                        "bundle_file": str((root_ev.ensure_round(round_num) / root_ev.bundle_filename).relative_to(repo_root)),
+                        "bundle_file": str(
+                            (root_ev.ensure_round(round_num) / root_ev.bundle_filename).relative_to(repo_root)
+                        ),
                     }
                 )
             else:
@@ -542,6 +558,24 @@ def _compute_bundle_summary(
                 blocking_ids.add(vid)
 
     root_ev = EvidenceService(str(root_task_id), project_root=repo_root)
+
+    # Fail-closed: if a blocking validator report exists in the round evidence dir,
+    # it must be included in approval even if it was not part of the preset roster.
+    # This prevents ignoring a known blocking signal (e.g. security reject) during check-only.
+    try:
+        for report_path in root_ev.list_validator_reports(round_num=int(round_num)):
+            name = report_path.name
+            if not (name.startswith("validator-") and name.endswith("-report.md")):
+                continue
+            vid = name[len("validator-") : -len("-report.md")].strip()
+            if not vid:
+                continue
+            cfg = validator_registry.get(vid)
+            if cfg is not None and bool(getattr(cfg, "blocking", False)):
+                blocking_ids.add(vid)
+    except Exception:
+        pass
+
     missing_or_failed: list[str] = []
     verdicts: dict[str, str] = {}
     for vid in sorted(blocking_ids):
@@ -609,6 +643,7 @@ def _execute_with_executor(
     scope_used: str,
     cluster_task_ids: list[str],
     manifest_tasks: list[dict[str, Any]],
+    preset_used: str,
     validators_override: list[str] | None = None,
 ) -> int:
     """Execute validators using the centralized executor."""
@@ -691,6 +726,7 @@ def _execute_with_executor(
             "taskId": root_task_id,
             "rootTask": root_task_id,
             "scope": scope_used,
+            "preset": str(preset_used or "").strip() or None,
             "round": int(round_num),
             "approved": False,
             "generatedAt": utc_timestamp(),
@@ -746,19 +782,12 @@ def _execute_with_executor(
         scope_used=scope_used,
         cluster_task_ids=cluster_task_ids,
         manifest_tasks=manifest_tasks,
-        preset_used=str(getattr(args, "preset", "") or "").strip(),
+        preset_used=str(preset_used or "").strip(),
     )
 
     # Always emit/refresh the bundle summary for the root task when we have a round.
     if round_num:
         ev.write_bundle(bundle_data, round_num=round_num)
-        for tid in cluster_task_ids:
-            try:
-                member_ev = EvidenceService(str(tid), project_root=repo_root)
-                member_ev.ensure_round(round_num)
-                member_ev.write_bundle({**bundle_data, "taskId": str(tid)}, round_num=round_num)
-            except Exception:
-                continue
 
     # Display wave-by-wave results
     for wave_result in result.waves:

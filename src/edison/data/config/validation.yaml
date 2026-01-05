@@ -315,6 +315,7 @@ validation:
     ignorePatterns:
       - "{PROJECT_MANAGEMENT_DIR}/**"
       - "{PROJECT_CONFIG_DIR}/_generated/**"
+      - "AGENTS.md"
 
   # Session ID to use for validation transactions when no active session exists
   defaultSessionId: "validation-session"

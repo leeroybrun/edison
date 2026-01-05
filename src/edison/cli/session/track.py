@@ -36,6 +36,22 @@ def _best_effort_task_id(*, project_root: Path, raw_task_id: str) -> str:
         return token
 
 
+def _resolve_task_id_for_start(*, project_root: Path, raw_task_id: str) -> str:
+    """Resolve a task id for tracking start.
+
+    Tracking is useful even when task markdown is missing (e.g., debugging
+    dangling evidence directories). For start, we accept canonical-looking task
+    IDs (containing a dash) without requiring the task file to exist. For short
+    IDs, we fail-closed and require an existing task.
+    """
+    from edison.cli._utils import normalize_record_id
+
+    token = normalize_record_id("task", raw_task_id)
+    if "-" in token:
+        return token
+    return resolve_existing_task_id(project_root=project_root, raw_task_id=token)
+
+
 def register_args(parser: argparse.ArgumentParser) -> None:
     """Register command-specific arguments."""
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -154,7 +170,7 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.qa.evidence import tracking
 
         if args.subcommand == "start":
-            resolved_task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=str(args.task))
+            resolved_task_id = _resolve_task_id_for_start(project_root=repo_root, raw_task_id=str(args.task))
             if args.type == "implementation":
                 result = tracking.start_implementation(
                     resolved_task_id,

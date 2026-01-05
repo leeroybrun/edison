@@ -95,9 +95,7 @@ def test_qa_validate_check_only_bundle_scope_writes_root_summary_and_mirrors(
     task_ids = {t.get("taskId") for t in (root_bundle.get("tasks") or [])}
     assert task_ids == {root_task_id, member_task_id}
 
-    # Member bundle summary is mirrored.
-    member_bundle = EvidenceService(member_task_id, project_root=isolated_project_env).read_bundle(round_num=1)
-    assert member_bundle is not None
-    assert member_bundle.get("rootTask") == root_task_id
-    assert member_bundle.get("scope") == "bundle"
-
+    # Member bundle summary is NOT mirrored (single source: root task evidence dir).
+    member_ev = EvidenceService(member_task_id, project_root=isolated_project_env)
+    member_bundle_path = member_ev.get_round_dir(1) / member_ev.bundle_filename
+    assert not member_bundle_path.exists()

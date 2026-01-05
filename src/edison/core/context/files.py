@@ -264,8 +264,16 @@ class FileContextService:
         except Exception:
             pass
 
-        # Fall back to git diff
-        return self.get_for_session(session_id) if session_id else self.get_current()
+        # Fall back to session-scoped git diff only.
+        #
+        # IMPORTANT: Do NOT infer task scope from the current working tree when no session_id
+        # is provided. Using `git status` here makes preset selection and evidence requirements
+        # depend on unrelated repo dirtiness (and can flap over time), which is exactly what
+        # Edison aims to avoid.
+        if session_id:
+            return self.get_for_session(session_id)
+
+        return FileContext(source="none")
 
     def get_for_session(self, session_id: str) -> FileContext:
         """Get files changed in a session worktree.

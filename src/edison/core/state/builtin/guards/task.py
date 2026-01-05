@@ -98,7 +98,6 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
 
     session = ctx.get("session")
     session_dict = session if isinstance(session, Mapping) else None
-
     # Context7 enforcement (must surface a useful error message).
     if not skip_context7:
         try:
@@ -122,6 +121,9 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                         evidence_dir = classification.get("evidence_dir") or str(ev.get_round_dir(1))
 
                         lines: list[str] = ["Context7 evidence required."]
+                        required = sorted({p for p in pkgs if str(p).strip()})
+                        if required:
+                            lines.append(f"Required: {', '.join(required)}")
                         if bool(trace.get("usedFallback")):
                             cand = trace.get("candidates") or []
                             cand_preview = ", ".join([str(x) for x in list(cand)[:5] if str(x).strip()])
@@ -139,7 +141,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                             for inv in invalid:
                                 if not isinstance(inv, dict):
                                     continue
-                                pkg = str(inv.get('package') or '').strip()
+                                pkg = str(inv.get("package") or "").strip()
                                 fields = inv.get("missing_fields", []) or []
                                 fields_s = ", ".join([str(f) for f in fields if str(f).strip()])
                                 if pkg:
@@ -153,7 +155,18 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                         lines.append(
                             f"  - edison task done {task_id} --skip-context7 --skip-context7-reason \"<verified false positive>\""
                         )
-                        for pkg in sorted({*(missing or []), *[str(inv.get('package')) for inv in invalid if isinstance(inv, dict) and inv.get('package')] }):
+
+                        affected_pkgs = sorted(
+                            {
+                                *(missing or []),
+                                *[
+                                    str(inv.get("package"))
+                                    for inv in invalid
+                                    if isinstance(inv, dict) and inv.get("package")
+                                ],
+                            }
+                        )
+                        for pkg in affected_pkgs:
                             if not str(pkg).strip():
                                 continue
                             lines.append(f"  - edison evidence context7 template {pkg}")

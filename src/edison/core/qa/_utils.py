@@ -153,6 +153,15 @@ def parse_primary_files(content: str) -> List[str]:
         >>> parse_primary_files(content)
         ['src/main.ts', 'src/helper.ts']
     """
+    def _is_placeholder(path: str) -> bool:
+        s = str(path or "").strip()
+        if not s:
+            return True
+        low = s.lower()
+        # Ignore task template placeholders like:
+        #   - <<FILL: path/to/file.ext>>
+        return ("<<fill" in low) or s.startswith("<<") or low.startswith("path/to/")
+
     files: List[str] = []
     capture = False
 
@@ -178,7 +187,7 @@ def parse_primary_files(content: str) -> List[str]:
         if capture and line.strip().startswith("-"):
             # Split on the first '-' and take the rest
             file_path = line.split("-", 1)[1].strip()
-            if file_path:
+            if file_path and not _is_placeholder(file_path):
                 files.append(file_path)
 
     return files
