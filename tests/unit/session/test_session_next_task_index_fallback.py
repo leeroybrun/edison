@@ -21,11 +21,13 @@ def test_session_next_falls_back_to_session_task_index_when_task_files_missing(
     initial_state = SessionConfig(repo_root=project_root).get_initial_session_state()
     repo.create(Session.create(session_id, owner="test", state=initial_state))
 
-    # Register a claimed task in the session UX index, but do NOT create a task file.
+    # Register a task event, but do NOT create a task file.
+    #
+    # Session JSON is not a task index: session-next must only discover tasks from
+    # the filesystem (`.project/tasks/...` + session-scoped task dirs).
     register_task(session_id, "missing-task-file-001", owner="test", status=task_wip)
 
     payload = compute_next(session_id, scope=None, limit=5)
 
     actions = payload.get("actions") or []
-    assert any(a.get("id") == "task.work" and a.get("recordId") == "missing-task-file-001" for a in actions)
-
+    assert not any(a.get("id") == "task.work" and a.get("recordId") == "missing-task-file-001" for a in actions)
