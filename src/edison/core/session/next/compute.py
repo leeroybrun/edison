@@ -424,7 +424,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
 
             checklist = SessionStartChecklistEngine(project_root=PathResolver.resolve_project_root()).compute(
                 session_id=session_id,
-                cwd=Path(os.getcwd()),
+                cwd=Path.cwd(),
             )
             actions.append(
                 {
