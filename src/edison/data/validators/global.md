@@ -9,7 +9,7 @@
 
 ## Constitution (Re-read on compact)
 
-{{include:constitutions/validators.md}}
+Re-read the validator constitution from: `.edison/_generated/constitutions/VALIDATORS.md`.
 
 ---
 
@@ -45,8 +45,9 @@ Refresh your knowledge on post-training packages used in this project BEFORE val
 ### Step 2: Review Git Diff
 
 ```bash
-git diff --cached  # Staged changes
-git diff           # Unstaged changes
+git status --porcelain
+git diff                      # Uncommitted changes (may be empty)
+git diff main...HEAD          # Committed changes on this branch/worktree
 ```
 
 **Questions to Answer**:
@@ -192,4 +193,3 @@ git diff           # Unstaged changes
 - Production quality is the goal
 
 **Your validation ensures zero defects reach production.**
-
