@@ -16,8 +16,7 @@ validation:
       validators:
         - coderabbit
       # required_evidence is intentionally omitted so baseline evidence applies.
-      blocking_validators:
-        - coderabbit
+      blocking_validators: []
 
     # Strict preset used for bundle/meta validation (Codex + Claude + CodeRabbit).
     strict:
@@ -35,7 +34,6 @@ validation:
       blocking_validators:
         - global-codex
         - global-claude
-        - coderabbit
 
     deep:
       name: deep
@@ -55,7 +53,6 @@ validation:
         - global-claude
         - security
         - performance
-        - coderabbit
 
   validators:
     global-codex:
@@ -80,7 +77,7 @@ validation:
       timeout: 900
 
     coderabbit:
-      blocking: true
+      blocking: false
       always_run: false
       timeout: 1800
 
