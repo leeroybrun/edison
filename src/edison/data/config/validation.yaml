@@ -19,7 +19,7 @@ validation:
   execution:
     mode: parallel        # parallel | sequential
     concurrency: 4        # max parallel validators when mode=parallel
-    timeout: 300          # per-validator timeout in seconds
+    timeout: 1500          # per-validator timeout in seconds
 
   # Defaults for validator assignment
   defaults:
@@ -111,7 +111,7 @@ validation:
       wave: global
       always_run: true
       blocking: true
-      timeout: 600
+      timeout: 1500
       context7_required: true
       context7_packages: []
       triggers: []
@@ -125,7 +125,7 @@ validation:
       wave: global
       always_run: true
       blocking: true
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: []
       triggers: []
@@ -139,7 +139,7 @@ validation:
       wave: global
       always_run: false
       blocking: false  # Non-blocking, consensus reinforcement
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: []
       triggers: []
@@ -153,7 +153,7 @@ validation:
       wave: global
       always_run: false
       blocking: false  # Non-blocking, additional AI perspective
-      timeout: 600
+      timeout: 1500
       context7_required: false  # Auggie uses its own codebase context engine
       context7_packages: []
       triggers: []
@@ -168,7 +168,7 @@ validation:
       wave: critical
       always_run: false
       blocking: true
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: []
       triggers: []
@@ -182,7 +182,7 @@ validation:
       wave: critical
       always_run: false
       blocking: true
-      timeout: 300
+      timeout: 1500
       context7_required: true
       context7_packages: []
       triggers: []
@@ -196,7 +196,7 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 600
+      timeout: 1500
       context7_required: false
       context7_packages: []
       triggers: []

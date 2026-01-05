@@ -14,5 +14,5 @@ timeouts:
   ai_calls_seconds: 120.0
   file_operations_seconds: 10.0
   # External validator timeouts
-  coderabbit_review_seconds: 600.0  # 10 minutes, CodeRabbit can take 7-30 min
-  external_validator_default_seconds: 300.0
+  coderabbit_review_seconds: 2700.0  # 45 minutes, CodeRabbit can take 7-30 min
+  external_validator_default_seconds: 1500.0
