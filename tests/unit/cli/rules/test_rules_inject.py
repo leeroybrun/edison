@@ -395,3 +395,50 @@ class TestRulesInjectSessionContext:
 
         data = json.loads(captured.out)
         assert data["taskId"] == "task-456"
+
+
+class TestRulesInjectRepoRootBehavior:
+    """Tests for --repo-root behavior when environment/cwd are unrelated."""
+
+    def test_transition_rules_respect_repo_root_even_when_cwd_is_elsewhere(
+        self,
+        edison_project: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Transition lookup should use provided --repo-root, not cwd-derived project root."""
+        from edison.cli.rules.inject import main, register_args
+
+        # Simulate a client that runs outside the repo and does NOT set AGENTS_PROJECT_ROOT.
+        monkeypatch.delenv("AGENTS_PROJECT_ROOT", raising=False)
+        outside = tmp_path / "outside"
+        outside.mkdir(parents=True, exist_ok=True)
+        monkeypatch.chdir(outside)
+
+        # Ensure any cached project root is cleared for this test.
+        try:
+            import edison.core.utils.paths.resolver as paths  # type: ignore
+
+            paths._PROJECT_ROOT_CACHE = None  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+        parser = argparse.ArgumentParser()
+        register_args(parser)
+        args = parser.parse_args(
+            [
+                "--json",
+                "--transition",
+                "wip->done",
+                "--repo-root",
+                str(edison_project),
+            ]
+        )
+
+        exit_code = main(args)
+        captured = capsys.readouterr()
+
+        assert exit_code == 0, captured.err
+        data = json.loads(captured.out)
+        assert len(data["rules"]) > 0, "wip->done should yield workflow rules under --repo-root"

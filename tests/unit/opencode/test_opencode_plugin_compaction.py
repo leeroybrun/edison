@@ -284,6 +284,24 @@ class TestPluginCompactingHook:
             "Compacting hook should inject Edison compaction guidance"
         )
 
+    def test_compacting_hook_requests_rules_by_context_window_context(
+        self, isolated_project_env: Path
+    ) -> None:
+        """Compacting hook should request compaction guidance via --context (not task --state)."""
+        plugin_template = (
+            get_src_path() / "edison/data/templates/opencode/plugin/edison.ts.template"
+        )
+        content = plugin_template.read_text()
+
+        # Compaction guidance is context-window guidance (RULE.CONTEXT.CWAM_REASSURANCE),
+        # so the plugin must fetch rules via `--context` rather than `--state compaction`.
+        assert 'fetchEdisonRulesInject("compaction")' not in content, (
+            "Compaction hook should not call state-based rules inject with 'compaction'"
+        )
+        assert "--context" in content, (
+            "Compaction hook should request rules inject using --context"
+        )
+
 
 class TestPluginCompactedEvent:
     """Tests for session.compacted event handler (Task 079)."""
