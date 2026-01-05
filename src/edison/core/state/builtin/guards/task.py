@@ -226,9 +226,43 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                 if not any(Path(name).match(pattern) for name in files):
                     missing_files.append(str(pattern))
             if missing_files:
-                raise ValueError(
-                    f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
-                )
+                # Bundle-aware completion: when a task is part of an *approved* bundle,
+                # allow the bundle root's command evidence to satisfy per-task required
+                # evidence. This avoids forcing redundant evidence capture on every
+                # bundle member while still FAIL-CLOSED on missing evidence.
+                try:
+                    bundle = ev_svc.read_bundle(latest) or {}
+                    root_task = str(bundle.get("rootTask") or "").strip()
+                    approved = bool(bundle.get("approved") is True)
+                    root_round = bundle.get("rootRound")
+                    root_round_int: int | None = None
+                    if isinstance(root_round, int):
+                        root_round_int = int(root_round)
+                    elif isinstance(root_round, str) and root_round.strip().isdigit():
+                        root_round_int = int(root_round.strip())
+
+                    if approved and root_task and root_task != str(task_id):
+                        root_ev = EvidenceService(str(root_task), project_root=project_root_path)
+                        if root_round_int is None:
+                            root_round_int = root_ev.get_current_round()
+                        if root_round_int is not None:
+                            root_round_dir = root_ev.get_round_dir(int(root_round_int))
+                            root_files = {
+                                str(p.relative_to(root_round_dir))
+                                for p in list_evidence_files(root_round_dir)
+                            }
+                            if all(
+                                any(Path(name).match(pattern) for name in root_files)
+                                for pattern in required
+                            ):
+                                missing_files = []
+                except Exception:
+                    pass
+
+                if missing_files:
+                    raise ValueError(
+                        f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
+                    )
 
         # Optional TDD readiness gates (used by `edison task done`).
         enforce_tdd = bool(ctx.get("enforce_tdd")) and not bool(
