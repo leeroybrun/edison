@@ -223,9 +223,9 @@ rules:
     When continuation is enabled and work remains:
     - Continue iterating until Edison reports the session complete.
     - Use the loop driver: `edison session next <session-id>`
-    - Keep validators independent from implementers.
+    - Do not stop early when work remains.
 
-    Reference: `guidelines/orchestrators/DELEGATION.md`
+    Reference: `docs/CONTINUATION.md`
 - id: RULE.GUARDS.FAIL_CLOSED
   title: 'Fail-Closed: All Moves Through Guarded Python CLIs'
   category: transition
@@ -558,3 +558,22 @@ rules:
     - Combine multiple small snippets when cross-references are required instead of dumping a full file.
 
     Reference: `guidelines/orchestrators/SESSION_WORKFLOW.md`
+- id: RULE.EXECUTION.NONINTERACTIVE
+  title: Avoid interactive commands in non-interactive environments
+  category: execution
+  blocking: false
+  severity: warning
+  applies_to: [agent, orchestrator]
+  contexts: [execution, guidance]
+  guidance: |
+    When running shell commands in non-interactive environments (LLMs, agents):
+    - Avoid interactive commands that can hang (vim, vi, nano, less, more, top, htop).
+    - Prefer non-interactive flags (--yes, --no-pager, --quiet, -y).
+    - Use environment variables to disable interactive behavior (CI=1, PAGER=cat, GIT_PAGER=cat).
+    - Wrap potentially hanging commands with `timeout`.
+    - Use `git --no-pager log` instead of `git log`.
+    - Use `cat` instead of `less` for viewing files.
+    - If an interactive command is necessary, request explicit user approval first.
+  cli:
+    commands: ["exec"]
+    timing: before

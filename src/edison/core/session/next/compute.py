@@ -17,8 +17,6 @@ Rule Types:
 """
 from __future__ import annotations
 
-import os
-import sys
 from typing import Any
 
 from edison.core.config.domains.workflow import WorkflowConfig
@@ -38,7 +36,6 @@ from edison.core.session.next.actions import (
     missing_evidence_blockers,
     read_validator_reports,
 )
-from edison.core.session.next.output import format_human_readable
 from edison.core.session.next.rules import get_rules_for_context, rules_for
 from edison.core.session.next.utils import (
     allocate_child_id,
@@ -46,13 +43,26 @@ from edison.core.session.next.utils import (
     project_cfg_dir,
     slugify,
 )
-from edison.core.utils.cli.arguments import parse_common_args
-from edison.core.utils.cli.output import output_json
 from edison.core.utils.config import safe_dict as _safe_dict
-from edison.core.utils.io import read_json as io_read_json
 
 load_session = session_manager.get_session
 validate_session_id = session_store_validate_session_id
+
+
+def _safe_int(value: Any, default: Any = 0) -> int:
+    """Coerce an arbitrary value to int with a safe default.
+
+    This is used for session/meta overrides where config or persisted JSON may
+    contain null/None and where `int(None)` would raise TypeError.
+    """
+    if default is None:
+        default = 0
+    if value is None:
+        return int(default)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return int(default)
 
 
 def _format_cmd_template(template: list[str], **kwargs) -> list[str]:
@@ -115,7 +125,6 @@ def _build_action_from_recommendation(
     return action
 
 # Import build_validation_bundle from graph module (will be migrated)
-import argparse
 
 
 def _safe_list_str(value: object) -> list[str]:
@@ -259,9 +268,19 @@ def _compute_continuation(
         mode = "off"
 
     budgets = _safe_dict(cont_cfg.get("budgets"))
-    max_iterations = int(meta_cont.get("maxIterations") or budgets.get("maxIterations"))
-    cooldown_seconds = int(meta_cont.get("cooldownSeconds") or budgets.get("cooldownSeconds"))
-    stop_on_blocked = bool(meta_cont.get("stopOnBlocked") if "stopOnBlocked" in meta_cont else budgets.get("stopOnBlocked"))
+    max_iterations = _safe_int(
+        meta_cont.get("maxIterations"),
+        _safe_int(budgets.get("maxIterations"), 0),
+    )
+    cooldown_seconds = _safe_int(
+        meta_cont.get("cooldownSeconds"),
+        _safe_int(budgets.get("cooldownSeconds"), 0),
+    )
+    stop_on_blocked = bool(
+        meta_cont.get("stopOnBlocked")
+        if "stopOnBlocked" in meta_cont
+        else budgets.get("stopOnBlocked") or False
+    )
 
     is_complete = bool(_safe_dict(completion).get("isComplete"))
     should_continue = enabled and mode != "off" and not is_complete
@@ -1073,48 +1092,3 @@ def _build_context_payload(session_id: str) -> dict[str, Any]:
     except Exception:
         # Fail-open: session-next must remain usable even if context building fails.
         return {"isEdisonProject": True, "sessionId": session_id}
-
-
-def main() -> None:  # CLI facade for direct execution
-    """CLI entry point for compute_next."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("session_id")
-    parse_common_args(parser)
-    parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--scope", choices=["tasks", "qa", "session"])
-    parser.add_argument(
-        "--completion-only",
-        action="store_true",
-        help="Return only {sessionId, completion, continuation} (useful for hooks/plugins)",
-    )
-    args = parser.parse_args()
-    session_id = validate_session_id(args.session_id)
-
-    # parse_common_args() exposes --repo-root as `project_root`
-    if getattr(args, "project_root", None):
-        os.environ["AGENTS_PROJECT_ROOT"] = str(args.project_root)
-
-    if args.limit == 0:
-        try:
-            manifest = io_read_json(project_cfg_dir() / "manifest.json")
-            limit = int(manifest.get("orchestration", {}).get("maxConcurrentAgents", 5))
-        except Exception:
-            limit = 5
-    else:
-        limit = args.limit
-
-    with SessionContext.in_session_worktree(session_id):
-        payload = compute_next(session_id, args.scope, limit)
-
-    if getattr(args, "completion_only", False):
-        payload = _reduce_payload_to_completion_only(payload)
-
-    if args.json:
-        print(output_json(payload))
-    else:
-        # Enhanced human-readable output with rules, validators, delegation details
-        print(format_human_readable(payload))
-
-
-if __name__ == "__main__":
-    sys.exit(main())

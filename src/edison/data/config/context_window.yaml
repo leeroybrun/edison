@@ -7,10 +7,45 @@ context_window:
   reminders:
     enabled: true
 
+  # Prompt injection settings for prompt-driven clients (Pal, Codex).
+  prompts:
+    # Whether to inject CWAM guidance into composed prompts.
+    inject: true
+    # Rule context to use for CWAM guidance lookup.
+    ruleContext: context_window
+
   # Output truncation is primarily implemented in OpenCode via plugin hooks (task 040).
   truncation:
     enabled: false
     maxChars: 20000
     headerLines: 30
     notice: "[truncated by Edison]"
+
+  # Compaction settings (task 044)
+  compaction:
+    # The rule ID for compaction summary-shape guidance
+    summaryShapeRuleId: RULE.CONTEXT.CWAM_REASSURANCE
+
+    # Preemptive compaction (OpenCode only) - compact before hitting limits
+    preemptive:
+      enabled: true
+      # Threshold as percentage of estimated context limit (0.0 - 1.0)
+      threshold: 0.70
+      # Minimum seconds between preemptive compactions
+      cooldownSeconds: 120
+
+    # Recovery compaction (OpenCode only) - compact on token-limit errors
+    recovery:
+      enabled: true
+      # Max recovery attempts before giving up
+      maxAttempts: 3
+      # Error patterns to detect token-limit errors (provider-specific)
+      # These are regex patterns matched against error messages
+      errorPatterns:
+        - "context.length"
+        - "token.*limit"
+        - "context.*too.*long"
+        - "max.*tokens"
+        - "context.*window"
+        - "rate.*limit.*tokens"
 

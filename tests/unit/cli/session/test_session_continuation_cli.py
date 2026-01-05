@@ -100,3 +100,24 @@ def test_session_continuation_show_emits_effective_config(isolated_project_env: 
     payload = json.loads(out)
     effective = payload.get("effective") or {}
     assert effective.get("mode") == "off"
+
+
+def test_compute_continuation_view_ignores_none_overrides() -> None:
+    """None overrides should not clobber defaults or raise casting errors."""
+    from edison.cli.session.continuation._core import compute_continuation_view
+
+    cfg = {
+        "enabled": True,
+        "defaultMode": "soft",
+        "budgets": {"maxIterations": 5, "cooldownSeconds": 10, "stopOnBlocked": True},
+    }
+    meta = {
+        "enabled": None,
+        "mode": None,
+        "maxIterations": None,
+        "cooldownSeconds": None,
+        "stopOnBlocked": None,
+    }
+
+    view = compute_continuation_view(continuation_cfg=cfg, meta_continuation=meta)
+    assert view.effective == view.defaults

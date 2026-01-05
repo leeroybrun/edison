@@ -17,6 +17,13 @@ continuation:
   # Completion policy used by `edison session next` (implemented in downstream task 034).
   completionPolicy: parent_validated_children_done
 
+  # Prompt injection settings for prompt-driven clients (Pal, Codex).
+  prompts:
+    # Whether to inject continuation guidance into composed prompts.
+    inject: true
+    # Rule context to use for continuation guidance lookup.
+    ruleContext: continuation
+
   # Prompt templates for client injection (kept short/deterministic).
   templates:
     continuationPrompt: |

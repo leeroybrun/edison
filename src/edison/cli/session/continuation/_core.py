@@ -35,13 +35,25 @@ def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continua
     ov = _safe_dict(meta_continuation) if meta_continuation is not None else {}
     override = dict(ov) if ov else None
 
+    enabled_override = ov.get("enabled") if "enabled" in ov else None
+    mode_override = ov.get("mode") if "mode" in ov else None
+    max_iterations_override = ov.get("maxIterations") if "maxIterations" in ov else None
+    cooldown_seconds_override = ov.get("cooldownSeconds") if "cooldownSeconds" in ov else None
+    stop_on_blocked_override = ov.get("stopOnBlocked") if "stopOnBlocked" in ov else None
+
     effective = {
-        "enabled": bool(ov.get("enabled")) if "enabled" in ov else defaults["enabled"],
-        "mode": str(ov.get("mode") or defaults["mode"]),
+        "enabled": bool(enabled_override) if enabled_override is not None else defaults["enabled"],
+        "mode": str(mode_override) if mode_override is not None else defaults["mode"],
         "budgets": {
-            "maxIterations": int(ov.get("maxIterations")) if "maxIterations" in ov else defaults["budgets"]["maxIterations"],
-            "cooldownSeconds": int(ov.get("cooldownSeconds")) if "cooldownSeconds" in ov else defaults["budgets"]["cooldownSeconds"],
-            "stopOnBlocked": bool(ov.get("stopOnBlocked")) if "stopOnBlocked" in ov else defaults["budgets"]["stopOnBlocked"],
+            "maxIterations": int(max_iterations_override)
+            if max_iterations_override is not None
+            else defaults["budgets"]["maxIterations"],
+            "cooldownSeconds": int(cooldown_seconds_override)
+            if cooldown_seconds_override is not None
+            else defaults["budgets"]["cooldownSeconds"],
+            "stopOnBlocked": bool(stop_on_blocked_override)
+            if stop_on_blocked_override is not None
+            else defaults["budgets"]["stopOnBlocked"],
         },
     }
     if not effective["enabled"]:
@@ -51,4 +63,3 @@ def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continua
 
 
 __all__ = ["ContinuationView", "compute_continuation_view"]
-

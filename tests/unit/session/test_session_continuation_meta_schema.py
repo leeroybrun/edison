@@ -10,29 +10,24 @@ from tests.helpers.paths import get_repo_root
 
 def _load_real_jsonschema():
     """Load jsonschema from site-packages, bypassing the core stub."""
-    sys.modules.pop("jsonschema", None)
-    core_path = get_repo_root()
-    original_path = list(sys.path)
-    cleaned_path = []
-    for entry in sys.path:
-        try:
-            if Path(entry).resolve().samefile(core_path):
-                continue
-        except Exception:
-            pass
-        cleaned_path.append(entry)
-    sys.path = cleaned_path
-
     import importlib
 
-    module = importlib.import_module("jsonschema")
-    sys.path = original_path
-    return module
-
-
-_jsonschema = _load_real_jsonschema()
-validate = _jsonschema.validate  # type: ignore[attr-defined]
-ValidationError = _jsonschema.ValidationError  # type: ignore[attr-defined]
+    sys.modules.pop("jsonschema", None)
+    core_path = get_repo_root().resolve()
+    original_path = list(sys.path)
+    try:
+        cleaned_path: list[str] = []
+        for entry in original_path:
+            try:
+                if Path(entry).resolve().samefile(core_path):
+                    continue
+            except (OSError, FileNotFoundError):
+                pass
+            cleaned_path.append(entry)
+        sys.path = cleaned_path
+        return importlib.import_module("jsonschema")
+    finally:
+        sys.path = original_path
 
 
 def _load_schema() -> dict:
@@ -63,6 +58,7 @@ def _write_session(tmp_path: Path, payload: dict) -> dict:
 
 
 def test_session_allows_meta_continuation_object(tmp_path: Path) -> None:
+    jsonschema = _load_real_jsonschema()
     schema = _load_schema()
     session = _base_session()
     session["meta"]["continuation"] = {
@@ -73,10 +69,11 @@ def test_session_allows_meta_continuation_object(tmp_path: Path) -> None:
     }
 
     payload = _write_session(tmp_path, session)
-    validate(instance=payload, schema=schema)
+    jsonschema.validate(instance=payload, schema=schema)
 
 
 def test_session_continuation_object_rejects_unknown_fields(tmp_path: Path) -> None:
+    jsonschema = _load_real_jsonschema()
     schema = _load_schema()
     session = _base_session()
     session["meta"]["continuation"] = {
@@ -85,16 +82,16 @@ def test_session_continuation_object_rejects_unknown_fields(tmp_path: Path) -> N
     }
 
     payload = _write_session(tmp_path, session)
-    with pytest.raises(ValidationError):
-        validate(instance=payload, schema=schema)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=payload, schema=schema)
 
 
 def test_session_meta_still_rejects_unknown_fields(tmp_path: Path) -> None:
+    jsonschema = _load_real_jsonschema()
     schema = _load_schema()
     session = _base_session()
     session["meta"]["notAllowed"] = True
 
     payload = _write_session(tmp_path, session)
-    with pytest.raises(ValidationError):
-        validate(instance=payload, schema=schema)
-
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=payload, schema=schema)
