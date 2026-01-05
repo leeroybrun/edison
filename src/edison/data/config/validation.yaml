@@ -137,7 +137,7 @@ validation:
       fallback_engine: pal-mcp
       prompt: "_generated/validators/global.md"
       wave: global
-      always_run: true
+      always_run: false
       blocking: false  # Non-blocking, consensus reinforcement
       timeout: 300
       context7_required: true
@@ -239,21 +239,16 @@ validation:
     standard:
       name: standard
       description: "Standard validation for code changes"
-      validators:
-        - security
-        - performance
+      validators: []
       # NOTE: required evidence is intentionally NOT specified here.
       # The resolver will apply baseline automation evidence from `validation.evidence.requiredFiles`.
-      blocking_validators:
-        - security
-        - performance
+      blocking_validators: []
 
     # Strict preset: heavier validation for high-risk changes
     strict:
       name: strict
       description: "Comprehensive validation for critical changes"
       validators:
-        - global-gemini
         - security
         - performance
         - coderabbit
@@ -266,6 +261,8 @@ validation:
       blocking_validators:
         - security
         - performance
+        - coderabbit
+
 
   # Preset inference rules - determine preset from file patterns
   presetInference:
@@ -315,6 +312,7 @@ validation:
     ignorePatterns:
       - "{PROJECT_MANAGEMENT_DIR}/**"
       - "{PROJECT_CONFIG_DIR}/_generated/**"
+      - "AGENTS.md"
 
   # Session ID to use for validation transactions when no active session exists
   defaultSessionId: "validation-session"
