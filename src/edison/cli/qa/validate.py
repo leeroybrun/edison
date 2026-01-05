@@ -585,7 +585,11 @@ def _compute_bundle_summary(
             if not vid:
                 continue
             cfg = validator_registry.get(vid)
-            if cfg is not None and bool(getattr(cfg, "blocking", False)):
+            if (
+                cfg is not None
+                and bool(getattr(cfg, "enabled", True))
+                and bool(getattr(cfg, "blocking", False))
+            ):
                 blocking_ids.add(vid)
     except Exception:
         pass
