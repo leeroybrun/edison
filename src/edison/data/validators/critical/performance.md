@@ -7,9 +7,7 @@
 
 ---
 
-## Constitution (Re-read on compact)
-
-Re-read the validator constitution from: `.edison/_generated/constitutions/VALIDATORS.md`.
+{{include:snippets/validator-constitution.md}}
 
 ---
 

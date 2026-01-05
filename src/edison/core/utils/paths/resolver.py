@@ -179,13 +179,6 @@ def resolve_project_root() -> Path:
             f"git rev-parse --show-toplevel resolved to non-existent path: {path}"
         )
 
-    # Worktree-aware: if this is a git worktree checkout, prefer the outer/common
-    # root that owns the shared `.git` directory so config/state resolution is
-    # consistent across worktrees.
-    common_root = _try_resolve_git_common_root(cwd=cwd)
-    if common_root is not None and common_root != path:
-        path = common_root
-
     # If git reports the .edison directory as the toplevel, we are most
     # likely running inside the Edison framework checkout that lives
     # inside a larger project repository. In that case, treat the owning

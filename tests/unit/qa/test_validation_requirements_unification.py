@@ -41,8 +41,8 @@ def test_validator_registry_roster_accepts_preset_override_and_applies_blocking_
     by_id = {v["id"]: v for v in always_required}
 
     assert by_id["security"]["blocking"] is True
-    # Deep preset includes performance but does NOT list it as blocking.
-    assert by_id["performance"]["blocking"] is False
+    # Deep preset includes performance and lists it as blocking for session-close validation.
+    assert by_id["performance"]["blocking"] is True
 
 
 @pytest.mark.qa
@@ -53,4 +53,3 @@ def test_session_close_uses_configured_preset() -> None:
     policy = get_session_close_policy(project_root=Path(get_repo_root()))
     assert policy.preset.name == "deep"
     assert "command-test-full.txt" in (policy.required_evidence or [])
-
