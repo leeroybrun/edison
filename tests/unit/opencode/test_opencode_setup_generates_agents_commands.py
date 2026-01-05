@@ -108,3 +108,34 @@ def test_opencode_agent_templates_have_valid_frontmatter(isolated_project_env: P
     frontmatter = frontmatter_match.group(1)
     assert "description:" in frontmatter
     assert "mode:" in frontmatter
+
+
+def test_opencode_generated_agents_use_provider_slash_model_format(
+    isolated_project_env: Path,
+) -> None:
+    """OpenCode agent templates should use provider/model format (e.g., anthropic/claude-...)."""
+    from edison.cli.opencode.setup import main
+    import re
+    import yaml  # type: ignore
+
+    args = _parse_setup_args(isolated_project_env, "--yes", "--agents")
+    rc = main(args)
+    assert rc == 0
+
+    agent_dir = isolated_project_env / ".opencode" / "agent"
+    agent_paths = [
+        agent_dir / "edison-orchestrator.md",
+        agent_dir / "edison-agent.md",
+        agent_dir / "edison-validator.md",
+    ]
+
+    for path in agent_paths:
+        content = path.read_text(encoding="utf-8")
+        match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+        assert match, f"{path.name} should have frontmatter"
+        frontmatter = match.group(1)
+        parsed = yaml.safe_load(frontmatter) or {}
+        assert isinstance(parsed, dict), f"{path.name} frontmatter should parse as YAML mapping"
+        model = parsed.get("model")
+        assert isinstance(model, str) and model.strip(), f"{path.name} should define a model"
+        assert "/" in model, f"{path.name} model should be provider/model, got: {model!r}"
