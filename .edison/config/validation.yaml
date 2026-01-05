@@ -14,19 +14,16 @@ validation:
       name: fast
       description: "Fast per-task validation for iteration (Edison repo)"
       validators:
-        - global-codex
         - global-claude
         - global-coderabbit
       # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
-        - global-codex
         - global-claude
 
     deep:
       name: deep
       description: "Deep validation required before session close (Edison repo)"
       validators:
-        - global-codex
         - global-claude
         - security
         - performance
@@ -36,11 +33,27 @@ validation:
         - command-test-full.txt
         - command-build.txt
       blocking_validators:
-        - global-codex
         - global-claude
         - security
+        - performance
 
   validators:
+    # Edison repo default: avoid running Codex CLI validators as hard blockers.
+    # In practice, Codex CLI can take >10 minutes per run in large worktrees.
+    # Projects that want Codex CLI validation should override this in their own
+    # `.edison/config/validation.yaml`.
+    global-codex:
+      enabled: false
+
+    # Run critical validators with Claude CLI by default for reliability.
+    security:
+      engine: claude-cli
+      timeout: 300
+
+    performance:
+      engine: claude-cli
+      timeout: 300
+
     global-coderabbit:
       name: "CodeRabbit AI Review (Global)"
       engine: coderabbit-cli
