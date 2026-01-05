@@ -28,19 +28,16 @@ hooks:
       type: UserPromptSubmit
       hook_type: prompt
       enabled: true
-      description: "Inject rules for current task state"
+      description: "Inject Edison-rendered rules for current task state"
       template: "inject-task-rules.sh.template"
       config:
         # Core must remain tech-agnostic. Packs/projects may narrow this.
         # "*" means the hook can apply regardless of stack (if enabled/configured).
         file_patterns:
           - "*"
-        # Rules by task state
-        rules_by_state:
-          todo: []
-          wip: [tdd-workflow, testing-patterns]
-          done: [validation-checklist]
-          validated: []
+        # Rules are now resolved via `edison rules inject --transition` API.
+        # The hook maps task state to workflow transitions (e.g., wip -> "wip->done").
+        # Transition rules are defined in workflow.yaml, not here.
 
     # ===== Reminder Hooks (PreToolUse - NON-BLOCKING) =====
 
@@ -162,6 +159,20 @@ hooks:
           - "*.prod.*"
           - "production/*"
 
+    non-interactive-guard:
+      type: PreToolUse
+      hook_type: command
+      matcher: "Bash"
+      enabled: false  # Optional - disabled by default (conservative)
+      blocking: true  # CAN BLOCK if onMatch is configured to "block"
+      description: "Warn or block interactive commands that may hang in non-interactive environments"
+      template: "non-interactive-guard.sh.template"
+      config:
+        # Behavior is controlled by execution.nonInteractive config section.
+        # onMatch: warn (print warning, allow command) or block (exit non-zero)
+        # bannedCommandPatterns: list of patterns to match
+        # env: dict of env vars to recommend (informational)
+
     # ===== Validation Hooks (PostToolUse) =====
 
     check-tests:
@@ -221,14 +232,27 @@ hooks:
       hook_type: command
       enabled: true
       blocking: false
-      description: "Remind agent to re-read constitution after context compaction"
+      description: "Emit session context (with Actor identity) for compaction recovery"
       template: "compaction-reminder.sh.template"
       config:
-        default_role: "agents"
-        message_template: "⚠️ Context compacted. Re-read your constitution at: constitutions/{ROLE}.md"
+        # Notify controls whether the directive reminder is printed.
+        # The Actor stanza in session context provides the exact `edison read` command.
         notify: true
 
     # ===== Stop Hooks =====
+
+    stop-continuation:
+      type: Stop
+      hook_type: command
+      enabled: true
+      blocking: false  # Fail-open: never block, even if Edison is unavailable
+      description: "Inject continuation nudge when session is incomplete (FC/RL assist)"
+      template: "stop-continuation.sh.template"
+      config:
+        # Show "complete" line when session is complete (minimal output)
+        show_complete_line: true
+        # Emit CWAM reassurance line at stop (when enabled in context_window config)
+        emit_cwam: true
 
     stop-validate:
       type: Stop

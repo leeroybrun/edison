@@ -1,0 +1,63 @@
+# Execution Configuration
+# Controls execution safety and non-interactive environment guardrails.
+
+execution:
+  # Non-interactive environment guardrails
+  # Prevents interactive commands from hanging in LLM/agent environments
+  nonInteractive:
+    # Enable non-interactive guardrails
+    enabled: true
+
+    # Environment variables to inject for non-interactive execution
+    # These are merged into tool execution environment when enabled.
+    # Keys are environment variable names, values are their values.
+    env:
+      CI: "1"
+      PAGER: "cat"
+      GIT_PAGER: "cat"
+      DEBIAN_FRONTEND: "noninteractive"
+      TERM: "dumb"
+      NO_COLOR: "1"
+
+    # Banned command patterns
+    # Commands matching these patterns will trigger warnings or blocks.
+    # Patterns are checked as substring matches against the command string.
+    # Use regex patterns (prefixed with ^) for more specific matching.
+    bannedCommandPatterns:
+      # Interactive text editors
+      - "^vim "
+      - "^vim$"
+      - "^vi "
+      - "^vi$"
+      - "^nano "
+      - "^nano$"
+      - "^emacs "
+      - "^emacs$"
+      - "^pico "
+      - "^pico$"
+      # Interactive pagers
+      - "^less "
+      - "^less$"
+      - "^more "
+      - "^more$"
+      # Interactive process viewers
+      - "^top$"
+      - "^htop$"
+      - "^btop$"
+      - "^nmon$"
+      # Interactive git commands (without --no-pager)
+      - "git log$"
+      - "git diff$"
+      - "git show$"
+      # Interactive prompts
+      - " -i "
+      - " --interactive"
+      # Shells that might wait for input
+      - "^bash$"
+      - "^zsh$"
+      - "^sh$"
+
+    # Behavior when a banned command is detected
+    # - "warn": Print warning but allow the command (default, conservative)
+    # - "block": Block the command and return non-zero exit code
+    onMatch: warn

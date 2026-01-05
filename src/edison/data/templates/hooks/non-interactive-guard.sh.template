@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Edison Hook: {{ id }}
+# Type: {{ type }}
+# Description: {{ description }}
+# Blocking: {{ "YES - CAN BLOCK" if blocking else "NO" }}
+
+# Source shared guard and check execution scope
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/_edison_guard.sh" ]]; then
+    # shellcheck source=_edison_guard.sh
+    source "$SCRIPT_DIR/_edison_guard.sh"
+    edison_hook_guard "{{ id }}" "{{ execution_scope }}"
+fi
+
+{% set mgmt_dir = global_config.get("project_management_dir") %}
+SESSION_FILE="{{ mgmt_dir }}/.session-id"
+
+# Parse input JSON (with timeout to prevent hanging)
+INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
+
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  exit 0
+fi
+
+COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
+if [[ -z "$COMMAND" ]]; then
+  exit 0
+fi
+
+{% set exec_cfg = global_config.get("execution", {}) %}
+{% set ni_cfg = exec_cfg.get("nonInteractive", {}) %}
+{% set enabled = ni_cfg.get("enabled", false) %}
+{% set on_match = ni_cfg.get("onMatch", "warn") %}
+{% set patterns = ni_cfg.get("bannedCommandPatterns", []) %}
+{% set env_vars = ni_cfg.get("env", {}) %}
+
+{% if not enabled %}
+# Non-interactive guard is disabled
+exit 0
+{% endif %}
+
+# Check if command matches any banned pattern
+MATCHED=""
+MATCHED_PATTERN=""
+
+{% for p in patterns %}
+{% if p.startswith("^") %}
+# Regex pattern: {{ p }}
+if [[ -z "$MATCHED" ]] && echo "$COMMAND" | grep -qE '{{ p }}'; then
+  MATCHED="true"
+  MATCHED_PATTERN="{{ p }}"
+fi
+{% else %}
+# Substring pattern: {{ p }}
+if [[ -z "$MATCHED" && "$COMMAND" == *"{{ p }}"* ]]; then
+  MATCHED="true"
+  MATCHED_PATTERN="{{ p }}"
+fi
+{% endif %}
+{% endfor %}
+
+if [[ -z "$MATCHED" ]]; then
+  exit 0
+fi
+
+# Command matches a banned pattern
+SESSION_ID=""
+if [[ -f "$SESSION_FILE" ]]; then
+  SESSION_ID=$(cat "$SESSION_FILE" 2>/dev/null | head -1 || echo "")
+fi
+
+echo ""
+{% if on_match == "block" %}
+echo "BLOCKED: Interactive command detected"
+{% else %}
+echo "WARNING: Interactive command detected"
+{% endif %}
+echo ""
+echo "Command:"
+echo "  $COMMAND"
+echo ""
+echo "Matched pattern:"
+echo "  $MATCHED_PATTERN"
+echo ""
+echo "This command may hang in non-interactive environments (LLMs, agents)."
+echo ""
+echo "Recommendations:"
+echo "  - Use non-interactive alternatives (e.g., 'cat' instead of 'less')"
+echo "  - Add non-interactive flags (--yes, --no-pager, --quiet)"
+echo "  - Set environment variables for non-interactive mode:"
+{% for key, value in env_vars.items() %}
+echo "      export {{ key }}={{ value }}"
+{% endfor %}
+echo ""
+
+# Emit audit event (best-effort, fail-open)
+if [[ -n "$SESSION_ID" ]]; then
+  edison audit event "hook.non-interactive-guard.matched" \
+    --repo-root "$PWD" \
+    --session "$SESSION_ID" \
+    --field "hook_id={{ id }}" \
+    --field "command=$COMMAND" \
+    --field "pattern=$MATCHED_PATTERN" \
+    --field "action={{ on_match }}" 2>/dev/null || true
+fi
+
+{% if on_match == "block" %}
+# Block mode: exit non-zero to prevent command execution
+exit 2
+{% else %}
+# Warn mode: allow command to proceed
+exit 0
+{% endif %}

@@ -23,6 +23,11 @@ session:
         - currentTaskState
         - activePacks
         - constitutions
+        - actorKind
+        - actorId
+        - actorConstitution
+        - actorReadCmd
+        - actorResolution
     render:
       markdown:
         enabled: true
@@ -35,6 +40,7 @@ session:
           - worktreePath
           - currentTask
           - activePacks
+          - actor
       next:
         enabled: true
         heading: "Edison Context:"
@@ -46,6 +52,7 @@ session:
           - worktreePath
           - currentTask
           - activePacks
+          - actor
   # Human-readable `edison session next` output configuration.
   next:
     output:
