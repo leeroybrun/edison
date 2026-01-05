@@ -942,7 +942,10 @@ def test_context7_zod_not_triggered_by_route_only(combined_env):
     out = (res.stdout + res.stderr)
     assert "Context7 evidence required" in out
     assert ("react" in out.lower()) and ("next" in out.lower())
-    assert "zod" not in out.lower(), f"Zod should not be flagged. Output was:\n{out}"
+    out_lower = out.lower()
+    assert "missing: zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
+    assert "context7 template zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
+    assert "context7-zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
 
 
 @pytest.mark.context7

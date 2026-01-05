@@ -218,7 +218,8 @@ def detect_packages(task_path: Path, session: Optional[Dict]) -> Set[str]:
 def detect_packages_detailed(task_path: Path, session: Optional[Dict]) -> Dict[str, Any]:
     """Detect packages and return a detailed detection trace."""
     candidates, used_fallback = _collect_candidate_files_with_trace(task_path, session)
-    packages = _detect_packages_from_candidates(candidates, _load_triggers())
+    # Include content-based detection so detailed traces match enforcement behavior.
+    packages = detect_packages(task_path, session)
     return {
         "packages": sorted(packages),
         "candidates": list(candidates),

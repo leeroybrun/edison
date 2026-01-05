@@ -767,15 +767,26 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     # Should succeed (all validators approved)
     assert_command_success(validate_result)
 
-    # Verify bundle-summary.md exists ONLY under parent evidence directory
+    # Verify bundle-summary.md exists under parent evidence directory
     parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-summary.md"
     assert_file_exists(parent_bundle)
 
-    # Verify children do NOT have individual bundle-summary.md
+    # Bundle validation runs once at the root, but Edison mirrors the bundle summary into
+    # each cluster member's latest round so per-task guards can reason deterministically.
     child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-summary.md"
     child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-summary.md"
-    assert not child1_bundle.exists()
-    assert not child2_bundle.exists()
+    assert_file_exists(child1_bundle)
+    assert_file_exists(child2_bundle)
+
+    child1_data = parse_frontmatter(child1_bundle.read_text()).frontmatter
+    assert child1_data.get("taskId") == child1_id
+    assert child1_data.get("rootTask") == parent_id
+    assert child1_data.get("approved") is True
+
+    child2_data = parse_frontmatter(child2_bundle.read_text()).frontmatter
+    assert child2_data.get("taskId") == child2_id
+    assert child2_data.get("rootTask") == parent_id
+    assert child2_data.get("approved") is True
 
     # Verify parent bundle contains approvals for all tasks in cluster
     bundle_data = parse_frontmatter(parent_bundle.read_text()).frontmatter

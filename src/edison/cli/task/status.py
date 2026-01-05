@@ -297,6 +297,19 @@ def main(args: argparse.Namespace) -> int:
             except Exception:
                 path_display = ""
 
+            active_session_id = None
+            if not formatter.json_mode:
+                active_session_id = resolve_session_id(project_root=project_root, required=False)
+                if (
+                    getattr(entity, "session_id", None)
+                    and str(entity.session_id) != str(active_session_id or "")
+                    and path_display
+                ):
+                    print(
+                        f"Note: record is session-scoped (session={entity.session_id}) at {path_display}",
+                        file=sys.stderr,
+                    )
+
             try:
                 from edison.core.qa.evidence import EvidenceService
 

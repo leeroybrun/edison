@@ -69,6 +69,12 @@ class CompositionContext:
     # markers, but include-only fragments (e.g. guidelines/includes/**) must retain
     # SECTION markers so downstream {{include-section:...}} works on composed output.
     strip_section_markers: bool = True
+    # Whether to protect markdown code fences from template execution.
+    #
+    # Most Edison-authored artifacts include code fences that are *examples* and
+    # must remain literal. Prompt templates (agents/validators) include code
+    # fences that are intended to be runnable, so those content types opt out.
+    protect_code_literals: bool = True
     context_vars: Dict[str, Any] = field(default_factory=dict)
 
     def get_config(self, path: str) -> Any:

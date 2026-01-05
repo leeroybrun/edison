@@ -48,15 +48,24 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
     _write_validator_report(ev, "global-codex", "codex", verdict="approve")
     _write_validator_report(ev, "global-claude", "claude", verdict="approve")
 
-    # Run validate → must fail due to missing blocking approvals (e.g. security/performance)
-    res_fail = run_script("validators/validate", [task_id, "--execute"], cwd=project_dir.tmp_path)
+    # Compute approval from existing evidence (no validator execution) → must fail due to
+    # missing blocking approvals (e.g. security/performance).
+    res_fail = run_script(
+        "validators/validate",
+        [task_id, "--preset", "strict", "--check-only"],
+        cwd=project_dir.tmp_path,
+    )
     assert res_fail.returncode != 0, f"Expected failure, got stdout:\n{res_fail.stdout}\nstderr:\n{res_fail.stderr}"
 
     # Now add the remaining core blocking reports and re-run → succeed
     _write_validator_report(ev, "security", "codex", verdict="approve")
     _write_validator_report(ev, "performance", "codex", verdict="approve")
 
-    res_ok = run_script("validators/validate", [task_id, "--execute"], cwd=project_dir.tmp_path)
+    res_ok = run_script(
+        "validators/validate",
+        [task_id, "--preset", "strict", "--check-only"],
+        cwd=project_dir.tmp_path,
+    )
     assert_command_success(res_ok)
 
 
