@@ -62,7 +62,7 @@ def test_cli_engine_places_prompt_arg_immediately_after_dash_subcommand() -> Non
 
 
 def test_cli_engine_adds_cd_flag_when_run_from_project_root() -> None:
-    """When run_from_project_root is set, --cd should be added before pre_flags.
+    """When run_from_project_root is set, cd_flag should be added before pre_flags.
 
     This allows the sandbox to include all worktrees while the CLI works
     in the correct worktree directory.
@@ -72,6 +72,7 @@ def test_cli_engine_adds_cd_flag_when_run_from_project_root() -> None:
         {
             "type": "cli",
             "command": "codex",
+            "cd_flag": "--cd",
             "pre_flags": ["--sandbox", "workspace-write"],
             "subcommand": "exec",
             "output_flags": ["--json"],
