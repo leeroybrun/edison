@@ -85,6 +85,10 @@ class LayerContext:
     # Overlay layers (e.g., company → user → project)
     overlay_layers: tuple[tuple[str, Path], ...]
 
+    # Vendor roots (external checkout directories)
+    # Precedence: core < vendors < packs < overlay layers
+    vendor_roots: tuple[tuple[str, Path], ...] = ()
+
     @property
     def bundled_packs_dir(self) -> Path:
         for r in self.pack_roots:
@@ -226,7 +230,31 @@ class CompositionPathResolver:
     def pack_roots(self) -> tuple[PackRoot, ...]:
         """Pack roots in low→high precedence order (bundled + all overlay layers)."""
         return self.layer_stack.pack_roots()
-    
+
+    @property
+    def vendor_roots(self) -> list[tuple[str, Path]]:
+        """Vendor roots in low→high precedence order (from vendors.yaml).
+
+        Returns only vendors whose checkout directory exists.
+        These roots participate in composition discovery:
+            core < vendors < packs < overlay layers
+        """
+        try:
+            from edison.core.vendors.config import VendorConfig
+            from edison.core.vendors.exceptions import VendorConfigError
+
+            cfg = VendorConfig(repo_root=self.repo_root)
+            sources = cfg.get_sources()
+            result: list[tuple[str, Path]] = []
+            for source in sources:
+                vendor_path = self.repo_root / source.path
+                if vendor_path.is_dir():
+                    result.append((source.name, vendor_path))
+            return result
+        except (ImportError, VendorConfigError):
+            # If vendors module is unavailable or config fails, return empty
+            return []
+
     @property
     def uses_bundled_data(self) -> bool:
         """Always True - core content is always from bundled data."""
@@ -274,6 +302,7 @@ class CompositionPathResolver:
             project_local_config_dir=project_local_config_dir,
             pack_roots=pack_roots,
             overlay_layers=tuple((l.id, l.path) for l in stack.layers),
+            vendor_roots=tuple(self.vendor_roots),
         )
         return self._layer_context
 
