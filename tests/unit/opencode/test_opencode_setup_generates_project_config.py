@@ -28,6 +28,10 @@ def test_opencode_setup_generates_opencode_json(isolated_project_env: Path) -> N
     content = json.loads(config_path.read_text(encoding="utf-8"))
     assert "$schema" in content, "Should include $schema for validation"
 
+    schema_path = isolated_project_env / ".opencode" / "schema" / "opencode-config.schema.json"
+    assert schema_path.exists(), "Schema should be vendored locally for stable validation"
+    assert content["$schema"].endswith(".opencode/schema/opencode-config.schema.json")
+
 
 def test_opencode_setup_generates_plugin_package_json(isolated_project_env: Path) -> None:
     """Setup with --plugin-deps should generate .opencode/package.json."""
@@ -67,6 +71,9 @@ def test_opencode_setup_all_includes_config_files(isolated_project_env: Path) ->
 
     # Plugin deps should exist
     assert (isolated_project_env / ".opencode" / "package.json").exists()
+
+    # Local schema should exist
+    assert (isolated_project_env / ".opencode" / "schema" / "opencode-config.schema.json").exists()
 
 
 def test_opencode_json_has_safe_defaults(isolated_project_env: Path) -> None:

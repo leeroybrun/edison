@@ -1,5 +1,5 @@
 {
-  "$schema": "https://opencode.ai/schemas/opencode.json",
+  "$schema": "./.opencode/schema/opencode-config.schema.json",
   "plugins": {
     "directory": ".opencode/plugin"
   },

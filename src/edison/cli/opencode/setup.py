@@ -146,6 +146,11 @@ def _render_config_template(*, repo_root: Path) -> str:
     return render_template_text(template, {"repo_root": str(repo_root)})
 
 
+def _render_schema_template() -> str:
+    """Render the vendored OpenCode JSON schema (static)."""
+    return data_read_text("templates", "opencode/schema/opencode-config.schema.json")
+
+
 def _render_package_template(*, repo_root: Path) -> str:
     """Render the .opencode/package.json template."""
     template = data_read_text("templates", "opencode/package.json.template")
@@ -156,6 +161,13 @@ def _collect_config_changes(repo_root: Path) -> list[dict[str, str]]:
     """Collect changes for opencode.json config."""
     target = repo_root / "opencode.json"
     desired = _render_config_template(repo_root=repo_root)
+    return [_compute_change(target, desired)]
+
+
+def _collect_schema_changes(repo_root: Path) -> list[dict[str, str]]:
+    """Collect changes for vendored OpenCode JSON schema."""
+    target = repo_root / ".opencode" / "schema" / "opencode-config.schema.json"
+    desired = _render_schema_template()
     return [_compute_change(target, desired)]
 
 
@@ -195,6 +207,7 @@ def main(args: argparse.Namespace) -> int:
             all_changes.extend(_collect_command_changes(repo_root))
         if gen_config:
             all_changes.extend(_collect_config_changes(repo_root))
+            all_changes.extend(_collect_schema_changes(repo_root))
         if gen_plugin_deps:
             all_changes.extend(_collect_plugin_deps_changes(repo_root))
 
@@ -285,4 +298,3 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     register_args(parser)
     sys.exit(main(parser.parse_args()))
-
