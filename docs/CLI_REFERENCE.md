@@ -1339,6 +1339,32 @@ edison task relate 150-auth-feature 151-login-ui --remove
 
 ---
 
+### task bundle - Group Tasks for Bundle Validation
+
+Group arbitrary tasks into a **validation bundle** (without creating “fake parent tasks”).
+
+```bash
+edison task bundle <subcommand> ...
+```
+
+**Subcommands:**
+
+- `add --root <root> <member...>` - Set `bundle_root` on each member task
+- `remove <member...>` - Clear `bundle_root` on each member task
+- `show <task>` - Show the resolved root + member list for a task
+
+**Examples:**
+
+```bash
+# Create a validation bundle
+edison task bundle add --root 150-auth-feature 151-login-ui 152-login-api
+
+# Validate once at the bundle root
+edison qa validate 150-auth-feature --scope bundle --execute
+```
+
+---
+
 ### task split - Split Task
 
 Split a task into multiple subtasks.
@@ -1553,13 +1579,17 @@ edison qa validate <task_id> [options]
 
 | Option | Description |
 |--------|-------------|
+| `--scope` | Bundle scope: `auto`, `hierarchy`, or `bundle` (recommended for validating small related tasks together) |
 | `--session` | Session ID context |
 | `--round` | Validation round number (default: create new round) |
+| `--new-round` | Create a new evidence round directory and run validators in it |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
+| `--preset` | Validation preset override (e.g., `fast`, `standard`, `strict`, `deep`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
 | `--add-validators` | Extra validators to add: `react` (default wave) or `critical:react` (specific wave) |
 | `--blocking-only` | Only run blocking validators |
 | `--execute` | Execute validators directly (default: show roster only) |
+| `--check-only` | Do not execute validators; compute approval from existing evidence and emit the bundle summary file |
 | `--sequential` | Run validators sequentially instead of in parallel |
 | `--dry-run` | Show what would be executed without running |
 | `--max-workers` | Maximum parallel workers (default: 4) |
@@ -1581,6 +1611,9 @@ edison qa validate 150-auth-feature
 
 # Execute validators directly via CLI engines
 edison qa validate 150-auth-feature --execute
+
+# Validate a bundle of related tasks (defined via `bundle_root`)
+edison qa validate 150-auth-feature --scope bundle --execute
 
 # Show what would be executed
 edison qa validate 150-auth-feature --dry-run
@@ -1660,6 +1693,8 @@ edison qa bundle <task_id> [options]
 
 | Option | Description |
 |--------|-------------|
+| `--scope` | Bundle scope: `auto`, `hierarchy`, or `bundle` |
+| `--session` | Session ID context |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1674,6 +1709,9 @@ edison qa bundle <task_id> [options]
 ```bash
 # Create QA bundle
 edison qa bundle 150-auth-feature
+
+# Create bundle manifest for a validation bundle (task + bundle_root members)
+edison qa bundle 150-auth-feature --scope bundle
 
 # Get JSON output
 edison qa bundle 150-auth-feature --json

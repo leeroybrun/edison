@@ -254,6 +254,12 @@ Description: [Task Description]
 # Run all validators for task
 edison qa validate <task-id>
 
+# Validate a group of small related tasks as one bundle (recommended)
+# 1) Define bundle membership (no "fake parent tasks"):
+edison task bundle add --root <root-task> <member-task-1> <member-task-2>
+# 2) Run validation once at the bundle root:
+edison qa validate <root-task> --scope bundle --execute
+
 # Run specific validator
 edison qa run <validator-name> --task <task-id>
 ```
@@ -280,6 +286,10 @@ edison qa run <validator-name> --task <task-id>
    ├── validator-*-report.md
    └── context7-*.md
    ```
+
+**Bundle scopes (hierarchy vs bundle):**
+- `--scope hierarchy`: validate a task and its parent/child descendants (work decomposition)
+- `--scope bundle`: validate a task plus its `bundle_root` members (validation grouping)
 
 **Validator configuration:**
 ```yaml

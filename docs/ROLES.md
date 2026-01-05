@@ -54,6 +54,7 @@ edison task status <task-id>                 # Check task state
 edison task done <task-id>                   # Promote task to done
 edison task list                             # List tasks
 edison task link <parent> <child>            # Link parent/child tasks
+edison task bundle add --root <root> <member...>  # Group tasks for bundle validation
 edison task split <task-id>                  # Split task into subtasks
 ```
 
