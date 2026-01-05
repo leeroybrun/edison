@@ -37,11 +37,15 @@ validation:
         - "--ask-for-approval"
         - "never"
         - "--sandbox"
-        - "read-only"
+        - "workspace-write"
         - "-c"
         - "shell_environment_policy.inherit=all"
         - "-c"
         - "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"
+      # Run from project root so sandbox includes all worktrees (main + _meta).
+      # The --cd flag points codex to the specific worktree for validation.
+      # This allows audit logs in _meta to be writable from any worktree.
+      run_from_project_root: true
       subcommand: "exec"
       output_flags: ["--json"]
       read_only_flags: []

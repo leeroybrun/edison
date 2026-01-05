@@ -59,3 +59,39 @@ def test_cli_engine_places_prompt_arg_immediately_after_dash_subcommand() -> Non
 
     cmd = engine._build_command(validator, Path("/tmp"), prompt_args=["PROMPT"])
     assert cmd[:5] == ["gemini", "-p", "PROMPT", "--output-format", "json"]
+
+
+def test_cli_engine_adds_cd_flag_when_run_from_project_root() -> None:
+    """When run_from_project_root is set, --cd should be added before pre_flags.
+
+    This allows the sandbox to include all worktrees while the CLI works
+    in the correct worktree directory.
+    """
+    cfg = EngineConfig.from_dict(
+        "codex-cli",
+        {
+            "type": "cli",
+            "command": "codex",
+            "pre_flags": ["--sandbox", "workspace-write"],
+            "subcommand": "exec",
+            "output_flags": ["--json"],
+            "prompt_mode": "stdin",
+            "stdin_prompt_arg": "-",
+            "response_parser": "codex",
+            "run_from_project_root": True,
+        },
+    )
+    project_root = Path("/project/root")
+    engine = CLIEngine(cfg, project_root=project_root)
+    validator = ValidatorMetadata(id="security", name="Security", engine="codex-cli", wave="critical")
+
+    worktree_path = Path("/project/root/.worktrees/session-123")
+    cmd = engine._build_command(validator, worktree_path, prompt_args=["-"])
+
+    # --cd should come first, before pre_flags
+    assert cmd[0] == "codex"
+    assert cmd[1] == "--cd"
+    assert cmd[2] == str(worktree_path.resolve())
+    assert cmd[3:5] == ["--sandbox", "workspace-write"]
+    assert "exec" in cmd
+    assert "--json" in cmd
