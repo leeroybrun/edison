@@ -67,6 +67,50 @@ def test_task_bundle_add_sets_bundle_root_and_qa_bundle_includes_members(
 
 
 @pytest.mark.task
+def test_task_bundle_add_resolves_short_ids_for_root_and_members(
+    isolated_project_env: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(isolated_project_env)
+
+    from edison.core.config.domains.workflow import WorkflowConfig
+    from edison.core.task.models import Task
+    from edison.core.task.repository import TaskRepository
+
+    wf = WorkflowConfig(repo_root=isolated_project_env)
+    repo = TaskRepository(project_root=isolated_project_env)
+
+    root_task_id = "12007-wave1-root"
+    member_task_id = "12008-wave1-member"
+
+    repo.save(Task.create(root_task_id, "Root", state=wf.get_semantic_state("task", "done")))
+    repo.save(Task.create(member_task_id, "Member", state=wf.get_semantic_state("task", "done")))
+
+    from edison.cli.task.bundle.add import main as add_main
+
+    rc = add_main(
+        argparse.Namespace(
+            root="12007",
+            members=["12008"],
+            force=False,
+            json=True,
+            repo_root=str(isolated_project_env),
+        )
+    )
+    assert rc == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload.get("rootTask") == root_task_id
+    assert payload.get("members") == [member_task_id]
+
+    member = repo.get(member_task_id)
+    assert member is not None
+    bundle_edges = [e for e in (member.relationships or []) if isinstance(e, dict) and e.get("type") == "bundle_root"]
+    assert {e.get("target") for e in bundle_edges} == {root_task_id}
+
+
+@pytest.mark.task
 def test_task_bundle_remove_clears_bundle_root(
     isolated_project_env: Path,
     capsys: pytest.CaptureFixture[str],
@@ -155,4 +199,3 @@ def test_task_bundle_show_resolves_root_and_members(
     payload = json.loads(capsys.readouterr().out)
     assert payload.get("rootTask") == root_task_id
     assert set(payload.get("members") or []) == {a, b}
-
