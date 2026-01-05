@@ -16,6 +16,7 @@ from edison.cli import (
     add_json_flag,
     add_repo_root_flag,
     get_repo_root,
+    resolve_existing_task_id,
     resolve_session_id,
 )
 from edison.cli._worktree_enforcement import maybe_enforce_session_worktree
@@ -125,6 +126,12 @@ def main(args: argparse.Namespace) -> int:
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
         if args.execute and args.check_only:
             raise ValueError("Pass only one of --execute or --check-only")
+
+        raw_task_id = str(args.task_id)
+        resolved_task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=raw_task_id)
+        if resolved_task_id != raw_task_id and not formatter.json_mode:
+            print(f"Resolved task id '{raw_task_id}' -> '{resolved_task_id}'", file=sys.stderr)
+        args.task_id = resolved_task_id
 
         # Resolve max workers from config when not explicitly provided.
         max_workers = getattr(args, "max_workers", None)
