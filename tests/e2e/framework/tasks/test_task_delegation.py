@@ -230,10 +230,10 @@ def test_task_session_linking(tmp_path, isolated_project_env):
     task = load_task_record(tid)
     assert task.get('session_id') == sid
 
-    # Session side should include the task id in its metadata (task-side responsibility to register it)
-    from tests.helpers.session import load_session  # late import for clarity
-    sess = load_session(sid)
-    assert 'tasks' in sess and tid in sess['tasks']
+    # Session JSON is not a task index; directory structure is the source of truth.
+    repo = TaskRepository()
+    task_path = repo.get_path(tid)
+    assert sid in str(task_path), f"Expected session-scoped task path, got: {task_path}"
 
 
 def test_delegate_task_updates_parent_child_tasks_list(isolated_project_env):
