@@ -29,6 +29,8 @@ validation:
       name: strict
       description: "Comprehensive validation for critical changes"
       validators:
+        - global-codex
+        - global-claude
         - global-gemini
         - security
         - performance

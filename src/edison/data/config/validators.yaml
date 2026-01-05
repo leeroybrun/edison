@@ -92,7 +92,7 @@ validation:
       wave: global
       always_run: true
       blocking: true
-      timeout: 600
+      timeout: 900
       context7_required: true
       context7_packages: []
       triggers: []
@@ -106,7 +106,7 @@ validation:
       wave: global
       always_run: true
       blocking: true
-      timeout: 300
+      timeout: 600
       context7_required: true
       context7_packages: []
       triggers: []
@@ -149,7 +149,7 @@ validation:
       wave: critical
       always_run: false
       blocking: true
-      timeout: 300
+      timeout: 900
       context7_required: true
       context7_packages: []
       triggers: []
@@ -163,7 +163,7 @@ validation:
       wave: critical
       always_run: false
       blocking: true
-      timeout: 300
+      timeout: 900
       context7_required: true
       context7_packages: []
       triggers: []
@@ -177,7 +177,7 @@ validation:
       wave: comprehensive
       always_run: false
       blocking: false
-      timeout: 600
+      timeout: 1800
       context7_required: false
       context7_packages: []
       triggers: []
