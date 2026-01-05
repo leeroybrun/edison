@@ -37,7 +37,7 @@ validation:
         - "--ask-for-approval"
         - "never"
         - "--sandbox"
-        - "workspace-write"
+        - "read-only"
         - "-c"
         - "shell_environment_policy.inherit=all"
         - "-c"

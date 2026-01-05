@@ -13,7 +13,7 @@ def test_cli_engine_build_command_includes_pre_flags_before_subcommand() -> None
         {
             "type": "cli",
             "command": "codex",
-            "pre_flags": ["--ask-for-approval", "never", "--sandbox", "workspace-write"],
+            "pre_flags": ["--ask-for-approval", "never", "--sandbox", "read-only"],
             "subcommand": "exec",
             "output_flags": ["--json"],
             "prompt_mode": "stdin",
@@ -31,7 +31,7 @@ def test_cli_engine_build_command_includes_pre_flags_before_subcommand() -> None
         "--ask-for-approval",
         "never",
         "--sandbox",
-        "workspace-write",
+        "read-only",
         "exec",
         "--json",
     ]

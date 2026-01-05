@@ -24,7 +24,7 @@ def test_cli_engine_injects_mcp_overrides_for_codex_validator(
         {
             "type": "cli",
             "command": "codex",
-            "pre_flags": ["--sandbox", "workspace-write"],
+            "pre_flags": ["--sandbox", "read-only"],
             "subcommand": "exec",
             "output_flags": ["--json"],
             "prompt_mode": "stdin",
@@ -49,4 +49,3 @@ def test_cli_engine_injects_mcp_overrides_for_codex_validator(
     assert "-c" in cmd
     assert any(v.startswith("mcp_servers.playwright.command=") for v in cmd)
     assert any(v.startswith("mcp_servers.playwright.args=") for v in cmd)
-
