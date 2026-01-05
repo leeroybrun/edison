@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from edison.cli import OutputFormatter, add_repo_root_flag, get_repo_root
@@ -133,6 +134,7 @@ def _render_injection(rules: list[dict[str, Any]]) -> str:
 
 def _get_rules_for_inject(
     engine: RulesEngine,
+    repo_root: Path,
     contexts: list[str] | None = None,
     transition: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -140,6 +142,7 @@ def _get_rules_for_inject(
 
     Args:
         engine: RulesEngine instance
+        repo_root: Repository root used to resolve workflow transition rules
         contexts: List of contexts to filter by
         transition: State transition (e.g., 'wip->done')
 
@@ -154,7 +157,7 @@ def _get_rules_for_inject(
         from_state, sep, to_state = str(transition).partition("->")
         if sep and from_state.strip() and to_state.strip():
             from edison.core.config.domains.workflow import WorkflowConfig
-            workflow_cfg = WorkflowConfig()
+            workflow_cfg = WorkflowConfig(repo_root=repo_root)
             rule_ids = workflow_cfg.get_transition_rules(
                 "task", from_state.strip(), to_state.strip()
             ) or []
@@ -203,7 +206,7 @@ def main(args: argparse.Namespace) -> int:
             config = cfg_mgr.load_config(validate=False)
 
         with span("rules.inject.engine.init"):
-            engine = RulesEngine(config)
+            engine = RulesEngine(config, repo_root=repo_root)
 
         # Extract contexts and transition
         contexts = args.context or []
@@ -217,6 +220,7 @@ def main(args: argparse.Namespace) -> int:
         with span("rules.inject.get_rules"):
             rules = _get_rules_for_inject(
                 engine=engine,
+                repo_root=repo_root,
                 contexts=contexts,
                 transition=transition,
             )

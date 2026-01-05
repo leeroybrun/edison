@@ -31,13 +31,20 @@ class RulesEngine(RulesContextMixin):
     - CLI display configuration for contextual guidance
     """
 
-    def __init__(self, config: Dict[str, Any], packs: Optional[List[str]] = None):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        packs: Optional[List[str]] = None,
+        *,
+        repo_root: Optional[Path] = None,
+    ):
         """
         Initialize rules engine from config.
 
         Args:
             config: Full Edison config (from ConfigManager().load_config())
             packs: Optional list of active packs (defaults to config-based detection)
+            repo_root: Repository root used to resolve composed rules layers
         """
         self.rules_config = config.get("rules", {}) if isinstance(config, dict) else {}
         self.enforcement_enabled = self.rules_config.get("enforcement", True)
@@ -45,7 +52,7 @@ class RulesEngine(RulesContextMixin):
         # Load composed rules from registry (core → packs → user → project)
         from edison.core.rules.registry import RulesRegistry
         with span("rules.engine.init.registry"):
-            self._registry = RulesRegistry()
+            self._registry = RulesRegistry(project_root=repo_root)
         self._packs = packs or self._get_active_packs(config)
         with span("rules.engine.compose", packs=len(self._packs)):
             composed = self._registry.compose(packs=self._packs, resolve_sources=False)
