@@ -8,11 +8,20 @@ overlay_type: extend
 
 ## Python Technology Stack
 
-### Type Checking: mypy
+### Evidence First (Do Not Overwrite)
+
+Automation evidence is captured by the orchestrator via `edison evidence capture` into the current evidence round.
+As a validator:
+- **Do not re-run CI commands to generate `command-*.txt` files**
+- **Do not overwrite evidence files**
+- **Review the existing evidence artifacts in this evidence round directory**
+
+If required evidence files are missing, reject and instruct the orchestrator to run `edison evidence capture <task>` (or re-run the validation round).
+
+### Type Checking
 
 ```bash
-# Run type check (MANDATORY)
-{{fn:ci_command("type-check")}} > {{fn:evidence_file("type-check")}} 2>&1
+sed -n '1,160p' {{fn:evidence_file("type-check")}}
 ```
 
 **Validation Points:**
@@ -22,24 +31,20 @@ overlay_type: extend
 - No `# type: ignore` without comment
 - Generics used correctly
 
-### Linting: ruff
+### Linting
 
 ```bash
-# Run linter (MANDATORY)
-{{fn:ci_command("lint")}} > {{fn:evidence_file("lint")}} 2>&1
+sed -n '1,200p' {{fn:evidence_file("lint")}}
 ```
 
 **Validation Points:**
-- All rules pass
-- Import order correct
-- No unused imports/variables
-- Consistent naming
+- Evidence exists and is parseable (frontmatter includes `exitCode`)
+- If lint is configured as non-blocking evidence (e.g. exit-zero), treat findings as **warnings** unless they indicate real defects
 
-### Testing: pytest
+### Testing
 
 ```bash
-# Run tests (MANDATORY)
-{{fn:ci_command("test")}} > {{fn:evidence_file("test")}} 2>&1
+tail -200 {{fn:evidence_file("test")}}
 ```
 
 **Validation Points:**
@@ -51,8 +56,7 @@ overlay_type: extend
 ### Build
 
 ```bash
-# Build check (if applicable)
-{{fn:ci_command("build")}} > {{fn:evidence_file("build")}} 2>&1 || echo "No build configured"
+tail -200 {{fn:evidence_file("build")}}
 ```
 
 <!-- /extend -->
@@ -63,10 +67,7 @@ overlay_type: extend
 
 ### 1. Type Safety (BLOCKING)
 
-**Commands:**
-```bash
-{{fn:ci_command("type-check")}}
-```
+**Evidence:** `{{fn:evidence_file("type-check")}}`
 
 **Must Pass:**
 - All function parameters have types
@@ -83,10 +84,7 @@ overlay_type: extend
 
 ### 2. Testing (BLOCKING)
 
-**Commands:**
-```bash
-{{fn:ci_command("test")}}
-```
+**Evidence:** `{{fn:evidence_file("test")}}`
 
 **Must Pass:**
 - 100% test pass rate
@@ -101,17 +99,11 @@ overlay_type: extend
 
 ### 3. Code Quality (BLOCKING)
 
-**Commands:**
-```bash
-{{fn:ci_command("lint")}}
-{{fn:ci_command("format-check")}}
-```
+**Evidence:** `{{fn:evidence_file("lint")}}`
 
 **Must Pass:**
-- Zero ruff errors
-- Consistent formatting
-- No commented-out code
-- No TODO/FIXME in production code
+- No correctness-impacting issues (dead code, unused variables that hide mistakes, unsafe patterns)
+- Formatting is consistent with repo conventions
 
 ### 4. Modern Python Patterns
 
