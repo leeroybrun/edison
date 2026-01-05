@@ -169,17 +169,17 @@ def main(args: argparse.Namespace) -> int:
         # that we want by default when actually executing validators. Roster-only and
         # check-only flows should remain fast by default.
         preset_name = getattr(args, "preset", None)
-            if args.execute and not preset_name:
-                try:
-                    from edison.core.config.domains.qa import QAConfig
+        if args.execute and not preset_name:
+            try:
+                from edison.core.config.domains.qa import QAConfig
 
-                    session_close = QAConfig(repo_root=repo_root).validation_config.get("sessionClose", {}) or {}
-                    if isinstance(session_close, dict):
-                        candidate = str(session_close.get("preset") or "").strip()
-                        if candidate:
-                            preset_name = candidate
-                except Exception:
-                    pass
+                session_close = QAConfig(repo_root=repo_root).validation_config.get("sessionClose", {}) or {}
+                if isinstance(session_close, dict):
+                    candidate = str(session_close.get("preset") or "").strip()
+                    if candidate:
+                        preset_name = candidate
+            except Exception:
+                pass
 
         # Build validator roster for display
         roster = validator_registry.build_execution_roster(
