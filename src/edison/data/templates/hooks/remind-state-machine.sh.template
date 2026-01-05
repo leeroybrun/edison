@@ -19,8 +19,11 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool // empty' 2>/dev/null || echo "")
 {% set cfg = config if config is defined else {} %}
 {% set only_for_states = cfg.get("only_for_states", []) %}
 
-# Get current task state from session context
-TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null)
+# Get current task state (prefer session context JSON; fall back to legacy task JSON)
+TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null || true)
+if [[ -z "$TASK_STATE" ]]; then
+  TASK_STATE=$(edison task 2>/dev/null | jq -r '.state // empty' 2>/dev/null || true)
+fi
 if [[ -z "$TASK_STATE" ]]; then
   exit 0  # No active task
 fi

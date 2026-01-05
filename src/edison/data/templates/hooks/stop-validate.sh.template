@@ -22,8 +22,11 @@ echo "Edison Stop Validation..."
 # Run quick validation checks
 ISSUES=0
 
-# Check if task is in valid state (from session context)
-TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null)
+# Check if task is in valid state (prefer session context JSON; fall back to legacy task JSON)
+TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null || true)
+if [[ -z "$TASK_STATE" ]]; then
+  TASK_STATE=$(edison task 2>/dev/null | jq -r '.state // empty' 2>/dev/null || true)
+fi
 if [[ "$TASK_STATE" == "wip" ]]; then
   echo "   ⚠️  Task still in wip state - remember to mark as done"
   ISSUES=$((ISSUES + 1))
