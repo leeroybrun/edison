@@ -79,7 +79,9 @@ validation:
     coderabbit:
       blocking: false
       always_run: false
-      timeout: 1800
+      # CodeRabbit runs are best-effort in local/dev workflows and can hang when
+      # no PR context is available; keep a short timeout so it remains advisory.
+      timeout: 90
 
     # Keep non-required global validators disabled by default in the Edison repo.
     global-gemini:
