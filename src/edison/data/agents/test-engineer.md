@@ -22,6 +22,10 @@ metadata:
 
 {{include:constitutions/agents.md}}
 
+{{if:or(config(context_window.prompts.inject), config(continuation.prompts.inject))}}
+{{include-section:guidelines/includes/CONTINUATION_CWAM.md#embedded}}
+{{/if}}
+
 ---
 
 ## IMPORTANT RULES
