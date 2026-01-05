@@ -66,7 +66,7 @@ class ConfigWriter:
         "database": "defaults.yml",
         "auth": "defaults.yml",
         "packs": "packs.yml",
-        "validators": "validators.yml",
+        "validation": "validation.yaml",
         "agents": "delegation.yml",
         "delegation": "delegation.yml",
         "orchestrators": "orchestrators.yml",

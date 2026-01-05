@@ -220,18 +220,24 @@ def _write_context7(
     both keeps the tests forward-compatible without touching production code.
     """
     if content is None:
-        content = (
-            f"Package: {package}\n"
-            "Topics: core APIs, usage patterns\n"
-            "Retrieved: 2025-01-01\n"
-            "Docs: https://example.com\n"
-        )
+        content = "Notes: Context7 validated.\n"
+
+    from edison.core.utils.text.frontmatter import format_frontmatter
+
+    marker_text = format_frontmatter(
+        {
+            "package": package,
+            "libraryId": f"/test/{package}",
+            "topics": ["core APIs", "usage patterns"],
+            "queriedAt": "2025-01-01T00:00:00Z",
+        }
+    ) + str(content)
 
     # Legacy evidence location (qa/validation-evidence)
     ev_dir = _evidence_dir(project_root, task_id, round_num)
     ev_dir.mkdir(parents=True, exist_ok=True)
     path = ev_dir / f"context7-{package}.txt"
-    path.write_text(content)
+    path.write_text(marker_text)
 
     # Session-scoped marker structure expected by newer enforcement
     if session_id:
@@ -936,7 +942,10 @@ def test_context7_zod_not_triggered_by_route_only(combined_env):
     out = (res.stdout + res.stderr)
     assert "Context7 evidence required" in out
     assert ("react" in out.lower()) and ("next" in out.lower())
-    assert "zod" not in out.lower(), f"Zod should not be flagged. Output was:\n{out}"
+    out_lower = out.lower()
+    assert "missing: zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
+    assert "context7 template zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
+    assert "context7-zod" not in out_lower, f"Zod should not be flagged. Output was:\n{out}"
 
 
 @pytest.mark.context7
@@ -977,7 +986,7 @@ def test_context7_non_git_primary_files_detection(project_dir: TestProjectDir):
 @pytest.mark.context7
 @pytest.mark.fast
 def test_context7_marker_content_validation(project_dir: TestProjectDir):
-    """RED: Marker must contain minimal required fields (topics + date/version)."""
+    """RED: Marker must contain minimal required fields (YAML frontmatter)."""
     task_num, wave, slug = "840", "wave1", "marker-content"
     task_id = f"{task_num}-{wave}-{slug}"
 
@@ -993,10 +1002,10 @@ def test_context7_marker_content_validation(project_dir: TestProjectDir):
     _ensure_impl_validate_ok(project_dir.project_root)
     _ensure_base_evidence(project_dir.project_root, task_id, 1)
 
-    # Write an INVALID marker (no topics/date/version)
+    # Write an INVALID marker (missing required YAML frontmatter fields)
     ev_dir = _evidence_dir(project_dir.project_root, task_id, 1)
     ev_dir.mkdir(parents=True, exist_ok=True)
-    (ev_dir / "context7-react.txt").write_text("Context7 evidence for react\n")
+    (ev_dir / "context7-react.txt").write_text("---\npackage: react\n---\n")
     markers_dir = (
         project_dir.project_root
         / "sessions"
@@ -1019,13 +1028,7 @@ def test_context7_marker_content_validation(project_dir: TestProjectDir):
     assert_command_failure(res_fail)
 
     # Now write a VALID marker and expect success
-    valid = (
-        "Package: react\n"
-        "Topics: server components, suspense patterns\n"
-        "Retrieved: 2025-01-01\n"
-        "Docs: https://example.com\n"
-    )
-    _write_context7(project_dir.project_root, task_id, "react", 1, content=valid, session_id=session_id)
+    _write_context7(project_dir.project_root, task_id, "react", 1, session_id=session_id)
     # Disable TDD for success fast‑path
     env = {"DISABLE_TDD_ENFORCEMENT": "1"}
     res_ok = run_script("tasks/status", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path, env=env)

@@ -14,11 +14,7 @@ from helpers.io_utils import write_text, write_yaml
 def _write_timeout_config(root: Path, default: float = 0.2, file_ops: float = 1.0) -> None:
     cfg = {
         "timeouts": {
-            "git_operations_seconds": 60.0,
-            "db_operations_seconds": 30.0,
             "json_io_lock_seconds": file_ops,
-            "test_execution_seconds": 300.0,
-            "build_operations_seconds": 600.0,
             "default_seconds": default,
         }
     }

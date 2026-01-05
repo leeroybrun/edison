@@ -203,7 +203,17 @@ def format_human_readable(payload: dict[str, Any]) -> str:
                 if items:
                     has_blockers = checklist.get("hasBlockers", False)
                     blocker_icon = "🚫" if has_blockers else "✅"
-                    lines.append(f"\n   {blocker_icon} TASK START CHECKLIST:")
+                    kind = str(checklist.get("kind") or "").strip().lower()
+                    label = "CHECKLIST"
+                    if kind == "task_start":
+                        label = "TASK START CHECKLIST"
+                    elif kind == "session_start":
+                        label = "SESSION START CHECKLIST"
+                    elif kind == "qa_validate_preflight":
+                        label = "QA VALIDATE PREFLIGHT CHECKLIST"
+                    elif kind == "session_close_preflight":
+                        label = "SESSION CLOSE PREFLIGHT CHECKLIST"
+                    lines.append(f"\n   {blocker_icon} {label}:")
                     for item in items:
                         severity = item.get("severity", "info")
                         status = item.get("status", "unknown")

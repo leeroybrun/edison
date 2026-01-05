@@ -1,0 +1,19 @@
+## Pack validation overlay (canonical filename: validation.yaml)
+validation:
+  validators:
+    motion:
+      name: "Motion Validator"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/motion.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: ["+", "motion"]
+      triggers:
+        - "**/*.tsx"
+        - "**/*.jsx"
+      focus: []
+

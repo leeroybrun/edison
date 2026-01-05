@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Manage Context7 marker files"
 
@@ -63,7 +64,8 @@ def _handle_template(args: argparse.Namespace) -> int:
 
 
 def _handle_save(args: argparse.Namespace, formatter: OutputFormatter, project_root: Path) -> int:
-    task_id = str(args.task_id)
+    raw_task_id = str(args.task_id)
+    task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
     package = str(args.package).strip()
     library_id = str(args.library_id).strip()
     topics = [t.strip() for t in str(args.topics).split(",") if t.strip()]
@@ -104,7 +106,8 @@ def _handle_save(args: argparse.Namespace, formatter: OutputFormatter, project_r
 
 
 def _handle_list(args: argparse.Namespace, formatter: OutputFormatter, project_root: Path) -> int:
-    task_id = str(args.task_id)
+    raw_task_id = str(args.task_id)
+    task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
     round_num = getattr(args, "round_num", None)
 
     from edison.core.qa.evidence import EvidenceService, rounds
@@ -170,4 +173,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

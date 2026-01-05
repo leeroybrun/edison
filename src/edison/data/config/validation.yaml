@@ -1,0 +1,355 @@
+# Validation Configuration (presets + engines + validators + evidence)
+#
+# Single source of truth for Edison validation behavior.
+# All validation-related configuration MUST live under this file’s `validation:` tree.
+
+validation:
+  # Dimension weights (used by scoring/reporting)
+  dimensions:
+    functionality: 30
+    reliability: 25
+    security: 20
+    maintainability: 15
+    performance: 10
+
+  cache:
+    directory: "{PROJECT_CONFIG_DIR}/_generated/validators"
+
+  # Execution defaults for validator engines
+  execution:
+    mode: parallel        # parallel | sequential
+    concurrency: 4        # max parallel validators when mode=parallel
+    timeout: 1500          # per-validator timeout in seconds
+
+  # Defaults for validator assignment
+  defaults:
+    wave: comprehensive   # Default wave for validators without explicit wave assignment
+
+  # Engine definitions (execution backends)
+  engines:
+    codex-cli:
+      type: cli
+      command: "codex"
+      mcp_override_style: "codex_config"
+      # Note: shell_environment_policy.inherit=all provides full env for dev tools (uv, mypy, ruff).
+      # We explicitly exclude session-related vars to prevent test interference.
+      pre_flags:
+        - "--ask-for-approval"
+        - "never"
+        - "--sandbox"
+        - "read-only"
+        - "-c"
+        - "shell_environment_policy.inherit=all"
+        - "-c"
+        - "shell_environment_policy.exclude=[\"AGENTS_SESSION\", \"EDISON_SESSION_ID\"]"
+      subcommand: "exec"
+      output_flags: ["--json"]
+      read_only_flags: []
+      response_parser: codex
+      prompt_mode: stdin
+      stdin_prompt_arg: "-"
+
+    claude-cli:
+      type: cli
+      command: "claude"
+      pre_flags: ["-p"]
+      output_flags: ["--output-format", "json"]
+      # Validator prompts rely on `git status`/`git diff` + reading evidence files.
+      # `dontAsk` causes silent denials in `--print` mode. Use bypassPermissions + a tight
+      # tool allowlist so validators can run non-interactively without edit capabilities.
+      #
+      # IMPORTANT: `--allowed-tools/--disallowed-tools` are variadic; we pass them as
+      # `--flag=value` so they don't greedily consume the positional prompt argument.
+      read_only_flags:
+        - "--permission-mode"
+        - "bypassPermissions"
+        - "--allowed-tools=Bash(git:*),Read"
+        - "--disallowed-tools=Edit"
+      response_parser: claude
+      prompt_mode: arg
+
+    gemini-cli:
+      type: cli
+      command: "gemini"
+      output_flags: ["--output-format", "json"]
+      read_only_flags: []
+      response_parser: gemini
+      prompt_mode: arg
+
+    auggie-cli:
+      type: cli
+      command: "auggie"
+      subcommand: ""
+      output_flags: ["--output-format", "json"]
+      read_only_flags: ["--print", "--quiet"]
+      response_parser: auggie
+      prompt_mode: file
+      prompt_flag: "--instruction-file"
+
+    coderabbit-cli:
+      type: cli
+      command: "coderabbit"
+      subcommand: "review"
+      output_flags: []
+      read_only_flags: ["--prompt-only"]
+      response_parser: coderabbit
+      prompt_mode: file
+      prompt_flag: "--config"
+
+    pal-mcp:
+      type: delegated
+      description: "Generate delegation instructions for orchestrator"
+
+  # Flat validator definitions
+  validators:
+    # Global validators - always run, use same prompt with different models
+    global-codex:
+      name: "Global Validator (Codex)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: true
+      blocking: true
+      timeout: 1500
+      context7_required: true
+      context7_packages: []
+      triggers: []
+      focus: []
+
+    global-claude:
+      name: "Global Validator (Claude)"
+      engine: claude-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: true
+      blocking: true
+      timeout: 1500
+      context7_required: true
+      context7_packages: []
+      triggers: []
+      focus: []
+
+    global-gemini:
+      name: "Global Validator (Gemini)"
+      engine: gemini-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: false
+      blocking: false  # Non-blocking, consensus reinforcement
+      timeout: 1500
+      context7_required: true
+      context7_packages: []
+      triggers: []
+      focus: []
+
+    global-auggie:
+      name: "Global Validator (Auggie)"
+      engine: auggie-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: false
+      blocking: false  # Non-blocking, additional AI perspective
+      timeout: 1500
+      context7_required: false  # Auggie uses its own codebase context engine
+      context7_packages: []
+      triggers: []
+      focus: []
+
+    # Critical validators - cross-cutting (security/performance).
+    security:
+      name: "Security Validator"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/security.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      timeout: 1500
+      context7_required: true
+      context7_packages: []
+      triggers: []
+      focus: [authentication, authorization, input-validation, sql-injection, xss, csrf, secrets]
+
+    performance:
+      name: "Performance Validator"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/performance.md"
+      wave: critical
+      always_run: false
+      blocking: true
+      timeout: 1500
+      context7_required: true
+      context7_packages: []
+      triggers: []
+      focus: [bundle-size, queries, n-plus-1, caching, memory-leaks]
+
+    coderabbit:
+      name: "CodeRabbit AI Review"
+      engine: coderabbit-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/coderabbit.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 1500
+      context7_required: false
+      context7_packages: []
+      triggers: []
+      focus: []
+
+  # Wave definitions (execution groups)
+  waves:
+    - name: global
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: false
+
+    - name: critical
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: true
+
+    - name: comprehensive
+      execution: parallel
+      continue_on_fail: true
+      requires_previous_pass: true
+
+  # Artifact paths for evidence storage
+  artifactPaths:
+    bundleSummaryFile: "bundle-summary.md"
+    implementationReportFile: "implementation-report.md"
+
+  # Validation presets - config-driven, pack-extensible
+  presets:
+    # Quick preset: minimal validation for docs-only changes
+    quick:
+      name: quick
+      description: "Minimal validation for documentation-only changes"
+      validators: []
+      # Explicitly no required evidence for docs-only changes.
+      required_evidence: []
+      blocking_validators: []
+
+    # Standard preset: default validation for code changes
+    standard:
+      name: standard
+      description: "Standard validation for code changes"
+      validators: []
+      # NOTE: required evidence is intentionally NOT specified here.
+      # The resolver will apply baseline automation evidence from `validation.evidence.requiredFiles`.
+      blocking_validators: []
+
+    # Strict preset: heavier validation for high-risk changes
+    strict:
+      name: strict
+      description: "Comprehensive validation for critical changes"
+      validators:
+        - security
+        - performance
+        - coderabbit
+      required_evidence:
+        - "command-type-check.txt"
+        - "command-lint.txt"
+        - "command-test-full.txt"
+        - "command-build.txt"
+      # Strict preset keeps critical validators blocking; additional global checks are advisory.
+      blocking_validators:
+        - security
+        - performance
+        - coderabbit
+
+
+  # Preset inference rules - determine preset from file patterns
+  presetInference:
+    rules:
+      - patterns:
+          - "docs/**"
+          - "*.md"
+          - "**/*.md"
+          - "LICENSE"
+          - "LICENSE.*"
+          - "CHANGELOG*"
+        preset: quick
+        priority: 10
+
+      - patterns:
+          - "pyproject.toml"
+          - "package.json"
+          - "*.yaml"
+          - "*.yml"
+          - ".github/**"
+          - "Makefile"
+          - "Dockerfile"
+          - "docker-compose*.yml"
+        preset: standard
+        priority: 20
+
+      - patterns:
+          - "src/**"
+          - "lib/**"
+          - "app/**"
+          - "apps/**"
+          - "packages/**"
+        preset: standard
+        priority: 30
+
+      - patterns:
+          - "tests/**"
+          - "test/**"
+          - "**/*_test.*"
+          - "**/*.test.*"
+          - "**/*.spec.*"
+        preset: standard
+        priority: 25
+
+  # File context settings (used for validator triggering and rules routing).
+  fileContext:
+    ignorePatterns:
+      - "{PROJECT_MANAGEMENT_DIR}/**"
+      - "{PROJECT_CONFIG_DIR}/_generated/**"
+      - "AGENTS.md"
+
+  # Session ID to use for validation transactions when no active session exists
+  defaultSessionId: "validation-session"
+
+  # Evidence collection settings
+  evidence:
+    # Baseline required evidence files for a validation round.
+    # Presets may override by setting `presets.<name>.required_evidence`.
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
+
+    # File patterns that should be collected as evidence
+    patterns:
+      - "command-*.txt"
+      - "command-coderabbit.txt"
+      - "context7-*.md"
+      - "context7-*.txt"
+      - "validator-*-report.md"
+    # Canonical mapping for evidence filenames referenced in prompts/guides.
+    files:
+      type-check: "command-type-check.txt"
+      lint: "command-lint.txt"
+      test: "command-test.txt"
+      test-full: "command-test-full.txt"
+      build: "command-build.txt"
+
+  # Session close requirements (explicit preset; NOT inferred).
+  sessionClose:
+    preset: strict
+
+  # Policy cap for QA re-validation loops.
+  maxRounds: 3
+
+  # Transaction settings
+  transaction:
+    maxAgeHours: 24
+    autoCleanup: true

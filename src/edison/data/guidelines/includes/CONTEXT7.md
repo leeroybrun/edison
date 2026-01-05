@@ -12,20 +12,23 @@ Use Context7 to refresh your knowledge **before** implementing or validating whe
 <!-- /section: workflow -->
 
 <!-- section: agent -->
+## Context7 Knowledge Refresh (MANDATORY)
+
 ### Resolve Library ID
 Use Context7 to resolve the canonical library ID:
 ```
-mcp__context7__resolve_library_id({ libraryName: "<package-name>" })
+mcp__context7__resolve-library-id({
+  libraryName: "<package-name>",
+  query: "<what you are trying to do>"
+})
 ```
 
 ### Get Current Documentation
 Fetch up-to-date docs before coding or reviewing:
 ```
-mcp__context7__get_library_docs({
-  context7CompatibleLibraryID: "/<org>/<library>",
-  mode: "code",
-  topic: "<relevant-topic>",
-  page: 1
+mcp__context7__query-docs({
+  libraryId: "/<org>/<library>",
+  query: "<relevant-topic>"
 })
 ```
 
@@ -42,7 +45,7 @@ If the change touches any configured post-training package, refresh docs via Con
 If a task touches configured post-training packages, ensure the assigned agent refreshes Context7 docs and produces the required evidence markers before `{{fn:semantic_state("task","wip")}} → {{fn:semantic_state("task","done")}}`.
 
 ### Context7 Error Handling
-When `edison task ready` fails with Context7 errors:
+When `edison task done` fails with Context7 errors:
 1. Review the error message—it shows detected packages and missing markers
 2. Check if detection is correct: `edison config show context7 --format yaml`
 3. If correct: have the agent create Context7 evidence markers
@@ -51,9 +54,9 @@ When `edison task ready` fails with Context7 errors:
 ### Bypass Flag (`--skip-context7`)
 For verified false positives only:
 ```bash
-edison task ready <task-id> --skip-context7
+edison task done <task-id> --skip-context7 --skip-context7-reason "verified false positive: <why>"
 ```
 - Prints a loud warning to stderr
-- Records audit trace in session tracking
+- Records audit trace in task history (transition reason)
 - Should be rare—most Context7 detections are legitimate
 <!-- /section: orchestrator -->

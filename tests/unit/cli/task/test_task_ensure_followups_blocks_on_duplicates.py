@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 
 from tests.helpers.cache_utils import reset_edison_caches
-from tests.helpers.io_utils import write_yaml
 from tests.helpers.fixtures import create_task_file
+from tests.helpers.io_utils import write_yaml
 
 
 def test_task_ensure_followups_can_block_when_duplicate_check_configured(

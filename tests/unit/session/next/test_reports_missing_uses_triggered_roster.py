@@ -3,6 +3,10 @@
 This test protects the coherence between:
 - ValidatorRegistry.build_execution_roster (canonical trigger logic)
 - session-next build_reports_missing (missing validator/context7 evidence reporting)
+
+Context7 requirements are derived from Context7Config triggers (post-training packages),
+not from validator-specific context7 fields. This keeps early checklists and task-done
+guards coherent.
 """
 
 from __future__ import annotations
@@ -91,8 +95,6 @@ def repo_env(tmp_path: Path, monkeypatch) -> Path:
                         "blocking": True,
                         "always_run": False,
                         "triggers": ["apps/api/**/*"],
-                        "context7_required": True,
-                        "context7_packages": ["fastify"],
                     },
                     "test-react": {
                         "name": "Test React",
@@ -101,9 +103,20 @@ def repo_env(tmp_path: Path, monkeypatch) -> Path:
                         "blocking": True,
                         "always_run": False,
                         "triggers": ["apps/dashboard/**/*"],
-                        "context7_required": True,
-                        "context7_packages": ["react"],
                     },
+                }
+            }
+        },
+    )
+
+    # Context7: post-training package triggers. Only "fastify" should be required for apps/api/**.
+    write_yaml(
+        cfg_dir / "context7.yaml",
+        {
+            "context7": {
+                "triggers": {
+                    "fastify": ["apps/api/**/*"],
+                    "react": ["apps/dashboard/**/*"],
                 }
             }
         },
@@ -174,13 +187,13 @@ filesChanged:
     assert "test-api" in missing_validators
     assert "test-react" not in missing_validators
 
-    # Context7 requirement is derived from the roster (not from legacy validators/config.json).
+    # Context7 requirement is derived from Context7Config triggers (post-training packages),
+    # scoped to the task's implementation report.
     ctx7_missing = [
         item for item in missing if item.get("type") == "context7" and item.get("taskId") == task_id
     ]
     assert ctx7_missing, "Expected Context7 missing entry when required packages are configured"
     assert "fastify" in (ctx7_missing[0].get("packages") or [])
-
 
 
 

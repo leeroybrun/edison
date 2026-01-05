@@ -78,15 +78,24 @@ class SetupDiscovery:
         """Discover validators using ConfigManager's pack-aware loading.
 
         ConfigManager handles the full layering:
-        1. Core config (bundled validators.yaml)
+        1. Core config (bundled validation.yaml)
         2. Pack configs (bundled + project packs)
-        3. Project config (<project-config-dir>/config/validators.yaml)
+        3. Project config (<project-config-dir>/config/validation.yaml)
         """
         config = self._cfg_mgr.load_config(validate=False, include_packs=True)
 
-        # Extract IDs from merged validation config
+        # Extract IDs from merged validation config.
+        #
+        # Support both:
+        # - Flat format: validation.validators is a dict keyed by validator ID
+        # - Legacy format: nested lists/dicts with explicit {"id": "..."} entries
         ids: List[str] = []
-        ids.extend(self._extract_ids_from_data(config.get("validation", {})))
+        validation_cfg = config.get("validation", {}) or {}
+        if isinstance(validation_cfg, dict):
+            validators = validation_cfg.get("validators")
+            if isinstance(validators, dict):
+                ids.extend([str(k) for k in validators.keys() if str(k).strip()])
+            ids.extend(self._extract_ids_from_data(validation_cfg))
 
         # Discovery should list ALL available IDs across sources, not only the
         # final merged value (project overrides may replace lists from packs).
@@ -195,7 +204,14 @@ class SetupDiscovery:
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
         from edison.core.utils.io import read_json
-        return read_json(path, default={})
+        import json
+
+        try:
+            return read_json(path, default={})
+        except json.JSONDecodeError:
+            # Setup discovery must be fail-open: corrupt JSON (e.g., partially edited package.json)
+            # should behave like "missing" for migration/detection purposes.
+            return {}
 
     def _extract_ids(self, path: Path) -> List[str]:
         """Extract IDs from a YAML file."""
@@ -232,9 +248,14 @@ class SetupDiscovery:
     def _extract_validator_ids_from_pack_configs(self, packs: List[str]) -> List[str]:
         """Extract validator roster IDs from selected pack config overlays."""
         ids: List[str] = []
-        for path in self._iter_pack_overlay_configs(packs, ["validators.yml", "validators.yaml"]):
+        for path in self._iter_pack_overlay_configs(packs, ["validation.yml", "validation.yaml"]):
             data = self._load_yaml(path)
-            ids.extend(self._extract_ids_from_data(data.get("validation", {})))
+            validation_cfg = data.get("validation", {}) or {}
+            if isinstance(validation_cfg, dict):
+                validators = validation_cfg.get("validators")
+                if isinstance(validators, dict):
+                    ids.extend([str(k) for k in validators.keys() if str(k).strip()])
+            ids.extend(self._extract_ids_from_data(validation_cfg))
         return ids
 
     def _extract_agent_ids_from_pack_configs(self, packs: List[str]) -> List[str]:

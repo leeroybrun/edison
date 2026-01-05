@@ -125,43 +125,43 @@ def test_fast_command_resolution_finds_domain_command() -> None:
     assert spec["command"] == "check"
 
 
-def test_fast_command_resolution_supports_import_domain_alias() -> None:
-    spec = _resolve_fast_command_module(["import", "speckit"])
+def test_fast_command_resolution_finds_import_domain_command() -> None:
+    spec = _resolve_fast_command_module(["import_", "speckit"])
     assert spec is not None
     assert spec["module"].endswith(".import_.speckit")
     assert spec["domain"] == "import_"
     assert spec["command"] == "speckit"
 
 
-def test_fast_command_resolution_supports_import_openspec() -> None:
-    spec = _resolve_fast_command_module(["import", "openspec"])
+def test_fast_command_resolution_finds_import_openspec() -> None:
+    spec = _resolve_fast_command_module(["import_", "openspec"])
     assert spec is not None
     assert spec["module"].endswith(".import_.openspec")
     assert spec["domain"] == "import_"
     assert spec["command"] == "openspec"
 
 
-def test_fast_command_resolution_supports_tasks_domain_alias() -> None:
-    spec = _resolve_fast_command_module(["tasks", "waves"])
+def test_fast_command_resolution_finds_task_domain_command() -> None:
+    spec = _resolve_fast_command_module(["task", "waves"])
     assert spec is not None
     assert spec["module"].endswith(".task.waves")
     assert spec["domain"] == "task"
     assert spec["command"] == "waves"
 
 
-def test_build_parser_accepts_import_domain_alias() -> None:
+def test_build_parser_accepts_import_domain() -> None:
     from edison.cli.import_.speckit import main as import_speckit_main
 
     parser = build_parser()
-    args = parser.parse_args(["import", "speckit", "specs/auth", "--dry-run"])
+    args = parser.parse_args(["import_", "speckit", "specs/auth", "--dry-run"])
     assert args._func is import_speckit_main
 
 
-def test_build_parser_accepts_tasks_domain_alias() -> None:
+def test_build_parser_accepts_task_domain() -> None:
     from edison.cli.task.waves import main as task_waves_main
 
     parser = build_parser()
-    args = parser.parse_args(["tasks", "waves", "--json"])
+    args = parser.parse_args(["task", "waves", "--json"])
     assert args._func is task_waves_main
 
 

@@ -1,6 +1,5 @@
 """Tests for SafeDict utility."""
 
-import pytest
 
 
 def test_safe_dict_preserves_unknown_placeholders():
@@ -45,7 +44,7 @@ def test_safe_dict_works_like_normal_dict():
     assert set(tokens.values()) == {"value1", "value2"}
 
     # Test iteration
-    keys = [k for k in tokens]
+    keys = list(tokens)
     assert set(keys) == {"key1", "key2"}
 
 

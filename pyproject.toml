@@ -31,7 +31,9 @@ dependencies = [
 [project.optional-dependencies]
 tui = ["prompt_toolkit>=3.0"]
 dev = [
+    "build>=1.0",
     "pytest>=7.0",
+    "pytest-xdist>=3.0",
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21.0",
     "mypy>=1.0",
@@ -68,7 +70,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers --import-mode=importlib"
+norecursedirs = ["helpers"]
 markers = [
     "integration: Integration tests (multiple components working together)",
     "e2e: End-to-end tests (full system tests)",

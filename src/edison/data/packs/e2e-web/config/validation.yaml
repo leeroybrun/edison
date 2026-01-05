@@ -1,0 +1,110 @@
+## Pack validation overlay (canonical filename: validation.yaml)
+validation:
+  validators:
+    browser-e2e:
+      name: "Browser E2E Validator (Playwright MCP)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/browser-e2e.md"
+      mcp_servers: ["playwright"]
+      wave: comprehensive
+      always_run: false
+      blocking: true
+      timeout: 1800
+      context7_required: true
+      context7_packages: ["+", "playwright"]
+      setup:
+        instructions: >-
+          Configure the target web server for browser E2E validation.
+
+          Edison will probe `healthcheck_url` (or `url`) before running the
+          validator. If it is not reachable and `start_command` is configured,
+          Edison will start the server and stop it after validation only if
+          Edison started it.
+        require:
+          config:
+            - "validation.validators.browser-e2e.web_server.url"
+        questions:
+          - id: e2e_web_url
+            prompt: "Web server base URL (Playwright baseURL)"
+            type: string
+            required: true
+            mode: basic
+            category: validation
+            help: "Example: http://127.0.0.1:3000"
+
+          - id: e2e_web_healthcheck_url
+            prompt: "Healthcheck URL (optional)"
+            type: string
+            required: false
+            mode: advanced
+            category: validation
+            help: "Example: http://127.0.0.1:3000/health (defaults to base URL if empty)"
+
+          - id: e2e_web_ensure_running
+            prompt: "Fail validation if server is not reachable?"
+            type: boolean
+            default: true
+            mode: basic
+            category: validation
+            help: "If true and the server can't be reached, Edison blocks the validator run."
+
+          - id: e2e_web_start_command
+            prompt: "Command to start the server when not reachable (optional)"
+            type: string
+            required: false
+            mode: basic
+            category: validation
+            help: "Examples: pnpm dev --port 3000 | npm run dev -- --port 3000"
+
+          - id: e2e_web_stop_command
+            prompt: "Command to stop the server (optional)"
+            type: string
+            required: false
+            mode: advanced
+            category: validation
+            help: "Supports {pid}, {port}, {url}, {probe_url} placeholders."
+
+          - id: e2e_web_cwd
+            prompt: "Working directory for start/stop commands (optional)"
+            type: string
+            required: false
+            mode: advanced
+            category: validation
+            help: "Relative to repo root (default: repo root)."
+
+          - id: e2e_web_stop_after
+            prompt: "Stop the server after validation (only if Edison started it)?"
+            type: boolean
+            default: true
+            mode: advanced
+            category: validation
+        config_template:
+          validation:
+            validators:
+              browser-e2e:
+                web_server:
+                  url: "{{ e2e_web_url }}"
+                  healthcheck_url: "{{ e2e_web_healthcheck_url }}"
+                  ensure_running: "{{ e2e_web_ensure_running }}"
+                  start_command: "{{ e2e_web_start_command }}"
+                  stop_command: "{{ e2e_web_stop_command }}"
+                  cwd: "{{ e2e_web_cwd }}"
+                  stop_after: "{{ e2e_web_stop_after }}"
+      triggers:
+        - "app/**/*"
+        - "pages/**/*"
+        - "src/**/*.{tsx,ts,jsx,js,vue,svelte,astro}"
+        - "**/*.{tsx,ts,jsx,js,vue,svelte,astro}"
+        - "**/*.{html,css,scss,less}"
+        - "**/*.{png,jpg,jpeg,webp,svg}"
+        - "playwright.config.*"
+        - "e2e/**/*"
+        - "tests/e2e/**/*"
+        - "**/*.e2e.*"
+      focus:
+        - ui-flows
+        - accessibility
+        - regression
+        - error-states
+        - validation

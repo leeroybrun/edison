@@ -51,9 +51,10 @@ edison session sync-git <session-id>   # Sync git worktree
 ```bash
 edison task claim <task-id> --session <id>   # Claim task into session
 edison task status <task-id>                 # Check task state
-edison task ready <task-id>                  # Promote task to done
+edison task done <task-id>                   # Promote task to done
 edison task list                             # List tasks
 edison task link <parent> <child>            # Link parent/child tasks
+edison task bundle add --root <root> <member...>  # Group tasks for bundle validation
 edison task split <task-id>                  # Split task into subtasks
 ```
 
@@ -103,7 +104,7 @@ edison compose <subcommand>    # Compose constitutions/guidelines
    - Handle rejections by creating follow-up tasks
 
 5. **Quality Gates**
-  - Run `edison task waves` to pick parallel work (Wave 1), then `edison task ready` before validation
+  - Run `edison task waves` to pick parallel work (Wave 1), then `edison task done <task-id>` before validation
    - Verify TDD evidence exists
    - Check automation evidence (type-check, lint, test, build)
    - Ensure child tasks are ready before promoting parent
@@ -187,6 +188,7 @@ mcp__context7__get-library-docs       # Fetch documentation
    - Implement code to pass test (GREEN)
    - Refactor for quality (REFACTOR)
    - Never skip this cycle
+   - Scope: applies to executable behavior changes; content-only Markdown/YAML/template edits do not require new tests, but must not be used to bypass TDD when code changes
 
 2. **Use Context7 for Post-Training Packages**
    - Query Context7 BEFORE coding
@@ -484,7 +486,7 @@ edison session next sess-001
 # Agent implements feature...
 
 # 6. After agent completes, promote task
-edison task ready TASK-123 --session sess-001
+edison task done TASK-123 --session sess-001
 
 # 7. Start validation
 edison qa promote --task TASK-123 --to todo
@@ -581,8 +583,8 @@ edison qa promote --task TASK-123 --to todo
 # Launch validators again...
 
 # 9. After approval, promote both tasks
-edison task ready TASK-124
-edison task ready TASK-123
+edison task done TASK-124
+edison task done TASK-123
 edison qa promote --task TASK-124 --to validated
 edison qa promote --task TASK-123 --to validated
 ```

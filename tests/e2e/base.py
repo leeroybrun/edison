@@ -95,6 +95,21 @@ def copy_templates(root: Path) -> None:
         task_template_dest = root / ".project" / "tasks" / "TEMPLATE.md"
         shutil.copyfile(task_template_src, task_template_dest)
 
+    # Provide minimal CI commands so evidence capture and session-complete flows
+    # are deterministic in E2E tests (core defaults are placeholders).
+    ci_cfg_path = root / ".edison" / "config" / "ci.yaml"
+    ci_cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    ci_cfg_path.write_text(
+        "ci:\n"
+        "  commands:\n"
+        "    type-check: \"echo type-check\"\n"
+        "    lint: \"echo lint\"\n"
+        "    test: \"echo test\"\n"
+        "    test-full: \"echo test-full\"\n"
+        "    build: \"echo build\"\n",
+        encoding="utf-8",
+    )
+
 
 def setup_base_environment(root: Path, owner: str = "test-user") -> Dict[str, str]:
     """Set up base environment variables for E2E tests.

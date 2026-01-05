@@ -59,6 +59,7 @@ class Task:
     depends_on: List[str] = field(default_factory=list)
     blocks_tasks: List[str] = field(default_factory=list)
     related: List[str] = field(default_factory=list)
+    relationships: List[Dict[str, str]] = field(default_factory=list)
     claimed_at: Optional[str] = None
     last_active: Optional[str] = None
     continuation_id: Optional[str] = None
@@ -129,6 +130,9 @@ class Task:
 
         if self.related:
             data["related"] = self.related
+
+        if self.relationships:
+            data["relationships"] = self.relationships
         
         if self.claimed_at:
             data["claimed_at"] = self.claimed_at
@@ -195,6 +199,7 @@ class Task:
             depends_on=data.get("depends_on") or data.get("dependsOn", []),
             blocks_tasks=data.get("blocks_tasks") or data.get("blocksTasks", []),
             related=data.get("related") or data.get("related_tasks") or data.get("relatedTasks", []),
+            relationships=data.get("relationships") or data.get("relationship") or [],
             claimed_at=data.get("claimed_at") or data.get("claimedAt"),
             last_active=data.get("last_active") or data.get("lastActive"),
             continuation_id=data.get("continuation_id") or data.get("continuationId"),

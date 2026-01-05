@@ -351,6 +351,7 @@ class MarkdownCompositionStrategy(CompositionStrategy):
             source_dir=context.source_dir,
             include_provider=context.include_provider,
             strip_section_markers=context.strip_section_markers,
+            protect_code_literals=context.protect_code_literals,
         )
 
         # Pass context_vars from CompositionContext to TemplateEngine

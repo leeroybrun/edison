@@ -38,6 +38,7 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
             "missingQA": [],
             "missingEvidence": [],
             "bundleNotApproved": [],
+            "bundleWrongPreset": [],
             "blockersOrReportsMissing": False,
         },
         "details": [],
@@ -113,6 +114,25 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
     qa_validated = WorkflowConfig().get_semantic_state("qa", "validated")
     qa_ready_states = {qa_done, qa_validated}
 
+    # Session-close preset is explicit (config-driven). Enforce it as part of "closing" verification.
+    session_close_preset: str | None = None
+    try:
+        from edison.core.qa.policy.session_close import get_session_close_policy
+
+        session_close_preset = str(get_session_close_policy().preset.name or "").strip() or None
+    except Exception as exc:
+        failures.append(f"Session-close policy invalid: {exc}")
+        health["details"].append(
+            {
+                "kind": "sessionClosePolicy",
+                "error": str(exc),
+                "suggested": [
+                    "edison config show validation --format yaml",
+                    "Ensure validation.sessionClose.preset is configured and refers to an existing preset.",
+                ],
+            }
+        )
+
     for task in session_tasks:
         task_id = task.id
         try:
@@ -144,18 +164,40 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
                 msg = f"Task {task_id} {bundle_filename} indicates not approved"
                 failures.append(msg)
                 health["categories"]["bundleNotApproved"].append({"taskId": task_id, "reason": "not_approved"})
+            elif session_close_preset:
+                found = str(bundle_data.get("preset") or "").strip()
+                if found != session_close_preset:
+                    root_task = str(bundle_data.get("rootTask") or task_id).strip() or task_id
+                    msg = (
+                        f"Task {task_id} bundle summary preset '{found or '<missing>'}' "
+                        f"does not satisfy session-close preset '{session_close_preset}'"
+                    )
+                    failures.append(msg)
+                    health["categories"]["bundleWrongPreset"].append(
+                        {"taskId": task_id, "rootTask": root_task, "required": session_close_preset, "found": found}
+                    )
+                    health["details"].append(
+                        {
+                            "kind": "sessionClosePresetMismatch",
+                            "taskId": task_id,
+                            "rootTask": root_task,
+                            "requiredPreset": session_close_preset,
+                            "foundPreset": found or None,
+                            "suggested": [
+                                f"edison qa validate {root_task} --scope bundle --preset {session_close_preset} --execute"
+                            ],
+                        }
+                    )
 
-    # Session-close evidence requirements (config-driven, fail-closed).
+    # Session-close evidence requirements (explicit preset, fail-closed).
     try:
-        from edison.core.config.domains.qa import QAConfig
         from edison.core.qa.evidence.command_evidence import parse_command_evidence
+        from edison.core.qa.policy.session_close import get_session_close_policy
 
-        qa_cfg = QAConfig()
-        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
-        required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
+        policy = get_session_close_policy()
+        required_close = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
 
-        if required_close:
+        if required_close and session_tasks:
             # For each required evidence file, accept success from any task in the session.
             missing_close: list[str] = []
             for filename in required_close:

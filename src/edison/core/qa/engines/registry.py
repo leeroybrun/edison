@@ -1,7 +1,7 @@
 """Engine registry for the unified validator engine system.
 
 This module provides the EngineRegistry class which:
-- Loads engine configurations from validators.yaml
+    - Loads engine configurations from validation.yaml
 - Instantiates appropriate engine classes (CLIEngine, PalMCPEngine)
 - Handles fallback logic when primary engines are unavailable
 - Delegates to ValidatorRegistry for roster building
@@ -9,6 +9,7 @@ This module provides the EngineRegistry class which:
 NOTE: ValidatorRegistry is THE single source of truth for validator metadata.
 This module only handles engine instantiation and execution.
 """
+
 from __future__ import annotations
 
 import logging
@@ -84,9 +85,7 @@ class EngineRegistry:
         if isinstance(engines, dict):
             for engine_id, engine_data in engines.items():
                 if isinstance(engine_data, dict):
-                    self._engine_configs[engine_id] = EngineConfig.from_dict(
-                        engine_id, engine_data
-                    )
+                    self._engine_configs[engine_id] = EngineConfig.from_dict(engine_id, engine_data)
 
         logger.debug(f"Loaded {len(self._engine_configs)} engines")
 
@@ -248,30 +247,56 @@ class EngineRegistry:
         if not validator:
             raise ValueError(f"Validator '{validator_id}' not found")
 
+        # Fail closed when a validator declares required configuration and it is missing.
+        #
+        # This avoids running pack-provided validators (e.g. browser E2E) when the
+        # project has not configured their prerequisites yet.
+        try:
+            from edison.core.components.service import ComponentService
+
+            status = ComponentService(repo_root=worktree_path).get_status("validator", validator_id)
+            if status.missing_required_config:
+                missing = ", ".join(status.missing_required_config)
+                msg = (
+                    f"Validator '{validator_id}' is not configured; missing required config: {missing}. "
+                    f"Run `edison validator configure {validator_id}` (and ensure any required packs are enabled), "
+                    "then re-run validation."
+                )
+                return ValidationResult(
+                    validator_id=validator_id,
+                    verdict="blocked",
+                    summary=msg,
+                    error=msg,
+                )
+        except Exception:
+            # Best-effort guard: if the component status check fails unexpectedly,
+            # do not block validator execution.
+            pass
+
+        web_handle = None
+        web_cfg = None
+        try:
+            from edison.core.qa.web_server import WebServerConfig, ensure_web_server
+
+            web_cfg = WebServerConfig.from_raw(getattr(validator, "web_server", None))
+            if web_cfg is not None:
+                web_handle = ensure_web_server(web_cfg, worktree_path=worktree_path)
+        except Exception as exc:
+            return ValidationResult(
+                validator_id=validator_id,
+                verdict="blocked",
+                summary=f"Pre-validation web server check failed: {exc}",
+                error=str(exc),
+            )
+
         # Get primary engine
         engine = self._get_or_create_engine(validator.engine)
 
-        # Check if primary engine can execute
-        if engine and engine.can_execute():
-            logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
-            return engine.run(
-                validator=validator,
-                task_id=task_id,
-                session_id=session_id,
-                worktree_path=worktree_path,
-                round_num=round_num,
-                evidence_service=evidence_service,
-            )
-
-        # Try fallback engine
-        if validator.fallback_engine:
-            fallback = self._get_or_create_engine(validator.fallback_engine)
-            if fallback and fallback.can_execute():
-                logger.info(
-                    f"Primary engine '{validator.engine}' unavailable, "
-                    f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
-                )
-                return fallback.run(
+        try:
+            # Check if primary engine can execute
+            if engine and engine.can_execute():
+                logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
+                return engine.run(
                     validator=validator,
                     task_id=task_id,
                     session_id=session_id,
@@ -280,14 +305,39 @@ class EngineRegistry:
                     evidence_service=evidence_service,
                 )
 
-        # No engine available
-        logger.error(f"No available engine for validator '{validator_id}'")
-        return ValidationResult(
-            validator_id=validator_id,
-            verdict="blocked",
-            summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
-            error="Engine not available",
-        )
+            # Try fallback engine
+            if validator.fallback_engine:
+                fallback = self._get_or_create_engine(validator.fallback_engine)
+                if fallback and fallback.can_execute():
+                    logger.info(
+                        f"Primary engine '{validator.engine}' unavailable, "
+                        f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
+                    )
+                    return fallback.run(
+                        validator=validator,
+                        task_id=task_id,
+                        session_id=session_id,
+                        worktree_path=worktree_path,
+                        round_num=round_num,
+                        evidence_service=evidence_service,
+                    )
+
+            # No engine available
+            logger.error(f"No available engine for validator '{validator_id}'")
+            return ValidationResult(
+                validator_id=validator_id,
+                verdict="blocked",
+                summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
+                error="Engine not available",
+            )
+        finally:
+            if web_handle is not None and web_cfg is not None and web_cfg.stop_after:
+                try:
+                    from edison.core.qa.web_server import stop_web_server
+
+                    stop_web_server(web_handle, worktree_path=worktree_path)
+                except Exception:
+                    pass
 
     def build_execution_roster(
         self,

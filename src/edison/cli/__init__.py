@@ -10,16 +10,18 @@ Framework utilities for building CLI commands:
 - _utils: Shared CLI utilities
 """
 from ._args import (
+    add_dry_run_flag,
+    add_force_flag,
     add_json_flag,
     add_repo_root_flag,
-    add_force_flag,
-    add_dry_run_flag,
 )
 from ._output import OutputFormatter
 from ._utils import (
     detect_record_type,
+    format_display_path,
     get_repository,
     get_repo_root,
+    resolve_existing_task_id,
     resolve_session_id,
 )
 
@@ -35,5 +37,7 @@ __all__ = [
     "get_repo_root",
     "detect_record_type",
     "get_repository",
+    "resolve_existing_task_id",
+    "format_display_path",
     "resolve_session_id",
 ]

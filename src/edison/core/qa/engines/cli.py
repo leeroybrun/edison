@@ -173,6 +173,63 @@ class CLIEngine:
         """
         start_time = time.time()
 
+        try:
+            prompt_input: str | None = None
+            prompt_args: list[str] | None = None
+
+            if validator.prompt:
+                prompt_text = self._render_prompt_text(
+                    validator=validator,
+                    task_id=task_id,
+                    session_id=session_id,
+                    worktree_path=worktree_path,
+                    round_num=round_num,
+                    evidence_service=evidence_service,
+                )
+
+                # Persist the effective prompt for auditability when possible.
+                prompt_path: Path | None = None
+                if evidence_service:
+                    try:
+                        round_dir = evidence_service.ensure_round(round_num)
+                        prompt_path = round_dir / f"prompt-{validator.id}.md"
+                        prompt_path.write_text(prompt_text, encoding="utf-8")
+                    except Exception:
+                        prompt_path = None
+
+                if self.config.prompt_mode == "stdin":
+                    prompt_input = prompt_text
+                    sentinel = (self.config.stdin_prompt_arg or "").strip()
+                    prompt_args = [sentinel] if sentinel else None
+                elif self.config.prompt_mode == "arg":
+                    prompt_args = [prompt_text]
+                else:
+                    if prompt_path is None:
+                        # Fall back to a temp file when we can't write to evidence.
+                        tmp = tempfile.NamedTemporaryFile("w", suffix=f"-{validator.id}.md", delete=False)
+                        try:
+                            tmp.write(prompt_text)
+                            prompt_path = Path(tmp.name)
+                        finally:
+                            tmp.close()
+                    prompt_args = self._format_prompt_args(prompt_path)
+
+            # Build the command (may raise on invalid MCP injection config).
+            cmd_parts = self._build_command(validator, worktree_path, prompt_args=prompt_args)
+
+        except Exception as exc:
+            duration = time.time() - start_time
+            logger.error(f"CLI validator '{validator.id}' failed during setup: {exc}", exc_info=True)
+            return ValidationResult(
+                validator_id=validator.id,
+                verdict="blocked",
+                summary=f"Validator setup failed: {exc}",
+                raw_output="",
+                duration=duration,
+                exit_code=-1,
+                error=str(exc),
+            )
+
         env = dict(os.environ)
         # Prevent Edison/session context from leaking into validator runs (validators should be reproducible
         # from the repo state alone, not dependent on the operator's active session).
@@ -193,49 +250,6 @@ class CLIEngine:
                 env["PATH"] = f"{node_bin}{os.pathsep}{env.get('PATH', '')}"
         except Exception:
             pass
-
-        prompt_input: str | None = None
-        prompt_args: list[str] | None = None
-
-        if validator.prompt:
-            prompt_text = self._render_prompt_text(
-                validator=validator,
-                task_id=task_id,
-                session_id=session_id,
-                worktree_path=worktree_path,
-                round_num=round_num,
-                evidence_service=evidence_service,
-            )
-
-            # Persist the effective prompt for auditability when possible.
-            prompt_path: Path | None = None
-            if evidence_service:
-                try:
-                    round_dir = evidence_service.ensure_round(round_num)
-                    prompt_path = round_dir / f"prompt-{validator.id}.md"
-                    prompt_path.write_text(prompt_text, encoding="utf-8")
-                except Exception:
-                    prompt_path = None
-
-            if self.config.prompt_mode == "stdin":
-                prompt_input = prompt_text
-                sentinel = (self.config.stdin_prompt_arg or "").strip()
-                prompt_args = [sentinel] if sentinel else None
-            elif self.config.prompt_mode == "arg":
-                prompt_args = [prompt_text]
-            else:
-                if prompt_path is None:
-                    # Fall back to a temp file when we can't write to evidence.
-                    tmp = tempfile.NamedTemporaryFile("w", suffix=f"-{validator.id}.md", delete=False)
-                    try:
-                        tmp.write(prompt_text)
-                        prompt_path = Path(tmp.name)
-                    finally:
-                        tmp.close()
-                prompt_args = self._format_prompt_args(prompt_path)
-
-        # Build the command
-        cmd_parts = self._build_command(validator, worktree_path, prompt_args=prompt_args)
 
         logger.info(
             f"Running CLI validator '{validator.id}' with command: {self.command}"
@@ -344,6 +358,22 @@ class CLIEngine:
         # Some CLIs (e.g., Codex) require global flags before the subcommand.
         cmd.extend(_format_parts(self.config.pre_flags))
 
+        required_mcp = getattr(validator, "mcp_servers", []) or []
+        override_style = (self.config.mcp_override_style or "").strip()
+        if override_style and required_mcp:
+            from edison.core.mcp.config import build_mcp_servers
+            from edison.core.mcp.injection import build_mcp_cli_overrides
+
+            project_root = (self.project_root or worktree_path).expanduser().resolve()
+            _, mcp_servers, _ = build_mcp_servers(project_root)
+            cmd.extend(
+                build_mcp_cli_overrides(
+                    override_style,
+                    mcp_servers,
+                    required_servers=[str(s).strip() for s in required_mcp if str(s).strip()],
+                )
+            )
+
         # Add subcommand if configured
         if self.config.subcommand:
             cmd.append(self.config.subcommand)
@@ -432,6 +462,17 @@ class CLIEngine:
             f"- Round: {round_num if round_num is not None else 'N/A'}",
             f"- Worktree: {worktree_path}",
         ]
+        try:
+            raw_web = getattr(validator, "web_server", None)
+            if isinstance(raw_web, dict):
+                url = str(raw_web.get("url", raw_web.get("base_url", raw_web.get("baseUrl"))) or "").strip()
+                if url:
+                    prelude_lines.append(f"- Web Server URL: {url}")
+                health = str(raw_web.get("healthcheck_url", raw_web.get("healthcheckUrl", raw_web.get("healthcheck"))) or "").strip()
+                if health:
+                    prelude_lines.append(f"- Web Server Probe: {health}")
+        except Exception:
+            pass
         if round_dir:
             prelude_lines.append(f"- Evidence Round Dir: {round_dir}")
         if bundle_path:

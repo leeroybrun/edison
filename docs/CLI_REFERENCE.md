@@ -120,7 +120,7 @@ Edison respects the following environment variables for configuration:
 
 - `EDISON_<section>__<key>` - Override any config value using double underscore notation
   - Example: `EDISON_database__url` overrides `database.url` in config
-  - Example: `EDISON_tdd_enforceRedGreenRefactor=false` disables TDD enforcement
+  - Example: `EDISON_tdd_enforceRedGreenRefactor=false` disables TDD enforcement (use only for exceptional bootstrapping/emergency recovery; never to bypass tests for executable behavior changes)
   - Example: `EDISON_paths__project_config_dir=custom` sets custom config directory
   - Example: `EDISON_paths__user_config_dir=~/.edison` sets the user config directory
 
@@ -288,6 +288,7 @@ edison session create --session-id <id> [options]
 | `--session-id`, `--id` | Session identifier (required, e.g., `sess-001`) |
 | `--owner` | Session owner (default: `system`) |
 | `--mode` | Session mode (default: `start`) |
+| `--worktree` | Explicitly enable worktree creation (default behavior; accepted for compatibility) |
 | `--no-worktree` | Skip worktree creation |
 | `--install-deps` | Install dependencies in worktree (if creating worktree) |
 | `--json` | Output as JSON |
@@ -307,6 +308,9 @@ edison session create --session-id sess-001
 
 # Create session without worktree
 edison session create --id sess-001 --no-worktree
+
+# Create session with worktree (explicit; same as default)
+edison session create --id sess-001 --worktree
 
 # Create session with dependencies installed
 edison session create --id sess-001 --install-deps
@@ -333,6 +337,33 @@ edison session create --id sess-001 --json
 
 - `0` - Session created successfully
 - `1` - Error (session already exists, invalid ID, etc.)
+
+---
+
+### session list - List Sessions
+
+List sessions across states.
+
+```bash
+edison session list [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--status <state>` | Filter by session status/state (accepts semantic state like `active` or directory alias like `wip`) |
+| `--owner <owner>` | Filter by session owner |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+edison session list
+edison session list --status wip
+edison session list --status active
+```
 
 ---
 
@@ -1117,9 +1148,12 @@ edison task waves --cap 2 --json
 
 ---
 
-### task ready - Mark Task Ready
+### task ready - List Ready Tasks
 
-List tasks ready to be claimed (in `todo` state) or mark a task as ready/complete (move from `wip` to `done`).
+List tasks ready to be claimed (in `todo` state).
+
+Note: `edison task ready <task-id>` is a deprecated compatibility alias for task completion.
+Prefer `edison task done <task-id>`.
 
 ```bash
 edison task ready [record_id] [options]
@@ -1127,7 +1161,7 @@ edison task ready [record_id] [options]
 
 **Arguments:**
 
-- `record_id` - Task ID to mark as ready (optional, if omitted lists all ready tasks)
+- `record_id` - (Deprecated) Task ID to complete (optional; omit to list ready tasks)
 
 **Options:**
 
@@ -1140,8 +1174,6 @@ edison task ready [record_id] [options]
 **When to Use:**
 
 - Listing available work
-- Completing task implementation
-- Moving task from wip to done
 
 **Examples:**
 
@@ -1149,8 +1181,8 @@ edison task ready [record_id] [options]
 # List all ready tasks (in todo state)
 edison task ready
 
-# Mark task as complete (wip → done)
-edison task ready 150-auth-feature --session sess-001
+# Mark task as complete (wip → done) (preferred)
+edison task done 150-auth-feature --session sess-001
 
 # List ready tasks as JSON
 edison task ready --json
@@ -1159,13 +1191,50 @@ edison task ready --json
 **Without record_id:**
 Lists all tasks in `todo` state that are ready to be claimed.
 
-**With record_id:**
-Marks the task as ready/complete by moving it from `wip` to `done` state.
+**With record_id (deprecated):**
+Completes the task by delegating to `edison task done`.
 
 **Exit Codes:**
 
 - `0` - Success
 - `1` - Error (task not found, invalid state, etc.)
+
+---
+
+### task done - Complete Task
+
+Complete a task by moving it from `wip` to `done` with guard enforcement (evidence, Context7 when detected, and TDD readiness gates).
+
+```bash
+edison task done <task-id> [options]
+```
+
+**Arguments:**
+
+- `task-id` - Task ID to complete (supports unique prefix shorthand like `12007`)
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--session` | Session completing the task (required) |
+| `--json` | Output as JSON |
+| `--repo-root` | Override repository root path |
+
+**Examples:**
+
+```bash
+# Complete a task
+edison task done 150-auth-feature --session sess-001
+
+# Complete a task using shorthand (unique prefix)
+edison task done 150 --session sess-001
+```
+
+**Exit Codes:**
+
+- `0` - Success
+- `1` - Error (blocked by guards, not found, ambiguous shorthand, etc.)
 
 ---
 
@@ -1266,6 +1335,32 @@ edison task relate 150-auth-feature 151-login-ui
 
 # Remove relation
 edison task relate 150-auth-feature 151-login-ui --remove
+```
+
+---
+
+### task bundle - Group Tasks for Bundle Validation
+
+Group arbitrary tasks into a **validation bundle** (without creating “fake parent tasks”).
+
+```bash
+edison task bundle <subcommand> ...
+```
+
+**Subcommands:**
+
+- `add --root <root> <member...>` - Set `bundle_root` on each member task
+- `remove <member...>` - Clear `bundle_root` on each member task
+- `show <task>` - Show the resolved root + member list for a task
+
+**Examples:**
+
+```bash
+# Create a validation bundle
+edison task bundle add --root 150-auth-feature 151-login-ui 152-login-api
+
+# Validate once at the bundle root
+edison qa validate 150-auth-feature --scope bundle --execute
 ```
 
 ---
@@ -1484,13 +1579,17 @@ edison qa validate <task_id> [options]
 
 | Option | Description |
 |--------|-------------|
+| `--scope` | Bundle scope: `auto`, `hierarchy`, or `bundle` (recommended for validating small related tasks together) |
 | `--session` | Session ID context |
 | `--round` | Validation round number (default: create new round) |
+| `--new-round` | Create a new evidence round directory and run validators in it |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
+| `--preset` | Validation preset override (e.g., `fast`, `standard`, `strict`, `deep`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
 | `--add-validators` | Extra validators to add: `react` (default wave) or `critical:react` (specific wave) |
 | `--blocking-only` | Only run blocking validators |
 | `--execute` | Execute validators directly (default: show roster only) |
+| `--check-only` | Do not execute validators; compute approval from existing evidence and emit the bundle summary file |
 | `--sequential` | Run validators sequentially instead of in parallel |
 | `--dry-run` | Show what would be executed without running |
 | `--max-workers` | Maximum parallel workers (default: 4) |
@@ -1512,6 +1611,9 @@ edison qa validate 150-auth-feature
 
 # Execute validators directly via CLI engines
 edison qa validate 150-auth-feature --execute
+
+# Validate a bundle of related tasks (defined via `bundle_root`)
+edison qa validate 150-auth-feature --scope bundle --execute
 
 # Show what would be executed
 edison qa validate 150-auth-feature --dry-run
@@ -1537,12 +1639,13 @@ edison qa validate 150-auth-feature --add-validators critical:react comprehensiv
 Validators are automatically selected based on:
 1. **Always-run validators**: `always_run: true` in config
 2. **File pattern triggers**: Match modified files against trigger patterns
+3. **Preset policy**: Validators included by the resolved preset (explicit, `validation.defaultPreset`, or inferred via `validation.presetInference`)
 
 **Adding Extra Validators (Orchestrator Feature):**
 
 Orchestrators can ADD validators that weren't auto-triggered:
 - Use `--add-validators react api` to add validators (default wave: `comprehensive`)
-- Use `--add-validators critical:react` to specify a wave with the `[WAVE:]VALIDATOR` syntax
+- Use `--add-validators critical:react` to specify a wave with the `[WAVE:]VALIDATOR` syntax (overrides the validator’s configured wave for execution ordering)
 - Cannot remove auto-detected validators (only add)
 
 The CLI shows "ORCHESTRATOR DECISION POINTS" when validators might be relevant
@@ -1590,6 +1693,8 @@ edison qa bundle <task_id> [options]
 
 | Option | Description |
 |--------|-------------|
+| `--scope` | Bundle scope: `auto`, `hierarchy`, or `bundle` |
+| `--session` | Session ID context |
 | `--json` | Output as JSON |
 | `--repo-root` | Override repository root path |
 
@@ -1604,6 +1709,9 @@ edison qa bundle <task_id> [options]
 ```bash
 # Create QA bundle
 edison qa bundle 150-auth-feature
+
+# Create bundle manifest for a validation bundle (task + bundle_root members)
+edison qa bundle 150-auth-feature --scope bundle
 
 # Get JSON output
 edison qa bundle 150-auth-feature --json
@@ -3046,8 +3154,8 @@ edison session track start --task 100-auth-feature --type implementation
 # 9. Complete tracking
 edison session track complete --task 100-auth-feature
 
-# 10. Mark task ready (wip → done)
-edison task ready 100-auth-feature --session sess-001
+# 10. Mark task done (wip → done)
+edison task done 100-auth-feature --session sess-001
 
 # 11. Create QA brief
 edison qa new 100-auth-feature
@@ -3083,7 +3191,7 @@ edison task claim 100-my-task --session work-001
 # ... do work ...
 
 # Complete and validate
-edison task ready 100-my-task --session work-001
+edison task done 100-my-task --session work-001
 edison qa validate 100-my-task
 edison session close work-001
 ```
@@ -3193,7 +3301,7 @@ my-project/
 │   │   ├── database.yml          # Database config
 │   │   ├── worktrees.yml         # Worktree settings
 │   │   ├── tdd.yml               # TDD settings
-│   │   ├── qa.yml                # QA configuration
+│   │   ├── validation.yaml       # Validation configuration
 │   │   ├── mcp.yml               # MCP servers
 │   │   └── ...
 │   ├── _generated/               # Generated artifacts

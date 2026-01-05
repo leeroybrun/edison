@@ -3,10 +3,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
-def run_mcp_setup(args: list[str], env: dict, cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+def run_mcp_setup(args: list[str], env: dict, cwd: Path | None = None) -> subprocess.CompletedProcess:
     """Execute ``mcp setup`` command."""
     env = env.copy()
     repo_root = Path(__file__).resolve().parents[3]

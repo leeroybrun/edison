@@ -7,9 +7,7 @@
 
 ---
 
-## Constitution (Re-read on compact)
-
-{{include:constitutions/validators.md}}
+{{include:snippets/validator-constitution.md}}
 
 ---
 
@@ -29,8 +27,9 @@ Consult the tech-stack section for framework-specific security patterns.
 ### Step 2: Review Git Diff for Security Changes
 
 ```bash
-git diff --cached
-git diff
+git status --porcelain
+git diff                      # Uncommitted changes (may be empty)
+git diff main...HEAD          # Committed changes on this branch/worktree
 ```
 
 **Focus on**:

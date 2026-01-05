@@ -139,6 +139,8 @@ def test_dependency_resolution_and_cycles(tmp_path: Path):
             ),
         )
         write(base / f"{name}/validators/codex.md", "# validator")
+        # Packs must provide a global overlay (even if empty) for validator composition.
+        write(base / f"{name}/validators/overlays/global.md", "")
 
     # a -> b -> c
     write_pack("a", ["b"])

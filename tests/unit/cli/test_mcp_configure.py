@@ -3,10 +3,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
-def run_mcp_configure(args: list[str], env: dict, cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+def run_mcp_configure(args: list[str], env: dict, cwd: Path | None = None) -> subprocess.CompletedProcess:
     """Execute ``mcp configure`` command as a module."""
 
     env = env.copy()
@@ -31,8 +30,8 @@ def test_mcp_configure_command_module_exists():
     module = importlib.import_module("edison.cli.mcp.configure")
 
     assert hasattr(module, "SUMMARY")
-    assert callable(getattr(module, "register_args"))
-    assert callable(getattr(module, "main"))
+    assert callable(module.register_args)
+    assert callable(module.main)
 
 
 def test_configure_creates_mcp_json_with_all_servers(tmp_path: Path):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from helpers.io_utils import write_yaml
@@ -9,8 +10,9 @@ from edison.core.rules import compose_rules
 
 def test_user_rules_registry_is_applied_before_project(isolated_project_env: Path) -> None:
     root = isolated_project_env
+    user_root = Path(os.environ["EDISON_paths__user_config_dir"]).resolve()
 
-    user_registry = root / ".edison-user" / "rules" / "registry.yml"
+    user_registry = user_root / "rules" / "registry.yml"
     write_yaml(
         user_registry,
         {
@@ -35,8 +37,9 @@ def test_user_rules_registry_is_applied_before_project(isolated_project_env: Pat
 
 def test_user_pack_rules_registry_is_included(isolated_project_env: Path) -> None:
     root = isolated_project_env
+    user_root = Path(os.environ["EDISON_paths__user_config_dir"]).resolve()
 
-    user_pack_registry = root / ".edison-user" / "packs" / "react" / "rules" / "registry.yml"
+    user_pack_registry = user_root / "packs" / "react" / "rules" / "registry.yml"
     write_yaml(
         user_pack_registry,
         {
@@ -57,4 +60,3 @@ def test_user_pack_rules_registry_is_included(isolated_project_env: Path) -> Non
     assert "react-user-only" in rules
     assert rules["react-user-only"]["origins"] == ["pack:react"]
     assert "From user pack rules registry." in rules["react-user-only"]["body"]
-

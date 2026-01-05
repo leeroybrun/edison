@@ -46,7 +46,7 @@ def render_readme_template(
 
             - `{config_dir}/config/defaults.yml` — paths and project metadata (type: {context.get('project_type', '')}, db: {context.get('database', '')})
             - `{config_dir}/config/packs.yml` — enabled packs: {tech_label}
-            - `{config_dir}/config/validators.yml` — validator configuration
+            - `{config_dir}/config/validation.yaml` — validation configuration
             - `{config_dir}/config/delegation.yml` — agents and delegation settings
             - `{config_dir}/config/ci.yml` — CI/CD commands (lint, test, build, type-check)
             - `{config_dir}/config/tdd.yml` — TDD enforcement rules

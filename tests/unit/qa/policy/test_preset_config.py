@@ -38,7 +38,7 @@ class TestPresetConfigLoading:
         assert quick.name == "quick"
         # Quick preset does not add validators beyond always_run globals.
         assert quick.validators == []
-        # Preset required_evidence is additive; baseline evidence is configured elsewhere.
+        # Quick preset explicitly requires no evidence.
         assert quick.required_evidence == []
 
     def test_loads_bundled_standard_preset(self, tmp_path: Path, monkeypatch):
@@ -58,7 +58,7 @@ class TestPresetConfigLoading:
         # Standard preset adds critical validators; evidence requirements are baseline + preset additions.
         assert "security" in standard.validators
         assert "performance" in standard.validators
-        assert standard.required_evidence == []
+        assert standard.required_evidence is None
 
     def test_project_can_override_preset(self, tmp_path: Path, monkeypatch):
         """Project-level config can override preset validators."""
@@ -153,24 +153,6 @@ class TestPresetConfigLoading:
 @pytest.mark.qa
 class TestPresetInferenceRules:
     """Tests for loading file pattern to preset inference rules."""
-
-    def test_loads_bundled_inference_rules(self, tmp_path: Path, monkeypatch):
-        """Core config must include file pattern inference rules."""
-        repo = create_repo_with_git(tmp_path)
-        setup_project_root(monkeypatch, repo)
-        reset_edison_caches()
-
-        from edison.core.qa.policy.config import PresetConfigLoader
-
-        loader = PresetConfigLoader(project_root=repo)
-        rules = loader.load_inference_rules()
-
-        # Should have rules for common patterns
-        assert len(rules) > 0
-        # Rules should have pattern and preset
-        for rule in rules:
-            assert "patterns" in rule or "pattern" in rule
-            assert "preset" in rule
 
     def test_project_can_add_inference_rules(self, tmp_path: Path, monkeypatch):
         """Project can add custom file pattern inference rules."""

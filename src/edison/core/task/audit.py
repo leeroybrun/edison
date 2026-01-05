@@ -21,6 +21,7 @@ from typing import Any
 
 from edison.core.config.domains.task import TaskConfig
 from edison.core.task.similarity import _jaccard, _shingle_set, _tokens
+from edison.core.task.relationships.codec import decode_frontmatter_relationships
 from edison.core.utils.paths.management import get_management_paths
 from edison.core.utils.text import has_frontmatter, parse_frontmatter
 
@@ -176,6 +177,7 @@ def _load_tasks_from_paths(paths: list[Path]) -> list[TaskAuditTask]:
 
         doc = parse_frontmatter(raw)
         fm = doc.frontmatter or {}
+        _rels, derived = decode_frontmatter_relationships(fm)
         task_id = str(fm.get("id") or path.stem)
         title = str(fm.get("title") or "")
         state = path.parent.name
@@ -188,9 +190,9 @@ def _load_tasks_from_paths(paths: list[Path]) -> list[TaskAuditTask]:
                 path=path,
                 state=state,
                 tags=list(fm.get("tags") or []),
-                depends_on=list(fm.get("depends_on") or []),
-                blocks_tasks=list(fm.get("blocks_tasks") or []),
-                related=list(fm.get("related") or fm.get("related_tasks") or []),
+                depends_on=list(derived.get("depends_on") or []),
+                blocks_tasks=list(derived.get("blocks_tasks") or []),
+                related=list(derived.get("related") or []),
                 wave=_infer_wave(task_id, body),
                 markdown_body=body,
                 files_to_modify=sorted(_extract_files_to_modify(body)),

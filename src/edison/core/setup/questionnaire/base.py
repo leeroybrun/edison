@@ -186,7 +186,7 @@ class SetupQuestionnaire:
             {
                 "defaults.yml": "paths: ...",
                 "packs.yml": "packs: ...",
-                "validators.yml": "validators: ...",
+                "validation.yaml": "validation: ...",
                 ...
             }
 

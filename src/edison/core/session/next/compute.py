@@ -5,7 +5,7 @@ This module contains the core compute_next function and CLI facade.
 
 Rule Types:
   1. ENFORCEMENT rules: Linked to state machine transitions in workflow.yaml,
-     enforced by guard CLIs (edison task ready, edison qa promote, etc.).
+     enforced by guard CLIs (edison task done, edison qa promote, etc.).
      Example: RULE.GUARDS.FAIL_CLOSED, RULE.VALIDATION.FIRST
 
   2. GUIDANCE rules: Registered in rules/registry.yml but not linked to transitions.
@@ -383,6 +383,63 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
     actions: list[dict[str, Any]] = []
     blockers: list[dict[str, Any]] = []
     followups_plan: list[dict[str, Any]] = []
+
+    def _should_show_session_start_checklist(session_obj: Any) -> bool:
+        try:
+            if not isinstance(session_obj, dict):
+                return True
+            meta = session_obj.get("meta") if isinstance(session_obj.get("meta"), dict) else {}
+            if not meta:
+                return True
+
+            from edison.core.utils.time import parse_iso8601, utc_now
+            from edison.core.utils.paths import PathResolver
+
+            created_raw = str(meta.get("createdAt") or "").strip()
+            last_raw = str(meta.get("lastActive") or "").strip()
+            if not created_raw or not last_raw:
+                return True
+
+            created = parse_iso8601(created_raw, repo_root=PathResolver.resolve_project_root())
+            last = parse_iso8601(last_raw, repo_root=PathResolver.resolve_project_root())
+            now = utc_now(repo_root=PathResolver.resolve_project_root())
+
+            # New sessions often have lastActive ~= createdAt.
+            if abs((last - created).total_seconds()) <= 120:
+                return True
+            # Resumed/stale sessions: show if session hasn't been active recently.
+            if (now - last).total_seconds() >= 3600:
+                return True
+        except Exception:
+            return True
+        return False
+
+    # Session start/resume checklist: show at the moment it matters.
+    if _should_show_session_start_checklist(session):
+        try:
+            from pathlib import Path
+
+            from edison.core.workflow.checklists.session_start import SessionStartChecklistEngine
+            from edison.core.utils.paths import PathResolver
+
+            checklist = SessionStartChecklistEngine(project_root=PathResolver.resolve_project_root()).compute(
+                session_id=session_id,
+                cwd=Path(os.getcwd()),
+            )
+            actions.append(
+                {
+                    "id": "session.start_checklist",
+                    "entity": "session",
+                    "recordId": session_id,
+                    "cmd": ["edison", "session", "show", session_id],
+                    "rationale": "Session start/resume checklist (worktree, delegation gate, prerequisites).",
+                    "blocking": bool(checklist.get("hasBlockers", False)),
+                    "checklist": checklist,
+                }
+            )
+        except Exception:
+            # Fail-open: session next must remain usable even if checklist fails.
+            pass
     # Session JSON is NOT the source of truth for tasks/QAs. Tasks are derived from
     # task files (TaskRepository) via session_id linkage.
     from edison.core.task import TaskRepository
@@ -503,6 +560,24 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                         task_id=task_id, session_id=session_id
                     )
                     action["validatorRoster"] = roster
+                    try:
+                        from edison.core.workflow.checklists.qa_validate_preflight import (
+                            QAValidatePreflightChecklistEngine,
+                        )
+
+                        action["checklist"] = QAValidatePreflightChecklistEngine(
+                            project_root=PathResolver.resolve_project_root()
+                        ).compute(
+                            task_id=task_id,
+                            session_id=session_id,
+                            roster=roster,
+                            round_num=None,
+                            new_round=False,
+                            will_execute=("--execute" in (action.get("cmd") or [])),
+                            check_only=False,
+                        )
+                    except Exception:
+                        pass
                     actions.append(action)
             else:
                 # Fallback: generate default action if no recommendations in config
@@ -517,7 +592,27 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     cmd = ["edison", "qa", "validate", task_id, "--session", session_id]
                     rationale = "Build validator roster for orchestrator delegation"
 
-                actions.append({
+                checklist = None
+                try:
+                    from edison.core.workflow.checklists.qa_validate_preflight import (
+                        QAValidatePreflightChecklistEngine,
+                    )
+
+                    checklist = QAValidatePreflightChecklistEngine(
+                        project_root=PathResolver.resolve_project_root()
+                    ).compute(
+                        task_id=task_id,
+                        session_id=session_id,
+                        roster=roster,
+                        round_num=None,
+                        new_round=False,
+                        will_execute=can_execute_directly,
+                        check_only=False,
+                    )
+                except Exception:
+                    checklist = None
+
+                action = {
                     "id": "qa.validate",
                     "entity": "qa",
                     "recordId": f"{task_id}-qa",
@@ -528,7 +623,10 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                     "blocking": True,
                     "validatorRoster": roster,
                     "canExecuteDirectly": can_execute_directly,
-                })
+                }
+                if checklist:
+                    action["checklist"] = checklist
+                actions.append(action)
 
     # Auto-unblock parents when all children are ready (done or validated)
     for task_id, task_entry in tasks_map.items():
@@ -1018,8 +1116,10 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
         from edison.core.qa.evidence.service import EvidenceService
 
         qa_cfg = QAConfig()
-        close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-        required_close = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
+        from edison.core.qa.policy.session_close import get_session_close_policy
+
+        policy = get_session_close_policy(project_root=qa_cfg.repo_root)
+        required_close = list(policy.required_evidence or [])
         required_close = [str(x).strip() for x in (required_close or []) if str(x).strip()]
         session_close_evidence["required"] = list(required_close)
 
@@ -1048,6 +1148,31 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
             session_close_evidence["missing"] = missing_close
     except Exception:
         session_close_evidence = {"required": [], "missing": []}
+
+    # Session close preflight checklist (surface only when approaching close).
+    try:
+        done_tasks = [t for t in session_tasks if getattr(t, "state", None) == STATES["task"]["done"]]
+        wip_tasks = [t for t in session_tasks if getattr(t, "state", None) == STATES["task"]["wip"]]
+        if done_tasks and not wip_tasks:
+            from edison.core.workflow.checklists.session_close_preflight import SessionClosePreflightChecklistEngine
+            from edison.core.utils.paths import PathResolver
+
+            checklist = SessionClosePreflightChecklistEngine(project_root=PathResolver.resolve_project_root()).compute(
+                session_id=session_id
+            )
+            actions.append(
+                {
+                    "id": "session.close_preflight",
+                    "entity": "session",
+                    "recordId": session_id,
+                    "cmd": ["edison", "session", "verify", session_id, "--phase", "closing"],
+                    "rationale": "Session close preflight checklist (deep bundle preset, evidence, and scope invariants).",
+                    "blocking": bool(checklist.get("hasBlockers", False)),
+                    "checklist": checklist,
+                }
+            )
+    except Exception:
+        pass
 
     recommendations_list = [
         "Run 'edison session verify <session-id>' before closing to detect metadata drift (manual edits)",

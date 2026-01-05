@@ -156,6 +156,7 @@ def write_command_evidence(
     pipefail: bool = True,
     runner: str = "edison evidence capture",
     hmac_key: str | None = None,
+    fingerprint: dict[str, Any] | None = None,
 ) -> None:
     """Write command evidence v1 with optional HMAC."""
     started_s: str
@@ -185,6 +186,10 @@ def write_command_evidence(
     )
 
     fm = ev.to_dict()
+    fp = fingerprint or {}
+    fm["gitHead"] = str(fp.get("gitHead") or "")
+    fm["gitDirty"] = bool(fp.get("gitDirty", False))
+    fm["diffHash"] = str(fp.get("diffHash") or "")
     fm.pop("hmacSha256", None)
     content = format_frontmatter(fm, exclude_none=True) + (output or "")
 

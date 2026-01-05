@@ -328,6 +328,7 @@ class ComposableRegistry(CompositionBase, Generic[T]):
             source_dir=self.core_dir,
             include_provider=include_provider,
             strip_section_markers=self._should_strip_section_markers(name),
+            protect_code_literals=self.content_type not in {"agents", "validators"},
             context_vars=context_vars,
         )
 

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Run configured CI commands and capture output as evidence"
 
@@ -39,7 +40,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session-close",
         action="store_true",
-        help="Run only commands needed to satisfy validation.sessionClose.requiredEvidenceFiles (config-driven).",
+        help="Run only commands needed to satisfy the configured session-close validation preset (validation.sessionClose.preset).",
     )
     parser.add_argument(
         "--command",
@@ -57,6 +58,11 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         dest="round_num",
         help="Explicit round number (default: latest)",
+    )
+    parser.add_argument(
+        "--no-lock",
+        action="store_true",
+        help="Bypass evidence capture locking (dangerous when multiple agents run in parallel).",
     )
     add_json_flag(parser)
     add_repo_root_flag(parser)
@@ -110,7 +116,8 @@ def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
     try:
         project_root = get_repo_root(args)
-        task_id = str(args.task_id)
+        raw_task_id = str(args.task_id)
+        task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
 
         only = _split_only(getattr(args, "only", []) or [])
         if getattr(args, "command_name", None):
@@ -122,6 +129,7 @@ def main(args: argparse.Namespace) -> int:
         resolved_preset: str | None = None
         continue_on_failure = bool(getattr(args, "continue_on_failure", False))
         round_num = getattr(args, "round_num", None)
+        no_lock = bool(getattr(args, "no_lock", False))
 
         from edison.core.config.domains.ci import CIConfig
         from edison.core.config.domains.qa import QAConfig
@@ -159,11 +167,11 @@ def main(args: argparse.Namespace) -> int:
 
             required_files: list[str] = []
             if session_close:
-                close_cfg = qa_cfg.validation_config.get("sessionClose", {}) if isinstance(qa_cfg.validation_config, dict) else {}
-                required_files = close_cfg.get("requiredEvidenceFiles", []) if isinstance(close_cfg, dict) else []
-                if not isinstance(required_files, list):
-                    required_files = []
-                required_files = [str(x).strip() for x in required_files if str(x).strip()]
+                from edison.core.qa.policy.session_close import get_session_close_policy
+
+                policy = get_session_close_policy(project_root=project_root)
+                resolved_preset = policy.preset.name
+                required_files = list(policy.required_evidence or [])
             else:
                 resolver = ValidationPolicyResolver(project_root=project_root)
                 policy = resolver.resolve_for_task(task_id, preset_name=str(preset_name).strip() if preset_name else None)
@@ -187,7 +195,7 @@ def main(args: argparse.Namespace) -> int:
                     if required_commandish:
                         raise RuntimeError(
                             "No configured CI commands match the required command evidence files for this run. "
-                            "Check `validation.presets.*.required_evidence` (or `validation.sessionClose.requiredEvidenceFiles`) "
+                            "Check `validation.presets.*.required_evidence` (or the preset configured by `validation.sessionClose.preset`) "
                             "and `validation.evidence.files`/`ci.commands` mappings. "
                             f"Missing command evidence targets: {', '.join(required_commandish)}"
                         )
@@ -216,6 +224,10 @@ def main(args: argparse.Namespace) -> int:
         passed = 0
         failed = 0
 
+        session_id = str(os.environ.get("AGENTS_SESSION") or "").strip() or None
+        if no_lock and not formatter.json_mode:
+            print("Warning: --no-lock bypasses evidence capture locking.", file=sys.stderr)
+
         for cmd_name, cmd_string in ci_commands.items():
             cmd = str(cmd_string).strip()
             if not cmd or _looks_like_placeholder(cmd):
@@ -225,7 +237,34 @@ def main(args: argparse.Namespace) -> int:
             if not filename:
                 filename = f"command-{cmd_name}.txt"
 
-            exit_code, output, started_at, completed_at = _run_command(cmd, project_root, pipefail=True)
+            lock_info: dict[str, Any]
+            if no_lock:
+                lock_info = {
+                    "lockKey": f"evidence-capture:{cmd_name}",
+                    "lockPath": "",
+                    "waitedMs": 0,
+                    "lockBypassed": True,
+                }
+                exit_code, output, started_at, completed_at = _run_command(cmd, project_root, pipefail=True)
+            else:
+                from edison.core.utils.locks.evidence_capture import acquire_evidence_capture_lock
+
+                with acquire_evidence_capture_lock(
+                    project_root=project_root,
+                    command_group=cmd_name,
+                    session_id=session_id,
+                ) as acquired:
+                    lock_info = {**acquired, "lockBypassed": False}
+                    if not formatter.json_mode:
+                        formatter.text(
+                            f"Lock acquired for '{cmd_name}' (waited {int(acquired.get('waitedMs') or 0)}ms): "
+                            f"{acquired.get('lockPath')}"
+                        )
+                    exit_code, output, started_at, completed_at = _run_command(cmd, project_root, pipefail=True)
+
+            from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+            fingerprint = compute_repo_fingerprint(project_root)
 
             evidence_path = round_dir / filename
             write_command_evidence(
@@ -243,13 +282,30 @@ def main(args: argparse.Namespace) -> int:
                 pipefail=True,
                 runner="edison evidence capture",
                 hmac_key=hmac_key or None,
+                fingerprint=fingerprint,
             )
 
-            results.append({"name": cmd_name, "command": cmd, "exitCode": exit_code, "file": filename})
+            results.append({"name": cmd_name, "command": cmd, "exitCode": exit_code, "file": filename, "lock": lock_info})
             if exit_code == 0:
                 passed += 1
             else:
                 failed += 1
+                if not formatter.json_mode:
+                    display_path = str(evidence_path)
+                    try:
+                        display_path = str(evidence_path.relative_to(project_root))
+                    except Exception:
+                        display_path = str(evidence_path)
+
+                    print(
+                        f"Command '{cmd_name}' failed (exitCode={exit_code}). Evidence: {display_path}",
+                        file=sys.stderr,
+                    )
+                    print(
+                        "Hint: if this is due to missing environment variables, configure them in `.edison/config/ci.yaml` "
+                        f"under `ci.commands.{cmd_name}` (or prefix env vars when running `edison evidence capture`).",
+                        file=sys.stderr,
+                    )
                 if not continue_on_failure:
                     break
 

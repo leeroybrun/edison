@@ -1,0 +1,12 @@
+# E2E Web pack: Claude Code settings overlays
+#
+# Purpose: allow Playwright-based e2e commands without interactive permission prompts.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(playwright:*)"
+        - "Bash(pnpm playwright:*)"
+        - "Bash(npx playwright:*)"

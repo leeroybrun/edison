@@ -46,7 +46,7 @@ def main(args: argparse.Namespace) -> int:
         repo_root = get_repo_root(args)
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
 
-        from edison.core.task import normalize_record_id
+        from edison.cli import format_display_path, resolve_existing_task_id
 
         task_id = str(args.task_id)
 
@@ -55,10 +55,13 @@ def main(args: argparse.Namespace) -> int:
         if task_id.endswith("-qa") or task_id.endswith(".qa"):
             task_id = task_id[:-3]
 
-        task_id = normalize_record_id("task", task_id)
+        task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=task_id)
         qa_id = f"{task_id}-qa"
 
         workflow = TaskQAWorkflow(project_root=repo_root)
+        qa_repo = QARepository(project_root=repo_root)
+        qa_existed_before = qa_repo.get(qa_id) is not None
+
         qa = workflow.ensure_qa(
             task_id=task_id,
             session_id=session_id,
@@ -66,9 +69,20 @@ def main(args: argparse.Namespace) -> int:
             title=None,
         )
 
-        qa_repo = QARepository(project_root=repo_root)
         qa_path = qa_repo.get_path(qa_id)
-        rel_path = qa_path.relative_to(repo_root) if qa_path.is_relative_to(repo_root) else qa_path
+        qa_path_display = format_display_path(project_root=repo_root, path=qa_path)
+
+        from edison.core.qa.workflow.next_steps import (
+            build_qa_next_steps_payload,
+            format_qa_next_steps_text,
+        )
+
+        qa_payload = build_qa_next_steps_payload(
+            qa_id=qa.id,
+            qa_state=str(qa.state),
+            qa_path=qa_path_display,
+            created=not qa_existed_before,
+        )
 
         result = {
             "status": "ok",
@@ -77,17 +91,15 @@ def main(args: argparse.Namespace) -> int:
             "state": qa.state,
             "validator_owner": qa.validator_owner,
             "session_id": qa.session_id,
-            "qaPath": str(rel_path),
+            **qa_payload,
         }
 
-        formatter.json_output(result) if formatter.json_mode else formatter.text(
-            f"QA ready: {qa_id} ({qa.state})\n  @{rel_path}"
-        )
+        formatter.json_output(result) if formatter.json_mode else formatter.text(format_qa_next_steps_text(qa_payload))
         if not formatter.json_mode:
             try:
                 from edison.core.artifacts import format_required_fill_next_steps_for_file
 
-                hint = format_required_fill_next_steps_for_file(qa_path, display_path=str(rel_path))
+                hint = format_required_fill_next_steps_for_file(qa_path, display_path=str(qa_path_display))
                 if hint:
                     formatter.text("")
                     formatter.text(hint)

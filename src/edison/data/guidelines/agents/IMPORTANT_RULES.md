@@ -75,6 +75,7 @@ function process_record(record) {
 #### 3. TEST THOROUGHLY
 
 **Follow TDD protocol religiously. Tests first, always.**
+Applies to executable behavior changes; content-only Markdown/YAML/template edits do not require new tests, but must not be used to bypass TDD when code changes.
 
 ```pseudocode
 // ✅ CORRECT workflow

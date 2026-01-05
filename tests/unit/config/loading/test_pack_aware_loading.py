@@ -373,8 +373,9 @@ class TestPackOverrideAnySection:
         """Packs should be able to override timeout settings."""
         pack_config = tmp_path / "bundled_packs" / "prisma" / "config"
         pack_config.mkdir(parents=True)
+        migration_timeout = 901
         (pack_config / "timeouts.yaml").write_text(
-            "timeouts:\n  database:\n    migration: 600\n"
+            f"timeouts:\n  database:\n    migration: {migration_timeout}\n"
         )
 
         project_config = tmp_path / ".edison" / "config"
@@ -387,8 +388,7 @@ class TestPackOverrideAnySection:
         mgr.bundled_packs_dir = tmp_path / "bundled_packs"
 
         cfg = mgr.load_config(validate=False)
-        assert cfg.get("timeouts", {}).get("database", {}).get("migration") == 600
-
+        assert cfg.get("timeouts", {}).get("database", {}).get("migration") == migration_timeout
 
 
 

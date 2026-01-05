@@ -67,12 +67,12 @@ Session state names map to on-disk directories as follows:
 - [ ] Implementation delegated to sub-agents (OR done yourself for trivial tasks) with TDD and an Implementation Report per round (run `edison read OUTPUT_FORMAT --type guidelines/agents`).
 - [ ] Sub-agents/implementers followed their workflow (tracking stamps, TDD, Context7, automation, reports).
 - [ ] Validation delegated to independent validators (NEVER self-validate your own implementation).
-- [ ] ALL blocking validators launched (global + critical + triggered specialized with `blocksOnFail=true`).
+- [ ] ALL blocking validators launched (global + critical + triggered comprehensive with `blocking=true`).
 - [ ] Validators run in batched waves up to concurrency cap; verdicts recorded in QA docs.
 - [ ] Approval decision based on ALL blocking validators (if ANY reject → task REJECTED).
 - [ ] Rejections keep tasks in `{{fn:task_state_dir("wip")}}/` and QA in `{{fn:qa_state_dir("waiting")}}/`. Follow-up tasks created immediately.
 - [ ] Session closes only after `edison session verify --phase closing` then `edison session close <session-id>` pass. Parent task must be `{{fn:semantic_state("task","validated")}}`. Child tasks can be `{{fn:semantic_states("task","done,validated","pipe")}}`. Parent QA must be `{{fn:semantic_states("qa","done,validated","pipe")}}`. Child QA should be `{{fn:semantic_state("qa","done")}}` when approved in the parent bundle (or `{{fn:semantic_states("qa","waiting,todo","pipe")}}` only if intentionally deferred outside the bundle).
-- [ ] State transitions follow the canonical state machine (run `edison read STATE_MACHINE`); use guards (`edison task ready`, `edison qa bundle`) not manual moves.
+- [ ] State transitions follow the canonical state machine (run `edison read STATE_MACHINE`); use guards (`edison task done`, `edison qa bundle`) not manual moves.
 - [ ] Session is active (created via `edison session create` or `edison orchestrator start`) and worktree isolation is active for this session (external worktree path recorded).
 
 ## Context Budget (token minimization)
@@ -111,7 +111,7 @@ When sharing code or documentation with sub-agents, send focused snippets around
 <!-- section: RULE.LINK.SESSION_SCOPE_ONLY -->
 - Use `edison task new --parent <id>` or `edison task link <parent> <child>` to register follow-ups. Linking MUST only occur within the current session scope; `edison task link` MUST refuse links where either side is out of scope unless `--force` is provided (and MUST log a warning in the session Activity Log).
 <!-- /section: RULE.LINK.SESSION_SCOPE_ONLY -->
-- Before promoting a task to `{{fn:semantic_state("task","done")}}/`, run `edison task ready <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `{{fn:semantic_states("task","done,validated","pipe")}}`).
+- Before promoting a task to `{{fn:semantic_state("task","done")}}/`, run `edison task done <task-id>` to enforce automation evidence, QA pairing, and child readiness (all children in `{{fn:semantic_states("task","done,validated","pipe")}}`).
 - Before invoking validators, run `edison qa bundle <root-task>` to emit the cluster manifest (tasks, QA briefs, evidence directories) and paste it into the QA doc. Validators only accept bundles generated from this script.
 - Use `edison session status` for self-audits; this CLI surfaces the tasks you own, their blockers, and the bundle manifest without manually reading JSON.
 
@@ -230,7 +230,7 @@ Close a session only when all scoped tasks are `{{fn:semantic_state("task","vali
 
 **Run readiness check:**
 ```bash
-edison task ready <task-id> --session <session-id>
+edison task done <task-id> --session <session-id>
 ```
 
 This transition is guarded (fail-closed) and should only be executed once implementation is complete. At minimum, ensure:
@@ -275,7 +275,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 - ❌ Treating optional validators as "good enough"
 
 **REQUIRED:**
-- ✅ Launch ALL blocking validators (global + critical + triggered specialized with `blocksOnFail=true`)
+- ✅ Launch ALL blocking validators (global + critical + triggered comprehensive with `blocking=true`)
 - ✅ Use DIFFERENT models for validation than implementation (if possible)
 - ✅ Launch validators via delegation (Pal MCP) so they run independently
 - ✅ Wait for ALL blocking validators to complete before making approval decision
@@ -327,7 +327,7 @@ Parent tasks MUST NOT move to `{{fn:semantic_state("task","done")}}` until every
 <validator-cli> --model <model> --role validator-performance --task <task-id> --qa {{fn:qa_state_dir("wip")}}/<task-id>-qa.md
 ```
 
-#### Wave 3: Specialized Validators (TRIGGERED, BLOCKING IF `blocksOnFail=true`)
+#### Wave 3: Comprehensive Validators (TRIGGERED, BLOCKING IF `blocking=true`)
 
 **Only launch if file patterns match** (session next shows which are triggered):
 
@@ -431,7 +431,7 @@ edison session verify <session-id>
    - ⚠️ `blocked` - Validator couldn't complete (missing evidence, etc.)
 
 3. **Aggregate blocking validators:**
-   - ALL blocking validators (global + critical + specialized with `blocksOnFail=true`) MUST approve
+   - ALL blocking validators (global + critical + comprehensive with `blocking=true`) MUST approve
    - If ANY blocking validator rejects, task is REJECTED
    - If ANY blocking validator is blocked, task is BLOCKED (fix and re-run)
 

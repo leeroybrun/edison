@@ -39,7 +39,8 @@ edison.cli/
 │   ├── waves.py           # Plan parallelizable task waves (depends_on)
 │   ├── blocked.py         # Explain todo tasks blocked by depends_on
 │   ├── relate.py          # Link related tasks (non-blocking)
-│   ├── ready.py           # Mark task ready for QA
+│   ├── ready.py           # List ready-to-claim tasks (legacy completion alias)
+│   ├── done.py            # Complete task (wip→done)
 │   ├── status.py          # Show task status
 │   └── split.py           # Split task into subtasks
 ├── qa/                     # QA and validation commands
@@ -263,7 +264,7 @@ edison.data/
 │   ├── commands.yaml      # Slash command templates
 │   ├── hooks.yaml         # Git hook templates
 │   ├── orchestrator.yaml  # Orchestrator configuration
-│   ├── qa.yaml            # QA configuration
+│   ├── validation.yaml    # Validation configuration (presets, engines, validators, evidence)
 │   ├── session.yaml       # Session configuration
 │   ├── tasks.yaml         # Task configuration
 │   └── ...                # 40+ configuration files
@@ -703,7 +704,7 @@ states:
 
 Guards are enforced by CLI commands:
 - `edison task claim` checks `can_start_task` guard
-- `edison task ready` checks `can_finish_task` guard
+- `edison task done` checks `can_finish_task` guard
 - `edison qa promote` checks QA-specific guards
 
 ### Rule System
@@ -751,7 +752,7 @@ Edison has two types of rules:
      │ todo→wip │       │ wip→done │      │ No action│
      └─────┬────┘       └─────┬────┘      └──────────┘
            │                  │
-           │ edison task      │ edison task ready
+           │ edison task      │ edison task done
            │ claim T-001      │ T-001
            ↓                  ↓
      ┌──────────┐       ┌──────────┐
@@ -817,7 +818,7 @@ Agents are defined in `edison.data/agents/`:
 
 ### Validator Configuration
 
-Validators are configured in `validators.yaml` with:
+Validators are configured in `validation.yaml` with:
 - **Engines**: CLI execution backends (codex-cli, claude-cli, gemini-cli, auggie-cli, coderabbit-cli, pal-mcp)
 - **Validators**: Flat list with engine references, prompts, and execution parameters
 - **Waves**: Execution groups (critical, comprehensive) with ordering and failure behavior
@@ -963,7 +964,7 @@ Edison uses a **layered configuration system**:
 - `workflow.yaml`: Workflow rules and timeouts
 - `composition.yaml`: Composition settings
 - `orchestrator.yaml`: Orchestrator configuration
-- `qa.yaml`: QA configuration (validator rosters, evidence rules)
+- `validation.yaml`: Validation configuration (presets, engines, validators, evidence)
 - `session.yaml`: Session configuration
 - `tasks.yaml`: Task configuration
 - `commands.yaml`: Slash command templates
@@ -1008,7 +1009,8 @@ Edison generates IDE-specific configuration files for Claude, Cursor, and Pal.
 - `.claude/settings.json`: Claude-specific settings
 - `.claude/commands/`: Slash commands for Claude
   - `edison.task-claim.md`: Claim a task
-  - `edison.task-ready.md`: Mark task ready
+  - `edison.task-ready.md`: List ready-to-claim tasks
+  - `edison.task-done.md`: Complete a task (wip→done)
   - `edison.qa-validate.md`: Validate a task
   - `edison.session-next.md`: Compute next actions
 
@@ -1157,7 +1159,7 @@ EdisonError (base)
 ### Adding New Validators
 
 1. Create validator prompt: `.edison/validators/my-validator.md`
-2. Add to roster: `.edison/config/qa.yaml`
+2. Add to roster: `.edison/config/validation.yaml`
 3. Recompose: `edison compose all`
 
 ### Adding New Rules

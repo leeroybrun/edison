@@ -53,13 +53,13 @@ def test_close_cli_can_import_validate_session_id():
 
 def test_validate_session_id_direct_import_from_id():
     """Test that validate_session_id can be imported directly from id module."""
-    from edison.core.session.core.id import validate_session_id
+    from edison.core.session.core.id import SessionIdError, validate_session_id
 
     # Verify it works correctly
     assert validate_session_id("test-session-001") == "test-session-001"
 
     # Verify it raises on invalid input
-    with pytest.raises(Exception):  # Should raise SessionIdError
+    with pytest.raises(SessionIdError):
         validate_session_id("")
 
 
@@ -70,5 +70,6 @@ def test_api_module_deleted():
     the direct id module import everywhere.
     """
     with pytest.raises(ImportError):
-        # This should fail because api.py has been deleted
-        from edison.core.session import api
+        import importlib
+
+        importlib.import_module("edison.core.session.api")

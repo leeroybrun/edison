@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from edison.core.config import ConfigManager
 from edison.core.entity.base import EntityId
@@ -33,6 +33,7 @@ class ValidatorMetadata:
     engine: str
     wave: str
     triggers: list[str] = field(default_factory=list)
+    enabled: bool = True
     blocking: bool = True
     always_run: bool = False
     fallback_engine: str = ""
@@ -41,6 +42,10 @@ class ValidatorMetadata:
     context7_required: bool = False
     context7_packages: list[str] = field(default_factory=list)
     focus: list[str] = field(default_factory=list)
+    mcp_servers: list[str] = field(default_factory=list)
+    # Optional validator-specific runtime dependencies.
+    # Currently used by browser E2E validators to ensure a web server is reachable.
+    web_server: dict[str, Any] | None = None
 
     @property
     def pal_role(self) -> str:
@@ -125,7 +130,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     @property
     def default_wave(self) -> str:
         """Get the default wave for validators without explicit wave assignment.
-        
+
         Reads from validation.defaults.wave config. Falls back to "comprehensive"
         if not configured.
         """
@@ -150,6 +155,14 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             ValidatorMetadata instance
         """
         validator_id = entry.get("id", "")
+        enabled_raw = entry.get("enabled", True)
+        enabled = bool(enabled_raw) if isinstance(enabled_raw, bool) else str(enabled_raw).strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+            "",
+        }
 
         triggers_raw = entry.get("triggers", [])
         triggers: list[str] = []
@@ -159,12 +172,28 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
                 if s:
                     triggers.append(s)
 
+        raw_mcp = entry.get("mcp_servers")
+        if raw_mcp is None and isinstance(entry.get("mcp"), dict):
+            raw_mcp = (entry.get("mcp") or {}).get("servers")
+        mcp_servers: list[str] = []
+        if isinstance(raw_mcp, list):
+            for v in raw_mcp:
+                s = str(v).strip()
+                if s:
+                    mcp_servers.append(s)
+
+        raw_web_server = entry.get("web_server", entry.get("webServer"))
+        web_server: dict[str, Any] | None = None
+        if isinstance(raw_web_server, dict):
+            web_server = dict(raw_web_server)
+
         return ValidatorMetadata(
             id=validator_id,
             name=entry.get("name", validator_id.replace("-", " ").title()),
             engine=entry.get("engine", ""),
             wave=entry.get("wave", ""),
             triggers=triggers,
+            enabled=enabled,
             blocking=entry.get("blocking", True),
             always_run=entry.get("always_run", False),
             fallback_engine=entry.get("fallback_engine", ""),
@@ -173,6 +202,8 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             context7_required=entry.get("context7_required", False),
             context7_packages=entry.get("context7_packages", []),
             focus=entry.get("focus", []),
+            mcp_servers=mcp_servers,
+            web_server=web_server,
         )
 
     def _load_all(self) -> dict[str, ValidatorMetadata]:
@@ -278,7 +309,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     def get_triggered_validators(
         self,
         files: list[str],
-        wave: Optional[str] = None,
+        wave: str | None = None,
     ) -> tuple[list[ValidatorMetadata], list[ValidatorMetadata], list[ValidatorMetadata]]:
         """Return (always_run, triggered_blocking, triggered_optional) validators.
 
@@ -303,6 +334,8 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         for v in self.get_all():
             if wave and v.wave != wave:
                 continue
+            if not getattr(v, "enabled", True):
+                continue
             if v.always_run:
                 always_run.append(v)
             elif v.triggers and match_patterns(files, v.triggers):
@@ -316,9 +349,10 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
     def build_execution_roster(
         self,
         task_id: str,
-        session_id: Optional[str] = None,
-        wave: Optional[str] = None,
-        extra_validators: Optional[list[dict[str, str]]] = None,
+        session_id: str | None = None,
+        wave: str | None = None,
+        extra_validators: list[dict[str, str]] | None = None,
+        preset_name: str | None = None,
     ) -> dict[str, Any]:
         """Build execution roster for validation.
 
@@ -353,30 +387,28 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
 
         # Resolve validation policy (preset) to include any preset-selected validators
         # in addition to always_run + pattern-triggered validators.
-        preset_name = ""
+        from edison.core.qa.policy.resolver import ValidationPolicyResolver
+
+        selected_preset_name = ""
         preset_selected: list[ValidatorMetadata] = []
         preset_missing: list[str] = []
-        try:
-            from edison.core.qa.policy.resolver import ValidationPolicyResolver
+        preset_blocking_ids: set[str] = set()
 
-            policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
-                task_id,
-                session_id=session_id,
-            )
-            preset_name = str(policy.preset.name or "")
-            for vid in policy.validators:
-                v = self.get(vid)
-                if not v:
-                    preset_missing.append(str(vid))
-                    continue
-                if wave and v.wave != wave:
-                    continue
-                preset_selected.append(v)
-        except Exception:
-            # Fail-open for roster building: fall back to legacy always_run/trigger behavior.
-            preset_name = ""
-            preset_selected = []
-            preset_missing = []
+        policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(
+            task_id,
+            session_id=session_id,
+            preset_name=preset_name,
+        )
+        selected_preset_name = str(policy.preset.name or "")
+        preset_blocking_ids = {str(v) for v in (policy.blocking_validators or []) if str(v)}
+        for vid in policy.validators:
+            v = self.get(vid)
+            if not v:
+                preset_missing.append(str(vid))
+                continue
+            if wave and v.wave != wave:
+                continue
+            preset_selected.append(v)
 
         # Get always_run + pattern-triggered validators (legacy behavior)
         always_run, triggered_blocking, triggered_optional = self.get_triggered_validators(files, wave)
@@ -390,6 +422,8 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         selected_ids = {v.id for v in (always_run + preset_selected + triggered_blocking + triggered_optional)}
         for v in self.get_all():
             if wave and v.wave != wave:
+                continue
+            if not getattr(v, "enabled", True):
                 continue
             if v.id not in selected_ids:
                 skipped.append({
@@ -448,7 +482,11 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
             for v in always_run
         ]
         preset_entries = [
-            _to_entry(v, f"Included by preset '{preset_name}'") for v in preset_selected
+            {
+                **_to_entry(v, f"Included by preset '{selected_preset_name}'"),
+                "blocking": v.id in preset_blocking_ids,
+            }
+            for v in preset_selected
         ]
         triggered_blocking_entries = [
             _to_entry(v, self._build_trigger_reason(files, v.triggers))
@@ -468,7 +506,7 @@ class ValidatorRegistry(BaseRegistry[ValidatorMetadata]):
         payload: dict[str, Any] = {
             "taskId": task_id,
             "sessionId": session_id,
-            "preset": preset_name,
+            "preset": selected_preset_name,
             "modifiedFiles": files,
             "alwaysRequired": always_required_entries + preset_entries,
             "triggeredBlocking": triggered_blocking_entries,

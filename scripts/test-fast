@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run the fast test suite (no subprocess-heavy / e2e tests).
+#
+# Usage:
+#   scripts/test-fast           # fast suite
+#   scripts/test-fast -k foo    # pass-through args
+
+py="python3"
+if [[ -x ".venv/bin/python" ]]; then
+  py=".venv/bin/python"
+fi
+
+has_n_flag=0
+for a in "$@"; do
+  if [[ "$a" == "-n" || "$a" == "--numprocesses" || "$a" == "--dist" ]]; then
+    has_n_flag=1
+    break
+  fi
+done
+
+if [[ "$has_n_flag" -eq 0 ]]; then
+  if "$py" -c "import xdist" >/dev/null 2>&1; then
+    exec "$py" -m pytest -m fast -n auto --dist loadfile "$@"
+  fi
+fi
+
+exec "$py" -m pytest -m fast "$@"

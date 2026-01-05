@@ -1,0 +1,12 @@
+# Vitest pack: Claude Code settings overlays
+#
+# Purpose: allow test runner commands without interactive permission prompts.
+
+settings:
+  claude:
+    permissions:
+      allow:
+        - "+"
+        - "Bash(vitest:*)"
+        - "Bash(pnpm vitest:*)"
+        - "Bash(npx vitest:*)"

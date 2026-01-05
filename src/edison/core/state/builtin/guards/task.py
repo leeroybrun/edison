@@ -77,6 +77,16 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
     if not task_id:
         return False  # FAIL-CLOSED: no task ID found
 
+    # Context7 bypass (explicit, audited, and fail-closed on missing justification).
+    skip_context7 = bool(ctx.get("skip_context7"))
+    if skip_context7:
+        reason = str(ctx.get("skip_context7_reason") or "").strip()
+        if not reason:
+            raise ValueError(
+                "Context7 bypass requires an explicit reason.\n"
+                "Fix: re-run with `--skip-context7-reason \"<why this is a verified false positive>\"`."
+            )
+
     # Get project_root from context if available (for isolated test environments)
     project_root = ctx.get("project_root")
     project_root_path: Path | None = None
@@ -86,32 +96,91 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
         except Exception:
             project_root_path = None
 
+    session = ctx.get("session")
+    session_dict = session if isinstance(session, Mapping) else None
     # Context7 enforcement (must surface a useful error message).
-    try:
-        session = ctx.get("session")
-        session_dict = session if isinstance(session, Mapping) else None
+    if not skip_context7:
+        try:
+            from edison.core.qa.context import detect_packages_detailed
+            from edison.core.qa.context.context7 import missing_packages_detailed
+            from edison.core.qa.evidence import EvidenceService
+            from edison.core.task.repository import TaskRepository
 
-        from edison.core.qa.context import detect_packages, missing_packages
-        from edison.core.task.repository import TaskRepository
+            task_repo = TaskRepository(project_root=project_root_path)
+            task_path = task_repo._find_entity_path(str(task_id))  # type: ignore[attr-defined]
+            if task_path:
+                trace = detect_packages_detailed(Path(task_path), session_dict)  # type: ignore[arg-type]
+                pkgs = [str(p).strip() for p in (trace.get("packages") or []) if str(p).strip()]
+                if pkgs:
+                    classification = missing_packages_detailed(str(task_id), pkgs)
+                    missing = classification.get("missing", []) or []
+                    invalid = classification.get("invalid", []) or []
 
-        task_repo = TaskRepository(project_root=project_root_path)
-        task_path = task_repo._find_entity_path(str(task_id))  # type: ignore[attr-defined]
-        if task_path:
-            packages = detect_packages(Path(task_path), session_dict)  # type: ignore[arg-type]
-            missing = missing_packages(str(task_id), packages)
-            if missing:
-                detected = ", ".join(sorted(packages)) if packages else "(none)"
-                missing_s = ", ".join(missing)
-                raise ValueError(
-                    "Context7 evidence required "
-                    f"(missing: {missing_s}; detected: {detected})"
-                )
-    except ValueError:
-        raise
-    except Exception as e:
-        # FAIL-CLOSED: if Context7 validation can't run reliably, block completion,
-        # but do so with a clear, actionable error.
-        raise ValueError(f"Context7 validation failed: {e}") from e
+                    if missing or invalid:
+                        ev = EvidenceService(str(task_id), project_root=project_root_path)
+                        evidence_dir = classification.get("evidence_dir") or str(ev.get_round_dir(1))
+
+                        lines: list[str] = ["Context7 evidence required."]
+                        required = sorted({p for p in pkgs if str(p).strip()})
+                        if required:
+                            lines.append(f"Required: {', '.join(required)}")
+                        if bool(trace.get("usedFallback")):
+                            cand = trace.get("candidates") or []
+                            cand_preview = ", ".join([str(x) for x in list(cand)[:5] if str(x).strip()])
+                            suffix = f" (+{len(cand) - 5} more)" if isinstance(cand, list) and len(cand) > 5 else ""
+                            lines.append(
+                                "Note: Context7 package detection used a fallback heuristic (worktree diff) because the task "
+                                "did not declare any Primary Files / Areas."
+                                + (f" Candidates: {cand_preview}{suffix}" if cand_preview else "")
+                            )
+
+                        if missing:
+                            lines.append(f"Missing: {', '.join([str(x) for x in missing])}")
+                        if invalid:
+                            invalid_desc = []
+                            for inv in invalid:
+                                if not isinstance(inv, dict):
+                                    continue
+                                pkg = str(inv.get("package") or "").strip()
+                                fields = inv.get("missing_fields", []) or []
+                                fields_s = ", ".join([str(f) for f in fields if str(f).strip()])
+                                if pkg:
+                                    invalid_desc.append(f"{pkg} (missing: {fields_s})" if fields_s else pkg)
+                            if invalid_desc:
+                                lines.append(f"Invalid: {', '.join(invalid_desc)}")
+
+                        lines.append(f"Evidence dir: {evidence_dir}")
+                        lines.append("Fix:")
+                        lines.append(f"  - edison evidence init {task_id}  # if no round exists yet")
+                        lines.append(
+                            f"  - edison task done {task_id} --skip-context7 --skip-context7-reason \"<verified false positive>\""
+                        )
+
+                        affected_pkgs = sorted(
+                            {
+                                *(missing or []),
+                                *[
+                                    str(inv.get("package"))
+                                    for inv in invalid
+                                    if isinstance(inv, dict) and inv.get("package")
+                                ],
+                            }
+                        )
+                        for pkg in affected_pkgs:
+                            if not str(pkg).strip():
+                                continue
+                            lines.append(f"  - edison evidence context7 template {pkg}")
+                            lines.append(
+                                f"  - edison evidence context7 save {task_id} {pkg} --library-id /<org>/{pkg} --topics <topics>"
+                            )
+
+                        raise ValueError("\n".join(lines))
+        except ValueError:
+            raise
+        except Exception as e:
+            # FAIL-CLOSED: if Context7 validation can't run reliably, block completion,
+            # but do so with a clear, actionable error.
+            raise ValueError(f"Context7 validation failed: {e}") from e
 
     # Check implementation report exists
     try:
@@ -161,7 +230,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                     f"Missing evidence files in round-{latest}: {', '.join(missing_files)}"
                 )
 
-        # Optional TDD readiness gates (used by `edison task ready`).
+        # Optional TDD readiness gates (used by `edison task done`).
         enforce_tdd = bool(ctx.get("enforce_tdd")) and not bool(
             str(os.environ.get("DISABLE_TDD_ENFORCEMENT", "")).strip()
         )

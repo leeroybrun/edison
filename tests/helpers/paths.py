@@ -10,31 +10,28 @@ from pathlib import Path
 
 
 def get_repo_root() -> Path:
-    """Get the outermost repository root by finding all .git directories.
+    """Get the repository root for the current checkout.
 
-    This implementation finds the OUTERMOST .git directory, which correctly
-    handles nested git repositories (like .edison). This ensures we always
-    get the true project root, not a nested repo.
+    This implementation finds the CLOSEST parent directory containing a `.git`
+    entry (directory or worktree pointer file). This ensures E2E subprocesses
+    run against the same checkout under test, even when the checkout is a git
+    worktree nested under another repository directory (common in Edison
+    multi-worktree workflows).
 
     Returns:
-        Path: Absolute path to the outermost repository root
+        Path: Absolute path to the repository root
 
     Raises:
         RuntimeError: If no repository root can be found
     """
     current = Path(__file__).resolve()
-    last_git_root: Path | None = None
 
-    # Walk up the directory tree and find ALL .git directories
     while current != current.parent:
         if (current / ".git").exists():
-            last_git_root = current
+            return current
         current = current.parent
 
-    if last_git_root is None:
-        raise RuntimeError("Could not find repository root")
-
-    return last_git_root
+    raise RuntimeError("Could not find repository root")
 
 
 def get_core_root() -> Path:
@@ -51,5 +48,4 @@ def get_core_root() -> Path:
     """
     from edison.data import get_data_path
     return Path(get_data_path(""))
-
 

@@ -254,6 +254,7 @@ class TemplateEngine:
         include_provider: Optional[Callable[[str], Optional[str]]] = None,
         *,
         strip_section_markers: bool = True,
+        protect_code_literals: bool = True,
     ) -> None:
         """Initialize the template engine.
 
@@ -269,6 +270,7 @@ class TemplateEngine:
         self.source_dir = source_dir
         self.include_provider = include_provider
         self.strip_section_markers = strip_section_markers
+        self.protect_code_literals = protect_code_literals
 
         # Load custom functions from layered functions/ folders
         try:
@@ -288,27 +290,36 @@ class TemplateEngine:
         Returns:
             TransformerPipeline with all transformers
         """
-        return TransformerPipeline([
+        transformers: list[Any] = []
+        if self.protect_code_literals:
             # Step 0: Protect literal examples in markdown code (prevents executing
             # directive examples inside backticks/code fences).
-            CodeLiteralProtector(),
-            # Step 1-2: Includes (regular + section extracts)
-            IncludeTransformer(),
-            # Step 3: Conditionals
-            ConditionalTransformer(),
-            # Step 4: Loops
-            LoopExpander(),
-            # Step 5: Functions (custom Python)
-            FunctionTransformer(),
-            # Step 6-8: Variables (config, context, path)
-            VariableTransformer(),
-            # Step 9: References
-            ReferenceRenderer(),
-            # Step 10: Validation
-            ValidationTransformer(),
+            transformers.append(CodeLiteralProtector())
+
+        transformers.extend(
+            [
+                # Step 1-2: Includes (regular + section extracts)
+                IncludeTransformer(),
+                # Step 3: Conditionals
+                ConditionalTransformer(),
+                # Step 4: Loops
+                LoopExpander(),
+                # Step 5: Functions (custom Python)
+                FunctionTransformer(),
+                # Step 6-8: Variables (config, context, path)
+                VariableTransformer(),
+                # Step 9: References
+                ReferenceRenderer(),
+                # Step 10: Validation
+                ValidationTransformer(),
+            ]
+        )
+
+        if self.protect_code_literals:
             # Step 11: Restore literal examples in markdown code.
-            CodeLiteralRestorer(),
-        ])
+            transformers.append(CodeLiteralRestorer())
+
+        return TransformerPipeline(transformers)
 
     def process(
         self,

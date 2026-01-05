@@ -44,9 +44,9 @@ def test_worktree_create_fails_fast_when_session_already_linked_elsewhere(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from edison.core.session import worktree as worktree_lib
     from edison.core.session.core.models import Session
     from edison.core.session.persistence.repository import SessionRepository
-    from edison.core.session import worktree as worktree_lib
 
     session_id = "sess-worktree-linked-mismatch"
     repo = SessionRepository(project_root=isolated_project_env)

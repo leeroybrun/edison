@@ -17,8 +17,8 @@ workflow:
 
   timeouts:
     staleTaskThreshold: 4h
-    sessionTimeout: 2h
-    validatorTimeout: 5m
+    sessionTimeout: 24h
+    validatorTimeout: 15m
 
   # State machine configuration (merged from state-machine.yaml)
   statemachine:

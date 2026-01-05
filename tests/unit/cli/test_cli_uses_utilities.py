@@ -5,11 +5,8 @@ Following STRICT TDD: Write failing tests FIRST (RED), then implement (GREEN).
 """
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
-
-import pytest
 
 # Get CLI directory
 CLI_DIR = Path(__file__).parent.parent.parent / "src" / "edison" / "cli"
@@ -32,7 +29,7 @@ class TestNoInlineRepoRootPattern:
                 violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (
-            f"Files using manual Path(args.project_root) pattern instead of get_repo_root():\n"
+            "Files using manual Path(args.project_root) pattern instead of get_repo_root():\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
 
@@ -55,7 +52,7 @@ class TestNoInlineRecordTypeDetection:
                 violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (
-            f"Files using inline record type detection instead of detect_record_type():\n"
+            "Files using inline record type detection instead of detect_record_type():\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
 
@@ -82,7 +79,7 @@ class TestNoInlineRepositoryGetting:
                 violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (
-            f"Files using inline repository getting instead of get_repository():\n"
+            "Files using inline repository getting instead of get_repository():\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
 
@@ -100,10 +97,6 @@ class TestCLIUtilitiesAreImported:
 
             content = py_file.read_text()
 
-            # Check if file uses project_root = get_repo_root(args)
-            uses_get_repo_root = "get_repo_root(args)" in content or "get_repo_root(" in content
-            has_import = "from edison.cli import" in content and "get_repo_root" in content
-
             # If file assigns project_root but doesn't use get_repo_root
             if "project_root = " in content and "get_repo_root" not in content:
                 # Check if it's using manual pattern
@@ -111,6 +104,6 @@ class TestCLIUtilitiesAreImported:
                     violations.append(str(py_file.relative_to(CLI_DIR.parent.parent.parent)))
 
         assert not violations, (
-            f"Files should import and use get_repo_root from edison.cli:\n"
+            "Files should import and use get_repo_root from edison.cli:\n"
             + "\n".join(f"  - {v}" for v in violations)
         )

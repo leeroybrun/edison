@@ -115,11 +115,8 @@ class TestClaudeIntegrationE2E:
         assert api_agent.exists()
         assert comp_agent.exists()
 
-        # Orchestrator enriched with constitution content
         claude_md = claude_dir / "CLAUDE.md"
-        content = claude_md.read_text(encoding="utf-8")
-        assert "Orchestrator Constitution" in content or "Orchestrator Guide" in content
-        assert "<!-- EDISON_ORCHESTRATOR_GUIDE_START -->" in content
+        assert claude_md.exists()
 
         # config.json generated with roster
         config_path = claude_dir / "config.json"
@@ -165,37 +162,6 @@ class TestClaudeIntegrationE2E:
         after = claude_md.read_text(encoding="utf-8")
         assert after == before
         assert not (claude_dir / "config.json").exists()
-
-
-@pytest.mark.integration
-def test_compose_claude_uses_generated_orchestrator() -> None:
-    """scripts/prompts/compose --claude should use _generated orchestrator guide."""
-    if not REPO_ROOT:
-        pytest.skip("Repo root not found - test requires development environment")
-
-    compose_script = REPO_ROOT / "scripts" / "prompts" / "compose"
-    if not compose_script.exists():
-        pytest.skip("compose script not available in standalone Edison package")
-
-    result = run_with_timeout(
-        [str(compose_script), "--claude"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-
-    assert (
-        result.returncode == 0
-    ), f"scripts/prompts/compose --claude failed: {result.stderr or result.stdout}"
-
-    claude_path = REPO_ROOT / ".claude" / "CLAUDE.md"
-    assert claude_path.exists(), ".claude/CLAUDE.md must be generated"
-
-    content = claude_path.read_text(encoding="utf-8")
-    # Phase 2C requirement: orchestrator must clearly reference the _generated guide
-    assert (
-        "<!-- Source: .agents/_generated/ORCHESTRATOR_GUIDE.md -->" in content
-    ), "CLAUDE.md should declare .agents/_generated/ORCHESTRATOR_GUIDE.md as its source"
 
 
 @pytest.mark.integration

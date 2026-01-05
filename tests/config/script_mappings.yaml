@@ -7,6 +7,10 @@ mappings:
   tasks/ready:
     domain: task
     command: ready
+
+  tasks/done:
+    domain: task
+    command: done
     
   tasks/new:
     domain: task
@@ -56,6 +60,10 @@ mappings:
   session/next:
     domain: session
     command: next
+
+  session/list:
+    domain: session
+    command: list
     
   session/start:
     domain: session

@@ -10,7 +10,14 @@ import argparse
 import sys
 from pathlib import Path
 
-from edison.cli import add_json_flag, add_repo_root_flag, OutputFormatter, get_repo_root, get_repository
+from edison.cli import (
+    OutputFormatter,
+    add_json_flag,
+    add_repo_root_flag,
+    get_repo_root,
+    get_repository,
+    resolve_existing_task_id,
+)
 from edison.core.qa import promoter, bundler
 from edison.core.qa.evidence import EvidenceService, read_validator_reports
 from edison.core.state.transitions import validate_transition
@@ -82,10 +89,17 @@ def main(args: argparse.Namespace) -> int:
         # - CLI takes a task_id, but QA entity IDs are stored as "<task_id>-qa" (or "<task_id>.qa").
         raw_id = str(args.task_id)
         if raw_id.endswith("-qa") or raw_id.endswith(".qa"):
-            qa_id = raw_id
-            task_id = raw_id[:-3]  # strip "-qa" or ".qa"
+            task_id_token = raw_id[:-3]  # strip "-qa" or ".qa"
         else:
-            task_id = raw_id
+            task_id_token = raw_id
+
+        task_id = resolve_existing_task_id(project_root=repo_root, raw_task_id=task_id_token)
+        if task_id != task_id_token and not formatter.json_mode:
+            print(f"Resolved task id '{task_id_token}' -> '{task_id}'", file=sys.stderr)
+
+        if raw_id.endswith("-qa") or raw_id.endswith(".qa"):
+            qa_id = f"{task_id}-qa"
+        else:
             qa_id = f"{task_id}-qa"
 
         # Get QA entity to determine current state

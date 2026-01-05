@@ -1,7 +1,7 @@
 """
 Edison task relate command.
 
-SUMMARY: Add/remove non-blocking related-task links (frontmatter `related`)
+SUMMARY: Add/remove non-blocking related-task links (canonical `relationships`)
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sys
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
 from edison.core.task import normalize_record_id
 
-SUMMARY = "Add/remove non-blocking related-task links (frontmatter `related`)"
+SUMMARY = "Add/remove non-blocking related-task links (canonical `relationships`)"
 
 
 def register_args(parser: argparse.ArgumentParser) -> None:
@@ -27,55 +27,32 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     add_repo_root_flag(parser)
 
 
-def _dedupe(items: list[str]) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
-    for item in items:
-        s = str(item).strip()
-        if not s or s in seen:
-            continue
-        seen.add(s)
-        out.append(s)
-    return out
-
-
 def main(args: argparse.Namespace) -> int:
     formatter = OutputFormatter(json_mode=getattr(args, "json", False))
 
     try:
         project_root = get_repo_root(args)
-        from edison.core.task.repository import TaskRepository
-
-        repo = TaskRepository(project_root=project_root)
         a_id = normalize_record_id("task", args.task_a)
         b_id = normalize_record_id("task", args.task_b)
         if a_id == b_id:
             raise ValueError("Cannot relate a task to itself")
 
-        a = repo.get(a_id)
-        b = repo.get(b_id)
-        if not a:
-            raise ValueError(f"Task not found: {a_id}")
-        if not b:
-            raise ValueError(f"Task not found: {b_id}")
-
         remove = bool(getattr(args, "remove", False))
 
-        a_related = list(getattr(a, "related", None) or [])
-        b_related = list(getattr(b, "related", None) or [])
+        from edison.core.task.relationships.service import TaskRelationshipService
+        from edison.core.task.repository import TaskRepository
 
+        svc = TaskRelationshipService(project_root=project_root)
         if remove:
-            a_related = [x for x in a_related if str(x).strip() != b_id]
-            b_related = [x for x in b_related if str(x).strip() != a_id]
+            svc.remove(task_id=a_id, rel_type="related", target_id=b_id)
         else:
-            a_related.append(b_id)
-            b_related.append(a_id)
+            svc.add(task_id=a_id, rel_type="related", target_id=b_id)
 
-        a.related = _dedupe(a_related)
-        b.related = _dedupe(b_related)
-
-        repo.save(a)
-        repo.save(b)
+        repo = TaskRepository(project_root=project_root)
+        a = repo.get(a_id)
+        b = repo.get(b_id)
+        if not a or not b:
+            raise ValueError("Failed to reload tasks after relationship update")
 
         payload = {
             "status": "updated",
@@ -101,4 +78,3 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-

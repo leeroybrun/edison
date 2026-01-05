@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 import unittest
@@ -23,6 +24,7 @@ class TestStdErrConventions(unittest.TestCase):
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-stderr-tests-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
         (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+        (self.temp_root / ".project" / "tasks" / "wip").mkdir(parents=True, exist_ok=True)
 
         self.base_env = os.environ.copy()
         self.base_env.update({
@@ -38,8 +40,13 @@ class TestStdErrConventions(unittest.TestCase):
 
     def test_implementation_report_print_path_stdout_only(self) -> None:
         task_id = "stderr-conventions-1"
+        # `session track start` is task-scoped and must fail closed when the task is missing.
+        (self.temp_root / ".project" / "tasks" / "wip" / f"{task_id}.md").write_text(
+            f"---\nid: {task_id}\ntitle: Stderr conventions\n---\n",
+            encoding="utf-8",
+        )
         res = self._run([
-            "python3", "-m", "edison",
+            sys.executable, "-m", "edison",
             "session", "track", "start",
             "--task", task_id,
             "--type", "implementation",

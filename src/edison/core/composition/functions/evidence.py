@@ -1,4 +1,9 @@
-"""Evidence helpers for template composition."""
+"""Evidence helpers for template composition.
+
+These helpers are used in composed guidance prompts and must remain stable.
+Validation requirements are preset-driven; when template rendering has no task
+context, we treat the `standard` preset as the canonical baseline.
+"""
 
 from __future__ import annotations
 
@@ -6,13 +11,6 @@ from typing import Any, Iterable, List, Optional
 
 from edison.core.composition.transformers.base import TransformContext
 
-
-_DEFAULT_REQUIRED_EVIDENCE_FILES = [
-    "command-type-check.txt",
-    "command-lint.txt",
-    "command-test.txt",
-    "command-build.txt",
-]
 
 _DEFAULT_EVIDENCE_FILES_BY_NAME = {
     "type-check": "command-type-check.txt",
@@ -31,9 +29,8 @@ def _as_list(value: Any) -> List[str]:
 def required_evidence_files(ctx: TransformContext, fmt: str = "inline") -> str:
     """Render required evidence files from config.
 
-    Reads ``validation.evidence.requiredFiles`` (preferred) or falls back to the
-    legacy location ``validation.requiredEvidenceFiles``. If missing, falls back
-    to core defaults to avoid unresolved template markers in downstream guides.
+    Reads ``validation.evidence.requiredFiles`` (baseline). If missing, falls back to
+    core defaults for type-check/lint/test/build.
 
     Args:
         fmt: One of:
@@ -41,10 +38,9 @@ def required_evidence_files(ctx: TransformContext, fmt: str = "inline") -> str:
           - "bullets": markdown bullets, each backticked
           - "plain": comma-separated without backticks
     """
-    configured = _as_list(ctx.get_config("validation.evidence.requiredFiles")) or _as_list(
-        ctx.get_config("validation.requiredEvidenceFiles")
-    )
-    files = configured or list(_DEFAULT_REQUIRED_EVIDENCE_FILES)
+    files = _as_list(ctx.get_config("validation.evidence.requiredFiles"))
+    if not files:
+        files = list(_DEFAULT_EVIDENCE_FILES_BY_NAME.values())
 
     if fmt == "bullets":
         return "\n".join(f"- `{f}`" for f in files)

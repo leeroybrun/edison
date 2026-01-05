@@ -1,4 +1,4 @@
-name: Motion
+name: motion
 version: 1.0.0
 description: Motion (framer-motion/motion) animations and gesture handling for React components
 
@@ -11,7 +11,5 @@ triggers:
     - "**/*animation*"
 
 provides:
-  agents:
-    - agents/component-builder.md
   validators:
     - validators/motion.md

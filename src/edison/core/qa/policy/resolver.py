@@ -97,12 +97,18 @@ class ValidationPolicyResolver:
         Raises:
             ValueError: If explicit preset_name is unknown
         """
-        def _with_base_evidence(preset: ValidationPreset) -> ValidationPreset:
-            """Return a preset whose required_evidence includes the global baseline evidence.
+        def _resolve_required_evidence(preset: ValidationPreset) -> ValidationPreset:
+            """Apply baseline required evidence when a preset does not specify it.
 
-            Baseline evidence comes from validation.evidence.requiredFiles (QAConfig) and is
-            always required for a validation round. Preset required_evidence is additive.
+            Baseline evidence comes from `validation.evidence.requiredFiles`.
+            `required_evidence` semantics:
+              - None: inherit baseline
+              - []: explicitly none
+              - [...]: explicit override
             """
+            if preset.required_evidence is not None:
+                return preset
+
             base: list[str] = []
             try:
                 from edison.core.config.domains.qa import QAConfig
@@ -111,28 +117,15 @@ class ValidationPolicyResolver:
             except Exception:
                 base = []
 
-            merged: list[str] = []
-            seen: set[str] = set()
-            for item in list(base or []) + list(preset.required_evidence or []):
-                s = str(item).strip()
-                if s and s not in seen:
-                    seen.add(s)
-                    merged.append(s)
-
-            # Avoid re-allocating when unchanged.
-            if merged == list(preset.required_evidence or []):
-                return preset
-
+            required = [str(x).strip() for x in list(base or []) if str(x).strip()]
             return ValidationPreset(
                 name=preset.name,
                 validators=list(preset.validators or []),
-                required_evidence=merged,
+                required_evidence=required,
+                stale_evidence=str(getattr(preset, "stale_evidence", "warn") or "warn"),
                 blocking_validators=list(preset.blocking_validators or []),
                 description=str(getattr(preset, "description", "") or ""),
             )
-
-        # Get changed files for the task
-        changed_files = self._get_changed_files(task_id, session_id)
 
         # Resolve preset
         if preset_name:
@@ -144,12 +137,39 @@ class ValidationPolicyResolver:
                     f"Unknown preset '{preset_name}'. Available presets: {available}"
                 )
             return ValidationPolicy(
-                preset=_with_base_evidence(preset),
+                preset=_resolve_required_evidence(preset),
                 task_id=task_id,
-                changed_files=changed_files,
+                changed_files=[],
                 inferred_preset_name=preset_name,
                 was_escalated=False,
             )
+
+        # Project-configured default preset (overrides inference when set).
+        #
+        # This lets a project opt into a stable validator policy regardless of file patterns,
+        # while still allowing explicit overrides via `preset_name` when needed.
+        try:
+            from edison.core.config.domains.qa import QAConfig
+
+            configured_default = QAConfig(repo_root=self.project_root).validation_config.get("defaultPreset")
+            configured_default = str(configured_default).strip() if configured_default else ""
+        except Exception:
+            configured_default = ""
+
+        if configured_default:
+            preset = self._presets.get(configured_default)
+            if preset:
+                changed_files = self._get_changed_files(task_id, session_id)
+                return ValidationPolicy(
+                    preset=_resolve_required_evidence(preset),
+                    task_id=task_id,
+                    changed_files=changed_files,
+                    inferred_preset_name=configured_default,
+                    was_escalated=False,
+                )
+
+        # Get changed files for the task (only when inferring).
+        changed_files = self._get_changed_files(task_id, session_id)
 
         # Infer preset from changed files
         result = self.inference.infer_preset(changed_files)
@@ -186,12 +206,13 @@ class ValidationPolicyResolver:
                 preset = ValidationPreset(
                     name="standard",
                     validators=["global-codex"],
-                    required_evidence=[],
+                    required_evidence=None,
+                    stale_evidence="warn",
                     blocking_validators=["global-codex"],
                 )
 
         return ValidationPolicy(
-            preset=_with_base_evidence(preset),
+            preset=_resolve_required_evidence(preset),
             task_id=task_id,
             changed_files=changed_files,
             inferred_preset_name=inferred_name,

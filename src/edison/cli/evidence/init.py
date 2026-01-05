@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from edison.cli import OutputFormatter, add_json_flag, add_repo_root_flag, get_repo_root
+from edison.cli._utils import resolve_existing_task_id
 
 SUMMARY = "Initialize evidence directories for a task"
 
@@ -32,7 +33,8 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         project_root = get_repo_root(args)
-        task_id = str(getattr(args, "task_id"))
+        raw_task_id = str(getattr(args, "task_id"))
+        task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
         round_num = int(getattr(args, "round", 1) or 1)
 
         from edison.core.qa.evidence.service import EvidenceService

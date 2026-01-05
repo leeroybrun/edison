@@ -45,6 +45,26 @@ def main(args: argparse.Namespace) -> int:
         # Verify unless explicitly skipped
         if not args.skip_validation:
             health = verify_session_health(session_id)
+
+            # Additional guard for session completion: every session-scoped task must be
+            # semantically validated before the session itself can be promoted.
+            try:
+                from edison.core.task import TaskRepository
+
+                workflow = WorkflowConfig()
+                validated_state = workflow.get_semantic_state("task", "validated")
+                repo = TaskRepository()
+                session_tasks = repo.find_by_session(session_id)
+                missing = sorted(
+                    [t.id for t in session_tasks if str(getattr(t, "state", "") or "") != validated_state]
+                )
+                if missing:
+                    health["ok"] = False
+                    health.setdefault("details", []).append({"kind": "allTasksValidated", "missing": missing})
+            except Exception:
+                # Fail-open: verification already covers core invariants; this is an additional guard.
+                pass
+
             if not health.get("ok") and not args.force:
                 if formatter.json_mode:
                     formatter.json_output({"error": "verification_failed", "health": health})
@@ -122,7 +142,6 @@ if __name__ == "__main__":
     register_args(parser)
     cli_args = parser.parse_args()
     sys.exit(main(cli_args))
-
 
 
 

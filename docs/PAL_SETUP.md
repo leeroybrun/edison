@@ -74,6 +74,26 @@ The `edison mcp configure` command creates a `.mcp.json` file in your project ro
 }
 ```
 
+### MCP for Child CLIs (Codex, Gemini, etc.)
+
+Pal runs as the MCP server, but it often delegates execution to *child CLIs* (e.g. `codex`, `claude`, `gemini`) using generated configs under `.pal/conf/cli_clients/*.json`.
+
+Some child CLIs (notably Codex CLI) do **not** read the project’s `.mcp.json`. Edison supports **per-role MCP injection** so only the specific agent/validator that needs an MCP server gets it.
+
+**How it works**
+
+- MCP servers are defined in `mcp.yaml` (core + packs + project overrides).
+- A role declares required servers:
+  - **Validators**: `validation.validators.<id>.mcp_servers: ["playwright", ...]`
+  - **Agents**: agent prompt frontmatter `mcp_servers: ["playwright", ...]` (also supports `mcp: { servers: [...] }`)
+- When Pal invokes a child CLI for a role, Edison injects CLI-specific args into that role’s `role_args`.
+  - For Codex, this uses `-c mcp_servers.<name>.*=...` overrides so no global `~/.codex/config.toml` edits are required.
+
+**Configuration**
+
+- Enable/choose injection style per child CLI in `pal.yaml`:
+  - `pal.cli_clients.clients.codex.mcp_override_style: codex_config`
+
 ### Configuration Options
 
 #### Preview Configuration

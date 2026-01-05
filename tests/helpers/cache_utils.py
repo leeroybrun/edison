@@ -87,6 +87,13 @@ def reset_edison_caches() -> None:
     except Exception:
         pass
 
+    # Process detection caches (session ID inference)
+    try:
+        import edison.core.utils.process.inspector as inspector
+        inspector.reset_process_detection_caches()
+    except Exception:
+        pass
+
 
 def reset_session_store_cache() -> None:
     """Reset session store cache.

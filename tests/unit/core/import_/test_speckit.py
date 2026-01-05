@@ -605,6 +605,33 @@ class TestSyncSpecKitFeature:
         assert t10.depends_on == ["auth-T001", "auth-T002", "auth-T003", "auth-T004"]
         assert t11.depends_on == ["auth-T001", "auth-T002", "auth-T003", "auth-T004", "auth-T010"]
 
+    def test_sync_writes_inverse_blocks_relationships(self, repo_env: Path):
+        """Sync persists inverse `blocks` edges (dependency tasks block their dependents)."""
+        from edison.core.import_.speckit import sync_speckit_feature, parse_feature_folder
+        from edison.core.task.repository import TaskRepository
+
+        feature_dir = repo_env / "specs" / "auth"
+        feature_dir.mkdir(parents=True)
+        (feature_dir / "tasks.md").write_text(
+            """
+## Phase 1: Setup
+
+- [ ] T001 Setup project
+- [ ] T002 Initialize dependencies
+"""
+        )
+
+        feature = parse_feature_folder(feature_dir)
+        sync_speckit_feature(feature, prefix="auth", project_root=repo_env, create_qa=False)
+
+        task_repo = TaskRepository(repo_env)
+        t1 = task_repo.get("auth-T001")
+        t2 = task_repo.get("auth-T002")
+        assert t1 is not None and t2 is not None
+
+        assert t2.depends_on == ["auth-T001"]
+        assert t1.blocks_tasks == ["auth-T002"]
+
     def test_sync_updates_existing_tasks(self, repo_env: Path):
         """Re-sync updates task metadata when changed."""
         from edison.core.import_.speckit import sync_speckit_feature, parse_feature_folder

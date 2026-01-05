@@ -1,34 +1,103 @@
-# Project-level validation overrides.
+# Edison project-specific QA overrides.
 #
-# This repository has large prompt + workspace footprints, so the defaults can
-# time out for otherwise healthy bundles. These overrides raise timeouts and
-# ensure the session's required validators run as blocking checks.
+# This file intentionally contains Edison-repo conventions (e.g. a full-suite
+# session-close requirement). Downstream projects using Edison should define
+# their own validation presets/evidence requirements here as needed.
 
 validation:
-  execution:
-    # Codex/Claude validator prompts can be large; the default 300s causes false
-    # negatives (timeouts) on healthy bundles.
-    timeout: 1200
+  # Default preset used for per-task iteration in the Edison repo.
+  defaultPreset: fast
+
+  # Presets are repo-configurable and can be overridden by downstream projects.
+  presets:
+    fast:
+      name: fast
+      description: "Fast per-task validation for iteration (Edison repo)"
+      validators:
+        - coderabbit
+      # required_evidence is intentionally omitted so baseline evidence applies.
+      blocking_validators:
+        - coderabbit
+
+    # Strict preset used for bundle/meta validation (Codex + Claude + CodeRabbit).
+    strict:
+      name: strict
+      description: "Strict validation for bundles/meta tasks (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - coderabbit
+
+    deep:
+      name: deep
+      description: "Deep validation required before session close (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+        - coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-test-full.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+        - security
+        - performance
+        - coderabbit
 
   validators:
     global-codex:
-      blocking: true
+      enabled: true
       always_run: false
+      blocking: true
       timeout: 1200
+
     global-claude:
+      always_run: false
       blocking: true
-      always_run: false
       timeout: 1200
-    global-gemini:
-      blocking: false
-      always_run: false
+
     security:
+      engine: claude-cli
       blocking: false
-      timeout: 1200
+      timeout: 900
+
     performance:
+      engine: claude-cli
       blocking: false
-      timeout: 1200
+      timeout: 900
+
     coderabbit:
       blocking: true
-      always_run: true
+      always_run: false
       timeout: 1800
+
+    # Keep non-required global validators disabled by default in the Edison repo.
+    global-gemini:
+      enabled: false
+
+    global-auggie:
+      enabled: false
+
+  # Session-close evidence requirement for the Edison repo.
+  sessionClose:
+    preset: deep
+
+  # Baseline evidence should be high-signal but fast enough to run often.
+  evidence:
+    requiredFiles:
+      - command-type-check.txt
+      - command-lint.txt
+      - command-test.txt

@@ -19,7 +19,7 @@ class PresetConfigLoader:
     Presets are loaded from validation.presets section in the merged config.
     The config is layered: bundled defaults -> packs -> project overrides.
 
-    Example config (qa.yaml):
+    Example config (validation.yaml):
         validation:
           presets:
             quick:
@@ -136,23 +136,36 @@ class PresetConfigLoader:
             validators = []
         validators = [str(v) for v in validators if v]
 
-        required_evidence = config.get("required_evidence", [])
-        if not isinstance(required_evidence, list):
-            required_evidence = []
-        required_evidence = [str(e) for e in required_evidence if e]
+        required_evidence: list[str] | None
+        required_present = "required_evidence" in config
+        if not required_present:
+            required_evidence = None
+        else:
+            raw_required = config.get("required_evidence")
+            if raw_required is None or not isinstance(raw_required, list):
+                # Fail-closed: config is invalid if key is present but not a list.
+                raise ValueError(
+                    f"Preset '{name}' has invalid required_evidence (expected list, got {type(raw_required).__name__})"
+                )
+            required_evidence = [str(e) for e in raw_required if e]
 
-        blocking_validators = config.get("blocking_validators", [])
-        if not isinstance(blocking_validators, list):
-            blocking_validators = []
-        blocking_validators = [str(v) for v in blocking_validators if v]
+        stale_evidence = str(config.get("stale_evidence", "warn") or "warn").strip().lower()
 
         description = str(config.get("description", ""))
+        blocking_present = "blocking_validators" in config
+        raw_blocking = config.get("blocking_validators") if blocking_present else None
+        if raw_blocking is None and not blocking_present:
+            blocking_validators = None
+        else:
+            blocking_validators = raw_blocking if isinstance(raw_blocking, list) else []
+            blocking_validators = [str(v) for v in blocking_validators if v]
 
         return ValidationPreset(
             name=name,
             validators=validators,
             required_evidence=required_evidence,
-            blocking_validators=blocking_validators if blocking_validators else validators,
+            stale_evidence=stale_evidence,
+            blocking_validators=blocking_validators,
             description=description,
         )
 

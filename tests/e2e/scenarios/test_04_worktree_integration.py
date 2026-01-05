@@ -261,6 +261,28 @@ def test_context7_cross_check_with_git_diff(project_dir: TestProjectDir):
     api_file.write_text('import { z } from "zod";\nexport const Auth = z.object({ token: z.string() });\n')
     _commit_all(worktree_path, "Add React + Zod changes")
 
+    # 3.5) Ensure implementation tracking exists so the completion guard can
+    # proceed to Context7 enforcement.
+    assert_command_success(
+        run_script(
+            "session",
+            ["track", "start", "--task", task_id, "--type", "implementation", "--json"],
+            cwd=project_dir.tmp_path,
+        )
+    )
+    # Task completion also enforces baseline command evidence; provide the minimal
+    # required file so this test exercises Context7 enforcement.
+    ev_round = (
+        project_dir.tmp_path
+        / ".project"
+        / "qa"
+        / "validation-evidence"
+        / task_id
+        / "round-1"
+    )
+    ev_round.mkdir(parents=True, exist_ok=True)
+    (ev_round / "command-test.txt").write_text("ok\n", encoding="utf-8")
+
     # 4) Run guard – should fail and mention both packages
     result = run_script(
         "tasks/ready",

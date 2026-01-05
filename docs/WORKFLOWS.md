@@ -191,11 +191,11 @@ edison session track processes --json
 
 ---
 
-#### d. Mark Ready
+#### d. Mark Done
 
 ```bash
-# Mark task as ready for validation
-edison task ready <task-id>
+# Mark task as done (ready for validation)
+edison task done <task-id>
 ```
 
 **State transition:** `wip` → `done`
@@ -254,6 +254,12 @@ Description: [Task Description]
 # Run all validators for task
 edison qa validate <task-id>
 
+# Validate a group of small related tasks as one bundle (recommended)
+# 1) Define bundle membership (no "fake parent tasks"):
+edison task bundle add --root <root-task> <member-task-1> <member-task-2>
+# 2) Run validation once at the bundle root:
+edison qa validate <root-task> --scope bundle --execute
+
 # Run specific validator
 edison qa run <validator-name> --task <task-id>
 ```
@@ -281,22 +287,27 @@ edison qa run <validator-name> --task <task-id>
    └── context7-*.md
    ```
 
+**Bundle scopes (hierarchy vs bundle):**
+- `--scope hierarchy`: validate a task and its parent/child descendants (work decomposition)
+- `--scope bundle`: validate a task plus its `bundle_root` members (validation grouping)
+
 **Validator configuration:**
 ```yaml
 # From orchestration.yaml
 orchestration:
-  allowCliEngines: false
+  allowCliEngines: true
   tracking:
     activeStaleSeconds: 120
     processEventsJsonl: "{PROJECT_MANAGEMENT_DIR}/logs/edison/process-events.jsonl"
 
-# From qa.yaml
+# From validation.yaml
 validation:
-  requiredEvidenceFiles:
-    - command-type-check.txt
-    - command-lint.txt
-    - command-test.txt
-    - command-build.txt
+  evidence:
+    requiredFiles:
+      - "command-type-check.txt"
+      - "command-lint.txt"
+      - "command-test.txt"
+      - "command-build.txt"
 ```
 
 ---
@@ -450,7 +461,7 @@ edison task new --id <id> --title <title>
 edison task claim <task-id> --session <session-id>
 
 # Mark ready (wip → done)
-edison task ready <task-id>
+edison task done <task-id>
 
 # Check status
 edison task status <task-id>
@@ -591,20 +602,22 @@ Detailed validation process with evidence collection and consensus.
 └── context7-*.md             # Context7 documentation
 ```
 
-**Evidence commands:**
+**Preferred evidence command (trusted runner):**
+
 ```bash
-# Tests
-npm test 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-test.txt
+# Ensure a round exists (session tracking will also do this).
+edison evidence init <task-id>
 
-# Linting
-npm run lint 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-lint.txt
+# Run only the required CI commands for the task's inferred preset and capture trusted evidence.
+edison evidence capture <task-id>
 
-# Type checking
-npm run type-check 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-type-check.txt
-
-# Build
-npm run build 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/command-build.txt
+# Or run a subset explicitly:
+edison evidence capture <task-id> --only test --only lint
 ```
+
+Notes:
+- `edison evidence capture` runs `ci.commands.*` from `.edison/config/ci.yaml`.
+- If a command needs environment variables, set them in `ci.commands.<name>` (or export them in your shell) so evidence capture can run successfully.
 
 ---
 
@@ -630,39 +643,62 @@ ValidationExecutor (core/qa/engines/executor.py)
 
 **Engine configuration:**
 ```yaml
-# From validators.yaml
-engines:
-  codex-cli:
-    type: cli
-    command: codex
-    subcommand: exec
-    response_parser: codex
+# From validation.yaml
+validation:
+  engines:
+    codex-cli:
+      type: cli
+      command: codex
+      subcommand: exec
+      response_parser: codex
+      # Optional: per-invocation MCP injection for CLIs that don't read `.mcp.json`
+      mcp_override_style: codex_config
 
-  pal-mcp:
-    type: delegated
-    description: "Generate delegation instructions for orchestrator"
+    pal-mcp:
+      type: delegated
+      description: "Generate delegation instructions for orchestrator"
 
-validators:
-  global-codex:
-    name: "Global Validator (Codex)"
-    engine: codex-cli
-    fallback_engine: pal-mcp
-    prompt: "_generated/validators/global.md"
-    wave: critical
-    always_run: true
-    blocking: true
+  validators:
+    global-codex:
+      name: "Global Validator (Codex)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/global.md"
+      wave: global
+      always_run: true
+      blocking: true
 
-waves:
-  - name: critical
-    validators: [global-codex, global-claude, security]
-    execution: parallel
-    continue_on_fail: false
+    browser-e2e:
+      name: "Browser E2E Validator (Playwright MCP)"
+      engine: codex-cli
+      prompt: "_generated/validators/browser-e2e.md"
+      wave: comprehensive
+      # NEW: declare required MCP servers for this validator
+      mcp_servers: [playwright]
+      # Optional: ensure a project web server is reachable for browser validation.
+      # Configure `web_server` (url + start/stop commands) to let Edison start it when needed.
+      web_server: {}
 
-  - name: comprehensive
-    validators: [react, nextjs, api]
-    execution: parallel
-    requires_previous_pass: true
+  waves:
+    - name: global
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: false
+
+    - name: critical
+      execution: parallel
+      continue_on_fail: false
+      requires_previous_pass: true
+
+    - name: comprehensive
+      execution: parallel
+      continue_on_fail: true
+      requires_previous_pass: true
 ```
+
+**MCP injection (Codex CLI / PAL)**
+
+- When a validator declares `mcp_servers`, Edison can inject those servers into the invoked CLI command (e.g. Codex via `-c mcp_servers.<name>.*=...`) as long as the engine/client enables `mcp_override_style`.
 
 ---
 
@@ -694,11 +730,13 @@ edison qa validate <task-id> --add-validators critical:react comprehensive:api -
 
 **Validator Auto-Detection:**
 
-Validators are selected based on file pattern triggers:
+Validators are selected based on:
 1. Modified files are detected from git diff or implementation report
-2. Each validator's `triggers` patterns are matched against modified files
-3. Matching validators are included in the roster
-4. Orchestrator can ADD extra validators that weren't auto-detected
+2. **Always-run validators** (`always_run: true`) are always included
+3. **Preset policy validators** are included by the resolved preset (explicit, `validation.defaultPreset`, or inferred via `validation.presetInference`)
+4. Each validator's `triggers` patterns are matched against modified files
+5. Matching validators are included in the roster
+6. Orchestrator can ADD extra validators that weren't auto-detected (and may force wave ordering via `[WAVE:]VALIDATOR`)
 
 **Trigger patterns example:**
 ```yaml
@@ -819,6 +857,11 @@ Action required: Add refactor phase evidence showing code cleanup
 
 Test-Driven Development enforcement with RED→GREEN→REFACTOR cycle.
 
+**Scope note (to prevent brittle “content gates”):**
+- TDD applies to changes that add/modify executable behavior (production code, CLI behavior, validators, config-loading logic).
+- Content-only edits (Markdown/YAML/templates) do not require *new* tests, but must not be bundled with behavior changes.
+- Avoid tests that hard-pin default config values or enforce exact doc/template wording/format/length; tests should assert behavior.
+
 ### Phase 1: RED (Write Failing Test)
 
 **Objective:** Write a test that fails because the feature doesn't exist yet.
@@ -898,13 +941,13 @@ tdd:
   hmacValidation: false
 ```
 
-**Guards at `task ready` gate:**
+**Guards at `task done` gate:**
 - RED evidence present
 - GREEN evidence present
 - REFACTOR evidence present (or explicit waiver)
 - Timestamp order: RED < GREEN < REFACTOR
 - Exit codes correct (RED: non-zero, GREEN: zero, REFACTOR: zero)
-- No `.only` in test files (blocks ready)
+- No `.only` in test files (blocks completion)
 
 **Waiver for REFACTOR:**
 ```bash
@@ -920,7 +963,7 @@ echo "No refactoring required - code already optimal" > \
 **Automatic checks:**
 ```bash
 # Edison validates TDD compliance
-edison task ready <task-id>
+edison task done <task-id>
 ```
 
 **Validation logic:**
@@ -1221,7 +1264,7 @@ find .project/sessions/_tx/ -mtime +1 -delete
 transaction:
   minDiskHeadroom: 5242880  # 5MB
 
-# From qa.yaml
+# From validation.yaml
 transaction:
   maxAgeHours: 24
   autoCleanup: true
@@ -1279,7 +1322,7 @@ edison session track start --task T-001 --type implementation
 
 **Complete and validate task:**
 ```bash
-edison task ready T-001
+edison task done T-001
 edison qa new T-001
 edison qa validate T-001
 edison qa promote --task T-001 --to validated
@@ -1335,7 +1378,7 @@ For each task validation round:
 
 - **Workflow & State Machine:** `src/edison/data/config/workflow.yaml`
 - **Session:** `src/edison/data/config/session.yaml`
-- **QA:** `src/edison/data/config/qa.yaml`
+- **Validation:** `src/edison/data/config/validation.yaml`
 - **TDD:** `src/edison/data/config/tdd.yaml`
 - **Delegation:** `src/edison/data/config/delegation.yaml`
 - **Guards:** `src/edison/data/guards/`

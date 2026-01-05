@@ -41,6 +41,7 @@ class EngineConfig:
     prompt_mode: str = "file"  # file | arg | stdin
     prompt_flag: str = ""  # used when prompt_mode == "file"
     stdin_prompt_arg: str = "-"  # used when prompt_mode == "stdin" (when CLI needs a sentinel)
+    mcp_override_style: str = ""  # optional: client-specific per-invocation MCP overrides
 
     @classmethod
     def from_dict(cls, engine_id: str, data: dict[str, Any]) -> EngineConfig:
@@ -48,6 +49,7 @@ class EngineConfig:
         prompt_mode = data.get("prompt_mode", data.get("promptMode", "file"))
         prompt_flag = data.get("prompt_flag", data.get("promptFlag", ""))
         stdin_prompt_arg = data.get("stdin_prompt_arg", data.get("stdinPromptArg", "-"))
+        mcp_override_style = data.get("mcp_override_style", data.get("mcpOverrideStyle", ""))
         pre_flags = data.get("pre_flags", data.get("preFlags", []))
         if not isinstance(pre_flags, list):
             pre_flags = []
@@ -65,6 +67,7 @@ class EngineConfig:
             prompt_mode=str(prompt_mode or "file"),
             prompt_flag=str(prompt_flag or ""),
             stdin_prompt_arg=str(stdin_prompt_arg or "-"),
+            mcp_override_style=str(mcp_override_style or ""),
         )
 
 

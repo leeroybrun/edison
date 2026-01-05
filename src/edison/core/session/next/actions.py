@@ -42,26 +42,26 @@ def build_context7_status(task_id: str, session_id: str | None) -> dict[str, Any
 
     required_pkgs: set[str] = set()
     try:
-        from edison.core.registries.validators import ValidatorRegistry
+        # Task-scoped detection: post-training packages are defined by Context7 triggers,
+        # not by the validator roster. This keeps task guards and early checklists coherent.
+        from edison.core.qa.context.context7 import detect_packages
+        from edison.core.session.persistence.repository import SessionRepository
+        from edison.core.utils.paths import PathResolver
 
-        registry = ValidatorRegistry()
-        roster = registry.build_execution_roster(task_id, session_id=session_id)
-        validators_in_roster = (
-            roster.get("alwaysRequired", [])
-            + roster.get("triggeredBlocking", [])
-            + roster.get("triggeredOptional", [])
-        )
-        for v in validators_in_roster:
-            if not isinstance(v, dict):
-                continue
-            if v.get("context7Required") and isinstance(v.get("context7Packages"), list):
-                required_pkgs |= {
-                    str(p).strip()
-                    for p in v.get("context7Packages")
-                    if p and str(p).strip() and str(p).strip() != "+"
-                }
+        session_dict: dict[str, Any] | None = None
+        if session_id:
+            try:
+                project_root = PathResolver.resolve_project_root()
+                sess = SessionRepository(project_root=project_root).get(session_id)
+                session_dict = sess.to_dict() if sess else None
+            except Exception:
+                session_dict = None
+
+        task_repo = TaskRepository(project_root=PathResolver.resolve_project_root())
+        task_path = task_repo.get_path(task_id)
+        required_pkgs = set(detect_packages(task_path, session_dict))
     except Exception:
-        pass
+        required_pkgs = set()
 
     result["required_packages"] = sorted(required_pkgs)
     if not required_pkgs:
@@ -198,6 +198,8 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
     qa_todo = workflow_cfg.get_semantic_state("qa", "todo")
     qa_active_states = {qa_wip, qa_todo}
 
+    task_validated = workflow_cfg.get_semantic_state("task", "validated")
+
     reports_missing: list[dict[str, Any]] = []
 
     # Get tasks from TaskRepository instead of session JSON
@@ -215,7 +217,7 @@ def build_reports_missing(session: dict[str, Any]) -> list[dict[str, Any]]:
         task_id = task.id
         # Validator reports expected when QA is wip/todo
         qstat = infer_qa_status(task_id)
-        if qstat in qa_active_states:
+        if qstat in qa_active_states and getattr(task, "state", None) != task_validated:
             v = read_validator_reports(task_id)
             have = {
                 str(r.get("validatorId") or r.get("validator_id") or r.get("id") or "")

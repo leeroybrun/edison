@@ -19,7 +19,7 @@ tdd:
     - ".only"
 
   # Optional per-project TDD verification script (e.g., coverage thresholds).
-  # When present and executable, `edison task ready` must run it and fail if it exits non-zero.
+  # When present and executable, `edison task done` must run it and fail if it exits non-zero.
   verificationScript: "scripts/tdd-verification.sh"
 
   # Evidence HMAC signing/verification is enabled when this env var is set.

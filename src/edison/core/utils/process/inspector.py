@@ -13,40 +13,72 @@ from __future__ import annotations
 
 import os
 
+from functools import lru_cache
 import psutil  # Required dependency - stable process tree inference
 
 HAS_PSUTIL = True  # Always True since psutil is now required
 
 
-def _load_llm_process_names() -> list[str]:
-    """Load LLM process names from configuration with safe defaults."""
+def _project_root_key() -> str:
+    """Best-effort cache key for process detection configuration."""
     try:
-        from edison.core.config.domains.process import ProcessConfig
         from edison.core.utils.paths import PathResolver
 
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_processes()
+        return str(PathResolver.resolve_project_root())
     except Exception:
-        return ["claude", "codex", "gemini", "cursor", "aider", "happy", "opencode"]
+        return ""
+
+
+@lru_cache(maxsize=32)
+def _cached_llm_process_names(project_root: str) -> tuple[str, ...]:
+    try:
+        from pathlib import Path
+
+        from edison.core.config.domains.process import ProcessConfig
+
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return tuple(ProcessConfig(repo_root=root).get_llm_processes())
+    except Exception:
+        return ("claude", "codex", "gemini", "cursor", "aider", "happy", "opencode")
+
+
+def _load_llm_process_names() -> list[str]:
+    """Load LLM process names from configuration with safe defaults."""
+    return list(_cached_llm_process_names(_project_root_key()))
+
+
+@lru_cache(maxsize=32)
+def _cached_llm_script_markers(project_root: str) -> tuple[str, ...]:
+    try:
+        from pathlib import Path
+
+        from edison.core.config.domains.process import ProcessConfig
+
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return tuple(ProcessConfig(repo_root=root).get_llm_script_markers())
+    except Exception:
+        return ("happy", "claude", "codex", "cursor", "gemini", "aider", "opencode")
 
 
 def _load_llm_script_markers() -> list[str]:
     """Load command-line markers that indicate an LLM wrapper CLI."""
+    return list(_cached_llm_script_markers(_project_root_key()))
+
+@lru_cache(maxsize=32)
+def _cached_llm_marker_map(project_root: str) -> dict[str, str]:
     try:
+        from pathlib import Path
+
         from edison.core.config.domains.process import ProcessConfig
-        from edison.core.utils.paths import PathResolver
 
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_script_markers()
-    except Exception:
-        return ["happy", "claude", "codex", "cursor", "gemini", "aider", "opencode"]
-
-
-def _load_llm_marker_map() -> dict[str, str]:
-    """Load marker -> canonical wrapper name mapping."""
-    try:
-        from edison.core.config.domains.process import ProcessConfig
-        from edison.core.utils.paths import PathResolver
-
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_marker_map()
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return dict(ProcessConfig(repo_root=root).get_llm_marker_map())
     except Exception:
         return {
             "happy": "happy",
@@ -59,42 +91,82 @@ def _load_llm_marker_map() -> dict[str, str]:
         }
 
 
-def _load_llm_cmdline_excludes() -> dict[str, list[str]]:
-    """Load wrapper-specific cmdline substrings to exclude from LLM detection."""
-    try:
-        from edison.core.config.domains.process import ProcessConfig
-        from edison.core.utils.paths import PathResolver
+def _load_llm_marker_map() -> dict[str, str]:
+    """Load marker -> canonical wrapper name mapping."""
+    return dict(_cached_llm_marker_map(_project_root_key()))
 
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_llm_cmdline_excludes()
+@lru_cache(maxsize=32)
+def _cached_llm_cmdline_excludes(project_root: str) -> dict[str, list[str]]:
+    try:
+        from pathlib import Path
+
+        from edison.core.config.domains.process import ProcessConfig
+
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return dict(ProcessConfig(repo_root=root).get_llm_cmdline_excludes())
     except Exception:
         return {}
 
 
+def _load_llm_cmdline_excludes() -> dict[str, list[str]]:
+    """Load wrapper-specific cmdline substrings to exclude from LLM detection."""
+    return dict(_cached_llm_cmdline_excludes(_project_root_key()))
+
+@lru_cache(maxsize=32)
+def _cached_edison_process_names(project_root: str) -> tuple[str, ...]:
+    try:
+        from pathlib import Path
+
+        from edison.core.config.domains.process import ProcessConfig
+
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return tuple(ProcessConfig(repo_root=root).get_edison_processes())
+    except Exception:
+        return ("edison", "python")
+
+
 def _load_edison_process_names() -> list[str]:
     """Load Edison process names from configuration with safe defaults."""
+    return list(_cached_edison_process_names(_project_root_key()))
+
+
+@lru_cache(maxsize=32)
+def _cached_edison_script_markers(project_root: str) -> tuple[str, ...]:
     try:
+        from pathlib import Path
+
         from edison.core.config.domains.process import ProcessConfig
-        from edison.core.utils.paths import PathResolver
 
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_edison_processes()
-    except Exception:
-        return ["edison", "python"]
-
-
-def _load_edison_script_markers() -> list[str]:
-    """Load command-line markers that indicate Edison scripts."""
-    try:
-        from edison.core.config.domains.process import ProcessConfig
-        from edison.core.utils.paths import PathResolver
-
-        return ProcessConfig(repo_root=PathResolver.resolve_project_root()).get_edison_script_markers()
+        root = Path(project_root).expanduser().resolve() if project_root else None
+        if root is None:
+            raise ValueError("missing project root")
+        return tuple(ProcessConfig(repo_root=root).get_edison_script_markers())
     except Exception:
         try:
             from edison.core.utils.paths import PathResolver, get_project_config_dir
 
-            return ["edison", get_project_config_dir(PathResolver.resolve_project_root(), create=False).name.lower()]
+            return ("edison", get_project_config_dir(PathResolver.resolve_project_root(), create=False).name.lower())
         except Exception:
-            return ["edison", ".edison"]
+            return ("edison", ".edison")
+
+
+def _load_edison_script_markers() -> list[str]:
+    """Load command-line markers that indicate Edison scripts."""
+    return list(_cached_edison_script_markers(_project_root_key()))
+
+
+def reset_process_detection_caches() -> None:
+    """Clear cached process detection configuration (primarily for tests)."""
+    _cached_llm_process_names.cache_clear()
+    _cached_llm_script_markers.cache_clear()
+    _cached_llm_marker_map.cache_clear()
+    _cached_llm_cmdline_excludes.cache_clear()
+    _cached_edison_process_names.cache_clear()
+    _cached_edison_script_markers.cache_clear()
 
 
 def _is_edison_script(cmdline: list[str]) -> bool:

@@ -46,7 +46,7 @@ If the task is missing acceptance criteria or scope boundaries, stop and ask for
 
 4. If the change touches any Context7‑detected package (per merged config), refresh docs via Context7 and create the required `context7-<package>.txt` marker(s) in the evidence round directory.
 
-5. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup).
+5. Follow TDD: RED → GREEN → REFACTOR (tests first, then minimal implementation, then cleanup). This applies to executable behavior changes; content-only Markdown/YAML/template edits do not require new tests, but must not be used to bypass TDD when code changes.
 
 6. **Run and capture evidence as you work (MANDATORY)**:
    - After each GREEN phase, run `edison evidence capture <task-id>` (captures preset-required evidence; config-driven)
@@ -86,7 +86,7 @@ Agents are generally **read-only** on task/session orchestration:
 edison task status <task-id>
 ```
 
-> Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task ready`, `edison qa promote`, `edison qa bundle`, `edison qa validate`.
+> Orchestrator-only (do NOT run unless explicitly told): `edison task claim`, `edison task done` (and legacy `edison task ready <task>`), `edison qa promote`, `edison qa bundle`, `edison qa validate`.
 
 ## Evidence Required
 
@@ -97,7 +97,7 @@ All command evidence must show `exitCode: 0`. Run commands, fix failures, then c
 ## Critical Rules
 
 1. **Never orchestrate by default** – do not move tasks/QA or run promotion commands unless explicitly delegated.
-2. **Never implement without tests** – TDD is mandatory.
+2. **Never implement executable behavior without tests** – TDD is mandatory. Content-only Markdown/YAML/template edits do not require new tests, but must not be used to bypass TDD when code changes.
 3. **Always provide evidence** – no evidence = not ready for validation.
 4. **Always check delegation scope** – if mis-assigned, return MISMATCH rather than doing the wrong work.
 

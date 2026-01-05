@@ -22,7 +22,7 @@ def render_modular_configs(
         {
             "defaults.yml": "paths: ...",
             "packs.yml": "packs: ...",
-            "validators.yml": "validators: ...",
+            "validation.yaml": "validation: ...",
             ...
         }
 
@@ -58,10 +58,10 @@ def render_modular_configs(
         packs_config["pack_config"] = pack_configs
     configs["packs.yml"] = dump_yaml_string(packs_config, sort_keys=False)
 
-    # validators.yml - validator configuration
-    if config_dict.get("validators"):
-        configs["validators.yml"] = dump_yaml_string(
-            {"validators": config_dict["validators"]},
+    # validation.yaml - validation configuration (preset/validators/etc.)
+    if config_dict.get("validation"):
+        configs["validation.yaml"] = dump_yaml_string(
+            {"validation": config_dict["validation"]},
             sort_keys=False
         )
 

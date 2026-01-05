@@ -2,6 +2,7 @@
 name: api-builder
 description: "Backend API specialist for route handlers, validation, and data flow"
 model: codex
+palRole: "{{project.palRoles.api-builder}}"
 allowed_tools:
   - Read
   - Edit
@@ -15,6 +16,8 @@ metadata:
   version: "2.0.0"
   last_updated: "2025-12-03"
 ---
+
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
 
 # Agent: API Builder
 

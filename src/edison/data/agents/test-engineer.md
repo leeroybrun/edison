@@ -2,6 +2,7 @@
 name: test-engineer
 description: "Test automation and TDD guardian ensuring coverage and reliability"
 model: codex
+palRole: "{{project.palRoles.test-engineer}}"
 allowed_tools:
   - Read
   - Edit
@@ -15,6 +16,8 @@ metadata:
   version: "2.0.0"
   last_updated: "2025-12-03"
 ---
+
+{{include-section:guidelines/includes/CONTEXT7.md#agent}}
 
 # Agent: Test Engineer
 

@@ -1,0 +1,17 @@
+## Pack validation overlay (canonical filename: validation.yaml)
+validation:
+  validators:
+    react:
+      name: "React Validator"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/react.md"
+      wave: comprehensive
+      always_run: false
+      blocking: false
+      timeout: 300
+      context7_required: true
+      context7_packages: ["+", "react"]
+      triggers: ["**/*.tsx", "**/*.jsx", "**/components/**/*"]
+      focus: []
+

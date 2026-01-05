@@ -122,7 +122,7 @@ def ensure_meta_worktree_checkout(
         )
         if show.returncode == 0:
             run_with_timeout(
-                ["git", "worktree", "add", str(meta_path), branch],
+                ["git", "worktree", "add", "--", str(meta_path), branch],
                 cwd=primary_repo_dir,
                 capture_output=True,
                 text=True,
@@ -132,7 +132,7 @@ def ensure_meta_worktree_checkout(
         else:
             _create_orphan_branch(repo_dir=primary_repo_dir, branch=branch, timeout=timeout_health)
             run_with_timeout(
-                ["git", "worktree", "add", str(meta_path), branch],
+                ["git", "worktree", "add", "--", str(meta_path), branch],
                 cwd=primary_repo_dir,
                 capture_output=True,
                 text=True,

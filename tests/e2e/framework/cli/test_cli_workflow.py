@@ -236,6 +236,12 @@ class TestScriptWorkflow:
         assert task_validated_session.exists()
         assert qa_done_session.exists()
 
+        # Session completion requires session-close command evidence. E2E tests
+        # provide deterministic CI commands (see tests/e2e/base.py), so capture
+        # those artifacts before completing.
+        run_cli(cli_workflow_env, ["evidence", "init", task_id], extra_env=env_vars)
+        run_cli(cli_workflow_env, ["evidence", "capture", task_id, "--session-close"], extra_env=env_vars)
+
         # Final completion succeeds
         run_cli(cli_workflow_env, ["session", "complete", session_id], extra_env=env_vars)
         # After completion, files are restored to global queues

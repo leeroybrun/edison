@@ -1,0 +1,22 @@
+## Pack validation overlay (canonical filename: validation.yaml)
+validation:
+  validators:
+    database:
+      name: "Database Validator (Prisma)"
+      engine: codex-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/database.md"
+      wave: comprehensive
+      always_run: false
+      blocking: true
+      timeout: 300
+      context7_required: true
+      context7_packages: ["+", "prisma"]
+      triggers:
+        - "schema.prisma"
+        - "prisma/**/*"
+        - "migrations/**/*"
+        - "db/**/*"
+        - "**/*.sql"
+      focus: []
+

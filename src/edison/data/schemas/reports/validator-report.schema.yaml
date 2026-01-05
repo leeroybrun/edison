@@ -10,6 +10,17 @@ required:
 - model
 - verdict
 - tracking
+allOf:
+  # Pending reports (created by `tracking.start_validation`) do not have a completion timestamp yet.
+  # Completed reports (approve/reject/blocked) MUST include tracking.completedAt.
+  - if:
+      properties:
+        verdict:
+          enum: [approve, reject, blocked]
+    then:
+      properties:
+        tracking:
+          required: [completedAt]
 properties:
   taskId:
     type: string
@@ -20,7 +31,7 @@ properties:
     description: Validation round number (starts at 1, increments on revalidation)
   validatorId:
     type: string
-    description: Validator identifier from <project-config-dir>/config/validators.yaml (e.g., 'codex-global',
+    description: Validator identifier from <project-config-dir>/config/validation.yaml (e.g., 'codex-global',
       'security', 'ui')
   model:
     type: string
