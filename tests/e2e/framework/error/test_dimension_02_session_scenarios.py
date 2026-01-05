@@ -94,8 +94,33 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
     # Prepare evidence + validator approvals so the session can close (verification is strict).
     ev_round = session_scenario_env["tmp"] / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
     ev_round.mkdir(parents=True, exist_ok=True)
-    for name in get_default_value("qa", "evidence_files"):
-        (ev_round / name).write_text("ok\n")
+
+    # Do NOT hardcode bundled preset contents in tests.
+    # Instead, compute required evidence + blocking validators from the current config.
+    from edison.core.qa.policy.resolver import ValidationPolicyResolver
+    from edison.core.registries.validators import ValidatorRegistry
+
+    # Evidence requirements for QA promotion are computed from the default policy
+    # (preset inference/defaultPreset), not from the explicit `qa validate --preset` flag.
+    policy = ValidationPolicyResolver(project_root=session_scenario_env["tmp"]).resolve_for_task(
+        task_id,
+        session_id=sid,
+    )
+
+    def _filename_for_pattern(pattern: str) -> str:
+        # Create a concrete filename that matches common glob patterns.
+        import re
+
+        name = str(pattern).strip().replace("*", "x").replace("?", "x")
+        name = re.sub(r"\[[^\]]+\]", "x", name)
+        return name or "evidence.txt"
+
+    for pattern in (policy.required_evidence or []):
+        fname = _filename_for_pattern(str(pattern))
+        target = ev_round / fname
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("ok\n", encoding="utf-8")
+
     (ev_round / "implementation-report.md").write_text(
         format_frontmatter(
             {
@@ -112,7 +137,30 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
         + "\n",
         encoding="utf-8",
     )
-    for vid, model in (("global-codex", "codex"), ("global-claude", "claude"), ("security", "codex"), ("performance", "codex")):
+
+    roster = ValidatorRegistry(project_root=session_scenario_env["tmp"]).build_execution_roster(
+        task_id=task_id,
+        session_id=sid,
+        preset_name="strict",
+    )
+    candidates = (
+        (roster.get("alwaysRequired") or [])
+        + (roster.get("triggeredBlocking") or [])
+        + (roster.get("triggeredOptional") or [])
+        + (roster.get("extraAdded") or [])
+    )
+    blocking_ids = sorted(
+        {
+            str(v.get("id"))
+            for v in candidates
+            if isinstance(v, dict) and v.get("blocking") and v.get("id")
+        }
+    )
+    if not blocking_ids:
+        raise AssertionError("Test requires at least one blocking validator in strict preset.")
+
+    for vid in blocking_ids:
+        model = "claude" if vid == "global-claude" else "codex"
         (ev_round / f"validator-{vid}-report.md").write_text(
             format_frontmatter(
                 {
