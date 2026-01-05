@@ -302,18 +302,19 @@ def test_scenario_5_partial_splits_recovery(project: TestProjectDir):
     # Verify all children created
     assert len(child_ids) == 3, "Should create 3 children"
 
-    # Verify proper linking in session JSON
-    session_path = project.project_root / "sessions" / "wip" / session_id / "session.json"
-    session_data = json.loads(session_path.read_text())
+    # Verify proper linking on the task records (directory/files are the source of truth).
+    from edison.core.task.repository import TaskRepository
 
-    # Parent should list all children
-    parent_children = session_data["tasks"].get(parent_id, {}).get("childIds", [])
-    assert set(parent_children) == set(child_ids), "Parent should reference all children"
+    task_repo = TaskRepository(project_root=project.project_root)
 
-    # Each child should reference parent
+    parent_task = task_repo.get(parent_id)
+    assert parent_task is not None
+    assert set(parent_task.child_ids) == set(child_ids), "Parent should reference all children"
+
     for child_id in child_ids:
-        child_parent = session_data["tasks"].get(child_id, {}).get("parentId")
-        assert child_parent == parent_id, f"Child {child_id} should reference parent"
+        child_task = task_repo.get(child_id)
+        assert child_task is not None
+        assert child_task.parent_id == parent_id, f"Child {child_id} should reference parent"
 
 
 # ============================================================================
