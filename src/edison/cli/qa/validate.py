@@ -319,6 +319,13 @@ def main(args: argparse.Namespace) -> int:
 
             # Write bundle summary at root and mirror into each member evidence dir.
             root_ev.write_bundle(bundle_data, round_num=round_num)
+            _mirror_bundle_summary(
+                repo_root=repo_root,
+                round_num=round_num,
+                root_task_id=root_task_id,
+                cluster_task_ids=cluster_task_ids,
+                bundle_data=bundle_data,
+            )
 
             if formatter.json_mode:
                 formatter.json_output(
@@ -637,6 +644,31 @@ def _compute_bundle_summary(
     return bundle_data, overall_approved, cluster_missing
 
 
+def _mirror_bundle_summary(
+    *,
+    repo_root: Path,
+    round_num: int,
+    root_task_id: str,
+    cluster_task_ids: list[str],
+    bundle_data: dict[str, Any],
+) -> None:
+    """Write the bundle summary into every task evidence root in the cluster.
+
+    Session-close verification is per-task, not per cluster. When validation runs
+    once at the bundle root, we still need an approved bundle summary file in
+    each task's evidence round so guards can reason about approval deterministically.
+    """
+    from edison.core.qa.evidence import EvidenceService
+
+    unique = sorted({str(t).strip() for t in cluster_task_ids if str(t).strip()})
+    for tid in unique:
+        ev = EvidenceService(tid, project_root=repo_root)
+        data = dict(bundle_data)
+        data["taskId"] = tid
+        data["rootTask"] = str(root_task_id)
+        ev.write_bundle(data, round_num=int(round_num))
+
+
 def _execute_with_executor(
     args: argparse.Namespace,
     repo_root: Path,
@@ -795,6 +827,13 @@ def _execute_with_executor(
     # Always emit/refresh the bundle summary for the root task when we have a round.
     if round_num:
         ev.write_bundle(bundle_data, round_num=round_num)
+        _mirror_bundle_summary(
+            repo_root=repo_root,
+            round_num=round_num,
+            root_task_id=root_task_id,
+            cluster_task_ids=cluster_task_ids,
+            bundle_data=bundle_data,
+        )
 
     # Display wave-by-wave results
     for wave_result in result.waves:

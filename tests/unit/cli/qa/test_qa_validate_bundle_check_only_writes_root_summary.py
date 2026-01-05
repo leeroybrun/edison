@@ -95,7 +95,13 @@ def test_qa_validate_check_only_bundle_scope_writes_root_summary_and_mirrors(
     task_ids = {t.get("taskId") for t in (root_bundle.get("tasks") or [])}
     assert task_ids == {root_task_id, member_task_id}
 
-    # Member bundle summary is NOT mirrored (single source: root task evidence dir).
+    # Member bundle summary IS mirrored so session close/verify can enforce per-task
+    # bundle approval even when validation runs once at the bundle root.
     member_ev = EvidenceService(member_task_id, project_root=isolated_project_env)
-    member_bundle_path = member_ev.get_round_dir(1) / member_ev.bundle_filename
-    assert not member_bundle_path.exists()
+    member_bundle = member_ev.read_bundle(round_num=1)
+    assert member_bundle is not None
+    assert member_bundle.get("taskId") == member_task_id
+    assert member_bundle.get("rootTask") == root_task_id
+    assert member_bundle.get("scope") == "bundle"
+    mirrored_task_ids = {t.get("taskId") for t in (member_bundle.get("tasks") or [])}
+    assert mirrored_task_ids == {root_task_id, member_task_id}
