@@ -23,6 +23,38 @@ from .errors import EdisonPathError
 _PROJECT_ROOT_CACHE: Optional[Path] = None
 
 
+def _try_resolve_git_common_root(*, cwd: Path) -> Path | None:
+    """Best-effort resolve the outer/common git root for worktrees.
+
+    In git worktrees, `git rev-parse --show-toplevel` returns the worktree
+    directory, but Edison needs the canonical "project root" to be the outer
+    checkout that owns the shared `.git` directory so config/state paths are
+    stable across worktrees.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=str(cwd),
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=5,
+        )
+    except Exception:
+        return None
+
+    common = (result.stdout or "").strip()
+    if not common:
+        return None
+
+    common_dir = Path(common).expanduser().resolve()
+    if common_dir.name != ".git":
+        return None
+
+    root = common_dir.parent
+    return root if root.exists() else None
+
+
 def resolve_project_root() -> Path:
     """Resolve project root with fail-fast validation.
 
@@ -146,6 +178,13 @@ def resolve_project_root() -> Path:
         raise EdisonPathError(
             f"git rev-parse --show-toplevel resolved to non-existent path: {path}"
         )
+
+    # Worktree-aware: if this is a git worktree checkout, prefer the outer/common
+    # root that owns the shared `.git` directory so config/state resolution is
+    # consistent across worktrees.
+    common_root = _try_resolve_git_common_root(cwd=cwd)
+    if common_root is not None and common_root != path:
+        path = common_root
 
     # If git reports the .edison directory as the toplevel, we are most
     # likely running inside the Edison framework checkout that lives
