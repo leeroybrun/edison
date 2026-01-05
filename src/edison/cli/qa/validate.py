@@ -656,9 +656,14 @@ def _mirror_bundle_summary(
 
     Session-close verification is per-task, not per cluster. When validation runs
     once at the bundle root, we still need an approved bundle summary file in
-    each task's evidence round so guards can reason about approval deterministically.
+    each task's *latest* evidence round so guards can reason about approval
+    deterministically.
+
+    IMPORTANT: evidence rounds are not guaranteed to match across tasks in a
+    bundle. Never attempt to create round gaps for member tasks.
     """
     from edison.core.qa.evidence import EvidenceService
+    from edison.core.qa.evidence import rounds as evidence_rounds
 
     unique = sorted({str(t).strip() for t in cluster_task_ids if str(t).strip()})
     for tid in unique:
@@ -666,7 +671,15 @@ def _mirror_bundle_summary(
         data = dict(bundle_data)
         data["taskId"] = tid
         data["rootTask"] = str(root_task_id)
-        ev.write_bundle(data, round_num=int(round_num))
+        if tid == str(root_task_id):
+            target_round = int(round_num)
+        else:
+            # Use the member task's latest round (or create round-1) to avoid
+            # failing on non-contiguous round numbers.
+            member_round_dir = ev.ensure_round(None)
+            target_round = int(evidence_rounds.get_round_number(member_round_dir))
+        data["round"] = int(target_round)
+        ev.write_bundle(data, round_num=int(target_round))
 
 
 def _execute_with_executor(

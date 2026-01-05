@@ -55,6 +55,14 @@ validation:
       triggers: []
       focus: []
 
+    # Edison repo default: keep the global validator set small and reliable.
+    # Other projects can re-enable these in their own validation.yaml if desired.
+    global-gemini:
+      enabled: false
+
+    global-auggie:
+      enabled: false
+
   # Session-close evidence requirement for the Edison repo.
   sessionClose:
     preset: deep
