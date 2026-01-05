@@ -344,22 +344,22 @@ class CLIEngine:
         """
         cmd: list[str] = [self.command]
 
-        # When running from project root, add --cd to point to the worktree.
+        # When running from project root, add cd_flag to point to the worktree.
         # This allows the sandbox to include all worktrees while still working
         # in the correct directory. Must come before other flags.
-        if self.config.run_from_project_root and self.project_root:
+        if self.config.run_from_project_root and self.project_root and self.config.cd_flag:
             worktree_abs = worktree_path.expanduser().resolve()
-            cmd.extend(["--cd", str(worktree_abs)])
+            cmd.extend([self.config.cd_flag, str(worktree_abs)])
 
         # Some CLIs (e.g., Codex) require global flags before the subcommand.
         cmd.extend(self.config.pre_flags)
 
-        # Add --add-dir flags for writable directories (used by codex sandbox).
-        # Note: On macOS, --add-dir only works for paths within the sandbox root.
-        if self.config.writable_dirs:
+        # Add writable directory flags (e.g., --add-dir for codex sandbox).
+        # Note: On macOS, this only works for paths within the sandbox root.
+        if self.config.writable_dirs and self.config.add_dir_flag:
             writable_dirs = self._resolve_writable_dirs(worktree_path)
             for wd in writable_dirs:
-                cmd.extend(["--add-dir", str(wd)])
+                cmd.extend([self.config.add_dir_flag, str(wd)])
 
         required_mcp = getattr(validator, "mcp_servers", []) or []
         override_style = (self.config.mcp_override_style or "").strip()

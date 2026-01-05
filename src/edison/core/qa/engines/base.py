@@ -44,6 +44,8 @@ class EngineConfig:
     mcp_override_style: str = ""  # optional: client-specific per-invocation MCP overrides
     writable_dirs: list[str] = field(default_factory=list)  # additional writable directories (--add-dir for codex)
     run_from_project_root: bool = False  # run from project root instead of worktree (for sandbox access to sibling worktrees)
+    cd_flag: str = ""  # flag to set working directory (e.g., "--cd" for codex, "-C" for git-style CLIs)
+    add_dir_flag: str = ""  # flag to add writable directories (e.g., "--add-dir" for codex)
 
     @classmethod
     def from_dict(cls, engine_id: str, data: dict[str, Any]) -> EngineConfig:
@@ -59,6 +61,8 @@ class EngineConfig:
         if not isinstance(writable_dirs, list):
             writable_dirs = []
         run_from_project_root = data.get("run_from_project_root", data.get("runFromProjectRoot", False))
+        cd_flag = data.get("cd_flag", data.get("cdFlag", ""))
+        add_dir_flag = data.get("add_dir_flag", data.get("addDirFlag", ""))
 
         return cls(
             id=engine_id,
@@ -76,6 +80,8 @@ class EngineConfig:
             mcp_override_style=str(mcp_override_style or ""),
             writable_dirs=[str(d).strip() for d in writable_dirs if str(d).strip()],
             run_from_project_root=bool(run_from_project_root),
+            cd_flag=str(cd_flag or ""),
+            add_dir_flag=str(add_dir_flag or ""),
         )
 
 
