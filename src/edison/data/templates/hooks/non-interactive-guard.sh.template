@@ -53,15 +53,17 @@ MATCHED_PATTERN=""
 {% for p in patterns %}
 {% if p.startswith("^") %}
 # Regex pattern: {{ p }}
-if [[ -z "$MATCHED" ]] && echo "$COMMAND" | grep -qE '{{ p }}'; then
+PATTERN='{{ p }}'
+if [[ -z "$MATCHED" ]] && printf '%s' "$COMMAND" | grep -qE -- "$PATTERN"; then
   MATCHED="true"
-  MATCHED_PATTERN="{{ p }}"
+  MATCHED_PATTERN="$PATTERN"
 fi
 {% else %}
 # Substring pattern: {{ p }}
-if [[ -z "$MATCHED" && "$COMMAND" == *"{{ p }}"* ]]; then
+PATTERN='{{ p }}'
+if [[ -z "$MATCHED" ]] && printf '%s' "$COMMAND" | grep -qF -- "$PATTERN"; then
   MATCHED="true"
-  MATCHED_PATTERN="{{ p }}"
+  MATCHED_PATTERN="$PATTERN"
 fi
 {% endif %}
 {% endfor %}
