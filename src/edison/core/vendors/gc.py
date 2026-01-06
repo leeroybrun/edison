@@ -94,10 +94,11 @@ class VendorGarbageCollector:
 
         for path in mirrors_to_remove:
             try:
-                bytes_freed += self._get_dir_size(path)
                 if not path.resolve().is_relative_to(cache_dir_resolved):
                     continue
+                size = self._get_dir_size(path)
                 shutil.rmtree(path)
+                bytes_freed += size
                 removed_mirrors.append(str(path))
             except OSError:
                 pass  # Skip if removal fails
@@ -106,8 +107,9 @@ class VendorGarbageCollector:
             try:
                 if not path.resolve().is_relative_to(vendor_base_resolved):
                     continue
-                bytes_freed += self._get_dir_size(path)
+                size = self._get_dir_size(path)
                 shutil.rmtree(path)
+                bytes_freed += size
                 removed_checkouts.append(str(path))
             except OSError:
                 pass  # Skip if removal fails

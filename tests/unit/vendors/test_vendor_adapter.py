@@ -139,6 +139,20 @@ class TestAdapterRegistry:
         adapter_class = get_adapter_for_vendor("custom")
         assert adapter_class == CustomAdapter
 
+    def test_registry_rejects_empty_vendor_name(self) -> None:
+        """Registry should refuse adapters with empty vendor_name."""
+        from edison.core.vendors.adapters import register_adapter, BaseVendorAdapter
+        from edison.core.vendors.models import VendorMount
+
+        class BadAdapter(BaseVendorAdapter):
+            vendor_name = ""
+
+            def discover_mounts(self) -> list[VendorMount]:
+                return []
+
+        with pytest.raises(ValueError, match="vendor_name"):
+            register_adapter(BadAdapter)
+
 
 class TestVendorMount:
     """Test VendorMount model."""
