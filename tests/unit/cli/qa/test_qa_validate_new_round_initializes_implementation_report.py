@@ -82,5 +82,4 @@ def test_qa_validate_new_round_initializes_implementation_report(
 
     round2_dir = root_ev.get_round_dir(2)
     assert (round2_dir / "implementation-report.md").exists()
-    assert (round2_dir / "bundle-summary.md").exists()
-
+    assert (round2_dir / root_ev.bundle_filename).exists()

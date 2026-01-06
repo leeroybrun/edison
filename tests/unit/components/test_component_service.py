@@ -174,3 +174,48 @@ def test_component_service_configure_pack_validator_writes_web_server_config(
     assert web.get("ensure_running") is True
     assert web.get("start_command") == "pnpm dev --port 3000"
     assert web.get("stop_after") is True
+
+
+def test_component_service_configure_validator_installs_script_templates(
+    isolated_project_env: Path,
+) -> None:
+    svc = ComponentService(repo_root=isolated_project_env)
+
+    (isolated_project_env / ".edison" / "config").mkdir(parents=True, exist_ok=True)
+    (isolated_project_env / ".edison" / "config" / "validation.yaml").write_text(
+        """
+validation:
+  validators:
+    demo-web:
+      name: "Demo Web Validator"
+      engine: pal-mcp
+      wave: comprehensive
+      enabled: true
+      setup:
+        questions: []
+        config_template:
+          validation:
+            validators:
+              demo-web:
+                web_server:
+                  url: "http://127.0.0.1:4242"
+        templates:
+          - src: "web-server/start-server.sh"
+            dest: ".edison/scripts/start-server.sh"
+            executable: true
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    written = svc.configure(
+        "validator",
+        "demo-web",
+        interactive=False,
+        provided_answers={},
+        mode="basic",
+    )
+
+    dest = isolated_project_env / ".edison" / "scripts" / "start-server.sh"
+    assert dest.exists() is True
+    assert "Edison" in dest.read_text(encoding="utf-8")
+    assert dest in written

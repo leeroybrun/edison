@@ -78,16 +78,27 @@ class SectionParser:
     - <!-- extend: name --> content <!-- /extend -->
     """
 
+    # Optional comment prefixes for non-markdown content types (e.g. scripts).
+    #
+    # Examples:
+    #   # <!-- SECTION: body -->
+    #   // <!-- SECTION: body -->
+    #
+    # The prefix is intentionally optional so inline markers like:
+    #   <!-- SECTION: role -->Base<!-- /SECTION: role -->
+    # continue to work.
+    _OPTIONAL_LINE_PREFIX = r"(?:^[ \t]*(?:(?:#|//|--|;)\s*)?)?"
+
     # Pattern for section definitions (supports dots for rule IDs like RULE.SESSION.ISOLATION)
     SECTION_PATTERN = re.compile(
-        r"<!--\s*SECTION:\s*([\w.-]+)\s*-->(.*?)<!--\s*/SECTION:\s*\1\s*-->",
-        re.DOTALL | re.IGNORECASE,
+        rf"{_OPTIONAL_LINE_PREFIX}<!--\s*SECTION:\s*([\w.-]+)\s*-->(.*?){_OPTIONAL_LINE_PREFIX}<!--\s*/SECTION:\s*\1\s*-->",
+        re.DOTALL | re.IGNORECASE | re.MULTILINE,
     )
 
     # Pattern for section extensions
     EXTEND_PATTERN = re.compile(
-        r"<!--\s*EXTEND:\s*([\w.-]+)\s*-->(.*?)<!--\s*/EXTEND\s*-->",
-        re.DOTALL | re.IGNORECASE,
+        rf"{_OPTIONAL_LINE_PREFIX}<!--\s*EXTEND:\s*([\w.-]+)\s*-->(.*?){_OPTIONAL_LINE_PREFIX}<!--\s*/EXTEND\s*-->",
+        re.DOTALL | re.IGNORECASE | re.MULTILINE,
     )
 
     def parse(self, content: str, layer: str = "unknown") -> List[ParsedSection]:
@@ -146,8 +157,8 @@ class SectionParser:
             Section content or None if not found
         """
         pattern = re.compile(
-            rf"<!--\s*SECTION:\s*{re.escape(section_name)}\s*-->(.*?)<!--\s*/SECTION:\s*{re.escape(section_name)}\s*-->",
-            re.DOTALL | re.IGNORECASE,
+            rf"{self._OPTIONAL_LINE_PREFIX}<!--\s*SECTION:\s*{re.escape(section_name)}\s*-->(.*?){self._OPTIONAL_LINE_PREFIX}<!--\s*/SECTION:\s*{re.escape(section_name)}\s*-->",
+            re.DOTALL | re.IGNORECASE | re.MULTILINE,
         )
         match = pattern.search(content)
         if match:

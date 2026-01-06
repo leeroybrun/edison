@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Edison Web Server Verify Script Template (composable)
+#
+# Exit 0 if the web server/stack is correct for this worktree, non-zero otherwise.
+#
+# Intended usage:
+# - Set `web_server.verify.steps` to run this via a `command` verify step, e.g.:
+#     - kind: command
+#       command: "./.edison/scripts/verify-server.sh"
+#
+# Worktree awareness:
+# - Use `AGENTS_PROJECT_ROOT` (injected by Edison) as your expected source root.
+#
+# Practical verification ideas (no app changes required):
+# - Docker stacks: `docker inspect` to validate volume mount source is under `AGENTS_PROJECT_ROOT`
+# - Direct processes: `pgrep` + `/proc/<pid>/cwd` (Linux) or `lsof -p <pid>` (macOS) to validate CWD
+
+set -euo pipefail
+
+# <!-- SECTION: config -->
+PROJECT_ROOT="${AGENTS_PROJECT_ROOT:-$(pwd)}"
+MAIN_REPO_ROOT="${AGENTS_MAIN_REPO_ROOT:-$PROJECT_ROOT}"
+SESSION_ID="${AGENTS_SESSION:-main}"
+
+# Optional: if set, this script will run it verbatim and return its exit code.
+# Examples:
+#   export EDISON_WEB_SERVER_VERIFY_CMD="./scripts/stack-manager.sh verify"
+EDISON_WEB_SERVER_VERIFY_CMD="${EDISON_WEB_SERVER_VERIFY_CMD:-}"
+
+# Optional helpers (examples):
+#   VERIFY_CONTAINER="myapp_web"
+#   VERIFY_MOUNT_DEST="/app/src"
+#   VERIFY_PROCESS_PATTERN="uvicorn.*8002"
+VERIFY_CONTAINER="${VERIFY_CONTAINER:-}"
+VERIFY_MOUNT_DEST="${VERIFY_MOUNT_DEST:-}"
+VERIFY_PROCESS_PATTERN="${VERIFY_PROCESS_PATTERN:-}"
+# <!-- /SECTION: config -->
+
+# <!-- SECTION: helpers -->
+log_info() { echo "[INFO] $*"; }
+log_ok() { echo "[OK] $*"; }
+log_error() { echo "[ERROR] $*" >&2; }
+
+verify_docker_source() {
+  local container_name="$1"
+  local mount_dest="$2"
+
+  local source
+  source="$(docker inspect "$container_name" \
+    --format "{{range .Mounts}}{{if eq .Destination \\\"$mount_dest\\\"}}{{.Source}}{{end}}{{end}}" \
+    2>/dev/null || true)"
+  source="$(echo "$source" | head -n 1 | tr -d '\r')"
+
+  if [[ -z "$source" ]]; then
+    log_error "docker_source: container '$container_name' not running or mount '$mount_dest' not found"
+    return 1
+  fi
+
+  if [[ "$source" == "$PROJECT_ROOT"* ]]; then
+    log_ok "docker_source: $container_name is serving from correct worktree"
+    log_ok "  $source"
+    return 0
+  fi
+
+  log_error "docker_source: $container_name is serving from wrong source"
+  log_error "  expected: $PROJECT_ROOT"
+  log_error "  actual:   $source"
+  return 1
+}
+
+verify_process_cwd() {
+  local pattern="$1"
+
+  local pid
+  pid="$(pgrep -f "$pattern" 2>/dev/null | head -n 1 || true)"
+  if [[ -z "$pid" ]]; then
+    log_error "process_cwd: no process matching '$pattern'"
+    return 1
+  fi
+
+  # Linux: /proc
+  if [[ -e "/proc/$pid/cwd" ]]; then
+    local cwd_path
+    cwd_path="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+    if [[ -n "$cwd_path" && "$cwd_path" == "$PROJECT_ROOT"* ]]; then
+      log_ok "process_cwd: PID $pid is running from correct worktree"
+      log_ok "  $cwd_path"
+      return 0
+    fi
+    log_error "process_cwd: PID $pid is running from wrong directory"
+    log_error "  expected: $PROJECT_ROOT"
+    log_error "  actual:   ${cwd_path:-<unknown>}"
+    return 1
+  fi
+
+  # macOS: lsof
+  local cwd_path
+  cwd_path="$(lsof -p "$pid" 2>/dev/null | awk '$4==\"cwd\" {print $NF; exit}' || true)"
+  if [[ -z "$cwd_path" ]]; then
+    log_error "process_cwd: could not determine cwd for pid=$pid"
+    return 1
+  fi
+  if [[ "$cwd_path" == "$PROJECT_ROOT"* ]]; then
+    log_ok "process_cwd: PID $pid is running from correct worktree"
+    log_ok "  $cwd_path"
+    return 0
+  fi
+  log_error "process_cwd: PID $pid is running from wrong directory"
+  log_error "  expected: $PROJECT_ROOT"
+  log_error "  actual:   $cwd_path"
+  return 1
+}
+# <!-- /SECTION: helpers -->
+
+# <!-- SECTION: hooks.pre_verify -->
+# Project hooks can extend here.
+# <!-- /SECTION: hooks.pre_verify -->
+
+# <!-- SECTION: verify -->
+log_info "Verifying web server"
+log_info "  PROJECT_ROOT=$PROJECT_ROOT"
+log_info "  MAIN_REPO_ROOT=$MAIN_REPO_ROOT"
+log_info "  SESSION_ID=$SESSION_ID"
+
+cd "$PROJECT_ROOT"
+
+if [[ -n "$EDISON_WEB_SERVER_VERIFY_CMD" ]]; then
+  log_info "Running EDISON_WEB_SERVER_VERIFY_CMD"
+  log_info "  $EDISON_WEB_SERVER_VERIFY_CMD"
+  bash -lc "$EDISON_WEB_SERVER_VERIFY_CMD"
+  exit $?
+fi
+
+if [[ -n "$VERIFY_CONTAINER" && -n "$VERIFY_MOUNT_DEST" ]]; then
+  verify_docker_source "$VERIFY_CONTAINER" "$VERIFY_MOUNT_DEST"
+  exit $?
+fi
+
+if [[ -n "$VERIFY_PROCESS_PATTERN" ]]; then
+  verify_process_cwd "$VERIFY_PROCESS_PATTERN"
+  exit $?
+fi
+
+log_error "verify-server.sh is not configured yet."
+log_error "Configure one of: EDISON_WEB_SERVER_VERIFY_CMD, VERIFY_CONTAINER+VERIFY_MOUNT_DEST, or VERIFY_PROCESS_PATTERN."
+exit 1
+# <!-- /SECTION: verify -->
+
+# <!-- SECTION: hooks.post_verify -->
+# Project hooks can extend here.
+# <!-- /SECTION: hooks.post_verify -->

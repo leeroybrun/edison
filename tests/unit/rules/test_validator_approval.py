@@ -112,8 +112,26 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
         engine.check_state_transition(task, "done", "validated")
 
     msg = str(exc.value).lower()
-    assert "bundle-summary.md" in msg
+    assert _bundle_filename(tmp_path).lower() in msg
     assert "missing" in msg or "incomplete" in msg
+
+
+def test_validator_approval_allows_when_legacy_bundle_file_exists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """When only legacy bundle-summary.md exists, still allow transition (compat)."""
+    task_id = "VAL-LEGACY-BUNDLE"
+
+    monkeypatch.chdir(tmp_path)
+    setup_project_root(monkeypatch, tmp_path)
+
+    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    round_dir = create_round_dir(base, 1)
+    legacy = round_dir / "bundle-summary.md"
+    _write_bundle(legacy, approved=True)
+
+    engine = RulesEngine(_create_config(require=True))
+    task = {"id": task_id}
+
+    assert engine.check_state_transition(task, "done", "validated") == []
 
 
 def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

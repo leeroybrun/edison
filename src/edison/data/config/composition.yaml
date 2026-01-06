@@ -217,6 +217,20 @@ composition:
       filename_pattern: "{name}.md"
 
     # -------------------------------------------------------------------------
+    # SCRIPTS (Script templates)
+    # -------------------------------------------------------------------------
+    scripts:
+      enabled: true
+      description: "Script templates (shell scripts and helpers)"
+      composition_mode: section_merge
+      dedupe: false
+      registry: null  # Use GenericRegistry
+      content_path: "templates/scripts"
+      file_pattern: "*.template"
+      output_path: "{{PROJECT_EDISON_DIR}}/_generated/templates/scripts"
+      filename_pattern: "{name}"
+
+    # -------------------------------------------------------------------------
     # ROSTERS (Data-driven documents)
     # -------------------------------------------------------------------------
     agent_roster:

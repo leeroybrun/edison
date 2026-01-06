@@ -16,7 +16,54 @@ class TestEvidenceService:
     def test_bundle_filename_default(self, isolated_project_env: Path) -> None:
         """Default bundle summary filename should be neutral (not 'approved')."""
         svc = EvidenceService("task-1", project_root=isolated_project_env)
-        assert svc.bundle_filename == "bundle-summary.md"
+        assert svc.bundle_filename == "validation-summary.md"
+
+    def test_read_bundle_prefers_validation_summary_over_legacy(self, isolated_project_env: Path) -> None:
+        """When both summary files exist, prefer validation-summary.md."""
+        task_id = "task-pref"
+        svc = EvidenceService(task_id, project_root=isolated_project_env)
+
+        evidence_base = (
+            isolated_project_env
+            / ".project"
+            / "qa"
+            / "validation-evidence"
+            / task_id
+        )
+        round_dir = evidence_base / "round-1"
+        round_dir.mkdir(parents=True, exist_ok=True)
+
+        create_report_markdown(round_dir / "bundle-summary.md", {"approved": False, "source": "legacy"}, body="")
+        create_report_markdown(
+            round_dir / "validation-summary.md",
+            {"approved": True, "source": "new"},
+            body="",
+        )
+
+        data = svc.read_bundle()
+        assert data["approved"] is True
+        assert data["source"] == "new"
+
+    def test_read_bundle_falls_back_to_legacy_bundle_summary(self, isolated_project_env: Path) -> None:
+        """When only bundle-summary.md exists, still read it for compatibility."""
+        task_id = "task-legacy-only"
+        svc = EvidenceService(task_id, project_root=isolated_project_env)
+
+        evidence_base = (
+            isolated_project_env
+            / ".project"
+            / "qa"
+            / "validation-evidence"
+            / task_id
+        )
+        round_dir = evidence_base / "round-1"
+        round_dir.mkdir(parents=True, exist_ok=True)
+
+        create_report_markdown(round_dir / "bundle-summary.md", {"approved": True, "source": "legacy"}, body="")
+
+        data = svc.read_bundle()
+        assert data["approved"] is True
+        assert data["source"] == "legacy"
 
     def test_get_current_round(self, isolated_project_env: Path) -> None:
         """Service resolves latest evidence round or returns None."""

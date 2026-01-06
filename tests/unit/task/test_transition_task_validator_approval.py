@@ -48,7 +48,7 @@ def test_transition_task_blocks_without_validator_approval(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should block when no bundle-summary.md exists."""
+    """Task transition to validated should block when no bundle approval exists."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -89,7 +89,7 @@ def test_transition_task_allows_when_bundle_approved(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should succeed when bundle-summary.md has approved=true."""
+    """Task transition to validated should succeed when bundle approval has approved=true."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -128,14 +128,16 @@ summary: "Test implementation"
         encoding="utf-8",
     )
     
-    # Create bundle-summary.md (required by validator-approval rule)
-    bundle_path = round_dir / "bundle-summary.md"
+    # Create bundle summary (required by validator-approval rule).
+    from edison.core.qa.evidence import EvidenceService
+
+    bundle_path = round_dir / EvidenceService(task_id, project_root=root).bundle_filename
     bundle_path.write_text(
         f"""---
 taskId: "{task_id}"
 round: 1
 approved: true
----
+--- 
 """,
         encoding="utf-8",
     )

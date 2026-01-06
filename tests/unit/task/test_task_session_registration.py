@@ -161,29 +161,16 @@ def test_claim_task_stamps_owner_when_missing(isolated_project_env):
 
 def _create_implementation_report(project_root: Path, task_id: str) -> None:
     """Create minimal implementation report to satisfy can_finish_task guard."""
-    from edison.core.qa.evidence import EvidenceService
     from edison.core.config.domains.qa import QAConfig
-
-    ev_svc = EvidenceService(task_id, project_root=project_root)
-    round_dir = ev_svc.get_evidence_root() / "round-1"
-    round_dir.mkdir(parents=True, exist_ok=True)
-    impl_report = round_dir / "implementation-report.md"
-    impl_report.write_text(
-        f"""---
-taskId: "{task_id}"
-round: 1
-status: "complete"
-summary: "Test implementation"
----
-""",
-        encoding="utf-8",
+    from tests.tools.evidence_helpers import (
+        write_minimal_round_implementation_report,
+        write_passing_snapshot_command_evidence,
     )
 
     # Create required command evidence files (defined in config; no hardcoding).
     required = QAConfig(repo_root=project_root).get_required_evidence_files()
-    for filename in required:
-        p = round_dir / str(filename)
-        p.write_text("PASS\n", encoding="utf-8")
+    write_minimal_round_implementation_report(project_root=project_root, task_id=task_id, round_num=1)
+    write_passing_snapshot_command_evidence(project_root=project_root, task_id=task_id, required_files=required)
 
 
 def test_complete_task_updates_session(isolated_project_env):

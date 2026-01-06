@@ -91,6 +91,16 @@ validation:
                   stop_command: "{{ e2e_web_stop_command }}"
                   cwd: "{{ e2e_web_cwd }}"
                   stop_after: "{{ e2e_web_stop_after }}"
+        templates:
+          - src: "web-server/start-server.sh"
+            dest: ".edison/scripts/start-server.sh"
+            executable: true
+          - src: "web-server/stop-server.sh"
+            dest: ".edison/scripts/stop-server.sh"
+            executable: true
+          - src: "web-server/verify-server.sh"
+            dest: ".edison/scripts/verify-server.sh"
+            executable: true
       triggers:
         - "app/**/*"
         - "pages/**/*"
