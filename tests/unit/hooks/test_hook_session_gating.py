@@ -28,22 +28,73 @@ class TestHookExecutionScopeConfig:
         hooks_settings = config.get("hooks", {}).get("settings", {})
 
         # Default should be 'session' (hooks only run when session detected)
-        assert hooks_settings.get("executionScope", "session") == "session"
+        assert hooks_settings.get("executionScope") == "session"
 
     def test_hook_definition_can_override_execution_scope(
         self, isolated_project_env: Path
     ) -> None:
         """Individual hook definitions should be able to override executionScope."""
         from edison.core.config import ConfigManager
+        import textwrap
+
+        hooks_config_path = isolated_project_env / ".edison" / "config" / "hooks.yaml"
+        hooks_config_path.parent.mkdir(parents=True, exist_ok=True)
+        hooks_config_path.write_text(
+            textwrap.dedent(
+                """
+                hooks:
+                  definitions:
+                    inject-session-context:
+                      executionScope: always
+                """
+            ).lstrip(),
+            encoding="utf-8",
+        )
 
         config = ConfigManager(repo_root=isolated_project_env).load_config(
             validate=False, include_packs=True
         )
         hooks_defs = config.get("hooks", {}).get("definitions", {})
 
-        # inject-session-context should default to 'session' scope
         session_context_hook = hooks_defs.get("inject-session-context", {})
-        assert session_context_hook.get("executionScope", "session") == "session"
+        assert session_context_hook.get("executionScope") == "always"
+
+    def test_project_wide_execution_scope_applies_to_rendered_hooks(
+        self, isolated_project_env: Path
+    ) -> None:
+        """A project-wide executionScope should apply to hooks unless overridden.
+
+        This ensures hook scripts can be switched from session-gated execution
+        (default) to project-wide execution via config, without repeating
+        `executionScope` on every hook definition.
+        """
+        from edison.core.adapters.components.hooks import compose_hooks
+        import textwrap
+
+        hooks_config_path = isolated_project_env / ".edison" / "config" / "hooks.yaml"
+        hooks_config_path.parent.mkdir(parents=True, exist_ok=True)
+        hooks_config_path.write_text(
+            textwrap.dedent(
+                """
+                hooks:
+                  settings:
+                    executionScope: project
+                  definitions:
+                    inject-session-context:
+                      executionScope: session
+                """
+            ).lstrip(),
+            encoding="utf-8",
+        )
+
+        compose_hooks(repo_root=isolated_project_env)
+
+        hooks_dir = isolated_project_env / ".claude" / "hooks"
+        remind_tdd = (hooks_dir / "remind-tdd.sh").read_text(encoding="utf-8")
+        inject_ctx = (hooks_dir / "inject-session-context.sh").read_text(encoding="utf-8")
+
+        assert 'edison_hook_guard "remind-tdd" "project"' in remind_tdd
+        assert 'edison_hook_guard "inject-session-context" "session"' in inject_ctx
 
 
 class TestHookDefinitionExecutionScope:
