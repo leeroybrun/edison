@@ -155,6 +155,69 @@ function getCompactionState(sessionId: string): CompactionState {
 // Edison Session ID Resolution
 // -----------------------------------------------------------------------------
 
+const EDISON_CLI_TIMEOUT_MS = 5_000;
+
+async function execEdisonText(
+  args: string[],
+  timeoutMs: number = EDISON_CLI_TIMEOUT_MS,
+): Promise<string | null> {
+  try {
+    const proc = Bun.spawn(["edison", ...args], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        try {
+          proc.kill();
+        } catch {
+          // ignore
+        }
+        reject(new Error("timeout"));
+      }, timeoutMs);
+    });
+
+    const [stdoutText, _stderrText, exitCode] = await Promise.race([
+      Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]),
+      timeoutPromise,
+    ]);
+
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    if (exitCode !== 0) {
+      return null;
+    }
+
+    const trimmed = stdoutText.trim();
+    return trimmed ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function execEdisonJson<T>(
+  args: string[],
+  timeoutMs: number = EDISON_CLI_TIMEOUT_MS,
+): Promise<T | null> {
+  const out = await execEdisonText(args, timeoutMs);
+  if (!out) {
+    return null;
+  }
+  try {
+    return JSON.parse(out) as T;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve Edison session ID using priority order:
  * 1. AGENTS_SESSION environment variable
@@ -170,13 +233,11 @@ async function resolveEdisonSessionId(): Promise<string | null> {
 
   // Priority 2: Session context
   try {
-    const proc = Bun.spawn(
-      ["edison", "session", "context", "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    const data = JSON.parse(out) as EdisonSessionContext;
+    const data = await execEdisonJson<EdisonSessionContext>([
+      "session",
+      "context",
+      "--json",
+    ]);
     if (data?.sessionId) {
       return data.sessionId;
     }
@@ -194,62 +255,46 @@ async function resolveEdisonSessionId(): Promise<string | null> {
 async function fetchEdisonSessionNext(
   sessionId?: string,
 ): Promise<EdisonSessionNext | null> {
-  try {
-    const args = ["edison", "session", "next", "--json", "--completion-only"];
-    if (sessionId) {
-      args.push(sessionId);
-    }
-    const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    return JSON.parse(out) as EdisonSessionNext;
-  } catch {
-    return null;
+  const args = ["session", "next", "--json", "--completion-only"];
+  if (sessionId) {
+    args.push(sessionId);
   }
+  return execEdisonJson<EdisonSessionNext>(args);
 }
 
 async function fetchEdisonRulesInjectForState(
   state: string,
 ): Promise<EdisonRulesInject | null> {
-  try {
-    // Use --state flag: Edison centralizes state-to-transition mapping
-    const proc = Bun.spawn(
-      ["edison", "rules", "inject", "--state", state, "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    return JSON.parse(out) as EdisonRulesInject;
-  } catch {
-    return null;
-  }
+  // Use --state flag: Edison centralizes state-to-transition mapping
+  return execEdisonJson<EdisonRulesInject>([
+    "rules",
+    "inject",
+    "--state",
+    state,
+    "--json",
+  ]);
 }
 
 async function fetchEdisonRulesInjectForContext(
   context: string,
 ): Promise<EdisonRulesInject | null> {
-  try {
-    const proc = Bun.spawn(
-      ["edison", "rules", "inject", "--context", context, "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    return JSON.parse(out) as EdisonRulesInject;
-  } catch {
-    return null;
-  }
+  return execEdisonJson<EdisonRulesInject>([
+    "rules",
+    "inject",
+    "--context",
+    context,
+    "--json",
+  ]);
 }
 
 async function fetchContextWindowRuleContext(): Promise<string> {
   try {
-    const proc = Bun.spawn(
-      ["edison", "config", "show", "context_window", "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    const data = JSON.parse(out);
+    const data = await execEdisonJson<any>([
+      "config",
+      "show",
+      "context_window",
+      "--json",
+    ]);
     const ruleContext = data?.context_window?.prompts?.ruleContext;
     if (typeof ruleContext === "string" && ruleContext.trim()) {
       return ruleContext.trim();
@@ -262,13 +307,11 @@ async function fetchContextWindowRuleContext(): Promise<string> {
 
 async function getCurrentTaskState(): Promise<string | null> {
   try {
-    const proc = Bun.spawn(
-      ["edison", "session", "context", "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    const data = JSON.parse(out) as EdisonSessionContext;
+    const data = await execEdisonJson<EdisonSessionContext>([
+      "session",
+      "context",
+      "--json",
+    ]);
     return data?.currentTaskState || null;
   } catch {
     return null;
@@ -281,13 +324,10 @@ async function getCurrentTaskState(): Promise<string | null> {
  */
 async function fetchNonInteractiveConfig(): Promise<EdisonNonInteractiveConfig> {
   try {
-    const proc = Bun.spawn(
-      ["edison", "config", "show", "execution", "--json"],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    const data = JSON.parse(out);
+    const data = await execEdisonJson<any>(["config", "show", "execution", "--json"]);
+    if (!data) {
+      throw new Error("missing execution config");
+    }
     // `edison config show execution --json` returns `{ "execution": { ... } }`.
     // Fail-open for older/alternate shapes by falling back to `data` directly.
     const execution = data?.execution ?? data;
@@ -527,17 +567,7 @@ async function performCompaction(
  * Fetch Edison session context for injection after compaction.
  */
 async function fetchEdisonSessionContext(): Promise<string | null> {
-  try {
-    const proc = Bun.spawn(["edison", "session", "context"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    return out.trim() || null;
-  } catch {
-    return null;
-  }
+  return execEdisonText(["session", "context"]);
 }
 
 /**
@@ -572,6 +602,14 @@ export const Edison = async ({ client }: { client: any }) => {
       event: { type: string; sessionId?: string; error?: string; message?: string };
     }) => {
       const openCodeSessionId = event.sessionId || "default";
+
+      // Cleanup ephemeral state on session end/close to avoid leaks.
+      if (event.type === "session.end" || event.type === "session.closed") {
+        rlStateMap.delete(openCodeSessionId);
+        compactionStateMap.delete(openCodeSessionId);
+        return;
+      }
+
       const compactionState = getCompactionState(openCodeSessionId);
 
       // Handle session.error for token-limit recovery
@@ -639,6 +677,7 @@ export const Edison = async ({ client }: { client: any }) => {
         if (RL_CONFIG.stopOnBlocked && rlState.iteration > 0) {
           // Clear state for next time
           rlStateMap.delete(openCodeSessionId);
+          compactionStateMap.delete(openCodeSessionId);
         }
         return;
       }
@@ -727,7 +766,7 @@ Recommendations:
             args: {
               ...args,
               env: mergedEnv,
-              command: `echo ${JSON.stringify("[Edison] BLOCKED: command matches banned non-interactive pattern")} >&2; exit 1`,
+              command: "printf '%s\\n' '[Edison] BLOCKED: command matches banned non-interactive pattern' >&2; exit 1",
             },
           };
         }
