@@ -74,9 +74,8 @@ class VendorSyncManager:
                         path=source.path,
                     )
                 )
-
-        # Save lock file
-        self.lock.save()
+                # Persist lock entry immediately so partial progress is not lost if the run is interrupted.
+                self.lock.save()
 
         return results
 
