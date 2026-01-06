@@ -67,7 +67,9 @@ validation:
       wave: global
       always_run: false
       blocking: false
-      timeout: 600
+      # CodeRabbit runs are best-effort in local/dev workflows and can hang when
+      # no PR context is available; keep a short timeout so it remains advisory.
+      timeout: 90
       context7_required: false
       context7_packages: []
       triggers: []
