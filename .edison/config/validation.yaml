@@ -8,6 +8,20 @@ validation:
   # Fast preset used by default for per-task iteration in the Edison repo.
   defaultPreset: fast
 
+  # Engine overrides for this repo (avoid hardcoding repo-specific details in core engines).
+  engines:
+    # CodeRabbit reviews should target this branch's committed changes relative to main
+    # to avoid reporting pre-existing issues across the entire repository.
+    coderabbit-cli:
+      read_only_flags:
+        - "--plain"
+        - "--type"
+        - "committed"
+        - "--base"
+        - "main"
+        - "--cwd"
+        - "{worktree_path}"
+
   # Deep preset used for session-close verification in the Edison repo.
   presets:
     fast:
@@ -15,11 +29,11 @@ validation:
       description: "Fast per-task validation for iteration (Edison repo)"
       validators:
         - global-claude
-        - global-coderabbit
+        - coderabbit
       # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
         - global-claude
-        - global-coderabbit
+        - coderabbit
 
     bundle:
       name: bundle
@@ -27,7 +41,7 @@ validation:
       validators:
         - global-codex
         - global-claude
-        - global-coderabbit
+        - coderabbit
       required_evidence:
         - command-type-check.txt
         - command-lint.txt
@@ -36,7 +50,7 @@ validation:
       blocking_validators:
         - global-codex
         - global-claude
-        - global-coderabbit
+        - coderabbit
 
     deep:
       name: deep
@@ -45,7 +59,7 @@ validation:
         - global-claude
         - security
         - performance
-        - global-coderabbit
+        - coderabbit
       required_evidence:
         - command-type-check.txt
         - command-test-full.txt
@@ -54,7 +68,7 @@ validation:
         - global-claude
         - security
         - performance
-        - global-coderabbit
+        - coderabbit
 
   validators:
     # Edison repo default: avoid running Codex CLI validators as hard blockers.
@@ -87,13 +101,18 @@ validation:
       prompt: "_generated/validators/critical/coderabbit.md"
       wave: global
       always_run: false
-      blocking: true
-      # CodeRabbit can be slow; allow enough time for full reviews.
-      timeout: 2700
+      enabled: false
+      blocking: false
+      timeout: 150
       context7_required: false
       context7_packages: []
       triggers: []
       focus: []
+
+    coderabbit:
+      blocking: true
+      # CodeRabbit can be slow; allow enough time for full reviews.
+      timeout: 2700
 
     # Edison repo default: keep the global validator set small and reliable.
     # Other projects can re-enable these in their own validation.yaml if desired.
