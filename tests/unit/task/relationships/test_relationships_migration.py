@@ -93,3 +93,37 @@ def test_migration_noops_when_no_frontmatter() -> None:
 
     original = "# No frontmatter\n"
     assert migrate_task_markdown_relationships(original) == original
+
+
+@pytest.mark.task
+def test_migration_noops_when_no_relationship_keys_present() -> None:
+    from edison.core.task.relationships.migration import migrate_task_markdown_relationships
+
+    # Deliberately use flow style so a naive parse+dump rewrite would change
+    # formatting and create noisy diffs.
+    original = """---
+id: 013-migrate
+title: Migrate
+tags: [a, b]
+---
+
+# Migrate
+"""
+
+    assert migrate_task_markdown_relationships(original) == original
+
+
+@pytest.mark.task
+def test_migration_noops_when_only_canonical_relationships_present() -> None:
+    from edison.core.task.relationships.migration import migrate_task_markdown_relationships
+
+    original = """---
+id: 013-migrate
+title: Migrate
+relationships: [{type: parent, target: 013-parent}]
+---
+
+# Migrate
+"""
+
+    assert migrate_task_markdown_relationships(original) == original
