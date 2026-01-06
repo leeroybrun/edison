@@ -67,8 +67,8 @@ def main(args: argparse.Namespace) -> int:
                 formatter.text(f"    - {checkout}")
 
             if result.bytes_freed > 0:
-                size_mb = result.bytes_freed / (1024 * 1024)
-                formatter.text(f"  Space freed: {size_mb:.2f} MB")
+                size_mib = result.bytes_freed / (1024 * 1024)
+                formatter.text(f"  Space freed: {size_mib:.2f} MiB")
 
         return 0
 
