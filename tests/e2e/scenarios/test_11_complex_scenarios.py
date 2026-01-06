@@ -700,6 +700,9 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
         rd.mkdir(parents=True, exist_ok=True)
 
+        # Minimal command capture evidence required by the fast preset.
+        (rd / "command-test.txt").write_text("scripts/test-fast\nExit code: 0\n", encoding="utf-8")
+
         # Implementation report
         impl_report = {
             "taskId": task_id,
@@ -726,6 +729,7 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
         for validator_id, model in [
             ("global-codex", "codex"),
             ("global-claude", "claude"),
+            ("coderabbit", "coderabbit"),
             ("security", "codex"),
             ("performance", "codex"),
             ("prisma", "codex"),
