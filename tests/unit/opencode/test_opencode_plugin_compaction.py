@@ -31,7 +31,7 @@ def get_src_path() -> Path:
     if src.exists():
         return src
     # Fallback to main repo
-    return Path(__file__).parent.parent.parent.parent.parent / "src"
+    return Path(__file__).parent.parent.parent.parent / "src"
 
 
 class TestPluginCompactionState:
