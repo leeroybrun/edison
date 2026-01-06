@@ -62,7 +62,14 @@ class ExecutionConfig(BaseDomainConfig):
         raw = self._non_interactive.get("bannedCommandPatterns")
         if not isinstance(raw, list):
             return []
-        return [str(p).strip() for p in raw if p]
+        out: list[str] = []
+        for p in raw:
+            if p is None:
+                continue
+            s = str(p).strip()
+            if s:
+                out.append(s)
+        return out
 
     @cached_property
     def on_match(self) -> Literal["warn", "block"]:

@@ -203,6 +203,25 @@ class TestExecutionConfigDomain:
         # Should return list
         assert isinstance(config.banned_command_patterns, list)
 
+    def test_execution_config_filters_blank_banned_patterns(
+        self, isolated_project_env: Path
+    ) -> None:
+        """banned_command_patterns should not include blank/whitespace-only entries."""
+        from functools import cached_property
+
+        from edison.core.config.domains.execution import ExecutionConfig
+
+        class TestExecutionConfig(ExecutionConfig):
+            @cached_property
+            def _non_interactive(self) -> dict:  # type: ignore[override]
+                return {
+                    "enabled": True,
+                    "bannedCommandPatterns": ["  ", "\n", "", None, " vim ", "^foo$"],
+                }
+
+        config = TestExecutionConfig(repo_root=isolated_project_env)
+        assert config.banned_command_patterns == ["vim", "^foo$"]
+
     def test_execution_config_has_on_match(
         self, isolated_project_env: Path
     ) -> None:
