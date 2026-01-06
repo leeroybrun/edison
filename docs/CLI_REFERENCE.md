@@ -1595,15 +1595,13 @@ edison qa validate <task_id> [options]
 |--------|-------------|
 | `--scope` | Bundle scope: `auto`, `hierarchy`, or `bundle` (recommended for validating small related tasks together) |
 | `--session` | Session ID context |
-| `--round` | Validation round number (default: create new round) |
-| `--new-round` | Create a new evidence round directory and run validators in it |
+| `--round` | Validation round number (default: use current active round; fails closed if none) |
 | `--wave` | Specific wave to validate (e.g., `critical`, `comprehensive`) |
 | `--preset` | Validation preset override (e.g., `fast`, `standard`, `strict`, `deep`) |
 | `--validators` | Specific validator IDs to run (space-separated) |
 | `--add-validators` | Extra validators to add: `react` (default wave) or `critical:react` (specific wave) |
 | `--blocking-only` | Only run blocking validators |
 | `--execute` | Execute validators directly (default: show roster only) |
-| `--check-only` | Do not execute validators; compute approval from existing evidence and emit the bundle summary file |
 | `--sequential` | Run validators sequentially instead of in parallel |
 | `--dry-run` | Show what would be executed without running |
 | `--max-workers` | Maximum parallel workers (default: 4) |
@@ -1625,6 +1623,9 @@ edison qa validate 150-auth-feature
 
 # Execute validators directly via CLI engines
 edison qa validate 150-auth-feature --execute
+
+# Prepare a new round (creates/initializes round artifacts)
+edison qa round prepare 150-auth-feature
 
 # Validate a bundle of related tasks (defined via `bundle_root`)
 edison qa validate 150-auth-feature --scope bundle --execute
@@ -1782,56 +1783,40 @@ edison qa promote --task 150-auth-feature --to done --json
 
 ### qa round - Manage QA Rounds
 
-Manage QA validation rounds and their status.
+Manage QA validation rounds and round-scoped reports.
 
 ```bash
-edison qa round <task_id> [options]
+edison qa round <subcommand> ...
 ```
 
-**Options:**
+**Subcommands:**
 
-| Option | Description |
-|--------|-------------|
-| `--status` | Append a round-history entry with status: `approve`, `reject`, `blocked`, or `pending` (default: `pending`) |
-| `--note` | Optional notes for the round (e.g., validator IDs, rationale) |
-| `--new` | Create a new evidence `round-N/` directory and append round history |
-| `--list` | List all rounds (merged view: QA round history + evidence dirs) |
-| `--current` | Show the current round number |
-| `--json` | Output as JSON |
-| `--repo-root` | Override repository root path |
-
-**Round Statuses:**
-
-- `approve` - Round passed all blocking validators
-- `reject` - Issues found, requires fixes
-- `blocked` - Validation could not be completed
-- `pending` - Round in progress
+| Subcommand | Description |
+|------------|-------------|
+| `prepare` | Create/ensure an active `round-N/` and initialize `implementation-report.md` + `validation-summary.md` |
+| `summarize-verdict` | Compute approval from existing validator reports and write `validation-summary.md` (no validator execution) |
+| `set-status` | Append a round record to the QA brief (status/notes only) |
 
 **When to Use:**
 
-- Inspect current/previous rounds (`--current`, `--list`)
-- Create a new evidence round directory (`--new`)
-- Recording validation results
-- Tracking round outcomes
-- Managing rework cycles
+- Starting a new validation cycle for a task/bundle (use `prepare`)
+- Capturing a deterministic “verdict summary” after validators run (use `summarize-verdict`)
+- Recording round status/notes in the QA brief (use `set-status`)
 
 **Examples:**
 
 ```bash
-# List rounds
-edison qa round 150-auth-feature --list
+# Prepare a new active round (creates round-N/ + reports)
+edison qa round prepare 150-auth-feature
 
-# Create a new evidence round directory (round-N/) and append history
-edison qa round 150-auth-feature --new
+# Run validators in the prepared round
+edison qa validate 150-auth-feature --execute
 
-# Approve round
-edison qa round 150-auth-feature --status approve
+# Summarize the validator verdicts and write validation-summary.md
+edison qa round summarize-verdict 150-auth-feature
 
-# Mark as rejected (needs work)
-edison qa round 150-auth-feature --status reject
-
-# Block round due to critical issues
-edison qa round 150-auth-feature --status blocked
+# Record a status update in the QA brief (optional)
+edison qa round set-status 150-auth-feature --status reject --note "Fix lint + rerun"
 ```
 
 ---

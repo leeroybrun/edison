@@ -265,26 +265,33 @@ edison qa run <validator-name> --task <task-id>
 ```
 
 **What happens:**
-1. Creates validation bundle at:
+1. Uses the active round under:
    ```
-   .project/qa/validation-reports/<task-id>/round-N/
+   .project/qa/validation-reports/<root-task-id>/round-N/
+   ```
+   Create/initialize a new round with:
+   ```bash
+   edison qa round prepare <task-id>
    ```
 
-2. Executes validators in parallel (configurable):
+2. Executes validators in parallel (configurable) when `--execute` is used:
    - Multiple validators run concurrently
    - Each produces JSON report
    - Timeout per validator: 5 minutes (default)
 
-3. Collects evidence files:
+3. Writes/reads artifacts in two places:
    ```
    validation-reports/<task-id>/round-1/
    ├── implementation-report.md
+   ├── validator-*-report.md
+   └── context7-*.md
+   ```
+   ```
+   evidence-snapshots/<gitHead>/<diffHash>/<clean|dirty>/
    ├── command-test.txt
    ├── command-lint.txt
    ├── command-type-check.txt
-   ├── command-build.txt
-   ├── validator-*-report.md
-   └── context7-*.md
+   └── command-build.txt
    ```
 
 **Bundle scopes (hierarchy vs bundle):**
@@ -574,9 +581,9 @@ edison qa validate <task-id>
 edison qa run <validator-name> --task <task-id>
 
 # Manage rounds
-edison qa round <task-id> --current
-edison qa round <task-id> --list
-edison qa round <task-id> --new
+edison qa round prepare <task-id>
+edison qa round summarize-verdict <task-id>
+edison qa round set-status <task-id> --status reject --note "Fix lint + rerun"
 
 # Bundle management
 edison qa bundle create --task <task-id>
@@ -591,24 +598,32 @@ Detailed validation process with evidence collection and consensus.
 
 ### 1. Evidence Collection
 
-**Required evidence files:**
+**Round-scoped reports (per task/bundle):**
 ```
 .project/qa/validation-reports/<task-id>/round-N/
-├── command-test.txt          # Test output
-├── command-lint.txt          # Lint output
-├── command-type-check.txt    # Type check output
-├── command-build.txt         # Build output
-├── implementation-report.md # Agent report
-└── context7-*.md             # Context7 documentation
+├── implementation-report.md   # Agent report (copy-forward + per-round deltas)
+├── validation-summary.md      # Verdict summary (written by `qa round summarize-verdict`)
+├── validator-*.md             # Validator reports
+└── context7-*.md              # Context7 documentation markers (when required)
+```
+
+**Repo-scoped command evidence (keyed by git fingerprint, shared across tasks):**
+```
+.project/qa/evidence-snapshots/<gitHead>/<diffHash>/<clean|dirty>/
+├── command-test.txt
+├── command-lint.txt
+├── command-type-check.txt
+└── command-build.txt
 ```
 
 **Preferred evidence command (trusted runner):**
 
 ```bash
-# Ensure a round exists (session tracking will also do this).
-edison evidence init <task-id>
+# Ensure a round exists (session tracking may also do this).
+edison qa round prepare <task-id>
 
 # Run only the required CI commands for the task's inferred preset and capture trusted evidence.
+# Evidence is cached by repo fingerprint and reused automatically when possible.
 edison evidence capture <task-id>
 
 # Or run a subset explicitly:

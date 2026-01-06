@@ -255,12 +255,12 @@ Validators MUST read these files before validation:
 
 #### Validation Commands
 ```bash
-edison qa validate <task-id> [--round N]                 # Validate task
+edison qa validate <task-id> [--round N]                 # Validate task (roster by default; use --execute to run)
 edison qa validate <task-id> --session <session-id>      # Bundle validation
 edison qa bundle <task-id>                               # Inspect bundle
-edison qa round <task-id> --current                      # Show current round
-edison qa round <task-id> --list                         # List round history + evidence dirs
-edison qa round <task-id> --status <status>              # Append round status (does not create evidence dir unless --new)
+edison qa round prepare <task-id>                        # Prepare active round (init reports)
+edison qa round summarize-verdict <task-id>              # Write validation-summary.md (no validator execution)
+edison qa round set-status <task-id> --status <status>   # Append round status/notes in QA brief
 ```
 
 #### Read-Only Commands
@@ -515,10 +515,9 @@ edison session track start --task TASK-123 --type implementation
 # - Refactor (REFACTOR)
 
 # 4. Run automation suite
-npm run type-check > evidence/command-type-check.txt
-npm run lint > evidence/command-lint.txt
-npm run test > evidence/command-test.txt
-npm run build > evidence/command-build.txt
+edison evidence capture TASK-123
+# Or a subset:
+# edison evidence capture TASK-123 --only test --only lint
 
 # 5. Complete tracking
 edison session track complete --task TASK-123
@@ -546,10 +545,10 @@ edison qa validate TASK-123
 # - Include verdict, issues, summary
 
 # 5. If approved:
-edison qa round TASK-123 --status approve
+edison qa round set-status TASK-123 --status approve
 
 # 6. If rejected:
-edison qa round TASK-123 --status reject
+edison qa round set-status TASK-123 --status reject
 # (List blocking issues in report)
 ```
 

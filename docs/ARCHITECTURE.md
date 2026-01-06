@@ -835,13 +835,14 @@ Validators are configured in `validation.yaml` with:
 
 ### Validator Execution Flow
 
-1. **Orchestrator** triggers validation via `edison qa validate <task-id>`
+1. **Orchestrator** prepares a round via `edison qa round prepare <task-id>` and triggers validation via `edison qa validate <task-id> --execute`
 2. **EngineRegistry** loads validator configurations and builds execution roster
 3. **CLIEngine** executes validators directly via CLI tools when available
 4. **Fallback**: If CLI unavailable, `PalMCPEngine` generates delegation instructions
 5. **Parsers** normalize CLI output to structured `ValidationResult`
-6. **Evidence** saved to `.project/qa/validation-reports/{task-id}/round-N/`
-7. **Results** feed into QA state machine for promotion decisions
+6. **Round reports** saved to `.project/qa/validation-reports/{task-id}/round-N/` (validator reports, implementation report, validation summary)
+7. **Command evidence** saved to `.project/qa/evidence-snapshots/<gitHead>/<diffHash>/<clean|dirty>/` (tests/lint/build/type-check outputs)
+8. **Results** feed into QA state machine for promotion decisions
 
 ### Unified Validator Execution
 
@@ -896,7 +897,7 @@ The validation system uses a centralized `ValidationExecutor` for all execution:
 - **Parallel execution**: Within each wave, validators run concurrently
 - **Automatic fallback**: CLI → delegation when tools not installed
 - **Mixed execution**: CLI and delegated validators in same wave
-- **Evidence collection**: All output saved to validation evidence
+- **Evidence collection**: Round reports in `qa/validation-reports/`, command evidence snapshots in `qa/evidence-snapshots/`
 
 ---
 
@@ -917,7 +918,10 @@ my-project/
 ├── .project/                   # Project management artifacts (uncommitted)
 │   ├── tasks/                  # Task state files
 │   ├── qa/                     # QA briefs + evidence
-│   │   └── validation-reports/
+│   │   ├── evidence-snapshots/  # Repo-fingerprint command evidence (tests/lint/build)
+│   │   │   └── <gitHead>/<diffHash>/<clean|dirty>/
+│   │   │       └── command-test.txt
+│   │   └── validation-reports/  # Per-task rounds (reports + validator outputs)
 │   │       └── T-001/
 │   │           └── round-1/
 │   │               ├── implementation-report.md
