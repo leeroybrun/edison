@@ -66,6 +66,27 @@ class TestSessionContextPayloadActorIdentity:
         assert data["actorResolution"] == "env"
 
     @pytest.mark.session
+    def test_payload_accepts_plural_orchestrators_alias(
+        self, monkeypatch: pytest.MonkeyPatch, isolated_project_env: Path
+    ) -> None:
+        """Plural actor kinds should normalize to the canonical actor kind."""
+        session_id = "sess-actor-004"
+        ensure_session(session_id, state="active")
+
+        monkeypatch.setenv("EDISON_ACTOR_KIND", "orchestrators")
+
+        from edison.core.session.context_payload import build_session_context_payload
+
+        payload = build_session_context_payload(
+            project_root=isolated_project_env,
+            session_id=session_id,
+        )
+        data = payload.to_dict()
+
+        assert data.get("actorKind") == "orchestrator"
+        assert data.get("actorReadCmd") == "edison read ORCHESTRATOR --type constitutions"
+
+    @pytest.mark.session
     def test_payload_actor_kind_unknown_when_env_not_set(
         self, monkeypatch: pytest.MonkeyPatch, isolated_project_env: Path
     ) -> None:
