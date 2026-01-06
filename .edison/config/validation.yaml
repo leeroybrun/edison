@@ -19,6 +19,7 @@ validation:
       # required_evidence is intentionally omitted so baseline evidence applies.
       blocking_validators:
         - global-claude
+        - global-coderabbit
 
     bundle:
       name: bundle
@@ -35,6 +36,7 @@ validation:
       blocking_validators:
         - global-codex
         - global-claude
+        - global-coderabbit
 
     deep:
       name: deep
@@ -52,6 +54,7 @@ validation:
         - global-claude
         - security
         - performance
+        - global-coderabbit
 
   validators:
     # Edison repo default: avoid running Codex CLI validators as hard blockers.
@@ -84,10 +87,9 @@ validation:
       prompt: "_generated/validators/critical/coderabbit.md"
       wave: global
       always_run: false
-      blocking: false
-      # CodeRabbit runs are best-effort in local/dev workflows and can hang when
-      # no PR context is available; keep a short timeout so it remains advisory.
-      timeout: 90
+      blocking: true
+      # CodeRabbit can be slow; allow enough time for full reviews.
+      timeout: 2700
       context7_required: false
       context7_packages: []
       triggers: []
