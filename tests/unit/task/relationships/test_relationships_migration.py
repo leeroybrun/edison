@@ -86,3 +86,10 @@ parent_id: SHOULD-BE-REMOVED
     assert ("parent", "013-parent") in edges
     assert fm.get("parent_id") is None
 
+
+@pytest.mark.task
+def test_migration_noops_when_no_frontmatter() -> None:
+    from edison.core.task.relationships.migration import migrate_task_markdown_relationships
+
+    original = "# No frontmatter\n"
+    assert migrate_task_markdown_relationships(original) == original
