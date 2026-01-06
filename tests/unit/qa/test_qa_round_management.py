@@ -93,22 +93,22 @@ class TestQARoundManagement:
         qa_id = "T-1-qa"
         task_id = "T-1"
 
-        # Create QA in wip state with round 1
+        # Create QA in wip state (no rounds yet)
         create_qa_file(repo_env, qa_id, task_id, state="wip")
 
         repo = QARepository(project_root=repo_env)
         qa = repo.get(qa_id)
-        assert qa.round == 1
+        assert qa.round == 0
 
         # Append a new round
         updated_qa = repo.append_round(qa_id, status="reject")
 
         # Assert - round incremented
-        assert updated_qa.round == 2
+        assert updated_qa.round == 1
 
         # Verify persisted
         reloaded = repo.get(qa_id)
-        assert reloaded.round == 2
+        assert reloaded.round == 1
 
     def test_append_round_with_status(self, repo_env):
         """Test append_round records the status."""
@@ -156,17 +156,17 @@ class TestQARoundManagement:
 
         repo = QARepository(project_root=repo_env)
 
-        # Append round 2
+        # Append round 1
         qa = repo.append_round(qa_id, status="reject", notes="First rejection")
+        assert qa.round == 1
+
+        # Append round 2
+        qa = repo.append_round(qa_id, status="reject", notes="Second rejection")
         assert qa.round == 2
 
         # Append round 3
-        qa = repo.append_round(qa_id, status="reject", notes="Second rejection")
-        assert qa.round == 3
-
-        # Append round 4
         qa = repo.append_round(qa_id, status="approve")
-        assert qa.round == 4
+        assert qa.round == 3
 
         # Verify history
         assert len(qa.round_history) == 3  # 3 appended rounds
@@ -184,21 +184,20 @@ class TestQARoundManagement:
         create_qa_file(repo_env, qa_id, task_id, state="wip")
 
         repo = QARepository(project_root=repo_env)
-        assert repo.get(qa_id).round == 1
+        assert repo.get(qa_id).round == 0
 
         # Advance QA rounds without creating evidence dirs.
         repo.append_round(qa_id, status="reject")
-        assert repo.get(qa_id).round == 2
+        assert repo.get(qa_id).round == 1
 
         evidence_root = repo_env / ".project" / "qa" / "validation-evidence" / task_id
         assert not evidence_root.exists()
 
-        # Now request an evidence-backed round; this must create round-1..round-3 dirs.
+        # Now request an evidence-backed round; this must create round-1..round-2 dirs.
         updated = repo.append_round(qa_id, status="pending", create_evidence_dir=True)
-        assert updated.round == 3
+        assert updated.round == 2
         assert (evidence_root / "round-1").exists()
         assert (evidence_root / "round-2").exists()
-        assert (evidence_root / "round-3").exists()
 
     def test_append_round_raises_for_nonexistent_qa(self, repo_env):
         """Test append_round raises error for non-existent QA."""
@@ -218,12 +217,12 @@ class TestQARoundManagement:
 
         # Initial round
         current = repo.get_current_round(qa_id)
-        assert current == 1
+        assert current == 0
 
         # After appending
         repo.append_round(qa_id, status="reject")
         current = repo.get_current_round(qa_id)
-        assert current == 2
+        assert current == 1
 
     def test_list_rounds(self, repo_env):
         """Test listing all rounds for a QA."""

@@ -32,10 +32,9 @@ def test_evidence_helpers_deleted():
         from edison.core.qa.evidence import helpers
 
 
-def test_qa_rounds_deleted():
-    """qa.rounds module should not exist."""
-    with pytest.raises(ImportError):
-        from edison.core.qa import rounds
+def test_qa_rounds_active_selector_available():
+    """qa.rounds.active is the canonical round selector module."""
+    from edison.core.qa.rounds.active import active_round  # noqa: F401
 
 
 def test_no_evidence_manager_in_public_api():

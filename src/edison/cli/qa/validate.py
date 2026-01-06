@@ -553,6 +553,7 @@ def _compute_bundle_summary(
         "preset": str(preset_used or "").strip() or None,
         "round": int(round_num),
         "approved": bool(overall_approved),
+        "status": "final",
         "generatedAt": utc_timestamp(),
         "tasks": tasks_payload,
         "validators": validators_payload,
@@ -629,254 +630,264 @@ def _execute_with_executor(
         formatter.text(f"  Extra validators: {', '.join(e['id'] for e in extra_validators)}")
 
     from edison.core.qa.evidence import EvidenceService
-    from edison.core.qa.evidence import rounds as evidence_rounds
+    from edison.core.qa.locks.task import acquire_qa_task_lock
+    from edison.core.qa.rounds.active import active_round, is_round_final, latest_round_num
 
     ev = EvidenceService(root_task_id, project_root=repo_root)
 
-    # Resolve the evidence round deterministically (and print it) so operators know where artifacts go.
-    #
-    # IMPORTANT: `qa validate` must not create rounds. Round creation is owned by
-    # `edison qa round prepare`.
-    round_num: int
-    if args.round is not None:
-        round_num = int(args.round)
-    else:
-        current = ev.get_current_round()
-        if current is None:
+    with acquire_qa_task_lock(
+        project_root=repo_root,
+        task_id=root_task_id,
+        purpose="validate",
+        session_id=session_id,
+        timeout_seconds=60.0,
+    ):
+        # Determine which round to validate.
+        if args.round is not None:
+            round_num = int(args.round)
+        else:
+            current_active = active_round(project_root=repo_root, task_id=root_task_id)
+            if current_active is not None:
+                round_num = int(current_active.round_num)
+            else:
+                latest = latest_round_num(project_root=repo_root, task_id=root_task_id)
+                if latest is None:
+                    formatter.error(
+                        "No evidence round exists yet; run `edison qa round prepare <task>` before executing validators.",
+                        error_code="no_round",
+                    )
+                    return 1
+                formatter.error(
+                    "Latest round is already finalized; run `edison qa round prepare <task>` before executing validators.",
+                    error_code="round_finalized",
+                )
+                return 1
+
+        round_dir = ev.get_round_dir(round_num)
+        if not round_dir.exists():
             formatter.error(
-                "No evidence round exists yet; run `edison qa round prepare <task>` before executing validators.",
-                error_code="no_round",
+                f"Evidence round {round_num} does not exist for {root_task_id}; run `edison qa round prepare {root_task_id}`.",
+                error_code="round_missing",
             )
             return 1
-        round_num = int(current)
 
-    round_dir = ev.get_round_dir(round_num)
-    if not round_dir.exists():
-        formatter.error(
-            f"Evidence round {round_num} does not exist for {root_task_id}; run `edison qa round prepare {root_task_id}`.",
-            error_code="round_missing",
-        )
-        return 1
-
-    try:
-        from edison.core.utils.paths import PathResolver
-
-        project_root = PathResolver.resolve_project_root()
-        try:
-            display_round = str(round_dir.relative_to(project_root))
-        except Exception:
-            display_round = str(round_dir)
-    except Exception:
-        display_round = f"<evidence-root>/{root_task_id}/round-{round_num}"
-
-    formatter.text(f"  Round: {round_num}")
-    formatter.text(f"  Evidence: {display_round}")
-    formatter.text("")
-
-    # Ensure round artifacts exist BEFORE executing any validator.
-    #
-    # Validators read the bundle summary + implementation report paths from the
-    # generated prompt prelude. If we only write these artifacts after execution,
-    # CLI validators can (correctly) reject due to missing context.
-    try:
-        ev.ensure_round(round_num)
-
-        existing_impl: dict[str, Any] = {}
-        try:
-            existing_impl = ev.read_implementation_report(round_num)
-        except Exception:
-            existing_impl = {}
-
-        if not existing_impl:
-            ev.write_implementation_report(
-                {
-                    "taskId": root_task_id,
-                    "round": int(round_num),
-                    "completionStatus": "partial",
-                    "followUpTasks": [],
-                    "notesForValidator": "",
-                },
-                round_num=round_num,
+        if is_round_final(project_root=repo_root, task_id=root_task_id, round_num=round_num):
+            formatter.error(
+                f"Evidence round {round_num} is finalized; run `edison qa round prepare {root_task_id}` to create a new round.",
+                error_code="round_finalized",
             )
+            return 1
 
-        from edison.core.utils.time import utc_timestamp
-
-        draft_bundle = {
-            "taskId": root_task_id,
-            "rootTask": root_task_id,
-            "scope": scope_used,
-            "preset": str(preset_used or "").strip() or None,
-            "round": int(round_num),
-            "approved": False,
-            "generatedAt": utc_timestamp(),
-            "tasks": [{**t, "approved": False} for t in (manifest_tasks or [])],
-            "validators": [],
-            "nonBlockingFollowUps": [],
-        }
-        ev.write_bundle(draft_bundle, round_num=round_num)
-    except Exception:
-        # Fail-open: validation execution should still proceed even if
-        # artifact initialization fails (executor will write bundle summary later).
-        pass
-
-    # Execute using centralized executor
-    result = executor.execute(
-        task_id=root_task_id,
-        session_id=session_id or "cli",
-        worktree_path=repo_root,
-        wave=args.wave,
-        validators=validators_override if validators_override is not None else args.validators,
-        blocking_only=args.blocking_only,
-        parallel=not args.sequential,
-        round_num=round_num,
-        evidence_service=ev,
-        extra_validators=extra_validators,
-        preset_name=str(getattr(args, "preset", None) or "").strip() or None,
-    )
-
-    # ---------------------------------------------------------------------
-    # Fail-closed bundle approval:
-    #
-    # - `ExecutionResult.all_blocking_passed` is intentionally permissive and
-    #   treats delegated validators as "pending" (not failed) so execution can
-    #   proceed across waves.
-    # - For promotion guards (qa wip→done, task done→validated) we must require
-    #   explicit approvals for ALL blocking validators.
-    # - Therefore: determine blocking validator IDs from the registry roster and
-    #   verify per-validator reports in evidence are approved.
-    # ---------------------------------------------------------------------
-    round_num = int(result.round_num or round_num or 0)
-
-    validator_registry = executor.get_validator_registry()
-
-    bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
-        args=args,
-        repo_root=repo_root,
-        session_id=session_id,
-        validator_registry=validator_registry,
-        round_num=round_num,
-        extra_validators=extra_validators,
-        execution_result=result,
-        root_task_id=root_task_id,
-        scope_used=scope_used,
-        cluster_task_ids=cluster_task_ids,
-        manifest_tasks=manifest_tasks,
-        preset_used=str(preset_used or "").strip(),
-    )
-
-    # Always emit/refresh the bundle summary for the root task when we have a round.
-    if round_num:
-        ev.write_bundle(bundle_data, round_num=round_num)
-        _mirror_bundle_summary(
-            repo_root=repo_root,
-            round_num=round_num,
-            root_task_id=root_task_id,
-            cluster_task_ids=cluster_task_ids,
-            bundle_data=bundle_data,
-        )
-
-    # Display wave-by-wave results
-    for wave_result in result.waves:
-        formatter.text(f"  Wave: {wave_result.wave}")
-
-        for v in wave_result.validators:
-            passed = v.verdict == "approve"
-            status_icon = "✓" if passed else "✗" if v.verdict in ("reject", "blocked", "error") else "?"
-            duration_str = f" ({v.duration:.1f}s)" if v.duration else ""
-            formatter.text(f"    {status_icon} {v.validator_id}: {v.verdict}{duration_str}")
-
-        if wave_result.delegated:
-            formatter.text(f"    → Delegated: {', '.join(wave_result.delegated)}")
-
-        if wave_result.blocking_failed:
-            formatter.text(f"    ✗ Blocking failures: {', '.join(wave_result.blocking_failed)}")
-
-        formatter.text("")
-
-    # Summary
-    formatter.text(
-        f"Results: {result.passed_count} passed, {result.failed_count} failed, "
-        f"{result.pending_count} pending"
-    )
-
-    # Show delegated validators requiring orchestrator action
-    if result.delegated_validators:
-        formatter.text("")
-        formatter.text("═══ ORCHESTRATOR ACTION REQUIRED ═══")
-        formatter.text("The following validators could not execute directly:")
-        for validator_id in result.delegated_validators:
-            try:
-                details = executor.can_execute_validator_details(validator_id)
-            except Exception:
-                details = {"validatorId": validator_id, "canExecute": False, "reason": "unknown"}
-
-            reason = str(details.get("reason") or "unknown")
-            detail = str(details.get("detail") or "").strip()
-            command = details.get("command")
-
-            hint = ""
-            if reason == "disabled_by_config":
-                hint = "disabled by config (set orchestration.allowCliEngines=true in .edison/config/orchestration.yaml)"
-            elif reason == "binary_missing":
-                hint = f"command missing: {command}" if command else "command missing"
-            elif reason == "config_error":
-                hint = "config error"
-            elif reason == "no_command":
-                hint = "engine missing command"
-            elif reason == "unknown_validator":
-                hint = "unknown validator"
-            else:
-                hint = reason
-
-            formatter.text(f"  → {validator_id}: {hint}")
-            if detail:
-                formatter.text(f"    {detail}")
-        formatter.text("")
-        formatter.text("Delegation instructions saved to evidence folder.")
-        formatter.text("The orchestrator/LLM must:")
+        # Human-friendly path printing
         try:
             from edison.core.utils.paths import PathResolver
 
             project_root = PathResolver.resolve_project_root()
-            delegation_glob = ev.get_round_dir(round_num) / "delegation-*.md"
             try:
-                display = str(delegation_glob.relative_to(project_root))
+                display_round = str(round_dir.relative_to(project_root))
             except Exception:
-                display = str(delegation_glob)
+                display_round = str(round_dir)
         except Exception:
-            display = "<evidence-root>/<task-id>/round-N/delegation-*.md"
+            display_round = f"<evidence-root>/{root_task_id}/round-{round_num}"
 
-        formatter.text(f"  1. Read delegation instructions from: {display}")
-        formatter.text("  2. Execute validation manually using the specified palRole")
-        formatter.text("  3. Save results to: validator-<id>-report.md")
+        formatter.text(f"  Round: {round_num}")
+        formatter.text(f"  Evidence: {display_round}")
         formatter.text("")
-        formatter.text("After completing delegated validations:")
-        formatter.text(f"  edison qa validate {args.task_id} --execute  # Re-run to check status")
 
-    if result.blocking_failed:
-        formatter.text("")
-        formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
-        formatter.text("")
-        formatter.text("Next steps:")
-        formatter.text(f"  edison qa round set-status {args.task_id} --status reject  # Record outcome in QA history")
-        formatter.text(f"  edison qa round prepare {args.task_id}  # Prepare a fresh round, then re-run validation")
-    elif overall_approved:
-        formatter.text("")
-        formatter.text(f"All blocking validators approved and {ev.bundle_filename} was written. Next steps:")
-        formatter.text(f"  edison qa promote {args.task_id} --status done")
-    elif result.delegated_validators or cluster_missing:
-        formatter.text("")
-        formatter.text("Awaiting cluster approvals (some validators may be delegated).")
-        if cluster_missing:
-            for tid, missing in cluster_missing.items():
-                suffix = f": {', '.join(missing)}" if missing else ""
-                formatter.text(f"  - {tid}{suffix}")
+        # Initialize round artifacts validators depend on.
+        try:
+            ev.ensure_round(round_num)
 
-    # JSON output if requested
-    if formatter.json_mode:
-        formatter.json_output(result.to_dict())
+            existing_impl: dict[str, Any] = {}
+            try:
+                existing_impl = ev.read_implementation_report(round_num)
+            except Exception:
+                existing_impl = {}
 
-    return 0 if overall_approved else 1
+            if not existing_impl:
+                ev.write_implementation_report(
+                    {
+                        "taskId": root_task_id,
+                        "round": int(round_num),
+                        "completionStatus": "partial",
+                        "followUpTasks": [],
+                        "notesForValidator": "",
+                    },
+                    round_num=round_num,
+                )
+
+            existing_summary: dict[str, Any] = {}
+            try:
+                existing_summary = ev.read_bundle(round_num)
+            except Exception:
+                existing_summary = {}
+
+            if not existing_summary:
+                from edison.core.utils.time import utc_timestamp
+
+                ev.write_bundle(
+                    {
+                        "taskId": root_task_id,
+                        "rootTask": root_task_id,
+                        "scope": scope_used,
+                        "preset": str(preset_used or "").strip() or None,
+                        "round": int(round_num),
+                        "approved": False,
+                        "status": "draft",
+                        "generatedAt": utc_timestamp(),
+                        "tasks": [{**t, "approved": False} for t in (manifest_tasks or [])],
+                        "validators": [],
+                        "missing": [],
+                        "nonBlockingFollowUps": [],
+                    },
+                    round_num=round_num,
+                )
+        except Exception:
+            pass
+
+        # Execute validators using centralized executor
+        result = executor.execute(
+            task_id=root_task_id,
+            session_id=session_id or "cli",
+            worktree_path=repo_root,
+            wave=args.wave,
+            validators=validators_override if validators_override is not None else args.validators,
+            blocking_only=args.blocking_only,
+            parallel=not args.sequential,
+            round_num=round_num,
+            evidence_service=ev,
+            extra_validators=extra_validators,
+            preset_name=str(getattr(args, "preset", None) or "").strip() or None,
+        )
+
+        # Fail-closed approval computed from report evidence.
+        round_num = int(result.round_num or round_num or 0)
+        validator_registry = executor.get_validator_registry()
+        bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
+            args=args,
+            repo_root=repo_root,
+            session_id=session_id,
+            validator_registry=validator_registry,
+            round_num=round_num,
+            extra_validators=extra_validators,
+            execution_result=result,
+            root_task_id=root_task_id,
+            scope_used=scope_used,
+            cluster_task_ids=cluster_task_ids,
+            manifest_tasks=manifest_tasks,
+            preset_used=str(preset_used or "").strip(),
+        )
+
+        if round_num:
+            ev.write_bundle(bundle_data, round_num=round_num)
+            _mirror_bundle_summary(
+                repo_root=repo_root,
+                round_num=round_num,
+                root_task_id=root_task_id,
+                cluster_task_ids=cluster_task_ids,
+                bundle_data=bundle_data,
+            )
+
+        # Display wave-by-wave results
+        for wave_result in result.waves:
+            formatter.text(f"  Wave: {wave_result.wave}")
+
+            for v in wave_result.validators:
+                passed = v.verdict == "approve"
+                status_icon = "✓" if passed else "✗" if v.verdict in ("reject", "blocked", "error") else "?"
+                duration_str = f" ({v.duration:.1f}s)" if v.duration else ""
+                formatter.text(f"    {status_icon} {v.validator_id}: {v.verdict}{duration_str}")
+
+            if wave_result.delegated:
+                formatter.text(f"    → Delegated: {', '.join(wave_result.delegated)}")
+
+            if wave_result.blocking_failed:
+                formatter.text(f"    ✗ Blocking failures: {', '.join(wave_result.blocking_failed)}")
+
+            formatter.text("")
+
+        formatter.text(
+            f"Results: {result.passed_count} passed, {result.failed_count} failed, "
+            f"{result.pending_count} pending"
+        )
+
+        if result.delegated_validators:
+            formatter.text("")
+            formatter.text("═══ ORCHESTRATOR ACTION REQUIRED ═══")
+            formatter.text("The following validators could not execute directly:")
+            for validator_id in result.delegated_validators:
+                try:
+                    details = executor.can_execute_validator_details(validator_id)
+                except Exception:
+                    details = {"validatorId": validator_id, "canExecute": False, "reason": "unknown"}
+
+                reason = str(details.get("reason") or "unknown")
+                detail = str(details.get("detail") or "").strip()
+                command = details.get("command")
+
+                hint = ""
+                if reason == "disabled_by_config":
+                    hint = "disabled by config (set orchestration.allowCliEngines=true in .edison/config/orchestration.yaml)"
+                elif reason == "binary_missing":
+                    hint = f"command missing: {command}" if command else "command missing"
+                elif reason == "config_error":
+                    hint = "config error"
+                elif reason == "no_command":
+                    hint = "engine missing command"
+                elif reason == "unknown_validator":
+                    hint = "unknown validator"
+                else:
+                    hint = reason
+
+                formatter.text(f"  → {validator_id}: {hint}")
+                if detail:
+                    formatter.text(f"    {detail}")
+
+            formatter.text("")
+            formatter.text("Delegation instructions saved to evidence folder.")
+            formatter.text("The orchestrator/LLM must:")
+            try:
+                from edison.core.utils.paths import PathResolver
+
+                project_root = PathResolver.resolve_project_root()
+                delegation_glob = ev.get_round_dir(round_num) / "delegation-*.md"
+                try:
+                    display = str(delegation_glob.relative_to(project_root))
+                except Exception:
+                    display = str(delegation_glob)
+            except Exception:
+                display = "<evidence-root>/<task-id>/round-N/delegation-*.md"
+
+            formatter.text(f"  1. Read delegation instructions from: {display}")
+            formatter.text("  2. Execute validation manually using the specified palRole")
+            formatter.text("  3. Save results to: validator-<id>-report.md")
+            formatter.text("")
+            formatter.text("After completing delegated validations:")
+            formatter.text(f"  edison qa validate {args.task_id} --execute  # Re-run to check status")
+
+        if result.blocking_failed:
+            formatter.text("")
+            formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
+            formatter.text("")
+            formatter.text("Next steps:")
+            formatter.text(f"  edison qa round set-status {args.task_id} --status reject  # Record outcome in QA history")
+            formatter.text(f"  edison qa round prepare {args.task_id}  # Prepare a fresh round, then re-run validation")
+        elif overall_approved:
+            formatter.text("")
+            formatter.text(f"All blocking validators approved and {ev.bundle_filename} was written. Next steps:")
+            formatter.text(f"  edison qa promote {args.task_id} --status done")
+        elif result.delegated_validators or cluster_missing:
+            formatter.text("")
+            formatter.text("Awaiting cluster approvals (some validators may be delegated).")
+            if cluster_missing:
+                for tid, missing in cluster_missing.items():
+                    suffix = f": {', '.join(missing)}" if missing else ""
+                    formatter.text(f"  - {tid}{suffix}")
+
+        if formatter.json_mode:
+            formatter.json_output(result.to_dict())
+
+        return 0 if overall_approved else 1
 
 
 def _display_preflight_checklist(*, formatter: OutputFormatter, checklist: dict[str, Any]) -> None:

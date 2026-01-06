@@ -538,7 +538,7 @@ class TaskQAWorkflow:
                     task_id,
                     qa.id,
                     status=qa.state,
-                    round_no=int(getattr(qa, "round", 1) or 1),
+                    round_no=int(getattr(qa, "round", 0) or 0),
                 )
             return qa
 
@@ -574,7 +574,7 @@ class TaskQAWorkflow:
                 task_id,
                 qa_id,
                 status=initial_state,
-                round_no=1,
+                round_no=0,
             )
 
         return qa

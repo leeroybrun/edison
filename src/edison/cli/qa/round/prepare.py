@@ -72,27 +72,49 @@ def main(args: argparse.Namespace) -> int:
         qa_repo = QARepository(project_root=repo_root)
         qa_id = f"{root_task_id}-qa"
 
-        try:
-            updated = qa_repo.append_round(
-                qa_id,
-                status=str(args.status or "pending"),
-                notes=getattr(args, "note", None),
-                create_evidence_dir=True,
-            )
-        except Exception as e:
+        # Fail-closed: require a QA record to exist (rounds are tracked in QA history).
+        if not qa_repo.get(qa_id):
             formatter.error(
-                f"Cannot append round to QA record '{qa_id}': {e}. Create the QA first (e.g. `edison qa new {root_task_id}`).",
+                f"QA record not found: {qa_id}. Create the QA first (e.g. `edison qa new {root_task_id}`).",
                 error_code="qa_missing",
             )
             return 1
 
-        round_num = int(getattr(updated, "round", 0) or 0)
-        if not round_num:
-            formatter.error("Failed to allocate a round number", error_code="round_alloc")
-            return 1
+        # Concurrency safety: per-task lock so two agents cannot create/append rounds concurrently.
+        from edison.core.qa.locks.task import acquire_qa_task_lock
+        from edison.core.qa.rounds.active import active_round, is_round_final, latest_round_num
 
-        ev = EvidenceService(root_task_id, project_root=repo_root)
-        round_dir = ev.ensure_round(round_num)
+        with acquire_qa_task_lock(
+            project_root=repo_root,
+            task_id=root_task_id,
+            purpose="round",
+            session_id=session_id,
+            timeout_seconds=30.0,
+        ):
+            ev = EvidenceService(root_task_id, project_root=repo_root)
+
+            current_active = active_round(project_root=repo_root, task_id=root_task_id)
+            if current_active is not None:
+                round_num = int(current_active.round_num)
+            else:
+                latest = latest_round_num(project_root=repo_root, task_id=root_task_id)
+                if latest is not None and not is_round_final(project_root=repo_root, task_id=root_task_id, round_num=int(latest)):
+                    # Defensive: if we cannot classify, reuse the latest open round.
+                    round_num = int(latest)
+                else:
+                    # Latest is finalized (or no rounds exist): append a new round to QA history.
+                    updated = qa_repo.append_round(
+                        qa_id,
+                        status=str(args.status or "pending"),
+                        notes=getattr(args, "note", None),
+                        create_evidence_dir=True,
+                    )
+                    round_num = int(getattr(updated, "round", 0) or 0)
+                    if not round_num:
+                        formatter.error("Failed to allocate a round number", error_code="round_alloc")
+                        return 1
+
+            round_dir = ev.ensure_round(round_num)
 
         # Initialize implementation report (validators often depend on it for file-scoped context).
         existing_impl: dict[str, Any] = ev.read_implementation_report(round_num) or {}
@@ -120,6 +142,7 @@ def main(args: argparse.Namespace) -> int:
                     "scope": scope_used,
                     "round": int(round_num),
                     "approved": False,
+                    "status": "draft",
                     "generatedAt": utc_timestamp(),
                     "tasks": [{**t, "approved": False} for t in (manifest_tasks or []) if isinstance(t, dict)],
                     "validators": [],
@@ -154,4 +177,3 @@ def main(args: argparse.Namespace) -> int:
     except Exception as e:
         formatter.error(e, error_code="round_prepare_error")
         return 1
-

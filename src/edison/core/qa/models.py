@@ -47,7 +47,9 @@ class QARecord:
     state_history: List[StateHistoryEntry] = field(default_factory=list)
     validators: List[str] = field(default_factory=list)
     evidence: List[str] = field(default_factory=list)
-    round: int = 1
+    # Round numbering is owned by `edison qa round prepare`. A newly created QA
+    # record has no evidence rounds yet.
+    round: int = 0
     round_history: List[Dict[str, Any]] = field(default_factory=list)
     
     def record_transition(
@@ -156,4 +158,3 @@ class QARecord:
 __all__ = [
     "QARecord",
 ]
-

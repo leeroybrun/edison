@@ -186,7 +186,7 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         round_num = ev.get_current_round()
         if round_num is None:
             raise ValueError(
-                "Missing evidence: no round-* evidence directory found; run `edison qa validate <task> --execute --new-round`."
+                "Missing evidence: no round-* evidence directory found; run `edison qa round prepare <task>`."
             )
         round_dir = ev.get_round_dir(round_num)
 

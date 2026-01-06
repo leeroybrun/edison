@@ -96,49 +96,59 @@ def main(args: argparse.Namespace) -> int:
         from edison.core.qa.evidence import EvidenceService
 
         root_ev = EvidenceService(root_task_id, project_root=repo_root)
-        round_num = int(args.round or root_ev.get_current_round() or 0)
-        if not round_num or not root_ev.get_round_dir(round_num).exists():
-            formatter.error(
-                f"No evidence round found for {root_task_id}; run `edison qa round prepare {root_task_id}` first.",
-                error_code="no_round",
+
+        from edison.core.qa.locks.task import acquire_qa_task_lock
+
+        with acquire_qa_task_lock(
+            project_root=repo_root,
+            task_id=root_task_id,
+            purpose="summarize",
+            session_id=session_id,
+            timeout_seconds=30.0,
+        ):
+            round_num = int(args.round or root_ev.get_current_round() or 0)
+            if not round_num or not root_ev.get_round_dir(round_num).exists():
+                formatter.error(
+                    f"No evidence round found for {root_task_id}; run `edison qa round prepare {root_task_id}` first.",
+                    error_code="no_round",
+                )
+                return 1
+
+            roster = validator_registry.build_execution_roster(
+                task_id=str(args.task_id),
+                session_id=session_id,
+                wave=None,
+                extra_validators=extra_validators,
+                preset_name=getattr(args, "preset", None),
             )
-            return 1
+            preset_used = str(roster.get("preset") or getattr(args, "preset", None) or "").strip()
 
-        roster = validator_registry.build_execution_roster(
-            task_id=str(args.task_id),
-            session_id=session_id,
-            wave=None,
-            extra_validators=extra_validators,
-            preset_name=getattr(args, "preset", None),
-        )
-        preset_used = str(roster.get("preset") or getattr(args, "preset", None) or "").strip()
+            # Reuse the single source of truth for approval computation + mirroring.
+            from edison.cli.qa.validate import _compute_bundle_summary, _mirror_bundle_summary  # type: ignore
 
-        # Reuse the single source of truth for approval computation + mirroring.
-        from edison.cli.qa.validate import _compute_bundle_summary, _mirror_bundle_summary  # type: ignore
+            bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
+                args=args,
+                repo_root=repo_root,
+                session_id=session_id,
+                validator_registry=validator_registry,
+                round_num=round_num,
+                extra_validators=extra_validators,
+                execution_result=None,
+                root_task_id=root_task_id,
+                scope_used=scope_used,
+                cluster_task_ids=cluster_task_ids,
+                manifest_tasks=manifest_tasks,
+                preset_used=preset_used,
+            )
 
-        bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
-            args=args,
-            repo_root=repo_root,
-            session_id=session_id,
-            validator_registry=validator_registry,
-            round_num=round_num,
-            extra_validators=extra_validators,
-            execution_result=None,
-            root_task_id=root_task_id,
-            scope_used=scope_used,
-            cluster_task_ids=cluster_task_ids,
-            manifest_tasks=manifest_tasks,
-            preset_used=preset_used,
-        )
-
-        root_ev.write_bundle(bundle_data, round_num=round_num)
-        _mirror_bundle_summary(
-            repo_root=repo_root,
-            round_num=round_num,
-            root_task_id=root_task_id,
-            cluster_task_ids=cluster_task_ids,
-            bundle_data=bundle_data,
-        )
+            root_ev.write_bundle(bundle_data, round_num=round_num)
+            _mirror_bundle_summary(
+                repo_root=repo_root,
+                round_num=round_num,
+                root_task_id=root_task_id,
+                cluster_task_ids=cluster_task_ids,
+                bundle_data=bundle_data,
+            )
 
         if formatter.json_mode:
             formatter.json_output(
@@ -167,4 +177,3 @@ def main(args: argparse.Namespace) -> int:
     except Exception as e:
         formatter.error(e, error_code="summarize_verdict_error")
         return 1
-
