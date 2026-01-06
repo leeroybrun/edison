@@ -127,7 +127,7 @@ class TestPolicyResolver:
                 id="M001",
                 state="done",
                 title="Meta Task",
-                child_ids=["T001"],
+                relationships=[{"type": "child", "target": "T001"}],
                 metadata=EntityMetadata.create(created_by="test"),
             )
         )

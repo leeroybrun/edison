@@ -57,7 +57,13 @@ def _write_task(
         f"session_id: {session_id}",
     ]
     if parent_id:
-        fm_lines.append(f"parent_id: {parent_id}")
+        fm_lines.extend(
+            [
+                "relationships:",
+                "  - type: parent",
+                f"    target: {parent_id}",
+            ]
+        )
     fm_lines.append("---")
     task_file.write_text("\n".join(fm_lines) + "\n\n# Demo\n", encoding="utf-8")
 
