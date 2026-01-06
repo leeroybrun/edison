@@ -450,6 +450,25 @@ class TaskRepository(
         doc = parse_frontmatter(content)
         fm = doc.frontmatter
 
+        legacy_relationship_keys = {
+            "parent_id",
+            "child_ids",
+            "depends_on",
+            "blocks_tasks",
+            "related",
+            "related_tasks",
+            "bundle_root",
+        }
+        raw_relationships = fm.get("relationships")
+        if (not isinstance(raw_relationships, list) or not raw_relationships) and any(
+            k in fm for k in legacy_relationship_keys
+        ):
+            raise ValueError(
+                "Legacy relationship keys detected in task frontmatter. "
+                "Migrate tasks to canonical `relationships:` format first (run "
+                "`PYTHONPATH=src ./.venv/bin/python scripts/migrations/migrate_task_relationships.py`)."
+            )
+
         relationships, _derived = decode_frontmatter_relationships(fm)
 
         # Extract title from frontmatter or markdown heading

@@ -106,12 +106,17 @@ session_id: {session}
         for i in range(50):
             state = ["todo", "wip", "done"][i % 3]
             task_file = tasks_dir / state / f"TASK-{i:03d}.md"
-            depends_on = f"depends_on: [TASK-{i-1:03d}]" if i > 0 else ""
+            relationships = (
+                "relationships:\n"
+                f"  - type: depends_on\n    target: TASK-{i-1:03d}\n"
+                if i > 0
+                else ""
+            )
             task_file.write_text(f"""---
 id: TASK-{i:03d}
 title: Test Task {i}
 session_id: test-session
-{depends_on}
+{relationships}
 ---
 
 # TASK-{i:03d}
@@ -180,7 +185,6 @@ session_id: test-session
         # Document: with caching, subsequent queries would be faster
         # For now, accept that all queries take similar time (within 0.5s each)
         assert all(t < 0.5 for t in times), f"All queries should complete quickly, got: {times}"
-
 
 
 
