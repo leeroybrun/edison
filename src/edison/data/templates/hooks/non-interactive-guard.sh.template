@@ -17,13 +17,19 @@ SESSION_FILE="{{ mgmt_dir }}/.session-id"
 
 # Parse input JSON (with timeout to prevent hanging)
 INPUT=$(timeout 1 cat 2>/dev/null || echo '{}')
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool' 2>/dev/null || echo "")
+TOOL_NAME=""
+COMMAND=""
+
+# Avoid external JSON parser dependency: parse JSON via python3 (fail-open if unavailable)
+if command -v python3 >/dev/null 2>&1; then
+  TOOL_NAME=$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("tool","") or "")' <<<"$INPUT" 2>/dev/null || echo "")
+  COMMAND=$(python3 -c 'import json,sys; d=json.load(sys.stdin); a=d.get("args") or {}; print((a.get("command") if isinstance(a, dict) else "") or "")' <<<"$INPUT" 2>/dev/null || echo "")
+fi
 
 if [[ "$TOOL_NAME" != "Bash" ]]; then
   exit 0
 fi
 
-COMMAND=$(echo "$INPUT" | jq -r '.args.command // ""' 2>/dev/null || echo "")
 if [[ -z "$COMMAND" ]]; then
   exit 0
 fi

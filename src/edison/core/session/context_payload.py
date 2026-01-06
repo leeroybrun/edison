@@ -306,7 +306,7 @@ def format_session_context_markdown(payload: SessionContextPayload) -> str:
                 lines.append(f"- Active Packs: {packs}")
         elif field == "actor":
             # Actor identity stanza
-            if payload.actor_kind and payload.actor_kind != "unknown":
+            if payload.actor_kind:
                 if payload.actor_id:
                     lines.append(f"- Actor: `{payload.actor_kind}` (`{payload.actor_id}`)")
                 else:
@@ -400,7 +400,7 @@ def format_session_context_for_next(ctx: dict[str, Any]) -> list[str]:
         elif field == "actor":
             # Actor identity stanza
             actor_kind = ctx.get("actorKind")
-            if isinstance(actor_kind, str) and actor_kind.strip() and actor_kind != "unknown":
+            if isinstance(actor_kind, str) and actor_kind.strip():
                 actor_id = ctx.get("actorId")
                 if isinstance(actor_id, str) and actor_id.strip():
                     lines.append(f"  - Actor: {actor_kind} ({actor_id})")
