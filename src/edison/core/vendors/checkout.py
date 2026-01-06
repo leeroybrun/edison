@@ -5,6 +5,7 @@ using a hybrid approach: shared bare mirror + project-scoped worktree.
 """
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 from pathlib import Path
@@ -13,6 +14,8 @@ from edison.core.vendors.cache import VendorMirrorCache
 from edison.core.vendors.exceptions import VendorCheckoutError
 from edison.core.vendors.models import SyncResult, VendorSource
 from edison.core.vendors.redaction import redact_git_args, redact_text_credentials
+
+logger = logging.getLogger(__name__)
 
 
 class VendorCheckout:
@@ -177,7 +180,30 @@ class VendorCheckout:
 
         # Remove existing checkout if present
         if checkout_path.exists():
+            if not force and (checkout_path / ".git").exists():
+                try:
+                    status = self._run_git(
+                        ["status", "--porcelain"],
+                        cwd=checkout_path,
+                        capture_output=True,
+                    )
+                    if status.stdout.strip():
+                        raise VendorCheckoutError(
+                            "Refusing to remove vendor checkout with local modifications; "
+                            f"re-run with --force to discard changes: {checkout_path}"
+                        )
+                except VendorCheckoutError:
+                    raise
+                except Exception:
+                    # If we can't check for dirtiness, proceed with checkout.
+                    pass
+
             import shutil
+            logger.warning(
+                "Removing existing vendor checkout at %s to sync to commit %s",
+                checkout_path,
+                commit[:12],
+            )
             shutil.rmtree(checkout_path)
 
         # Clone from mirror
