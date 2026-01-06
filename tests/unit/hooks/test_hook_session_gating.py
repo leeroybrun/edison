@@ -373,7 +373,7 @@ class TestNoAdHocSessionDetection:
         content = hook_path.read_text()
 
         # Should NOT have ad-hoc session file checks
-        assert ".session-id" not in content or "_edison_guard.sh" in content
+        assert ".session-id" not in content
         # Should use the unified guard instead
         assert "edison_hook_guard" in content
 
@@ -394,6 +394,6 @@ class TestNoAdHocSessionDetection:
 
             # Check for ad-hoc detection patterns that should not be duplicated
             # (these should only be in _edison_guard.sh)
-            assert content.count("detect_session_id") <= 1, (
-                f"{hook_file.name} has duplicate session detection"
+            assert "detect_session_id" not in content, (
+                f"{hook_file.name} should use edison_hook_guard instead of detect_session_id"
             )
