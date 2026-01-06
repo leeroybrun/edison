@@ -135,7 +135,7 @@ def read_text(path: PathLike) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def write_text(path: PathLike, content: str) -> None:
+def write_text(path: PathLike, content: str, *, encoding: str = "utf-8") -> None:
     """Atomically write UTF-8 text to ``path``.
 
     This uses the atomic writer so that text files benefit from the same
@@ -154,7 +154,7 @@ def write_text(path: PathLike, content: str) -> None:
     def _writer(f: TextIO) -> None:
         f.write(content)
 
-    atomic_write(target, _writer)
+    atomic_write(target, _writer, encoding=encoding)
 
 
 def ensure_lines_present(
@@ -224,5 +224,4 @@ __all__ = [
     "write_text",
     "ensure_lines_present",
 ]
-
 

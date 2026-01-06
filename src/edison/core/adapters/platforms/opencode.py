@@ -110,7 +110,7 @@ class OpenCodeAdapter(PlatformAdapter):
                 return False
 
         ensure_directory(target.parent)
-        write_text(target, content)
+        write_text(target, content, encoding="utf-8")
         return True
 
     def _sync_plugin(self) -> list[Path]:
