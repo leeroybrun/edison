@@ -330,9 +330,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                             session_id=session_id,
                             roster=roster,
                             round_num=None,
-                            new_round=False,
                             will_execute=("--execute" in (action.get("cmd") or [])),
-                            check_only=False,
                         )
                     except Exception:
                         pass
@@ -363,9 +361,7 @@ def compute_next(session_id: str, scope: str | None, limit: int) -> dict[str, An
                         session_id=session_id,
                         roster=roster,
                         round_num=None,
-                        new_round=False,
                         will_execute=can_execute_directly,
-                        check_only=False,
                     )
                 except Exception:
                     checklist = None
