@@ -80,10 +80,16 @@ class VendorGarbageCollector:
                         checkouts_to_remove.append(path)
 
         if dry_run:
-            bytes_estimate = self._estimate_size(mirrors_to_remove + checkouts_to_remove)
+            safe_mirrors = [
+                p for p in mirrors_to_remove if p.resolve().is_relative_to(cache_dir_resolved)
+            ]
+            safe_checkouts = [
+                p for p in checkouts_to_remove if p.resolve().is_relative_to(vendor_base_resolved)
+            ]
+            bytes_estimate = self._estimate_size(safe_mirrors + safe_checkouts)
             return GCResult(
-                removed_mirrors=tuple(str(p) for p in mirrors_to_remove),
-                removed_checkouts=tuple(str(p) for p in checkouts_to_remove),
+                removed_mirrors=tuple(str(p) for p in safe_mirrors),
+                removed_checkouts=tuple(str(p) for p in safe_checkouts),
                 bytes_freed=bytes_estimate,
             )
 

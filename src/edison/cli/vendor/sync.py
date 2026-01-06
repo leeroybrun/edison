@@ -70,7 +70,8 @@ def main(args: argparse.Namespace) -> int:
                 changed = " (changed)" if result.changed else ""
                 formatter.text(f"  {result.vendor_name}: {status}{changed}")
                 if result.commit:
-                    formatter.text(f"    Commit: {result.commit[:12]}")
+                    commit_short = result.commit[:12] if len(result.commit) >= 12 else result.commit
+                    formatter.text(f"    Commit: {commit_short}")
                 if result.error:
                     formatter.text(f"    Error: {result.error}")
 

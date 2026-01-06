@@ -10,7 +10,7 @@ hooks:
     timeout_seconds: 60
     parallel_execution: true
     log_output: true
-    # Project-wide hook execution scope (default: session-gated).
+    # Project-wide hook execution scope (default: session).
     # - session: run hooks only when an Edison session is detected
     # - project: run hooks whenever inside a configured Edison project
     # - always: always run hooks (least restrictive)
@@ -169,7 +169,7 @@ hooks:
       hook_type: command
       matcher: "Bash"
       enabled: false  # Optional - disabled by default (conservative)
-      blocking: true  # CAN BLOCK if onMatch is configured to "block"
+      blocking: true  # Capability-only: can block when execution.nonInteractive.onMatch == "block"
       description: "Warn or block interactive commands that may hang in non-interactive environments"
       template: "non-interactive-guard.sh.template"
       config:
@@ -251,7 +251,7 @@ hooks:
       hook_type: command
       enabled: true
       blocking: false  # Fail-open: never block, even if Edison is unavailable
-      description: "Inject continuation nudge when session is incomplete (FC/RL assist)"
+      description: "Inject continuation nudge when session is incomplete (soft/hard continuation assist)"
       template: "stop-continuation.sh.template"
       config:
         # Show "complete" line when session is complete (minimal output)
