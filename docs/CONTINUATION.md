@@ -402,5 +402,5 @@ See [OPENCODE_INTEGRATION.md](OPENCODE_INTEGRATION.md) for full plugin documenta
 
 ---
 
-**Last Updated:** 2026-01-04
+**Last Updated:** 2026-01-06
 **Version:** 2.0.0
