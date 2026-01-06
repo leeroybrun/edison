@@ -261,6 +261,27 @@ class TestVendorSync:
         assert (tmp_path / "vendors" / "vendor1").exists()
         assert (tmp_path / "vendors" / "vendor2").exists()
 
+    def test_sync_all_does_not_write_lock_when_no_sources(self, tmp_path: Path) -> None:
+        """Sync should not create a lock file when there are no configured vendors."""
+        from edison.core.vendors.sync import VendorSyncManager
+
+        config_dir = tmp_path / ".edison" / "config"
+        config_dir.mkdir(parents=True)
+        write_yaml(
+            config_dir / "vendors.yaml",
+            f"""
+            vendors:
+              cacheDir: {tmp_path / ".cache" / "vendors"}
+              sources: []
+            """,
+        )
+
+        manager = VendorSyncManager(repo_root=tmp_path)
+        results = manager.sync_all()
+
+        assert results == []
+        assert not (config_dir / "vendors.lock.yaml").exists()
+
     def test_sync_updates_lock_file(
         self, tmp_path: Path, git_repo: "TestGitRepo"
     ) -> None:
