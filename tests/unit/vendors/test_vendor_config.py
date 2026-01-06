@@ -323,6 +323,28 @@ class TestVendorConfigSchema:
 class TestVendorLockFile:
     """Test vendor lock file generation and parsing."""
 
+    def test_lock_entry_sanitizes_url_credentials_on_init(self) -> None:
+        """Lock entries should never retain credential-bearing URLs in memory."""
+        from edison.core.vendors.lock import VendorLockEntry
+
+        entry = VendorLockEntry(
+            name="opencode",
+            url="https://token@github.com/anthropics/opencode.git",
+            ref="main",
+            commit="abc123def456",
+            path="vendors/opencode",
+        )
+
+        assert "token@" not in entry.url
+        assert "github.com/anthropics/opencode.git" in entry.url
+
+    def test_lock_entry_from_dict_validates_required_keys(self) -> None:
+        """Lock entry parsing should fail with a clear error when keys are missing."""
+        from edison.core.vendors.lock import VendorLockEntry
+
+        with pytest.raises(ValueError, match="Missing required keys"):
+            VendorLockEntry.from_dict({"name": "opencode"})
+
     def test_lock_file_records_resolved_commit(self, tmp_path: Path) -> None:
         """Lock file should record the resolved commit SHA."""
         from edison.core.vendors.lock import VendorLock, VendorLockEntry

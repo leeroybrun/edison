@@ -32,11 +32,15 @@ class VendorLockEntry:
     commit: str
     path: str
 
+    def __post_init__(self) -> None:
+        # Ensure lock entries never retain credential-bearing URLs in memory or on disk.
+        object.__setattr__(self, "url", redact_url_credentials(self.url))
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
             "name": self.name,
-            "url": redact_url_credentials(self.url),
+            "url": self.url,
             "ref": self.ref,
             "commit": self.commit,
             "path": self.path,
@@ -45,6 +49,10 @@ class VendorLockEntry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VendorLockEntry:
         """Create from dictionary."""
+        required_keys = {"name", "url", "ref", "commit", "path"}
+        missing = required_keys - set(data.keys())
+        if missing:
+            raise ValueError(f"Missing required keys: {sorted(missing)}")
         return cls(
             name=data["name"],
             url=data["url"],
