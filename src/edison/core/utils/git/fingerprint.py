@@ -12,12 +12,14 @@ from typing import Any
 
 from edison.core.utils.subprocess import run_git_command
 
-from .repository import get_repo_root, is_git_repository
+from .repository import get_git_root, get_repo_root, is_git_repository
 from .status import get_status
 
 
 _EXCLUDED_PREFIXES = (
     ".project/",
+    ".edison/",
+    ".agents/",
 )
 
 
@@ -41,8 +43,16 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
     - gitDirty: whether the working tree has staged/modified/untracked changes
     - diffHash: sha256 over a stable representation of current diffs + file lists
     """
-    root = get_repo_root(repo_root) if repo_root is not None else get_repo_root()
-    root = Path(root)
+    if repo_root is None:
+        root = Path(get_repo_root())
+    else:
+        # When an explicit root is provided, never fall back to the global
+        # project root. Evidence snapshots must be keyed to the caller's
+        # requested repo/worktree even when it's not a git repository.
+        root = Path(repo_root).resolve()
+        git_root = get_git_root(root)
+        if git_root is not None:
+            root = Path(git_root)
 
     if not is_git_repository(root):
         # Deterministic empty fingerprint for non-git contexts.
@@ -71,7 +81,12 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
     # Exclude Edison-managed metadata from the fingerprint to avoid making
     # evidence snapshots self-invalidating (writing evidence would otherwise
     # change the fingerprint and create an infinite chase).
-    pathspec = ["--", ".", ":(exclude).project"]
+    #
+    # We exclude:
+    # - `.project/` (tasks, sessions, QA reports, evidence snapshots)
+    # - `.edison/` (generated prompts / metadata in many repos)
+    # - `.agents/` (agent configs/scripts in some repos)
+    pathspec = ["--", ".", ":(exclude).project", ":(exclude).edison", ":(exclude).agents"]
 
     diff = ""
     diff_cached = ""

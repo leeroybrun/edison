@@ -20,15 +20,22 @@ def get_current_branch(start_path: Optional[Path | str] = None) -> str:
     from edison.core.utils.subprocess import run_with_timeout
 
     repo_root = get_repo_root(start_path)
-    result = run_with_timeout(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout_type="git_operations",
-    )
-    return (result.stdout or "").strip()
+    try:
+        result = run_with_timeout(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout_type="git_operations",
+        )
+        if getattr(result, "returncode", 0) != 0:
+            return ""
+        return (result.stdout or "").strip()
+    except Exception:
+        # Best-effort: new repos without commits (no HEAD) should not crash
+        # higher-level status/fingerprint probes.
+        return ""
 
 
 def is_clean_working_tree(start_path: Optional[Path | str] = None) -> bool:
@@ -118,6 +125,5 @@ __all__ = [
     "is_clean_working_tree",
     "get_changed_files",
 ]
-
 
 

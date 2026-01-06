@@ -23,10 +23,13 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
     # Lazy import to avoid circular dependency
     from edison.core.qa.workflow.repository import QARepository
     from edison.core.session.next import compute_next
+    from edison.core.utils.paths import resolve_project_root
 
     session_id = validate_session_id(session_id)
     with SessionContext.in_session_worktree(session_id):
         session_manager.get_session(session_id)
+
+    project_root = resolve_project_root()
 
     failures: list[str] = []
     health: dict[str, Any] = {
@@ -198,29 +201,27 @@ def verify_session_health(session_id: str) -> dict[str, Any]:
         required_close = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
 
         if required_close and session_tasks:
-            # For each required evidence file, accept success from any task in the session.
-            missing_close: list[str] = []
-            for filename in required_close:
-                found_ok = False
-                for task in session_tasks:
-                    ev_svc = qa_evidence.EvidenceService(task.id)
-                    rd = ev_svc.get_current_round_dir()
-                    if rd is None:
-                        continue
-                    p = rd / filename
-                    if not p.exists():
-                        continue
-                    parsed = parse_command_evidence(p)
-                    if parsed is None:
-                        continue
-                    try:
-                        if int(parsed.get("exitCode", 1)) == 0:
-                            found_ok = True
-                            break
-                    except Exception:
-                        continue
-                if not found_ok:
-                    missing_close.append(filename)
+            # Session-close command evidence is repo-state. Verify against the current
+            # snapshot store (fingerprinted git state), not per-task round dirs.
+            try:
+                from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
+
+                key = current_snapshot_key(project_root=project_root)
+                snap_dir = snapshot_dir(project_root=project_root, key=key)
+                snap = snapshot_status(project_root=project_root, key=key, required_files=list(required_close))
+
+                missing_close: list[str] = []
+                missing_close.extend([str(x) for x in (snap.get("missing") or []) if str(x)])
+                missing_close.extend(
+                    [str(i.get("file")) for i in (snap.get("invalid") or []) if isinstance(i, dict) and i.get("file")]
+                )
+                missing_close.extend(
+                    [str(f.get("file")) for f in (snap.get("failed") or []) if isinstance(f, dict) and f.get("file")]
+                )
+                missing_close = sorted({m for m in missing_close if m})
+            except Exception:
+                # Fail-open: session close evidence is additive; do not block closing on snapshot parsing errors.
+                missing_close = []
 
             if missing_close:
                 # Deterministic suggestion: use the first task id in the session as the anchor.

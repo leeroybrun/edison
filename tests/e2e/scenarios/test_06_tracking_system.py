@@ -25,6 +25,7 @@ from helpers.command_runner import (
     assert_command_success,
     assert_json_output,
 )
+from helpers.evidence_snapshots import write_passing_snapshot_command
 from helpers.assertions import (
     assert_file_exists,
     assert_file_contains,
@@ -433,17 +434,18 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     # Prepare minimal bundle summary to attempt wip → done (should be rejected; must re-run validators)
     ev = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
-    (ev / "bundle-summary.md").write_text(
+    (ev / "validation-summary.md").write_text(
+        # Missing rootTask/scope so guards must fall back to validator reports (fail-closed).
         format_frontmatter({"taskId": task_id, "round": 1, "approved": True, "validators": []}) + "\n",
         encoding="utf-8",
     )
-    # Manual bundle-summary.md must not be trusted
+    # Manual validation-summary.md must not be trusted
     res_manual = run_script("qa/promote", [task_id, "--status", "done", "--session", session_id], cwd=project_dir.tmp_path)
     assert res_manual.returncode != 0
-    # Now generate a real bundle via validators/validate and try again (must fail due to missing blocking approvals)
+    # Now compute a real verdict summary from evidence and try again (must fail due to missing blocking approvals)
     res_validate = run_script(
-        "validators/validate",
-        [task_id, "--session", session_id, "--check-only"],
+        "qa/round",
+        ["summarize-verdict", task_id, "--session", session_id, "--json"],
         cwd=project_dir.tmp_path,
     )
     assert res_validate.returncode != 0
@@ -469,11 +471,14 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     # These are required by the QA wip→done guards (fail-closed).
     from tests.config import get_default_value
     for fname in get_default_value("qa", "evidence_files"):
-        (ev / fname).write_text("test evidence\n")
+        if str(fname).startswith("command-"):
+            write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=str(fname), task_id=task_id)
+        else:
+            (ev / str(fname)).write_text("test evidence\n", encoding="utf-8")
     assert_command_success(
         run_script(
-            "validators/validate",
-            [task_id, "--session", session_id, "--check-only"],
+            "qa/round",
+            ["summarize-verdict", task_id, "--session", session_id, "--json"],
             cwd=project_dir.tmp_path,
         )
     )

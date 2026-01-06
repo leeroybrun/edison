@@ -228,3 +228,11 @@ def main(args: argparse.Namespace) -> int:
     except Exception as e:
         formatter.error(e, error_code="round_prepare_error")
         return 1
+
+
+if __name__ == "__main__":
+    import sys
+
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    sys.exit(main(parser.parse_args()))

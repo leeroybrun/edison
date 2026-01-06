@@ -115,8 +115,8 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
     # Compute approval from existing evidence (no validator execution) → must fail due to
     # missing blocking approvals (e.g. security/performance).
     res_fail = run_script(
-        "validators/validate",
-        [task_id, "--preset", "strict", "--check-only"],
+        "qa/round",
+        ["summarize-verdict", task_id, "--preset", "strict", "--json"],
         cwd=project_dir.tmp_path,
     )
     assert res_fail.returncode != 0, f"Expected failure, got stdout:\n{res_fail.stdout}\nstderr:\n{res_fail.stderr}"
@@ -126,8 +126,8 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
     _write_validator_report(ev, "v4", "codex", verdict="approve")
 
     res_ok = run_script(
-        "validators/validate",
-        [task_id, "--preset", "strict", "--check-only"],
+        "qa/round",
+        ["summarize-verdict", task_id, "--preset", "strict", "--json"],
         cwd=project_dir.tmp_path,
     )
     assert_command_success(res_ok)

@@ -26,6 +26,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_output_contains,
 )
+from helpers.evidence_snapshots import write_passing_snapshot_command
 from helpers.env import TestProjectDir, TestGitRepo
 
 
@@ -108,24 +109,17 @@ def _ensure_base_evidence(project_root: Path, task_id: str, round_num: int = 1) 
     )
     assert_command_success(r2)
 
-    # Create the required command outputs under the latest round
-    ev_dir = _evidence_dir(project_root, task_id, round_num)
-    ev_dir.mkdir(parents=True, exist_ok=True)
-    # Include minimal trusted marker format expected by the guard
-    trusted_header = (
-        "RUNNER: tasks/ready\n"
-        "START: 1970-01-01T00:00:00Z\n"  # mtime check uses file timestamp; header is informational
-        "CMD: echo test\n"
-        "EXIT_CODE: 0\n"
-        "END\n"
-    )
+    # Create the required command outputs in the snapshot store.
+    # (Round dirs contain reports; command evidence is repo-state.)
+    _evidence_dir(project_root, task_id, round_num).mkdir(parents=True, exist_ok=True)
+    repo_root = project_root.parent
     for fname in (
         "command-type-check.txt",
         "command-lint.txt",
         "command-test.txt",
         "command-build.txt",
     ):
-        (ev_dir / fname).write_text(trusted_header)
+        write_passing_snapshot_command(repo_root=repo_root, filename=fname, task_id=task_id)
 
 
 def _ensure_impl_validate_ok(repo_root: Path) -> None:

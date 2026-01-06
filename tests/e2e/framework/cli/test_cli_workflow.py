@@ -15,6 +15,9 @@ from tests.helpers.paths import get_repo_root
 from tests.e2e.base import create_project_structure, copy_templates, setup_base_environment
 from tests.config import get_default_value
 from edison.core.utils.text import format_frontmatter
+from edison.core.qa.evidence.command_evidence import write_command_evidence
+from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
 REPO_ROOT = get_repo_root()
 from edison.core import task  # type: ignore  # pylint: disable=wrong-import-position
@@ -184,8 +187,28 @@ class TestScriptWorkflow:
         # Prepare round evidence so guards pass
         ev_round = cli_workflow_env["qa_root"] / "validation-reports" / task_id / "round-1"
         ev_round.mkdir(parents=True, exist_ok=True)
+
+        # Command evidence is repo-state; write it to the snapshot store so QA guards pass.
+        repo_root = Path(cli_workflow_env["temp_root"])
+        snap = snapshot_dir(project_root=repo_root, key=current_snapshot_key(project_root=repo_root))
+        fp = compute_repo_fingerprint(repo_root)
         for name in get_default_value("qa", "evidence_files"):
-            (ev_round / name).write_text("ok\n")
+            fname = str(name)
+            if fname.startswith("command-"):
+                write_command_evidence(
+                    path=snap / fname,
+                    task_id=task_id,
+                    round_num=0,
+                    command_name=fname.removeprefix("command-").removesuffix(".txt"),
+                    command="echo ok",
+                    cwd=str(repo_root),
+                    exit_code=0,
+                    output="ok\n",
+                    runner="edison-tests",
+                    fingerprint=fp,
+                )
+            else:
+                (ev_round / fname).write_text("ok\n", encoding="utf-8")
         (ev_round / "implementation-report.md").write_text(
             format_frontmatter(
                 {
@@ -223,8 +246,8 @@ class TestScriptWorkflow:
             }
             (ev_round / f"validator-{vid}-report.md").write_text(format_frontmatter(report) + "\n", encoding="utf-8")
 
-        # Generate bundle-summary.md from existing evidence (no validator execution)
-        run_cli(cli_workflow_env, ["qa", "validate", task_id, "--session", session_id, "--check-only"], extra_env=env_vars)
+        # Generate validation-summary.md from existing evidence (no validator execution)
+        run_cli(cli_workflow_env, ["qa", "round", "summarize-verdict", task_id, "--session", session_id], extra_env=env_vars)
 
         # Promote QA wip → done and mark task validated
         run_cli(cli_workflow_env, ["qa", "promote", task_id, "--status", "done", "--session", session_id], extra_env=env_vars)
@@ -239,7 +262,6 @@ class TestScriptWorkflow:
         # Session completion requires session-close command evidence. E2E tests
         # provide deterministic CI commands (see tests/e2e/base.py), so capture
         # those artifacts before completing.
-        run_cli(cli_workflow_env, ["evidence", "init", task_id], extra_env=env_vars)
         run_cli(cli_workflow_env, ["evidence", "capture", task_id, "--session-close"], extra_env=env_vars)
 
         # Final completion succeeds

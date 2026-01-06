@@ -11,7 +11,7 @@ Covers Workstream 2 fixes:
  - Test-before-implementation timing validated
 
 Design notes:
-- Uses the real `edison tasks ready` guard via run_script()
+- Uses the real `edison task done` guard via run_script()
  - Creates minimal implementation-report.md in round-1
  - Provides local wrappers under `<tmp>/scripts/*` when required
 """
@@ -30,6 +30,7 @@ from helpers.command_runner import (
     assert_command_failure,
 )
 from helpers.env import TestProjectDir, TestGitRepo, create_tdd_evidence
+from helpers.evidence_snapshots import write_passing_snapshot_command
 from edison.core.utils.text import format_frontmatter
 
 
@@ -107,11 +108,11 @@ def test_only_detection_blocks_ready(project_dir: TestProjectDir):
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text("describe.only('focus', () => { it('x', () => {}) })\n")
 
-    # Create the 4 evidence files so the guard reaches .only detection
+    # Create the 4 command evidence files (snapshot store) so the guard reaches .only detection
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        _write_file(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
-    res = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    res = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(res)
     assert ".only" in (res.stderr + res.stdout)
 
@@ -123,9 +124,9 @@ def test_coverage_script_enforced_at_ready(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", "809", "--wave", "w2", "--slug", "coverage"], cwd=project_dir.tmp_path)
     rd = _ensure_ready_prereqs(project_dir, task_id, session_id)
 
-    # Provide the four required evidence files
+    # Provide the four required command evidence files (snapshot store)
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        _write_file(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # Add a local coverage verifier that fails (<90%) so ready must fail
     scripts_dir = project_dir.tmp_path / "scripts"
@@ -137,7 +138,7 @@ exit 1
 """)
     verifier.chmod(0o755)
 
-    res = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    res = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(res)
     assert "coverage" in (res.stderr + res.stdout).lower()
 
@@ -150,19 +151,26 @@ def test_hmac_tamper_detection(project_dir: TestProjectDir, monkeypatch):
     rd = _ensure_ready_prereqs(project_dir, task_id, session_id)
 
     # Provide a strong but known HMAC key in env
-    monkeypatch.setenv("project_EVIDENCE_HMAC_KEY", "test-secret-key-123")
+    hmac_key = "test-secret-key-123"
+    monkeypatch.setenv("project_EVIDENCE_HMAC_KEY", hmac_key)
 
-    # Ask guard to generate evidence (so it writes signatures)
-    _ = run_script("tasks/ready", [task_id, "--session", session_id, "--run"], cwd=project_dir.tmp_path)
-    # Normalize all four evidence files to EXIT_CODE: 0 while keeping original signatures → triggers HMAC mismatch later
+    # Write signed snapshot command evidence
+    tamper_file = None
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        _write_file(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
+        p = write_passing_snapshot_command(
+            repo_root=project_dir.tmp_path,
+            filename=name,
+            task_id=task_id,
+            hmac_key=hmac_key,
+        )
+        # The Edison repo baseline evidence requires `command-test.txt`.
+        if name == "command-test.txt":
+            tamper_file = p
 
-    # Tamper with one evidence file; signature must fail specifically for HMAC
-    tamper_file = rd / "command-lint.txt"
-    tamper_file.write_text(tamper_file.read_text() + "tamper\n")
+    assert tamper_file is not None
+    tamper_file.write_text(tamper_file.read_text(encoding="utf-8") + "tamper\n", encoding="utf-8")
 
-    res2 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    res2 = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(res2)
     assert "HMAC" in (res2.stderr + res2.stdout)
 
@@ -177,7 +185,7 @@ def test_tdd_commit_order_with_refactor_required(combined_env):
     run_script("tasks/new", ["--id", "811", "--wave", "w2", "--slug", "tdd"], cwd=project.tmp_path)
     rd = _ensure_ready_prereqs(project, task_id, session_id)
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        _write_file(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
+        write_passing_snapshot_command(repo_root=project.tmp_path, filename=name, task_id=task_id)
 
     # Create a worktree and commit RED → GREEN (without REFACTOR) to force failure
     wt = git.create_worktree(session_id)
@@ -209,7 +217,7 @@ def test_tdd_commit_order_with_refactor_required(combined_env):
         green_ts=green_ts,
     )
 
-    res = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project.tmp_path)
+    res = run_script("tasks/done", [task_id, "--session", session_id], cwd=project.tmp_path)
     assert_command_failure(res)
     assert "REFACTOR" in (res.stderr + res.stdout)
 
@@ -230,7 +238,7 @@ def test_tdd_commit_order_with_refactor_required(combined_env):
         green_ts=green_ts,
         refactor_ts=refactor_ts,
     )
-    res2 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project.tmp_path)
+    res2 = run_script("tasks/done", [task_id, "--session", session_id], cwd=project.tmp_path)
     assert_command_success(res2)
 
 
@@ -243,7 +251,7 @@ def test_tdd_red_green_timestamps_and_test_before_impl(combined_env):
     run_script("tasks/new", ["--id", "812", "--wave", "w2", "--slug", "tdd-time"], cwd=project.tmp_path)
     rd = _ensure_ready_prereqs(project, task_id, session_id)
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        _write_file(rd, name, "RUNNER: tasks/ready\nSTART: now\nCMD: echo ok\nEXIT_CODE: 0\nEND\n")
+        write_passing_snapshot_command(repo_root=project.tmp_path, filename=name, task_id=task_id)
 
     wt = git.create_worktree(session_id)
     src = wt / "apps" / "example-app" / "src"
@@ -279,5 +287,5 @@ def test_tdd_red_green_timestamps_and_test_before_impl(combined_env):
         refactor_ts=refactor_ts,
     )
 
-    res = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project.tmp_path)
+    res = run_script("tasks/done", [task_id, "--session", session_id], cwd=project.tmp_path)
     assert_command_success(res)

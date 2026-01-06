@@ -74,3 +74,10 @@ def main(args: argparse.Namespace) -> int:
         formatter.error(e, error_code="round_set_status_error")
         return 1
 
+
+if __name__ == "__main__":
+    import sys
+
+    parser = argparse.ArgumentParser()
+    register_args(parser)
+    sys.exit(main(parser.parse_args()))

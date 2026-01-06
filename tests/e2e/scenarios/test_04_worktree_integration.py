@@ -26,6 +26,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_error_contains,
 )
+from helpers.evidence_snapshots import write_passing_snapshot_command
 from helpers.env import TestProjectDir
 from edison.core.utils.subprocess import run_with_timeout
 
@@ -270,25 +271,13 @@ def test_context7_cross_check_with_git_diff(project_dir: TestProjectDir):
             cwd=project_dir.tmp_path,
         )
     )
-    # Task completion also enforces baseline command evidence; provide the minimal
-    # required file so this test exercises Context7 enforcement.
-    ev_round = (
-        project_dir.tmp_path
-        / ".project"
-        / "qa"
-        / "validation-reports"
-        / task_id
-        / "round-1"
-    )
-    ev_round.mkdir(parents=True, exist_ok=True)
-    (ev_round / "command-test.txt").write_text("ok\n", encoding="utf-8")
+    # Task completion also enforces baseline command evidence; provide the required
+    # command evidence in the snapshot store so this test reaches Context7 enforcement.
+    for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # 4) Run guard – should fail and mention both packages
-    result = run_script(
-        "tasks/ready",
-        [task_id, "--session", session_id],
-        cwd=project_dir.tmp_path,
-    )
+    result = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(result)
     assert_error_contains(result, "Context7 evidence required")
     assert ("react" in result.stderr) and ("zod" in result.stderr)

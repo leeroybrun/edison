@@ -4,11 +4,11 @@ Refactored to use REAL CLI commands and the guarded workflow.
 
 Coverage:
 - Evidence directory structure via real task + QA creation
-- Required evidence files checked by `tasks/ready` guard
+- Required evidence checked by `task done` guard
 - Implementation report frontmatter validated by real validator wrapper
 - Multi‑round evidence behavior
 - Evidence completeness failure → success after creating files
-- Git diff/text evidence captured under round dirs
+- Command evidence stored as repo-state snapshots (not per-round files)
 - Partial evidence scenario (guard should fail)
 - End‑to‑end: wip → done guarded by evidence
 """
@@ -29,6 +29,7 @@ from helpers.command_runner import (
     assert_command_failure,
     assert_output_contains,
 )
+from helpers.evidence_snapshots import write_passing_snapshot_command
 from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 
@@ -110,7 +111,7 @@ def test_evidence_directory_structure(project_dir: TestProjectDir):
 
 @pytest.mark.fast
 def test_evidence_required_files(project_dir: TestProjectDir):
-    """Guard checks for the 4 command evidence files in round-1."""
+    """Guard checks for required command evidence in the snapshot store."""
     task_num, wave, slug = "150", "wave1", "required"
     task_id = f"{task_num}-{wave}-{slug}"
     session_id = "test-evidence-required"
@@ -131,19 +132,19 @@ def test_evidence_required_files(project_dir: TestProjectDir):
     round_dir.mkdir(parents=True, exist_ok=True)
     _write_impl_report(round_dir, _impl_report_json(task_id))
 
-    # Initially missing → ready should fail
-    ready = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
-    assert_command_failure(ready)
-    assert "Missing evidence files" in ready.stderr or "Missing evidence files" in ready.stdout
+    # Initially missing → done should fail
+    done = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    assert_command_failure(done)
+    assert "Missing/invalid command evidence" in (done.stderr + done.stdout)
 
-    # Create required evidence files (simulate outputs)
+    # Create required command evidence files in the snapshot store (schema-compliant).
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (round_dir / name).write_text("Exit code: 0\n✓ OK\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # Now guard should pass (after we provide implementation validator wrapper and followups wrapper)
     _ensure_guard_wrappers(project_dir.tmp_path, project_dir.project_root)
-    ready2 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
-    assert_command_success(ready2)
+    done2 = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    assert_command_success(done2)
 
 
 @pytest.mark.fast
@@ -158,11 +159,16 @@ def test_evidence_file_content(project_dir: TestProjectDir):
     round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     _write_impl_report(round_dir, _impl_report_json(task_id))
-    (round_dir / "command-type-check.txt").write_text("Exit code: 0\nTypeScript: OK\n")
 
-    type_check_file = round_dir / "command-type-check.txt"
+    type_check_file = write_passing_snapshot_command(
+        repo_root=project_dir.tmp_path,
+        filename="command-type-check.txt",
+        task_id=task_id,
+        output="TypeScript: OK\n",
+    )
     assert_file_exists(type_check_file)
-    assert_file_contains(type_check_file, "Exit code: 0")
+    assert_file_contains(type_check_file, "evidenceKind: command")
+    assert_file_contains(type_check_file, "exitCode: 0")
 
 
 @pytest.mark.fast
@@ -193,7 +199,7 @@ def test_evidence_implementation_report(project_dir: TestProjectDir):
 
 @pytest.mark.fast
 def test_evidence_multiple_rounds(project_dir: TestProjectDir):
-    """Round-1..3 directories exist and carry independent files."""
+    """Round-1..3 directories exist and carry independent report artifacts."""
     task_num, wave, slug = "300", "wave1", "multi-round"
     task_id = f"{task_num}-{wave}-{slug}"
 
@@ -204,15 +210,13 @@ def test_evidence_multiple_rounds(project_dir: TestProjectDir):
         rd = project_dir.project_root / "qa" / "validation-reports" / task_id / f"round-{rn}"
         rd.mkdir(parents=True, exist_ok=True)
         _write_impl_report(rd, _impl_report_json(task_id) | {"round": rn})
-        # Create a couple of command outputs per round
-        (rd / "command-type-check.txt").write_text(f"Exit code: 0\nround={rn}\n")
-        (rd / "command-lint.txt").write_text(f"Exit code: 0\nround={rn}\n")
+        (rd / "round-notes.txt").write_text(f"round={rn}\n", encoding="utf-8")
 
     for rn in (1, 2, 3):
         round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / f"round-{rn}"
         assert_directory_exists(round_dir)
-        assert_file_exists(round_dir / "command-type-check.txt")
-        assert_file_exists(round_dir / "command-lint.txt")
+        assert_file_exists(round_dir / "implementation-report.md")
+        assert_file_exists(round_dir / "round-notes.txt")
 
 
 @pytest.mark.fast
@@ -239,15 +243,15 @@ def test_evidence_completeness_check(project_dir: TestProjectDir):
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
 
-    # No command files yet → ready should fail
-    r1 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    # No command evidence yet → done should fail
+    r1 = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(r1)
 
-    # Add all required files
+    # Add all required files (snapshot store)
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (rd / name).write_text("Exit code: 0\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
-    r2 = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    r2 = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_success(r2)
 
 
@@ -307,18 +311,14 @@ def test_evidence_partial_files(project_dir: TestProjectDir):
     rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
-    # Only two of the four
-    (rd / "command-type-check.txt").write_text("Exit code: 0\n")
-    (rd / "command-lint.txt").write_text("Exit code: 0\n")
+    # Only two of the four (snapshot store)
+    write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename="command-type-check.txt", task_id=task_id)
+    write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename="command-lint.txt", task_id=task_id)
 
     # Guard should fail and list missing files
-    res = run_script("tasks/ready", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
+    res = run_script("tasks/done", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
     assert_command_failure(res)
-    assert "Missing evidence files" in res.stderr or "Missing evidence files" in res.stdout
-
-    # Verify missing files don't exist
-    assert not (rd / "command-test.txt").exists()
-    assert not (rd / "command-build.txt").exists()
+    assert "Missing/invalid command evidence" in (res.stderr + res.stdout)
 
     # In real workflow: edison tasks ready would FAIL (missing required files)
 
@@ -368,7 +368,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     (r1 / "context7-react.txt").write_text("Context7 refreshed: react\n")
     _write_impl_report(r1, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (r1 / name).write_text("Exit code: 0\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # Now the done move should succeed
     done_result = run_script(
@@ -384,7 +384,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     r2 = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-2"
     r2.mkdir(parents=True, exist_ok=True)
     _write_impl_report(r2, _impl_report_json(task_id) | {"round": 2})
-    (r2 / "command-type-check.txt").write_text("Exit code: 0\n")
+    (r2 / "round-notes.txt").write_text("round=2\n", encoding="utf-8")
 
     assert_directory_exists(r1)
     assert_directory_exists(r2)
@@ -412,7 +412,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (rd / name).write_text("Exit code: 0\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # Create REAL validator report JSON files for all blocking validators
     # (global, critical, specialized from config)
@@ -448,12 +448,15 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
             encoding="utf-8",
         )
 
-    validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
-    assert_command_success(validate_result)
-    assert_output_contains(validate_result, "bundle-summary.md was written", in_stderr=False)
+    summarize = run_script(
+        "qa/round",
+        ["summarize-verdict", task_id, "--session", session_id, "--json"],
+        cwd=project_dir.tmp_path,
+    )
+    assert_command_success(summarize)
 
-    # Verify bundle-summary.md was created
-    bundle_file = rd / "bundle-summary.md"
+    # Verify validation-summary.md was created
+    bundle_file = rd / "validation-summary.md"
     assert_file_exists(bundle_file)
 
     # Verify bundle structure matches REAL CLI output
@@ -487,7 +490,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (rd / name).write_text("Exit code: 0\n")
+        write_passing_snapshot_command(repo_root=project_dir.tmp_path, filename=name, task_id=task_id)
 
     # Create validator reports: 5 approve, 1 rejects (security fails)
     import datetime
@@ -522,12 +525,15 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
             encoding="utf-8",
         )
 
-    validate_result = run_script("validators/validate", [task_id, "--check-only"], cwd=project_dir.tmp_path)
-    assert_command_failure(validate_result)  # Should fail because security rejected
-    assert_output_contains(validate_result, "Bundle NOT approved", in_stderr=False)
+    summarize = run_script(
+        "qa/round",
+        ["summarize-verdict", task_id, "--session", session_id, "--json"],
+        cwd=project_dir.tmp_path,
+    )
+    assert_command_failure(summarize)  # Should fail because security rejected
 
-    # Verify bundle-summary.md shows approved: false
-    bundle_file = rd / "bundle-summary.md"
+    # Verify validation-summary.md shows approved: false
+    bundle_file = rd / "validation-summary.md"
     assert_file_exists(bundle_file)
     bundle_data = parse_frontmatter(bundle_file.read_text()).frontmatter
     assert bundle_data["taskId"] == task_id

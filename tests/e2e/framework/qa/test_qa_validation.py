@@ -22,6 +22,9 @@ from tests.helpers.session import ensure_session
 from edison.core.task import TaskRepository, TaskQAWorkflow
 from edison.core.qa.workflow.repository import QARepository
 from edison.core.qa.evidence.service import EvidenceService
+from edison.core.qa.evidence.command_evidence import write_command_evidence
+from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 from edison.core.registries.validators import ValidatorRegistry
 from edison.core.config.domains.qa import QAConfig
 
@@ -58,14 +61,28 @@ def test_qa_checklist_and_validation_workflow(tmp_path, monkeypatch):
     ev.ensure_round(1)
     ev.write_implementation_report({"summary": "E2E test implementation report"}, round_num=1)
     ev.write_bundle({"approved": True, "summary": "E2E bundle approval"}, round_num=1)
-    round_dir = ev.get_round_dir(1)
+
+    # Command evidence is repo-state; write it into the snapshot store.
+    snap_key = current_snapshot_key(project_root=tmp_path)
+    snap = snapshot_dir(project_root=tmp_path, key=snap_key)
+    fp = compute_repo_fingerprint(tmp_path)
     for marker in (
         "command-type-check.txt",
         "command-lint.txt",
         "command-test.txt",
         "command-build.txt",
     ):
-        (round_dir / marker).write_text("ok\n", encoding="utf-8")
+        write_command_evidence(
+            path=snap / marker,
+            task_id=task_id,
+            round_num=0,
+            command_name=marker.replace("command-", "").replace(".txt", ""),
+            command="echo ok",
+            cwd=str(tmp_path),
+            exit_code=0,
+            output="ok\n",
+            fingerprint=fp,
+        )
 
     # Seed minimal validator reports so QA can advance through done/validated in this test.
     qa_cfg = QAConfig(repo_root=tmp_path)

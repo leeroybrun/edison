@@ -152,7 +152,7 @@ Validation scope
 """)
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa", "round", [task_id, "--status", "approve", "--json"], env)
+    result = run("qa.round", "set_status", [task_id, "--status", "approve", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["taskId"] == task_id
     assert payload["round"] == 2
@@ -162,10 +162,9 @@ Validation scope
 
 
 def test_qa_round_does_not_create_evidence_dir_without_new_flag(tmp_path: Path) -> None:
-    """`edison qa round` should only append QA record history by default.
+    """`edison qa round set-status` appends QA history only.
 
-    Evidence directories must be created explicitly via `edison qa round --new`
-    or by running validation commands that manage evidence.
+    Evidence directories are created explicitly via `edison qa round prepare`.
     """
     root = make_project_root(tmp_path)
     task_id = "151-wave1-no-evidence"
@@ -186,7 +185,7 @@ round: 1
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)
-    result = run("qa", "round", [task_id, "--status", "approve", "--json"], env)
+    result = run("qa.round", "set_status", [task_id, "--status", "approve", "--json"], env)
     payload = json.loads(result.stdout.strip())
     assert payload["round"] == 2
 
@@ -483,8 +482,6 @@ Validation scope
     # evidence files
     evidence = root / ".project" / "qa" / "validation-reports" / task_id / "round-1"
     evidence.mkdir(parents=True, exist_ok=True)
-    for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
-        (evidence / name).write_text("ok\n")
     # Guard can_finish_task requires a non-empty implementation report.
     (evidence / "implementation-report.md").write_text(
         """---
@@ -494,6 +491,32 @@ filesChanged:
 """,
         encoding="utf-8",
     )
+
+    # Command evidence is repo-scoped and stored as snapshots (not per-round).
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import SnapshotKey, snapshot_dir
+    from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+    fp = compute_repo_fingerprint(root)
+    key = SnapshotKey.from_fingerprint(fp)
+    snap = snapshot_dir(project_root=root, key=key)
+    for filename, cmd_name in [
+        ("command-type-check.txt", "type-check"),
+        ("command-lint.txt", "lint"),
+        ("command-test.txt", "test"),
+        ("command-build.txt", "build"),
+    ]:
+        write_command_evidence(
+            path=snap / filename,
+            task_id=task_id,
+            round_num=0,
+            command_name=cmd_name,
+            command="true",
+            cwd=str(root),
+            exit_code=0,
+            output="ok\n",
+            fingerprint=fp,
+        )
 
     env = os.environ.copy()
     env["AGENTS_PROJECT_ROOT"] = str(root)

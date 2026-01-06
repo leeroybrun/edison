@@ -42,8 +42,26 @@ def _write_minimal_round_artifacts(*, repo: Path, task_id: str, round_num: int, 
         },
         round_num=round_num,
     )
+
     if include_test:
-        (ev.get_round_dir(round_num) / "command-test.txt").write_text("ok\n", encoding="utf-8")
+        from edison.core.qa.evidence.command_evidence import write_command_evidence
+        from edison.core.qa.evidence.snapshots import SnapshotKey, snapshot_dir
+        from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+        fp = compute_repo_fingerprint(repo)
+        key = SnapshotKey.from_fingerprint(fp)
+        snap = snapshot_dir(project_root=repo, key=key)
+        write_command_evidence(
+            path=snap / "command-test.txt",
+            task_id=task_id,
+            round_num=0,
+            command_name="test",
+            command="true",
+            cwd=str(repo),
+            exit_code=0,
+            output="ok\n",
+            fingerprint=fp,
+        )
 
 
 @pytest.mark.fast
@@ -125,7 +143,7 @@ def test_can_finish_task_requires_per_task_evidence_when_not_in_approved_bundle(
 
     _write_minimal_round_artifacts(repo=isolated_project_env, task_id=task_id, round_num=1, include_test=False)
 
-    with pytest.raises(ValueError, match=r"Missing evidence files in round-1: command-test\.txt"):
+    with pytest.raises(ValueError, match=r"Missing/invalid command evidence in snapshot"):
         can_finish_task(
             {
                 "task": {"id": task_id},

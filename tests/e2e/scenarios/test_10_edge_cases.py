@@ -24,6 +24,7 @@ from pathlib import Path
 from helpers import TestProjectDir, TestGitRepo
 from helpers.assertions import (
     assert_file_exists,
+    assert_directory_exists,
     assert_file_not_exists,
 )
 from helpers.command_runner import (
@@ -272,11 +273,12 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
     write_report("security", "codex", verdict="pending")
     write_report("performance", "codex", verdict="pending")
 
-    res = run_script("validators/validate", [task_id, "--check-only", "--blocking-only"], cwd=project_dir.tmp_path)
+    res = run_script("qa/round", ["summarize-verdict", task_id, "--json"], cwd=project_dir.tmp_path)
     assert_command_failure(res)
-    assert_output_contains(res, "Bundle NOT approved", in_stderr=False)
-    assert_output_contains(res, "performance", in_stderr=False)
-    assert_output_contains(res, "security", in_stderr=False)
+    payload = assert_json_output(res)
+    missing = payload.get("missing") or []
+    assert "performance" in missing
+    assert "security" in missing
 
 
 @pytest.mark.edge_case
@@ -375,23 +377,34 @@ def test_qa_bypass_without_type_flag_blocked(project_dir: TestProjectDir):
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_multiple_qa_rounds_same_task(project_dir: TestProjectDir):
-    """qa/round appends round history across runs."""
+    """qa round prepare allocates new evidence rounds after finalization."""
     num, wave, slug = "500", "wave1", "multi-qa"
     task_id = f"{num}-{wave}-{slug}"
 
-    # Create task (creates QA record as the single source of truth)
+    # Create task + QA record
     assert_command_success(run_script("tasks/new", ["--id", num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path))
+    assert_command_success(run_script("qa/new", [task_id], cwd=project_dir.tmp_path))
 
-    # Append multiple rounds via real CLI
-    for i in range(1, 4):
-        round_res = run_script("qa/round", [task_id, "--status", "approve", "--note", f"r{i}"], cwd=project_dir.tmp_path)
-        assert_command_success(round_res)
+    # Prepare round-1
+    r1 = run_script("qa/round", ["prepare", task_id, "--json"], cwd=project_dir.tmp_path)
+    assert_command_success(r1)
+    assert_directory_exists(project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1")
 
-    qa_path = project_dir.project_root / "qa" / "waiting" / f"{task_id}-qa.md"
-    from helpers.assertions import read_file
-    text = read_file(qa_path)
-    assert "round_history" in text
-    assert "r1" in text and "r2" in text and "r3" in text
+    # Finalize round-1 by summarizing a verdict (expected to be NOT approved with no validator reports).
+    v1 = run_script("qa/round", ["summarize-verdict", task_id, "--json"], cwd=project_dir.tmp_path)
+    assert_command_failure(v1)
+
+    # Prepare round-2
+    r2 = run_script("qa/round", ["prepare", task_id, "--json"], cwd=project_dir.tmp_path)
+    assert_command_success(r2)
+    assert_directory_exists(project_dir.project_root / "qa" / "validation-reports" / task_id / "round-2")
+
+    # Finalize round-2 and allocate round-3
+    v2 = run_script("qa/round", ["summarize-verdict", task_id, "--round", "2", "--json"], cwd=project_dir.tmp_path)
+    assert_command_failure(v2)
+    r3 = run_script("qa/round", ["prepare", task_id, "--json"], cwd=project_dir.tmp_path)
+    assert_command_success(r3)
+    assert_directory_exists(project_dir.project_root / "qa" / "validation-reports" / task_id / "round-3")
 
 
 @pytest.mark.edge_case
@@ -504,7 +517,7 @@ def test_session_invalid_state_directory(project_dir: TestProjectDir):
 @pytest.mark.edge_case
 @pytest.mark.fast
 def test_circular_task_dependency(project_dir: TestProjectDir):
-    """tasks/ready detects cycles in session task graph (via guards)."""
+    """tasks/link blocks cycles (fail-closed) unless explicitly forced."""
     # Create session
     session_id = "cycle-session"
     run_script("session", ["new", "--owner", "tester", "--session-id", session_id, "--mode", "start"], cwd=project_dir.tmp_path)
@@ -520,31 +533,13 @@ def test_circular_task_dependency(project_dir: TestProjectDir):
     id_a = f"{task_a[0]}-{task_a[1]}-{task_a[2]}"
     id_b = f"{task_b[0]}-{task_b[1]}-{task_b[2]}"
 
-    # Link A → B and B → A (cycle) via real CLI
-    assert_command_success(run_script("tasks/link", [id_a, id_b, "--session", session_id, "--force"], cwd=project_dir.tmp_path))
-    assert_command_success(run_script("tasks/link", [id_b, id_a, "--session", session_id, "--force"], cwd=project_dir.tmp_path))
+    # Link A → B
+    assert_command_success(run_script("tasks/link", [id_a, id_b, "--session", session_id], cwd=project_dir.tmp_path))
 
-    # Provide minimal readiness artefacts so tasks/ready reaches cycle check
-    ev_root = project_dir.project_root / "qa" / "validation-reports" / id_a / "round-1"
-    ev_root.mkdir(parents=True, exist_ok=True)
-    for f in ("command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"):
-        (ev_root / f).write_text("ok\n")
-    impl = {
-        "taskId": id_a,
-        "round": 1,
-        "implementationApproach": "orchestrator-direct",
-        "primaryModel": "codex",
-        "completionStatus": "complete",
-        "followUpTasks": [],
-        "notesForValidator": "cycle check",
-        "tracking": {"processId": 1, "startedAt": "2025-01-01T00:00:00Z", "completedAt": "2025-01-01T00:10:00Z"}
-    }
-    (ev_root / "implementation-report.md").write_text(format_frontmatter(impl) + "\n", encoding="utf-8")
-
-    # tasks/ready should fail with cycle detection
-    ready = run_script("tasks/ready", [id_a, "--session", session_id], cwd=project_dir.tmp_path)
-    assert_command_failure(ready)
-    assert_error_contains(ready, "Cycle detected")
+    # Link B → A should fail with cycle detection (unless --force is used)
+    cycle = run_script("tasks/link", [id_b, id_a, "--session", session_id], cwd=project_dir.tmp_path)
+    assert_command_failure(cycle)
+    assert_error_contains(cycle, "Cycle detected")
 
 
 @pytest.mark.edge_case

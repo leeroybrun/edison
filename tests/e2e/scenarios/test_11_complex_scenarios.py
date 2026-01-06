@@ -41,10 +41,14 @@ def _seed_validation_evidence(repo_root: Path, task_id: str, round_num: int = 1)
     """Create minimal validation evidence required for qa/promote and validation guards."""
     from edison.core.qa.evidence import EvidenceService
     from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+    from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
     ev = EvidenceService(task_id=task_id, project_root=repo_root)
     rd = ev.ensure_round(round_num)
 
+    snap = snapshot_dir(project_root=repo_root, key=current_snapshot_key(project_root=repo_root))
+    fp = compute_repo_fingerprint(repo_root)
     for fname in [
         "command-type-check.txt",
         "command-lint.txt",
@@ -54,15 +58,16 @@ def _seed_validation_evidence(repo_root: Path, task_id: str, round_num: int = 1)
     ]:
         name = fname.removeprefix("command-").removesuffix(".txt")
         write_command_evidence(
-            path=rd / fname,
+            path=snap / fname,
             task_id=task_id,
-            round_num=round_num,
+            round_num=0,
             command_name=name,
             command="echo ok",
             cwd=str(repo_root),
             exit_code=0,
             output="ok\n",
             runner="edison-tests",
+            fingerprint=fp,
         )
 
     (rd / ev.implementation_filename).write_text(
@@ -78,6 +83,36 @@ def _seed_validation_evidence(repo_root: Path, task_id: str, round_num: int = 1)
         encoding="utf-8",
     )
     return rd
+
+
+def _seed_session_close_evidence(repo_root: Path, task_id: str) -> None:
+    """Seed session-close command evidence in the snapshot store (v1 frontmatter)."""
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+    from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+    snap = snapshot_dir(project_root=repo_root, key=current_snapshot_key(project_root=repo_root))
+    fp = compute_repo_fingerprint(repo_root)
+
+    for fname in [
+        "command-type-check.txt",
+        "command-lint.txt",
+        "command-test-full.txt",
+        "command-build.txt",
+    ]:
+        name = fname.removeprefix("command-").removesuffix(".txt")
+        write_command_evidence(
+            path=snap / fname,
+            task_id=task_id,
+            round_num=0,
+            command_name=name,
+            command="echo ok",
+            cwd=str(repo_root),
+            exit_code=0,
+            output="ok\n",
+            runner="edison-tests",
+            fingerprint=fp,
+        )
 
 
 def _start_impl_tracking(task_id: str, *, cwd: Path) -> None:
@@ -387,6 +422,9 @@ def test_session_merge_scenario(combined_env):
             cwd=worktree_path,
         )
     )
+
+    # Session completion requires session-close command evidence (repo-state snapshots).
+    _seed_session_close_evidence(worktree_path, task_id)
 
     # Complete session → should create merge task
     comp = run_script("session", ["complete", session_id], cwd=worktree_path)
@@ -759,22 +797,22 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
 
     # Compute bundle approval from existing evidence (no validator execution).
     validate_result = run_script(
-        "validators/validate",
-        [parent_id, "--session", session_id, "--check-only"],
+        "qa/round",
+        ["summarize-verdict", parent_id, "--session", session_id, "--json"],
         cwd=project_dir.tmp_path,
     )
 
     # Should succeed (all validators approved)
     assert_command_success(validate_result)
 
-    # Verify bundle-summary.md exists under parent evidence directory
-    parent_bundle = project_dir.project_root / "qa" / "validation-reports" / parent_id / "round-1" / "bundle-summary.md"
+    # Verify validation-summary.md exists under parent evidence directory
+    parent_bundle = project_dir.project_root / "qa" / "validation-reports" / parent_id / "round-1" / "validation-summary.md"
     assert_file_exists(parent_bundle)
 
     # Bundle validation runs once at the root, but Edison mirrors the bundle summary into
     # each cluster member's latest round so per-task guards can reason deterministically.
-    child1_bundle = project_dir.project_root / "qa" / "validation-reports" / child1_id / "round-1" / "bundle-summary.md"
-    child2_bundle = project_dir.project_root / "qa" / "validation-reports" / child2_id / "round-1" / "bundle-summary.md"
+    child1_bundle = project_dir.project_root / "qa" / "validation-reports" / child1_id / "round-1" / "validation-summary.md"
+    child2_bundle = project_dir.project_root / "qa" / "validation-reports" / child2_id / "round-1" / "validation-summary.md"
     assert_file_exists(child1_bundle)
     assert_file_exists(child2_bundle)
 

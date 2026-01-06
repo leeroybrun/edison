@@ -115,11 +115,32 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
         name = re.sub(r"\[[^\]]+\]", "x", name)
         return name or "evidence.txt"
 
+    # Command evidence is repo-state; write it into the snapshot store so QA guards pass.
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+    from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+    snap = snapshot_dir(project_root=session_scenario_env["tmp"], key=current_snapshot_key(project_root=session_scenario_env["tmp"]))
+    fp = compute_repo_fingerprint(session_scenario_env["tmp"])
     for pattern in (policy.required_evidence or []):
         fname = _filename_for_pattern(str(pattern))
-        target = ev_round / fname
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("ok\n", encoding="utf-8")
+        if fname.startswith("command-"):
+            write_command_evidence(
+                path=snap / fname,
+                task_id=task_id,
+                round_num=0,
+                command_name=fname.removeprefix("command-").removesuffix(".txt"),
+                command="echo ok",
+                cwd=str(session_scenario_env["tmp"]),
+                exit_code=0,
+                output="ok\n",
+                runner="edison-tests",
+                fingerprint=fp,
+            )
+        else:
+            target = ev_round / fname
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("ok\n", encoding="utf-8")
 
     (ev_round / "implementation-report.md").write_text(
         format_frontmatter(
@@ -185,12 +206,11 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
     run_edison(session_scenario_env, ["qa", "promote", task_id, "--status", "wip", "--session", sid])
     run_edison(
         session_scenario_env,
-        ["qa", "validate", task_id, "--session", sid, "--preset", "strict", "--check-only"],
+        ["qa", "round", "summarize-verdict", task_id, "--session", sid, "--preset", "strict"],
     )
     run_edison(session_scenario_env, ["qa", "promote", task_id, "--status", "done", "--session", sid])
 
     # Session close verification requires session-close command evidence.
-    run_edison(session_scenario_env, ["evidence", "init", task_id])
     run_edison(session_scenario_env, ["evidence", "capture", task_id, "--session-close"])
 
     # Close session: verification triggers restore to global + transition to closing (done dir)

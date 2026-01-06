@@ -202,17 +202,55 @@ def has_validator_reports(ctx: Mapping[str, Any]) -> bool:
         )
         required = list(policy.required_evidence or [])
 
-        try:
-            from edison.core.qa.evidence.analysis import list_evidence_files
+        # Command evidence is repo-state (snapshot store), while other evidence remains
+        # round-scoped. Split required evidence accordingly.
+        from edison.core.config.domains.qa import QAConfig
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
 
-            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
-        except Exception:
-            files = {p.name for p in round_dir.iterdir() if p.is_file()} if round_dir.exists() else set()
+        qa_cfg = QAConfig(repo_root=ev.project_root)
+        evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+        if not isinstance(evidence_files_cfg, dict):
+            evidence_files_cfg = {}
+        command_evidence_names = set(str(v).strip() for v in evidence_files_cfg.values() if str(v).strip())
+
+        command_required = [f for f in required if str(f).startswith("command-") or str(f) in command_evidence_names]
+        round_required = [f for f in required if f not in set(command_required)]
 
         missing_patterns: list[str] = []
-        for pattern in required:
-            if not any(Path(name).match(str(pattern)) for name in files):
-                missing_patterns.append(str(pattern))
+        if round_required:
+            try:
+                from edison.core.qa.evidence.analysis import list_evidence_files
+
+                files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
+            except Exception:
+                files = {p.name for p in round_dir.iterdir() if p.is_file()} if round_dir.exists() else set()
+
+            for pattern in round_required:
+                if not any(Path(name).match(str(pattern)) for name in files):
+                    missing_patterns.append(str(pattern))
+
+        if command_required:
+            key = current_snapshot_key(project_root=ev.project_root)
+            snap_dir = snapshot_dir(project_root=ev.project_root, key=key)
+            snap = snapshot_status(project_root=ev.project_root, key=key, required_files=[str(x) for x in command_required])
+            if not (bool(snap.get("complete")) and bool(snap.get("valid")) and bool(snap.get("passed"))):
+                parts: list[str] = []
+                if snap.get("missing"):
+                    parts.append(f"missing: {', '.join(snap.get('missing') or [])}")
+                if snap.get("invalid"):
+                    parts.append(
+                        "invalid: "
+                        + ", ".join(str(i.get("file")) for i in (snap.get("invalid") or []) if i.get("file"))
+                    )
+                if snap.get("failed"):
+                    parts.append(
+                        "failed: "
+                        + ", ".join(str(f.get("file")) for f in (snap.get("failed") or []) if f.get("file"))
+                    )
+                details = "; ".join([p for p in parts if p])
+                raise ValueError(
+                    f"Missing/invalid command evidence in snapshot ({snap_dir}): {details or 'unknown'}"
+                )
 
         if missing_patterns:
             expected_report = round_dir / ev.implementation_filename
