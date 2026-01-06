@@ -260,6 +260,10 @@ edison task bundle add --root <root-task> <member-task-1> <member-task-2>
 # 2) Run validation once at the bundle root:
 edison qa validate <root-task> --scope bundle --execute
 
+# Validate a parent/meta task plus its children (work decomposition)
+# Note: presets are project-defined; use a preset tuned for meta/bundle validation if available.
+edison qa validate <parent-task> --scope hierarchy --preset bundle --execute
+
 # Run specific validator
 edison qa run <validator-name> --task <task-id>
 ```
@@ -273,7 +277,7 @@ edison qa run <validator-name> --task <task-id>
 2. Executes validators in parallel (configurable):
    - Multiple validators run concurrently
    - Each produces JSON report
-   - Timeout per validator: 5 minutes (default)
+   - Timeout is per-validator and configurable via `validation.validators.<id>.timeout`
 
 3. Collects evidence files:
    ```
