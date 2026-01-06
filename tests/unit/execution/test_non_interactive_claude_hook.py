@@ -147,6 +147,18 @@ class TestNonInteractiveGuardTemplate:
             "Template should read tool payload from stdin"
         )
 
+    def test_template_does_not_require_jq(self) -> None:
+        """Template should not depend on jq (keep hooks portable)."""
+        from edison.data import get_data_path
+
+        template_path = (
+            Path(get_data_path("templates", "hooks"))
+            / "non-interactive-guard.sh.template"
+        )
+        content = template_path.read_text()
+
+        assert "jq" not in content, "Template should not require jq"
+
     def test_template_checks_bash_tool(self) -> None:
         """Template should check if tool is Bash."""
         from edison.data import get_data_path

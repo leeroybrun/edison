@@ -169,6 +169,8 @@ class TestSessionContextMarkdownActorField:
         # Should still render (unknown is valid)
         # The exact format depends on implementation
         assert "## Edison Context" in markdown
+        assert "actor" in markdown.lower()
+        assert "unknown" in markdown.lower()
 
 
 class TestSessionContextForNextActorField:
