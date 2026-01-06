@@ -18,12 +18,6 @@ SUMMARY = "Initialize evidence directories for a task"
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier")
-    parser.add_argument(
-        "--round",
-        type=int,
-        default=1,
-        help="Round number to ensure (default: 1)",
-    )
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -35,41 +29,15 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
         raw_task_id = str(getattr(args, "task_id"))
         task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
-        round_num = int(getattr(args, "round", 1) or 1)
-
-        from edison.core.qa.evidence.service import EvidenceService
-
-        svc = EvidenceService(task_id, project_root=project_root)
-        round_dir = svc.ensure_round(round_num)
-        svc.update_metadata(round_num)
-
-        # Ensure an implementation report exists (do not create placeholder command evidence).
-        try:
-            existing = svc.read_implementation_report(round_num)
-        except Exception:
-            existing = {}
-        if not existing:
-            svc.write_implementation_report(
-                {
-                    "taskId": task_id,
-                    "round": int(round_num),
-                    "completionStatus": "partial",
-                    "followUpTasks": [],
-                    "notesForValidator": "",
-                },
-                round_num=round_num,
-            )
-
-        payload = {
-            "taskId": task_id,
-            "round": round_num,
-            "evidenceRoot": str(svc.get_evidence_root().resolve()),
-            "roundDir": str(round_dir.resolve()),
-        }
-        formatter.json_output(payload) if formatter.json_mode else formatter.text(
-            f"Initialized evidence for {task_id} (round-{round_num}) at {round_dir}"
+        msg = (
+            "`edison evidence init` is deprecated. "
+            "Rounds and round-scoped reports are created via `edison qa round prepare <task>`."
         )
-        return 0
+        if formatter.json_mode:
+            formatter.json_output({"deprecated": True, "taskId": task_id, "message": msg, "use": "edison qa round prepare <task>"})
+        else:
+            formatter.text(msg)
+        return 1
 
     except Exception as e:
         formatter.error(e, error_code="evidence_init_error")

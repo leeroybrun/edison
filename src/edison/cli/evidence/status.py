@@ -19,7 +19,6 @@ SUMMARY = "Check evidence completeness and command success"
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier")
-    parser.add_argument("--round", type=int, dest="round_num", help="Explicit round number (default: latest)")
     add_json_flag(parser)
     add_repo_root_flag(parser)
 
@@ -30,31 +29,30 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
         raw_task_id = str(args.task_id)
         task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
-        round_num = getattr(args, "round_num", None)
 
-        from edison.core.qa.evidence import EvidenceService, rounds
         from edison.core.qa.evidence.command_evidence import parse_command_evidence
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
         from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+        from edison.core.config.domains.qa import QAConfig
 
-        ev = EvidenceService(task_id=task_id, project_root=project_root)
-        round_dir: Path
-        if round_num is not None:
-            round_dir = ev.get_round_dir(int(round_num))
-            if not round_dir.exists():
-                raise RuntimeError(f"Round {round_num} does not exist")
-        else:
-            rd = ev.get_current_round_dir()
-            if rd is None:
-                raise RuntimeError(f"No evidence round exists. Run `edison evidence init {task_id}` first.")
-            round_dir = rd
-            round_num = rounds.get_round_number(round_dir)
+        current_fp = compute_repo_fingerprint(project_root)
+        key = current_snapshot_key(project_root=project_root)
+        snap_dir = snapshot_dir(project_root=project_root, key=key)
 
         # Preset-aware required evidence (single source via policy resolver)
         resolver = ValidationPolicyResolver(project_root=project_root)
         policy = resolver.resolve_for_task(task_id)
-        required_files = list(policy.required_evidence or [])
-        current_fp = compute_repo_fingerprint(project_root)
+        required_files = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
+
+        qa_cfg = QAConfig(repo_root=project_root)
+        evidence_files = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+        if not isinstance(evidence_files, dict):
+            evidence_files = {}
+        command_evidence_names = set(str(v).strip() for v in evidence_files.values() if str(v).strip())
+        command_required = [
+            f for f in required_files if f.startswith("command-") or f in command_evidence_names
+        ]
 
         present: list[str] = []
         missing: list[str] = []
@@ -62,8 +60,8 @@ def main(args: argparse.Namespace) -> int:
         invalid: list[dict[str, Any]] = []
         stale: list[dict[str, Any]] = []
 
-        for filename in required_files:
-            file_path = round_dir / str(filename)
+        for filename in command_required:
+            file_path = snap_dir / str(filename)
             if not file_path.exists():
                 missing.append(str(filename))
                 continue
@@ -117,8 +115,10 @@ def main(args: argparse.Namespace) -> int:
 
         payload = {
             "taskId": task_id,
-            "round": int(round_num or 1),
             "preset": policy.preset.name,
+            "fingerprint": current_fp,
+            "snapshotDir": str(snap_dir.relative_to(project_root)),
+            "requiredCommandEvidence": command_required,
             "present": present,
             "missing": missing,
             "invalid": invalid,
@@ -134,7 +134,8 @@ def main(args: argparse.Namespace) -> int:
         if formatter.json_mode:
             formatter.json_output(payload)
         else:
-            formatter.text(f"Evidence status for {task_id} (round-{round_num}, preset={policy.preset.name}):")
+            formatter.text(f"Evidence status for {task_id} (preset={policy.preset.name}):")
+            formatter.text(f"- Snapshot: {snap_dir.relative_to(project_root)}")
             if missing:
                 formatter.text(f"- Missing: {', '.join(missing)}")
             if invalid:
@@ -151,7 +152,7 @@ def main(args: argparse.Namespace) -> int:
             if success:
                 formatter.text("All required evidence present and passed.")
             else:
-                formatter.text("Fix by running: `edison evidence capture <task>` and reviewing output (`edison evidence show <task> --command <name>`).")
+                formatter.text("Fix by running: `edison evidence capture <task>` and reviewing output.")
                 formatter.text("For targeted reruns: `edison evidence capture <task> --only <command>`")
 
         return 0 if success else 1

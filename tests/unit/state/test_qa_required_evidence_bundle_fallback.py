@@ -51,8 +51,28 @@ def test_has_required_evidence_allows_bundle_member_to_use_root_round(
 
     root_ev = EvidenceService(root_id, project_root=isolated_project_env)
     root_ev.ensure_round(1)
-    (root_ev.get_round_dir(1) / "command-test.txt").write_text("ok\n", encoding="utf-8")
     root_ev.write_implementation_report({"taskId": root_id, "round": 1}, round_num=1)
+
+    # Command evidence lives in the repo-state snapshot store.
+    from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+    from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+
+    fp = compute_repo_fingerprint(isolated_project_env)
+    key = current_snapshot_key(project_root=isolated_project_env)
+    snap_dir = snapshot_dir(project_root=isolated_project_env, key=key)
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    write_command_evidence(
+        path=snap_dir / "command-test.txt",
+        task_id=root_id,
+        round_num=0,
+        command_name="test",
+        command="python -c \"print('ok')\"",
+        cwd=str(isolated_project_env),
+        exit_code=0,
+        output="ok\n",
+        fingerprint=fp,
+    )
 
     member_ev = EvidenceService(member_id, project_root=isolated_project_env)
     member_ev.ensure_round(1)
@@ -97,4 +117,3 @@ def test_has_required_evidence_fails_closed_without_bundle_or_evidence(
     ev.write_implementation_report({"taskId": task_id, "round": 1}, round_num=1)
 
     assert has_required_evidence({"task_id": task_id}) is False
-

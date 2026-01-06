@@ -16,6 +16,23 @@ from .repository import get_repo_root, is_git_repository
 from .status import get_status
 
 
+_EXCLUDED_PREFIXES = (
+    ".project/",
+)
+
+
+def _filter_paths(paths: list[Any]) -> list[str]:
+    out: list[str] = []
+    for p in paths or []:
+        s = str(p).strip().replace("\\", "/")
+        if not s:
+            continue
+        if any(s.startswith(prefix) for prefix in _EXCLUDED_PREFIXES):
+            continue
+        out.append(s)
+    return out
+
+
 def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, Any]:
     """Compute a lightweight fingerprint of the current repository state.
 
@@ -45,14 +62,23 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
         head = ""
 
     status = get_status(root)
-    dirty = not bool(status.get("clean", True))
+
+    staged_list = _filter_paths(status.get("staged") or [])
+    modified_list = _filter_paths(status.get("modified") or [])
+    untracked_list = _filter_paths(status.get("untracked") or [])
+    dirty = bool(staged_list or modified_list or untracked_list)
+
+    # Exclude Edison-managed metadata from the fingerprint to avoid making
+    # evidence snapshots self-invalidating (writing evidence would otherwise
+    # change the fingerprint and create an infinite chase).
+    pathspec = ["--", ".", ":(exclude).project"]
 
     diff = ""
     diff_cached = ""
     try:
         diff = (
             run_git_command(
-                ["git", "diff", "--no-ext-diff"],
+                ["git", "diff", "--no-ext-diff", *pathspec],
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -65,7 +91,7 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
     try:
         diff_cached = (
             run_git_command(
-                ["git", "diff", "--cached", "--no-ext-diff"],
+                ["git", "diff", "--cached", "--no-ext-diff", *pathspec],
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -76,9 +102,9 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
     except Exception:
         diff_cached = ""
 
-    staged = "\n".join(sorted([str(p) for p in (status.get("staged") or []) if str(p).strip()]))
-    modified = "\n".join(sorted([str(p) for p in (status.get("modified") or []) if str(p).strip()]))
-    untracked = "\n".join(sorted([str(p) for p in (status.get("untracked") or []) if str(p).strip()]))
+    staged = "\n".join(sorted(staged_list))
+    modified = "\n".join(sorted(modified_list))
+    untracked = "\n".join(sorted(untracked_list))
 
     payload = "\n".join([head, diff, diff_cached, staged, modified, untracked]).encode("utf-8")
     diff_hash = hashlib.sha256(payload).hexdigest()
@@ -87,4 +113,3 @@ def compute_repo_fingerprint(repo_root: Path | str | None = None) -> dict[str, A
 
 
 __all__ = ["compute_repo_fingerprint"]
-

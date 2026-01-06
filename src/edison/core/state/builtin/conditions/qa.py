@@ -32,8 +32,9 @@ def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
 
     try:
         from edison.core.qa.evidence import EvidenceService
-        from edison.core.qa.evidence.analysis import has_required_evidence as has_required
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_status
+        from edison.core.config.domains.qa import QAConfig
 
         ev = EvidenceService(str(task_id))
         round_dir = ev.get_current_round_dir()
@@ -51,8 +52,32 @@ def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
             session_id=session_id,
         )
         required = list(policy.required_evidence or [])
-        if has_required(round_dir, required):
-            return True
+        required_files = [str(x).strip() for x in required if str(x).strip()]
+
+        qa_cfg = QAConfig(repo_root=ev.project_root)
+        evidence_files = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+        if not isinstance(evidence_files, dict):
+            evidence_files = {}
+        command_evidence_names = set(str(v).strip() for v in evidence_files.values() if str(v).strip())
+
+        command_required = [f for f in required_files if f.startswith("command-") or f in command_evidence_names]
+        round_required = [f for f in required_files if f not in command_required]
+
+        # Round-scoped required evidence (reports/markers) lives under the task round dir.
+        if round_required:
+            from edison.core.qa.evidence.analysis import has_required_evidence as has_required_round
+
+            if not has_required_round(round_dir, round_required):
+                return False
+
+        # Repo-scoped command evidence lives under the current fingerprint snapshot dir.
+        if command_required:
+            key = current_snapshot_key(project_root=ev.project_root)
+            snap = snapshot_status(project_root=ev.project_root, key=key, required_files=command_required)
+            if not (bool(snap.get("complete")) and bool(snap.get("valid")) and bool(snap.get("passed"))):
+                return False
+
+        return True
 
         # Bundle-aware fallback: allow the bundle root's evidence to satisfy the
         # per-task required evidence check when the member has an approved bundle
@@ -65,8 +90,22 @@ def has_required_evidence(ctx: Mapping[str, Any]) -> bool:
                 if root_task and root_task != str(task_id) and bundle.get("scope"):
                     root_ev = EvidenceService(root_task, project_root=ev.project_root)
                     root_round = root_ev.get_current_round_dir()
-                    if root_round is not None and has_required(root_round, required):
-                        return True
+                    if root_round is None:
+                        return False
+
+                    if round_required:
+                        from edison.core.qa.evidence.analysis import has_required_evidence as has_required_round
+
+                        if not has_required_round(root_round, round_required):
+                            return False
+
+                    if command_required:
+                        key = current_snapshot_key(project_root=ev.project_root)
+                        snap = snapshot_status(project_root=ev.project_root, key=key, required_files=command_required)
+                        if not (bool(snap.get("complete")) and bool(snap.get("valid")) and bool(snap.get("passed"))):
+                            return False
+
+                    return True
         except Exception:
             pass
 

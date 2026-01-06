@@ -54,10 +54,9 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Continue running commands after failure",
     )
     parser.add_argument(
-        "--round",
-        type=int,
-        dest="round_num",
-        help="Explicit round number (default: latest)",
+        "--force",
+        action="store_true",
+        help="Force re-run commands even if a complete snapshot exists for the current repo fingerprint.",
     )
     parser.add_argument(
         "--no-lock",
@@ -128,27 +127,21 @@ def main(args: argparse.Namespace) -> int:
         session_close = bool(getattr(args, "session_close", False))
         resolved_preset: str | None = None
         continue_on_failure = bool(getattr(args, "continue_on_failure", False))
-        round_num = getattr(args, "round_num", None)
+        force = bool(getattr(args, "force", False))
         no_lock = bool(getattr(args, "no_lock", False))
 
         from edison.core.config.domains.ci import CIConfig
         from edison.core.config.domains.qa import QAConfig
         from edison.core.config.domains.tdd import TDDConfig
-        from edison.core.qa.evidence import EvidenceService, rounds
         from edison.core.qa.evidence.command_evidence import write_command_evidence
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
+        from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
-        ev = EvidenceService(task_id=task_id, project_root=project_root)
-
-        if round_num is not None:
-            round_dir = ev.get_round_dir(int(round_num))
-            if not round_dir.exists():
-                raise RuntimeError(f"Round {round_num} does not exist. Run `edison evidence init {task_id}` first.")
-        else:
-            round_dir = ev.get_current_round_dir()
-            if round_dir is None:
-                raise RuntimeError(f"No evidence round exists. Run `edison evidence init {task_id}` first.")
-            round_num = rounds.get_round_number(round_dir)
+        fingerprint = compute_repo_fingerprint(project_root)
+        key = current_snapshot_key(project_root=project_root)
+        snap_dir = snapshot_dir(project_root=project_root, key=key)
+        snap_dir.mkdir(parents=True, exist_ok=True)
 
         ci_commands = CIConfig(repo_root=project_root).commands
         if not ci_commands:
@@ -228,6 +221,32 @@ def main(args: argparse.Namespace) -> int:
         if no_lock and not formatter.json_mode:
             print("Warning: --no-lock bypasses evidence capture locking.", file=sys.stderr)
 
+        required_files_for_run = [
+            _command_output_filename(cmd_name, evidence_files=evidence_files)
+            for cmd_name in ci_commands.keys()
+        ]
+        snap = snapshot_status(project_root=project_root, key=key, required_files=required_files_for_run)
+        reuse_ok = bool(snap.get("complete")) and bool(snap.get("passed")) and bool(snap.get("valid"))
+        if reuse_ok and not force and not only:
+            payload: dict[str, Any] = {
+                "taskId": task_id,
+                "preset": resolved_preset,
+                "fingerprint": fingerprint,
+                "snapshotDir": str(snap_dir.relative_to(project_root)),
+                "reusedSnapshot": True,
+                "requiredFiles": required_files_for_run,
+                "status": snap,
+                "commands": [],
+            }
+            if formatter.json_mode:
+                formatter.json_output(payload)
+            else:
+                formatter.text(
+                    f"Reused existing evidence snapshot for current repo fingerprint: {snap_dir.relative_to(project_root)}"
+                )
+                formatter.text("To force re-run: edison evidence capture <task> --force")
+            return 0
+
         for cmd_name, cmd_string in ci_commands.items():
             cmd = str(cmd_string).strip()
             if not cmd or _looks_like_placeholder(cmd):
@@ -262,15 +281,11 @@ def main(args: argparse.Namespace) -> int:
                         )
                     exit_code, output, started_at, completed_at = _run_command(cmd, project_root, pipefail=True)
 
-            from edison.core.utils.git.fingerprint import compute_repo_fingerprint
-
-            fingerprint = compute_repo_fingerprint(project_root)
-
-            evidence_path = round_dir / filename
+            evidence_path = snap_dir / filename
             write_command_evidence(
                 path=evidence_path,
                 task_id=task_id,
-                round_num=int(round_num or 1),
+                round_num=0,
                 command_name=cmd_name,
                 command=cmd,
                 cwd=str(project_root),
@@ -285,7 +300,16 @@ def main(args: argparse.Namespace) -> int:
                 fingerprint=fingerprint,
             )
 
-            results.append({"name": cmd_name, "command": cmd, "exitCode": exit_code, "file": filename, "lock": lock_info})
+            results.append(
+                {
+                    "name": cmd_name,
+                    "command": cmd,
+                    "exitCode": exit_code,
+                    "file": filename,
+                    "path": str(evidence_path.relative_to(project_root)),
+                    "lock": lock_info,
+                }
+            )
             if exit_code == 0:
                 passed += 1
             else:
@@ -311,7 +335,8 @@ def main(args: argparse.Namespace) -> int:
 
         payload: dict[str, Any] = {
             "taskId": task_id,
-            "round": int(round_num or 1),
+            "fingerprint": fingerprint,
+            "snapshotDir": str(snap_dir.relative_to(project_root)),
             "commands": results,
             "passed": passed,
             "failed": failed,

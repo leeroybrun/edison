@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 
-def test_evidence_init_creates_round_and_metadata(
+def test_evidence_init_is_deprecated_and_does_not_create_rounds(
     isolated_project_env: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     task_id = "task-evidence-init-001"
@@ -20,17 +20,15 @@ def test_evidence_init_creates_round_and_metadata(
 
     args = argparse.Namespace(
         task_id=task_id,
-        round=1,
         json=True,
         repo_root=isolated_project_env,
     )
     rc = init_main(args)
-    assert rc == 0
+    assert rc == 1
 
     payload = json.loads(capsys.readouterr().out or "{}")
+    assert payload.get("deprecated") is True
     assert payload.get("taskId") == task_id
-    assert payload.get("round") == 1
 
     evidence_root = isolated_project_env / ".project" / "qa" / "validation-evidence" / task_id
-    assert (evidence_root / "round-1").exists()
-    assert (evidence_root / "metadata.json").exists()
+    assert not evidence_root.exists()

@@ -83,16 +83,17 @@ def test_evidence_status_json_reports_stale_when_repo_changes(
     task_id = "201-wave1-evidence-status-stale"
     TaskQAWorkflow(isolated_project_env).create_task(task_id=task_id, title="Test", create_qa=False)
 
-    ev = EvidenceService(task_id=task_id, project_root=isolated_project_env)
-    round_dir = ev.ensure_round(1)
-
     from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
 
     fp = compute_repo_fingerprint(isolated_project_env)
+    key = current_snapshot_key(project_root=isolated_project_env)
+    snap_dir = snapshot_dir(project_root=isolated_project_env, key=key)
+    snap_dir.mkdir(parents=True, exist_ok=True)
     write_command_evidence(
-        path=round_dir / "command-test.txt",
+        path=snap_dir / "command-test.txt",
         task_id=task_id,
-        round_num=1,
+        round_num=0,
         command_name="test",
         command="python -c \"print('ok')\"",
         cwd=str(isolated_project_env),
@@ -106,7 +107,6 @@ def test_evidence_status_json_reports_stale_when_repo_changes(
     rc = status_main(
         argparse.Namespace(
             task_id=task_id,
-            round_num=1,
             json=True,
             repo_root=str(isolated_project_env),
         )
@@ -116,18 +116,16 @@ def test_evidence_status_json_reports_stale_when_repo_changes(
     stale = payload.get("staleEvidence") or []
     assert any(e.get("file") == "command-test.txt" and e.get("stale") is False for e in stale)
 
-    # Make repo dirty after evidence capture -> should mark evidence stale (warn-only).
+    # Change repo after evidence capture -> required evidence is now missing for the new fingerprint.
     (isolated_project_env / "README.md").write_text("# changed\n", encoding="utf-8")
 
     rc2 = status_main(
         argparse.Namespace(
             task_id=task_id,
-            round_num=1,
             json=True,
             repo_root=str(isolated_project_env),
         )
     )
-    assert rc2 == 0
+    assert rc2 == 1
     payload2 = json.loads(capsys.readouterr().out)
-    stale2 = payload2.get("staleEvidence") or []
-    assert any(e.get("file") == "command-test.txt" and e.get("stale") is True for e in stale2)
+    assert "command-test.txt" in (payload2.get("missing") or [])

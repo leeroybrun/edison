@@ -25,17 +25,15 @@ def test_evidence_init_resolves_short_task_id(
     rc = init_main(
         argparse.Namespace(
             task_id="011",
-            round=1,
             json=True,
             repo_root=str(isolated_project_env),
         )
     )
-    assert rc == 0
+    assert rc == 1
 
     payload = json.loads(capsys.readouterr().out)
     assert payload.get("taskId") == full_id
-    expected_round = isolated_project_env / ".project" / "qa" / "validation-evidence" / full_id / "round-1"
-    assert expected_round.exists()
+    assert payload.get("deprecated") is True
 
 
 @pytest.mark.qa
@@ -59,18 +57,18 @@ def test_evidence_status_resolves_short_task_id(
     full_id = "012-task-relationships-consumers"
     TaskQAWorkflow(isolated_project_env).create_task(task_id=full_id, title="Test", create_qa=False)
 
-    from edison.core.qa.evidence import EvidenceService
     from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
     from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
-    ev = EvidenceService(task_id=full_id, project_root=isolated_project_env)
-    round_dir = ev.ensure_round(1)
-
     fp = compute_repo_fingerprint(isolated_project_env)
+    key = current_snapshot_key(project_root=isolated_project_env)
+    snap_dir = snapshot_dir(project_root=isolated_project_env, key=key)
+    snap_dir.mkdir(parents=True, exist_ok=True)
     write_command_evidence(
-        path=round_dir / "command-test.txt",
+        path=snap_dir / "command-test.txt",
         task_id=full_id,
-        round_num=1,
+        round_num=0,
         command_name="test",
         command="python -c \"print('ok')\"",
         cwd=str(isolated_project_env),
@@ -84,7 +82,6 @@ def test_evidence_status_resolves_short_task_id(
     rc = status_main(
         argparse.Namespace(
             task_id="012",
-            round_num=1,
             json=True,
             repo_root=str(isolated_project_env),
         )
@@ -116,18 +113,18 @@ def test_evidence_show_resolves_short_task_id(
     full_id = "089-context7-task-scoped-detection"
     TaskQAWorkflow(isolated_project_env).create_task(task_id=full_id, title="Test", create_qa=False)
 
-    from edison.core.qa.evidence import EvidenceService
     from edison.core.qa.evidence.command_evidence import write_command_evidence
+    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
     from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
-    ev = EvidenceService(task_id=full_id, project_root=isolated_project_env)
-    round_dir = ev.ensure_round(1)
-
     fp = compute_repo_fingerprint(isolated_project_env)
+    key = current_snapshot_key(project_root=isolated_project_env)
+    snap_dir = snapshot_dir(project_root=isolated_project_env, key=key)
+    snap_dir.mkdir(parents=True, exist_ok=True)
     write_command_evidence(
-        path=round_dir / "command-test.txt",
+        path=snap_dir / "command-test.txt",
         task_id=full_id,
-        round_num=1,
+        round_num=0,
         command_name="test",
         command="python -c \"print('ok')\"",
         cwd=str(isolated_project_env),
@@ -141,7 +138,6 @@ def test_evidence_show_resolves_short_task_id(
     rc = show_main(
         argparse.Namespace(
             task_id="089",
-            round_num=1,
             filename="command-test.txt",
             command_name=None,
             raw=False,

@@ -18,7 +18,6 @@ SUMMARY = "Display evidence content for review/debugging"
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier")
-    parser.add_argument("--round", type=int, dest="round_num", help="Explicit round number (default: latest)")
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--file", dest="filename", help="Evidence filename within the round directory")
     group.add_argument("--command", dest="command_name", help="CI command name (mapped via validation.evidence.files)")
@@ -40,27 +39,16 @@ def main(args: argparse.Namespace) -> int:
         project_root = get_repo_root(args)
         raw_task_id = str(args.task_id)
         task_id = resolve_existing_task_id(project_root=project_root, raw_task_id=raw_task_id)
-        round_num = getattr(args, "round_num", None)
         filename = getattr(args, "filename", None)
         command_name = getattr(args, "command_name", None)
         raw = bool(getattr(args, "raw", False))
 
         from edison.core.config.domains.qa import QAConfig
-        from edison.core.qa.evidence import EvidenceService, rounds
         from edison.core.qa.evidence.command_evidence import parse_command_evidence
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
 
-        ev = EvidenceService(task_id=task_id, project_root=project_root)
-        round_dir: Path
-        if round_num is not None:
-            round_dir = ev.get_round_dir(int(round_num))
-            if not round_dir.exists():
-                raise RuntimeError(f"Round {round_num} does not exist")
-        else:
-            rd = ev.get_current_round_dir()
-            if rd is None:
-                raise RuntimeError(f"No evidence round exists. Run `edison evidence init {task_id}` first.")
-            round_dir = rd
-            round_num = rounds.get_round_number(round_dir)
+        key = current_snapshot_key(project_root=project_root)
+        snap_dir = snapshot_dir(project_root=project_root, key=key)
 
         if command_name and not filename:
             qa = QAConfig(repo_root=project_root)
@@ -70,28 +58,38 @@ def main(args: argparse.Namespace) -> int:
             filename = str(evidence_files.get(str(command_name)) or f"command-{command_name}.txt").strip()
 
         if not filename:
-            files = _list_round_files(round_dir)
+            files = _list_round_files(snap_dir) if snap_dir.exists() else []
             if formatter.json_mode:
-                formatter.json_output({"taskId": task_id, "round": int(round_num or 1), "files": files})
+                formatter.json_output(
+                    {"taskId": task_id, "snapshotDir": str(snap_dir.relative_to(project_root)), "files": files}
+                )
             else:
-                formatter.text(f"Evidence files for {task_id} (round-{round_num}):")
+                formatter.text(f"Evidence snapshot files for {task_id}:")
+                formatter.text(f"- Snapshot: {snap_dir.relative_to(project_root)}")
                 for f in files:
                     formatter.text(f"- {f}")
                 formatter.text("Pick one: `edison evidence show <task> --file <name>` or `--command <ci-command>`")
             return 1
 
-        evidence_path = round_dir / str(filename)
+        evidence_path = snap_dir / str(filename)
         if not evidence_path.exists():
-            available = _list_round_files(round_dir)
+            available = _list_round_files(snap_dir) if snap_dir.exists() else []
             raise RuntimeError(
-                f"Evidence file not found: {filename} (round-{round_num}). "
+                f"Evidence file not found in current snapshot: {filename}. "
                 + (f"Available: {', '.join(available)}" if available else "")
             )
 
         text = evidence_path.read_text(encoding="utf-8", errors="replace")
         if raw:
             if formatter.json_mode:
-                formatter.json_output({"taskId": task_id, "round": int(round_num or 1), "file": str(filename), "raw": text})
+                formatter.json_output(
+                    {
+                        "taskId": task_id,
+                        "snapshotDir": str(snap_dir.relative_to(project_root)),
+                        "file": str(filename),
+                        "raw": text,
+                    }
+                )
             else:
                 formatter.text(text.rstrip("\n"))
             return 0
@@ -99,16 +97,30 @@ def main(args: argparse.Namespace) -> int:
         parsed = parse_command_evidence(evidence_path)
         if parsed is None:
             if formatter.json_mode:
-                formatter.json_output({"taskId": task_id, "round": int(round_num or 1), "file": str(filename), "raw": text})
+                formatter.json_output(
+                    {
+                        "taskId": task_id,
+                        "snapshotDir": str(snap_dir.relative_to(project_root)),
+                        "file": str(filename),
+                        "raw": text,
+                    }
+                )
             else:
                 formatter.text(text.rstrip("\n"))
             return 0
 
         if formatter.json_mode:
-            formatter.json_output({"taskId": task_id, "round": int(round_num or 1), "file": str(filename), **parsed})
+            formatter.json_output(
+                {
+                    "taskId": task_id,
+                    "snapshotDir": str(snap_dir.relative_to(project_root)),
+                    "file": str(filename),
+                    **parsed,
+                }
+            )
             return 0
 
-        formatter.text(f"Evidence: {task_id} (round-{round_num}) / {filename}")
+        formatter.text(f"Evidence (snapshot): {task_id} / {filename}")
         formatter.text(f"- command: {parsed.get('commandName', 'unknown')} (exit {parsed.get('exitCode', 'unknown')})")
         cmd = str(parsed.get("command", "") or "").strip()
         if cmd:

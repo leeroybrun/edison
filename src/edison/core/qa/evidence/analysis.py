@@ -36,7 +36,7 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
                 "kind": "automation",
                 "recordId": task_id,
                 "message": f"Evidence dir missing: {evidence_rel}",
-                "fixCmd": ["edison", "evidence", "init", task_id],
+                "fixCmd": ["edison", "qa", "round", "prepare", task_id],
             }
         ]
     rounds = ev_svc.list_rounds()
@@ -46,7 +46,7 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
                 "kind": "automation",
                 "recordId": task_id,
                 "message": "No round-* directories present",
-                "fixCmd": ["edison", "evidence", "init", task_id],
+                "fixCmd": ["edison", "qa", "round", "prepare", task_id],
             }
         ]
     latest = rounds[-1]
@@ -83,22 +83,43 @@ def missing_evidence_blockers(task_id: str) -> List[Dict[str, Any]]:
             required_files = []
 
     needed = set(required_files)
-    try:
-        files = {str(p.relative_to(latest)) for p in list_evidence_files(latest)}
-    except Exception:
-        files = {p.name for p in latest.iterdir() if p.is_file()}
+    qa_cfg = QAConfig(repo_root=project_root)
+    evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+    if not isinstance(evidence_files_cfg, dict):
+        evidence_files_cfg = {}
+    command_evidence_names = set(str(v).strip() for v in evidence_files_cfg.values() if str(v).strip())
+
+    command_required = [
+        str(p)
+        for p in required_files
+        if str(p).startswith("command-") or str(p) in command_evidence_names
+    ]
+    round_required = [str(p) for p in required_files if str(p) not in set(command_required)]
 
     missing: list[str] = []
-    for pattern in required_files:
-        if not any(Path(name).match(str(pattern)) for name in files):
-            missing.append(str(pattern))
+    if round_required:
+        try:
+            files = {str(p.relative_to(latest)) for p in list_evidence_files(latest)}
+        except Exception:
+            files = {p.name for p in latest.iterdir() if p.is_file()}
+        for pattern in round_required:
+            if not any(Path(name).match(str(pattern)) for name in files):
+                missing.append(str(pattern))
+
+    if command_required:
+        from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_status
+
+        key = current_snapshot_key(project_root=project_root)
+        snap = snapshot_status(project_root=project_root, key=key, required_files=command_required)
+        for f in (snap.get("missing") or []):
+            missing.append(str(f))
     if not missing:
         return []
     return [
         {
             "kind": "automation",
             "recordId": task_id,
-            "message": f"Missing evidence files in {latest.name}: {', '.join(missing)}",
+            "message": f"Missing evidence files: {', '.join(missing)}",
         }
     ]
 
