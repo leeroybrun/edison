@@ -22,13 +22,21 @@ def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continua
     cfg = _safe_dict(continuation_cfg)
     budgets = _safe_dict(cfg.get("budgets"))
 
+    for key in ("enabled", "defaultMode"):
+        if key not in cfg or cfg.get(key) is None:
+            raise ValueError(f"Missing required continuation config key: {key}")
+
+    for key in ("maxIterations", "cooldownSeconds", "stopOnBlocked"):
+        if key not in budgets or budgets.get(key) is None:
+            raise ValueError(f"Missing required continuation budget key: {key}")
+
     defaults = {
-        "enabled": bool(cfg.get("enabled")),
-        "mode": str(cfg.get("defaultMode")),
+        "enabled": bool(cfg["enabled"]),
+        "mode": str(cfg["defaultMode"]),
         "budgets": {
-            "maxIterations": int(budgets.get("maxIterations")),
-            "cooldownSeconds": int(budgets.get("cooldownSeconds")),
-            "stopOnBlocked": bool(budgets.get("stopOnBlocked")),
+            "maxIterations": int(budgets["maxIterations"]),
+            "cooldownSeconds": int(budgets["cooldownSeconds"]),
+            "stopOnBlocked": bool(budgets["stopOnBlocked"]),
         },
     }
 

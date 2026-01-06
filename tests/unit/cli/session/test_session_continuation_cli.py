@@ -5,6 +5,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -121,3 +123,21 @@ def test_compute_continuation_view_ignores_none_overrides() -> None:
 
     view = compute_continuation_view(continuation_cfg=cfg, meta_continuation=meta)
     assert view.effective == view.defaults
+
+
+def test_compute_continuation_view_requires_config_keys() -> None:
+    """Missing continuation.yaml keys should fail fast with a clear error."""
+    from edison.cli.session.continuation._core import compute_continuation_view
+
+    bad_cfg = {"enabled": True, "budgets": {"maxIterations": 5, "cooldownSeconds": 10, "stopOnBlocked": True}}
+    with pytest.raises(ValueError, match="Missing required continuation config key"):
+        compute_continuation_view(continuation_cfg=bad_cfg, meta_continuation=None)
+
+
+def test_compute_continuation_view_requires_budget_keys() -> None:
+    """Missing budget keys should fail fast with a clear error."""
+    from edison.cli.session.continuation._core import compute_continuation_view
+
+    bad_cfg = {"enabled": True, "defaultMode": "soft", "budgets": {"maxIterations": 5, "cooldownSeconds": 10}}
+    with pytest.raises(ValueError, match="Missing required continuation budget key"):
+        compute_continuation_view(continuation_cfg=bad_cfg, meta_continuation=None)
