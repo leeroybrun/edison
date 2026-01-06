@@ -735,6 +735,22 @@ class CLIEngine:
             if token.startswith("pend"):
                 return "pending"
 
+        # CodeRabbit CLI output may mention words like "reject" in explanatory text,
+        # so infer verdicts from its structured finding types rather than generic keywords.
+        if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
+            types = re.findall(r"\btype:\s*([a-z_]+)\b", response_lower)
+            if not types:
+                logger.warning(
+                    "CodeRabbit output missing finding types; failing closed (validator_id=%s, snippet=%r)",
+                    validator_id,
+                    response_lower[:300],
+                )
+                return "reject"
+
+            if any(t in {"critical_issue", "bug", "security_issue", "performance_issue"} for t in types):
+                return "reject"
+            return "approve"
+
         # Fail-closed heuristics:
         # - Never infer "approve" from incidental language like "please approve" or "needs approval".
         # - Only infer "reject"/"blocked" when the language is unambiguously negative.
@@ -758,29 +774,6 @@ class CLIEngine:
 
         if re.search(r"\bblocked\b", response_lower):
             return "blocked"
-
-        # CodeRabbit CLI ("coderabbit review --prompt-only") outputs plain text with
-        # per-file findings. Treat any reported finding types as a rejection.
-        #
-        # The CLI output may not include the literal word "coderabbit", so gate
-        # these heuristics on the validator id instead of response contents.
-        if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
-            types = re.findall(r"\btype:\s*([a-z_]+)\b", response_lower)
-            if not types:
-                logger.warning(
-                    "CodeRabbit output missing finding types; failing closed (validator_id=%s, snippet=%r)",
-                    validator_id,
-                    response_lower[:300],
-                )
-                return "reject"
-
-            # Treat "potential_issue"/"bug"/security/perf as blocking; allow pure refactor suggestions.
-            if any(
-                t in {"critical_issue", "bug", "security_issue", "performance_issue"}
-                for t in types
-            ):
-                return "reject"
-            return "approve"
 
         return None
 
