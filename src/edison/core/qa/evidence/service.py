@@ -222,7 +222,12 @@ class EvidenceService:
         return read_structured_report(report_path)
 
     def write_implementation_report(
-        self, data: Dict[str, Any], round_num: Optional[int] = None
+        self,
+        data: Dict[str, Any],
+        round_num: Optional[int] = None,
+        *,
+        body: str | None = None,
+        preserve_existing_body: bool = True,
     ) -> None:
         """Write implementation report using configured filename.
 
@@ -233,18 +238,26 @@ class EvidenceService:
 
         try:
             # Always write to the configured report path.
-            body: str | None = None
-            if report_path.exists():
-                try:
-                    existing_doc = parse_frontmatter(report_path.read_text(encoding="utf-8", errors="strict"))
-                    if not str(existing_doc.content or "").strip():
-                        body = self._load_implementation_report_template()
-                except Exception:
-                    body = None
-            else:
-                body = self._load_implementation_report_template()
+            template_body: str | None = None
+            if body is None:
+                if report_path.exists():
+                    try:
+                        existing_doc = parse_frontmatter(
+                            report_path.read_text(encoding="utf-8", errors="strict")
+                        )
+                        if not str(existing_doc.content or "").strip():
+                            template_body = self._load_implementation_report_template()
+                    except Exception:
+                        template_body = None
+                else:
+                    template_body = self._load_implementation_report_template()
 
-            write_structured_report(report_path, data, body=body, preserve_existing_body=True)
+            write_structured_report(
+                report_path,
+                data,
+                body=body if body is not None else template_body,
+                preserve_existing_body=preserve_existing_body,
+            )
         except Exception as e:
             raise EvidenceError(
                 f"Failed to write implementation report to {report_path}: {e}"
@@ -266,6 +279,10 @@ class EvidenceService:
         except Exception:
             # Fail-open: template is UX-only; evidence/report semantics come from YAML frontmatter.
             return ""
+
+    def get_implementation_report_template_body(self) -> str:
+        """Return the implementation report template body (best-effort)."""
+        return self._load_implementation_report_template()
 
     # -------------------------------------------------------------------------
     # Validator Report I/O (SINGLE SOURCE)

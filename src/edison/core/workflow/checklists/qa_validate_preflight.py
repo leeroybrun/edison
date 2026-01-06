@@ -96,6 +96,12 @@ class QAValidatePreflightChecklistEngine:
             )
         )
         items.append(
+            self._build_implementation_report_item(
+                task_id=root,
+                round_num=round_num,
+            )
+        )
+        items.append(
             self._build_context7_item(
                 task_id=root,
                 session_id=session_id,
@@ -115,6 +121,87 @@ class QAValidatePreflightChecklistEngine:
             "items": [i.to_dict() for i in items],
             "hasBlockers": has_blockers,
         }
+
+    def _build_implementation_report_item(
+        self,
+        *,
+        task_id: str,
+        round_num: int | None,
+    ) -> ChecklistItem:
+        """Warn-only checks for the round-scoped implementation report."""
+        from edison.core.qa.evidence import EvidenceService
+        from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+        from edison.core.utils.text import parse_frontmatter
+
+        target, target_dir, _current = self._resolve_target_round(task_id=task_id, round_num=round_num)
+        if target is None or target_dir is None:
+            return ChecklistItem(
+                id="implementation-report",
+                severity="info",
+                title="Implementation Report",
+                rationale="No evidence round exists yet, so no implementation report is expected.",
+                status="unknown",
+                evidence_paths=[],
+                suggested_commands=[f"edison qa round prepare {task_id}"],
+            )
+
+        ev = EvidenceService(task_id, project_root=self.project_root)
+        report_path = target_dir / ev.implementation_filename
+        if not report_path.exists():
+            return ChecklistItem(
+                id="implementation-report",
+                severity="warning",
+                title="Implementation Report Missing",
+                rationale=f"Missing {ev.implementation_filename} under round-{target}.",
+                status="missing",
+                evidence_paths=[self._display_path(report_path)],
+                suggested_commands=[f"edison qa round prepare {task_id}"],
+            )
+
+        try:
+            text = report_path.read_text(encoding="utf-8", errors="strict")
+            doc = parse_frontmatter(text)
+            fm = doc.frontmatter if isinstance(doc.frontmatter, dict) else {}
+            body = str(doc.content or "")
+        except Exception:
+            fm = {}
+            body = ""
+
+        required_header = "## Changes in this round (required)"
+        missing_section = required_header not in body
+
+        current_fp = compute_repo_fingerprint(self.project_root)
+        captured_fp = {k: fm.get(k) for k in ("gitHead", "gitDirty", "diffHash")}
+        stale = any(
+            str(captured_fp.get(k) or "") != str(current_fp.get(k) or "")
+            for k in ("gitHead", "diffHash")
+        ) or bool(captured_fp.get("gitDirty", False)) != bool(current_fp.get("gitDirty", False))
+
+        if missing_section or stale:
+            reasons: list[str] = []
+            if missing_section:
+                reasons.append(f"Missing required section: {required_header}")
+            if stale:
+                reasons.append("Fingerprint differs from current repo state (report may be stale).")
+            return ChecklistItem(
+                id="implementation-report",
+                severity="warning",
+                title="Implementation Report Needs Update",
+                rationale=" ".join(reasons),
+                status="stale" if stale else "warning",
+                evidence_paths=[self._display_path(report_path)],
+                suggested_commands=[],
+            )
+
+        return ChecklistItem(
+            id="implementation-report",
+            severity="info",
+            title="Implementation Report",
+            rationale=f"{ev.implementation_filename} exists and includes the required delta section.",
+            status="ok",
+            evidence_paths=[self._display_path(report_path)],
+            suggested_commands=[],
+        )
 
     def _resolve_target_round(
         self,

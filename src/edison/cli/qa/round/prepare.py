@@ -17,6 +17,20 @@ from edison.core.qa.workflow.repository import QARepository
 
 SUMMARY = "Prepare a new QA evidence round (creates round-N and initializes reports)"
 
+_CHANGES_SECTION_HEADER = "## Changes in this round (required)"
+
+
+def _ensure_changes_section(body: str) -> str:
+    raw = str(body or "")
+    if _CHANGES_SECTION_HEADER in raw:
+        return raw
+    prefix = (
+        f"{_CHANGES_SECTION_HEADER}\n\n"
+        "- Describe what changed since the previous round.\n"
+        "- If code changed, refresh automation evidence (tests/lint/build) as needed.\n\n"
+    )
+    return prefix + raw.lstrip()
+
 
 def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("task_id", help="Task identifier (root or bundle member)")
@@ -118,16 +132,53 @@ def main(args: argparse.Namespace) -> int:
 
         # Initialize implementation report (validators often depend on it for file-scoped context).
         existing_impl: dict[str, Any] = ev.read_implementation_report(round_num) or {}
+        report_path = round_dir / ev.implementation_filename
         if not existing_impl:
+            from edison.core.utils.git.fingerprint import compute_repo_fingerprint
+            from edison.core.utils.time import utc_timestamp
+            from edison.core.utils.text import parse_frontmatter
+
+            fp = compute_repo_fingerprint(repo_root)
+            base_frontmatter: dict[str, Any] = {
+                "taskId": root_task_id,
+                "round": int(round_num),
+                "completionStatus": "partial",
+                "followUpTasks": [],
+                "notesForValidator": "",
+                "gitHead": fp.get("gitHead"),
+                "gitDirty": fp.get("gitDirty"),
+                "diffHash": fp.get("diffHash"),
+                "fingerprintedAt": utc_timestamp(),
+            }
+
+            # Copy-forward from the previous round when available.
+            copied_body: str | None = None
+            if int(round_num) > 1:
+                prev_dir = ev.get_round_dir(int(round_num) - 1)
+                prev_path = prev_dir / ev.implementation_filename
+                if prev_path.exists():
+                    try:
+                        doc = parse_frontmatter(prev_path.read_text(encoding="utf-8", errors="strict"))
+                        prev_fm = doc.frontmatter if isinstance(doc.frontmatter, dict) else {}
+                        # Preserve prior frontmatter fields, but update round/task + fingerprint.
+                        base_frontmatter = {
+                            **prev_fm,
+                            **base_frontmatter,
+                            "copiedFromRound": int(round_num) - 1,
+                        }
+                        copied_body = _ensure_changes_section(str(doc.content or ""))
+                    except Exception:
+                        copied_body = None
+
+            # Fallback: start from the composed template body but still inject the required delta section.
+            if copied_body is None:
+                copied_body = _ensure_changes_section(ev.get_implementation_report_template_body())
+
             ev.write_implementation_report(
-                {
-                    "taskId": root_task_id,
-                    "round": int(round_num),
-                    "completionStatus": "partial",
-                    "followUpTasks": [],
-                    "notesForValidator": "",
-                },
+                base_frontmatter,
                 round_num=round_num,
+                body=copied_body,
+                preserve_existing_body=False,
             )
 
         # Initialize a draft validation summary (primarily as a discoverable anchor).
