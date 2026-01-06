@@ -112,7 +112,7 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
         engine.check_state_transition(task, "done", "validated")
 
     msg = str(exc.value).lower()
-    assert "bundle-summary.md" in msg
+    assert _bundle_filename(tmp_path).lower() in msg
     assert "missing" in msg or "incomplete" in msg
 
 

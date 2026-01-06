@@ -61,7 +61,6 @@ def test_qa_bundle_json_includes_scope_and_resolves_bundle_root(
         / "validation-evidence"
         / "T-ROOT"
         / "round-1"
-        / "bundle-summary.md"
+        / "validation-summary.md"
     )
     assert bundle_path.exists()
-

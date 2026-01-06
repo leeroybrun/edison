@@ -152,7 +152,7 @@ class TestQAManagerWriteReport:
     """Test write_report operation."""
 
     def test_write_bundle_summary(self, qa_manager: QAManager, task_id: str):
-        """Should write bundle-summary.md to latest round."""
+        """Should write validation-summary.md to latest round."""
         qa_manager.create_round(task_id)
 
         bundle_data = {
@@ -165,7 +165,7 @@ class TestQAManagerWriteReport:
 
         # Verify file was written
         latest_dir = qa_manager.get_round_dir(task_id)
-        bundle_file = latest_dir / "bundle-summary.md"
+        bundle_file = latest_dir / "validation-summary.md"
         assert bundle_file.exists()
 
     def test_write_implementation_report(self, qa_manager: QAManager, task_id: str):

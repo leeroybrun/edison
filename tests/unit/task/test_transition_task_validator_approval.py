@@ -1,8 +1,8 @@
 """Tests for validator-approval rule enforcement on task validation state transition.
 
 These tests verify that:
-1. Tasks cannot transition to 'validated' state without a bundle-summary.md file
-2. Tasks CAN transition to 'validated' state when bundle-summary.md exists with approved=true
+1. Tasks cannot transition to 'validated' state without a validation summary file
+2. Tasks CAN transition to 'validated' state when validation-summary.md exists with approved=true
 
 Uses the new repository pattern and RulesEngine API (replacing legacy task.transition_task).
 """
@@ -48,7 +48,7 @@ def test_transition_task_blocks_without_validator_approval(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should block when no bundle-summary.md exists."""
+    """Task transition to validated should block when no validation summary exists."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -89,7 +89,7 @@ def test_transition_task_allows_when_bundle_approved(
     isolated_project_env: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Task transition to validated should succeed when bundle-summary.md has approved=true."""
+    """Task transition to validated should succeed when validation-summary.md has approved=true."""
     root = isolated_project_env
     setup_project_root(monkeypatch, root)
     monkeypatch.chdir(root)
@@ -128,8 +128,8 @@ summary: "Test implementation"
         encoding="utf-8",
     )
     
-    # Create bundle-summary.md (required by validator-approval rule)
-    bundle_path = round_dir / "bundle-summary.md"
+    # Create validation-summary.md (required by validator-approval rule)
+    bundle_path = round_dir / "validation-summary.md"
     bundle_path.write_text(
         f"""---
 taskId: "{task_id}"
