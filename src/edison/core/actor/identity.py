@@ -46,6 +46,7 @@ _KIND_TO_ARTIFACT: dict[str, str] = {
 # Aliases for legacy/plural forms
 _KIND_ALIASES: dict[str, str] = {
     "agents": "agent",
+    "orchestrators": "orchestrator",
     "validators": "validator",
 }
 
