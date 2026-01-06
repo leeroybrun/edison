@@ -44,7 +44,7 @@ class TestCompositionConfigDefaults:
 
     def test_shingle_size_default(self, minimal_config: CompositionConfig) -> None:
         """Should return default shingle_size."""
-        # Default from bundled config
+        # Default from merged composition config (bundled defaults + minimal project config)
         assert isinstance(minimal_config.shingle_size, int)
         assert minimal_config.shingle_size > 0
 
