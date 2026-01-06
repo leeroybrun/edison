@@ -422,6 +422,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
     for validator_id, model in [
         ("global-codex", "codex"),
         ("global-claude", "claude"),
+        ("coderabbit", "coderabbit"),
         ("security", "codex"),
         ("performance", "codex"),
         ("prisma", "codex"),
@@ -496,7 +497,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     for validator_id, model, verdict in [
         ("global-codex", "codex", "approve"),
         ("global-claude", "claude", "approve"),
-        ("security", "codex", "reject"),  # BLOCKING VALIDATOR FAILS
+        ("coderabbit", "coderabbit", "reject"),  # BLOCKING VALIDATOR FAILS
         ("performance", "codex", "approve"),
         ("prisma", "codex", "approve"),
         ("testing", "codex", "approve"),
