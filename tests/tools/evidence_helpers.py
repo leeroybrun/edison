@@ -28,14 +28,14 @@ def write_passing_snapshot_command_evidence(
     task_id: str,
     required_files: list[str],
 ) -> Path:
-    """Create passing command evidence files in the current snapshot dir.
+    """Create passing command evidence files in the task round evidence directory.
 
     This writes command evidence v1 (exitCode=0) for each required command-like
-    evidence filename, keyed to the current repo fingerprint.
+    evidence filename, scoped to `round-1`, matching what task guards validate.
     """
     from edison.core.config.domains.qa import QAConfig
+    from edison.core.qa.evidence import EvidenceService
     from edison.core.qa.evidence.command_evidence import write_command_evidence
-    from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
     from edison.core.utils.git.fingerprint import compute_repo_fingerprint
 
     qa_cfg = QAConfig(repo_root=project_root)
@@ -51,9 +51,9 @@ def write_passing_snapshot_command_evidence(
     ]
 
     fingerprint = compute_repo_fingerprint(project_root)
-    key = current_snapshot_key(project_root=project_root)
-    snap_dir = snapshot_dir(project_root=project_root, key=key)
-    snap_dir.mkdir(parents=True, exist_ok=True)
+    ev = EvidenceService(task_id, project_root=project_root)
+    round_dir = ev.get_evidence_root() / "round-1"
+    round_dir.mkdir(parents=True, exist_ok=True)
 
     for filename in command_required:
         name = str(filename).strip()
@@ -63,9 +63,9 @@ def write_passing_snapshot_command_evidence(
         if command_name.endswith(".txt"):
             command_name = command_name[: -len(".txt")]
         write_command_evidence(
-            path=snap_dir / name,
+            path=round_dir / name,
             task_id=str(task_id),
-            round_num=0,
+            round_num=1,
             command_name=command_name or "command",
             command="true",
             cwd=str(project_root),
@@ -74,5 +74,4 @@ def write_passing_snapshot_command_evidence(
             fingerprint=fingerprint,
         )
 
-    return snap_dir
-
+    return round_dir
