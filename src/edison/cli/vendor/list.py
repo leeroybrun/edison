@@ -70,7 +70,7 @@ def main(args: argparse.Namespace) -> int:
                     formatter.text(f"    URL:    {redact_url_credentials(source.url)}")
                     formatter.text(f"    Ref:    {source.ref}")
                     formatter.text(f"    Path:   {source.path}")
-                    if entry:
+                    if entry and entry.commit:
                         formatter.text(f"    Commit: {entry.commit[:12]}")
                     formatter.text(f"    Status: {status}")
                     formatter.text("")
