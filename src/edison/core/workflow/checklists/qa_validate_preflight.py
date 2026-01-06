@@ -39,9 +39,7 @@ class QAValidatePreflightChecklistEngine:
         session_id: str | None,
         roster: dict[str, Any],
         round_num: int | None,
-        new_round: bool,
         will_execute: bool,
-        check_only: bool,
         root_task_id: str | None = None,
         scope_used: str | None = None,
         cluster_task_ids: list[str] | None = None,
@@ -87,18 +85,14 @@ class QAValidatePreflightChecklistEngine:
             self._build_evidence_round_item(
                 task_id=root,
                 round_num=round_num,
-                new_round=new_round,
                 will_execute=will_execute,
-                check_only=check_only,
             )
         )
         items.append(
             self._build_required_evidence_item(
                 task_id=root,
                 round_num=round_num,
-                new_round=new_round,
                 will_execute=will_execute,
-                check_only=check_only,
             )
         )
         items.append(
@@ -107,7 +101,6 @@ class QAValidatePreflightChecklistEngine:
                 session_id=session_id,
                 roster=roster,
                 round_num=round_num,
-                new_round=new_round,
                 will_execute=will_execute,
             )
         )
@@ -128,17 +121,12 @@ class QAValidatePreflightChecklistEngine:
         *,
         task_id: str,
         round_num: int | None,
-        new_round: bool,
     ) -> tuple[int | None, Path | None, int | None]:
         """Resolve (target_round, target_round_dir, current_round)."""
         from edison.core.qa.evidence import EvidenceService
 
         ev = EvidenceService(task_id, project_root=self.project_root)
         current = ev.get_current_round()
-
-        if new_round:
-            target = int((current or 0) + 1)
-            return target, ev.get_round_dir(target), current
 
         if round_num is not None:
             target = int(round_num)
@@ -154,38 +142,15 @@ class QAValidatePreflightChecklistEngine:
         *,
         task_id: str,
         round_num: int | None,
-        new_round: bool,
         will_execute: bool,
-        check_only: bool,
     ) -> ChecklistItem:
-        target, target_dir, current = self._resolve_target_round(
-            task_id=task_id, round_num=round_num, new_round=new_round
-        )
-
-        # In check-only mode, a missing round means approval cannot be computed.
-        if check_only and target is None:
-            return ChecklistItem(
-                id="evidence-round",
-                severity="blocker",
-                title="Evidence Round Missing",
-                rationale="No evidence round exists yet; `--check-only` can only evaluate existing evidence.",
-                status="missing",
-                evidence_paths=[],
-                suggested_commands=[
-                    f"edison qa validate {task_id} --execute",
-                    f"edison evidence init {task_id}",
-                ],
-            )
+        target, target_dir, _current = self._resolve_target_round(task_id=task_id, round_num=round_num)
 
         if target is None:
-            # No rounds yet; execute mode will create round-1.
-            sev = "warning" if will_execute else "info"
+            sev = "blocker" if will_execute else "info"
             rationale = "No evidence round exists yet."
             if will_execute:
-                from edison.core.qa.evidence import EvidenceService
-
-                ev = EvidenceService(task_id, project_root=self.project_root)
-                rationale += f" This run will create round-1 at {self._display_path(ev.get_round_dir(1))}."
+                rationale += " `qa validate --execute` does not create rounds; prepare a round first."
             return ChecklistItem(
                 id="evidence-round",
                 severity=sev,
@@ -193,29 +158,24 @@ class QAValidatePreflightChecklistEngine:
                 rationale=rationale,
                 status="missing",
                 evidence_paths=[],
-                suggested_commands=[f"edison evidence init {task_id}"],
+                suggested_commands=[f"edison qa round prepare {task_id}"],
             )
 
         assert target_dir is not None
         if target_dir.exists():
-            label = "Evidence Round Selected"
-            if new_round:
-                label = "New Evidence Round Selected"
             return ChecklistItem(
                 id="evidence-round",
                 severity="info",
-                title=label,
+                title="Evidence Round Selected",
                 rationale=f"Using evidence round {target} at {self._display_path(target_dir)}.",
                 status="ok",
                 evidence_paths=[self._display_path(target_dir)],
                 suggested_commands=[],
             )
 
-        # Target doesn't exist yet (typically new_round or explicit round).
-        sev = "warning" if check_only else ("info" if will_execute else "warning")
+        # Target doesn't exist yet (typically an explicit round override).
+        sev = "blocker" if will_execute else "warning"
         rationale = f"Evidence round {target} does not exist yet at {self._display_path(target_dir)}."
-        if will_execute:
-            rationale += " This run will create it automatically."
         return ChecklistItem(
             id="evidence-round",
             severity=sev,
@@ -223,7 +183,7 @@ class QAValidatePreflightChecklistEngine:
             rationale=rationale,
             status="missing",
             evidence_paths=[self._display_path(target_dir)],
-            suggested_commands=[f"edison evidence init {task_id}"],
+            suggested_commands=[f"edison qa round prepare {task_id}"],
         )
 
     def _build_required_evidence_item(
@@ -231,15 +191,11 @@ class QAValidatePreflightChecklistEngine:
         *,
         task_id: str,
         round_num: int | None,
-        new_round: bool,
         will_execute: bool,
-        check_only: bool,
     ) -> ChecklistItem:
         from edison.core.qa.policy.resolver import ValidationPolicyResolver
 
-        target, target_dir, _current = self._resolve_target_round(
-            task_id=task_id, round_num=round_num, new_round=new_round
-        )
+        target, target_dir, _current = self._resolve_target_round(task_id=task_id, round_num=round_num)
         policy = ValidationPolicyResolver(project_root=self.project_root).resolve_for_task(task_id)
         required = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
 
@@ -256,10 +212,8 @@ class QAValidatePreflightChecklistEngine:
 
         if target is None or target_dir is None:
             # No rounds yet.
-            sev = "blocker" if check_only else ("warning" if will_execute else "info")
+            sev = "warning" if will_execute else "info"
             rationale = "Required evidence patterns exist, but no round directory exists yet."
-            if will_execute:
-                rationale += " Run will create a round directory; you may still need to capture evidence."
             return ChecklistItem(
                 id="required-evidence",
                 severity=sev,
@@ -267,11 +221,14 @@ class QAValidatePreflightChecklistEngine:
                 rationale=rationale,
                 status="unknown",
                 evidence_paths=[],
-                suggested_commands=[f"edison evidence capture --task {task_id}"],
+                suggested_commands=[
+                    f"edison qa round prepare {task_id}",
+                    f"edison evidence capture {task_id}",
+                ],
             )
 
         if not target_dir.exists():
-            sev = "blocker" if check_only else ("warning" if will_execute else "warning")
+            sev = "warning" if will_execute else "warning"
             return ChecklistItem(
                 id="required-evidence",
                 severity=sev,
@@ -279,7 +236,7 @@ class QAValidatePreflightChecklistEngine:
                 rationale=f"Evidence round {target} does not exist yet, so required evidence cannot be present.",
                 status="missing",
                 evidence_paths=[self._display_path(target_dir)],
-                suggested_commands=[f"edison evidence init {task_id}"],
+                suggested_commands=[f"edison qa round prepare {task_id}"],
             )
 
         from edison.core.qa.evidence.analysis import list_evidence_files
@@ -305,8 +262,8 @@ class QAValidatePreflightChecklistEngine:
                 suggested_commands=[],
             )
 
-        sev = "blocker" if check_only else "warning"
-        suggested = [f"edison evidence capture --task {task_id}"]
+        sev = "warning"
+        suggested = [f"edison evidence capture {task_id}"]
         if will_execute:
             suggested.append(f"edison qa validate {task_id} --execute")
         return ChecklistItem(
@@ -326,7 +283,6 @@ class QAValidatePreflightChecklistEngine:
         session_id: str | None,
         roster: dict[str, Any],
         round_num: int | None,
-        new_round: bool,
         will_execute: bool,
     ) -> ChecklistItem:
         _ = session_id  # reserved for future (task-scoped detection work)
@@ -358,14 +314,23 @@ class QAValidatePreflightChecklistEngine:
                 suggested_commands=[],
             )
 
-        target, target_dir, current = self._resolve_target_round(
-            task_id=task_id, round_num=round_num, new_round=new_round
-        )
+        target, target_dir, _current = self._resolve_target_round(task_id=task_id, round_num=round_num)
         if target is None:
-            target = 1
-            from edison.core.qa.evidence import EvidenceService
-
-            target_dir = EvidenceService(task_id, project_root=self.project_root).get_round_dir(target)
+            return ChecklistItem(
+                id="context7",
+                severity="warning",
+                title="Context7 Markers Missing (No Round Directory Yet)",
+                rationale=(
+                    f"Context7 markers are required for: {', '.join(sorted(required_pkgs))}. "
+                    "No evidence round exists yet."
+                ),
+                status="missing",
+                evidence_paths=[],
+                suggested_commands=[
+                    f"edison qa round prepare {task_id}",
+                    "edison evidence context7 template <package>",
+                ],
+            )
 
         assert target_dir is not None
 

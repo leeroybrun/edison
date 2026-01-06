@@ -45,12 +45,7 @@ def register_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--round",
         type=int,
-        help="Validation round number (default: use current round; creates round-1 if none)",
-    )
-    parser.add_argument(
-        "--new-round",
-        action="store_true",
-        help="Create a new evidence round directory and run validators in it",
+        help="Validation round number (default: use current round; fails closed if none)",
     )
     parser.add_argument(
         "--wave",
@@ -82,11 +77,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         "--execute",
         action="store_true",
         help="Execute validators directly (default: show roster only)",
-    )
-    parser.add_argument(
-        "--check-only",
-        action="store_true",
-        help="Do not execute validators; compute approval from existing evidence and emit the bundle summary file",
     )
     parser.add_argument(
         "--sequential",
@@ -124,8 +114,6 @@ def main(args: argparse.Namespace) -> int:
             return int(blocked)
 
         session_id = resolve_session_id(project_root=repo_root, explicit=args.session, required=False)
-        if args.execute and args.check_only:
-            raise ValueError("Pass only one of --execute or --check-only")
 
         raw_task_id = str(args.task_id)
         resolved_task_id = raw_task_id
@@ -230,15 +218,13 @@ def main(args: argparse.Namespace) -> int:
             QAValidatePreflightChecklistEngine,
         )
 
-        will_execute = bool(args.execute and not args.dry_run and not args.check_only)
+        will_execute = bool(args.execute and not args.dry_run)
         preflight_checklist = QAValidatePreflightChecklistEngine(project_root=repo_root).compute(
             task_id=str(args.task_id),
             session_id=session_id,
             roster=roster,
             round_num=int(args.round) if args.round is not None else None,
-            new_round=bool(getattr(args, "new_round", False)),
             will_execute=will_execute,
-            check_only=bool(getattr(args, "check_only", False)),
             root_task_id=root_task_id,
             scope_used=scope_used,
             cluster_task_ids=cluster_task_ids,
@@ -283,73 +269,6 @@ def main(args: argparse.Namespace) -> int:
                 preset_used=preset_used,
                 validators_override=validators_override,
             )
-
-        if args.check_only:
-            if args.dry_run:
-                raise ValueError("--check-only cannot be combined with --dry-run")
-
-            if not formatter.json_mode:
-                _display_preflight_checklist(formatter=formatter, checklist=preflight_checklist)
-            from edison.core.qa.evidence import EvidenceService
-
-            root_ev = EvidenceService(root_task_id, project_root=repo_root)
-            round_num = int(args.round or root_ev.get_current_round() or 0)
-            if not round_num:
-                formatter.error("No evidence round found; run tracking/validation first", error_code="no_round")
-                return 1
-
-            bundle_data, overall_approved, cluster_missing = _compute_bundle_summary(
-                args=args,
-                repo_root=repo_root,
-                session_id=session_id,
-                validator_registry=validator_registry,
-                round_num=round_num,
-                extra_validators=extra_validators,
-                execution_result=None,
-                root_task_id=root_task_id,
-                scope_used=scope_used,
-                cluster_task_ids=cluster_task_ids,
-                manifest_tasks=manifest_tasks,
-                preset_used=str(roster.get("preset") or getattr(args, "preset", "") or "").strip(),
-            )
-
-            # Write bundle summary at root and mirror into each member evidence dir.
-            root_ev.write_bundle(bundle_data, round_num=round_num)
-            _mirror_bundle_summary(
-                repo_root=repo_root,
-                round_num=round_num,
-                root_task_id=root_task_id,
-                cluster_task_ids=cluster_task_ids,
-                bundle_data=bundle_data,
-            )
-
-            if formatter.json_mode:
-                formatter.json_output(
-                    {
-                        "task_id": args.task_id,
-                        "round": round_num,
-                        "preset": str(roster.get("preset") or getattr(args, "preset", "") or "").strip(),
-                        "approved": overall_approved,
-                        "missing": bundle_data.get("missing") or [],
-                        "cluster_missing": cluster_missing,
-                        "checklist": preflight_checklist,
-                        "bundle_file": str(
-                            (root_ev.ensure_round(round_num) / root_ev.bundle_filename).relative_to(repo_root)
-                        ),
-                    }
-                )
-            else:
-                if overall_approved:
-                    formatter.text(
-                        f"All blocking validator reports approved and {root_ev.bundle_filename} was written."
-                    )
-                else:
-                    formatter.text("Bundle NOT approved (missing or failing blocking reports).")
-                    for tid, missing in (cluster_missing or {}).items():
-                        suffix = f": {', '.join(missing)}" if missing else ""
-                        formatter.text(f"  - {tid}{suffix}")
-
-            return 0 if overall_approved else 1
 
         # Dry-run or roster-only mode
         results = {
@@ -715,26 +634,34 @@ def _execute_with_executor(
     ev = EvidenceService(root_task_id, project_root=repo_root)
 
     # Resolve the evidence round deterministically (and print it) so operators know where artifacts go.
+    #
+    # IMPORTANT: `qa validate` must not create rounds. Round creation is owned by
+    # `edison qa round prepare`.
     round_num: int
-    if getattr(args, "new_round", False):
-        created = ev.create_next_round()
-        round_num = evidence_rounds.get_round_number(created)
-    elif args.round is not None:
+    if args.round is not None:
         round_num = int(args.round)
-        ev.ensure_round(round_num)
     else:
         current = ev.get_current_round()
         if current is None:
-            created = ev.create_next_round()
-            round_num = evidence_rounds.get_round_number(created)
-        else:
-            round_num = int(current)
+            formatter.error(
+                "No evidence round exists yet; run `edison qa round prepare <task>` before executing validators.",
+                error_code="no_round",
+            )
+            return 1
+        round_num = int(current)
+
+    round_dir = ev.get_round_dir(round_num)
+    if not round_dir.exists():
+        formatter.error(
+            f"Evidence round {round_num} does not exist for {root_task_id}; run `edison qa round prepare {root_task_id}`.",
+            error_code="round_missing",
+        )
+        return 1
 
     try:
         from edison.core.utils.paths import PathResolver
 
         project_root = PathResolver.resolve_project_root()
-        round_dir = ev.get_round_dir(round_num)
         try:
             display_round = str(round_dir.relative_to(project_root))
         except Exception:
@@ -931,8 +858,8 @@ def _execute_with_executor(
         formatter.text(f"Blocking failures: {', '.join(result.blocking_failed)}")
         formatter.text("")
         formatter.text("Next steps:")
-        formatter.text(f"  edison qa round {args.task_id} --status reject  # Record outcome in QA history")
-        formatter.text(f"  edison qa validate {args.task_id} --execute --new-round  # Re-run in fresh evidence round")
+        formatter.text(f"  edison qa round set-status {args.task_id} --status reject  # Record outcome in QA history")
+        formatter.text(f"  edison qa round prepare {args.task_id}  # Prepare a fresh round, then re-run validation")
     elif overall_approved:
         formatter.text("")
         formatter.text(f"All blocking validators approved and {ev.bundle_filename} was written. Next steps:")
