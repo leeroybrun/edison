@@ -5,8 +5,9 @@ This prompt enables Ralph Loop (hard continuation) mode for a session.
 
 from pathlib import Path
 
+from edison.core.utils.paths import PathResolver
 
-SESSION_PATH = Path("src/edison/data/start/START_RALPH_LOOP.md")
+SESSION_PATH = PathResolver.resolve_project_root() / "src/edison/data/start/START_RALPH_LOOP.md"
 
 
 def read_session_text() -> str:
