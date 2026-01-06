@@ -84,6 +84,15 @@ class TestRulesInjectCLI:
         args = parser.parse_args(["--format", "markdown"])
         assert args.format == "markdown"
 
+    def test_register_args_rejects_json_flag(self) -> None:
+        """CLI should use --format json instead of a separate --json flag."""
+        from edison.cli.rules.inject import register_args
+
+        parser = argparse.ArgumentParser()
+        register_args(parser)
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--json"])
+
     def test_register_args_defaults(self) -> None:
         """CLI should have sensible defaults."""
         from edison.cli.rules.inject import register_args
