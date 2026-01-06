@@ -49,6 +49,43 @@ WebServerLockScope = LockScope
 WebServerLockConfig = NamedLockConfig
 
 
+_LEGACY_WEB_SERVER_KEY_HINTS: dict[str, str] = {
+    "base_url": "web_server.url",
+    "baseUrl": "web_server.url",
+    "healthcheck": "web_server.healthcheck_url",
+    "healthcheckUrl": "web_server.healthcheck_url",
+    "ensureRunning": "web_server.ensure_running",
+    "stopAfter": "web_server.stop_after",
+    "startupTimeoutSeconds": "web_server.startup_timeout_seconds",
+    "shutdownTimeoutSeconds": "web_server.shutdown_timeout_seconds",
+    "probeTimeoutSeconds": "web_server.probe_timeout_seconds",
+    "pollIntervalSeconds": "web_server.poll_interval_seconds",
+    "start_command": "web_server.start.command",
+    "startCommand": "web_server.start.command",
+    "stop_command": "web_server.stop.command",
+    "stopCommand": "web_server.stop.command",
+}
+
+
+def _raise_on_legacy_keys(raw: dict[str, Any]) -> None:
+    found: list[str] = []
+    for key in _LEGACY_WEB_SERVER_KEY_HINTS.keys():
+        if key not in raw:
+            continue
+        val = raw.get(key)
+        if val is None:
+            continue
+        if isinstance(val, str) and not val.strip():
+            continue
+        found.append(key)
+
+    if not found:
+        return
+
+    hints = ", ".join(f"{k} → {_LEGACY_WEB_SERVER_KEY_HINTS[k]}" for k in found)
+    raise ValueError(f"Unsupported legacy web_server keys: {hints}")
+
+
 @dataclass(frozen=True)
 class WebServerConfig:
     """Configuration for ensuring a validator web server/stack is correct."""
@@ -74,18 +111,18 @@ class WebServerConfig:
         if not isinstance(raw, dict):
             return None
 
-        url_raw = raw.get("url", raw.get("base_url", raw.get("baseUrl")))
+        _raise_on_legacy_keys(raw)
+
+        url_raw = raw.get("url")
         url = str(url_raw or "").strip()
         if not url:
             return None
 
-        health_raw = raw.get(
-            "healthcheck_url", raw.get("healthcheckUrl", raw.get("healthcheck"))
-        )
+        health_raw = raw.get("healthcheck_url")
         healthcheck_url = str(health_raw).strip() if health_raw is not None else None
 
-        ensure_running = bool(raw.get("ensure_running", raw.get("ensureRunning", False)))
-        stop_after = bool(raw.get("stop_after", raw.get("stopAfter", True)))
+        ensure_running = bool(raw.get("ensure_running", False))
+        stop_after = bool(raw.get("stop_after", True))
 
         cwd_raw = raw.get("cwd")
         cwd = str(cwd_raw).strip() if cwd_raw is not None else None
@@ -117,16 +154,16 @@ class WebServerConfig:
             cwd=cwd,
             env=env,
             startup_timeout_seconds=_as_float(
-                raw.get("startup_timeout_seconds", raw.get("startupTimeoutSeconds")), 60.0
+                raw.get("startup_timeout_seconds"), 60.0
             ),
             shutdown_timeout_seconds=_as_float(
-                raw.get("shutdown_timeout_seconds", raw.get("shutdownTimeoutSeconds")), 10.0
+                raw.get("shutdown_timeout_seconds"), 10.0
             ),
             probe_timeout_seconds=_as_float(
-                raw.get("probe_timeout_seconds", raw.get("probeTimeoutSeconds")), 0.75
+                raw.get("probe_timeout_seconds"), 0.75
             ),
             poll_interval_seconds=_as_float(
-                raw.get("poll_interval_seconds", raw.get("pollIntervalSeconds")), 0.25
+                raw.get("poll_interval_seconds"), 0.25
             ),
             stop_after=stop_after,
             start=start_cfg,
@@ -164,6 +201,10 @@ def _parse_start_config(raw: dict[str, Any]) -> WebServerStartConfig:
     if isinstance(start, str):
         command = start.strip() or None
     elif isinstance(start, dict):
+        if "successExitCodes" in start:
+            raise ValueError(
+                "Unsupported legacy web_server.start key: successExitCodes (use success_exit_codes)"
+            )
         cmd = start.get("command")
         command = str(cmd).strip() if cmd is not None else None
         if command == "":
@@ -172,16 +213,9 @@ def _parse_start_config(raw: dict[str, Any]) -> WebServerStartConfig:
         cwd = str(cwd_raw).strip() if cwd_raw is not None else None
         if cwd == "":
             cwd = None
-        codes = start.get("success_exit_codes", start.get("successExitCodes"))
+        codes = start.get("success_exit_codes")
         if isinstance(codes, list) and all(isinstance(x, int) for x in codes):
             success_exit_codes = list(codes)
-
-    # Legacy support
-    if command is None:
-        start_raw = raw.get("start_command", raw.get("startCommand"))
-        command = str(start_raw).strip() if start_raw is not None else None
-        if command == "":
-            command = None
 
     return WebServerStartConfig(command=command, cwd=cwd, success_exit_codes=success_exit_codes)
 
@@ -195,6 +229,10 @@ def _parse_stop_config(raw: dict[str, Any]) -> WebServerStopConfig:
     if isinstance(stop, str):
         command = stop.strip() or None
     elif isinstance(stop, dict):
+        if "runEvenIfNoProcess" in stop:
+            raise ValueError(
+                "Unsupported legacy web_server.stop key: runEvenIfNoProcess (use run_even_if_no_process)"
+            )
         cmd = stop.get("command")
         command = str(cmd).strip() if cmd is not None else None
         if command == "":
@@ -203,16 +241,7 @@ def _parse_stop_config(raw: dict[str, Any]) -> WebServerStopConfig:
         cwd = str(cwd_raw).strip() if cwd_raw is not None else None
         if cwd == "":
             cwd = None
-        run_even_if_no_process = bool(
-            stop.get("run_even_if_no_process", stop.get("runEvenIfNoProcess", True))
-        )
-
-    # Legacy support
-    if command is None:
-        stop_raw = raw.get("stop_command", raw.get("stopCommand"))
-        command = str(stop_raw).strip() if stop_raw is not None else None
-        if command == "":
-            command = None
+        run_even_if_no_process = bool(stop.get("run_even_if_no_process", True))
 
     return WebServerStopConfig(
         command=command,
@@ -235,6 +264,10 @@ def _parse_verify_config(raw: dict[str, Any]) -> WebServerVerifyConfig:
             kind = str(item.get("kind") or "").strip()
             if kind not in {"http", "command", "docker_source", "process_cwd"}:
                 continue
+            if "mountDest" in item:
+                raise ValueError(
+                    "Unsupported legacy web_server.verify.steps[*] key: mountDest (use mount_dest)"
+                )
             timeout = item.get("timeout_seconds", item.get("timeoutSeconds"))
             timeout_seconds: float | None = None
             if timeout is not None:
@@ -254,8 +287,8 @@ def _parse_verify_config(raw: dict[str, Any]) -> WebServerVerifyConfig:
                     container=str(item.get("container")).strip()
                     if item.get("container") is not None
                     else None,
-                    mount_dest=str(item.get("mount_dest", item.get("mountDest"))).strip()
-                    if (item.get("mount_dest") is not None or item.get("mountDest") is not None)
+                    mount_dest=str(item.get("mount_dest")).strip()
+                    if item.get("mount_dest") is not None
                     else None,
                     pattern=str(item.get("pattern")).strip()
                     if item.get("pattern") is not None
@@ -267,4 +300,12 @@ def _parse_verify_config(raw: dict[str, Any]) -> WebServerVerifyConfig:
 
 
 def _parse_lock_config(raw: dict[str, Any]) -> WebServerLockConfig:
-    return parse_named_lock_config(raw.get("lock"))
+    lock_raw = raw.get("lock")
+    if isinstance(lock_raw, dict):
+        if "timeoutSeconds" in lock_raw:
+            raise ValueError(
+                "Unsupported legacy web_server.lock key: timeoutSeconds (use timeout_seconds)"
+            )
+        if "lockScope" in lock_raw or "lock_scope" in lock_raw:
+            raise ValueError("Unsupported legacy web_server.lock key: lockScope (use scope)")
+    return parse_named_lock_config(lock_raw)

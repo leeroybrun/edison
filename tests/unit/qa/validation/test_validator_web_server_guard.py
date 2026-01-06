@@ -294,7 +294,8 @@ validation:
         ensure_running: true
         url: "{base_url}"
         startup_timeout_seconds: 5
-        start_command: "{sys.executable} {server_script} --port {port} --started-flag {started_flag}"
+        start:
+          command: "{sys.executable} {server_script} --port {port} --started-flag {started_flag}"
         stop_after: true
 """.lstrip(),
     )
@@ -443,7 +444,8 @@ validation:
               command: "{sys.executable} {verifier} --sourcefile {source_file}"
         # No start command configured → cannot restart.
         stop_after: true
-        stop_command: "{sys.executable} {stopper} --pidfile {pid_file}"
+        stop:
+          command: "{sys.executable} {stopper} --pidfile {pid_file}"
 """.lstrip(),
     )
 
@@ -493,7 +495,8 @@ validation:
         ensure_running: true
         url: "{base_url}"
         startup_timeout_seconds: 5
-        start_command: "{sys.executable} {server_script} --port {port} --started-flag {started_flag}"
+        start:
+          command: "{sys.executable} {server_script} --port {port} --started-flag {started_flag}"
         stop_after: true
 """.lstrip(),
     )

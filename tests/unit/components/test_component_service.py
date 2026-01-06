@@ -150,7 +150,7 @@ def test_component_service_configure_pack_validator_writes_web_server_config(
     svc.enable("pack", "e2e-web")
 
     status = svc.get_status("validator", "browser-e2e")
-    assert "validation.validators.browser-e2e.web_server.url" in status.missing_required_config
+    assert "validation.web_servers.browser-e2e.url" in status.missing_required_config
 
     svc.configure(
         "validator",
@@ -167,13 +167,18 @@ def test_component_service_configure_pack_validator_writes_web_server_config(
     )
 
     cfg = _read_cfg(isolated_project_env)
-    entry = ((cfg.get("validation") or {}).get("validators") or {}).get("browser-e2e") or {}
+    validation = cfg.get("validation") or {}
+    servers = (validation.get("web_servers") or {}) if isinstance(validation, dict) else {}
+    profile = (servers.get("browser-e2e") or {}) if isinstance(servers, dict) else {}
+    assert profile.get("url") == "http://127.0.0.1:3000"
+    assert profile.get("healthcheck_url") == "http://127.0.0.1:3000/health"
+    assert profile.get("ensure_running") is True
+    assert (profile.get("start") or {}).get("command") == "pnpm dev --port 3000"
+    assert profile.get("stop_after") is True
+
+    entry = (validation.get("validators") or {}).get("browser-e2e") or {}
     web = (entry.get("web_server") or {}) if isinstance(entry, dict) else {}
-    assert web.get("url") == "http://127.0.0.1:3000"
-    assert web.get("healthcheck_url") == "http://127.0.0.1:3000/health"
-    assert web.get("ensure_running") is True
-    assert web.get("start_command") == "pnpm dev --port 3000"
-    assert web.get("stop_after") is True
+    assert web.get("ref") == "browser-e2e"
 
 
 def test_component_service_configure_validator_installs_script_templates(

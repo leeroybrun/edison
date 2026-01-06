@@ -17,13 +17,13 @@ validation:
         instructions: >-
           Configure the target web server for browser E2E validation.
 
-          Edison will probe `healthcheck_url` (or `url`) before running the
-          validator. If it is not reachable and `start_command` is configured,
-          Edison will start the server and stop it after validation only if
-          Edison started it.
+          Edison will validate the configured server/stack via verify steps
+          (or an implicit HTTP probe to `healthcheck_url`/`url`) before running
+          the validator. If verification fails and `start.command` is configured,
+          Edison will perform at most one stop/start cycle, then re-verify.
         require:
           config:
-            - "validation.validators.browser-e2e.web_server.url"
+            - "validation.web_servers.browser-e2e.url"
         questions:
           - id: e2e_web_url
             prompt: "Web server base URL (Playwright baseURL)"
@@ -55,7 +55,7 @@ validation:
             required: false
             mode: basic
             category: validation
-            help: "Examples: pnpm dev --port 3000 | npm run dev -- --port 3000"
+            help: "Examples: pnpm dev --port 3000 | npm run dev -- --port 3000 (maps to web_server.start.command)"
 
           - id: e2e_web_stop_command
             prompt: "Command to stop the server (optional)"
@@ -63,7 +63,7 @@ validation:
             required: false
             mode: advanced
             category: validation
-            help: "Supports {pid}, {port}, {url}, {probe_url} placeholders."
+            help: "Supports {pid}, {port}, {url}, {probe_url} placeholders (maps to web_server.stop.command)."
 
           - id: e2e_web_cwd
             prompt: "Working directory for start/stop commands (optional)"
@@ -81,16 +81,21 @@ validation:
             category: validation
         config_template:
           validation:
+            web_servers:
+              browser-e2e:
+                url: "{{ e2e_web_url }}"
+                healthcheck_url: "{{ e2e_web_healthcheck_url }}"
+                ensure_running: "{{ e2e_web_ensure_running }}"
+                cwd: "{{ e2e_web_cwd }}"
+                stop_after: "{{ e2e_web_stop_after }}"
+                start:
+                  command: "{{ e2e_web_start_command }}"
+                stop:
+                  command: "{{ e2e_web_stop_command }}"
             validators:
               browser-e2e:
                 web_server:
-                  url: "{{ e2e_web_url }}"
-                  healthcheck_url: "{{ e2e_web_healthcheck_url }}"
-                  ensure_running: "{{ e2e_web_ensure_running }}"
-                  start_command: "{{ e2e_web_start_command }}"
-                  stop_command: "{{ e2e_web_stop_command }}"
-                  cwd: "{{ e2e_web_cwd }}"
-                  stop_after: "{{ e2e_web_stop_after }}"
+                  ref: "browser-e2e"
         templates:
           - src: "web-server/start-server.sh"
             dest: ".edison/scripts/start-server.sh"
