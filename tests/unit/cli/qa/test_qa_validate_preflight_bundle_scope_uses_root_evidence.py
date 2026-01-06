@@ -62,6 +62,6 @@ def test_qa_validate_preflight_bundle_scope_uses_root_evidence_round(
     checklist = payload["checklist"]
 
     evidence_item = next(i for i in checklist["items"] if i["id"] == "evidence-round")
-    expected = str(Path(".project/qa/validation-evidence") / root_task / "round-1")
+    expected = str(Path(".project/qa/validation-reports") / root_task / "round-1")
     assert expected in (evidence_item.get("evidencePaths") or [])
 

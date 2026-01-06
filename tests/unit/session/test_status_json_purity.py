@@ -30,7 +30,7 @@ class TestStatusJsonPurity(unittest.TestCase):
         (self.tmp / ".project" / "tasks" / "done").mkdir(parents=True, exist_ok=True)
         (self.tmp / ".project" / "qa" / "done").mkdir(parents=True, exist_ok=True)
         (self.tmp / ".project" / "sessions" / "active").mkdir(parents=True, exist_ok=True)
-        (self.tmp / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+        (self.tmp / ".project" / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
 
         # Initialize git repo for task operations
         run_with_timeout(["git", "init"], cwd=self.tmp, capture_output=True, check=True)
@@ -91,7 +91,7 @@ class TestStatusJsonPurity(unittest.TestCase):
         self._write(self.tmp / ".project" / "qa" / "done" / f"{task_id}-qa.md", qa_md)
 
         # Evidence bundle approved
-        ev = self.tmp / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
+        ev = self.tmp / ".project" / "qa" / "validation-reports" / task_id / "round-1"
         ev.mkdir(parents=True, exist_ok=True)
         (ev / "bundle-summary.md").write_text("---\napproved: true\n---\n")
 

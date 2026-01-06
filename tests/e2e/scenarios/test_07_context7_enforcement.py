@@ -69,7 +69,7 @@ def _edit_primary_files(task_path: Path, files: list[str]) -> None:
 
 def _evidence_dir(project_root: Path, task_id: str, round_num: int = 1) -> Path:
     return (
-        project_root / "qa" / "validation-evidence" / task_id / f"round-{round_num}"
+        project_root / "qa" / "validation-reports" / task_id / f"round-{round_num}"
     )
 
 
@@ -215,7 +215,7 @@ def _write_context7(
 ) -> Path:
     """Create Context7 markers in both legacy QA evidence and session-scoped paths.
 
-    The ready guard still reads from qa/validation-evidence/*, while newer
+    The ready guard still reads from qa/validation-reports/*, while newer
     Context7 flows expect markers under the active session worktree. Writing
     both keeps the tests forward-compatible without touching production code.
     """
@@ -233,7 +233,7 @@ def _write_context7(
         }
     ) + str(content)
 
-    # Legacy evidence location (qa/validation-evidence)
+    # Legacy evidence location (qa/validation-reports)
     ev_dir = _evidence_dir(project_root, task_id, round_num)
     ev_dir.mkdir(parents=True, exist_ok=True)
     path = ev_dir / f"context7-{package}.txt"

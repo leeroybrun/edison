@@ -840,7 +840,7 @@ Validators are configured in `validation.yaml` with:
 3. **CLIEngine** executes validators directly via CLI tools when available
 4. **Fallback**: If CLI unavailable, `PalMCPEngine` generates delegation instructions
 5. **Parsers** normalize CLI output to structured `ValidationResult`
-6. **Evidence** saved to `.project/qa/validation-evidence/{task-id}/round-N/`
+6. **Evidence** saved to `.project/qa/validation-reports/{task-id}/round-N/`
 7. **Results** feed into QA state machine for promotion decisions
 
 ### Unified Validator Execution
@@ -917,7 +917,7 @@ my-project/
 ├── .project/                   # Project management artifacts (uncommitted)
 │   ├── tasks/                  # Task state files
 │   ├── qa/                     # QA briefs + evidence
-│   │   └── validation-evidence/
+│   │   └── validation-reports/
 │   │       └── T-001/
 │   │           └── round-1/
 │   │               ├── implementation-report.md

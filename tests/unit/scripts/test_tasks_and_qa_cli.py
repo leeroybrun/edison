@@ -114,7 +114,7 @@ def test_cleanup_stale_locks_json(tmp_path: Path, monkeypatch):
 def test_qa_new_creates_file(tmp_path: Path):
     root = make_project_root(tmp_path)
     template = root / ".project" / "qa" / "TEMPLATE.md"
-    template.write_text("""# PPP-waveN-slug-qa\n**Priority Slot:** PPP\n**Validator Owner:** _unassigned_\n**Status:** waiting | todo | wip | done | validated\n**Created:** YYYY-MM-DD\n**Evidence Directory:** `.project/qa/validation-evidence/task-XXXX/`\n**Continuation ID:** _none_\n""")
+    template.write_text("""# PPP-waveN-slug-qa\n**Priority Slot:** PPP\n**Validator Owner:** _unassigned_\n**Status:** waiting | todo | wip | done | validated\n**Created:** YYYY-MM-DD\n**Evidence Directory:** `.project/qa/validation-reports/task-XXXX/`\n**Continuation ID:** _none_\n""")
     # qa new requires the task to exist.
     (root / ".project" / "tasks" / "todo" / "150-wave1-demo.md").write_text(
         """---
@@ -190,7 +190,7 @@ round: 1
     payload = json.loads(result.stdout.strip())
     assert payload["round"] == 2
 
-    evidence_root = root / ".project" / "qa" / "validation-evidence" / task_id
+    evidence_root = root / ".project" / "qa" / "validation-reports" / task_id
     assert not evidence_root.exists(), "qa round created evidence dirs without --new"
 
 
@@ -481,7 +481,7 @@ Validation scope
 """)
 
     # evidence files
-    evidence = root / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
+    evidence = root / ".project" / "qa" / "validation-reports" / task_id / "round-1"
     evidence.mkdir(parents=True, exist_ok=True)
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
         (evidence / name).write_text("ok\n")
@@ -596,6 +596,6 @@ def test_guidelines_audit_writes_evidence(tmp_path: Path):
     env["AGENTS_PROJECT_ROOT"] = str(root)
     result = run("qa", "audit", ["--json"], env)
     summary = json.loads(result.stdout.strip())
-    evidence_root = root / ".project" / "qa" / "validation-evidence" / "fix-9-guidelines-audit"
+    evidence_root = root / ".project" / "qa" / "validation-reports" / "fix-9-guidelines-audit"
     assert summary["duplication"]["pairs_found"] >= 0
     assert (evidence_root / "summary.json").exists()

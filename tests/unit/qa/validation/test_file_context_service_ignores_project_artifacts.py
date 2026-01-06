@@ -12,7 +12,7 @@ def test_file_context_service_ignores_project_artifacts(isolated_project_env: Pa
     """Edison metadata/runtime files must not pollute "modifiedFiles".
 
     In real sessions we create `.project/.session-id`, `.project/sessions` symlinks,
-    and validation evidence under `.project/qa/validation-evidence/**`. These are
+    and validation evidence under `.project/qa/validation-reports/**`. These are
     workflow artifacts and should not trigger validators.
     """
     repo = isolated_project_env
@@ -39,7 +39,7 @@ def test_file_context_service_ignores_project_artifacts(isolated_project_env: Pa
     # Create typical Edison runtime artifacts that should be ignored.
     (wt_path / ".project").mkdir(parents=True, exist_ok=True)
     (wt_path / ".project" / ".session-id").write_text(session_id, encoding="utf-8")
-    evidence = wt_path / ".project" / "qa" / "validation-evidence" / "T001" / "round-1"
+    evidence = wt_path / ".project" / "qa" / "validation-reports" / "T001" / "round-1"
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "implementation-report.md").write_text("# Report\n", encoding="utf-8")
 

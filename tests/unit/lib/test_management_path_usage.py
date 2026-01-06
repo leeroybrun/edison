@@ -33,7 +33,7 @@ def mgmt_repo(tmp_path: Path, monkeypatch) -> Tuple[Path, Path]:
     # Create QA directories
     for state in qa_states:
         (mgmt / "qa" / state).mkdir(parents=True, exist_ok=True)
-    (mgmt / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+    (mgmt / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
 
     # Create session directories
     for state in session_states:
@@ -136,7 +136,7 @@ def test_evidence_service_root_under_management_root(mgmt_repo: Tuple[Path, Path
     importlib.reload(evidence_service)
     
     svc = evidence_service.EvidenceService("task-9", project_root=repo)
-    assert str(svc.get_evidence_root()).startswith(str(mgmt / "qa" / "validation-evidence"))
+    assert str(svc.get_evidence_root()).startswith(str(mgmt / "qa" / "validation-reports"))
 
 def test_session_validation_transaction_stages_under_management(mgmt_repo: Tuple[Path, Path]) -> None:
     repo, mgmt = mgmt_repo

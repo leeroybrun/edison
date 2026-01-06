@@ -293,7 +293,7 @@ class ScenarioSimulator:
             (project_dir / "qa" / state).mkdir(parents=True, exist_ok=True)
 
         # Create validation evidence directory
-        (project_dir / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+        (project_dir / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
 
         # Create session directories
         for state in session_states:

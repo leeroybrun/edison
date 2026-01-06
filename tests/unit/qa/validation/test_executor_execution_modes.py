@@ -117,6 +117,6 @@ def test_executor_marks_delegated_when_cli_disabled(isolated_project_env: Path) 
     assert result.all_blocking_passed is False
     assert result.waves and result.waves[0].blocking_passed is False
 
-    evidence_dir = repo / ".project" / "qa" / "validation-evidence" / "T001"
+    evidence_dir = repo / ".project" / "qa" / "validation-reports" / "T001"
     round_dir = evidence_dir / f"round-{result.round_num}"
     assert (round_dir / "delegation-git-validator.md").exists()

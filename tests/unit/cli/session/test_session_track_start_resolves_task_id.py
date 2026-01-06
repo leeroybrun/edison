@@ -44,5 +44,5 @@ def test_session_track_start_resolves_short_task_id(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload.get("taskId") == full_id
-    assert f"validation-evidence/{full_id}/round-1/implementation-report.md" in str(payload.get("path") or "")
+    assert f"validation-reports/{full_id}/round-1/implementation-report.md" in str(payload.get("path") or "")
 

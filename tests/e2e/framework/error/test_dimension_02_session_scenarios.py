@@ -92,7 +92,7 @@ def test_scenario_01_normal_flow(session_scenario_env: dict) -> None:
     assert session_task.exists()
 
     # Prepare evidence + validator approvals so the session can close (verification is strict).
-    ev_round = session_scenario_env["tmp"] / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
+    ev_round = session_scenario_env["tmp"] / ".project" / "qa" / "validation-reports" / task_id / "round-1"
     ev_round.mkdir(parents=True, exist_ok=True)
 
     # Do NOT hardcode bundled preset contents in tests.

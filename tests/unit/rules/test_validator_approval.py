@@ -41,7 +41,7 @@ def _bundle_filename(project_root: Path) -> str:
 
 
 def _evidence_base(project_root: Path) -> Path:
-    return project_root / ".project" / "qa" / "validation-evidence"
+    return project_root / ".project" / "qa" / "validation-reports"
 
 
 def _report_path(project_root: Path, task_id: str, round_no: int = 1) -> Path:
@@ -101,7 +101,7 @@ def test_validator_approval_blocks_when_no_bundle_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     setup_project_root(monkeypatch, tmp_path)
 
-    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    base = tmp_path / ".project" / "qa" / "validation-reports" / task_id
     round_dir = create_round_dir(base, 1)
     assert not (round_dir / _bundle_filename(tmp_path)).exists()
 
@@ -123,7 +123,7 @@ def test_validator_approval_fails_on_expired_report(tmp_path: Path, monkeypatch:
     monkeypatch.chdir(tmp_path)
     setup_project_root(monkeypatch, tmp_path)
 
-    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    base = tmp_path / ".project" / "qa" / "validation-reports" / task_id
     round_dir = create_round_dir(base, 1)
     rpt = round_dir / _bundle_filename(tmp_path)
     _write_bundle(rpt, approved=True)
@@ -148,7 +148,7 @@ def test_validator_approval_includes_failed_validators_in_error_message(tmp_path
     monkeypatch.chdir(tmp_path)
     setup_project_root(monkeypatch, tmp_path)
 
-    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    base = tmp_path / ".project" / "qa" / "validation-reports" / task_id
     round_dir = create_round_dir(base, 1)
     rpt = round_dir / _bundle_filename(tmp_path)
 
@@ -185,7 +185,7 @@ def test_validator_approval_allows_when_bundle_approved(tmp_path: Path, monkeypa
     monkeypatch.chdir(tmp_path)
     setup_project_root(monkeypatch, tmp_path)
 
-    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    base = tmp_path / ".project" / "qa" / "validation-reports" / task_id
     round_dir = create_round_dir(base, 2)
     rpt = round_dir / _bundle_filename(tmp_path)
     _write_bundle(rpt, approved=True)
@@ -203,7 +203,7 @@ def test_validator_approval_uses_latest_round_directory(tmp_path: Path, monkeypa
     monkeypatch.chdir(tmp_path)
     setup_project_root(monkeypatch, tmp_path)
 
-    base = tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    base = tmp_path / ".project" / "qa" / "validation-reports" / task_id
     round1 = create_round_dir(base, 1)
     round3 = create_round_dir(base, 3)
 

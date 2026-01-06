@@ -84,4 +84,4 @@ qa:
 # Additional paths required for tests
 additional_paths:
   qa:
-    - "qa/validation-evidence"
+    - "qa/validation-reports"

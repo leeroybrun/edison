@@ -32,7 +32,7 @@ subdirectories:
     
   # Under qa/
   qa:
-    validation_evidence: "validation-evidence"
+    validation_evidence: "validation-reports"
 
   # Legacy scripts directories (DEPRECATED - use Edison CLI instead)
   # Still needed for tests that reference old script structure

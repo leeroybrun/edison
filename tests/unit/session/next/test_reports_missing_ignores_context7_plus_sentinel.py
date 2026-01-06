@@ -24,7 +24,7 @@ def repo_env(tmp_path: Path, monkeypatch) -> Path:
     (repo / ".project" / "tasks" / "todo").mkdir(parents=True, exist_ok=True)
     (repo / ".project" / "tasks" / "meta").mkdir(parents=True, exist_ok=True)
     (repo / ".project" / "qa" / "todo").mkdir(parents=True, exist_ok=True)
-    (repo / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+    (repo / ".project" / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
     (repo / ".project" / "tasks" / "TEMPLATE.md").write_text("# TEMPLATE\n", encoding="utf-8")
 
     cfg_dir = repo / ".edison" / "config"
@@ -39,7 +39,7 @@ def repo_env(tmp_path: Path, monkeypatch) -> Path:
                     "qaRoot": ".project/qa",
                     "metaRoot": ".project/tasks/meta",
                     "template": ".project/tasks/TEMPLATE.md",
-                    "evidenceSubdir": "validation-evidence",
+                    "evidenceSubdir": "validation-reports",
                 }
             }
         },
@@ -133,7 +133,7 @@ round: 1
         encoding="utf-8",
     )
 
-    round_dir = repo_env / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = repo_env / ".project" / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     (round_dir / "implementation-report.md").write_text(
         """---

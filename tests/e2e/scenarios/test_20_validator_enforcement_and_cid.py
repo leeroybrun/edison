@@ -17,7 +17,7 @@ from edison.core.utils.text import format_frontmatter, parse_frontmatter
 
 def _write_validator_report(dir: Path, vid: str, model: str, verdict: str = "approve") -> None:
     report = {
-        # dir = .../.project/qa/validation-evidence/<taskId>/round-N
+        # dir = .../.project/qa/validation-reports/<taskId>/round-N
         "taskId": dir.parent.name,
         "round": int(dir.name.split("-", 1)[1]) if "-" in dir.name else 1,
         "validatorId": vid,
@@ -105,7 +105,7 @@ def test_specialized_blocking_database_and_testing_enforced(project_dir: TestPro
         ),
         encoding="utf-8",
     )
-    ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    ev = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
 
     # Provide only a subset of blocking reports (approve)
@@ -160,7 +160,7 @@ def test_run_wave_plumbs_continuation_id(project_dir: TestProjectDir):
     # run-wave itself should exit 0 even when bundle not approved; we rely on JSON output and side-effects
     assert res.returncode == 0, f"run-wave failed:\n{res.stdout}\n{res.stderr}"
 
-    ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    ev = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     # At least one validator report should exist and carry tracking.continuationId
     any_report = next((p for p in ev.glob("validator-*-report.md")), None)
     assert any_report is not None, "Expected a validator report to be created by track start"

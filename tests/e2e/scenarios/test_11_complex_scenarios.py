@@ -463,8 +463,8 @@ def test_recovery_from_failed_validation(project_dir: TestProjectDir):
     assert_command_success(run_script("tasks/status", [task_id, "--status", "validated", "--session", session_id], cwd=project_dir.tmp_path))
 
     # Markers for round directories (not mock helpers): create simple evidence markers
-    round1_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
-    round2_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-2"
+    round1_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
+    round2_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-2"
     round1_dir.mkdir(parents=True, exist_ok=True)
     round2_dir.mkdir(parents=True, exist_ok=True)
     (round1_dir / "git-diff-stat.txt").write_text("round1")
@@ -697,7 +697,7 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     def create_evidence(task_id: str):
         """Helper to create minimal evidence for a task."""
         from pathlib import Path
-        rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+        rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
         rd.mkdir(parents=True, exist_ok=True)
 
         # Implementation report
@@ -768,13 +768,13 @@ def test_bundle_validation_parent_only(project_dir: TestProjectDir):
     assert_command_success(validate_result)
 
     # Verify bundle-summary.md exists under parent evidence directory
-    parent_bundle = project_dir.project_root / "qa" / "validation-evidence" / parent_id / "round-1" / "bundle-summary.md"
+    parent_bundle = project_dir.project_root / "qa" / "validation-reports" / parent_id / "round-1" / "bundle-summary.md"
     assert_file_exists(parent_bundle)
 
     # Bundle validation runs once at the root, but Edison mirrors the bundle summary into
     # each cluster member's latest round so per-task guards can reason deterministically.
-    child1_bundle = project_dir.project_root / "qa" / "validation-evidence" / child1_id / "round-1" / "bundle-summary.md"
-    child2_bundle = project_dir.project_root / "qa" / "validation-evidence" / child2_id / "round-1" / "bundle-summary.md"
+    child1_bundle = project_dir.project_root / "qa" / "validation-reports" / child1_id / "round-1" / "bundle-summary.md"
+    child2_bundle = project_dir.project_root / "qa" / "validation-reports" / child2_id / "round-1" / "bundle-summary.md"
     assert_file_exists(child1_bundle)
     assert_file_exists(child2_bundle)
 

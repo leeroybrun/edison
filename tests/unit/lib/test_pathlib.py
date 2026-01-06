@@ -97,7 +97,7 @@ class TestPathResolver:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         (evidence_base / "round-1").mkdir(parents=True, exist_ok=True)
@@ -113,7 +113,7 @@ class TestPathResolver:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         (evidence_base / "round-1").mkdir(parents=True, exist_ok=True)

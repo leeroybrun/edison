@@ -58,7 +58,7 @@ def test_qa_bundle_json_includes_scope_and_resolves_bundle_root(
         isolated_project_env
         / ".project"
         / "qa"
-        / "validation-evidence"
+        / "validation-reports"
         / "T-ROOT"
         / "round-1"
         / "validation-summary.md"

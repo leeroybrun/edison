@@ -276,7 +276,7 @@ def test_context7_cross_check_with_git_diff(project_dir: TestProjectDir):
         project_dir.tmp_path
         / ".project"
         / "qa"
-        / "validation-evidence"
+        / "validation-reports"
         / task_id
         / "round-1"
     )

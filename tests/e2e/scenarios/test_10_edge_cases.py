@@ -125,7 +125,7 @@ def test_empty_evidence_directory(project_dir: TestProjectDir):
     )
     assert_command_success(task)
 
-    # Create QA (creates evidence root .project/qa/validation-evidence/<task_id>/)
+    # Create QA (creates evidence root .project/qa/validation-reports/<task_id>/)
     qa = run_script(
         "qa/new",
         [task_id],
@@ -133,7 +133,7 @@ def test_empty_evidence_directory(project_dir: TestProjectDir):
     )
     assert_command_success(qa)
 
-    evidence_root = project_dir.project_root / "qa" / "validation-evidence" / task_id
+    evidence_root = project_dir.project_root / "qa" / "validation-reports" / task_id
 
     validate = run_script(
         "validators/validate",
@@ -249,7 +249,7 @@ def test_evidence_missing_required_files(project_dir: TestProjectDir):
     assert_command_success(qa)
 
     # Prepare round-1 with only SOME required validator reports (others missing)
-    round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
 
     def write_report(validator_id: str, model: str, verdict: str = "approve") -> None:
@@ -470,7 +470,7 @@ def test_context7_evidence_without_task(project_dir: TestProjectDir):
     task_id = "750-wave1-ctx7-orphan"
 
     # Create orphan evidence directory with a context7 note but no rounds
-    ev_root = project_dir.project_root / "qa" / "validation-evidence" / task_id
+    ev_root = project_dir.project_root / "qa" / "validation-reports" / task_id
     ev_root.mkdir(parents=True, exist_ok=True)
     (ev_root / "context7-react.txt").write_text("Context7 evidence placeholder\n")
 
@@ -525,7 +525,7 @@ def test_circular_task_dependency(project_dir: TestProjectDir):
     assert_command_success(run_script("tasks/link", [id_b, id_a, "--session", session_id, "--force"], cwd=project_dir.tmp_path))
 
     # Provide minimal readiness artefacts so tasks/ready reaches cycle check
-    ev_root = project_dir.project_root / "qa" / "validation-evidence" / id_a / "round-1"
+    ev_root = project_dir.project_root / "qa" / "validation-reports" / id_a / "round-1"
     ev_root.mkdir(parents=True, exist_ok=True)
     for f in ("command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"):
         (ev_root / f).write_text("ok\n")

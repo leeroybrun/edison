@@ -69,7 +69,7 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
 
     Semantics (fail-closed, EvidenceManager-backed):
       - Locate the bundle summary file for the latest evidence round:
-          <management_dir>/qa/validation-evidence/<task-id>/round-N/<bundleSummaryFile>
+          <management_dir>/qa/validation-reports/<task-id>/round-N/<bundleSummaryFile>
         using EvidenceService (honours AGENTS_PROJECT_ROOT and git root detection).
       - Require the bundle file to exist (requireReport=True) and be fresh
         based on maxAgeDays.

@@ -11,7 +11,7 @@ def _write_min_implementation_report(project_root, task_id: str) -> None:
         project_root
         / ".project"
         / "qa"
-        / "validation-evidence"
+        / "validation-reports"
         / task_id
         / "round-1"
         / "implementation-report.md"

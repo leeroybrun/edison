@@ -219,7 +219,7 @@ def main(args: argparse.Namespace) -> int:
                 })
 
         # Output results
-        # Persist evidence under QA validation-evidence for audit traceability.
+        # Persist reports under QA validation-reports for audit traceability.
         # This is not a "task" per se, but we still store evidence in the canonical evidence root.
         try:
             from edison.core.qa._utils import get_evidence_base_path

@@ -16,7 +16,7 @@ def qa_manager(tmp_path: Path, monkeypatch) -> QAManager:
     # Set environment for PathResolver
     monkeypatch.setenv("AGENTS_PROJECT_ROOT", str(tmp_path))
     # Create .project directory structure
-    (tmp_path / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".project" / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
     return QAManager(project_root=tmp_path)
 
 

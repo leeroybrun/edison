@@ -7,7 +7,7 @@ tasks:
     # Task/QA creation should source templates from there for pack/project overlays.
     template: "{PROJECT_CONFIG_DIR}/_generated/templates/artifacts/TASK.md"
     qaTemplate: "{PROJECT_CONFIG_DIR}/_generated/templates/artifacts/QA.md"
-    evidenceSubdir: "validation-evidence"
+    evidenceSubdir: "validation-reports"
   defaults:
     ownerPrefix: "- **Owner:** "
     validatorOwnerPrefix: "- **Validator Owner:** "

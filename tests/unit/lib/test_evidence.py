@@ -27,7 +27,7 @@ class TestEvidenceService:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         round_dir = evidence_base / "round-1"
@@ -53,7 +53,7 @@ class TestEvidenceService:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         round_dir = evidence_base / "round-1"
@@ -78,7 +78,7 @@ class TestEvidenceService:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         (evidence_base / "round-1").mkdir(parents=True, exist_ok=True)
@@ -103,7 +103,7 @@ class TestEvidenceService:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         round_dir = evidence_base / "round-1"
@@ -129,7 +129,7 @@ class TestEvidenceService:
             isolated_project_env
             / ".project"
             / "qa"
-            / "validation-evidence"
+            / "validation-reports"
             / task_id
         )
         round_dir = evidence_base / "round-1"

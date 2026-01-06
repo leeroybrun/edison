@@ -215,7 +215,7 @@ def test_session_next_json_cmds_are_current(project_dir: TestProjectDir):
     evidence_dir = (
         project_dir.project_root
         / "qa"
-        / "validation-evidence"
+        / "validation-reports"
         / task_id
         / "round-1"
     )

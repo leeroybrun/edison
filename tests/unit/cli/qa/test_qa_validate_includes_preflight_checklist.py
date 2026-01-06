@@ -92,5 +92,5 @@ def test_qa_validate_dry_run_text_shows_evidence_round_dir(
     assert rc == 0
 
     out = capsys.readouterr().out
-    expected = str(Path(".project/qa/validation-evidence") / task_id / "round-1")
+    expected = str(Path(".project/qa/validation-reports") / task_id / "round-1")
     assert expected in out

@@ -40,8 +40,8 @@ def qa_root(ctx: TransformContext) -> str:
 
 
 def evidence_root(ctx: TransformContext) -> str:
-    """Evidence root directory (default: {qaRoot}/validation-evidence)."""
-    subdir = _config_str(ctx, "tasks.paths.evidenceSubdir", "validation-evidence")
+    """Evidence root directory (default: {qaRoot}/validation-reports)."""
+    subdir = _config_str(ctx, "tasks.paths.evidenceSubdir", "validation-reports")
     return f"{qa_root(ctx)}/{subdir}"
 
 

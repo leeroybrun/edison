@@ -99,7 +99,7 @@ def test_evidence_directory_structure(project_dir: TestProjectDir):
     assert_command_success(qa_res)
 
     # Create minimal implementation report to materialize round-1 dir
-    round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     _write_impl_report(round_dir, _impl_report_json(task_id))
 
@@ -127,7 +127,7 @@ def test_evidence_required_files(project_dir: TestProjectDir):
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Minimal implementation report (guard requires it)
-    round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     _write_impl_report(round_dir, _impl_report_json(task_id))
 
@@ -155,7 +155,7 @@ def test_evidence_file_content(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
-    round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     _write_impl_report(round_dir, _impl_report_json(task_id))
     (round_dir / "command-type-check.txt").write_text("Exit code: 0\nTypeScript: OK\n")
@@ -174,7 +174,7 @@ def test_evidence_implementation_report(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
-    round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
 
     # Write schema‑compliant report and validate with real validator via wrapper
@@ -201,7 +201,7 @@ def test_evidence_multiple_rounds(project_dir: TestProjectDir):
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
     for rn in (1, 2, 3):
-        rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / f"round-{rn}"
+        rd = project_dir.project_root / "qa" / "validation-reports" / task_id / f"round-{rn}"
         rd.mkdir(parents=True, exist_ok=True)
         _write_impl_report(rd, _impl_report_json(task_id) | {"round": rn})
         # Create a couple of command outputs per round
@@ -209,7 +209,7 @@ def test_evidence_multiple_rounds(project_dir: TestProjectDir):
         (rd / "command-lint.txt").write_text(f"Exit code: 0\nround={rn}\n")
 
     for rn in (1, 2, 3):
-        round_dir = project_dir.project_root / "qa" / "validation-evidence" / task_id / f"round-{rn}"
+        round_dir = project_dir.project_root / "qa" / "validation-reports" / task_id / f"round-{rn}"
         assert_directory_exists(round_dir)
         assert_file_exists(round_dir / "command-type-check.txt")
         assert_file_exists(round_dir / "command-lint.txt")
@@ -235,7 +235,7 @@ def test_evidence_completeness_check(project_dir: TestProjectDir):
     )
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
 
-    rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
 
@@ -260,7 +260,7 @@ def test_evidence_git_diff_capture(project_dir: TestProjectDir):
     run_script("tasks/new", ["--id", task_num, "--wave", wave, "--slug", slug], cwd=project_dir.tmp_path)
     run_script("qa/new", [task_id], cwd=project_dir.tmp_path)
 
-    rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
 
@@ -304,7 +304,7 @@ def test_evidence_partial_files(project_dir: TestProjectDir):
     )
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
 
-    rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
     # Only two of the four
@@ -356,7 +356,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     assert_command_failure(fail_done)
 
     # Round 1 evidence (implementation report + 4 command files)
-    r1 = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    r1 = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     r1.mkdir(parents=True, exist_ok=True)
     # Add a primary file path to trigger Context7 for React
     task_md = project_dir.project_root / "tasks" / "wip" / f"{task_id}.md"
@@ -381,7 +381,7 @@ def test_evidence_complete_workflow(project_dir: TestProjectDir):
     assert_output_contains(done_result, "Status")
 
     # Round 2 (regression) still allowed and preserved
-    r2 = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-2"
+    r2 = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-2"
     r2.mkdir(parents=True, exist_ok=True)
     _write_impl_report(r2, _impl_report_json(task_id) | {"round": 2})
     (r2 / "command-type-check.txt").write_text("Exit code: 0\n")
@@ -408,7 +408,7 @@ def test_validator_bundle_approval(project_dir: TestProjectDir):
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Setup evidence directory with implementation report and required files
-    rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
@@ -483,7 +483,7 @@ def test_validator_bundle_one_blocking_fails(project_dir: TestProjectDir):
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project_dir.tmp_path)
 
     # Setup evidence directory
-    rd = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     _write_impl_report(rd, _impl_report_json(task_id))
     for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:

@@ -51,7 +51,7 @@ def project(tmp_path: Path) -> TestProjectDir:
 - **Validator Owner:** _unassigned_
 - **Status:** waiting | todo | wip | done | validated
 - **Created:** YYYY-MM-DD
-- **Evidence Directory:** `.project/qa/validation-evidence/task-XXXX/`
+- **Evidence Directory:** `.project/qa/validation-reports/task-XXXX/`
 """
         )
     return proj
@@ -128,7 +128,7 @@ def test_status_never_synthesizes_approval(project: TestProjectDir):
 
     # Assert: must fail (no synthetic approval), and no bundle-summary.md is created
     assert_command_failure(res_validate)
-    evidence_dir = project.project_root / "qa" / "validation-evidence" / task_id
+    evidence_dir = project.project_root / "qa" / "validation-reports" / task_id
     # No evidence rounds should exist as a side effect
     assert not any(evidence_dir.glob("round-*/bundle-summary.md"))
     # Task must not be in validated
@@ -189,7 +189,7 @@ def test_ensure_followups_avoids_duplicate_ids_with_session_siblings(project: Te
     )
 
     # Seed implementation-report.md to request a blocking follow-up
-    round_dir = project.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    round_dir = project.project_root / "qa" / "validation-reports" / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     (round_dir / "implementation-report.md").write_text(
         """---

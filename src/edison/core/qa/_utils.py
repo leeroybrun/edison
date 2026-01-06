@@ -58,10 +58,30 @@ def get_evidence_base_path(project_root: Optional[Path] = None) -> Path:
     cfg = TaskConfig(repo_root=root)
     evidence_subdir = cfg.evidence_subdir()
 
+    # Mandatory migration: the canonical QA directory is `validation-reports`.
+    # Treat the legacy name as an alias and migrate on demand.
+    canonical_subdir = "validation-reports"
+    legacy_subdir = "validation-evidence"
+    if str(evidence_subdir).strip() == legacy_subdir:
+        evidence_subdir = canonical_subdir
+
     # Use ProjectManagementPaths for consistent management-root relative paths
     # This ensures that when management_dir is customized, evidence paths follow
     mgmt_paths = get_management_paths(root)
-    return mgmt_paths.get_qa_root() / evidence_subdir
+    qa_root = mgmt_paths.get_qa_root()
+    base = qa_root / str(evidence_subdir).strip()
+
+    # One-time base directory migration when the repo still uses the legacy name.
+    if str(evidence_subdir).strip() == canonical_subdir:
+        legacy_base = qa_root / legacy_subdir
+        if not base.exists() and legacy_base.exists():
+            try:
+                legacy_base.rename(base)
+            except Exception:
+                # If we cannot rename, fall back to legacy for this invocation.
+                return legacy_base
+
+    return base
 
 
 def sort_round_dirs(dirs: Iterable[Path]) -> List[Path]:

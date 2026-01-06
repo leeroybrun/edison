@@ -290,7 +290,7 @@ edison qa status                 # Check QA state
    - Ensure current documentation was used
 
 4. **Produce Structured Validation Reports (JSON)**
-   - Location: `.project/qa/validation-evidence/<task-id>/round-N/<validator-name>.json`
+   - Location: `.project/qa/validation-reports/<task-id>/round-N/<validator-name>.json`
    - Required fields: validator, task_id, round, timestamp, status, model, continuationId, issues, summary, metrics
    - Issue severities: blocking, warning, advisory
 

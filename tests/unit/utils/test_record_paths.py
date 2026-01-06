@@ -47,5 +47,5 @@ def test_record_paths_resolve_from_yaml(tmp_path: Path) -> None:
     assert paths.qa_root() == (tmp_path / ".project" / "custom-qa").resolve()
     assert paths.qa_state_dir("waiting") == (tmp_path / ".project" / "custom-qa" / "waiting").resolve()
 
-    assert paths.evidence_root("task-123") == (tmp_path / ".project" / "custom-qa" / "validation-evidence" / "task-123").resolve()
+    assert paths.evidence_root("task-123") == (tmp_path / ".project" / "custom-qa" / "validation-reports" / "task-123").resolve()
 

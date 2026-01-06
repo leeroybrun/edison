@@ -23,7 +23,7 @@ def _evidence_dir(root: Path, task_id: str, round_num: int) -> Path:
         root
         / ".project"
         / "qa"
-        / "validation-evidence"
+        / "validation-reports"
         / task_id
         / f"round-{round_num}"
     )

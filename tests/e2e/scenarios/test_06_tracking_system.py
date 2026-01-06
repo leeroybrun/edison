@@ -431,7 +431,7 @@ def test_qa_lifecycle_via_promote(project_dir: TestProjectDir):
     assert_file_exists(project_dir.project_root / "sessions" / "wip" / session_id / "qa" / "wip" / f"{task_id}-qa.md")
 
     # Prepare minimal bundle summary to attempt wip → done (should be rejected; must re-run validators)
-    ev = project_dir.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    ev = project_dir.project_root / "qa" / "validation-reports" / task_id / "round-1"
     ev.mkdir(parents=True, exist_ok=True)
     (ev / "bundle-summary.md").write_text(
         format_frontmatter({"taskId": task_id, "round": 1, "approved": True, "validators": []}) + "\n",

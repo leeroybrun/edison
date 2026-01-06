@@ -50,9 +50,9 @@ def test_task_json_validates():
         "status": "todo",
         "priority": "medium",
         "tddEvidence": {
-            "red": ".project/qa/validation-evidence/w2-g4/RED-output.txt",
-            "green": ".project/qa/validation-evidence/w2-g4/GREEN-output.txt",
-            "refactor": ".project/qa/validation-evidence/w2-g4/REFACTOR-output.txt"
+            "red": ".project/qa/validation-reports/w2-g4/RED-output.txt",
+            "green": ".project/qa/validation-reports/w2-g4/GREEN-output.txt",
+            "refactor": ".project/qa/validation-reports/w2-g4/REFACTOR-output.txt"
         },
         "acceptanceCriteria": [
             "Core schemas are generic",

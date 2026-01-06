@@ -34,7 +34,7 @@ class TestImplementationReportGuard(unittest.TestCase):
         # Create QA directories
         for state in qa_states:
             (self.temp_root / ".project" / "qa" / state).mkdir(parents=True, exist_ok=True)
-        (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+        (self.temp_root / ".project" / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
 
         # Create session directories
         for state in session_states:
@@ -71,7 +71,7 @@ class TestImplementationReportGuard(unittest.TestCase):
         qa_waiting = self.temp_root / ".project" / "qa" / "waiting" / f"{task_id}-qa.md"
         qa_waiting.write_text("# qa\n- **Status:** waiting\n")
         # Evidence dir
-        round_dir = self.temp_root / ".project" / "qa" / "validation-evidence" / task_id / "round-1"
+        round_dir = self.temp_root / ".project" / "qa" / "validation-reports" / task_id / "round-1"
         round_dir.mkdir(parents=True, exist_ok=True)
         for name in ["command-type-check.txt", "command-lint.txt", "command-test.txt", "command-build.txt"]:
             (round_dir / name).write_text("ok\n")

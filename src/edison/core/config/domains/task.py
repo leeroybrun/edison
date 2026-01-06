@@ -60,9 +60,9 @@ class TaskConfig(BaseDomainConfig):
         """Get evidence subdirectory name from config.
         
         Returns the subdirectory name under qa_root where validation evidence
-        is stored (default: "validation-evidence").
+        is stored (default: "validation-reports").
         """
-        return self._paths.get("evidenceSubdir", "validation-evidence")
+        return self._paths.get("evidenceSubdir", "validation-reports")
 
     @cached_property
     def _paths(self) -> Dict[str, str]:

@@ -190,7 +190,7 @@ class TestQARoundManagement:
         repo.append_round(qa_id, status="reject")
         assert repo.get(qa_id).round == 1
 
-        evidence_root = repo_env / ".project" / "qa" / "validation-evidence" / task_id
+        evidence_root = repo_env / ".project" / "qa" / "validation-reports" / task_id
         assert not evidence_root.exists()
 
         # Now request an evidence-backed round; this must create round-1..round-2 dirs.

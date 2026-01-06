@@ -57,7 +57,7 @@ def _ensure_ready_prereqs(project: TestProjectDir, task_id: str, session_id: str
     )
     run_script("tasks/claim", [task_id, "--session", session_id], cwd=project.tmp_path)
     # Minimal implementation report and round-1 dir
-    rd = project.project_root / "qa" / "validation-evidence" / task_id / "round-1"
+    rd = project.project_root / "qa" / "validation-reports" / task_id / "round-1"
     rd.mkdir(parents=True, exist_ok=True)
     (rd / "implementation-report.md").write_text(
         format_frontmatter(_impl_report(task_id)) + "\n# Implementation Report\n",

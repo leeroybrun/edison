@@ -30,5 +30,5 @@ def test_evidence_init_is_deprecated_and_does_not_create_rounds(
     assert payload.get("deprecated") is True
     assert payload.get("taskId") == task_id
 
-    evidence_root = isolated_project_env / ".project" / "qa" / "validation-evidence" / task_id
+    evidence_root = isolated_project_env / ".project" / "qa" / "validation-reports" / task_id
     assert not evidence_root.exists()

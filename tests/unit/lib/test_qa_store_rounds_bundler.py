@@ -27,7 +27,7 @@ def test_rounds_next_round_detects_existing(tmp_path: Path, monkeypatch: pytest.
     setup_project_root(monkeypatch, tmp_path)
     from edison.core.qa import rounds
 
-    ev_root = tmp_path / ".project" / "qa" / "validation-evidence" / "t-1"
+    ev_root = tmp_path / ".project" / "qa" / "validation-reports" / "t-1"
     (ev_root / "round-1").mkdir(parents=True)
 
     assert rounds.latest_round("t-1") == 1
@@ -49,7 +49,7 @@ def test_bundler_path_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     }
 
     path = bundler.bundle_summary_path("t-2", 1, config=cfg)
-    assert path == tmp_path / ".project" / "qa" / "validation-evidence" / "t-2" / "round-1" / "bundle-summary.md"
+    assert path == tmp_path / ".project" / "qa" / "validation-reports" / "t-2" / "round-1" / "bundle-summary.md"
 
 
 def test_evidence_service_bundle_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

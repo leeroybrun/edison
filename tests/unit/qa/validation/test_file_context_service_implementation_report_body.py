@@ -9,7 +9,7 @@ def test_file_context_service_extracts_files_from_implementation_report_body(
     isolated_project_env: Path,
 ) -> None:
     repo = isolated_project_env
-    report_dir = repo / ".project" / "qa" / "validation-evidence" / "T001" / "round-1"
+    report_dir = repo / ".project" / "qa" / "validation-reports" / "T001" / "round-1"
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "implementation-report.md"
     report_path.write_text(

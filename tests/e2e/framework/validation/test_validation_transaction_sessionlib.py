@@ -24,7 +24,7 @@ from tests.helpers.env_setup import setup_project_root
 
 
 def _evidence_paths(root: Path, task_id: str, round_no: int = 1) -> Path:
-    return root / ".project" / "qa" / "validation-evidence" / task_id / f"round-{round_no}"
+    return root / ".project" / "qa" / "validation-reports" / task_id / f"round-{round_no}"
 
 
 @pytest.mark.fast

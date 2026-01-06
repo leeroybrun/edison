@@ -26,7 +26,7 @@ def find_evidence_round(
     """Evidence directory resolution with round detection.
 
     Resolution logic:
-    - If round is specified: .project/qa/validation-evidence/{task_id}/round-{round}/
+    - If round is specified: .project/qa/validation-reports/{task_id}/round-{round}/
     - If round is None: Find latest round-N directory
 
     Args:
@@ -83,6 +83,5 @@ __all__ = [
     "find_evidence_round",
     "list_evidence_rounds",
 ]
-
 
 

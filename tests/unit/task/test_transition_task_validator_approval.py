@@ -111,7 +111,7 @@ def test_transition_task_allows_when_bundle_approved(
     task_repo.save(task)
 
     # Seed evidence for round (required by can_finish_task guard)
-    evidence_root = root / ".project" / "qa" / "validation-evidence"
+    evidence_root = root / ".project" / "qa" / "validation-reports"
     round_dir = evidence_root / task_id / "round-1"
     round_dir.mkdir(parents=True, exist_ok=True)
     

@@ -182,7 +182,7 @@ class TestScriptWorkflow:
         assert "verification" in (incomplete.stdout + incomplete.stderr).lower()
 
         # Prepare round evidence so guards pass
-        ev_round = cli_workflow_env["qa_root"] / "validation-evidence" / task_id / "round-1"
+        ev_round = cli_workflow_env["qa_root"] / "validation-reports" / task_id / "round-1"
         ev_round.mkdir(parents=True, exist_ok=True)
         for name in get_default_value("qa", "evidence_files"):
             (ev_round / name).write_text("ok\n")

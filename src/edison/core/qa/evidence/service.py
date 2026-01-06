@@ -40,7 +40,26 @@ class EvidenceService:
 
         # Resolve evidence root using shared utility (single source of truth)
         from .._utils import get_evidence_base_path
-        self.evidence_root = get_evidence_base_path(project_root) / task_id
+        base = get_evidence_base_path(project_root)
+        self.evidence_root = base / task_id
+
+        # Backwards-compat + mandatory migration: if a task still exists under the
+        # legacy QA directory, migrate it into the canonical location on demand.
+        try:
+            from .._utils import get_qa_root_path
+
+            qa_root = get_qa_root_path(project_root)
+            legacy_base = qa_root / "validation-evidence"
+            legacy_task = legacy_base / str(task_id)
+            if not self.evidence_root.exists() and legacy_task.exists():
+                self.evidence_root.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    legacy_task.rename(self.evidence_root)
+                except Exception:
+                    # If we cannot migrate, keep reading from the legacy path.
+                    self.evidence_root = legacy_task
+        except Exception:
+            pass
 
     # -------------------------------------------------------------------------
     # Config-based filename resolution (SINGLE SOURCE)

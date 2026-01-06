@@ -140,7 +140,7 @@ def test_validators_validate_emits_summary_path_on_stdout_and_logs_to_stderr(tmp
     proj = TestProjectDir(tmp_path, REPO_ROOT)
     task_id = "contract-test-task"
     # Create an empty evidence dir (no reports → failure path)
-    ev_dir = proj.tmp_path / ".project" / "qa" / "validation-evidence" / task_id
+    ev_dir = proj.tmp_path / ".project" / "qa" / "validation-reports" / task_id
     (ev_dir / "round-1").mkdir(parents=True, exist_ok=True)
     rc, out, err = run(["edison", "qa", "validate", task_id, "--check-only", "--json"], cwd=proj.tmp_path)
     assert rc != 0  # Not approved

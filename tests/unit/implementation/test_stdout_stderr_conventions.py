@@ -23,7 +23,7 @@ class TestStdErrConventions(unittest.TestCase):
         self.project_root = REPO_ROOT
         self.temp_root = Path(tempfile.mkdtemp(prefix="project-stderr-tests-"))
         self.addCleanup(lambda: shutil.rmtree(self.temp_root, ignore_errors=True))
-        (self.temp_root / ".project" / "qa" / "validation-evidence").mkdir(parents=True, exist_ok=True)
+        (self.temp_root / ".project" / "qa" / "validation-reports").mkdir(parents=True, exist_ok=True)
         (self.temp_root / ".project" / "tasks" / "wip").mkdir(parents=True, exist_ok=True)
 
         self.base_env = os.environ.copy()

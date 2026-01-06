@@ -128,7 +128,7 @@ filePatternRules:
 2. Implements using TDD (RED→GREEN→REFACTOR)
 3. Creates implementation report at:
    ```
-   .project/qa/validation-evidence/<task-id>/round-1/implementation-report.md
+   .project/qa/validation-reports/<task-id>/round-1/implementation-report.md
    ```
 
 **Implementation report structure:**
@@ -267,7 +267,7 @@ edison qa run <validator-name> --task <task-id>
 **What happens:**
 1. Creates validation bundle at:
    ```
-   .project/qa/validation-evidence/<task-id>/round-N/
+   .project/qa/validation-reports/<task-id>/round-N/
    ```
 
 2. Executes validators in parallel (configurable):
@@ -277,7 +277,7 @@ edison qa run <validator-name> --task <task-id>
 
 3. Collects evidence files:
    ```
-   validation-evidence/<task-id>/round-1/
+   validation-reports/<task-id>/round-1/
    ├── implementation-report.md
    ├── command-test.txt
    ├── command-lint.txt
@@ -336,7 +336,7 @@ edison task ensure_followups <task-id>
 
 **Follow-up tasks created at:**
 ```
-.project/qa/validation-evidence/<task-id>/round-N/followups/
+.project/qa/validation-reports/<task-id>/round-N/followups/
 ```
 
 ---
@@ -593,7 +593,7 @@ Detailed validation process with evidence collection and consensus.
 
 **Required evidence files:**
 ```
-.project/qa/validation-evidence/<task-id>/round-N/
+.project/qa/validation-reports/<task-id>/round-N/
 ├── command-test.txt          # Test output
 ├── command-lint.txt          # Lint output
 ├── command-type-check.txt    # Type check output
@@ -848,7 +848,7 @@ Action required: Add refactor phase evidence showing code cleanup
 
 **Follow-up location:**
 ```
-.project/qa/validation-evidence/<task-id>/round-N/followups/
+.project/qa/validation-reports/<task-id>/round-N/followups/
 └── task-<followup-id>.md
 ```
 
@@ -872,7 +872,7 @@ Test-Driven Development enforcement with RED→GREEN→REFACTOR cycle.
 # Example: src/features/__tests__/myFeature.test.ts
 
 # 2. Run test and capture failure
-npm test 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/evidence-red.txt
+npm test 2>&1 | tee .project/qa/validation-reports/T-001/round-1/evidence-red.txt
 
 # 3. Verify exit code is non-zero
 echo $? # Should be 1 (failure)
@@ -895,7 +895,7 @@ echo $? # Should be 1 (failure)
 # Example: src/features/myFeature.ts
 
 # 2. Run test and capture success
-npm test 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/evidence-green.txt
+npm test 2>&1 | tee .project/qa/validation-reports/T-001/round-1/evidence-green.txt
 
 # 3. Verify exit code is zero
 echo $? # Should be 0 (success)
@@ -917,7 +917,7 @@ echo $? # Should be 0 (success)
 # 1. Refactor code (improve structure, remove duplication)
 
 # 2. Run test and capture continued success
-npm test 2>&1 | tee .project/qa/validation-evidence/T-001/round-1/evidence-refactor.txt
+npm test 2>&1 | tee .project/qa/validation-reports/T-001/round-1/evidence-refactor.txt
 
 # 3. Verify exit code is still zero
 echo $? # Should be 0 (success)
@@ -954,7 +954,7 @@ tdd:
 ```bash
 # If no refactor needed
 echo "No refactoring required - code already optimal" > \
-  .project/qa/validation-evidence/T-001/round-1/refactor-waiver.txt
+  .project/qa/validation-reports/T-001/round-1/refactor-waiver.txt
 ```
 
 ---
@@ -1076,7 +1076,7 @@ delegation:
 
 **Sub-agent produces:**
 ```
-.project/qa/validation-evidence/<task-id>/round-1/
+.project/qa/validation-reports/<task-id>/round-1/
 ├── implementation-report.md
 ├── evidence-red.txt
 ├── evidence-green.txt
