@@ -74,3 +74,12 @@ def test_verdict_extraction_handles_coderabbit_plain_text_reviews(caplog) -> Non
         )
         == "approve"
     )
+
+    # CodeRabbit bodies can mention "reject" in explanatory text; do not treat that as a verdict.
+    assert (
+        e._extract_verdict_from_response(
+            "Type: potential_issue\n\nComment: Some tools will reject this schema.\n\nReview completed ✔\n",
+            validator_id="coderabbit",
+        )
+        == "approve"
+    )
