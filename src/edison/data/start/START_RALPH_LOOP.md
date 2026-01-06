@@ -58,6 +58,6 @@ This command surfaces your next actions. Complete them, and the loop driver will
 
 ```bash
 edison session next <session-id>        # Get next recommended actions
-edison session continuation show <sid>  # Check continuation settings
-edison session continuation set <sid> --mode off  # Disable Ralph Loop
+edison session continuation show <session-id>  # Check continuation settings
+edison session continuation set <session-id> --mode off  # Disable Ralph Loop
 ```
