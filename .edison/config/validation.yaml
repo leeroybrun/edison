@@ -20,6 +20,22 @@ validation:
       blocking_validators:
         - global-claude
 
+    bundle:
+      name: bundle
+      description: "Bundle/meta validation (Codex + Claude + CodeRabbit) (Edison repo)"
+      validators:
+        - global-codex
+        - global-claude
+        - global-coderabbit
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+      blocking_validators:
+        - global-codex
+        - global-claude
+
     deep:
       name: deep
       description: "Deep validation required before session close (Edison repo)"
@@ -43,7 +59,9 @@ validation:
     # Projects that want Codex CLI validation should override this in their own
     # `.edison/config/validation.yaml`.
     global-codex:
-      enabled: false
+      enabled: true
+      # Run Codex only when explicitly requested (e.g. the `bundle` preset).
+      always_run: false
 
     # Run critical validators with Claude CLI by default for reliability.
     security:
