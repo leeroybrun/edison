@@ -765,8 +765,20 @@ class CLIEngine:
         # The CLI output may not include the literal word "coderabbit", so gate
         # these heuristics on the validator id instead of response contents.
         if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
+            types = re.findall(r"\btype:\s*([a-z_]+)\b", response_lower)
+            if not types:
+                logger.warning(
+                    "CodeRabbit output missing finding types; failing closed (validator_id=%s, snippet=%r)",
+                    validator_id,
+                    response_lower[:300],
+                )
+                return "reject"
+
             # Treat "potential_issue"/"bug"/security/perf as blocking; allow pure refactor suggestions.
-            if re.search(r"\btype:\s*(critical_issue|potential_issue|bug|security_issue|performance_issue)\b", response_lower):
+            if any(
+                t in {"critical_issue", "potential_issue", "bug", "security_issue", "performance_issue"}
+                for t in types
+            ):
                 return "reject"
             return "approve"
 
