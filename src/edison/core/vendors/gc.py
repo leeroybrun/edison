@@ -69,8 +69,8 @@ class VendorGarbageCollector:
         # Find checkouts to remove (vendors/ directory)
         checkouts_to_remove: list[Path] = []
         vendor_base = self.repo_root / "vendors"
+        vendor_base_resolved = vendor_base.resolve()
         if vendor_base.exists() and not vendor_base.is_symlink():
-            vendor_base_resolved = vendor_base.resolve()
             configured_paths = {self.repo_root / s.path for s in sources}
             for path in vendor_base.iterdir():
                 if path.is_symlink():
@@ -104,6 +104,8 @@ class VendorGarbageCollector:
 
         for path in checkouts_to_remove:
             try:
+                if not path.resolve().is_relative_to(vendor_base_resolved):
+                    continue
                 bytes_freed += self._get_dir_size(path)
                 shutil.rmtree(path)
                 removed_checkouts.append(str(path))

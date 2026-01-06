@@ -178,8 +178,6 @@ class VendorCheckout:
         # Remove existing checkout if present
         if checkout_path.exists():
             import shutil
-            if not resolved_checkout.is_relative_to(resolved_repo_root):
-                raise VendorCheckoutError(f"Refusing to delete checkout outside repo root: {resolved_checkout}")
             shutil.rmtree(checkout_path)
 
         # Clone from mirror

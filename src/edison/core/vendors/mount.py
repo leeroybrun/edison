@@ -87,18 +87,34 @@ class MountExecutor:
                         dirpath_path = Path(dirpath)
                         for name in list(dirnames) + list(filenames):
                             p = dirpath_path / name
-                            if p.is_symlink() and not p.resolve().is_relative_to(vendor_root_resolved):
-                                return MountResult(
-                                    success=False,
-                                    path=str(target),
-                                    error=f"Refusing to copy symlink outside vendor root: {p}",
-                                )
-                elif source.is_symlink() and not source.resolve().is_relative_to(vendor_root_resolved):
-                    return MountResult(
-                        success=False,
-                        path=str(target),
-                        error=f"Refusing to copy symlink outside vendor root: {source}",
-                    )
+                            if p.is_symlink():
+                                resolved = p.resolve()
+                                if not resolved.exists():
+                                    return MountResult(
+                                        success=False,
+                                        path=str(target),
+                                        error=f"Refusing to copy broken symlink: {p}",
+                                    )
+                                if not resolved.is_relative_to(vendor_root_resolved):
+                                    return MountResult(
+                                        success=False,
+                                        path=str(target),
+                                        error=f"Refusing to copy symlink outside vendor root: {p}",
+                                    )
+                elif source.is_symlink():
+                    resolved = source.resolve()
+                    if not resolved.exists():
+                        return MountResult(
+                            success=False,
+                            path=str(target),
+                            error=f"Refusing to copy broken symlink: {source}",
+                        )
+                    if not resolved.is_relative_to(vendor_root_resolved):
+                        return MountResult(
+                            success=False,
+                            path=str(target),
+                            error=f"Refusing to copy symlink outside vendor root: {source}",
+                        )
 
             # Handle existing target
             if target.exists() or target.is_symlink():

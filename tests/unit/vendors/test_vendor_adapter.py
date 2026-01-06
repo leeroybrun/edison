@@ -362,6 +362,32 @@ class TestMountExecutor:
         assert "symlink" in (result.error or "").lower()
         assert not (repo_root / "copied").exists()
 
+    def test_executor_copy_rejects_broken_symlinks(self, tmp_path: Path) -> None:
+        """Copy mounts should fail with a clear error on broken symlinks."""
+        from edison.core.vendors.mount import MountExecutor
+        from edison.core.vendors.models import VendorMount
+
+        repo_root = tmp_path / "repo"
+        vendor_path = repo_root / "vendors" / "test"
+        src_dir = vendor_path / "src"
+        src_dir.mkdir(parents=True)
+
+        # Create a broken symlink within the vendor tree.
+        (src_dir / "broken").symlink_to(vendor_path / "missing.txt")
+
+        mount = VendorMount(
+            source_path="src/",
+            target_path="copied/",
+            mount_type="copy",
+        )
+
+        executor = MountExecutor(repo_root=repo_root)
+        result = executor.execute(mount, vendor_path=vendor_path)
+
+        assert result.success is False
+        assert "broken symlink" in (result.error or "").lower()
+        assert not (repo_root / "copied").exists()
+
 
 class TestVendorMountDiscovery:
     """Test full vendor mount discovery flow."""
