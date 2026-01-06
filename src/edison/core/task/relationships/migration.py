@@ -32,6 +32,8 @@ def migrate_task_markdown_relationships(markdown: str) -> str:
 
     doc = parse_frontmatter(markdown)
     fm: Dict[str, Any] = dict(doc.frontmatter or {})
+    if not any(k in fm for k in _LEGACY_RELATIONSHIP_KEYS):
+        return markdown
 
     edges, _derived = decode_frontmatter_relationships(fm)
 
