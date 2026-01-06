@@ -6,8 +6,8 @@
  * Edison is the source of truth for:
  *   - Completion/continuation: `edison session next --json --completion-only`
  *   - Rules applicability:
- *       - Task lifecycle: `edison rules inject --state <state> --json`
- *       - Context guidance: `edison rules inject --context <context> --json`
+ *       - Task lifecycle: `edison rules inject --state <state> --format json`
+ *       - Context guidance: `edison rules inject --context <context> --format json`
  *   - Execution config: `edison config show execution --json`
  *
  * This plugin implements:
@@ -271,7 +271,8 @@ async function fetchEdisonRulesInjectForState(
     "inject",
     "--state",
     state,
-    "--json",
+    "--format",
+    "json",
   ]);
 }
 
@@ -283,7 +284,8 @@ async function fetchEdisonRulesInjectForContext(
     "inject",
     "--context",
     context,
-    "--json",
+    "--format",
+    "json",
   ]);
 }
 

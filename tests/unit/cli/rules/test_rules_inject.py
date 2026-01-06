@@ -147,7 +147,8 @@ class TestStateToTransitionMapping:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--state", "wip",  # Should auto-map to wip->done
             "--repo-root", str(edison_project),
         ])
@@ -174,7 +175,8 @@ class TestRulesInjectOutput:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--repo-root", str(edison_project),
         ])
 
@@ -201,7 +203,8 @@ class TestRulesInjectOutput:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--transition", "wip->done",
             "--repo-root", str(edison_project),
         ])
@@ -231,7 +234,8 @@ class TestRulesInjectOutput:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--repo-root", str(edison_project),
         ])
 
@@ -275,7 +279,8 @@ class TestRulesInjectContextFiltering:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--transition", "wip->done",
             "--repo-root", str(edison_project),
         ])
@@ -298,7 +303,8 @@ class TestRulesInjectContextFiltering:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--context", "delegation",
             "--repo-root", str(edison_project),
         ])
@@ -325,7 +331,8 @@ class TestRulesInjectInjectionRendering:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--transition", "wip->done",
             "--repo-root", str(edison_project),
         ])
@@ -348,7 +355,8 @@ class TestRulesInjectInjectionRendering:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--transition", "nonexistent->state",
             "--repo-root", str(edison_project),
         ])
@@ -374,7 +382,8 @@ class TestRulesInjectSessionContext:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--session-id", "test-session-123",
             "--repo-root", str(edison_project),
         ])
@@ -394,7 +403,8 @@ class TestRulesInjectSessionContext:
         parser = argparse.ArgumentParser()
         register_args(parser)
         args = parser.parse_args([
-            "--json",
+            "--format",
+            "json",
             "--task-id", "task-456",
             "--repo-root", str(edison_project),
         ])
@@ -437,7 +447,8 @@ class TestRulesInjectRepoRootBehavior:
         register_args(parser)
         args = parser.parse_args(
             [
-                "--json",
+                "--format",
+                "json",
                 "--transition",
                 "wip->done",
                 "--repo-root",

@@ -61,11 +61,6 @@ def register_args(parser: argparse.ArgumentParser) -> None:
         help="Current task state (auto-maps to expected transition: wip->done, done->validated)",
     )
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output JSON payload (includes contexts, rules, and rendered injection).",
-    )
-    parser.add_argument(
         "--format",
         choices=["markdown", "json"],
         default="markdown",
@@ -194,7 +189,7 @@ def _get_rules_for_inject(
 
 def main(args: argparse.Namespace) -> int:
     """Get applicable rules with rendered injection text."""
-    json_mode = bool(getattr(args, "json", False)) or getattr(args, "format", "markdown") == "json"
+    json_mode = getattr(args, "format", "markdown") == "json"
     formatter = OutputFormatter(json_mode=json_mode)
 
     try:
