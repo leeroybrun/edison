@@ -76,7 +76,7 @@ try:
     for p in parts:
         val = val.get(p, '') if isinstance(val, dict) else ''
     print(val if isinstance(val, str) else '')
-except:
+except Exception:
     pass
 " 2>/dev/null || true
     else

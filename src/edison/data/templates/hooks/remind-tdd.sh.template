@@ -29,7 +29,7 @@ fi
 # Get current task state (prefer session context JSON; fall back to legacy task JSON)
 TASK_STATE=$(edison session context --json 2>/dev/null | jq -r '.currentTaskState // empty' 2>/dev/null || true)
 if [[ -z "$TASK_STATE" ]]; then
-  TASK_STATE=$(edison task 2>/dev/null | jq -r '.state // empty' 2>/dev/null || true)
+  TASK_STATE=$(edison task --json 2>/dev/null | jq -r '.state // empty' 2>/dev/null || true)
 fi
 
 # Only remind in configured states
