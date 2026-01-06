@@ -72,6 +72,16 @@ class TestVendorMirrorCache:
         assert mirror_path.suffix == ".git"
         assert "/" not in mirror_path.name
 
+    def test_mirror_path_uses_fallback_name_when_extraction_empty(self, tmp_path: Path) -> None:
+        """Mirror path should still be readable when URL parsing yields no name."""
+        from edison.core.vendors.cache import VendorMirrorCache
+
+        cache = VendorMirrorCache(cache_dir=tmp_path / "cache")
+        url = "git@github.com:"
+        mirror_path = cache.get_mirror_path(url)
+
+        assert mirror_path.name.startswith("mirror-")
+
 
 class TestVendorCheckout:
     """Test project-scoped worktree checkout."""

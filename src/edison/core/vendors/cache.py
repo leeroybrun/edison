@@ -55,6 +55,9 @@ class VendorMirrorCache:
             if sep:
                 name = name.replace(sep, "_")
 
+        if not name:
+            name = "mirror"
+
         # Combine for unique, readable path
         mirror_name = f"{name}-{url_hash}.git"
 
