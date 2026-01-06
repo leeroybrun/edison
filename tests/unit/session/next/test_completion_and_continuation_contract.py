@@ -154,4 +154,3 @@ def test_completion_only_flag_outputs_minimal_payload(repo_env: Path, monkeypatc
     out = capsys.readouterr().out
     data = json.loads(out)
     assert set(data.keys()) == {"sessionId", "completion", "continuation"}
-
