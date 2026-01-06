@@ -49,6 +49,24 @@ class TestOpenCodePluginNonInteractiveEnv:
             "Plugin should fetch config from Edison"
         )
 
+    def test_plugin_parses_execution_config_show_json_shape(self) -> None:
+        """Plugin should parse `edison config show execution --json` output shape.
+
+        `edison config show execution --json` returns JSON like:
+
+            {"execution": {"nonInteractive": {...}}}
+
+        so the plugin must read `data.execution.nonInteractive` (or equivalent),
+        not `data.nonInteractive`.
+        """
+        content = _plugin_template_path().read_text()
+        assert "config\", \"show\", \"execution\"" in content, (
+            "Plugin should call `edison config show execution --json`"
+        )
+        assert ("data?.execution" in content or "data.execution" in content) and "nonInteractive" in content, (
+            "Plugin should access `execution.nonInteractive` when parsing config output"
+        )
+
 
 class TestOpenCodePluginBannedCommandDetection:
     """Test OpenCode plugin detects banned commands."""
