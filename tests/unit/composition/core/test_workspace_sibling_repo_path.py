@@ -18,6 +18,19 @@ def test_sibling_repo_path_from_primary_checkout(tmp_path: Path) -> None:
         (tmp_path / "edison-ui").resolve()
     )
 
+def test_sibling_repo_path_tolerates_string_project_root(tmp_path: Path) -> None:
+    repo_root = tmp_path / "edison"
+    repo_root.mkdir()
+    (repo_root / ".git").mkdir()
+
+    ctx = TransformContext(project_root=str(repo_root), config={"project": {"paths": {"uiRepoName": "edison-ui"}}})
+
+    from edison.core.composition.functions import paths as path_functions
+
+    assert path_functions.sibling_repo_path(ctx, "project.paths.uiRepoName", "edison-ui") == str(
+        (tmp_path / "edison-ui").resolve()
+    )
+
 
 def test_sibling_repo_path_from_session_worktree(tmp_path: Path) -> None:
     workspace = tmp_path
@@ -39,4 +52,3 @@ def test_sibling_repo_path_from_session_worktree(tmp_path: Path) -> None:
     assert path_functions.sibling_repo_path(ctx, "project.paths.uiRepoName", "edison-ui") == str(
         (workspace / "edison-ui").resolve()
     )
-

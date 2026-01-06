@@ -129,6 +129,6 @@ def sibling_repo_path(
     if not repo_name:
         return ""
 
-    root = ctx.project_root or Path.cwd()
+    root = Path(ctx.project_root) if ctx.project_root else Path.cwd()
     primary_root = _resolve_primary_repo_root(root)
     return str((primary_root.parent / repo_name).resolve())
