@@ -63,8 +63,8 @@ def test_task_split_uses_next_available_child_number(isolated_project_env: Path)
     parent = task_repo.get(parent_id)
     child = task_repo.get(existing_child_id)
     assert parent is not None and child is not None
-    parent.child_ids = [existing_child_id]
-    child.parent_id = parent_id
+    parent.relationships = [{"type": "child", "target": existing_child_id}]
+    child.relationships = [{"type": "parent", "target": parent_id}]
     task_repo.save(child)
     task_repo.save(parent)
 

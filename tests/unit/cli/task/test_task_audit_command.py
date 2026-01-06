@@ -124,7 +124,7 @@ src/app.py
         tasks_dir / "002-beta.md",
         task_id="002-beta",
         title="Beta",
-        extra_fm="depends_on:\n  - 001-alpha\n",
+        extra_fm="relationships:\n  - type: depends_on\n    target: 001-alpha\n",
         body="""
 ## Files to Create/Modify
 

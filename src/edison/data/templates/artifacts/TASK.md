@@ -4,10 +4,7 @@ title: "{{title}}"
 type: {{type}}
 owner: {{owner}}
 session_id: {{session_id}}
-parent_id: {{parent_id}}
-child_ids: {{child_ids}}
-depends_on: {{depends_on}}
-blocks_tasks: {{blocks_tasks}}
+relationships: []
 claimed_at: {{claimed_at}}
 last_active: {{last_active}}
 continuation_id: {{continuation_id}}
@@ -134,4 +131,3 @@ Primary Files / Areas:
 <!-- Additional notes, context, or considerations -->
 
 <!-- /EXTENSIBLE: Notes -->
-

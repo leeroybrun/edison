@@ -32,7 +32,11 @@ def test_task_ready_excludes_tasks_with_unmet_depends_on(project_root, monkeypat
         todo_dir / f"{main_id}.md",
         task_id=main_id,
         title="Depends on dep",
-        extra_frontmatter=f"depends_on: [{dep_id}]\n",
+        extra_frontmatter=(
+            "relationships:\n"
+            "  - type: depends_on\n"
+            f"    target: {dep_id}\n"
+        ),
     )
 
     args = Namespace(record_id=None, session=None, json=True, repo_root=str(project_root))
@@ -60,7 +64,11 @@ def test_task_ready_includes_tasks_when_dependencies_are_done(project_root, monk
         todo_dir / f"{main_id}.md",
         task_id=main_id,
         title="Ready once dep is done",
-        extra_frontmatter=f"depends_on: [{dep_id}]\n",
+        extra_frontmatter=(
+            "relationships:\n"
+            "  - type: depends_on\n"
+            f"    target: {dep_id}\n"
+        ),
     )
 
     args = Namespace(record_id=None, session=None, json=True, repo_root=str(project_root))
@@ -70,4 +78,3 @@ def test_task_ready_includes_tasks_when_dependencies_are_done(project_root, monk
     payload = json.loads(capsys.readouterr().out)
     assert payload["count"] == 1
     assert payload["tasks"][0]["id"] == main_id
-

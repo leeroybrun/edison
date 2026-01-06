@@ -832,8 +832,9 @@ edison task ensure_followups <task-id>
 ```markdown
 ---
 id: T-002
-status: todo
-parent_id: T-001
+relationships:
+  - type: parent
+    target: T-001
 ---
 
 ## Fix TDD Compliance Issues

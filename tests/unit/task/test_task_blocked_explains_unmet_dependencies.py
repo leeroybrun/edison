@@ -30,7 +30,11 @@ def test_task_blocked_lists_todo_tasks_blocked_by_depends_on(project_root, monke
         todo_dir / f"{main_id}.md",
         task_id=main_id,
         title="Blocked task",
-        extra_frontmatter=f"depends_on: [{dep_id}]\n",
+        extra_frontmatter=(
+            "relationships:\n"
+            "  - type: depends_on\n"
+            f"    target: {dep_id}\n"
+        ),
     )
 
     from edison.cli.task import blocked as task_blocked
@@ -66,7 +70,11 @@ def test_task_blocked_explain_mode_does_not_treat_non_todo_tasks_as_blocked(
         wip_dir / f"{main_id}.md",
         task_id=main_id,
         title="In progress",
-        extra_frontmatter=f"depends_on: [{dep_id}]\n",
+        extra_frontmatter=(
+            "relationships:\n"
+            "  - type: depends_on\n"
+            f"    target: {dep_id}\n"
+        ),
     )
 
     from edison.cli.task import blocked as task_blocked
