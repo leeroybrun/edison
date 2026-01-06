@@ -288,7 +288,10 @@ async function fetchNonInteractiveConfig(): Promise<EdisonNonInteractiveConfig> 
     const out = await new Response(proc.stdout).text();
     await proc.exited;
     const data = JSON.parse(out);
-    const nonInteractive = data?.nonInteractive || {};
+    // `edison config show execution --json` returns `{ "execution": { ... } }`.
+    // Fail-open for older/alternate shapes by falling back to `data` directly.
+    const execution = data?.execution ?? data;
+    const nonInteractive = execution?.nonInteractive || {};
     return {
       enabled: Boolean(nonInteractive.enabled),
       env: nonInteractive.env || {},
