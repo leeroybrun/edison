@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Edison Web Server Stop Script Template (composable)
+#
+# Intended usage:
+# - Set `web_server.stop.command: "./.edison/scripts/stop-server.sh"`
+#
+# This script is often used for detached stacks (e.g., Docker compose), so it
+# should stop/cleanup even when no PID is available.
+
+set -euo pipefail
+
+# <!-- SECTION: config -->
+PROJECT_ROOT="${AGENTS_PROJECT_ROOT:-$(pwd)}"
+MAIN_REPO_ROOT="${AGENTS_MAIN_REPO_ROOT:-$PROJECT_ROOT}"
+SESSION_ID="${AGENTS_SESSION:-main}"
+
+# Optional: if set, this script will run it.
+# Examples:
+#   export EDISON_WEB_SERVER_STOP_CMD="docker compose down"
+EDISON_WEB_SERVER_STOP_CMD="${EDISON_WEB_SERVER_STOP_CMD:-}"
+# <!-- /SECTION: config -->
+
+# <!-- SECTION: helpers -->
+log_info() { echo "[INFO] $*"; }
+log_warn() { echo "[WARN] $*"; }
+log_error() { echo "[ERROR] $*" >&2; }
+# <!-- /SECTION: helpers -->
+
+# <!-- SECTION: hooks.pre_stop -->
+# Project hooks can extend here.
+# <!-- /SECTION: hooks.pre_stop -->
+
+# <!-- SECTION: stop -->
+log_info "Stopping web server"
+log_info "  PROJECT_ROOT=$PROJECT_ROOT"
+log_info "  MAIN_REPO_ROOT=$MAIN_REPO_ROOT"
+log_info "  SESSION_ID=$SESSION_ID"
+
+cd "$PROJECT_ROOT"
+
+if [[ -n "$EDISON_WEB_SERVER_STOP_CMD" ]]; then
+  log_info "Running EDISON_WEB_SERVER_STOP_CMD"
+  log_info "  $EDISON_WEB_SERVER_STOP_CMD"
+  bash -lc "$EDISON_WEB_SERVER_STOP_CMD"
+  exit 0
+fi
+
+log_warn "stop-server.sh is not configured yet."
+log_warn "Set EDISON_WEB_SERVER_STOP_CMD or edit this script to stop your app (docker compose down, pkill, etc)."
+exit 0
+# <!-- /SECTION: stop -->
+
+# <!-- SECTION: hooks.post_stop -->
+# Project hooks can extend here.
+# <!-- /SECTION: hooks.post_stop -->

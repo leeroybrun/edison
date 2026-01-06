@@ -97,13 +97,17 @@ def acquire_file_lock(
                 acquired = True
                 break
             except OSError:
-                if (time.time() - start) >= effective_timeout:
+                elapsed = time.time() - start
+                remaining = effective_timeout - elapsed
+                if remaining <= 0:
                     if effective_fail_open:
                         break
                     raise LockTimeoutError(
                         f"Could not acquire lock on {target} within {effective_timeout}s"
                     )
-                time.sleep(effective_poll_interval)
+                # Avoid sleeping past the timeout budget. This matters for callers
+                # that intentionally use very short timeouts (e.g. fail-open JSON I/O).
+                time.sleep(min(effective_poll_interval, remaining))
 
         yield fh if acquired else None
     finally:

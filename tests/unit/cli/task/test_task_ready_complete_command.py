@@ -10,26 +10,14 @@ import pytest
 def _create_minimal_round_1_evidence(project_root: Path, task_id: str) -> None:
     """Create minimal evidence needed for task completion guards."""
     from edison.core.config.domains.qa import QAConfig
-    from edison.core.qa.evidence import EvidenceService
-
-    ev = EvidenceService(task_id, project_root=project_root)
-    round_dir = ev.get_evidence_root() / "round-1"
-    round_dir.mkdir(parents=True, exist_ok=True)
-
-    (round_dir / "implementation-report.md").write_text(
-        f"""---
-taskId: "{task_id}"
-round: 1
-status: "complete"
-summary: "Test implementation"
----
-""",
-        encoding="utf-8",
+    from tests.tools.evidence_helpers import (
+        write_minimal_round_implementation_report,
+        write_passing_snapshot_command_evidence,
     )
 
     required = QAConfig(repo_root=project_root).get_required_evidence_files()
-    for name in required:
-        (round_dir / str(name)).write_text("PASS\n", encoding="utf-8")
+    write_minimal_round_implementation_report(project_root=project_root, task_id=task_id, round_num=1)
+    write_passing_snapshot_command_evidence(project_root=project_root, task_id=task_id, required_files=required)
 
 
 @pytest.mark.task
@@ -78,4 +66,3 @@ def test_task_ready_with_record_id_completes_task(
     updated = TaskRepository(project_root=isolated_project_env).get(task_id)
     assert updated is not None
     assert updated.state == "done"
-

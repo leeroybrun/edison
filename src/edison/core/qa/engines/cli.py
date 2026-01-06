@@ -486,13 +486,16 @@ class CLIEngine:
         ]
         try:
             raw_web = getattr(validator, "web_server", None)
-            if isinstance(raw_web, dict):
-                url = str(raw_web.get("url", raw_web.get("base_url", raw_web.get("baseUrl"))) or "").strip()
-                if url:
-                    prelude_lines.append(f"- Web Server URL: {url}")
-                health = str(raw_web.get("healthcheck_url", raw_web.get("healthcheckUrl", raw_web.get("healthcheck"))) or "").strip()
-                if health:
-                    prelude_lines.append(f"- Web Server Probe: {health}")
+            if raw_web is not None:
+                from edison.core.config import ConfigManager
+                from edison.core.web_server import WebServerConfig, resolve_web_server_config
+
+                cfg = ConfigManager(repo_root=worktree_path).load_config(validate=False, include_packs=True)
+                resolved = resolve_web_server_config(full_config=cfg, validator_web_server=raw_web)
+                parsed = WebServerConfig.from_raw(resolved) if resolved is not None else None
+                if parsed is not None:
+                    prelude_lines.append(f"- Web Server URL: {parsed.url}")
+                    prelude_lines.append(f"- Web Server Probe: {parsed.probe_url}")
         except Exception:
             pass
         if round_dir:

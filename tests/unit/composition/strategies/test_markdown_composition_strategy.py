@@ -115,6 +115,49 @@ Core intro content.
         assert "Core intro content." in result
         assert "<!-- SECTION:" not in result
 
+    def test_compose_with_shell_comment_prefixed_section_markers(self) -> None:
+        """Section markers inside shell comments should not leave stray comment prefixes."""
+        from edison.core.composition.strategies import (
+            CompositionContext,
+            LayerContent,
+            MarkdownCompositionStrategy,
+        )
+
+        strategy = MarkdownCompositionStrategy(
+            enable_sections=True,
+            enable_dedupe=False,
+            enable_template_processing=False,
+        )
+
+        layers = [
+            LayerContent(
+                content="""#!/usr/bin/env bash
+# <!-- SECTION: body -->
+echo core
+# <!-- /SECTION: body -->
+""",
+                source="core",
+            ),
+            LayerContent(
+                content="""# <!-- EXTEND: body -->
+echo pack
+# <!-- /EXTEND -->
+""",
+                source="pack:test",
+            ),
+        ]
+        context = CompositionContext(active_packs=["test"], config={})
+
+        result = strategy.compose(layers, context)
+
+        assert "echo core" in result
+        assert "echo pack" in result
+        assert "<!-- SECTION:" not in result
+        assert "<!-- EXTEND:" not in result
+
+        # The comment prefix that wraps markers should not leak into output.
+        assert "\n# echo core" not in result
+
     def test_compose_with_extend_markers(self) -> None:
         """EXTEND markers add content to existing sections."""
         from edison.core.composition.strategies import (

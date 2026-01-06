@@ -5,11 +5,12 @@ ci:
     # NOTE: Edison is not yet mypy-clean; use a lightweight syntax/type sanity check
     # for session-close evidence until strict typing is enforced repository-wide.
     type-check: "./.venv/bin/python -m compileall -q src/"
-    # NOTE: Edison repo is not fully ruff-clean yet; capture findings as evidence without blocking.
+    # NOTE: This repo is not ruff-clean yet. For QA evidence capture we still want a lint
+    # report, but we don't want it to block evidence generation for unrelated changes.
     lint: "./.venv/bin/ruff check src/ tests/ --exit-zero"
     format: "./.venv/bin/ruff format src/ tests/"
     format-check: "./.venv/bin/ruff format --check src/ tests/"
-    test: "./.venv/bin/pytest -q tests/unit/qa tests/unit/cli/qa tests/unit/cli/evidence tests/unit/cli/task tests/unit/cli/session tests/unit/cli/test_mutability_task_ready_done.py tests/unit/session/next tests/unit/session/lifecycle tests/unit/task"
+    test: "scripts/test-fast"
     test-fast: "./.venv/bin/pytest -q tests/unit/qa tests/unit/cli/qa tests/unit/cli/evidence tests/unit/cli/task tests/unit/cli/session tests/unit/cli/test_mutability_task_ready_done.py tests/unit/session/next tests/unit/session/lifecycle tests/unit/task"
     test-task: "./.venv/bin/pytest -q tests/unit/task"
     test-import: "./.venv/bin/pytest -q tests/unit/core/import_"

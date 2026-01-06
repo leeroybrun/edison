@@ -61,7 +61,7 @@ class EvidenceService:
             paths = {}
 
         return {
-            "bundle": paths.get("bundleSummaryFile", "bundle-summary.md"),
+            "bundle": paths.get("bundleSummaryFile", "validation-summary.md"),
             "implementation": paths.get("implementationReportFile", "implementation-report.md"),
         }
 
@@ -152,9 +152,18 @@ class EvidenceService:
         This is the SINGLE SOURCE for reading bundle summaries.
         """
         round_dir = self.ensure_round(round_num)
-        bundle_path = round_dir / self.bundle_filename
+        preferred = round_dir / self.bundle_filename
+        if preferred.exists():
+            return read_structured_report(preferred)
 
-        return read_structured_report(bundle_path)
+        # Backward compatibility: allow legacy filename when the configured one
+        # is missing. This supports projects that still emit `bundle-summary.md`
+        # while core defaults have moved to `validation-summary.md`.
+        legacy = round_dir / "bundle-summary.md"
+        if legacy.exists() and legacy != preferred:
+            return read_structured_report(legacy)
+
+        return read_structured_report(preferred)
 
     def write_bundle(self, data: Dict[str, Any], round_num: Optional[int] = None) -> None:
         """Write bundle summary using configured filename.

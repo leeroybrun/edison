@@ -88,6 +88,20 @@ Framework specific content
         assert sections[0].name == "composed-additions"
         assert sections[0].content == ""
 
+    def test_parse_section_with_shell_comment_prefix(self) -> None:
+        """SECTION markers inside shell comments should not leak comment prefixes."""
+        content = """
+# <!-- SECTION: tools -->
+- Tool A
+# <!-- /SECTION: tools -->
+"""
+        parser = SectionParser()
+        sections = parser.parse(content, layer="core")
+
+        assert len(sections) == 1
+        assert sections[0].name == "tools"
+        assert sections[0].content.strip() == "- Tool A"
+
 
 # =============================================================================
 # SectionParser Tests - Parsing EXTEND markers
@@ -389,6 +403,21 @@ Content here
         assert "<!-- SECTION:" not in result
         assert "<!-- /SECTION:" not in result
         assert "Content here" in result
+
+    def test_strip_markers_removes_shell_comment_prefixed_markers(self) -> None:
+        """Comment-prefixed SECTION markers should be removed without leaving stray comment text."""
+        content = """
+# <!-- SECTION: tools -->
+Content here
+# <!-- /SECTION: tools -->
+"""
+        parser = SectionParser()
+        result = parser.strip_markers(content)
+
+        assert "Content here" in result
+        assert "<!-- SECTION:" not in result
+        assert "<!-- /SECTION:" not in result
+        assert result.strip() == "Content here"
 
     def test_strip_extend_markers(self) -> None:
         """EXTEND markers should be removed."""

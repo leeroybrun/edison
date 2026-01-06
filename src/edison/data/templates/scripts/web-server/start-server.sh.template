@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Edison Web Server Start Script Template (composable)
+#
+# Intended usage:
+# - Set `web_server.start.command: "./.edison/scripts/start-server.sh"`
+# - Then customize this script (or extend its sections via Edison composition)
+#
+# Worktree awareness:
+# - When running inside an Edison session with a worktree, Edison injects:
+#   - `AGENTS_PROJECT_ROOT` (worktree root)
+#   - `AGENTS_SESSION`
+#   - `AGENTS_MAIN_REPO_ROOT` (best-effort; main repo root when in a worktree)
+#
+# This script uses `AGENTS_PROJECT_ROOT` as the source of truth for where to run.
+
+set -euo pipefail
+
+# <!-- SECTION: config -->
+PROJECT_ROOT="${AGENTS_PROJECT_ROOT:-$(pwd)}"
+MAIN_REPO_ROOT="${AGENTS_MAIN_REPO_ROOT:-$PROJECT_ROOT}"
+SESSION_ID="${AGENTS_SESSION:-main}"
+
+# Optional: if set, this script will run it (useful to avoid editing the file).
+# Examples:
+#   export EDISON_WEB_SERVER_START_CMD="docker compose up -d --wait"
+#   export EDISON_WEB_SERVER_START_CMD="pnpm dev -p 3334"
+EDISON_WEB_SERVER_START_CMD="${EDISON_WEB_SERVER_START_CMD:-}"
+# <!-- /SECTION: config -->
+
+# <!-- SECTION: helpers -->
+log_info() { echo "[INFO] $*"; }
+log_warn() { echo "[WARN] $*"; }
+log_error() { echo "[ERROR] $*" >&2; }
+# <!-- /SECTION: helpers -->
+
+# <!-- SECTION: hooks.pre_start -->
+# Project hooks can extend here.
+# <!-- /SECTION: hooks.pre_start -->
+
+# <!-- SECTION: start -->
+log_info "Starting web server"
+log_info "  PROJECT_ROOT=$PROJECT_ROOT"
+log_info "  MAIN_REPO_ROOT=$MAIN_REPO_ROOT"
+log_info "  SESSION_ID=$SESSION_ID"
+
+cd "$PROJECT_ROOT"
+
+if [[ -n "$EDISON_WEB_SERVER_START_CMD" ]]; then
+  log_info "Running EDISON_WEB_SERVER_START_CMD"
+  log_info "  $EDISON_WEB_SERVER_START_CMD"
+  # Allow complex commands (pipes, &&, redirects).
+  bash -lc "$EDISON_WEB_SERVER_START_CMD"
+  exit 0
+fi
+
+log_error "start-server.sh is not configured yet."
+log_error "Set EDISON_WEB_SERVER_START_CMD or edit this script to start your app (Docker, pnpm dev, uvicorn, etc)."
+exit 1
+# <!-- /SECTION: start -->
+
+# <!-- SECTION: hooks.post_start -->
+# Project hooks can extend here (usually unreachable if your start command blocks).
+# <!-- /SECTION: hooks.post_start -->

@@ -273,14 +273,60 @@ class EngineRegistry:
             # do not block validator execution.
             pass
 
-        web_handle = None
         web_cfg = None
         try:
-            from edison.core.qa.web_server import WebServerConfig, ensure_web_server
+            from edison.core.config import ConfigManager
+            from edison.core.web_server import WebServerConfig, resolve_web_server_config
 
-            web_cfg = WebServerConfig.from_raw(getattr(validator, "web_server", None))
+            cfg_mgr = ConfigManager(repo_root=self.project_root)
+            full_cfg = cfg_mgr.load_config(validate=False, include_packs=True)
+
+            resolved_raw = resolve_web_server_config(
+                full_config=full_cfg,
+                validator_web_server=getattr(validator, "web_server", None),
+            )
+            web_cfg = WebServerConfig.from_raw(resolved_raw) if resolved_raw is not None else None
+        except Exception as exc:
+            return ValidationResult(
+                validator_id=validator_id,
+                verdict="blocked",
+                summary=f"Pre-validation web server config resolution failed: {exc}",
+                error=str(exc),
+            )
+
+        # Get primary engine
+        engine = self._get_or_create_engine(validator.engine)
+
+        try:
             if web_cfg is not None:
-                web_handle = ensure_web_server(web_cfg, worktree_path=worktree_path)
+                from edison.core.web_server import web_server_lifecycle
+
+                with web_server_lifecycle(
+                    web_cfg,
+                    worktree_path=worktree_path,
+                    session_id=session_id,
+                ):
+                    return self._run_with_engines(
+                        validator=validator,
+                        validator_id=validator_id,
+                        task_id=task_id,
+                        session_id=session_id,
+                        worktree_path=worktree_path,
+                        round_num=round_num,
+                        evidence_service=evidence_service,
+                        engine=engine,
+                    )
+
+            return self._run_with_engines(
+                validator=validator,
+                validator_id=validator_id,
+                task_id=task_id,
+                session_id=session_id,
+                worktree_path=worktree_path,
+                round_num=round_num,
+                evidence_service=evidence_service,
+                engine=engine,
+            )
         except Exception as exc:
             return ValidationResult(
                 validator_id=validator_id,
@@ -289,14 +335,39 @@ class EngineRegistry:
                 error=str(exc),
             )
 
-        # Get primary engine
-        engine = self._get_or_create_engine(validator.engine)
+    def _run_with_engines(
+        self,
+        *,
+        validator: Any,
+        validator_id: str,
+        task_id: str,
+        session_id: str,
+        worktree_path: Path,
+        round_num: int | None,
+        evidence_service: EvidenceService | None,
+        engine: Any,
+    ) -> ValidationResult:
+        # Check if primary engine can execute
+        if engine and engine.can_execute():
+            logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
+            return engine.run(
+                validator=validator,
+                task_id=task_id,
+                session_id=session_id,
+                worktree_path=worktree_path,
+                round_num=round_num,
+                evidence_service=evidence_service,
+            )
 
-        try:
-            # Check if primary engine can execute
-            if engine and engine.can_execute():
-                logger.info(f"Running validator '{validator_id}' with engine '{validator.engine}'")
-                return engine.run(
+        # Try fallback engine
+        if validator.fallback_engine:
+            fallback = self._get_or_create_engine(validator.fallback_engine)
+            if fallback and fallback.can_execute():
+                logger.info(
+                    f"Primary engine '{validator.engine}' unavailable, "
+                    f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
+                )
+                return fallback.run(
                     validator=validator,
                     task_id=task_id,
                     session_id=session_id,
@@ -305,39 +376,14 @@ class EngineRegistry:
                     evidence_service=evidence_service,
                 )
 
-            # Try fallback engine
-            if validator.fallback_engine:
-                fallback = self._get_or_create_engine(validator.fallback_engine)
-                if fallback and fallback.can_execute():
-                    logger.info(
-                        f"Primary engine '{validator.engine}' unavailable, "
-                        f"using fallback '{validator.fallback_engine}' for '{validator_id}'"
-                    )
-                    return fallback.run(
-                        validator=validator,
-                        task_id=task_id,
-                        session_id=session_id,
-                        worktree_path=worktree_path,
-                        round_num=round_num,
-                        evidence_service=evidence_service,
-                    )
-
-            # No engine available
-            logger.error(f"No available engine for validator '{validator_id}'")
-            return ValidationResult(
-                validator_id=validator_id,
-                verdict="blocked",
-                summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
-                error="Engine not available",
-            )
-        finally:
-            if web_handle is not None and web_cfg is not None and web_cfg.stop_after:
-                try:
-                    from edison.core.qa.web_server import stop_web_server
-
-                    stop_web_server(web_handle, worktree_path=worktree_path)
-                except Exception:
-                    pass
+        # No engine available
+        logger.error(f"No available engine for validator '{validator_id}'")
+        return ValidationResult(
+            validator_id=validator_id,
+            verdict="blocked",
+            summary=f"No available engine for validator. Primary: {validator.engine}, Fallback: {validator.fallback_engine}",
+            error="Engine not available",
+        )
 
     def build_execution_roster(
         self,

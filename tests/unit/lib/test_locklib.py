@@ -20,7 +20,8 @@ def test_acquire_file_lock_can_fail_open(tmp_path: Path) -> None:
     def _holder() -> None:
         with acquire_file_lock(target, timeout=LOCK_TIMEOUT):
             holder_ready.set()
-            time.sleep(SHORT_SLEEP * 6)  # Hold lock for a bit
+            # Hold the lock long enough to be robust to scheduler jitter under xdist.
+            time.sleep(max(SHORT_SLEEP * 6, 0.5))
             holder_done.set()
 
     thread = threading.Thread(target=_holder)
@@ -74,7 +75,7 @@ def test_acquire_file_lock_uses_config_defaults(monkeypatch: pytest.MonkeyPatch,
     def _holder() -> None:
         with acquire_file_lock(target, timeout=LOCK_TIMEOUT):
             holder_ready.set()
-            time.sleep(SHORT_SLEEP * 5)
+            time.sleep(max(SHORT_SLEEP * 5, 0.5))
             holder_done.set()
 
     thread = threading.Thread(target=_holder, daemon=True)

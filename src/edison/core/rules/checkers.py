@@ -149,12 +149,18 @@ def check_validator_approval(task: Dict[str, Any], rule: Rule) -> bool:
 
     # Sanity check existence
     if not bundle_path.exists():
-        if require_report:
-            _raise(
-                f"Validation bundle summary missing for task {task_id}: {bundle_path} "
-                f"({bundle_path.name} not found)"
-            )
-        return False
+        # Backward compatibility: prefer the configured/new filename, but allow
+        # legacy `bundle-summary.md` to satisfy the approval requirement.
+        legacy_path = bundle_path.with_name("bundle-summary.md")
+        if legacy_path != bundle_path and legacy_path.exists():
+            bundle_path = legacy_path
+        else:
+            if require_report:
+                _raise(
+                    f"Validation bundle summary missing for task {task_id}: {bundle_path} "
+                    f"({bundle_path.name} not found)"
+                )
+            return False
 
     # Age check (mtime)
     try:

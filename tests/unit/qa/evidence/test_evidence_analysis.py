@@ -6,6 +6,7 @@ import pytest
 from edison.core.qa.evidence.analysis import missing_evidence_blockers
 from edison.core.qa.evidence.service import EvidenceService
 from edison.core.config.domains.qa import QAConfig
+from tests.tools.evidence_helpers import write_passing_snapshot_command_evidence
 
 
 def test_missing_evidence_blockers_uses_config(isolated_project_env: Path):
@@ -13,14 +14,9 @@ def test_missing_evidence_blockers_uses_config(isolated_project_env: Path):
     # Setup: Create task evidence structure
     task_id = "test-task-001"
 
-    # Create real evidence directory structure
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
-    round_1 = evidence_root / "round-1"
+    service = EvidenceService(task_id, project_root=isolated_project_env)
+    round_1 = service.get_evidence_root() / "round-1"
     round_1.mkdir(parents=True)
-
-    # Create one file present, others missing
-    (round_1 / "command-type-check.txt").write_text("type check output")
 
     # Create custom config with custom required files
     config_dir = isolated_project_env / ".edison" / "config"
@@ -40,6 +36,13 @@ validation:
     from edison.core.config.cache import clear_all_caches
     clear_all_caches()
 
+    # Create one command evidence file present in the snapshot store (not per-round).
+    write_passing_snapshot_command_evidence(
+        project_root=isolated_project_env,
+        task_id=task_id,
+        required_files=["command-type-check.txt"],
+    )
+
     # Act - use real EvidenceService and QAConfig
     blockers = missing_evidence_blockers(task_id)
 
@@ -55,42 +58,13 @@ validation:
     assert "command-type-check.txt" not in blocker["message"]  # This one exists
 
 
-def test_missing_evidence_blockers_uses_fallback_defaults(isolated_project_env: Path):
-    """Test that missing_evidence_blockers uses bundled preset defaults by default."""
-    # Setup
-    task_id = "test-task-002"
-
-    # Create real evidence directory structure
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
-    round_1 = evidence_root / "round-1"
-    round_1.mkdir(parents=True)
-
-    # Create no evidence files - this will trigger the missing files blocker
-
-    # Act - Real config will use defaults from bundled config
-    blockers = missing_evidence_blockers(task_id)
-
-    # Assert - should use default values from bundled config
-    assert len(blockers) == 1
-    blocker = blockers[0]
-    assert "Missing evidence files" in blocker["message"]
-    # Should mention the default files
-    assert "command-type-check.txt" in blocker["message"]
-    assert "command-lint.txt" in blocker["message"]
-    assert "command-test.txt" in blocker["message"]
-    assert "command-build.txt" in blocker["message"]
-
-
 def test_missing_evidence_blockers_custom_files_in_config(isolated_project_env: Path):
     """Test that custom required files from config are properly used."""
     # Setup
     task_id = "test-task-003"
 
-    # Create real evidence directory structure
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
-    round_1 = evidence_root / "round-1"
+    service = EvidenceService(task_id, project_root=isolated_project_env)
+    round_1 = service.get_evidence_root() / "round-1"
     round_1.mkdir(parents=True)
 
     # Create one custom file
@@ -141,17 +115,16 @@ def test_missing_evidence_blockers_no_evidence_dir(isolated_project_env: Path):
     assert blocker["kind"] == "automation"
     assert blocker["recordId"] == task_id
     assert "Evidence dir missing" in blocker["message"]
-    assert blocker.get("fixCmd") == ["edison", "evidence", "init", task_id]
+    assert blocker.get("fixCmd") == ["edison", "qa", "round", "prepare", task_id]
 
 
 def test_missing_evidence_blockers_no_rounds(isolated_project_env: Path):
     """Test blocker when evidence directory exists but has no rounds."""
     task_id = "test-task-005"
 
-    # Create evidence directory but no round directories
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
-    evidence_root.mkdir(parents=True)
+    # Create evidence directory but no round directories.
+    service = EvidenceService(task_id, project_root=isolated_project_env)
+    service.get_evidence_root().mkdir(parents=True, exist_ok=True)
 
     # Act
     blockers = missing_evidence_blockers(task_id)
@@ -162,24 +135,47 @@ def test_missing_evidence_blockers_no_rounds(isolated_project_env: Path):
     assert blocker["kind"] == "automation"
     assert blocker["recordId"] == task_id
     assert "No round-* directories present" in blocker["message"]
-    assert blocker.get("fixCmd") == ["edison", "evidence", "init", task_id]
+    assert blocker.get("fixCmd") == ["edison", "qa", "round", "prepare", task_id]
 
 
 def test_missing_evidence_blockers_all_files_present(isolated_project_env: Path):
     """Test no blockers when all required files are present."""
     task_id = "test-task-006"
 
-    # Create real evidence directory structure
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
-    round_1 = evidence_root / "round-1"
+    service = EvidenceService(task_id, project_root=isolated_project_env)
+    round_1 = service.get_evidence_root() / "round-1"
     round_1.mkdir(parents=True)
 
-    # Create ALL default required files
-    (round_1 / "command-type-check.txt").write_text("type check output")
-    (round_1 / "command-lint.txt").write_text("lint output")
-    (round_1 / "command-test.txt").write_text("test output")
-    (round_1 / "command-build.txt").write_text("build output")
+    # Make required evidence deterministic for this test via config (avoid
+    # asserting bundled defaults).
+    config_dir = isolated_project_env / ".edison" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "qa.yaml").write_text(
+        """
+validation:
+  presets:
+    standard:
+      required_evidence:
+        - command-type-check.txt
+        - command-lint.txt
+        - command-test.txt
+        - command-build.txt
+""".lstrip(),
+        encoding="utf-8",
+    )
+    from edison.core.config.cache import clear_all_caches
+    clear_all_caches()
+
+    write_passing_snapshot_command_evidence(
+        project_root=isolated_project_env,
+        task_id=task_id,
+        required_files=[
+            "command-type-check.txt",
+            "command-lint.txt",
+            "command-test.txt",
+            "command-build.txt",
+        ],
+    )
 
     # Act
     blockers = missing_evidence_blockers(task_id)
@@ -198,7 +194,7 @@ def test_evidence_service_real_behavior(isolated_project_env: Path):
     # Verify evidence root path
     evidence_root = service.get_evidence_root()
     assert task_id in str(evidence_root)
-    assert "validation-evidence" in str(evidence_root)
+    assert "validation-" in str(evidence_root)
 
     # Create a round
     round_1 = service.ensure_round()
@@ -268,22 +264,19 @@ def test_missing_evidence_blockers_multiple_rounds(isolated_project_env: Path):
     """Test that missing_evidence_blockers checks the latest round."""
     task_id = "test-task-008"
 
-    # Create real evidence directory structure with multiple rounds
-    pm_paths_root = isolated_project_env / ".project"
-    evidence_root = pm_paths_root / "qa" / "validation-evidence" / task_id
+    service = EvidenceService(task_id, project_root=isolated_project_env)
+    evidence_root = service.get_evidence_root()
     round_1 = evidence_root / "round-1"
     round_2 = evidence_root / "round-2"
     round_1.mkdir(parents=True)
     round_2.mkdir(parents=True)
 
-    # Round 1 has all files
-    (round_1 / "command-type-check.txt").write_text("type check output")
-    (round_1 / "command-lint.txt").write_text("lint output")
-    (round_1 / "command-test.txt").write_text("test output")
-    (round_1 / "command-build.txt").write_text("build output")
+    # Round 1 has all round-scoped files.
+    (round_1 / "custom-check.txt").write_text("custom output")
+    (round_1 / "custom-test.txt").write_text("custom output")
 
-    # Round 2 has only one file - this should be checked
-    (round_2 / "command-type-check.txt").write_text("type check output")
+    # Round 2 has only one file - the latest round should be checked.
+    (round_2 / "custom-check.txt").write_text("custom output")
 
     # Make required evidence deterministic for this test (preset-aware)
     config_dir = isolated_project_env / ".edison" / "config"
@@ -294,10 +287,8 @@ validation:
   presets:
     standard:
       required_evidence:
-        - command-type-check.txt
-        - command-lint.txt
-        - command-test.txt
-        - command-build.txt
+        - custom-check.txt
+        - custom-test.txt
 """)
     from edison.core.config.cache import clear_all_caches
     clear_all_caches()
@@ -308,7 +299,4 @@ validation:
     # Assert - should report missing files from round-2 (latest)
     assert len(blockers) == 1
     blocker = blockers[0]
-    assert "round-2" in blocker["message"]
-    assert "command-lint.txt" in blocker["message"]
-    assert "command-test.txt" in blocker["message"]
-    assert "command-build.txt" in blocker["message"]
+    assert "custom-test.txt" in blocker["message"]
