@@ -355,7 +355,7 @@ class TestHookComposerPassesScope:
         rendered = composer.render_hook(hook_def)
 
         # The rendered hook should call guard with the correct scope
-        assert "project" in rendered or "edison_hook_guard" in rendered
+        assert 'edison_hook_guard "test-hook" "project"' in rendered
 
 
 class TestNoAdHocSessionDetection:
