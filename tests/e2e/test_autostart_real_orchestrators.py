@@ -28,6 +28,12 @@ from helpers.env import TestGitRepo, TestProjectDir
 from tests.helpers.paths import get_repo_root
 from tests.helpers.timeouts import PROCESS_WAIT_TIMEOUT
 
+_RUN_REAL_ORCHESTRATORS = os.environ.get("EDISON_E2E_REAL_ORCHESTRATORS") == "1"
+pytestmark = pytest.mark.skipif(
+    not _RUN_REAL_ORCHESTRATORS,
+    reason="Real orchestrator E2E tests are opt-in; set EDISON_E2E_REAL_ORCHESTRATORS=1 to enable.",
+)
+
 try:  # Will fail RED phase until autostart is implemented (expected)
     from edison.core.session.lifecycle.autostart import SessionAutoStart
 except Exception as exc:  # pragma: no cover - explicit RED failure path
