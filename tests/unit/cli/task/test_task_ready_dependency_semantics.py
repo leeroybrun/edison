@@ -38,21 +38,21 @@ def test_task_ready_list_uses_dependency_readiness(
         id="task-ready",
         state=todo,
         title="Ready",
-        depends_on=["dep-done"],
+        relationships=[{"type": "depends_on", "target": "dep-done"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
     blocked = Task(
         id="task-blocked",
         state=todo,
         title="Blocked",
-        depends_on=["dep-todo"],
+        relationships=[{"type": "depends_on", "target": "dep-todo"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
     missing = Task(
         id="task-missing",
         state=todo,
         title="Missing dep",
-        depends_on=["dep-missing"],
+        relationships=[{"type": "depends_on", "target": "dep-missing"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
 
@@ -91,7 +91,7 @@ def test_task_blocked_lists_unmet_dependencies(
         id="task-blocked-2",
         state=todo,
         title="Blocked 2",
-        depends_on=["dep-missing-2"],
+        relationships=[{"type": "depends_on", "target": "dep-missing-2"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
     repo.save(blocked)
@@ -112,4 +112,3 @@ def test_task_blocked_lists_unmet_dependencies(
     entry = data["tasks"][0]
     assert entry["id"] == "task-blocked-2"
     assert entry["unmetDependencies"][0]["id"] == "dep-missing-2"
-
