@@ -225,6 +225,38 @@ class TestVendorCheckout:
         assert result1.commit == result2.commit
         assert (tmp_path / "vendors" / "opencode").exists()
 
+    def test_checkout_refuses_to_delete_dirty_checkout_without_force(
+        self, tmp_path: Path, git_repo: "TestGitRepo"
+    ) -> None:
+        """Checkout should not delete vendor directories with local modifications unless forced."""
+        from edison.core.vendors.checkout import VendorCheckout
+        from edison.core.vendors.models import VendorSource
+
+        source = VendorSource(
+            name="opencode",
+            url=str(git_repo.repo_path),
+            ref="main",
+            path="vendors/opencode",
+        )
+
+        checkout = VendorCheckout(
+            repo_root=tmp_path,
+            cache_dir=tmp_path / ".cache" / "vendors",
+        )
+
+        result1 = checkout.sync(source)
+        assert result1.success
+
+        vendor_path = tmp_path / "vendors" / "opencode"
+        (vendor_path / "LOCAL_EDIT.txt").write_text("dirty", encoding="utf-8")
+
+        (git_repo.repo_path / "upstream.txt").write_text("new upstream", encoding="utf-8")
+        git_repo.commit_all("Add upstream file")
+
+        result2 = checkout.sync(source)
+        assert result2.success is False
+        assert "--force" in (result2.error or "").lower()
+
 
 class TestVendorSync:
     """Test full vendor sync workflow."""
