@@ -89,9 +89,16 @@ class HookComposer(AdapterComponent):
         full_config = cfg_mgr.load_config(validate=False, include_packs=True)
 
         hooks_section = full_config.get("hooks", {}) or {}
+        settings = hooks_section.get("settings", {}) or {}
         definitions = hooks_section.get("definitions", {}) or {}
 
-        return self._dicts_to_defs(definitions)
+        default_execution_scope = str(
+            settings.get("executionScope") or settings.get("execution_scope") or "session"
+        )
+        if default_execution_scope not in {"session", "project", "always"}:
+            default_execution_scope = "session"
+
+        return self._dicts_to_defs(definitions, default_execution_scope=default_execution_scope)
 
     def render_hook(self, hook_def: HookDefinition) -> str:
         """Render a single hook using its template (Jinja2 when available)."""
@@ -212,7 +219,12 @@ class HookComposer(AdapterComponent):
         return (self.config or {}).get("hooks", {}) or {}
 
 
-    def _dicts_to_defs(self, merged: dict[str, dict[str, Any]]) -> dict[str, HookDefinition]:
+    def _dicts_to_defs(
+        self,
+        merged: dict[str, dict[str, Any]],
+        *,
+        default_execution_scope: str,
+    ) -> dict[str, HookDefinition]:
         """Convert merged dicts into HookDefinition objects with validation."""
         results: dict[str, HookDefinition] = {}
         for hook_id, raw in merged.items():
@@ -234,7 +246,7 @@ class HookComposer(AdapterComponent):
                 description=str(raw.get("description", "")),
                 template=str(raw.get("template", "") or ""),
                 config=cfg,
-                execution_scope=str(raw.get("executionScope", "session")),
+                execution_scope=str(raw.get("executionScope", default_execution_scope)),
             )
             results[hook_id] = defn
         return results

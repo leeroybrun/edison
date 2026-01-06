@@ -10,6 +10,11 @@ hooks:
     timeout_seconds: 60
     parallel_execution: true
     log_output: true
+    # Project-wide hook execution scope (default: session-gated).
+    # - session: run hooks only when an Edison session is detected
+    # - project: run hooks whenever inside a configured Edison project
+    # - always: always run hooks (least restrictive)
+    executionScope: session
 
   # Hook definitions
   definitions:
