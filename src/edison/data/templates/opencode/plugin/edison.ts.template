@@ -644,16 +644,16 @@ export const Edison = async ({ client }: { client: any }) => {
         // Re-inject Edison session context after any compaction
         // This helps the LLM recover state after context is cleared
         try {
-	          const contextOutput = await fetchEdisonSessionContext();
-	          if (contextOutput) {
-	            await client.session.prompt({
-	              noReply: true,
-	              parts: [{ type: "text", text: contextOutput }],
-	            });
-	          }
-	        } catch {
-	          // Fail-open: if Edison is missing or fails, continue silently
-	        }
+          const contextOutput = await fetchEdisonSessionContext();
+          if (contextOutput) {
+            await client.session.prompt({
+              noReply: true,
+              parts: [{ type: "text", text: contextOutput }],
+            });
+          }
+        } catch {
+          // Fail-open: if Edison is missing or fails, continue silently
+        }
         return;
       }
 
