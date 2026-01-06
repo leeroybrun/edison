@@ -450,7 +450,7 @@ class TaskRepository(
         doc = parse_frontmatter(content)
         fm = doc.frontmatter
 
-        relationships, derived = decode_frontmatter_relationships(fm)
+        relationships, _derived = decode_frontmatter_relationships(fm)
 
         # Extract title from frontmatter or markdown heading
         title = fm.get("title", "")
@@ -488,11 +488,6 @@ class TaskRepository(
             session_id=fm.get("session_id"),
             metadata=metadata,
             tags=fm.get("tags", []) or [],
-            parent_id=derived.get("parent_id"),
-            child_ids=derived.get("child_ids", []) or [],
-            depends_on=derived.get("depends_on", []) or [],
-            blocks_tasks=derived.get("blocks_tasks", []) or [],
-            related=derived.get("related", []) or [],
             claimed_at=fm.get("claimed_at"),
             last_active=fm.get("last_active"),
             continuation_id=fm.get("continuation_id"),

@@ -37,7 +37,7 @@ def test_claim_task_blocks_when_depends_on_not_satisfied(isolated_project_env: P
         id="task-with-dep",
         state=todo,
         title="Task with dependency",
-        depends_on=["dep-todo"],
+        relationships=[{"type": "depends_on", "target": "dep-todo"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
     repo.save(dep)
@@ -70,7 +70,7 @@ def test_claim_task_allows_when_depends_on_satisfied(isolated_project_env: Path)
         id="task-with-dep-2",
         state=todo,
         title="Task with dependency",
-        depends_on=["dep-done"],
+        relationships=[{"type": "depends_on", "target": "dep-done"}],
         metadata=EntityMetadata.create(created_by="test"),
     )
     repo.save(dep_done)
@@ -78,4 +78,3 @@ def test_claim_task_allows_when_depends_on_satisfied(isolated_project_env: Path)
 
     claimed = TaskQAWorkflow(project_root).claim_task("task-with-dep-2", session_id)
     assert claimed.state == str(workflow.get_semantic_state("task", "wip"))
-

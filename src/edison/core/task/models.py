@@ -15,6 +15,7 @@ from edison.core.entity import (
 )
 from edison.core.entity.base import record_transition_impl
 from edison.core.config.domains.workflow import WorkflowConfig
+from edison.core.task.relationships.codec import decode_frontmatter_relationships, normalize_relationships
 
 
 @dataclass
@@ -33,11 +34,7 @@ class Task:
         metadata: Entity metadata (timestamps, ownership)
         state_history: List of state transitions
         tags: Optional list of tags
-        parent_id: Parent task ID for subtasks (optional)
-        child_ids: List of child task IDs
-        depends_on: List of task IDs this task depends on
-        blocks_tasks: List of task IDs blocked by this task
-        related: List of task IDs related to this task (non-blocking)
+        relationships: Canonical relationship edges (single source of truth)
         claimed_at: ISO timestamp when task was claimed by a session
         last_active: ISO timestamp of last activity
         continuation_id: Pal MCP continuation ID for tracking
@@ -54,11 +51,6 @@ class Task:
     metadata: EntityMetadata = field(default_factory=lambda: EntityMetadata.create())
     state_history: List[StateHistoryEntry] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
-    parent_id: Optional[str] = None
-    child_ids: List[str] = field(default_factory=list)
-    depends_on: List[str] = field(default_factory=list)
-    blocks_tasks: List[str] = field(default_factory=list)
-    related: List[str] = field(default_factory=list)
     relationships: List[Dict[str, str]] = field(default_factory=list)
     claimed_at: Optional[str] = None
     last_active: Optional[str] = None
@@ -67,7 +59,34 @@ class Task:
     delegated_to: Optional[str] = None
     delegated_in_session: Optional[str] = None
     integration: Dict[str, Any] = field(default_factory=dict)
-    
+
+    def __post_init__(self) -> None:
+        self.relationships = normalize_relationships(self.relationships or [])
+
+    @property
+    def parent_id(self) -> Optional[str]:
+        return next((e["target"] for e in self.relationships if e.get("type") == "parent"), None)
+
+    @property
+    def child_ids(self) -> List[str]:
+        return [e["target"] for e in self.relationships if e.get("type") == "child"]
+
+    @property
+    def depends_on(self) -> List[str]:
+        return [e["target"] for e in self.relationships if e.get("type") == "depends_on"]
+
+    @property
+    def blocks_tasks(self) -> List[str]:
+        return [e["target"] for e in self.relationships if e.get("type") == "blocks"]
+
+    @property
+    def related(self) -> List[str]:
+        return [e["target"] for e in self.relationships if e.get("type") == "related"]
+
+    @property
+    def bundle_root(self) -> Optional[str]:
+        return next((e["target"] for e in self.relationships if e.get("type") == "bundle_root"), None)
+
     def record_transition(
         self,
         from_state: str,
@@ -130,7 +149,6 @@ class Task:
 
         if self.related:
             data["related"] = self.related
-
         if self.relationships:
             data["relationships"] = self.relationships
         
@@ -194,12 +212,19 @@ class Task:
             metadata=metadata,
             state_history=state_history,
             tags=data.get("tags", []),
-            parent_id=data.get("parent_id") or data.get("parentId"),
-            child_ids=data.get("child_ids") or data.get("childIds") or data.get("children", []),
-            depends_on=data.get("depends_on") or data.get("dependsOn", []),
-            blocks_tasks=data.get("blocks_tasks") or data.get("blocksTasks", []),
-            related=data.get("related") or data.get("related_tasks") or data.get("relatedTasks", []),
-            relationships=data.get("relationships") or data.get("relationship") or [],
+            relationships=decode_frontmatter_relationships(
+                {
+                    "relationships": data.get("relationships") or data.get("relationship"),
+                    "parent_id": data.get("parent_id") or data.get("parentId"),
+                    "child_ids": data.get("child_ids") or data.get("childIds") or data.get("children", []),
+                    "depends_on": data.get("depends_on") or data.get("dependsOn", []),
+                    "blocks_tasks": data.get("blocks_tasks") or data.get("blocksTasks", []),
+                    "related": data.get("related")
+                    or data.get("related_tasks")
+                    or data.get("relatedTasks", []),
+                    "bundle_root": data.get("bundle_root"),
+                }
+            )[0],
             claimed_at=data.get("claimed_at") or data.get("claimedAt"),
             last_active=data.get("last_active") or data.get("lastActive"),
             continuation_id=data.get("continuation_id") or data.get("continuationId"),
@@ -244,6 +269,16 @@ class Task:
         """
         # Resolve state from config if not provided
         resolved_state = state if state is not None else WorkflowConfig().get_initial_state("task")
+
+        rel_edges: list[dict[str, str]] = []
+        if parent_id:
+            rel_edges.append({"type": "parent", "target": str(parent_id)})
+        for dep in (depends_on or []):
+            rel_edges.append({"type": "depends_on", "target": str(dep)})
+        for blk in (blocks_tasks or []):
+            rel_edges.append({"type": "blocks", "target": str(blk)})
+        for rel in (related or []):
+            rel_edges.append({"type": "related", "target": str(rel)})
         
         return cls(
             id=task_id,
@@ -255,10 +290,7 @@ class Task:
                 created_by=owner,
                 session_id=session_id,
             ),
-            parent_id=parent_id,
-            depends_on=depends_on or [],
-            blocks_tasks=blocks_tasks or [],
-            related=related or [],
+            relationships=rel_edges,
             continuation_id=continuation_id,
         )
 

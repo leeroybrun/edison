@@ -91,41 +91,13 @@ def decode_frontmatter_relationships(frontmatter: Dict[str, Any]) -> Tuple[List[
 def encode_task_relationships(task: Any) -> List[RelationshipEdge]:
     """Encode a task's relationships into canonical edges.
 
-    This is temporarily tolerant of legacy fields (`parent_id`, `child_ids`, etc.)
-    to preserve behavior while mutator call sites migrate to relationship services.
+    Canonical `task.relationships` is the single source of truth. Legacy fields
+    should not contribute edges, to avoid competing sources of truth.
     """
     edges: List[RelationshipEdge] = []
 
     for item in (getattr(task, "relationships", None) or []):
         if isinstance(item, dict):
             edges.append(_edge(str(item.get("type") or ""), str(item.get("target") or "")))
-
-    parent_id = str(getattr(task, "parent_id", None) or "").strip()
-    if parent_id:
-        edges.append(_edge("parent", parent_id))
-
-    for cid in (getattr(task, "child_ids", None) or []):
-        c = str(cid or "").strip()
-        if c:
-            edges.append(_edge("child", c))
-
-    for dep in (getattr(task, "depends_on", None) or []):
-        d = str(dep or "").strip()
-        if d:
-            edges.append(_edge("depends_on", d))
-
-    for blk in (getattr(task, "blocks_tasks", None) or []):
-        b = str(blk or "").strip()
-        if b:
-            edges.append(_edge("blocks", b))
-
-    for rel in (getattr(task, "related", None) or []):
-        r = str(rel or "").strip()
-        if r:
-            edges.append(_edge("related", r))
-
-    bundle_root = str(getattr(task, "bundle_root", None) or "").strip()
-    if bundle_root:
-        edges.append(_edge("bundle_root", bundle_root))
 
     return normalize_relationships(edges)

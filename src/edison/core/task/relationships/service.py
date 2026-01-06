@@ -28,26 +28,8 @@ def _edge(edge_type: str, target: str) -> RelationshipEdge:
     return {"type": str(edge_type).strip(), "target": str(target).strip()}
 
 
-def _derived_fields(edges: List[RelationshipEdge]) -> dict[str, Any]:
-    return {
-        "parent_id": next((e["target"] for e in edges if e.get("type") == "parent"), None),
-        "child_ids": [e["target"] for e in edges if e.get("type") == "child"],
-        "depends_on": [e["target"] for e in edges if e.get("type") == "depends_on"],
-        "blocks_tasks": [e["target"] for e in edges if e.get("type") == "blocks"],
-        "related": [e["target"] for e in edges if e.get("type") == "related"],
-        "bundle_root": next((e["target"] for e in edges if e.get("type") == "bundle_root"), None),
-    }
-
-
 def _apply_edges_to_task(task: Task, edges: List[RelationshipEdge]) -> None:
     task.relationships = list(edges)
-    derived = _derived_fields(edges)
-    task.parent_id = derived["parent_id"]
-    task.child_ids = list(derived["child_ids"])
-    task.depends_on = list(derived["depends_on"])
-    task.blocks_tasks = list(derived["blocks_tasks"])
-    task.related = list(derived["related"])
-    # bundle_root is not yet a first-class Task field; preserve via relationships only.
 
 
 def _remove_edges(edges: List[RelationshipEdge], edge_type: str, targets: set[str] | None = None) -> List[RelationshipEdge]:
