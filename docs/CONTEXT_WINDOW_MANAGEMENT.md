@@ -437,5 +437,5 @@ edison evidence capture <task-id> --only test
 
 ---
 
-**Last Updated:** 2026-01-04
+**Last Updated:** 2026-01-06
 **Version:** 2.0.0
