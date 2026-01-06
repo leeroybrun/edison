@@ -140,7 +140,7 @@ class MountExecutor:
                 target.symlink_to(source, target_is_directory=source.is_dir())
             elif mount.mount_type == "copy":
                 if source.is_dir():
-                    shutil.copytree(source, target, symlinks=True, ignore_dangling_symlinks=True)
+                    shutil.copytree(source, target, symlinks=True, ignore_dangling_symlinks=False)
                 else:
                     shutil.copy2(source, target, follow_symlinks=False)
             else:
