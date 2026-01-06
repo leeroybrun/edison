@@ -355,16 +355,9 @@ class TaskRepository(
 
         - State is NOT stored in frontmatter (derived from directory).
         - Relationships are stored in canonical `relationships:` format.
-        - Legacy relationship fields are also written for back-compat (`parent_id`, `child_ids`, etc.).
         - Body is preserved on saves; template is only used on creation.
         """
         edges = encode_task_relationships(task) or []
-        parent_id = next((e["target"] for e in edges if e.get("type") == "parent"), None)
-        child_ids = [e["target"] for e in edges if e.get("type") == "child"]
-        depends_on = [e["target"] for e in edges if e.get("type") == "depends_on"]
-        blocks_tasks = [e["target"] for e in edges if e.get("type") == "blocks"]
-        related = [e["target"] for e in edges if e.get("type") == "related"]
-        bundle_root = next((e["target"] for e in edges if e.get("type") == "bundle_root"), None)
 
         # Build frontmatter data (exclude None values)
         frontmatter_data: Dict[str, Any] = {
@@ -373,12 +366,6 @@ class TaskRepository(
             "owner": task.metadata.created_by,
             "session_id": task.session_id,
             "relationships": edges or None,
-            "parent_id": parent_id,
-            "child_ids": child_ids or None,
-            "depends_on": depends_on or None,
-            "blocks_tasks": blocks_tasks or None,
-            "related": related or None,
-            "bundle_root": bundle_root,
             "claimed_at": task.claimed_at,
             "last_active": task.last_active,
             "continuation_id": task.continuation_id,
