@@ -203,6 +203,19 @@ class TestNonInteractiveGuardTemplate:
             "Template should use config-driven patterns via Jinja"
         )
 
+    def test_template_uses_safe_grep_for_pattern_matching(self) -> None:
+        """Template should match patterns without shell/glob interpretation."""
+        from edison.data import get_data_path
+
+        template_path = (
+            Path(get_data_path("templates", "hooks"))
+            / "non-interactive-guard.sh.template"
+        )
+        content = template_path.read_text()
+
+        assert "grep -qE --" in content, "Regex checks should pass patterns as quoted args"
+        assert "grep -qF --" in content, "Substring checks should use fixed-string grep"
+
 
 class TestNonInteractiveGuardComposition:
     """Test compose_hooks generates non-interactive-guard when enabled."""
