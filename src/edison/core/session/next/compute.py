@@ -55,14 +55,16 @@ def _safe_int(value: Any, default: Any = 0) -> int:
     This is used for session/meta overrides where config or persisted JSON may
     contain null/None and where `int(None)` would raise TypeError.
     """
-    if default is None:
-        default = 0
+    try:
+        safe_default = int(default) if default is not None else 0
+    except (TypeError, ValueError):
+        safe_default = 0
     if value is None:
-        return int(default)
+        return safe_default
     try:
         return int(value)
     except (TypeError, ValueError):
-        return int(default)
+        return safe_default
 
 
 def _format_cmd_template(template: list[str], **kwargs) -> list[str]:
@@ -296,7 +298,9 @@ def _compute_continuation(
             continue
         cmd = a.get("cmd")
         if isinstance(cmd, list) and cmd:
-            next_blocking_cmd = " ".join([str(x) for x in cmd if str(x)])
+            next_blocking_cmd = " ".join(
+                str(x) for x in cmd if x is not None and str(x).strip()
+            )
             break
 
     # Template comes from config (continuation.yaml templates.continuationPrompt).
