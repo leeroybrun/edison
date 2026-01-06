@@ -295,8 +295,8 @@ class TestPluginCompactingHook:
 
         # Compaction guidance is context-window guidance (RULE.CONTEXT.CWAM_REASSURANCE),
         # so the plugin must fetch rules via `--context` rather than `--state compaction`.
-        assert 'fetchEdisonRulesInject("compaction")' not in content, (
-            "Compaction hook should not call state-based rules inject with 'compaction'"
+        assert "fetchEdisonRulesInjectForContext" in content, (
+            "Compaction hook should use context-based rules inject"
         )
         assert "--context" in content, (
             "Compaction hook should request rules inject using --context"
