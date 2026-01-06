@@ -217,14 +217,50 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                 str(task_id),
                 session_id=sid,
             )
-            required = list(policy.required_evidence or [])
+            required = [str(x).strip() for x in (policy.required_evidence or []) if str(x).strip()]
+
+            from edison.core.config.domains.qa import QAConfig
+            from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir, snapshot_status
+
+            qa_cfg = QAConfig(repo_root=project_root_path)
+            evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+            if not isinstance(evidence_files_cfg, dict):
+                evidence_files_cfg = {}
+            command_evidence_names = set(str(v).strip() for v in evidence_files_cfg.values() if str(v).strip())
+
+            command_required = [f for f in required if f.startswith("command-") or f in command_evidence_names]
+            round_required = [f for f in required if f not in set(command_required)]
+
             round_dir = ev_svc.get_round_dir(latest)
-            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)}
+            files = {str(p.relative_to(round_dir)) for p in list_evidence_files(round_dir)} if round_required else set()
 
             missing_files: list[str] = []
-            for pattern in required:
+            for pattern in round_required:
                 if not any(Path(name).match(pattern) for name in files):
                     missing_files.append(str(pattern))
+
+            if command_required:
+                key = current_snapshot_key(project_root=project_root_path)
+                snap_dir = snapshot_dir(project_root=project_root_path, key=key)
+                snap = snapshot_status(project_root=project_root_path, key=key, required_files=command_required)
+                if not (bool(snap.get("complete")) and bool(snap.get("valid")) and bool(snap.get("passed"))):
+                    parts: list[str] = []
+                    if snap.get("missing"):
+                        parts.append(f"missing: {', '.join(snap.get('missing') or [])}")
+                    if snap.get("invalid"):
+                        parts.append(
+                            "invalid: "
+                            + ", ".join(str(i.get("file")) for i in (snap.get("invalid") or []) if i.get("file"))
+                        )
+                    if snap.get("failed"):
+                        parts.append(
+                            "failed: "
+                            + ", ".join(str(f.get("file")) for f in (snap.get("failed") or []) if f.get("file"))
+                        )
+                    details = "; ".join([p for p in parts if p])
+                    raise ValueError(
+                        f"Missing/invalid command evidence in snapshot ({snap_dir}): {details or 'unknown'}"
+                    )
             if missing_files:
                 # Bundle-aware completion: when a task is part of an *approved* bundle,
                 # allow the bundle root's command evidence to satisfy per-task required
@@ -253,7 +289,7 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
                             }
                             if all(
                                 any(Path(name).match(pattern) for name in root_files)
-                                for pattern in required
+                                for pattern in round_required
                             ):
                                 missing_files = []
                 except Exception:
@@ -279,17 +315,29 @@ def can_finish_task(ctx: Mapping[str, Any]) -> bool:
             )
 
             tdd_cfg = TDDConfig(repo_root=project_root_path)
-            required_files = list(required or [])
-            tdd_round_dir = ev_svc.get_round_dir(latest)
+            required_files = [str(x).strip() for x in (required or []) if str(x).strip()]
+
+            from edison.core.config.domains.qa import QAConfig
+            from edison.core.qa.evidence.snapshots import current_snapshot_key, snapshot_dir
+
+            qa_cfg = QAConfig(repo_root=project_root_path)
+            evidence_files_cfg = (qa_cfg.validation_config.get("evidence", {}) or {}).get("files", {}) or {}
+            if not isinstance(evidence_files_cfg, dict):
+                evidence_files_cfg = {}
+            command_evidence_names = set(str(v).strip() for v in evidence_files_cfg.values() if str(v).strip())
+            command_required = [f for f in required_files if f.startswith("command-") or f in command_evidence_names]
+
+            key = current_snapshot_key(project_root=project_root_path)
+            tdd_round_dir = snapshot_dir(project_root=project_root_path, key=key)
 
             # Exit code verification for command evidence (best-effort).
             if enforce and bool(tdd_cfg.require_evidence):
-                validate_command_evidence_exit_codes(tdd_round_dir, required_files=required_files)
+                validate_command_evidence_exit_codes(tdd_round_dir, required_files=command_required)
 
             # HMAC verification is enabled when a key is present.
             hmac_key = str(os.environ.get(tdd_cfg.hmac_key_env_var, "")).strip()
             if hmac_key:
-                for name in required_files:
+                for name in command_required:
                     ok, msg = verify_command_evidence_hmac(tdd_round_dir / str(name), hmac_key=hmac_key)
                     if not ok:
                         raise ValueError(msg)
