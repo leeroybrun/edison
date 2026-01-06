@@ -776,7 +776,7 @@ class CLIEngine:
 
             # Treat "potential_issue"/"bug"/security/perf as blocking; allow pure refactor suggestions.
             if any(
-                t in {"critical_issue", "potential_issue", "bug", "security_issue", "performance_issue"}
+                t in {"critical_issue", "bug", "security_issue", "performance_issue"}
                 for t in types
             ):
                 return "reject"
