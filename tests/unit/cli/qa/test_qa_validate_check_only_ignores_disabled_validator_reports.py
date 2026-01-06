@@ -64,25 +64,16 @@ def test_qa_validate_check_only_ignores_disabled_validator_reports(
         round_num=1,
     )
 
-    from edison.cli.qa.validate import main as validate_main
+    from edison.cli.qa.round.summarize_verdict import main as summarize_main
 
-    rc = validate_main(
+    rc = summarize_main(
         argparse.Namespace(
             task_id=task_id,
             scope="auto",
             session=None,
             round=1,
-            new_round=False,
-            wave=None,
             preset="quick",
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
-            sequential=False,
-            dry_run=False,
-            max_workers=None,
             json=True,
             repo_root=str(isolated_project_env),
         )

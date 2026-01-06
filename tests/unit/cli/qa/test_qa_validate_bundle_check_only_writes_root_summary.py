@@ -59,25 +59,16 @@ def test_qa_validate_check_only_bundle_scope_writes_root_summary_and_mirrors(
             round_num=1,
         )
 
-    from edison.cli.qa.validate import main as validate_main
+    from edison.cli.qa.round.summarize_verdict import main as summarize_main
 
-    rc = validate_main(
+    rc = summarize_main(
         argparse.Namespace(
             task_id=member_task_id,
             scope="bundle",
             session=None,
             round=1,
-            new_round=False,
-            wave=None,
             preset=None,
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
-            sequential=False,
-            dry_run=False,
-            max_workers=None,
             json=True,
             repo_root=str(isolated_project_env),
         )
@@ -159,25 +150,16 @@ def test_qa_validate_check_only_bundle_scope_mirrors_into_member_latest_round(
             round_num=6,
         )
 
-    from edison.cli.qa.validate import main as validate_main
+    from edison.cli.qa.round.summarize_verdict import main as summarize_main
 
-    rc = validate_main(
+    rc = summarize_main(
         argparse.Namespace(
             task_id=member_task_id,
             scope="bundle",
             session=None,
             round=6,
-            new_round=False,
-            wave=None,
             preset=None,
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
-            sequential=False,
-            dry_run=False,
-            max_workers=None,
             json=True,
             repo_root=str(isolated_project_env),
         )

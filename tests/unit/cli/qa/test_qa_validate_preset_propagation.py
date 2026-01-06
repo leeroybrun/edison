@@ -232,26 +232,18 @@ def test_qa_validate_check_only_uses_preset_blocking_set_and_allows_empty_blocki
     ev.ensure_round(1)
     ev.write_implementation_report({"filesChanged": []}, round_num=1)
 
-    from edison.cli.qa.validate import main as validate_main
+    from edison.cli.qa.round.summarize_verdict import main as summarize_main
 
     # Deep preset should NOT approve because alpha has no report.
-    rc_deep = validate_main(
+    rc_deep = summarize_main(
         argparse.Namespace(
             task_id=task_id,
             scope="hierarchy",
             session=None,
             round=1,
-            new_round=False,
-            wave=None,
             preset="deep",
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
             sequential=True,
-            dry_run=False,
-            max_workers=1,
             json=True,
             repo_root=str(isolated_project_env),
         )
@@ -262,23 +254,15 @@ def test_qa_validate_check_only_uses_preset_blocking_set_and_allows_empty_blocki
     assert "- alpha" in payload
 
     # Quick preset should approve (nothing blocks).
-    rc_quick = validate_main(
+    rc_quick = summarize_main(
         argparse.Namespace(
             task_id=task_id,
             scope="hierarchy",
             session=None,
             round=1,
-            new_round=False,
-            wave=None,
             preset="quick",
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
             sequential=True,
-            dry_run=False,
-            max_workers=1,
             json=True,
             repo_root=str(isolated_project_env),
         )

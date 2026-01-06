@@ -22,25 +22,16 @@ def test_qa_validate_check_only_writes_preset_to_bundle_summary(
     ev = EvidenceService(task_id, project_root=isolated_project_env)
     ev.ensure_round(1)
 
-    from edison.cli.qa.validate import main as validate_main
+    from edison.cli.qa.round.summarize_verdict import main as summarize_main
 
-    rc = validate_main(
+    rc = summarize_main(
         argparse.Namespace(
             task_id=task_id,
             scope="hierarchy",
             preset="strict",
             session=None,
             round=1,
-            new_round=False,
-            wave=None,
-            validators=None,
             add_validators=None,
-            blocking_only=False,
-            execute=False,
-            check_only=True,
-            sequential=False,
-            dry_run=False,
-            max_workers=None,
             json=True,
             repo_root=str(isolated_project_env),
         )
@@ -49,4 +40,3 @@ def test_qa_validate_check_only_writes_preset_to_bundle_summary(
 
     data = ev.read_bundle(round_num=1)
     assert data.get("preset") == "strict"
-
