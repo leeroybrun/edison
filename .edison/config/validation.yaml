@@ -110,9 +110,19 @@ validation:
       focus: []
 
     coderabbit:
+      name: "CodeRabbit AI Review"
+      engine: coderabbit-cli
+      fallback_engine: pal-mcp
+      prompt: "_generated/validators/critical/coderabbit.md"
+      wave: global
+      always_run: false
       blocking: true
       # CodeRabbit can be slow; allow enough time for full reviews.
       timeout: 2700
+      context7_required: false
+      context7_packages: []
+      triggers: []
+      focus: []
 
     # Edison repo default: keep the global validator set small and reliable.
     # Other projects can re-enable these in their own validation.yaml if desired.
