@@ -11,6 +11,7 @@ Artifacts generated:
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import TYPE_CHECKING, Any
 
 from edison.core.adapters.base import PlatformAdapter
@@ -25,6 +26,18 @@ if TYPE_CHECKING:
 
 class OpenCodeAdapterError(RuntimeError):
     """Error in OpenCode adapter operations."""
+
+
+_TEMPLATE_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _validate_template_name(name: str) -> str:
+    """Validate that a template name cannot escape its template directory."""
+    if not isinstance(name, str) or not name or name.strip() != name:
+        raise OpenCodeAdapterError(f"Invalid template name: {name!r}")
+    if _TEMPLATE_NAME_RE.fullmatch(name) is None:
+        raise OpenCodeAdapterError(f"Invalid template name: {name!r}")
+    return name
 
 
 def _get_opencode_config() -> dict[str, Any]:
@@ -54,12 +67,14 @@ def _render_plugin_template(*, repo_root: Path) -> str:
 
 def _render_agent_template(name: str, *, repo_root: Path) -> str:
     """Render an agent template by name."""
+    name = _validate_template_name(name)
     template = data_read_text("templates", f"opencode/agent/{name}.md.template")
     return render_template_text(template, {"repo_root": str(repo_root)})
 
 
 def _render_command_template(name: str, *, repo_root: Path) -> str:
     """Render a command template by name."""
+    name = _validate_template_name(name)
     template = data_read_text("templates", f"opencode/command/{name}.md.template")
     return render_template_text(template, {"repo_root": str(repo_root)})
 
@@ -111,8 +126,9 @@ class OpenCodeAdapter(PlatformAdapter):
         agent_dir = self.project_root / ".opencode" / "agent"
 
         for name in _get_agent_templates():
-            target = agent_dir / f"{name}.md"
-            content = _render_agent_template(name, repo_root=self.project_root)
+            safe_name = _validate_template_name(name)
+            target = agent_dir / f"{safe_name}.md"
+            content = _render_agent_template(safe_name, repo_root=self.project_root)
             self._write_if_changed(target, content)
             files.append(target)
 
@@ -124,8 +140,9 @@ class OpenCodeAdapter(PlatformAdapter):
         cmd_dir = self.project_root / ".opencode" / "command"
 
         for name in _get_command_templates():
-            target = cmd_dir / f"{name}.md"
-            content = _render_command_template(name, repo_root=self.project_root)
+            safe_name = _validate_template_name(name)
+            target = cmd_dir / f"{safe_name}.md"
+            content = _render_command_template(safe_name, repo_root=self.project_root)
             self._write_if_changed(target, content)
             files.append(target)
 
