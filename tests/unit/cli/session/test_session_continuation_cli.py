@@ -125,6 +125,21 @@ def test_compute_continuation_view_ignores_none_overrides() -> None:
     assert view.effective == view.defaults
 
 
+def test_compute_continuation_view_rejects_invalid_numeric_override() -> None:
+    """Invalid numeric overrides should raise a clear error naming the field."""
+    from edison.cli.session.continuation._core import compute_continuation_view
+
+    cfg = {
+        "enabled": True,
+        "defaultMode": "soft",
+        "budgets": {"maxIterations": 5, "cooldownSeconds": 10, "stopOnBlocked": True},
+    }
+    meta = {"maxIterations": "ten"}
+
+    with pytest.raises(ValueError, match="maxIterations"):
+        compute_continuation_view(continuation_cfg=cfg, meta_continuation=meta)
+
+
 def test_compute_continuation_view_requires_config_keys() -> None:
     """Missing continuation.yaml keys should fail fast with a clear error."""
     from edison.cli.session.continuation._core import compute_continuation_view
