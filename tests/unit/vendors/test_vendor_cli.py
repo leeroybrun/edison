@@ -56,6 +56,47 @@ class TestVendorListCommand:
 
         assert exit_code == 0
 
+    def test_list_tolerates_null_lock_commit(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        """List command should not crash if lock file contains a null commit."""
+        from edison.cli.vendor.list import main, register_args
+
+        config_dir = tmp_path / ".edison" / "config"
+        config_dir.mkdir(parents=True)
+        write_yaml(
+            config_dir / "vendors.yaml",
+            """
+            vendors:
+              sources:
+                - name: opencode
+                  url: https://github.com/anthropics/opencode.git
+                  ref: main
+                  path: vendors/opencode
+            """,
+        )
+        write_yaml(
+            config_dir / "vendors.lock.yaml",
+            """
+            vendors:
+              - name: opencode
+                url: https://github.com/anthropics/opencode.git
+                ref: main
+                commit:
+                path: vendors/opencode
+            """,
+        )
+
+        parser = argparse.ArgumentParser()
+        register_args(parser)
+        args = parser.parse_args(["--repo-root", str(tmp_path)])
+
+        exit_code = main(args)
+        captured = capsys.readouterr()
+
+        assert exit_code == 0
+        assert "opencode" in captured.out
+
     def test_list_json_output(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
         """List command should support JSON output."""
         from edison.cli.vendor.list import main, register_args
