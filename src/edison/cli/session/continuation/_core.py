@@ -13,6 +13,13 @@ class ContinuationView:
     effective: dict[str, Any]
 
 
+def _coerce_int(value: Any, *, field: str, origin: str) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Invalid continuation {origin} value for {field}: {value!r}") from e
+
+
 def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continuation: dict[str, Any] | None) -> ContinuationView:
     """Compute continuation view from config and session overrides.
 
@@ -34,8 +41,10 @@ def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continua
         "enabled": bool(cfg["enabled"]),
         "mode": str(cfg["defaultMode"]),
         "budgets": {
-            "maxIterations": int(budgets["maxIterations"]),
-            "cooldownSeconds": int(budgets["cooldownSeconds"]),
+            "maxIterations": _coerce_int(budgets["maxIterations"], field="maxIterations", origin="config"),
+            "cooldownSeconds": _coerce_int(
+                budgets["cooldownSeconds"], field="cooldownSeconds", origin="config"
+            ),
             "stopOnBlocked": bool(budgets["stopOnBlocked"]),
         },
     }
@@ -53,10 +62,14 @@ def compute_continuation_view(*, continuation_cfg: dict[str, Any], meta_continua
         "enabled": bool(enabled_override) if enabled_override is not None else defaults["enabled"],
         "mode": str(mode_override) if mode_override is not None else defaults["mode"],
         "budgets": {
-            "maxIterations": int(max_iterations_override)
+            "maxIterations": _coerce_int(
+                max_iterations_override, field="maxIterations", origin="override"
+            )
             if max_iterations_override is not None
             else defaults["budgets"]["maxIterations"],
-            "cooldownSeconds": int(cooldown_seconds_override)
+            "cooldownSeconds": _coerce_int(
+                cooldown_seconds_override, field="cooldownSeconds", origin="override"
+            )
             if cooldown_seconds_override is not None
             else defaults["budgets"]["cooldownSeconds"],
             "stopOnBlocked": bool(stop_on_blocked_override)
