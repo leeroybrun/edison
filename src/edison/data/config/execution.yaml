@@ -46,9 +46,9 @@ execution:
       - "^btop$"
       - "^nmon$"
       # Interactive git commands (without --no-pager)
-      - "git log$"
-      - "git diff$"
-      - "git show$"
+      - "^git log(\\s|$)"
+      - "^git diff(\\s|$)"
+      - "^git show(\\s|$)"
       # Interactive prompts
       - " -i "
       - " --interactive"
