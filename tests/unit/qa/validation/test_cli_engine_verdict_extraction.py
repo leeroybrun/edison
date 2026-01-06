@@ -58,6 +58,13 @@ def test_verdict_extraction_handles_coderabbit_plain_text_reviews() -> None:
     )
     assert (
         e._extract_verdict_from_response(
+            "Type: critical_issue\n\nReview completed ✔\n",
+            validator_id="coderabbit",
+        )
+        == "reject"
+    )
+    assert (
+        e._extract_verdict_from_response(
             "Type: refactor_suggestion\n\nReview completed ✔\n",
             validator_id="coderabbit",
         )

@@ -766,7 +766,7 @@ class CLIEngine:
         # these heuristics on the validator id instead of response contents.
         if (validator_id or "").strip().lower() == "coderabbit" and "review completed" in response_lower:
             # Treat "potential_issue"/"bug"/security/perf as blocking; allow pure refactor suggestions.
-            if re.search(r"\btype:\s*(potential_issue|bug|security_issue|performance_issue)\b", response_lower):
+            if re.search(r"\btype:\s*(critical_issue|potential_issue|bug|security_issue|performance_issue)\b", response_lower):
                 return "reject"
             return "approve"
 
