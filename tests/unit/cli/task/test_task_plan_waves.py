@@ -29,7 +29,7 @@ def test_task_waves_emits_parallelizable_waves(isolated_project_env: Path, capsy
             id="F",
             state=todo,
             title="F",
-            depends_on=["E"],
+            relationships=[{"type": "depends_on", "target": "E"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -40,7 +40,7 @@ def test_task_waves_emits_parallelizable_waves(isolated_project_env: Path, capsy
             id="B",
             state=todo,
             title="B",
-            depends_on=["A"],
+            relationships=[{"type": "depends_on", "target": "A"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -49,7 +49,7 @@ def test_task_waves_emits_parallelizable_waves(isolated_project_env: Path, capsy
             id="C",
             state=todo,
             title="C",
-            depends_on=["A"],
+            relationships=[{"type": "depends_on", "target": "A"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -60,7 +60,10 @@ def test_task_waves_emits_parallelizable_waves(isolated_project_env: Path, capsy
             id="D",
             state=todo,
             title="D",
-            depends_on=["B", "C"],
+            relationships=[
+                {"type": "depends_on", "target": "B"},
+                {"type": "depends_on", "target": "C"},
+            ],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -96,7 +99,7 @@ def test_task_waves_lists_tasks_blocked_by_missing_dependencies(isolated_project
             id="G",
             state=todo,
             title="G",
-            depends_on=["MISSING"],
+            relationships=[{"type": "depends_on", "target": "MISSING"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )

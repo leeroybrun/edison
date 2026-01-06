@@ -355,16 +355,9 @@ class TaskRepository(
 
         - State is NOT stored in frontmatter (derived from directory).
         - Relationships are stored in canonical `relationships:` format.
-        - Legacy relationship fields are also written for back-compat (`parent_id`, `child_ids`, etc.).
         - Body is preserved on saves; template is only used on creation.
         """
         edges = encode_task_relationships(task) or []
-        parent_id = next((e["target"] for e in edges if e.get("type") == "parent"), None)
-        child_ids = [e["target"] for e in edges if e.get("type") == "child"]
-        depends_on = [e["target"] for e in edges if e.get("type") == "depends_on"]
-        blocks_tasks = [e["target"] for e in edges if e.get("type") == "blocks"]
-        related = [e["target"] for e in edges if e.get("type") == "related"]
-        bundle_root = next((e["target"] for e in edges if e.get("type") == "bundle_root"), None)
 
         # Build frontmatter data (exclude None values)
         frontmatter_data: Dict[str, Any] = {
@@ -373,12 +366,6 @@ class TaskRepository(
             "owner": task.metadata.created_by,
             "session_id": task.session_id,
             "relationships": edges or None,
-            "parent_id": parent_id,
-            "child_ids": child_ids or None,
-            "depends_on": depends_on or None,
-            "blocks_tasks": blocks_tasks or None,
-            "related": related or None,
-            "bundle_root": bundle_root,
             "claimed_at": task.claimed_at,
             "last_active": task.last_active,
             "continuation_id": task.continuation_id,
@@ -463,7 +450,26 @@ class TaskRepository(
         doc = parse_frontmatter(content)
         fm = doc.frontmatter
 
-        relationships, derived = decode_frontmatter_relationships(fm)
+        legacy_relationship_keys = {
+            "parent_id",
+            "child_ids",
+            "depends_on",
+            "blocks_tasks",
+            "related",
+            "related_tasks",
+            "bundle_root",
+        }
+        raw_relationships = fm.get("relationships")
+        if (not isinstance(raw_relationships, list) or not raw_relationships) and any(
+            k in fm for k in legacy_relationship_keys
+        ):
+            raise ValueError(
+                "Legacy relationship keys detected in task frontmatter. "
+                "Migrate tasks to canonical `relationships:` format first (run "
+                "`PYTHONPATH=src ./.venv/bin/python scripts/migrations/migrate_task_relationships.py`)."
+            )
+
+        relationships, _derived = decode_frontmatter_relationships(fm)
 
         # Extract title from frontmatter or markdown heading
         title = fm.get("title", "")
@@ -501,11 +507,6 @@ class TaskRepository(
             session_id=fm.get("session_id"),
             metadata=metadata,
             tags=fm.get("tags", []) or [],
-            parent_id=derived.get("parent_id"),
-            child_ids=derived.get("child_ids", []) or [],
-            depends_on=derived.get("depends_on", []) or [],
-            blocks_tasks=derived.get("blocks_tasks", []) or [],
-            related=derived.get("related", []) or [],
             claimed_at=fm.get("claimed_at"),
             last_active=fm.get("last_active"),
             continuation_id=fm.get("continuation_id"),

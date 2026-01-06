@@ -25,7 +25,7 @@ def test_task_plan_groups_related_tasks_before_unrelated(isolated_project_env: P
             id="B",
             state=todo,
             title="B",
-            related=["C"],
+            relationships=[{"type": "related", "target": "C"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -34,7 +34,7 @@ def test_task_plan_groups_related_tasks_before_unrelated(isolated_project_env: P
             id="C",
             state=todo,
             title="C",
-            related=["B"],
+            relationships=[{"type": "related", "target": "B"}],
             metadata=EntityMetadata.create(created_by="test"),
         )
     )
@@ -45,4 +45,3 @@ def test_task_plan_groups_related_tasks_before_unrelated(isolated_project_env: P
     assert len(plan.waves) == 1
     wave_ids = [t.id for t in plan.waves[0].tasks]
     assert wave_ids == ["B", "C", "A"]
-

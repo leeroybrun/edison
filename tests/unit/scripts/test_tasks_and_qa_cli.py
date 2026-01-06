@@ -338,10 +338,12 @@ def test_task_new_parent_sets_frontmatter_and_updates_parent(tmp_path: Path) -> 
     assert parent_path.exists()
 
     child_fm = parse_frontmatter(child_path.read_text(encoding="utf-8")).frontmatter
-    assert child_fm.get("parent_id") == parent_id
+    child_edges = {(e["type"], e["target"]) for e in (child_fm.get("relationships") or [])}
+    assert ("parent", parent_id) in child_edges
 
     parent_fm = parse_frontmatter(parent_path.read_text(encoding="utf-8")).frontmatter
-    assert child_id in (parent_fm.get("child_ids") or [])
+    parent_edges = {(e["type"], e["target"]) for e in (parent_fm.get("relationships") or [])}
+    assert ("child", child_id) in parent_edges
 
 
 def test_task_split_accepts_children_alias(tmp_path: Path) -> None:
@@ -388,12 +390,15 @@ state: "todo"
     payload = json.loads(result.stdout.strip())
     assert payload["sessionId"] == "s123"
     # Single source of truth: task files must reflect the relationship.
-    updated_parent = parent.read_text()
-    updated_child = child.read_text()
-    assert "child_ids" in updated_parent
-    assert "200.1-wave1-child" in updated_parent
-    assert "parent_id" in updated_child
-    assert "200-wave1-demo" in updated_child
+    from edison.core.utils.text import parse_frontmatter
+
+    updated_parent_fm = parse_frontmatter(parent.read_text()).frontmatter
+    updated_child_fm = parse_frontmatter(child.read_text()).frontmatter
+
+    parent_edges = {(e["type"], e["target"]) for e in (updated_parent_fm.get("relationships") or [])}
+    child_edges = {(e["type"], e["target"]) for e in (updated_child_fm.get("relationships") or [])}
+    assert ("child", "200.1-wave1-child") in parent_edges
+    assert ("parent", "200-wave1-demo") in child_edges
 
 
 def test_tasks_new_creates_file(tmp_path: Path):

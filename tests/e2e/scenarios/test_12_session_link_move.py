@@ -33,5 +33,7 @@ def test_link_moves_tasks_into_session(project_dir: TestProjectDir):
 
     parent_doc = parse_frontmatter(parent_path.read_text(encoding="utf-8"))
     child_doc = parse_frontmatter(child_path.read_text(encoding="utf-8"))
-    assert child_id in ((parent_doc.frontmatter or {}).get("child_ids") or [])
-    assert (child_doc.frontmatter or {}).get("parent_id") == parent_id
+    parent_edges = {(e["type"], e["target"]) for e in ((parent_doc.frontmatter or {}).get("relationships") or [])}
+    child_edges = {(e["type"], e["target"]) for e in ((child_doc.frontmatter or {}).get("relationships") or [])}
+    assert ("child", child_id) in parent_edges
+    assert ("parent", parent_id) in child_edges
